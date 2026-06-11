@@ -46,7 +46,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.02)]",
+        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card",
         responsive && "hidden md:block",
         className,
       )}
@@ -115,7 +115,7 @@ interface TableCardProps extends ComponentProps<"div"> {
 /** A single mobile card mirroring one table row. */
 export function TableCard({ className, interactive, ...props }: TableCardProps) {
   const classes = cn(
-    "rounded-lg border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)]",
+    "rounded-lg border border-slate-200 bg-white p-5 shadow-card",
     className,
   );
   if (interactive) {
