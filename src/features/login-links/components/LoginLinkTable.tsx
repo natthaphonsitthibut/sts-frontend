@@ -32,6 +32,9 @@ function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: Login
     <div className="flex items-center justify-end gap-2">
       <CopyButton value={getLoginLinkUrl(link.magic_link)} />
       <Button
+        // Fixed min width so toggling "เปิดลิงก์"/"ปิดลิงก์" never changes the
+        // button width and shifts the copy button beside it.
+        className="min-w-[124px]"
         icon={locked ? LockOpen : Lock}
         onClick={() => onToggleLock(link)}
         size="sm"
