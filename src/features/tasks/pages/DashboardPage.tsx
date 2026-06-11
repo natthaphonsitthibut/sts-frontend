@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { LayoutDashboard, Plus } from "lucide-react";
-import {
-  Badge,
-  buttonVariants,
-} from "../../../components/base";
+import { Badge } from "../../../components/base";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { NavButton } from "../../../components/layout/nav-button";
 import {
   ErrorState,
   FilterSelect,
@@ -71,13 +69,9 @@ export function DashboardPage() {
         actions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={() => casesQuery.refetch()} />
-            <Link
-              className={buttonVariants({ variant: "secondary" })}
-              to="/create"
-            >
-              <Plus className="size-4" aria-hidden="true" />
+            <NavButton icon={Plus} to="/create" variant="secondary">
               สร้างภารกิจใหม่
-            </Link>
+            </NavButton>
           </div>
         }
       >

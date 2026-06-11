@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, ShieldCheck } from "lucide-react";
-import { Button, useConfirm } from "../../../components/base";
+import { useConfirm } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -10,6 +10,7 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import type { RoleDefinition } from "../types/admin.types";
@@ -33,10 +34,6 @@ export function ManageRoleGroupsPage() {
         role.name.toLowerCase().includes(normalizedSearch),
     );
   }, [roleGroups, searchQuery]);
-
-  function openCreate(): void {
-    void navigate("/manage-role-groups/new");
-  }
 
   function openEdit(roleGroup: RoleDefinition): void {
     void navigate(`/manage-role-groups/${encodeURIComponent(roleGroup.name)}/edit`);
@@ -62,9 +59,9 @@ export function ManageRoleGroupsPage() {
       <PageToolbar
         icon={ShieldCheck}
         actions={
-          <Button icon={Plus} onClick={openCreate}>
+          <NavButton icon={Plus} to="/manage-role-groups/new">
             เพิ่มกลุ่มสิทธิ์
-          </Button>
+          </NavButton>
         }
         title="จัดการกลุ่มผู้ใช้งาน"
         description="กำหนดกลุ่มสิทธิ์และแมปสิทธิ์การใช้งานของแต่ละตำแหน่ง"

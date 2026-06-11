@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, UserPlus } from "lucide-react";
-import { Button, useConfirm } from "../../../components/base";
+import { useConfirm } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -11,6 +11,7 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { UserTable } from "../components/UserTable";
 import { useDeleteUser, useUsers } from "../hooks/useUsers";
 import { getUserDisplayName } from "../lib/admin-presentation";
@@ -35,10 +36,6 @@ export function ManageUsersPage() {
         user.username.toLowerCase().includes(normalizedSearch),
     );
   }, [users, searchQuery]);
-
-  function openCreate(): void {
-    void navigate("/manage-users/new");
-  }
 
   function openEdit(user: ManagedUser): void {
     if (user.id == null) {
@@ -67,9 +64,9 @@ export function ManageUsersPage() {
       <PageToolbar
         icon={Users}
         actions={
-          <Button icon={UserPlus} onClick={openCreate}>
+          <NavButton icon={UserPlus} to="/manage-users/new">
             เพิ่มผู้ใช้งาน
-          </Button>
+          </NavButton>
         }
         title="จัดการผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"

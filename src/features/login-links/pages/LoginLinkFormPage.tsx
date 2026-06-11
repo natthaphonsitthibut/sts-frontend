@@ -16,6 +16,7 @@ import {
   Select,
 } from "../../../components/base";
 import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import type { DataScope } from "../../auth/lib/permissions";
 import { useCreateLoginLink, useLoginLinkRoles } from "../hooks/useLoginLinks";
@@ -75,9 +76,9 @@ export function LoginLinkFormPage() {
         title="สร้างลิงก์เข้าสู่ระบบ"
         description="สร้าง magic link สำหรับให้ผู้ใช้เข้าสู่ระบบตามตำแหน่งที่กำหนด"
         actions={
-          <Button icon={ArrowLeft} onClick={goBack} variant="outline">
+          <NavButton icon={ArrowLeft} to={LOGIN_LINKS_PATH} variant="outline">
             ย้อนกลับ
-          </Button>
+          </NavButton>
         }
       />
 

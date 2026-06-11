@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Copy, Lock, LockOpen, Plus } from "lucide-react";
 import {
   Badge,
   Button,
-  buttonVariants,
 } from "../../../components/base";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { NavButton } from "../../../components/layout/nav-button";
 import {
   ErrorState,
   FilterSelect,
@@ -86,13 +85,9 @@ export function AttendanceLinksDashboardPage() {
         actions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={() => tasksQuery.refetch()} />
-            <Link
-              className={buttonVariants({ variant: "secondary" })}
-              to="/create"
-            >
-              <Plus className="size-4" aria-hidden="true" />
+            <NavButton icon={Plus} to="/create" variant="secondary">
               สร้างลิงก์
-            </Link>
+            </NavButton>
           </div>
         }
       >

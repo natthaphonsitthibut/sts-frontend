@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Link2, Plus } from "lucide-react";
-import { Button, useConfirm } from "../../../components/base";
+import { useConfirm } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -11,6 +10,7 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { LoginLinkTable } from "../components/LoginLinkTable";
 import {
   useLoginLinks,
@@ -24,7 +24,6 @@ import {
 import type { LoginLink } from "../types/login-links.types";
 
 export function LoginLinksPage() {
-  const navigate = useNavigate();
   const { links, isLoading, isError, refetch } = useLoginLinks();
   const setLinkLock = useSetLinkLock();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -84,9 +83,9 @@ export function LoginLinksPage() {
         title="ลิงก์เข้าสู่ระบบ"
         description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
         actions={
-          <Button icon={Plus} onClick={() => void navigate("/login-links/new")}>
+          <NavButton icon={Plus} to="/login-links/new">
             สร้างลิงก์
-          </Button>
+          </NavButton>
         }
       >
         <ToolbarControls>

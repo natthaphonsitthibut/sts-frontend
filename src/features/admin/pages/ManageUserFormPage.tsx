@@ -22,6 +22,7 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { ROLE_LABELS } from "../../auth/lib/permissions";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { useRolesCatalog, useSaveUser, useUsers } from "../hooks/useUsers";
@@ -290,13 +291,9 @@ export function ManageUserFormPage() {
         title={isEdit ? "แก้ไขผู้ใช้งาน" : "เพิ่มผู้ใช้งาน"}
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
         actions={
-          <Button
-            icon={ArrowLeft}
-            onClick={() => void navigate(MANAGE_USERS_PATH)}
-            variant="outline"
-          >
+          <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
             ย้อนกลับ
-          </Button>
+          </NavButton>
         }
       />
 

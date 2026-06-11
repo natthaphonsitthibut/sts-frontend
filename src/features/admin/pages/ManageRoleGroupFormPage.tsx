@@ -22,6 +22,7 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { useRoleGroups, useSaveRoleGroup } from "../hooks/useRoleGroups";
 import {
   getAssignablePermissions,
@@ -183,13 +184,9 @@ export function ManageRoleGroupFormPage() {
         title={isEdit ? "แก้ไขกลุ่มสิทธิ์" : "เพิ่มกลุ่มสิทธิ์"}
         description="กำหนดรหัส ชื่อ ลำดับขั้น ขอบเขตข้อมูล และสิทธิ์การเข้าถึง"
         actions={
-          <Button
-            icon={ArrowLeft}
-            onClick={() => void navigate(MANAGE_ROLE_GROUPS_PATH)}
-            variant="outline"
-          >
+          <NavButton icon={ArrowLeft} to={MANAGE_ROLE_GROUPS_PATH} variant="outline">
             ย้อนกลับ
-          </Button>
+          </NavButton>
         }
       />
 
