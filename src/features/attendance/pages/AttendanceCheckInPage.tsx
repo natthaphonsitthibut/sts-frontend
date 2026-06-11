@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, ClipboardCheck, ClipboardList, Save } from "lucide-react";
 import {
   Alert,
@@ -96,6 +96,18 @@ export function AttendanceCheckInPage() {
 
   const newCases = saveState.data?.newCases ?? [];
 
+  // History uses the same school/grade/room scope as the today tab — filter the
+  // records client-side by the selected class so both tabs behave consistently.
+  const filteredHistory = useMemo(
+    () =>
+      history.records.filter(
+        (record) =>
+          (!grade || record.grade === grade) &&
+          (!room || String(record.room) === room),
+      ),
+    [history.records, grade, room],
+  );
+
   return (
     <PageShell className="pb-6">
       <PageToolbar
@@ -111,81 +123,83 @@ export function AttendanceCheckInPage() {
           />
         }
       >
-        {tab === "today" ? (
-          <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
-            <ScopeField label="โรงเรียน">
-              <Select
-                aria-label="โรงเรียน"
-                disabled={scope.isSchoolLocked}
-                onChange={(event) => setSchoolId(event.target.value)}
-                value={schoolId}
-              >
-                <option value="">เลือกโรงเรียน</option>
-                {schools.map((school) => (
-                  <option key={school.id} value={String(school.id)}>
-                    {school.name}
-                  </option>
-                ))}
-              </Select>
-            </ScopeField>
+        <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
+          <ScopeField label="โรงเรียน">
+            <Select
+              aria-label="โรงเรียน"
+              disabled={scope.isSchoolLocked}
+              onChange={(event) => setSchoolId(event.target.value)}
+              value={schoolId}
+            >
+              <option value="">เลือกโรงเรียน</option>
+              {schools.map((school) => (
+                <option key={school.id} value={String(school.id)}>
+                  {school.name}
+                </option>
+              ))}
+            </Select>
+          </ScopeField>
 
-            <ScopeField label="ระดับชั้น">
-              <Select
-                aria-label="ระดับชั้น"
-                disabled={scope.isGradeLocked || !schoolId}
-                onChange={(event) => setGrade(event.target.value)}
-                value={grade}
-              >
-                <option value="">{schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}</option>
-                {gradeLevels.map((level) => (
-                  <option key={level.id} value={level.label}>
-                    {level.label}
-                  </option>
-                ))}
-              </Select>
-            </ScopeField>
+          <ScopeField label="ระดับชั้น">
+            <Select
+              aria-label="ระดับชั้น"
+              disabled={scope.isGradeLocked || !schoolId}
+              onChange={(event) => setGrade(event.target.value)}
+              value={grade}
+            >
+              <option value="">{schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}</option>
+              {gradeLevels.map((level) => (
+                <option key={level.id} value={level.label}>
+                  {level.label}
+                </option>
+              ))}
+            </Select>
+          </ScopeField>
 
-            <ScopeField label="ห้อง">
-              <Select
-                aria-label="ห้อง"
-                disabled={scope.isRoomLocked || !grade}
-                onChange={(event) => setRoom(event.target.value)}
-                value={room}
-              >
-                <option value="">{grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}</option>
-                {rooms.map((roomOption) => (
-                  <option key={roomOption} value={roomOption}>
-                    ห้อง {roomOption}
-                  </option>
-                ))}
-              </Select>
-            </ScopeField>
+          <ScopeField label="ห้อง">
+            <Select
+              aria-label="ห้อง"
+              disabled={scope.isRoomLocked || !grade}
+              onChange={(event) => setRoom(event.target.value)}
+              value={room}
+            >
+              <option value="">{grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}</option>
+              {rooms.map((roomOption) => (
+                <option key={roomOption} value={roomOption}>
+                  ห้อง {roomOption}
+                </option>
+              ))}
+            </Select>
+          </ScopeField>
 
-            <ScopeField label="วันที่">
-              <Input type="date" value={getTodayIso()} readOnly disabled />
-            </ScopeField>
-          </ToolbarControls>
-        ) : (
-          <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
-            <ScopeField label="เลือกวันที่">
+          <ScopeField label="วันที่">
+            {tab === "today" ? (
+              <Input aria-label="วันที่" type="date" value={getTodayIso()} readOnly disabled />
+            ) : (
               <Input
                 aria-label="เลือกวันที่"
                 type="date"
                 value={historyDate}
                 onChange={(event) => setHistoryDate(event.target.value)}
               />
-            </ScopeField>
-          </ToolbarControls>
-        )}
+            )}
+          </ScopeField>
+        </ToolbarControls>
       </PageToolbar>
 
       {tab === "today" ? (
         <>
           {canLoadRoster && students.length > 0 ? (
             <div className="mb-3 flex flex-wrap gap-2">
-              <Badge variant="success">มา {counts.present}</Badge>
-              <Badge variant="warning">สาย {counts.late}</Badge>
-              <Badge variant="destructive">ขาด {counts.absent}</Badge>
+              <Badge className="min-w-[68px]" variant="success">
+                มา {counts.present}
+              </Badge>
+              <Badge className="min-w-[68px]" variant="warning">
+                สาย {counts.late}
+              </Badge>
+              <Badge className="min-w-[68px]" variant="destructive">
+                ขาด {counts.absent}
+              </Badge>
             </div>
           ) : null}
 
@@ -268,18 +282,18 @@ export function AttendanceCheckInPage() {
         />
       ) : history.isLoading ? (
         <SkeletonTable rows={6} />
-      ) : history.records.length === 0 ? (
+      ) : filteredHistory.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="ยังไม่มีประวัติการเช็คชื่อ"
-          description="ไม่พบการบันทึกการเช็คชื่อในวันที่เลือก"
+          title="ไม่พบประวัติการเช็คชื่อ"
+          description="ยังไม่มีการบันทึกการเช็คชื่อตามวันที่และชั้นเรียนที่เลือก"
         />
       ) : (
         <DataTable
           headings={["นักเรียน", "ชั้น / ห้อง", "สถานะ", "ผู้บันทึก"]}
           responsive={false}
         >
-          {history.records.map((record) => (
+          {filteredHistory.map((record) => (
             <DataTableRow key={record.id}>
               <DataTableCell className="font-bold text-slate-800">
                 {record.name || "-"}
