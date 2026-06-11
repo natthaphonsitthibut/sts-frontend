@@ -24,21 +24,18 @@ function readStoredAuthUser(): AuthUser | null {
   }
 }
 
-function encodeScopeHeader(scope: unknown): string | null {
-  try {
-    return `uri:${encodeURIComponent(JSON.stringify(scope))}`;
-  } catch {
-    return null;
-  }
-}
-
 export const apiClient = axios.create({
   baseURL: appConfig.apiBaseUrl,
+  // Admin identity is a server-signed httpOnly cookie — send it on every request.
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
 
+  // Guest / student flows still authenticate with signed tokens via headers; the
+  // admin session is carried entirely by the httpOnly cookie (no client-supplied
+  // user id / scope, which the backend no longer trusts).
   if (currentUser?.virtual_login && currentUser.magic_link_token) {
     config.headers["x-magic-link-token"] = currentUser.magic_link_token;
     if (currentUser.magic_session_token) {
@@ -46,15 +43,6 @@ apiClient.interceptors.request.use((config) => {
     }
   } else if (currentUser?.virtual_login && currentUser.virtual_auth_token) {
     config.headers["x-virtual-auth"] = currentUser.virtual_auth_token;
-  } else if (currentUser?.id) {
-    config.headers["x-user-id"] = String(currentUser.id);
-  }
-
-  if (currentUser?.data_scope) {
-    const encodedScope = encodeScopeHeader(currentUser.data_scope);
-    if (encodedScope) {
-      config.headers["x-user-scope"] = encodedScope;
-    }
   }
 
   return config;

@@ -12,6 +12,7 @@ interface AuthService {
   changeOwnPassword: (payload: ChangePasswordPayload) => Promise<void>;
   getUserProfile: (userId: number) => Promise<AuthUser>;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
+  logout: () => Promise<void>;
   loginWithMockThaId: (payload: MockThaIdLoginPayload) => Promise<AuthUser>;
   requestMagicOtp: (token: string) => Promise<void>;
   verifyMagicLogin: (
@@ -29,6 +30,10 @@ async function login(credentials: LoginCredentials): Promise<AuthUser> {
 async function getUserProfile(userId: number): Promise<AuthUser> {
   const response = await apiClient.get<AuthUser>(`/api/users/${userId}`);
   return response.data;
+}
+
+async function logout(): Promise<void> {
+  await apiClient.post("/api/users/logout");
 }
 
 async function changeOwnPassword(payload: ChangePasswordPayload): Promise<void> {
@@ -82,6 +87,7 @@ export const authService: AuthService = {
   changeOwnPassword,
   getUserProfile,
   login,
+  logout,
   loginWithMockThaId,
   requestMagicOtp,
   verifyMagicLogin,

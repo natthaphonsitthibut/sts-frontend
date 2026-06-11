@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, IconButton } from "../base";
 import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
+import { authService } from "../../features/auth/api/auth.service";
 
 function getDisplayName(firstName?: string | null, lastName?: string | null, username?: string): string {
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -27,7 +28,13 @@ export function UserProfileMenu() {
   const primaryRole = user?.roles?.[0];
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-";
 
-  function handleLogout(): void {
+  async function handleLogout(): Promise<void> {
+    // Best-effort: clear the server cookie, then always clear local state.
+    try {
+      await authService.logout();
+    } catch {
+      // Ignore — local session is cleared regardless below.
+    }
     clearSession();
     void navigate("/admin-access");
   }
@@ -43,7 +50,7 @@ export function UserProfileMenu() {
         aria-label="ออกจากระบบ"
         className="text-primary"
         icon={LogOut}
-        onClick={handleLogout}
+        onClick={() => void handleLogout()}
         variant="ghost"
       />
     </div>
