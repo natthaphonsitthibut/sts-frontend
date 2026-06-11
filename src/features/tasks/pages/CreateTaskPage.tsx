@@ -22,6 +22,8 @@ import {
 import { taskService } from "../api/task.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
+import type { DataScope } from "../../auth/lib/permissions";
 import { buildLineShareUrl, copyText, formatDateTime } from "../lib/task-presentation";
 import {
   TASK_DURATION_UNIT_OPTIONS,
@@ -55,6 +57,11 @@ export function CreateTaskPage() {
   });
   // Same school → grade → room cascade as the check-in page.
   const scope = useScopeCascade();
+  // LOGIN links can carry custom permissions / data scope (same editor as the
+  // login-links feature) so this page is the single full create-link flow.
+  const [customizePermissions, setCustomizePermissions] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [dataScope, setDataScope] = useState<DataScope>({});
 
   const createTask = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
@@ -99,8 +106,8 @@ export function CreateTaskPage() {
 
     if (type === "LOGIN") {
       Object.assign(payload, {
-        data_scope: {},
-        permissions: [],
+        data_scope: dataScope,
+        permissions: customizePermissions ? permissions : [],
         role: form.role || null,
       });
     }
@@ -293,17 +300,29 @@ export function CreateTaskPage() {
               ) : null}
 
               {type === "LOGIN" ? (
-                <label className="block space-y-2 text-sm font-medium">
-                  ตำแหน่ง
-                  <Select value={form.role} onChange={(event) => updateField("role", event.target.value)}>
-                    <option value="">เลือก role</option>
-                    {(rolesQuery.data ?? []).map((role) => (
-                      <option key={role.name} value={role.name}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
+                <>
+                  <label className="block space-y-2 text-sm font-medium">
+                    ตำแหน่ง
+                    <Select value={form.role} onChange={(event) => updateField("role", event.target.value)}>
+                      <option value="">เลือก role</option>
+                      {(rolesQuery.data ?? []).map((role) => (
+                        <option key={role.name} value={role.name}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  <PermissionScopeEditor
+                    customizePermissions={customizePermissions}
+                    dataScope={dataScope}
+                    disabled={createTask.isPending}
+                    onCustomizePermissionsChange={setCustomizePermissions}
+                    onDataScopeChange={setDataScope}
+                    onPermissionsChange={setPermissions}
+                    permissions={permissions}
+                    role={form.role}
+                  />
+                </>
               ) : null}
 
               <div className="grid gap-4 sm:grid-cols-[1fr_160px]">

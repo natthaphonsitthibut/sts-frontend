@@ -83,7 +83,7 @@ export function LoginLinksPage() {
         title="ลิงก์เข้าสู่ระบบ"
         description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
         actions={
-          <NavButton icon={Plus} to="/login-links/new">
+          <NavButton icon={Plus} to="/create">
             สร้างลิงก์
           </NavButton>
         }
