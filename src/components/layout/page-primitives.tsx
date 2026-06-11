@@ -70,7 +70,7 @@ export function PageToolbar({
 }: PageToolbarProps) {
   const toneClasses = toolbarToneClasses[tone];
   return (
-    <div className="mb-6">
+    <div className="mb-5">
       {/* Header band — same fixed height on every page (controls live below, so a
           page with many filters never gets a taller header than one with none). */}
       <section
@@ -101,7 +101,7 @@ export function PageToolbar({
         </div>
       </section>
       {children ? (
-        <div className="mt-3 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
+        <div className="mt-5 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
           {children}
         </div>
       ) : null}
