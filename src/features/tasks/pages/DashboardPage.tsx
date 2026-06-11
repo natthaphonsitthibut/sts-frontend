@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Plus, RotateCw } from "lucide-react";
+import { LayoutDashboard, Plus } from "lucide-react";
 import {
   Badge,
-  Button,
   buttonVariants,
 } from "../../../components/base";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   ErrorState,
   FilterSelect,
@@ -70,16 +70,7 @@ export function DashboardPage() {
         description="ติดตามสถานะเคสและลิงก์ภารกิจจากข้อมูล backend ปัจจุบัน"
         actions={
           <div className="flex gap-2">
-            <Button
-              icon={RotateCw}
-              isLoading={casesQuery.isFetching}
-              loadingIconMotion="refresh"
-              loadingText="รีเฟรช"
-              onClick={() => void casesQuery.refetch()}
-              variant="secondary"
-            >
-              รีเฟรช
-            </Button>
+            <RefreshButton onRefresh={() => casesQuery.refetch()} />
             <Link
               className={buttonVariants({ variant: "secondary" })}
               to="/create"

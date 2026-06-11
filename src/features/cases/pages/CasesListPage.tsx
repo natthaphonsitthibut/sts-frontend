@@ -42,6 +42,7 @@ export function CasesListPage() {
     <PageShell>
       <CaseListFilter
         count={filteredCases.length}
+        onRefresh={refetch}
         onSearchChange={setSearchQuery}
         onStatusChange={setStatus}
         searchQuery={searchQuery}

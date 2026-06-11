@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, Copy, Lock, LockOpen, Plus, RotateCw } from "lucide-react";
+import { ClipboardCheck, Copy, Lock, LockOpen, Plus } from "lucide-react";
 import {
   Badge,
   Button,
   buttonVariants,
 } from "../../../components/base";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   ErrorState,
   FilterSelect,
@@ -84,16 +85,7 @@ export function AttendanceLinksDashboardPage() {
         description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
         actions={
           <div className="flex gap-2">
-            <Button
-              icon={RotateCw}
-              isLoading={tasksQuery.isFetching}
-              loadingIconMotion="refresh"
-              loadingText="รีเฟรช"
-              onClick={() => void tasksQuery.refetch()}
-              variant="secondary"
-            >
-              รีเฟรช
-            </Button>
+            <RefreshButton onRefresh={() => tasksQuery.refetch()} />
             <Link
               className={buttonVariants({ variant: "secondary" })}
               to="/create"

@@ -6,6 +6,7 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
 
 interface CaseListFilterProps {
@@ -14,6 +15,7 @@ interface CaseListFilterProps {
   status: string;
   onStatusChange: (value: string) => void;
   count: number;
+  onRefresh: () => Promise<unknown> | unknown;
 }
 
 export function CaseListFilter({
@@ -22,9 +24,15 @@ export function CaseListFilter({
   status,
   onStatusChange,
   count,
+  onRefresh,
 }: CaseListFilterProps) {
   return (
-    <PageToolbar icon={HeartHandshake} title="เคสช่วยเหลือนักเรียน">
+    <PageToolbar
+      icon={HeartHandshake}
+      title="เคสช่วยเหลือนักเรียน"
+      description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
+      actions={<RefreshButton onRefresh={onRefresh} />}
+    >
       <ToolbarControls>
         <SearchInput
           onChange={onSearchChange}
@@ -37,7 +45,7 @@ export function CaseListFilter({
           onChange={onStatusChange}
           value={status}
         >
-          <option value="ALL">ทุกสถานะ</option>
+          <option value="ALL">ทั้งหมด</option>
           {CASE_STATUS_ORDER.map((value) => (
             <option key={value} value={value}>
               {CASE_STATUS_META[value].label}

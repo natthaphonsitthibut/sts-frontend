@@ -6,6 +6,7 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 
 interface StudentSearchFilterProps {
   searchQuery: string;
@@ -17,6 +18,7 @@ interface StudentSearchFilterProps {
   onRoomChange: (value: string) => void;
   roomOptions: string[];
   count: number;
+  onRefresh: () => Promise<unknown> | unknown;
 }
 
 export function StudentSearchFilter({
@@ -29,9 +31,15 @@ export function StudentSearchFilter({
   onRoomChange,
   roomOptions,
   count,
+  onRefresh,
 }: StudentSearchFilterProps) {
   return (
-    <PageToolbar title="รายชื่อนักเรียนทั้งหมด">
+    <PageToolbar
+      icon={Users}
+      title="รายชื่อนักเรียนทั้งหมด"
+      description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
+      actions={<RefreshButton onRefresh={onRefresh} />}
+    >
       <ToolbarControls>
         <SearchInput
           onChange={onSearchChange}

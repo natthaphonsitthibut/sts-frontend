@@ -121,6 +121,7 @@ export function StudentListPage() {
         grade={grade}
         gradeOptions={gradeOptions}
         onGradeChange={handleGradeChange}
+        onRefresh={refetch}
         onRoomChange={handleRoomChange}
         onSearchChange={handleSearchChange}
         room={room}
