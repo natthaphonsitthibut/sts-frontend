@@ -85,7 +85,7 @@ export function AttendanceLinksDashboardPage() {
         actions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={() => tasksQuery.refetch()} />
-            <NavButton icon={Plus} to="/create" variant="secondary">
+            <NavButton icon={Plus} to="/create">
               สร้างลิงก์
             </NavButton>
           </div>

@@ -69,7 +69,7 @@ export function DashboardPage() {
         actions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={() => casesQuery.refetch()} />
-            <NavButton icon={Plus} to="/create" variant="secondary">
+            <NavButton icon={Plus} to="/create">
               สร้างภารกิจใหม่
             </NavButton>
           </div>
