@@ -97,7 +97,9 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
 
 /** A body cell with the shared padding. */
 export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
-  return <td className={cn("px-4 py-4 align-middle", className)} {...props} />;
+  // Fixed row height (content vertically centered) so every row in every table
+  // is the same height regardless of 1-line vs 2-line cell content.
+  return <td className={cn("h-[68px] px-4 align-middle", className)} {...props} />;
 }
 
 /** Mobile counterpart wrapper — a vertical stack shown only below `md`. */
