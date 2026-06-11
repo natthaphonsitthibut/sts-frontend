@@ -34,14 +34,11 @@ export function SidebarNavItem({ item, onNavigate }: SidebarNavItemProps) {
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm font-semibold transition-colors hover:bg-slate-50",
-            open ? "text-primary" : "text-slate-700",
+            "flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm font-medium transition-colors hover:bg-slate-50 hover:text-primary",
+            open ? "text-primary" : "text-slate-600",
           )}
         >
-          <LayoutIcon
-            className={cn("size-5 shrink-0", open ? "text-primary" : "text-slate-400")}
-            iconName={item.iconName}
-          />
+          <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
           <ChevronDown
             className={cn("size-4 text-slate-400 transition-transform", open && "rotate-180")}
