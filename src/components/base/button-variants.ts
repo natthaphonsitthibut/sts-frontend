@@ -1,14 +1,14 @@
 import { cva } from "class-variance-authority";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-white shadow-sm hover:bg-primary-dark",
-        secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
+        default: "bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
+        secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200",
         outline:
-          "border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
+          "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
         ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-950",
         destructive: "bg-danger text-white shadow-sm hover:bg-danger-700",
       },

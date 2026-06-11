@@ -40,15 +40,15 @@ export function UserProfileMenu() {
   }
 
   return (
-    <div className="flex items-center gap-3 bg-muted/60 px-4 py-4">
-      <Avatar fallback={getInitials(displayName)} className="size-10 bg-surface-sky text-primary" />
+    <div className="flex items-center gap-3 border-t border-slate-200 p-3">
+      <Avatar fallback={getInitials(displayName)} className="size-10 bg-primary-soft font-semibold text-primary" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
-        <div className="truncate text-xs text-slate-400">{roleLabel}</div>
+        <div className="truncate text-xs text-slate-500">{roleLabel}</div>
       </div>
       <IconButton
         aria-label="ออกจากระบบ"
-        className="text-primary"
+        className="text-slate-400 hover:bg-danger-100 hover:text-danger"
         icon={LogOut}
         onClick={() => void handleLogout()}
         variant="ghost"

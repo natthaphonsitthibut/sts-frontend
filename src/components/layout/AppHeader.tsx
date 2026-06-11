@@ -1,6 +1,6 @@
 import { Bell, GraduationCap, Menu, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { IconButton } from "../base";
+import { Avatar, IconButton } from "../base";
 import { hasPermission, getEffectivePermissions } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { getPageTitle } from "./page-title";
@@ -14,6 +14,18 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const user = useAuthSessionStore((state) => state.user);
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
   const canOpenSettings = hasPermission(userPermissions, "settings");
+
+  const displayName =
+    [user?.FirstName, user?.LastName].filter(Boolean).join(" ").trim() ||
+    user?.username ||
+    "ผู้ใช้งาน";
+  const initials =
+    displayName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("") || "U";
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-primary-dark text-white shadow-card">
@@ -51,6 +63,15 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               <Settings className="size-5" aria-hidden="true" />
             </Link>
           ) : null}
+          <div className="ml-1 hidden items-center gap-2 border-l border-white/20 pl-3 sm:flex">
+            <Avatar
+              fallback={initials}
+              className="size-9 bg-white font-semibold text-primary"
+            />
+            <span className="max-w-[140px] truncate text-sm font-semibold text-white">
+              {displayName}
+            </span>
+          </div>
         </div>
       </div>
     </header>
