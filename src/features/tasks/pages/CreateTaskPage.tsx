@@ -20,8 +20,8 @@ import {
   PageToolbar,
 } from "../../../components/layout/page-primitives";
 import { taskService } from "../api/task.service";
-import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { buildLineShareUrl, copyText, formatDateTime } from "../lib/task-presentation";
 import {
   TASK_DURATION_UNIT_OPTIONS,
@@ -42,9 +42,6 @@ const initialForm = {
   student_name: "",
   student_school: "",
   subject: "",
-  target_grade: "",
-  target_room: "",
-  target_school_id: "",
 };
 
 export function CreateTaskPage() {
@@ -56,22 +53,8 @@ export function CreateTaskPage() {
     queryFn: loginLinksService.getRoleOptions,
     enabled: type === "LOGIN",
   });
-  const gradeLevelsQuery = useQuery({
-    queryKey: ["task-create-grade-levels"],
-    queryFn: attendanceLookupService.getGradeLevels,
-    enabled: type === "ATTENDANCE",
-  });
-  const schoolsQuery = useQuery({
-    queryKey: ["task-create-schools"],
-    queryFn: attendanceLookupService.getSchools,
-    enabled: type === "ATTENDANCE",
-  });
-  const roomsQuery = useQuery({
-    queryKey: ["task-create-rooms", form.target_grade, form.target_school_id],
-    queryFn: () =>
-      attendanceLookupService.getRooms(form.target_grade, form.target_school_id),
-    enabled: type === "ATTENDANCE" && Boolean(form.target_grade),
-  });
+  // Same school → grade → room cascade as the check-in page.
+  const scope = useScopeCascade();
 
   const createTask = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
@@ -108,9 +91,9 @@ export function CreateTaskPage() {
     if (type === "ATTENDANCE") {
       Object.assign(payload, {
         subject: form.subject.trim(),
-        target_grade: form.target_grade.trim(),
-        target_room: form.target_room.trim(),
-        target_school_id: form.target_school_id ? Number(form.target_school_id) : null,
+        target_grade: scope.grade,
+        target_room: scope.room,
+        target_school_id: scope.schoolId ? Number(scope.schoolId) : null,
       });
     }
 
@@ -257,11 +240,11 @@ export function CreateTaskPage() {
                   <label className="space-y-2 text-sm font-medium">
                     โรงเรียน
                     <Select
-                      value={form.target_school_id}
-                      onChange={(event) => updateField("target_school_id", event.target.value)}
+                      value={scope.schoolId}
+                      onChange={(event) => scope.setSchoolId(event.target.value)}
                     >
                       <option value="">เลือกโรงเรียน</option>
-                      {(schoolsQuery.data ?? []).map((school) => (
+                      {scope.schools.map((school) => (
                         <option key={school.id} value={String(school.id)}>
                           {school.name}
                         </option>
@@ -271,14 +254,14 @@ export function CreateTaskPage() {
                   <label className="space-y-2 text-sm font-medium">
                     ระดับชั้น
                     <Select
-                      value={form.target_grade}
-                      onChange={(event) => {
-                        updateField("target_grade", event.target.value);
-                        updateField("target_room", "");
-                      }}
+                      disabled={!scope.schoolId}
+                      value={scope.grade}
+                      onChange={(event) => scope.setGrade(event.target.value)}
                     >
-                      <option value="">เลือกระดับชั้น</option>
-                      {(gradeLevelsQuery.data ?? []).map((grade) => (
+                      <option value="">
+                        {scope.schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}
+                      </option>
+                      {scope.gradeLevels.map((grade) => (
                         <option key={grade.id} value={grade.label}>
                           {grade.label}
                         </option>
@@ -288,13 +271,16 @@ export function CreateTaskPage() {
                   <label className="space-y-2 text-sm font-medium">
                     ห้อง
                     <Select
-                      value={form.target_room}
-                      onChange={(event) => updateField("target_room", event.target.value)}
+                      disabled={!scope.grade}
+                      value={scope.room}
+                      onChange={(event) => scope.setRoom(event.target.value)}
                     >
-                      <option value="">เลือกห้อง</option>
-                      {(roomsQuery.data ?? []).map((room) => (
+                      <option value="">
+                        {scope.grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}
+                      </option>
+                      {scope.rooms.map((room) => (
                         <option key={room} value={room}>
-                          {room}
+                          ห้อง {room}
                         </option>
                       ))}
                     </Select>
