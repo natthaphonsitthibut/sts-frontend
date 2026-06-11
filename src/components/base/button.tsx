@@ -9,6 +9,7 @@ export interface ButtonProps
   extends ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {
   icon?: LucideIcon;
+  iconClassName?: string;
   isLoading?: boolean;
   loadingIconMotion?: "spin" | "refresh";
   loadingText?: ReactNode;
@@ -20,6 +21,7 @@ export function Button({
   size,
   fullWidth,
   icon: Icon,
+  iconClassName,
   isLoading = false,
   loadingIconMotion = "spin",
   loadingText,
@@ -39,12 +41,12 @@ export function Button({
         // One spin motion system-wide: refresh keeps its own icon, login/default
         // shows the loader — both rotate with the same `animate-spin` timing.
         Icon && loadingIconMotion === "refresh" ? (
-          <Icon className="size-4 animate-spin" aria-hidden="true" />
+          <Icon className={cn("size-4 animate-spin", iconClassName)} aria-hidden="true" />
         ) : (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
         )
       ) : Icon ? (
-        <Icon className="size-4" aria-hidden="true" />
+        <Icon className={cn("size-4", iconClassName)} aria-hidden="true" />
       ) : null}
       {isLoading && loadingText ? loadingText : children}
     </button>

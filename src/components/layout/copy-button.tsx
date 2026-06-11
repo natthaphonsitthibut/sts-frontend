@@ -1,50 +1,54 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button, type ButtonProps } from "../base";
+import { cn } from "../../lib/utils";
 
 interface CopyButtonProps {
   value: string;
-  label?: string;
-  copiedLabel?: string;
   size?: ButtonProps["size"];
   variant?: ButtonProps["variant"];
   className?: string;
+  label?: string;
 }
 
+type CopyState = "idle" | "loading" | "copied";
+
 /**
- * The one copy button for the whole app — copies `value` and shows a "คัดลอกแล้ว"
- * confirmation (check icon) for a moment so the user gets clear feedback.
+ * The one copy button for the whole app — icon-only so its width never changes.
+ * On click it spins briefly (like the other action buttons), then flips to a
+ * check icon for clear feedback, while keeping the same shared button variant.
  */
 export function CopyButton({
   value,
-  label = "คัดลอก",
-  copiedLabel = "คัดลอกแล้ว",
   size = "sm",
   variant = "outline",
   className,
+  label,
 }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<CopyState>("idle");
+  const copied = state === "copied";
+  const iconOnly = !label;
 
-  async function handleCopy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard API unavailable (e.g. non-secure context) — silently ignore.
-    }
+  function handleCopy(): void {
+    setState("loading");
+    void navigator.clipboard?.writeText(value);
+    window.setTimeout(() => setState("copied"), 400);
+    window.setTimeout(() => setState("idle"), 1800);
   }
 
   return (
     <Button
-      className={className}
+      aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
+      className={cn(iconOnly && "px-2", className)}
       icon={copied ? Check : Copy}
+      iconClassName={copied ? "text-success" : undefined}
+      isLoading={state === "loading"}
       onClick={handleCopy}
       size={size}
       type="button"
-      variant={copied ? "secondary" : variant}
+      variant={variant}
     >
-      {copied ? copiedLabel : label}
+      {label}
     </Button>
   );
 }

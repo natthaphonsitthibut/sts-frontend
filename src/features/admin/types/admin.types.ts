@@ -45,9 +45,9 @@ export interface UserSavePayload {
   FirstName: string;
   LastName: string;
   PersonID_Onec: string;
-  phone: string;
-  email: string;
-  affiliation: string;
+  phone?: string;
+  email?: string;
+  affiliation?: string;
   role: string | null;
   roles: string[];
   labels?: string[];

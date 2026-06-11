@@ -40,6 +40,11 @@ import type {
 
 const MANAGE_USERS_PATH = "/manage-users";
 
+function normalizeOptionalText(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function toDefaults(user: ManagedUser | null): UserFormValues {
   if (!user) {
     return EMPTY_USER_FORM;
@@ -86,24 +91,28 @@ function UserForm({
   }
 
   function handleSubmit(values: UserFormValues): void {
+    const role = values.role.trim();
+    const password = normalizeOptionalText(values.password);
+    const phone = normalizeOptionalText(values.phone);
+    const email = normalizeOptionalText(values.email);
+    const affiliation = normalizeOptionalText(values.affiliation);
+
     const payload: UserSavePayload = {
       id: user?.id ?? null,
-      username: values.username,
-      FirstName: values.FirstName,
-      LastName: values.LastName,
-      PersonID_Onec: values.PersonID_Onec,
-      phone: values.phone,
-      email: values.email,
-      affiliation: values.affiliation,
-      role: values.role,
-      roles: [values.role],
+      username: values.username.trim(),
+      FirstName: values.FirstName.trim(),
+      LastName: values.LastName.trim(),
+      PersonID_Onec: values.PersonID_Onec.trim(),
+      role,
+      roles: [role],
       permissions: customizePermissions ? permissions : [],
       status: values.status,
       data_scope: dataScope,
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
+      ...(affiliation ? { affiliation } : {}),
+      ...(password ? { password } : {}),
     };
-    if (values.password.trim()) {
-      payload.password = values.password.trim();
-    }
 
     saveUser.mutate(
       { id: user?.id ?? null, payload },
