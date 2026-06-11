@@ -132,7 +132,7 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "user-circle",
     route: "/my-attendance",
   },
-  { id: "create", label: "สร้างลิงค์", iconName: "link", route: "/create" },
+  { id: "create", label: "สร้างลิงก์", iconName: "link", route: "/create" },
   {
     id: "import-data",
     label: "นำเข้าข้อมูล",
@@ -146,7 +146,7 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         id: "attendance-dashboard",
-        label: "Dashboard เช็คชื่อ",
+        label: "แดชบอร์ดเช็คชื่อ",
         iconName: "chart-bar",
         route: "/attendance-dashboard",
       },
