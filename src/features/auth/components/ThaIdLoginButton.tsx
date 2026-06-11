@@ -20,15 +20,13 @@ export function ThaIdLoginButton() {
 
   return (
     <div className="space-y-3">
-      <div className="min-h-[58px]">
-        {modeWarningVisible ? (
-          <Alert variant="warning">
-            <AlertDescription>
-              ThaID mock mode ยังไม่ได้เปิดใช้งานใน environment นี้
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
+      {modeWarningVisible ? (
+        <Alert variant="warning">
+          <AlertDescription>
+            ThaID mock mode ยังไม่ได้เปิดใช้งานใน environment นี้
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Button
         className="h-12 text-base font-bold"

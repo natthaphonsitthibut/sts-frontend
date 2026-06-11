@@ -33,15 +33,13 @@ export function AdminLoginForm() {
   return (
     <Form form={form} onSubmit={(values) => loginMutation.mutate(values)}>
       <div className="space-y-4">
-        <div className="min-h-[58px]">
-          {loginMutation.isError ? (
-            <Alert variant="destructive">
-              <AlertDescription>
-                {getLoginMutationErrorMessage(loginMutation.error)}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-        </div>
+        {loginMutation.isError ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {getLoginMutationErrorMessage(loginMutation.error)}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <FormItem>
           <FormLabel htmlFor="username">ชื่อผู้ใช้งาน</FormLabel>
