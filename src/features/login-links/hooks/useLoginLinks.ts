@@ -4,8 +4,6 @@ import type {
   LinkAdminPayload,
   LinkAdminResponse,
   LoginLink,
-  LoginLinkCreatePayload,
-  LoginLinkCreateResponse,
   RoleOption,
 } from "../types/login-links.types";
 
@@ -44,16 +42,6 @@ export function useLoginLinkRoles(): RoleOption[] {
     queryFn: loginLinksService.getRoleOptions,
   });
   return result.data ?? EMPTY_ROLES;
-}
-
-export function useCreateLoginLink() {
-  const queryClient = useQueryClient();
-  return useMutation<LoginLinkCreateResponse, Error, LoginLinkCreatePayload>({
-    mutationFn: (payload) => loginLinksService.createLoginLink(payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [LOGIN_LINKS_QUERY_KEY] });
-    },
-  });
 }
 
 interface SetLinkLockVariables {

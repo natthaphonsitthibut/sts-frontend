@@ -3,8 +3,6 @@ import type {
   LinkAdminPayload,
   LinkAdminResponse,
   LoginLink,
-  LoginLinkCreatePayload,
-  LoginLinkCreateResponse,
   RoleOption,
 } from "../types/login-links.types";
 
@@ -46,16 +44,6 @@ async function getRoleOptions(): Promise<RoleOption[]> {
   }));
 }
 
-async function createLoginLink(
-  payload: LoginLinkCreatePayload,
-): Promise<LoginLinkCreateResponse> {
-  const response = await apiClient.post<LoginLinkCreateResponse>(
-    "/api/tasks",
-    payload,
-  );
-  return response.data;
-}
-
 async function setLinkAdminLock(
   linkId: string,
   payload: LinkAdminPayload,
@@ -70,6 +58,5 @@ async function setLinkAdminLock(
 export const loginLinksService = {
   getLoginLinks,
   getRoleOptions,
-  createLoginLink,
   setLinkAdminLock,
 };

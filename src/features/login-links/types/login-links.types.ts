@@ -18,25 +18,6 @@ export interface LoginLink {
 
 export type LoginLinkDurationUnit = "minutes" | "hours" | "days";
 
-export interface LoginLinkCreatePayload {
-  task_type: "LOGIN";
-  type: "LOGIN";
-  assigned_to_name: string;
-  assigned_to_email?: string | null;
-  role: string;
-  permissions: string[];
-  data_scope: DataScope;
-  expires_value: number;
-  expires_unit: LoginLinkDurationUnit;
-}
-
-export interface LoginLinkCreateResponse {
-  task_id: string;
-  magic_link: string;
-  qr_code_data?: string | null;
-  expires_at: string;
-}
-
 export type LinkAdminAction = "lock" | "unlock";
 
 export interface LinkAdminPayload {
