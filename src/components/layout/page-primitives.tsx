@@ -201,32 +201,42 @@ type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
 const summaryToneClasses: Record<
   SummaryTone,
-  { card: string; accent: string; value: string }
+  { card: string; accent: string; value: string; iconBg: string; iconColor: string }
 > = {
   default: {
     card: "border-slate-200 bg-white",
     accent: "bg-slate-300",
     value: "text-slate-900",
+    iconBg: "bg-slate-100",
+    iconColor: "text-slate-600",
   },
   success: {
     card: "border-success-200 bg-white",
     accent: "bg-success",
     value: "text-success-700",
+    iconBg: "bg-success-100",
+    iconColor: "text-success-700",
   },
   warning: {
     card: "border-warning-200 bg-white",
     accent: "bg-warning",
     value: "text-warning-700",
+    iconBg: "bg-warning-100",
+    iconColor: "text-warning-700",
   },
   danger: {
     card: "border-danger-200 bg-white",
     accent: "bg-danger",
     value: "text-danger-700",
+    iconBg: "bg-danger-100",
+    iconColor: "text-danger-700",
   },
   info: {
     card: "border-primary/20 bg-white",
     accent: "bg-primary",
     value: "text-primary",
+    iconBg: "bg-primary-soft",
+    iconColor: "text-primary",
   },
 };
 
@@ -234,6 +244,7 @@ interface SummaryMetric {
   label: ReactNode;
   value: ReactNode;
   tone?: SummaryTone;
+  icon?: LucideIcon;
 }
 
 /** Column layouts keyed by card count — keeps metric grids consistent system-wide. */
@@ -260,6 +271,7 @@ export function SummaryMetrics({ className, columns, items }: SummaryMetricsProp
     <div className={cn("grid gap-3", columnsClass, className)}>
       {items.map((item, index) => {
         const tone = summaryToneClasses[item.tone ?? "default"];
+        const Icon = item.icon;
         return (
           <div
             className={cn(
@@ -269,10 +281,17 @@ export function SummaryMetrics({ className, columns, items }: SummaryMetricsProp
             key={index}
           >
             <div className={cn("h-1.5", tone.accent)} />
-            <div className="p-4">
-              <div className="text-sm font-medium text-slate-500">{item.label}</div>
-              <div className={cn("mt-1 text-2xl font-bold", tone.value)}>
-                {item.value}
+            <div className="flex items-center gap-3 p-4">
+              {Icon ? (
+                <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-lg", tone.iconBg)}>
+                  <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
+                </div>
+              ) : null}
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-slate-500">{item.label}</div>
+                <div className={cn("text-2xl font-bold", tone.value)}>
+                  {item.value}
+                </div>
               </div>
             </div>
           </div>
