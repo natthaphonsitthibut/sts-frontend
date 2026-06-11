@@ -12,8 +12,8 @@ interface SidebarNavItemProps {
 
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return cn(
-    "flex min-h-11 items-center gap-3 px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary",
-    isActive && "border-r-4 border-primary bg-surface-sky text-primary",
+    "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
+    isActive && "bg-primary-soft font-semibold text-primary",
   );
 }
 
@@ -34,8 +34,8 @@ export function SidebarNavItem({ item, onNavigate }: SidebarNavItemProps) {
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm font-medium transition-colors hover:bg-slate-50 hover:text-primary",
-            open ? "text-primary" : "text-slate-600",
+            "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
+            open ? "text-primary" : "text-slate-600 hover:text-slate-900",
           )}
         >
           <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
@@ -53,7 +53,7 @@ export function SidebarNavItem({ item, onNavigate }: SidebarNavItemProps) {
           )}
         >
           <div className="overflow-hidden">
-            <div className={cn("bg-slate-50 py-1", !open && "invisible")}>
+            <div className={cn("space-y-0.5 py-1 pl-4", !open && "invisible")}>
               {item.children.map((child) => (
                 <NavLink
                   className={navLinkClassName}
@@ -62,7 +62,7 @@ export function SidebarNavItem({ item, onNavigate }: SidebarNavItemProps) {
                   to={child.route || "#"}
                   tabIndex={open ? undefined : -1}
                 >
-                  <LayoutIcon className="ml-3 size-4 shrink-0" iconName={child.iconName} />
+                  <LayoutIcon className="size-4 shrink-0" iconName={child.iconName} />
                   <span className="truncate">{child.label}</span>
                 </NavLink>
               ))}

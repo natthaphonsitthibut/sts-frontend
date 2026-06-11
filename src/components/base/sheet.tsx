@@ -76,7 +76,7 @@ export function SidebarContainer({
   return (
     <aside
       className={cn(
-        "hidden h-screen w-64 shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col",
+        "hidden h-full w-64 shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col",
         className,
       )}
       {...props}

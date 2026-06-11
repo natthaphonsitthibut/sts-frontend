@@ -1,4 +1,3 @@
-import { GraduationCap } from "lucide-react";
 import { Sheet, SheetHeader, SidebarContainer } from "../base";
 import {
   MENU_ITEMS,
@@ -21,13 +20,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
-        <GraduationCap className="size-7 text-primary" aria-hidden="true" />
-        <span className="text-base font-semibold text-slate-900">ระบบติดตามนักเรียน</span>
-      </div>
-      <nav className="min-h-0 flex-1 overflow-y-auto py-4">
-        <div className="px-4 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400">เมนู</div>
-        <div className="space-y-0">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
+        <div className="px-3 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400">เมนู</div>
+        <div className="space-y-0.5">
           {visibleMenuItems.map((item) => (
             <SidebarNavItem item={item} key={item.id} onNavigate={onNavigate} />
           ))}
