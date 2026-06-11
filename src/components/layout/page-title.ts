@@ -1,27 +1,41 @@
-const PAGE_TITLES: Record<string, string> = {
-  "/": "หน้าหลัก",
-  "/dashboard": "รายงานนักเรียน",
-  "/students": "รายชื่อนักเรียน",
-  "/create": "สร้างภารกิจใหม่",
-  "/import-data": "นำเข้าข้อมูล",
-  "/attendance": "เช็คชื่อ",
-  "/attendance-dashboard": "Dashboard เช็คชื่อ",
-  "/admin-access": "Admin Access",
-  "/manage-users": "จัดการผู้ใช้งาน",
-  "/manage-role-groups": "จัดการกลุ่มผู้ใช้งาน",
-  "/settings": "ตั้งค่าระบบและข้อมูลพื้นฐาน",
-  "/my-attendance": "ข้อมูลการเข้าเรียนของฉัน",
+import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
+
+/**
+ * Topbar title is derived from the sidebar MENU_ITEMS so the header title always
+ * matches the menu label — no hand-maintained duplicate map that can drift.
+ */
+function collectMenuTitles(
+  items: MenuItem[],
+  acc: Record<string, string>,
+): void {
+  for (const item of items) {
+    if (item.route) {
+      acc[item.route] = item.label;
+    }
+    if (item.children) {
+      collectMenuTitles(item.children, acc);
+    }
+  }
+}
+
+const MENU_TITLES: Record<string, string> = {};
+collectMenuTitles(MENU_ITEMS, MENU_TITLES);
+
+/** Routes not present in the sidebar menu still need a header title. */
+const EXTRA_TITLES: Record<string, string> = {
+  "/cases": "เคสช่วยเหลือนักเรียน",
+  "/admin-access": "เข้าสู่ระบบ",
   "/forbidden": "ไม่มีสิทธิ์เข้าถึง",
 };
 
 export function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/task-detail/")) {
-    return "รายละเอียดเคส";
+    return "รายละเอียดภารกิจ";
   }
 
   if (pathname.startsWith("/students/")) {
     return "ข้อมูลนักเรียน";
   }
 
-  return PAGE_TITLES[pathname] || "Student Tracking System";
+  return MENU_TITLES[pathname] || EXTRA_TITLES[pathname] || "Student Tracking System";
 }

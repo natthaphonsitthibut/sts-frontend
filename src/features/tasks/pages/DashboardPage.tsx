@@ -64,7 +64,7 @@ export function DashboardPage() {
     <PageShell>
       <PageToolbar
         icon={LayoutDashboard}
-        title="แดชบอร์ดติดตามเคสนักเรียน"
+        title="รายงานนักเรียน"
         description="ติดตามสถานะเคสและลิงก์ภารกิจจากข้อมูล backend ปัจจุบัน"
         actions={
           <div className="flex gap-2">

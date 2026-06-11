@@ -146,7 +146,7 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         id: "attendance-dashboard",
-        label: "แดชบอร์ดเช็คชื่อ",
+        label: "ลิงก์เช็คชื่อ",
         iconName: "chart-bar",
         route: "/attendance-dashboard",
       },
@@ -185,7 +185,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "settings",
-    label: "ตั้งค่าระบบ (Master Data)",
+    label: "ตั้งค่าระบบ",
     iconName: "settings",
     route: "/settings",
   },

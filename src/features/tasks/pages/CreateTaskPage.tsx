@@ -166,7 +166,7 @@ export function CreateTaskPage() {
     <PageShell>
       <PageToolbar
         icon={FilePlus2}
-        title="สร้างภารกิจ / ลิงก์"
+        title="สร้างลิงก์"
         description="เลือกประเภทและกรอกข้อมูลที่จำเป็น"
       />
       <div className="space-y-5">

@@ -68,7 +68,7 @@ export function ManageUsersPage() {
             เพิ่มผู้ใช้งาน
           </NavButton>
         }
-        title="จัดการผู้ใช้งาน"
+        title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
       >
         <ToolbarControls>

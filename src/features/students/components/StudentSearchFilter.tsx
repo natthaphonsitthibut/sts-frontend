@@ -36,7 +36,7 @@ export function StudentSearchFilter({
   return (
     <PageToolbar
       icon={Users}
-      title="รายชื่อนักเรียนทั้งหมด"
+      title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       actions={<RefreshButton onRefresh={onRefresh} />}
     >
