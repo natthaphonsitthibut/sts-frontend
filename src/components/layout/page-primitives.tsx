@@ -40,7 +40,6 @@ const toolbarToneClasses: Record<
     iconSurface: string;
     title: string;
     description: string;
-    controls: string;
   }
 > = {
   default: {
@@ -49,7 +48,6 @@ const toolbarToneClasses: Record<
     iconSurface: "bg-surface-sky",
     title: "text-slate-800",
     description: "text-slate-500",
-    controls: "border-slate-100 bg-muted/50",
   },
   primary: {
     surface: "border-primary bg-primary shadow-card",
@@ -57,7 +55,6 @@ const toolbarToneClasses: Record<
     iconSurface: "bg-white/15",
     title: "text-white",
     description: "text-white/80",
-    controls: "border-white/20 bg-white/10",
   },
 };
 
@@ -73,36 +70,42 @@ export function PageToolbar({
 }: PageToolbarProps) {
   const toneClasses = toolbarToneClasses[tone];
   return (
-    <section
-      className={cn("mb-6 overflow-hidden rounded-lg border", toneClasses.surface, className)}
-      {...props}
-    >
-      <div className="flex min-h-24 flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          {Icon ? (
-            <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", toneClasses.iconSurface)}>
-              <Icon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
+    <div className="mb-6">
+      {/* Header band — same fixed height on every page (controls live below, so a
+          page with many filters never gets a taller header than one with none). */}
+      <section
+        className={cn("overflow-hidden rounded-lg border", toneClasses.surface, className)}
+        {...props}
+      >
+        <div className="flex min-h-24 flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {Icon ? (
+              <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", toneClasses.iconSurface)}>
+                <Icon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
+              </div>
+            ) : null}
+            <div className="min-w-0">
+              <h1 className={cn("truncate text-xl font-bold", toneClasses.title)}>
+                {title}
+              </h1>
+              {description ? (
+                <p className={cn("mt-1 text-sm", toneClasses.description)}>{description}</p>
+              ) : null}
+            </div>
+          </div>
+          {actions ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+              {actions}
             </div>
           ) : null}
-          <div className="min-w-0 pt-0.5">
-            <h1 className={cn("truncate text-xl font-bold", toneClasses.title)}>
-              {title}
-            </h1>
-            {description ? (
-              <p className={cn("mt-1 text-sm", toneClasses.description)}>{description}</p>
-            ) : null}
-          </div>
         </div>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-            {actions}
-          </div>
-        ) : null}
-      </div>
+      </section>
       {children ? (
-        <div className={cn("border-t p-4", toneClasses.controls)}>{children}</div>
+        <div className="mt-3 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
+          {children}
+        </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 
