@@ -8,44 +8,62 @@
  * Values are the legacy Quasar palette, mapped to semantic names.
  */
 @theme {
-  /* Brand / primary actions */
-  --color-primary: #0f4dc2;
-  --color-primary-dark: #0d43ab;
+  /*
+   * Government Premium Minimal palette.
+   * Token NAMES are unchanged so every existing component/page recolors
+   * automatically — only values are tuned. Blue/navy stays the brand identity;
+   * accent colors are reserved for status only.
+   */
 
-  /* Success — present / positive (green) */
-  --color-success: #16a34a;
-  --color-success-100: #d8f5df;
-  --color-success-200: #a7e8b8;
-  --color-success-700: #116b31;
+  /* Brand / primary actions (blue → navy) */
+  --color-primary: #1d4ed8;
+  --color-primary-dark: #163b8f;
+  --color-primary-soft: #e8f0ff;
 
-  /* Warning — late / caution (amber) */
-  --color-warning: #d97706;
-  --color-warning-100: #fff0bd;
-  --color-warning-200: #ffd66b;
-  --color-warning-700: #8a4b05;
+  /* Gold — premium accent (status / highlight only) */
+  --color-gold: #b7791f;
 
-  /* Danger — absent / negative (red) */
-  --color-danger: #dc2626;
-  --color-danger-100: #ffe0df;
-  --color-danger-200: #ffb8b4;
-  --color-danger-400: #df5b57;
-  --color-danger-700: #941b1b;
+  /* Success — present / positive (deep green) */
+  --color-success: #15803d;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-700: #166534;
 
-  /* Surface — metric-card tone pastels */
-  --color-surface-emerald: #def4e6;
-  --color-surface-amber: #ffefb4;
-  --color-surface-rose: #ffdfe2;
-  --color-surface-sky: #dbeafe;
-  --color-surface-slate: #e8eef6;
-  --color-surface-cyan: #d6f3ef;
+  /* Warning — late / caution (amber-gold) */
+  --color-warning: #b45309;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-700: #92400e;
+
+  /* Danger — absent / negative (deep red) */
+  --color-danger: #b91c1c;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-400: #ef4444;
+  --color-danger-700: #991b1b;
+
+  /* Surface tints — status/metric accents (muted, premium) */
+  --color-surface-emerald: #dcfce7;
+  --color-surface-amber: #fef3c7;
+  --color-surface-rose: #fee2e2;
+  --color-surface-sky: #e8f0ff;
+  --color-surface-slate: #eef2f7;
+  --color-surface-cyan: #cffafe;
+
+  /* App surfaces — soft blue-gray background + soft surface */
+  --color-surface-app: #eaf0f9;
+  --color-surface-soft: #f6f9fd;
 
   /* Muted — subtle table tint + low-emphasis foreground */
-  --color-muted: #f8fbff;
-  --color-muted-foreground: #b0bec5;
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #94a3b8;
 
-  /* Elevation */
-  --shadow-card: 0 10px 30px rgb(15 23 42 / 0.08);
-  --shadow-card-hover: 0 14px 36px rgb(15 23 42 / 0.12);
+  /* Radius — slightly softer, professional */
+  --radius-lg: 0.625rem;
+
+  /* Elevation — subtle, layered, premium-minimal */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 10px rgb(15 23 42 / 0.05);
+  --shadow-card-hover: 0 2px 6px rgb(15 23 42 / 0.06), 0 10px 28px rgb(15 23 42 / 0.08);
 }
 
 :root {

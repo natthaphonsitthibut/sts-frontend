@@ -17,7 +17,13 @@ export function PageShell({
   ...props
 }: PageShellProps) {
   return (
-    <div className={cn("min-h-full bg-slate-100 p-6", className)} {...props}>
+    <div
+      className={cn(
+        "min-h-full bg-gradient-to-b from-surface-app to-surface-soft p-6",
+        className,
+      )}
+      {...props}
+    >
       <div className={cn("mx-auto w-full", maxWidthClassName)}>{children}</div>
     </div>
   );
@@ -85,7 +91,7 @@ export function PageToolbar({
               </div>
             ) : null}
             <div className="min-w-0">
-              <h1 className={cn("truncate text-xl font-bold", toneClasses.title)}>
+              <h1 className={cn("truncate text-xl font-bold leading-8", toneClasses.title)}>
                 {title}
               </h1>
               {description ? (

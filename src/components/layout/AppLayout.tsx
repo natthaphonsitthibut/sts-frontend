@@ -7,7 +7,7 @@ export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-surface-app text-slate-900">
       <AppSidebar
         mobileOpen={mobileSidebarOpen}
         onMobileOpenChange={setMobileSidebarOpen}

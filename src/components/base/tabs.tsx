@@ -42,7 +42,7 @@ export function Tabs({
         } as CSSProperties
       }
     >
-      <span className="segmented-tabs__indicator pointer-events-none absolute inset-y-1 left-1 rounded-md bg-white shadow-sm" />
+      <span className="segmented-tabs__indicator pointer-events-none absolute inset-y-1 left-1 rounded-md bg-primary shadow-sm" />
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -54,7 +54,7 @@ export function Tabs({
             onClick={() => onChange(option.value)}
             className={cn(
               "relative z-10 rounded-md px-4 py-1.5 text-sm font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none",
-              active ? "text-primary" : "text-slate-500 hover:text-slate-700",
+              active ? "text-white" : "text-slate-500 hover:text-slate-700",
             )}
           >
             {option.label}
