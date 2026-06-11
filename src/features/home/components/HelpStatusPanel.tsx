@@ -7,7 +7,7 @@ interface HelpStatusPanelProps {
 
 export function HelpStatusPanel({ waiting, inProgress }: HelpStatusPanelProps) {
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex h-full flex-col gap-5">
       <HelpStatusCard
         className="flex-1"
         title="รอการช่วยเหลือ"

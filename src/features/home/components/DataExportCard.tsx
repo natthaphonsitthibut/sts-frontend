@@ -23,14 +23,14 @@ export function DataExportCard() {
   }
 
   return (
-    <Card className="flex h-full flex-col p-8">
-      <div className="mb-4 text-base font-bold text-slate-900">
+    <Card className="flex h-full flex-col p-5">
+      <div className="mb-3 text-sm font-bold text-slate-900">
         นำออกข้อมูล (Data Export)
       </div>
 
       <Select
         aria-label="ประเภทไฟล์ที่ต้องการส่งออก"
-        className="mb-4"
+        className="mb-3"
         value={exportType}
         onChange={(event) => setExportType(event.target.value)}
       >
@@ -41,12 +41,12 @@ export function DataExportCard() {
         ))}
       </Select>
 
-      <ul className="mb-4 space-y-2">
+      <ul className="mb-3 space-y-2">
         {EXPORT_ITEMS.map((item) => (
           <li key={item}>
             <Checkbox
               checked={Boolean(selectedItems[item])}
-              className="min-h-12 w-full rounded-2xl bg-slate-100 px-4 py-3 text-base"
+              className="w-full rounded-lg bg-slate-100 px-3 py-2.5 text-sm"
               label={item}
               onChange={() => toggleItem(item)}
             />
@@ -54,10 +54,7 @@ export function DataExportCard() {
         ))}
       </ul>
 
-      <Button
-        className="mt-auto h-14 text-base font-bold"
-        fullWidth
-      >
+      <Button className="mt-auto font-bold" fullWidth size="lg">
         <span className="flex w-full items-center justify-between">
           <span>ส่งออกข้อมูล</span>
           <FileOutput className="size-5" aria-hidden="true" />
