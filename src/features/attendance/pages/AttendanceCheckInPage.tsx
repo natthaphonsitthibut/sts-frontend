@@ -6,7 +6,6 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -112,55 +111,72 @@ export function AttendanceCheckInPage() {
           />
         }
       >
-        <ToolbarControls className="sm:grid sm:grid-cols-3 sm:items-end">
-          <ScopeField label="โรงเรียน">
-            <Select
-              aria-label="โรงเรียน"
-              disabled={scope.isSchoolLocked}
-              onChange={(event) => setSchoolId(event.target.value)}
-              value={schoolId}
-            >
-              <option value="">เลือกโรงเรียน</option>
-              {schools.map((school) => (
-                <option key={school.id} value={String(school.id)}>
-                  {school.name}
-                </option>
-              ))}
-            </Select>
-          </ScopeField>
+        {tab === "today" ? (
+          <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
+            <ScopeField label="โรงเรียน">
+              <Select
+                aria-label="โรงเรียน"
+                disabled={scope.isSchoolLocked}
+                onChange={(event) => setSchoolId(event.target.value)}
+                value={schoolId}
+              >
+                <option value="">เลือกโรงเรียน</option>
+                {schools.map((school) => (
+                  <option key={school.id} value={String(school.id)}>
+                    {school.name}
+                  </option>
+                ))}
+              </Select>
+            </ScopeField>
 
-          <ScopeField label="ระดับชั้น">
-            <Select
-              aria-label="ระดับชั้น"
-              disabled={scope.isGradeLocked || !schoolId}
-              onChange={(event) => setGrade(event.target.value)}
-              value={grade}
-            >
-              <option value="">{schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}</option>
-              {gradeLevels.map((level) => (
-                <option key={level.id} value={level.label}>
-                  {level.label}
-                </option>
-              ))}
-            </Select>
-          </ScopeField>
+            <ScopeField label="ระดับชั้น">
+              <Select
+                aria-label="ระดับชั้น"
+                disabled={scope.isGradeLocked || !schoolId}
+                onChange={(event) => setGrade(event.target.value)}
+                value={grade}
+              >
+                <option value="">{schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}</option>
+                {gradeLevels.map((level) => (
+                  <option key={level.id} value={level.label}>
+                    {level.label}
+                  </option>
+                ))}
+              </Select>
+            </ScopeField>
 
-          <ScopeField label="ห้อง">
-            <Select
-              aria-label="ห้อง"
-              disabled={scope.isRoomLocked || !grade}
-              onChange={(event) => setRoom(event.target.value)}
-              value={room}
-            >
-              <option value="">{grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}</option>
-              {rooms.map((roomOption) => (
-                <option key={roomOption} value={roomOption}>
-                  ห้อง {roomOption}
-                </option>
-              ))}
-            </Select>
-          </ScopeField>
-        </ToolbarControls>
+            <ScopeField label="ห้อง">
+              <Select
+                aria-label="ห้อง"
+                disabled={scope.isRoomLocked || !grade}
+                onChange={(event) => setRoom(event.target.value)}
+                value={room}
+              >
+                <option value="">{grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}</option>
+                {rooms.map((roomOption) => (
+                  <option key={roomOption} value={roomOption}>
+                    ห้อง {roomOption}
+                  </option>
+                ))}
+              </Select>
+            </ScopeField>
+
+            <ScopeField label="วันที่">
+              <Input type="date" value={getTodayIso()} readOnly disabled />
+            </ScopeField>
+          </ToolbarControls>
+        ) : (
+          <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
+            <ScopeField label="เลือกวันที่">
+              <Input
+                aria-label="เลือกวันที่"
+                type="date"
+                value={historyDate}
+                onChange={(event) => setHistoryDate(event.target.value)}
+              />
+            </ScopeField>
+          </ToolbarControls>
+        )}
       </PageToolbar>
 
       {tab === "today" ? (
@@ -245,57 +261,43 @@ export function AttendanceCheckInPage() {
             ) : null}
           </div>
         </>
+      ) : history.isError ? (
+        <ErrorState
+          title="ไม่สามารถโหลดประวัติการเช็คชื่อได้"
+          onRetry={() => void history.refetch()}
+        />
+      ) : history.isLoading ? (
+        <SkeletonTable rows={6} />
+      ) : history.records.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="ยังไม่มีประวัติการเช็คชื่อ"
+          description="ไม่พบการบันทึกการเช็คชื่อในวันที่เลือก"
+        />
       ) : (
-        <Card className="p-4">
-          <div className="mb-4 max-w-[220px]">
-            <Label htmlFor="history-date">เลือกวันที่</Label>
-            <Input
-              id="history-date"
-              type="date"
-              value={historyDate}
-              onChange={(event) => setHistoryDate(event.target.value)}
-            />
-          </div>
-
-          {history.isError ? (
-            <ErrorState
-              title="ไม่สามารถโหลดประวัติการเช็คชื่อได้"
-              onRetry={() => void history.refetch()}
-            />
-          ) : history.isLoading ? (
-            <SkeletonTable rows={6} />
-          ) : history.records.length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="ยังไม่มีประวัติการเช็คชื่อ"
-              description="ไม่พบการบันทึกการเช็คชื่อในวันที่เลือก"
-            />
-          ) : (
-            <DataTable
-              headings={["นักเรียน", "ชั้น / ห้อง", "สถานะ", "ผู้บันทึก"]}
-              responsive={false}
-            >
-              {history.records.map((record) => (
-                <DataTableRow key={record.id}>
-                  <DataTableCell className="font-bold text-slate-800">
-                    {record.name || "-"}
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-600">
-                    {record.grade || "-"} / {formatStudentRoom(record.room)}
-                  </DataTableCell>
-                  <DataTableCell>
-                    <Badge variant={STATUS_BADGE_VARIANT[record.status]}>
-                      {ATTENDANCE_STATUS_META[record.status].label}
-                    </Badge>
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-500">
-                    {record.recorded_by || "-"}
-                  </DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTable>
-          )}
-        </Card>
+        <DataTable
+          headings={["นักเรียน", "ชั้น / ห้อง", "สถานะ", "ผู้บันทึก"]}
+          responsive={false}
+        >
+          {history.records.map((record) => (
+            <DataTableRow key={record.id}>
+              <DataTableCell className="font-bold text-slate-800">
+                {record.name || "-"}
+              </DataTableCell>
+              <DataTableCell className="text-sm text-slate-600">
+                {record.grade || "-"} / {formatStudentRoom(record.room)}
+              </DataTableCell>
+              <DataTableCell>
+                <Badge variant={STATUS_BADGE_VARIANT[record.status]}>
+                  {ATTENDANCE_STATUS_META[record.status].label}
+                </Badge>
+              </DataTableCell>
+              <DataTableCell className="text-sm text-slate-500">
+                {record.recorded_by || "-"}
+              </DataTableCell>
+            </DataTableRow>
+          ))}
+        </DataTable>
       )}
     </PageShell>
   );
