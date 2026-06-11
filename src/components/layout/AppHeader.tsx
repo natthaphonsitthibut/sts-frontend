@@ -25,7 +25,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           onClick={onMenuClick}
           variant="ghost"
         />
-        <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-slate-800">
+        <h1 className="min-w-0 flex-1 truncate text-lg font-bold leading-8 text-slate-800">
           {getPageTitle(location.pathname)}
         </h1>
         <div className="flex items-center gap-3">
