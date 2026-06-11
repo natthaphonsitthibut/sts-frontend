@@ -186,6 +186,10 @@ export function AttendanceLinksDashboardPage() {
                       ) : null}
                       {task.active_link_id ? (
                         <Button
+                          // Fixed min width so toggling "เปิด"/"ปิด" (different glyph
+                          // counts) never changes the button width and shifts the
+                          // copy button beside it.
+                          className="min-w-[88px]"
                           icon={locked ? LockOpen : Lock}
                           isLoading={pendingLinkId === task.active_link_id}
                           onClick={() =>
