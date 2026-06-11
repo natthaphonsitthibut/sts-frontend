@@ -25,6 +25,26 @@ interface LoginLinkStatusMeta {
   variant: BadgeProps["variant"];
 }
 
+export function getLoginLinkState(
+  link: LoginLink,
+): "ACTIVE" | "LOCKED" | "EXPIRED" {
+  if (isLoginLinkLocked(link)) {
+    return "LOCKED";
+  }
+  const expiresAt = new Date(link.expires_at);
+  if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
+    return "EXPIRED";
+  }
+  return "ACTIVE";
+}
+
+export const LOGIN_LINK_STATE_OPTIONS = [
+  { value: "ALL", label: "ทั้งหมด" },
+  { value: "ACTIVE", label: "ใช้งานอยู่" },
+  { value: "LOCKED", label: "ถูกปิดโดยผู้ดูแล" },
+  { value: "EXPIRED", label: "หมดอายุ" },
+] as const;
+
 export function getLoginLinkStatusMeta(link: LoginLink): LoginLinkStatusMeta {
   if (isLoginLinkLocked(link)) {
     return { label: "ถูกปิดโดยผู้ดูแล", variant: "destructive" };

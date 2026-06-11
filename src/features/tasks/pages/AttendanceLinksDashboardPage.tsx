@@ -12,6 +12,7 @@ import {
   FilterSelect,
   PageShell,
   PageToolbar,
+  SearchInput,
   SkeletonTable,
   SummaryMetrics,
   ToolbarControls,
@@ -42,6 +43,7 @@ function LinkStateBadge({ task }: { task: AttendanceTask }) {
 
 export function AttendanceLinksDashboardPage() {
   const [status, setStatus] = useState("ALL");
+  const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
   const tasksQuery = useQuery({
     queryKey: ["attendance-link-tasks"],
@@ -62,10 +64,23 @@ export function AttendanceLinksDashboardPage() {
   const pendingLinkId = setLock.isPending ? setLock.variables?.id : undefined;
 
   const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
-  const filteredTasks = useMemo(
-    () => tasks.filter((task) => status === "ALL" || getLinkState(task) === status),
-    [status, tasks],
-  );
+  const filteredTasks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return tasks.filter((task) => {
+      if (status !== "ALL" && getLinkState(task) !== status) return false;
+      if (!query) return true;
+      return [
+        task.target_grade,
+        task.target_room,
+        task.target_school_name,
+        task.link_assigned_to,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [status, search, tasks]);
   const summary = useMemo(
     () => ({
       total: tasks.length,
@@ -80,7 +95,7 @@ export function AttendanceLinksDashboardPage() {
     <PageShell>
       <PageToolbar
         icon={ClipboardCheck}
-        title="แดชบอร์ดจัดการลิงก์เช็คชื่อ"
+        title="ลิงก์เช็คชื่อ"
         description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
         actions={
           <div className="flex gap-2">
@@ -92,6 +107,11 @@ export function AttendanceLinksDashboardPage() {
         }
       >
         <ToolbarControls>
+          <SearchInput
+            onChange={setSearch}
+            placeholder="ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ"
+            value={search}
+          />
           <FilterSelect
             ariaLabel="สถานะลิงก์เช็คชื่อ"
             className="sm:w-[220px]"
