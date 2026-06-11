@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { Button, type ButtonProps } from "../../../components/base";
+import { Button, type ButtonProps } from "../base";
 
 interface CopyButtonProps {
   value: string;
@@ -11,9 +11,13 @@ interface CopyButtonProps {
   className?: string;
 }
 
+/**
+ * The one copy button for the whole app — copies `value` and shows a "คัดลอกแล้ว"
+ * confirmation (check icon) for a moment so the user gets clear feedback.
+ */
 export function CopyButton({
   value,
-  label = "คัดลอกลิงก์",
+  label = "คัดลอก",
   copiedLabel = "คัดลอกแล้ว",
   size = "sm",
   variant = "outline",
@@ -38,7 +42,7 @@ export function CopyButton({
       onClick={handleCopy}
       size={size}
       type="button"
-      variant={variant}
+      variant={copied ? "secondary" : variant}
     >
       {copied ? copiedLabel : label}
     </Button>

@@ -63,6 +63,20 @@ export function copyText(value: string): void {
   void navigator.clipboard?.writeText(value);
 }
 
+/** Turn a stored (often relative) link into a full shareable URL. */
+export function toAbsoluteUrl(value: string): string {
+  if (!value) {
+    return "";
+  }
+  if (/^https?:\/\//.test(value)) {
+    return value;
+  }
+  if (typeof window === "undefined") {
+    return value;
+  }
+  return `${window.location.origin}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
 export function isLinkLocked(value: boolean | number | null | undefined): boolean {
   return value === true || value === 1;
 }

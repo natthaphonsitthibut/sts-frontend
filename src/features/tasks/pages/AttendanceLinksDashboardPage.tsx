@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, Copy, Lock, LockOpen, Plus } from "lucide-react";
+import { ClipboardCheck, ExternalLink, Lock, LockOpen, Plus } from "lucide-react";
 import {
   Badge,
   Button,
+  buttonVariants,
 } from "../../../components/base";
+import { cn } from "../../../lib/utils";
+import { CopyButton } from "../../../components/layout/copy-button";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -25,7 +28,7 @@ import {
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type { AttendanceTask } from "../../attendance/types/attendance.types";
-import { copyText, formatDateTime, isLinkLocked } from "../lib/task-presentation";
+import { formatDateTime, isLinkLocked, toAbsoluteUrl } from "../lib/task-presentation";
 import { LINK_STATE_OPTIONS } from "../lib/task-options";
 
 function getLinkState(task: AttendanceTask): "ACTIVE" | "LOCKED" | "EXPIRED" {
@@ -156,12 +159,12 @@ export function AttendanceLinksDashboardPage() {
               "จัดการ",
             ]}
             columnWidths={[
-              "w-[14%]",
-              "w-[20%]",
-              "w-[20%]",
-              "w-[12%]",
-              "w-[16%]",
+              "w-[13%]",
               "w-[18%]",
+              "w-[18%]",
+              "w-[11%]",
+              "w-[15%]",
+              "w-[25%]",
             ]}
             minWidthClassName="min-w-[900px]"
             responsive={false}
@@ -175,6 +178,7 @@ export function AttendanceLinksDashboardPage() {
           >
             {filteredTasks.map((task) => {
               const locked = isLinkLocked(task.active_link_locked);
+              const fullUrl = toAbsoluteUrl(task.active_link || "");
               return (
                 <DataTableRow key={task.task_id}>
                   <DataTableCell className="font-bold">
@@ -195,14 +199,21 @@ export function AttendanceLinksDashboardPage() {
                   <DataTableCell>
                     <div className="flex justify-end gap-2">
                       {task.active_link ? (
-                        <Button
-                          icon={Copy}
-                          onClick={() => copyText(task.active_link || "")}
-                          size="sm"
-                          variant="outline"
-                        >
-                          คัดลอก
-                        </Button>
+                        <>
+                          <a
+                            aria-label="เปิดดูลิงก์"
+                            className={cn(
+                              buttonVariants({ variant: "outline", size: "sm" }),
+                              "px-2",
+                            )}
+                            href={fullUrl}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            <ExternalLink className="size-4" aria-hidden="true" />
+                          </a>
+                          <CopyButton size="sm" value={fullUrl} variant="outline" />
+                        </>
                       ) : null}
                       {task.active_link_id ? (
                         <Button

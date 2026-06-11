@@ -1,5 +1,6 @@
-import { Lock, LockOpen } from "lucide-react";
-import { Badge, Button } from "../../../components/base";
+import { ExternalLink, Lock, LockOpen } from "lucide-react";
+import { Badge, Button, buttonVariants } from "../../../components/base";
+import { cn } from "../../../lib/utils";
 import {
   DataTable,
   DataTableCell,
@@ -7,6 +8,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { CopyButton } from "../../../components/layout/copy-button";
 import {
   formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
@@ -14,7 +16,6 @@ import {
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
 import type { LoginLink } from "../types/login-links.types";
-import { CopyButton } from "./CopyButton";
 
 interface LoginLinkTableProps {
   links: LoginLink[];
@@ -30,6 +31,15 @@ function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: Login
   const locked = isLoginLinkLocked(link);
   return (
     <div className="flex items-center justify-end gap-2">
+      <a
+        aria-label="เปิดดูลิงก์"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "px-2")}
+        href={getLoginLinkUrl(link.magic_link)}
+        rel="noreferrer"
+        target="_blank"
+      >
+        <ExternalLink className="size-4" aria-hidden="true" />
+      </a>
       <CopyButton value={getLoginLinkUrl(link.magic_link)} />
       <Button
         // Fixed min width so toggling "เปิดลิงก์"/"ปิดลิงก์" never changes the
