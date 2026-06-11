@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, ShieldCheck } from "lucide-react";
 import { Button, useConfirm } from "../../../components/base";
 import {
@@ -9,20 +10,17 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { RoleGroupFormDialog } from "../components/RoleGroupFormDialog";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import type { RoleDefinition } from "../types/admin.types";
 
 export function ManageRoleGroupsPage() {
+  const navigate = useNavigate();
   const { roleGroups, isLoading, isError, refetch } = useRoleGroups();
   const deleteRoleGroup = useDeleteRoleGroup();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRoleGroup, setSelectedRoleGroup] =
-    useState<RoleDefinition | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const filteredRoleGroups = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -37,13 +35,11 @@ export function ManageRoleGroupsPage() {
   }, [roleGroups, searchQuery]);
 
   function openCreate(): void {
-    setSelectedRoleGroup(null);
-    setDialogOpen(true);
+    void navigate("/manage-role-groups/new");
   }
 
   function openEdit(roleGroup: RoleDefinition): void {
-    setSelectedRoleGroup(roleGroup);
-    setDialogOpen(true);
+    void navigate(`/manage-role-groups/${encodeURIComponent(roleGroup.name)}/edit`);
   }
 
   async function handleDelete(roleGroup: RoleDefinition): Promise<void> {
@@ -98,12 +94,6 @@ export function ManageRoleGroupsPage() {
         />
       )}
 
-      <RoleGroupFormDialog
-        key={selectedRoleGroup?.name ?? "new"}
-        onOpenChange={setDialogOpen}
-        open={dialogOpen}
-        roleGroup={selectedRoleGroup}
-      />
       {confirmDialog}
     </PageShell>
   );
