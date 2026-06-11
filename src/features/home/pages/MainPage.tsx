@@ -13,8 +13,8 @@ export function MainPage() {
   const { overviewData, isError, refetch } = useOverviewStats();
 
   return (
-    <PageShell maxWidthClassName="max-w-[1400px]">
-      <div className="space-y-6">
+    <PageShell>
+      <div className="space-y-5">
         <UserOverviewCard
           affiliation={affiliation}
           displayName={displayName}
@@ -32,7 +32,7 @@ export function MainPage() {
 
         <OverviewSummaryCards overviewData={overviewData} />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <HelpStatusPanel
             inProgress={overviewData.helpStats.inProgress}
             waiting={overviewData.helpStats.waiting}
