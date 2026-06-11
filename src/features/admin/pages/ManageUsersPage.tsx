@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Users, UserPlus } from "lucide-react";
 import { Button, useConfirm } from "../../../components/base";
 import {
@@ -10,21 +11,18 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { UserFormDialog } from "../components/UserFormDialog";
 import { UserTable } from "../components/UserTable";
-import { useDeleteUser, useRolesCatalog, useUsers } from "../hooks/useUsers";
+import { useDeleteUser, useUsers } from "../hooks/useUsers";
 import { getUserDisplayName } from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
 
 export function ManageUsersPage() {
+  const navigate = useNavigate();
   const { users, isLoading, isError, refetch } = useUsers();
-  const rolesCatalog = useRolesCatalog();
   const deleteUser = useDeleteUser();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -39,13 +37,14 @@ export function ManageUsersPage() {
   }, [users, searchQuery]);
 
   function openCreate(): void {
-    setSelectedUser(null);
-    setDialogOpen(true);
+    void navigate("/manage-users/new");
   }
 
   function openEdit(user: ManagedUser): void {
-    setSelectedUser(user);
-    setDialogOpen(true);
+    if (user.id == null) {
+      return;
+    }
+    void navigate(`/manage-users/${user.id}/edit`);
   }
 
   async function handleDelete(user: ManagedUser): Promise<void> {
@@ -102,13 +101,6 @@ export function ManageUsersPage() {
         />
       )}
 
-      <UserFormDialog
-        key={selectedUser?.id ?? "new"}
-        onOpenChange={setDialogOpen}
-        open={dialogOpen}
-        rolesCatalog={rolesCatalog}
-        user={selectedUser}
-      />
       {confirmDialog}
     </PageShell>
   );

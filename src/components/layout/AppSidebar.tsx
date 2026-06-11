@@ -27,7 +27,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <nav className="min-h-0 flex-1 overflow-y-auto py-4">
         <div className="px-4 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400">เมนู</div>
-        <div className="space-y-1">
+        <div className="space-y-0">
           {visibleMenuItems.map((item) => (
             <SidebarNavItem item={item} key={item.id} onNavigate={onNavigate} />
           ))}

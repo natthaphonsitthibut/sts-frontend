@@ -20,6 +20,7 @@ import {
   MagicLoginPage,
   MainPage,
   ManageRoleGroupsPage,
+  ManageUserFormPage,
   ManageUsersPage,
   NotFoundPage,
   ReportPage,
@@ -108,6 +109,14 @@ export const router = createBrowserRouter([
       {
         path: "manage-users",
         element: protectedElement(<ManageUsersPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/new",
+        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id/edit",
+        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
       },
       {
         path: "manage-role-groups",
