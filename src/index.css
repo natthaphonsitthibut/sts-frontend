@@ -124,12 +124,6 @@ textarea {
   }
 }
 
-@keyframes refresh-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes banner-in {
   from {
     opacity: 0;
@@ -150,9 +144,6 @@ textarea {
   }
   .animate-sheet-in-left {
     animation: sheet-in-left 220ms ease-out;
-  }
-  .animate-refresh-spin {
-    animation: refresh-spin 850ms linear infinite;
   }
   .animate-banner-in {
     animation: banner-in 180ms ease-out;

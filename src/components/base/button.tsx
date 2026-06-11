@@ -36,8 +36,10 @@ export function Button({
       {...props}
     >
       {isLoading ? (
+        // One spin motion system-wide: refresh keeps its own icon, login/default
+        // shows the loader — both rotate with the same `animate-spin` timing.
         Icon && loadingIconMotion === "refresh" ? (
-          <Icon className="size-4 animate-refresh-spin" aria-hidden="true" />
+          <Icon className="size-4 animate-spin" aria-hidden="true" />
         ) : (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
         )
