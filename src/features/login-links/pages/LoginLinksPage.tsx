@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link2, Plus } from "lucide-react";
 import { Button, useConfirm } from "../../../components/base";
 import {
@@ -10,10 +11,8 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { GenerateLoginLinkDialog } from "../components/GenerateLoginLinkDialog";
 import { LoginLinkTable } from "../components/LoginLinkTable";
 import {
-  useLoginLinkRoles,
   useLoginLinks,
   useSetLinkLock,
 } from "../hooks/useLoginLinks";
@@ -25,11 +24,10 @@ import {
 import type { LoginLink } from "../types/login-links.types";
 
 export function LoginLinksPage() {
+  const navigate = useNavigate();
   const { links, isLoading, isError, refetch } = useLoginLinks();
-  const roles = useLoginLinkRoles();
   const setLinkLock = useSetLinkLock();
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredLinks = useMemo(() => {
@@ -86,7 +84,7 @@ export function LoginLinksPage() {
         title="ลิงก์เข้าสู่ระบบ"
         description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
         actions={
-          <Button icon={Plus} onClick={() => setDialogOpen(true)}>
+          <Button icon={Plus} onClick={() => void navigate("/login-links/new")}>
             สร้างลิงก์
           </Button>
         }
@@ -124,12 +122,6 @@ export function LoginLinksPage() {
         <LoginLinkTable links={filteredLinks} onToggleLock={handleToggleLock} />
       )}
 
-      <GenerateLoginLinkDialog
-        key={String(dialogOpen)}
-        onOpenChange={setDialogOpen}
-        open={dialogOpen}
-        roles={roles}
-      />
       {confirmDialog}
     </PageShell>
   );
