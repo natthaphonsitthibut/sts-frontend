@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+/*
+ * Centralized design tokens (Tailwind v4 @theme).
+ * This project uses the @tailwindcss/vite plugin with no tailwind.config.ts,
+ * so semantic colors are registered here — each --color-* key generates the
+ * matching utilities (bg-*, text-*, border-*, from-*, to-*, ...).
+ * Values are the legacy Quasar palette, mapped to semantic names.
+ */
+@theme {
+  /* Brand / primary actions */
+  --color-primary: #0f4dc2;
+  --color-primary-dark: #0d43ab;
+
+  /* Success — present / positive (green) */
+  --color-success: #16a34a;
+  --color-success-100: #d8f5df;
+  --color-success-200: #a7e8b8;
+  --color-success-700: #116b31;
+
+  /* Warning — late / caution (amber) */
+  --color-warning: #d97706;
+  --color-warning-100: #fff0bd;
+  --color-warning-200: #ffd66b;
+  --color-warning-700: #8a4b05;
+
+  /* Danger — absent / negative (red) */
+  --color-danger: #dc2626;
+  --color-danger-100: #ffe0df;
+  --color-danger-200: #ffb8b4;
+  --color-danger-400: #df5b57;
+  --color-danger-700: #941b1b;
+
+  /* Surface — metric-card tone pastels */
+  --color-surface-emerald: #def4e6;
+  --color-surface-amber: #ffefb4;
+  --color-surface-rose: #ffdfe2;
+  --color-surface-sky: #dbeafe;
+  --color-surface-slate: #e8eef6;
+  --color-surface-cyan: #d6f3ef;
+
+  /* Muted — subtle table tint + low-emphasis foreground */
+  --color-muted: #f8fbff;
+  --color-muted-foreground: #b0bec5;
+
+  /* Elevation */
+  --shadow-card: 0 10px 30px rgb(15 23 42 / 0.08);
+  --shadow-card-hover: 0 14px 36px rgb(15 23 42 / 0.12);
+}
+
+:root {
+  font-family:
+    "Prompt",
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f8fafc;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/*
+ * Central motion layer — every enter animation in the app references these,
+ * so timing/easing stays identical system-wide. Respects reduced-motion.
+ */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-overlay-in {
+    animation: overlay-in 150ms ease-out;
+  }
+  .animate-dialog-in {
+    animation: dialog-in 180ms ease-out;
+  }
+  .animate-sheet-in-left {
+    animation: sheet-in-left 220ms ease-out;
+  }
+  .animate-refresh-spin {
+    animation: refresh-spin 850ms linear infinite;
+  }
+  .animate-banner-in {
+    animation: banner-in 180ms ease-out;
+  }
+}
+
+.segmented-tabs {
+  grid-template-columns: repeat(var(--tabs-count), minmax(0, 1fr));
+}
+
+.segmented-tabs__indicator {
+  width: calc((100% - 0.5rem) / var(--tabs-count));
+  transform: translateX(calc(var(--tabs-index) * 100%));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .segmented-tabs__indicator {
+    transition:
+      transform 180ms ease-out,
+      width 180ms ease-out;
+  }
+}
