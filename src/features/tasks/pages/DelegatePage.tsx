@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -48,6 +48,7 @@ type DelegateFormValues = z.infer<typeof delegateSchema>;
 
 export function DelegatePage() {
   const { token = "" } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const [result, setResult] = useState<TaskDelegationResponse | null>(null);
   const form = useForm<DelegateFormValues>({
     defaultValues: { name: "", phone: "", hours: "24" },
@@ -149,12 +150,13 @@ export function DelegatePage() {
                     >
                       ส่งต่อภารกิจ
                     </Button>
-                    <Link
-                      className={buttonVariants({ variant: "outline" })}
-                      to={`/task/${token}`}
+                    <Button
+                      onClick={() => navigate(`/task/${token}`)}
+                      type="button"
+                      variant="outline"
                     >
                       ย้อนกลับ
-                    </Link>
+                    </Button>
                   </div>
                 </div>
               </Form>

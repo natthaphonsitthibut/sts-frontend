@@ -13,6 +13,7 @@ import {
   formatDateTime,
   getStatusLabel,
   getTaskTypeLabel,
+  normalizeTaskPublicLink,
 } from "../lib/task-presentation";
 
 export function TaskDetailPage() {
@@ -115,9 +116,12 @@ export function TaskDetailPage() {
                 {link.magic_link ? (
                   <Link
                     className="mt-2 inline-block break-all text-sm font-semibold text-primary"
-                    to={link.magic_link.replace(window.location.origin, "")}
+                    to={normalizeTaskPublicLink(link.magic_link).replace(
+                      window.location.origin,
+                      "",
+                    )}
                   >
-                    {link.magic_link}
+                    {normalizeTaskPublicLink(link.magic_link)}
                   </Link>
                 ) : null}
               </div>
