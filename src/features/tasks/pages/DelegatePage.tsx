@@ -80,7 +80,7 @@ export function DelegatePage() {
                   {result.magic_link}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <CopyButton label="คัดลอก" value={result.magic_link} variant="outline" />
+                  <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
                   <a
                     className={buttonVariants({ variant: "outline" })}
                     href={buildLineShareUrl(result.magic_link)}

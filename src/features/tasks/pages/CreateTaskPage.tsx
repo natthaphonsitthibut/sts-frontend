@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { FilePlus2, Link2, MapPin, UserRoundCheck } from "lucide-react";
+import { FilePlus2, Link2, MapPin, Plus, UserRoundCheck } from "lucide-react";
 import { z } from "zod";
 import {
   Alert,
@@ -14,6 +14,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -194,6 +195,18 @@ export function CreateTaskPage() {
     form.setValue("task_type", next);
   }
 
+  function startNewTask(): void {
+    setResult(null);
+    setType("");
+    form.reset(DEFAULT_VALUES);
+    setDataScope({});
+    setSelectedStudent(null);
+    setVisitLat("");
+    setVisitLng("");
+    setPermissions([]);
+    scope.reset();
+  }
+
   function handleStudentChange(next: SelectedStudent | null): void {
     setSelectedStudent(next);
     form.setValue("student_name", next?.name ?? "", {
@@ -275,7 +288,7 @@ export function CreateTaskPage() {
               {result.magic_link}
             </div>
             <div className="flex flex-wrap gap-2">
-              <CopyButton label="คัดลอก" value={result.magic_link} variant="outline" />
+              <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
               <a
                 className={buttonVariants({ variant: "outline" })}
                 href={buildLineShareUrl(result.magic_link)}
@@ -284,7 +297,9 @@ export function CreateTaskPage() {
               >
                 แชร์ผ่าน LINE
               </a>
-              <Button onClick={() => setResult(null)}>สร้างรายการใหม่</Button>
+              <Button icon={Plus} onClick={startNewTask}>
+                สร้างรายการใหม่
+              </Button>
             </div>
             {result.qr_code_data ? (
               <div className="rounded-lg border border-slate-200 p-4 text-center">
@@ -420,70 +435,64 @@ export function CreateTaskPage() {
                 ) : null}
 
                 {type === "ATTENDANCE" ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="space-y-2 text-sm font-medium">
-                      <span>
-                        โรงเรียน<span className="ml-1 text-red-600">*</span>
-                      </span>
-                      <Select
+                  <div className="grid gap-x-4 sm:grid-cols-2">
+                    <FormItem>
+                      <FormLabel required>โรงเรียน</FormLabel>
+                      <Combobox
                         aria-invalid={locationError ? true : undefined}
                         disabled={scope.schoolLocked}
-                        onChange={(event) => scope.setSchoolId(event.target.value)}
+                        onChange={(next) => scope.setSchoolId(next)}
+                        options={[
+                          { value: "", label: "เลือกโรงเรียน" },
+                          ...scope.schools.map((school) => ({
+                            value: String(school.id),
+                            label: school.name,
+                          })),
+                        ]}
+                        placeholder="ค้นหาโรงเรียน"
                         value={scope.schoolId}
-                      >
-                        <option value="">เลือกโรงเรียน</option>
-                        {scope.schools.map((school) => (
-                          <option key={school.id} value={String(school.id)}>
-                            {school.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <span
+                      />
+                      <p
                         className={cn(
-                          "text-sm font-medium text-red-600",
+                          "min-h-5 text-sm font-medium text-red-600",
                           !locationError && "invisible",
                         )}
                       >
                         {locationError ?? "."}
-                      </span>
-                    </label>
-                    <label className="space-y-2 text-sm font-medium">
-                      ระดับชั้น
-                      <Select
+                      </p>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>ระดับชั้น</FormLabel>
+                      <Combobox
                         disabled={!scope.schoolId || scope.gradeLocked}
-                        onChange={(event) => scope.setGrade(event.target.value)}
+                        onChange={(next) => scope.setGrade(next)}
+                        options={[
+                          { value: "", label: "ทุกชั้น" },
+                          ...scope.gradeLevels.map((grade) => ({
+                            value: grade.label,
+                            label: grade.label,
+                          })),
+                        ]}
+                        placeholder="ค้นหาชั้น"
                         value={scope.grade}
-                      >
-                        <option value="">
-                          {scope.schoolId ? "เลือกชั้น (ถ้ามี)" : "เลือกโรงเรียนก่อน"}
-                        </option>
-                        {scope.gradeLevels.map((grade) => (
-                          <option key={grade.id} value={grade.label}>
-                            {grade.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </label>
-                    <label className="space-y-2 text-sm font-medium">
-                      ห้อง
-                      <Select
+                      />
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>ห้อง</FormLabel>
+                      <Combobox
                         disabled={!scope.grade || scope.roomLocked}
-                        onChange={(event) => scope.setRoom(event.target.value)}
+                        onChange={(next) => scope.setRoom(next)}
+                        options={[
+                          { value: "", label: "ทุกห้อง" },
+                          ...scope.rooms.map((room) => ({
+                            value: room,
+                            label: `ห้อง ${room}`,
+                          })),
+                        ]}
+                        placeholder="ค้นหาห้อง"
                         value={scope.room}
-                      >
-                        <option value="">
-                          {scope.grade ? "เลือกห้อง (ถ้ามี)" : "เลือกชั้นก่อน"}
-                        </option>
-                        {scope.rooms.map((room) => (
-                          <option key={room} value={room}>
-                            ห้อง {room}
-                          </option>
-                        ))}
-                        {scope.room && !scope.rooms.includes(scope.room) ? (
-                          <option value={scope.room}>ห้อง {scope.room}</option>
-                        ) : null}
-                      </Select>
-                    </label>
+                      />
+                    </FormItem>
                     <FormItem>
                       <FormLabel htmlFor="subject" required>
                         วิชา
