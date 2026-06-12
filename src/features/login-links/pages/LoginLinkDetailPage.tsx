@@ -1,13 +1,13 @@
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Link2 } from "lucide-react";
-import { Badge, Button, buttonVariants, Card } from "../../../components/base";
+import { Badge, Button, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { CopyButton } from "../../../components/layout/copy-button";
+import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { getLeafMenuItems } from "../../auth/lib/permissions";
 import { useLoginLinks } from "../hooks/useLoginLinks";
 import {
@@ -114,20 +114,7 @@ export function LoginLinkDetailPage() {
 
         <Card className="rounded-lg p-6">
           <h2 className="mb-4 text-lg font-bold text-slate-900">ลิงก์เข้าสู่ระบบ</h2>
-          <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
-            {url}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <CopyButton label="คัดลอก" size="md" value={url} variant="outline" />
-            <a
-              className={buttonVariants({ variant: "outline" })}
-              href={url}
-              rel="noreferrer"
-              target="_blank"
-            >
-              เปิดลิงก์
-            </a>
-          </div>
+          <LinkShareActions link={url} />
         </Card>
       </div>
     </PageShell>

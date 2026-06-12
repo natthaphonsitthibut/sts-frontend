@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { Badge, Button, Card } from "../../../components/base";
@@ -8,6 +8,7 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -114,15 +115,10 @@ export function TaskDetailPage() {
                   </Badge>
                 </div>
                 {link.magic_link ? (
-                  <Link
-                    className="mt-2 inline-block break-all text-sm font-semibold text-primary"
-                    to={normalizeTaskPublicLink(link.magic_link).replace(
-                      window.location.origin,
-                      "",
-                    )}
-                  >
-                    {normalizeTaskPublicLink(link.magic_link)}
-                  </Link>
+                  <LinkShareActions
+                    className="mt-3"
+                    link={normalizeTaskPublicLink(link.magic_link)}
+                  />
                 ) : null}
               </div>
             ))}
