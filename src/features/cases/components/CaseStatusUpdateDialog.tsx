@@ -113,7 +113,7 @@ export function CaseStatusUpdateDialog({
           <Button
             onClick={() => onOpenChange(false)}
             type="button"
-            variant="ghost"
+            variant="outline"
           >
             ยกเลิก
           </Button>

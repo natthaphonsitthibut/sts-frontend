@@ -169,7 +169,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
         </div>
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button onClick={goBack} size="lg" type="button" variant="ghost">
+          <Button onClick={goBack} size="lg" type="button" variant="outline">
             ยกเลิก
           </Button>
           <Button

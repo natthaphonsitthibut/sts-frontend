@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ClipboardCheck, MapPin } from "lucide-react";
+import { ClipboardCheck, MapPin, Save } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -20,7 +20,7 @@ import { taskService } from "../api/task.service";
 import {
   getTaskTypeLabel,
 } from "../lib/task-presentation";
-import { ATTENDANCE_STATUS_OPTIONS } from "../lib/task-options";
+import { AttendanceStudentTable } from "../../attendance/components/AttendanceStudentTable";
 import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types";
 
 export function TaskGuestPage() {
@@ -182,44 +182,25 @@ export function TaskGuestPage() {
               <SkeletonStack lines={4} className="py-2" />
             ) : (
               <div className="space-y-3">
-                {students.map((student) => (
-                  <div
-                    className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                    key={student.id}
-                  >
-                    <div>
-                      <div className="font-bold text-slate-900">{student.name}</div>
-                      <div className="text-sm text-slate-500">รหัส: {student.id}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      {ATTENDANCE_STATUS_OPTIONS.map((option) => {
-                        const active = (selections[student.id] || "P_PRESENT") === option.value;
-                        return (
-                          <Button
-                            key={option.value}
-                            onClick={() =>
-                              setSelections((current) => ({
-                                ...current,
-                                [student.id]: option.value,
-                              }))
-                            }
-                            size="sm"
-                            variant={active ? "default" : "outline"}
-                          >
-                            {option.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <AttendanceStudentTable
+                  onStatusChange={(studentId, status) =>
+                    setSelections((current) => ({
+                      ...current,
+                      [studentId]: status as AttendanceTaskStatus,
+                    }))
+                  }
+                  selections={selections}
+                  students={students}
+                />
                 <Button
                   fullWidth
+                  icon={Save}
                   isLoading={submitAttendance.isPending}
                   loadingText="กำลังบันทึก"
                   onClick={() => submitAttendance.mutate(students)}
+                  size="lg"
                 >
-                  บันทึกการเช็คชื่อ
+                  บันทึกข้อมูล
                 </Button>
               </div>
             )}

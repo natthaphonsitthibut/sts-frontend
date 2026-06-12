@@ -103,7 +103,7 @@ export function ThaIdMockLoginDialog({
                   disabled={thaidMutation.isPending}
                   onClick={() => onOpenChange(false)}
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                 >
                   ยกเลิก
                 </Button>
