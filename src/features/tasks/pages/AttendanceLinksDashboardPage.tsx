@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ExternalLink, Lock, LockOpen, Plus } from "lucide-react";
+import { ClipboardCheck, ExternalLink, Eye, Lock, LockOpen, Plus } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,6 +10,7 @@ import {
 import { cn } from "../../../lib/utils";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { CopyButton } from "../../../components/layout/copy-button";
+import { AttendanceLinkDetailDialog } from "../components/AttendanceLinkDetailDialog";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -68,6 +69,7 @@ export function AttendanceLinksDashboardPage() {
   // flag would spin every lock button at once and reflow the whole column.
   const pendingLinkId = setLock.isPending ? setLock.variables?.id : undefined;
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const [detailTask, setDetailTask] = useState<AttendanceTask | null>(null);
 
   async function handleToggleLock(linkId: string, locked: boolean): Promise<void> {
     const confirmed = await confirm(getLinkLockConfirm(locked));
@@ -211,6 +213,14 @@ export function AttendanceLinksDashboardPage() {
                     <div className="flex justify-end gap-2">
                       {task.active_link ? (
                         <>
+                          <Button
+                            icon={Eye}
+                            onClick={() => setDetailTask(task)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            รายละเอียด
+                          </Button>
                           <a
                             aria-label="เปิดดูลิงก์"
                             className={cn(
@@ -252,6 +262,7 @@ export function AttendanceLinksDashboardPage() {
         )}
       </div>
       {confirmDialog}
+      <AttendanceLinkDetailDialog onClose={() => setDetailTask(null)} task={detailTask} />
     </PageShell>
   );
 }
