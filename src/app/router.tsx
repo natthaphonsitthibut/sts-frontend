@@ -17,6 +17,7 @@ import {
   ForbiddenPage,
   ImportDataPage,
   LockedPage,
+  LoginLinkDetailPage,
   LoginLinksPage,
   MagicLoginPage,
   MainPage,
@@ -152,6 +153,10 @@ export const router = createBrowserRouter([
       {
         path: "login-links",
         element: protectedElement(<LoginLinksPage />, "login-links"),
+      },
+      {
+        path: "login-links/:id",
+        element: protectedElement(<LoginLinkDetailPage />, "login-links"),
       },
       {
         path: "settings",

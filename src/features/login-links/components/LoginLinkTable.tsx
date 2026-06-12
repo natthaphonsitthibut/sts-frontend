@@ -1,6 +1,6 @@
-import { ExternalLink, Lock, LockOpen } from "lucide-react";
-import { Badge, Button, buttonVariants } from "../../../components/base";
-import { cn } from "../../../lib/utils";
+import { Link } from "react-router-dom";
+import { Lock, LockOpen } from "lucide-react";
+import { Badge, Button } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -8,11 +8,9 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import { CopyButton } from "../../../components/layout/copy-button";
 import {
   formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
-  getLoginLinkUrl,
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
 import type { LoginLink } from "../types/login-links.types";
@@ -30,17 +28,13 @@ function StatusBadge({ link }: { link: LoginLink }) {
 function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: LoginLink }) {
   const locked = isLoginLinkLocked(link);
   return (
-    <div className="flex items-center justify-end gap-2">
-      <a
-        aria-label="เปิดดูลิงก์"
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "px-2")}
-        href={getLoginLinkUrl(link.magic_link)}
-        rel="noreferrer"
-        target="_blank"
+    <div className="flex flex-nowrap items-center justify-end gap-3">
+      <Link
+        className="whitespace-nowrap text-sm font-semibold text-primary"
+        to={`/login-links/${link.id}`}
       >
-        <ExternalLink className="size-4" aria-hidden="true" />
-      </a>
-      <CopyButton value={getLoginLinkUrl(link.magic_link)} />
+        ดูรายละเอียด
+      </Link>
       <Button
         // Fixed min width so toggling "เปิด"/"ปิด" (different glyph counts) never
         // changes the button width and shifts the copy button beside it.

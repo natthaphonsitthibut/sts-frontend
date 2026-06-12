@@ -66,6 +66,12 @@ export const LoginLinksPage = lazy(() =>
     default: module.LoginLinksPage,
   })),
 );
+
+export const LoginLinkDetailPage = lazy(() =>
+  import("../features/login-links/pages/LoginLinkDetailPage").then((module) => ({
+    default: module.LoginLinkDetailPage,
+  })),
+);
 export const StudentDetailPage = lazy(() =>
   import("../features/students/pages/StudentDetailPage").then((module) => ({
     default: module.StudentDetailPage,
