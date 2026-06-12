@@ -5,6 +5,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 import {
   AdminAccessPage,
   AttendanceCheckInPage,
+  AttendanceLinkDetailPage,
   AttendanceLinksDashboardPage,
   AttendanceRecordPage,
   CasesListPage,
@@ -106,6 +107,10 @@ export const router = createBrowserRouter([
           <AttendanceLinksDashboardPage />,
           "attendance-dashboard",
         ),
+      },
+      {
+        path: "attendance-links/:token",
+        element: protectedElement(<AttendanceLinkDetailPage />, "attendance-dashboard"),
       },
       {
         path: "import-data",

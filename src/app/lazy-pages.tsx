@@ -86,6 +86,12 @@ export const AttendanceLinksDashboardPage = lazy(() =>
     default: module.AttendanceLinksDashboardPage,
   })),
 );
+
+export const AttendanceLinkDetailPage = lazy(() =>
+  import("../features/tasks/pages/AttendanceLinkDetailPage").then((module) => ({
+    default: module.AttendanceLinkDetailPage,
+  })),
+);
 export const CreateTaskPage = lazy(() =>
   import("../features/tasks/pages/CreateTaskPage").then((module) => ({
     default: module.CreateTaskPage,

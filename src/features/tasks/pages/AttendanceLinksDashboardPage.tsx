@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ExternalLink, Eye, Lock, LockOpen, Plus } from "lucide-react";
+import { ClipboardCheck, ExternalLink, Lock, LockOpen, Plus } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,7 +11,6 @@ import {
 import { cn } from "../../../lib/utils";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { CopyButton } from "../../../components/layout/copy-button";
-import { AttendanceLinkDetailDialog } from "../components/AttendanceLinkDetailDialog";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -38,6 +38,11 @@ function getLinkState(task: AttendanceTask): "ACTIVE" | "LOCKED" | "EXPIRED" {
   if (isLinkLocked(task.active_link_locked)) return "LOCKED";
   if (!task.active_link) return "EXPIRED";
   return "ACTIVE";
+}
+
+/** The raw token is the last segment of the shared link path (".../task/<token>"). */
+function linkToken(activeLink: string | null): string {
+  return activeLink?.split("/").filter(Boolean).pop() ?? "";
 }
 
 function LinkStateBadge({ task }: { task: AttendanceTask }) {
@@ -69,7 +74,6 @@ export function AttendanceLinksDashboardPage() {
   // flag would spin every lock button at once and reflow the whole column.
   const pendingLinkId = setLock.isPending ? setLock.variables?.id : undefined;
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const [detailTask, setDetailTask] = useState<AttendanceTask | null>(null);
 
   async function handleToggleLock(linkId: string, locked: boolean): Promise<void> {
     const confirmed = await confirm(getLinkLockConfirm(locked));
@@ -210,17 +214,16 @@ export function AttendanceLinksDashboardPage() {
                     {formatDateTime(task.created_at)}
                   </DataTableCell>
                   <DataTableCell>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       {task.active_link ? (
                         <>
-                          <Button
-                            icon={Eye}
-                            onClick={() => setDetailTask(task)}
-                            size="sm"
-                            variant="outline"
+                          <Link
+                            className="whitespace-nowrap px-1 text-sm font-semibold text-primary"
+                            state={{ date: task.created_at?.split("T")[0] }}
+                            to={`/attendance-links/${linkToken(task.active_link)}`}
                           >
-                            รายละเอียด
-                          </Button>
+                            ดูรายละเอียด
+                          </Link>
                           <a
                             aria-label="เปิดดูลิงก์"
                             className={cn(
@@ -262,7 +265,6 @@ export function AttendanceLinksDashboardPage() {
         )}
       </div>
       {confirmDialog}
-      <AttendanceLinkDetailDialog onClose={() => setDetailTask(null)} task={detailTask} />
     </PageShell>
   );
 }
