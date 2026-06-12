@@ -1,16 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ExternalLink, Lock, LockOpen, Plus } from "lucide-react";
-import {
-  Badge,
-  Button,
-  buttonVariants,
-  useConfirm,
-} from "../../../components/base";
-import { cn } from "../../../lib/utils";
+import { ClipboardCheck, Lock, LockOpen, Plus } from "lucide-react";
+import { Badge, Button, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
-import { CopyButton } from "../../../components/layout/copy-button";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -31,7 +24,7 @@ import {
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type { AttendanceTask } from "../../attendance/types/attendance.types";
-import { formatDateTime, isLinkLocked, toAbsoluteUrl } from "../lib/task-presentation";
+import { formatDateTime, isLinkLocked } from "../lib/task-presentation";
 import { LINK_STATE_OPTIONS } from "../lib/task-options";
 
 function getLinkState(task: AttendanceTask): "ACTIVE" | "LOCKED" | "EXPIRED" {
@@ -195,7 +188,6 @@ export function AttendanceLinksDashboardPage() {
           >
             {filteredTasks.map((task) => {
               const locked = isLinkLocked(task.active_link_locked);
-              const fullUrl = toAbsoluteUrl(task.active_link || "");
               return (
                 <DataTableRow key={task.task_id}>
                   <DataTableCell className="font-bold">
@@ -214,30 +206,15 @@ export function AttendanceLinksDashboardPage() {
                     {formatDateTime(task.created_at)}
                   </DataTableCell>
                   <DataTableCell>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="flex flex-nowrap items-center justify-end gap-3">
                       {task.active_link ? (
-                        <>
-                          <Link
-                            className="whitespace-nowrap px-1 text-sm font-semibold text-primary"
-                            state={{ date: task.created_at?.split("T")[0] }}
-                            to={`/attendance-links/${linkToken(task.active_link)}`}
-                          >
-                            ดูรายละเอียด
-                          </Link>
-                          <a
-                            aria-label="เปิดดูลิงก์"
-                            className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                              "px-2",
-                            )}
-                            href={fullUrl}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            <ExternalLink className="size-4" aria-hidden="true" />
-                          </a>
-                          <CopyButton size="sm" value={fullUrl} variant="outline" />
-                        </>
+                        <Link
+                          className="whitespace-nowrap text-sm font-semibold text-primary"
+                          state={{ date: task.created_at?.split("T")[0] }}
+                          to={`/attendance-links/${linkToken(task.active_link)}`}
+                        >
+                          ดูรายละเอียด
+                        </Link>
                       ) : null}
                       {task.active_link_id ? (
                         <Button

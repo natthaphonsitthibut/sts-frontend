@@ -1,13 +1,14 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { Badge, Button, Card } from "../../../components/base";
+import { Badge, Button, buttonVariants, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { CopyButton } from "../../../components/layout/copy-button";
 import { taskService } from "../api/task.service";
 import { formatDate, getAttendanceStatusLabel } from "../lib/task-presentation";
 
@@ -62,6 +63,7 @@ export function AttendanceLinkDetailPage() {
 
   const task = taskQuery.data;
   const records = historyQuery.data ?? [];
+  const publicLink = `${window.location.origin}/task/${token}`;
 
   return (
     <PageShell>
@@ -101,6 +103,24 @@ export function AttendanceLinkDetailPage() {
               <div className="text-sm text-slate-500">วันที่</div>
               <div className="font-bold">{formatDate(date)}</div>
             </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-lg p-6">
+          <h2 className="mb-4 text-lg font-bold text-slate-900">ลิงก์เช็คชื่อ</h2>
+          <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
+            {publicLink}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <CopyButton label="คัดลอก" size="md" value={publicLink} variant="outline" />
+            <a
+              className={buttonVariants({ variant: "outline" })}
+              href={publicLink}
+              rel="noreferrer"
+              target="_blank"
+            >
+              เปิดลิงก์
+            </a>
           </div>
         </Card>
 
