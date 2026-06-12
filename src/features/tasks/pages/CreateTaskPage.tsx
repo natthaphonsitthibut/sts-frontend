@@ -35,6 +35,7 @@ import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
@@ -178,6 +179,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   // Same school → grade → room cascade as the check-in page, locked to the
   // creator's own scope so every link type stays inside their allowed area.
   const scope = useScopeCascade({ lockToActorScope: true });
+  const area = useSchoolAreaFilter(scope.schools);
   const [dataScope, setDataScope] = useState<DataScope>({});
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(
     prefill?.student_name
@@ -226,7 +228,15 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     type === "LOGIN" ? getScopeValidationError(scopeMode, dataScope, roleLabel) : null;
   // ATTENDANCE must target at least a school, otherwise there is no roster to check.
   const locationError =
-    type === "ATTENDANCE" && !scope.schoolId ? "กรุณาเลือกโรงเรียนที่จะเช็คชื่อ" : null;
+    type === "ATTENDANCE"
+      ? !scope.schoolId
+        ? "กรุณาเลือกโรงเรียน"
+        : !scope.grade
+          ? "กรุณาเลือกระดับชั้น"
+          : !scope.room
+            ? "กรุณาเลือกห้อง"
+            : null
+      : null;
   const submitBlockError = scopeError ?? locationError;
 
   const createTask = useMutation({
@@ -445,70 +455,134 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
           ) : null}
 
           {type === "ATTENDANCE" ? (
-            <div className="grid gap-x-4 sm:grid-cols-2">
-              <FormItem>
-                <FormLabel required>โรงเรียน</FormLabel>
-                <Combobox
-                  aria-invalid={
-                    locationError && form.formState.isSubmitted ? true : undefined
-                  }
-                  disabled={scope.schoolLocked}
-                  onChange={(next) => scope.setSchoolId(next)}
-                  options={[
-                    { value: "", label: "เลือกโรงเรียน" },
-                    ...scope.schools.map((school) => ({
-                      value: String(school.id),
-                      label: school.name,
-                    })),
-                  ]}
-                  placeholder="ค้นหาโรงเรียน"
-                  value={scope.schoolId}
-                />
-                <p
-                  className={cn(
-                    "min-h-5 text-sm font-medium text-red-600",
-                    !(locationError && form.formState.isSubmitted) && "invisible",
-                  )}
-                >
-                  {locationError && form.formState.isSubmitted ? locationError : "."}
-                </p>
-              </FormItem>
-              <FormItem>
-                <FormLabel>ระดับชั้น</FormLabel>
-                <Combobox
-                  disabled={!scope.schoolId || scope.gradeLocked}
-                  onChange={(next) => scope.setGrade(next)}
-                  options={[
-                    { value: "", label: "ทุกชั้น" },
-                    ...scope.gradeLevels.map((grade) => ({
-                      value: grade.label,
-                      label: grade.label,
-                    })),
-                  ]}
-                  placeholder="ค้นหาชั้น"
-                  value={scope.grade}
-                />
-              </FormItem>
-              <FormItem>
-                <FormLabel>ห้อง</FormLabel>
-                <Combobox
-                  disabled={!scope.grade || scope.roomLocked}
-                  onChange={(next) => scope.setRoom(next)}
-                  options={[
-                    { value: "", label: "ทุกห้อง" },
-                    ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
-                  ]}
-                  placeholder="ค้นหาห้อง"
-                  value={scope.room}
-                />
-              </FormItem>
-              <FormItem>
-                <FormLabel htmlFor="subject" required>
-                  วิชา
-                </FormLabel>
-                <Input id="subject" {...registerField(form, "subject")} />
-                <FormMessage<CreateTaskFormValues> name="subject" />
-              </FormItem>
+            <div className="space-y-4">
+              {scope.schoolLocked ? null : (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <FormItem>
+                    <FormLabel>จังหวัด</FormLabel>
+                    <Combobox
+                      disabled={createTask.isPending}
+                      onChange={(next) => {
+                        area.setProvince(next);
+                        scope.setSchoolId("");
+                      }}
+                      options={[
+                        { value: "", label: "ทุกจังหวัด" },
+                        ...area.provinces.map((name) => ({ value: name, label: name })),
+                      ]}
+                      placeholder="ค้นหาจังหวัด"
+                      value={area.province}
+                    />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel>อำเภอ</FormLabel>
+                    <Combobox
+                      disabled={createTask.isPending || !area.province}
+                      onChange={(next) => {
+                        area.setDistrict(next);
+                        scope.setSchoolId("");
+                      }}
+                      options={[
+                        { value: "", label: "ทุกอำเภอ" },
+                        ...area.districts.map((name) => ({ value: name, label: name })),
+                      ]}
+                      placeholder="ค้นหาอำเภอ"
+                      value={area.district}
+                    />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel>ตำบล</FormLabel>
+                    <Combobox
+                      disabled={createTask.isPending || !area.district}
+                      onChange={(next) => {
+                        area.setSubDistrict(next);
+                        scope.setSchoolId("");
+                      }}
+                      options={[
+                        { value: "", label: "ทุกตำบล" },
+                        ...area.subDistricts.map((name) => ({ value: name, label: name })),
+                      ]}
+                      placeholder="ค้นหาตำบล"
+                      value={area.subDistrict}
+                    />
+                  </FormItem>
+                </div>
+              )}
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel required>โรงเรียน</FormLabel>
+                  <Combobox
+                    aria-invalid={
+                      !scope.schoolId && form.formState.isSubmitted ? true : undefined
+                    }
+                    disabled={scope.schoolLocked}
+                    onChange={(next) => scope.setSchoolId(next)}
+                    options={[
+                      { value: "", label: "เลือกโรงเรียน" },
+                      ...area.filteredSchools.map((school) => ({
+                        value: String(school.id),
+                        label: school.name,
+                      })),
+                    ]}
+                    placeholder="ค้นหาโรงเรียน"
+                    value={scope.schoolId}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel required>ระดับชั้น</FormLabel>
+                  <Combobox
+                    aria-invalid={
+                      Boolean(scope.schoolId) && !scope.grade && form.formState.isSubmitted
+                        ? true
+                        : undefined
+                    }
+                    disabled={!scope.schoolId || scope.gradeLocked}
+                    onChange={(next) => scope.setGrade(next)}
+                    options={[
+                      { value: "", label: "เลือกชั้น" },
+                      ...scope.gradeLevels.map((grade) => ({
+                        value: grade.label,
+                        label: grade.label,
+                      })),
+                    ]}
+                    placeholder="ค้นหาชั้น"
+                    value={scope.grade}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel required>ห้อง</FormLabel>
+                  <Combobox
+                    aria-invalid={
+                      Boolean(scope.grade) && !scope.room && form.formState.isSubmitted
+                        ? true
+                        : undefined
+                    }
+                    disabled={!scope.grade || scope.roomLocked}
+                    onChange={(next) => scope.setRoom(next)}
+                    options={[
+                      { value: "", label: "เลือกห้อง" },
+                      ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+                    ]}
+                    placeholder="ค้นหาห้อง"
+                    value={scope.room}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="subject" required>
+                    วิชา
+                  </FormLabel>
+                  <Input id="subject" {...registerField(form, "subject")} />
+                  <FormMessage<CreateTaskFormValues> name="subject" />
+                </FormItem>
+              </div>
+              <p
+                className={cn(
+                  "min-h-5 text-sm font-medium text-red-600",
+                  !(locationError && form.formState.isSubmitted) && "invisible",
+                )}
+              >
+                {locationError && form.formState.isSubmitted ? locationError : "."}
+              </p>
             </div>
           ) : null}
 
