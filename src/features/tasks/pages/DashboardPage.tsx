@@ -109,7 +109,7 @@ export function DashboardPage() {
           <SkeletonTable />
         ) : (
           <DataTable
-            headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "ภารกิจ"]}
+            headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "จัดการ"]}
             responsive={false}
             footer={
               filteredCases.length === 0 ? (

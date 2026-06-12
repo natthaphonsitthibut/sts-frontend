@@ -53,7 +53,7 @@ function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: Login
 export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
   return (
     <div className="flex flex-col gap-2">
-      <DataTable headings={["ผู้รับลิงก์", "ตำแหน่ง", "สถานะ", "หมดอายุ", ""]}>
+      <DataTable headings={["ผู้รับลิงก์", "ตำแหน่ง", "สถานะ", "หมดอายุ", "จัดการ"]}>
         {links.map((link) => (
           <DataTableRow key={link.id}>
             <DataTableCell>
