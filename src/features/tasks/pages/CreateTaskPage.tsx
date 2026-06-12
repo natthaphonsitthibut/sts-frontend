@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -46,6 +47,18 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
+
+/** URL slug ↔ task type, so each link type is its own route (/create/:type). */
+const PATH_TO_TYPE: Record<string, TaskType> = {
+  visit: "VISIT",
+  attendance: "ATTENDANCE",
+  login: "LOGIN",
+};
+const TYPE_TO_PATH: Record<TaskType, string> = {
+  VISIT: "visit",
+  ATTENDANCE: "attendance",
+  LOGIN: "login",
+};
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
@@ -120,22 +133,27 @@ const createTaskSchema = z
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
 
-const DEFAULT_VALUES: CreateTaskFormValues = {
-  task_type: "VISIT",
-  assigned_to_name: "",
-  assigned_to_email: "",
-  role: "",
-  student_name: "",
-  student_school: "",
-  student_address: "",
-  reason_flagged: "",
-  subject: "",
-  expires_value: "7",
-  expires_unit: "days",
-};
+function makeDefaults(type: TaskType): CreateTaskFormValues {
+  return {
+    task_type: type,
+    assigned_to_name: "",
+    assigned_to_email: "",
+    role: "",
+    student_name: "",
+    student_school: "",
+    student_address: "",
+    reason_flagged: "",
+    subject: "",
+    expires_value: "7",
+    expires_unit: "days",
+  };
+}
 
-export function CreateTaskPage() {
-  const [type, setType] = useState<TaskType | "">("");
+/**
+ * The actual create form for one task type. Mounted with `key={type}` so it
+ * starts fresh whenever the type (route) changes — no manual state syncing.
+ */
+function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const [result, setResult] = useState<TaskCreateResponse | null>(null);
   const rolesQuery = useQuery({
     queryKey: ["task-create-roles"],
@@ -145,15 +163,13 @@ export function CreateTaskPage() {
   // Same school → grade → room cascade as the check-in page, locked to the
   // creator's own scope so every link type stays inside their allowed area.
   const scope = useScopeCascade({ lockToActorScope: true });
-  // LOGIN links can carry custom permissions / data scope (same editor as the
-  // login-links feature) so this page is the single full create-link flow.
   const [dataScope, setDataScope] = useState<DataScope>({});
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
   const [visitLat, setVisitLat] = useState("");
   const [visitLng, setVisitLng] = useState("");
 
   const form = useForm<CreateTaskFormValues>({
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: makeDefaults(type),
     resolver: zodResolver(createTaskSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
@@ -190,15 +206,9 @@ export function CreateTaskPage() {
     throwOnError: false,
   });
 
-  function selectType(next: TaskType): void {
-    setType(next);
-    form.setValue("task_type", next);
-  }
-
   function startNewTask(): void {
     setResult(null);
-    setType("");
-    form.reset(DEFAULT_VALUES);
+    form.reset(makeDefaults(type));
     setDataScope({});
     setSelectedStudent(null);
     setVisitLat("");
@@ -226,7 +236,7 @@ export function CreateTaskPage() {
   }
 
   function handleValid(values: CreateTaskFormValues): void {
-    if (!type || submitBlockError) {
+    if (submitBlockError) {
       document
         .getElementById("create-task-detail")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -275,44 +285,301 @@ export function CreateTaskPage() {
 
   if (result) {
     return (
-      <PageShell>
-        <Card>
-          <CardHeader>
-            <CardTitle>สร้างลิงก์สำเร็จ</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert variant="success">
-              <AlertTitle>Magic link พร้อมใช้งาน</AlertTitle>
-              <AlertDescription>
-                หมดอายุ {formatDateTime(result.expires_at)}
-              </AlertDescription>
-            </Alert>
-            <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
-              {result.magic_link}
+      <Card>
+        <CardHeader>
+          <CardTitle>สร้างลิงก์สำเร็จ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="success">
+            <AlertTitle>Magic link พร้อมใช้งาน</AlertTitle>
+            <AlertDescription>
+              หมดอายุ {formatDateTime(result.expires_at)}
+            </AlertDescription>
+          </Alert>
+          <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
+            {result.magic_link}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
+            <a
+              className={buttonVariants({ variant: "outline" })}
+              href={buildLineShareUrl(result.magic_link)}
+              rel="noreferrer"
+              target="_blank"
+            >
+              แชร์ผ่าน LINE
+            </a>
+            <Button icon={Plus} onClick={startNewTask}>
+              สร้างรายการใหม่
+            </Button>
+          </div>
+          {result.qr_code_data ? (
+            <div className="rounded-lg border border-slate-200 p-4 text-center">
+              <img alt="QR Code" className="mx-auto size-48" src={result.qr_code_data} />
             </div>
-            <div className="flex flex-wrap gap-2">
-              <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
-              <a
-                className={buttonVariants({ variant: "outline" })}
-                href={buildLineShareUrl(result.magic_link)}
-                rel="noreferrer"
-                target="_blank"
-              >
-                แชร์ผ่าน LINE
-              </a>
-              <Button icon={Plus} onClick={startNewTask}>
-                สร้างรายการใหม่
-              </Button>
-            </div>
-            {result.qr_code_data ? (
-              <div className="rounded-lg border border-slate-200 p-4 text-center">
-                <img alt="QR Code" className="mx-auto size-48" src={result.qr_code_data} />
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      </PageShell>
+          ) : null}
+        </CardContent>
+      </Card>
     );
+  }
+
+  return (
+    <Form form={form} onSubmit={handleValid}>
+      <Card id="create-task-detail">
+        <CardHeader>
+          <CardTitle>รายละเอียด</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormErrorAlert
+            error={createTask.error}
+            fallback="สร้างลิงก์ไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+          />
+
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <FormItem>
+              <FormLabel htmlFor="assigned_to_name" required>
+                ผู้รับมอบหมาย
+              </FormLabel>
+              <Input id="assigned_to_name" {...registerField(form, "assigned_to_name")} />
+              <FormMessage<CreateTaskFormValues> name="assigned_to_name" />
+            </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="assigned_to_email" required>
+                อีเมล
+              </FormLabel>
+              <Input
+                id="assigned_to_email"
+                type="email"
+                {...registerField(form, "assigned_to_email")}
+              />
+              <FormMessage<CreateTaskFormValues> name="assigned_to_email" />
+            </FormItem>
+          </div>
+
+          {type === "VISIT" ? (
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel required>นักเรียน</FormLabel>
+                <StudentPicker
+                  disabled={createTask.isPending}
+                  onChange={handleStudentChange}
+                  value={selectedStudent}
+                />
+                <FormMessage<CreateTaskFormValues> name="student_name" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="student_address">ที่อยู่</FormLabel>
+                <Input id="student_address" {...registerField(form, "student_address")} />
+                <FormMessage<CreateTaskFormValues> name="student_address" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="reason_flagged" required>
+                  สาเหตุ
+                </FormLabel>
+                <Input id="reason_flagged" {...registerField(form, "reason_flagged")} />
+                <FormMessage<CreateTaskFormValues> name="reason_flagged" />
+              </FormItem>
+
+              <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <FormItem>
+                  <FormLabel htmlFor="visit-lat">Latitude</FormLabel>
+                  <Input
+                    id="visit-lat"
+                    inputMode="decimal"
+                    onChange={(event) => setVisitLat(event.target.value)}
+                    value={visitLat}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="visit-lng">Longitude</FormLabel>
+                  <Input
+                    id="visit-lng"
+                    inputMode="decimal"
+                    onChange={(event) => setVisitLng(event.target.value)}
+                    value={visitLng}
+                  />
+                </FormItem>
+                <Button
+                  icon={MapPin}
+                  onClick={fillCurrentLocation}
+                  type="button"
+                  variant="outline"
+                >
+                  ใช้ตำแหน่งปัจจุบัน
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {type === "ATTENDANCE" ? (
+            <div className="grid gap-x-4 sm:grid-cols-2">
+              <FormItem>
+                <FormLabel required>โรงเรียน</FormLabel>
+                <Combobox
+                  aria-invalid={
+                    locationError && form.formState.isSubmitted ? true : undefined
+                  }
+                  disabled={scope.schoolLocked}
+                  onChange={(next) => scope.setSchoolId(next)}
+                  options={[
+                    { value: "", label: "เลือกโรงเรียน" },
+                    ...scope.schools.map((school) => ({
+                      value: String(school.id),
+                      label: school.name,
+                    })),
+                  ]}
+                  placeholder="ค้นหาโรงเรียน"
+                  value={scope.schoolId}
+                />
+                <p
+                  className={cn(
+                    "min-h-5 text-sm font-medium text-red-600",
+                    !(locationError && form.formState.isSubmitted) && "invisible",
+                  )}
+                >
+                  {locationError && form.formState.isSubmitted ? locationError : "."}
+                </p>
+              </FormItem>
+              <FormItem>
+                <FormLabel>ระดับชั้น</FormLabel>
+                <Combobox
+                  disabled={!scope.schoolId || scope.gradeLocked}
+                  onChange={(next) => scope.setGrade(next)}
+                  options={[
+                    { value: "", label: "ทุกชั้น" },
+                    ...scope.gradeLevels.map((grade) => ({
+                      value: grade.label,
+                      label: grade.label,
+                    })),
+                  ]}
+                  placeholder="ค้นหาชั้น"
+                  value={scope.grade}
+                />
+              </FormItem>
+              <FormItem>
+                <FormLabel>ห้อง</FormLabel>
+                <Combobox
+                  disabled={!scope.grade || scope.roomLocked}
+                  onChange={(next) => scope.setRoom(next)}
+                  options={[
+                    { value: "", label: "ทุกห้อง" },
+                    ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+                  ]}
+                  placeholder="ค้นหาห้อง"
+                  value={scope.room}
+                />
+              </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="subject" required>
+                  วิชา
+                </FormLabel>
+                <Input id="subject" {...registerField(form, "subject")} />
+                <FormMessage<CreateTaskFormValues> name="subject" />
+              </FormItem>
+            </div>
+          ) : null}
+
+          {type === "LOGIN" ? (
+            <>
+              <FormItem>
+                <FormLabel htmlFor="role" required>
+                  ตำแหน่ง
+                </FormLabel>
+                <Combobox
+                  aria-invalid={form.formState.errors.role ? true : undefined}
+                  id="role"
+                  name="role"
+                  onChange={(next) =>
+                    form.setValue("role", next, {
+                      shouldValidate: form.formState.isSubmitted,
+                    })
+                  }
+                  options={[
+                    { value: "", label: "เลือกตำแหน่ง" },
+                    ...(rolesQuery.data ?? []).map((role) => ({
+                      value: role.name,
+                      label: role.label,
+                    })),
+                  ]}
+                  searchable={false}
+                  value={selectedRole}
+                />
+                <FormMessage<CreateTaskFormValues> name="role" />
+              </FormItem>
+              <PermissionScopeEditor
+                baselinePermissions={baseline}
+                dataScope={dataScope}
+                disabled={createTask.isPending}
+                onDataScopeChange={setDataScope}
+                onPermissionsChange={setPermissions}
+                permissions={permissions}
+                role={selectedRole}
+                roleLabel={roleLabel}
+                scopeMode={scopeMode}
+                showErrors={form.formState.isSubmitted}
+              />
+            </>
+          ) : null}
+
+          <div className="grid gap-x-4 sm:grid-cols-[1fr_160px]">
+            <FormItem>
+              <FormLabel htmlFor="expires_value" required>
+                อายุลิงก์
+              </FormLabel>
+              <NumericInput
+                id="expires_value"
+                maxLength={4}
+                {...registerField(form, "expires_value")}
+              />
+              <FormMessage<CreateTaskFormValues> name="expires_value" />
+            </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="expires_unit">หน่วย</FormLabel>
+              <Combobox
+                id="expires_unit"
+                name="expires_unit"
+                onChange={(next) =>
+                  form.setValue("expires_unit", next as CreateTaskFormValues["expires_unit"], {
+                    shouldValidate: form.formState.isSubmitted,
+                  })
+                }
+                options={TASK_DURATION_UNIT_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                searchable={false}
+                value={expiresUnit}
+              />
+              <FormMessage<CreateTaskFormValues> name="expires_unit" />
+            </FormItem>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              isLoading={createTask.isPending}
+              loadingText="กำลังสร้าง"
+              size="lg"
+              type="submit"
+            >
+              สร้างลิงก์
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </Form>
+  );
+}
+
+export function CreateTaskPage() {
+  const { type: typeParam } = useParams<{ type: string }>();
+  const navigate = useNavigate();
+  const activeType = typeParam ? PATH_TO_TYPE[typeParam.toLowerCase()] : undefined;
+
+  function chooseType(next: TaskType): void {
+    // Clicking the already-selected type again deselects it (back to chooser).
+    void navigate(activeType === next ? "/create" : `/create/${TYPE_TO_PATH[next]}`);
   }
 
   return (
@@ -336,269 +603,15 @@ export function CreateTaskPage() {
                 description={description}
                 icon={Icon}
                 key={value}
-                onClick={() => selectType(value as TaskType)}
-                selected={type === value}
+                onClick={() => chooseType(value as TaskType)}
+                selected={activeType === value}
                 title={label}
               />
             );
           })}
         </div>
 
-        {type ? (
-          <Form form={form} onSubmit={handleValid}>
-            <Card id="create-task-detail">
-              <CardHeader>
-                <CardTitle>รายละเอียด</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormErrorAlert
-                  error={createTask.error}
-                  fallback="สร้างลิงก์ไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
-                />
-
-                <div className="grid gap-x-4 sm:grid-cols-2">
-                  <FormItem>
-                    <FormLabel htmlFor="assigned_to_name" required>
-                      ผู้รับมอบหมาย
-                    </FormLabel>
-                    <Input
-                      id="assigned_to_name"
-                      {...registerField(form, "assigned_to_name")}
-                    />
-                    <FormMessage<CreateTaskFormValues> name="assigned_to_name" />
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel htmlFor="assigned_to_email" required>
-                      อีเมล
-                    </FormLabel>
-                    <Input
-                      id="assigned_to_email"
-                      type="email"
-                      {...registerField(form, "assigned_to_email")}
-                    />
-                    <FormMessage<CreateTaskFormValues> name="assigned_to_email" />
-                  </FormItem>
-                </div>
-
-                {type === "VISIT" ? (
-                  <div className="space-y-4">
-                    <FormItem>
-                      <FormLabel required>นักเรียน</FormLabel>
-                      <StudentPicker
-                        disabled={createTask.isPending}
-                        onChange={handleStudentChange}
-                        value={selectedStudent}
-                      />
-                      <FormMessage<CreateTaskFormValues> name="student_name" />
-                    </FormItem>
-
-                    <FormItem>
-                      <FormLabel htmlFor="student_address">ที่อยู่</FormLabel>
-                      <Input id="student_address" {...registerField(form, "student_address")} />
-                      <FormMessage<CreateTaskFormValues> name="student_address" />
-                    </FormItem>
-
-                    <FormItem>
-                      <FormLabel htmlFor="reason_flagged" required>
-                        สาเหตุ
-                      </FormLabel>
-                      <Input id="reason_flagged" {...registerField(form, "reason_flagged")} />
-                      <FormMessage<CreateTaskFormValues> name="reason_flagged" />
-                    </FormItem>
-
-                    <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                      <FormItem>
-                        <FormLabel htmlFor="visit-lat">Latitude</FormLabel>
-                        <Input
-                          id="visit-lat"
-                          inputMode="decimal"
-                          onChange={(event) => setVisitLat(event.target.value)}
-                          value={visitLat}
-                        />
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel htmlFor="visit-lng">Longitude</FormLabel>
-                        <Input
-                          id="visit-lng"
-                          inputMode="decimal"
-                          onChange={(event) => setVisitLng(event.target.value)}
-                          value={visitLng}
-                        />
-                      </FormItem>
-                      <Button
-                        icon={MapPin}
-                        onClick={fillCurrentLocation}
-                        type="button"
-                        variant="outline"
-                      >
-                        ใช้ตำแหน่งปัจจุบัน
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-
-                {type === "ATTENDANCE" ? (
-                  <div className="grid gap-x-4 sm:grid-cols-2">
-                    <FormItem>
-                      <FormLabel required>โรงเรียน</FormLabel>
-                      <Combobox
-                        aria-invalid={
-                          locationError && form.formState.isSubmitted ? true : undefined
-                        }
-                        disabled={scope.schoolLocked}
-                        onChange={(next) => scope.setSchoolId(next)}
-                        options={[
-                          { value: "", label: "เลือกโรงเรียน" },
-                          ...scope.schools.map((school) => ({
-                            value: String(school.id),
-                            label: school.name,
-                          })),
-                        ]}
-                        placeholder="ค้นหาโรงเรียน"
-                        value={scope.schoolId}
-                      />
-                      <p
-                        className={cn(
-                          "min-h-5 text-sm font-medium text-red-600",
-                          !(locationError && form.formState.isSubmitted) && "invisible",
-                        )}
-                      >
-                        {locationError && form.formState.isSubmitted ? locationError : "."}
-                      </p>
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel>ระดับชั้น</FormLabel>
-                      <Combobox
-                        disabled={!scope.schoolId || scope.gradeLocked}
-                        onChange={(next) => scope.setGrade(next)}
-                        options={[
-                          { value: "", label: "ทุกชั้น" },
-                          ...scope.gradeLevels.map((grade) => ({
-                            value: grade.label,
-                            label: grade.label,
-                          })),
-                        ]}
-                        placeholder="ค้นหาชั้น"
-                        value={scope.grade}
-                      />
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel>ห้อง</FormLabel>
-                      <Combobox
-                        disabled={!scope.grade || scope.roomLocked}
-                        onChange={(next) => scope.setRoom(next)}
-                        options={[
-                          { value: "", label: "ทุกห้อง" },
-                          ...scope.rooms.map((room) => ({
-                            value: room,
-                            label: `ห้อง ${room}`,
-                          })),
-                        ]}
-                        placeholder="ค้นหาห้อง"
-                        value={scope.room}
-                      />
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel htmlFor="subject" required>
-                        วิชา
-                      </FormLabel>
-                      <Input id="subject" {...registerField(form, "subject")} />
-                      <FormMessage<CreateTaskFormValues> name="subject" />
-                    </FormItem>
-                  </div>
-                ) : null}
-
-                {type === "LOGIN" ? (
-                  <>
-                    <FormItem>
-                      <FormLabel htmlFor="role" required>
-                        ตำแหน่ง
-                      </FormLabel>
-                      <Combobox
-                        aria-invalid={form.formState.errors.role ? true : undefined}
-                        id="role"
-                        name="role"
-                        onChange={(next) =>
-                          form.setValue("role", next, {
-                            shouldValidate: form.formState.isSubmitted,
-                          })
-                        }
-                        options={[
-                          { value: "", label: "เลือกตำแหน่ง" },
-                          ...(rolesQuery.data ?? []).map((role) => ({
-                            value: role.name,
-                            label: role.label,
-                          })),
-                        ]}
-                        searchable={false}
-                        value={selectedRole}
-                      />
-                      <FormMessage<CreateTaskFormValues> name="role" />
-                    </FormItem>
-                    <PermissionScopeEditor
-                      baselinePermissions={baseline}
-                      dataScope={dataScope}
-                      disabled={createTask.isPending}
-                      onDataScopeChange={setDataScope}
-                      onPermissionsChange={setPermissions}
-                      permissions={permissions}
-                      role={selectedRole}
-                      roleLabel={roleLabel}
-                      scopeMode={scopeMode}
-                      showErrors={form.formState.isSubmitted}
-                    />
-                  </>
-                ) : null}
-
-                <div className="grid gap-x-4 sm:grid-cols-[1fr_160px]">
-                  <FormItem>
-                    <FormLabel htmlFor="expires_value" required>
-                      อายุลิงก์
-                    </FormLabel>
-                    <NumericInput
-                      id="expires_value"
-                      maxLength={4}
-                      {...registerField(form, "expires_value")}
-                    />
-                    <FormMessage<CreateTaskFormValues> name="expires_value" />
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel htmlFor="expires_unit">หน่วย</FormLabel>
-                    <Combobox
-                      id="expires_unit"
-                      name="expires_unit"
-                      onChange={(next) =>
-                        form.setValue(
-                          "expires_unit",
-                          next as CreateTaskFormValues["expires_unit"],
-                          { shouldValidate: form.formState.isSubmitted },
-                        )
-                      }
-                      options={TASK_DURATION_UNIT_OPTIONS.map((option) => ({
-                        value: option.value,
-                        label: option.label,
-                      }))}
-                      searchable={false}
-                      value={expiresUnit}
-                    />
-                    <FormMessage<CreateTaskFormValues> name="expires_unit" />
-                  </FormItem>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    isLoading={createTask.isPending}
-                    loadingText="กำลังสร้าง"
-                    size="lg"
-                    type="submit"
-                  >
-                    สร้างลิงก์
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </Form>
-        ) : null}
+        {activeType ? <CreateTaskTypeForm key={activeType} type={activeType} /> : null}
       </div>
     </PageShell>
   );

@@ -85,6 +85,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<CreateTaskPage />, "create"),
       },
       {
+        path: "create/:type",
+        element: protectedElement(<CreateTaskPage />, "create"),
+      },
+      {
         path: "attendance",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
