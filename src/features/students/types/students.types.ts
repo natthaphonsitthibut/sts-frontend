@@ -13,6 +13,7 @@ export interface StudentListQuery {
   schoolId?: string;
   grade?: string;
   room?: string;
+  searchTerm?: string;
 }
 
 export interface StudentDetail extends Record<string, unknown> {

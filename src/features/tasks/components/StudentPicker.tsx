@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserRound, X } from "lucide-react";
-import { Button, Combobox, Input, Select } from "../../../components/base";
+import { Button, Combobox, Input } from "../../../components/base";
 import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 
@@ -72,28 +72,25 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
     [scope.schools, province, district, subDistrict],
   );
 
+  const term = search.trim();
+  // Search server-side (scoped to the actor) so a name match is found even when
+  // no school is picked; once 2+ chars are typed, or a school is chosen to browse.
+  const canQuery = !manual && (Boolean(scope.schoolId) || term.length >= 2);
+
   const studentsQuery = useQuery({
-    queryKey: ["student-picker", scope.schoolId, scope.grade, scope.room],
+    queryKey: ["student-picker", scope.schoolId, scope.grade, scope.room, term],
     queryFn: () =>
       studentsService.getStudents({
         schoolId: scope.schoolId || undefined,
         grade: scope.grade || undefined,
         room: scope.room || undefined,
+        searchTerm: term || undefined,
       }),
-    enabled: !manual && Boolean(scope.schoolId),
+    enabled: canQuery,
   });
 
   const students = useMemo(() => studentsQuery.data ?? [], [studentsQuery.data]);
-  const term = search.trim().toLowerCase();
-  const results = useMemo(() => {
-    const matched = term
-      ? students.filter(
-          (student) =>
-            student.name.toLowerCase().includes(term) || student.id.includes(term),
-        )
-      : students;
-    return matched.slice(0, MAX_RESULTS);
-  }, [students, term]);
+  const results = useMemo(() => students.slice(0, MAX_RESULTS), [students]);
 
   function handleProvince(next: string): void {
     setProvince(next);
@@ -166,42 +163,36 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
     <div className="space-y-2">
       {scope.schoolLocked ? null : (
         <div className="grid gap-2 sm:grid-cols-3">
-          <Select
+          <Combobox
             disabled={disabled}
-            onChange={(event) => handleProvince(event.target.value)}
+            onChange={handleProvince}
+            options={[
+              { value: "", label: "ทุกจังหวัด" },
+              ...provinces.map((name) => ({ value: name, label: name })),
+            ]}
+            placeholder="ค้นหาจังหวัด"
             value={province}
-          >
-            <option value="">ทุกจังหวัด</option>
-            {provinces.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-          <Select
+          />
+          <Combobox
             disabled={disabled || !province}
-            onChange={(event) => handleDistrict(event.target.value)}
+            onChange={handleDistrict}
+            options={[
+              { value: "", label: "ทุกอำเภอ" },
+              ...districts.map((name) => ({ value: name, label: name })),
+            ]}
+            placeholder="ค้นหาอำเภอ"
             value={district}
-          >
-            <option value="">ทุกอำเภอ</option>
-            {districts.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-          <Select
+          />
+          <Combobox
             disabled={disabled || !district}
-            onChange={(event) => handleSubDistrict(event.target.value)}
+            onChange={handleSubDistrict}
+            options={[
+              { value: "", label: "ทุกตำบล" },
+              ...subDistricts.map((name) => ({ value: name, label: name })),
+            ]}
+            placeholder="ค้นหาตำบล"
             value={subDistrict}
-          >
-            <option value="">ทุกตำบล</option>
-            {subDistricts.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
+          />
         </div>
       )}
 
@@ -216,35 +207,31 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           <Combobox
             disabled={disabled}
             onChange={(next) => scope.setSchoolId(next)}
-            options={schoolOptions}
+            options={[{ value: "", label: "ทุกโรงเรียน" }, ...schoolOptions]}
             placeholder="ค้นหาโรงเรียน"
             value={scope.schoolId}
           />
         )}
-        <Select
+        <Combobox
           disabled={disabled || !scope.schoolId || scope.gradeLocked}
-          onChange={(event) => scope.setGrade(event.target.value)}
+          onChange={(next) => scope.setGrade(next)}
+          options={[
+            { value: "", label: "ทุกชั้น" },
+            ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
+          ]}
+          placeholder="ค้นหาชั้น"
           value={scope.grade}
-        >
-          <option value="">ทุกชั้น</option>
-          {scope.gradeLevels.map((grade) => (
-            <option key={grade.id} value={grade.label}>
-              {grade.label}
-            </option>
-          ))}
-        </Select>
-        <Select
+        />
+        <Combobox
           disabled={disabled || !scope.grade || scope.roomLocked}
-          onChange={(event) => scope.setRoom(event.target.value)}
+          onChange={(next) => scope.setRoom(next)}
+          options={[
+            { value: "", label: "ทุกห้อง" },
+            ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+          ]}
+          placeholder="ค้นหาห้อง"
           value={scope.room}
-        >
-          <option value="">ทุกห้อง</option>
-          {scope.rooms.map((room) => (
-            <option key={room} value={room}>
-              ห้อง {room}
-            </option>
-          ))}
-        </Select>
+        />
       </div>
 
       <Input
@@ -254,8 +241,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
         value={search}
       />
 
-      {!scope.schoolId ? (
-        <p className="text-sm text-slate-500">เลือกโรงเรียนก่อนเพื่อค้นหานักเรียน</p>
+      {!canQuery ? (
+        <p className="text-sm text-slate-500">
+          พิมพ์ชื่อหรือเลขบัตรอย่างน้อย 2 ตัว หรือเลือกโรงเรียนเพื่อดูทั้งห้อง
+        </p>
       ) : studentsQuery.isLoading ? (
         <p className="text-sm text-slate-500">กำลังโหลดรายชื่อ...</p>
       ) : results.length === 0 ? (

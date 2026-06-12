@@ -47,3 +47,37 @@ apiClient.interceptors.request.use((config) => {
 
   return config;
 });
+
+// When the admin session cookie has expired the client still looks "logged in"
+// (the user is cached in storage), so requests just start failing with 401 and
+// dropdowns silently go empty. Detect that once, clear the stale session, and
+// bounce to the login page so the user is never stranded. Guest/magic flows
+// (virtual_login) manage their own token errors, so they are left alone.
+let isHandlingExpiredSession = false;
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status =
+      error && typeof error === "object" && "response" in error
+        ? (error as { response?: { status?: number } }).response?.status
+        : undefined;
+
+    if (status === 401 && typeof window !== "undefined" && !isHandlingExpiredSession) {
+      const currentUser = readStoredAuthUser();
+      const onLoginPage = window.location.pathname.startsWith("/admin-access");
+
+      if (currentUser && !currentUser.virtual_login && !onLoginPage) {
+        isHandlingExpiredSession = true;
+        window.sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
+        window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+        const next = encodeURIComponent(
+          `${window.location.pathname}${window.location.search}`,
+        );
+        window.location.assign(`/admin-access?next=${next}`);
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);

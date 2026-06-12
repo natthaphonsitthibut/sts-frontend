@@ -50,6 +50,10 @@ function buildStudentListParams(
   if (query.room && query.room !== "ALL") {
     params.room = query.room;
   }
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
   return params;
 }
 
