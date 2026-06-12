@@ -179,6 +179,9 @@ function UserForm({
 
   function handleSubmit(values: UserFormValues): void {
     if (scopeError) {
+      document
+        .getElementById("user-permission-scope")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -341,7 +344,7 @@ function UserForm({
             </FormItem>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4" id="user-permission-scope">
             <PermissionScopeEditor
               baselinePermissions={baseline}
               dataScope={dataScope}
@@ -352,20 +355,15 @@ function UserForm({
               role={selectedRole}
               roleLabel={roleLabel}
               scopeMode={scopeMode}
+              showErrors={form.formState.isSubmitted}
             />
           </div>
 
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {scopeError ? (
-              <p className="text-sm font-medium text-red-600 sm:mr-auto">
-                ยังบันทึกไม่ได้: {scopeError}
-              </p>
-            ) : null}
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button onClick={goBack} size="lg" type="button" variant="ghost">
               ยกเลิก
             </Button>
             <Button
-              disabled={Boolean(scopeError)}
               isLoading={saveUser.isPending}
               loadingText="กำลังบันทึก"
               size="lg"

@@ -70,6 +70,9 @@ export function Combobox({
           setQuery(event.target.value);
           setOpen(true);
         }}
+        // Reopen even when the field already has focus (e.g. right after a pick),
+        // otherwise onFocus won't fire again and the panel feels stuck.
+        onClick={() => setOpen(true)}
         onFocus={() => {
           setQuery("");
           setOpen(true);

@@ -6,9 +6,9 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Combobox,
   Input,
   Label,
-  Select,
   Tabs,
 } from "../../../components/base";
 import {
@@ -125,51 +125,45 @@ export function AttendanceCheckInPage() {
       >
         <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
           <ScopeField label="โรงเรียน">
-            <Select
-              aria-label="โรงเรียน"
+            <Combobox
               disabled={scope.isSchoolLocked}
-              onChange={(event) => setSchoolId(event.target.value)}
+              onChange={(next) => setSchoolId(next)}
+              options={[
+                { value: "", label: "เลือกโรงเรียน" },
+                ...schools.map((school) => ({
+                  value: String(school.id),
+                  label: school.name,
+                })),
+              ]}
+              placeholder="ค้นหาโรงเรียน"
               value={schoolId}
-            >
-              <option value="">เลือกโรงเรียน</option>
-              {schools.map((school) => (
-                <option key={school.id} value={String(school.id)}>
-                  {school.name}
-                </option>
-              ))}
-            </Select>
+            />
           </ScopeField>
 
           <ScopeField label="ระดับชั้น">
-            <Select
-              aria-label="ระดับชั้น"
+            <Combobox
               disabled={scope.isGradeLocked || !schoolId}
-              onChange={(event) => setGrade(event.target.value)}
+              onChange={(next) => setGrade(next)}
+              options={[
+                { value: "", label: schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน" },
+                ...gradeLevels.map((level) => ({ value: level.label, label: level.label })),
+              ]}
+              searchable={false}
               value={grade}
-            >
-              <option value="">{schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}</option>
-              {gradeLevels.map((level) => (
-                <option key={level.id} value={level.label}>
-                  {level.label}
-                </option>
-              ))}
-            </Select>
+            />
           </ScopeField>
 
           <ScopeField label="ห้อง">
-            <Select
-              aria-label="ห้อง"
+            <Combobox
               disabled={scope.isRoomLocked || !grade}
-              onChange={(event) => setRoom(event.target.value)}
+              onChange={(next) => setRoom(next)}
+              options={[
+                { value: "", label: grade ? "เลือกห้อง" : "เลือกชั้นก่อน" },
+                ...rooms.map((roomOption) => ({ value: roomOption, label: `ห้อง ${roomOption}` })),
+              ]}
+              searchable={false}
               value={room}
-            >
-              <option value="">{grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}</option>
-              {rooms.map((roomOption) => (
-                <option key={roomOption} value={roomOption}>
-                  ห้อง {roomOption}
-                </option>
-              ))}
-            </Select>
+            />
           </ScopeField>
 
           <ScopeField label="วันที่">

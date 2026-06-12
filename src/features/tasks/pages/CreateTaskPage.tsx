@@ -227,6 +227,9 @@ export function CreateTaskPage() {
 
   function handleValid(values: CreateTaskFormValues): void {
     if (!type || submitBlockError) {
+      document
+        .getElementById("create-task-detail")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     const payload: TaskCreatePayload = {
@@ -343,7 +346,7 @@ export function CreateTaskPage() {
 
         {type ? (
           <Form form={form} onSubmit={handleValid}>
-            <Card>
+            <Card id="create-task-detail">
               <CardHeader>
                 <CardTitle>รายละเอียด</CardTitle>
               </CardHeader>
@@ -439,7 +442,9 @@ export function CreateTaskPage() {
                     <FormItem>
                       <FormLabel required>โรงเรียน</FormLabel>
                       <Combobox
-                        aria-invalid={locationError ? true : undefined}
+                        aria-invalid={
+                          locationError && form.formState.isSubmitted ? true : undefined
+                        }
                         disabled={scope.schoolLocked}
                         onChange={(next) => scope.setSchoolId(next)}
                         options={[
@@ -455,10 +460,10 @@ export function CreateTaskPage() {
                       <p
                         className={cn(
                           "min-h-5 text-sm font-medium text-red-600",
-                          !locationError && "invisible",
+                          !(locationError && form.formState.isSubmitted) && "invisible",
                         )}
                       >
-                        {locationError ?? "."}
+                        {locationError && form.formState.isSubmitted ? locationError : "."}
                       </p>
                     </FormItem>
                     <FormItem>
@@ -540,6 +545,7 @@ export function CreateTaskPage() {
                       role={selectedRole}
                       roleLabel={roleLabel}
                       scopeMode={scopeMode}
+                      showErrors={form.formState.isSubmitted}
                     />
                   </>
                 ) : null}
@@ -579,14 +585,8 @@ export function CreateTaskPage() {
                   </FormItem>
                 </div>
 
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-                  {submitBlockError ? (
-                    <p className="text-sm font-medium text-red-600 sm:mr-auto">
-                      ยังสร้างไม่ได้: {submitBlockError}
-                    </p>
-                  ) : null}
+                <div className="flex justify-end">
                   <Button
-                    disabled={Boolean(submitBlockError)}
                     isLoading={createTask.isPending}
                     loadingText="กำลังสร้าง"
                     size="lg"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FileOutput } from "lucide-react";
-import { Button, Card, Checkbox, Select } from "../../../components/base";
+import { Button, Card, Checkbox, Combobox } from "../../../components/base";
 
 const EXPORT_TYPE_OPTIONS = ["ประเภทไฟล์", "PDF", "Excel", "CSV"] as const;
 
@@ -28,18 +28,14 @@ export function DataExportCard() {
         นำออกข้อมูล (Data Export)
       </div>
 
-      <Select
-        aria-label="ประเภทไฟล์ที่ต้องการส่งออก"
-        className="mb-3"
-        value={exportType}
-        onChange={(event) => setExportType(event.target.value)}
-      >
-        {EXPORT_TYPE_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </Select>
+      <div className="mb-3">
+        <Combobox
+          onChange={(next) => setExportType(next || EXPORT_TYPE_OPTIONS[0])}
+          options={EXPORT_TYPE_OPTIONS.map((option) => ({ value: option, label: option }))}
+          searchable={false}
+          value={exportType}
+        />
+      </div>
 
       <ul className="mb-3 space-y-2">
         {EXPORT_ITEMS.map((item) => (
