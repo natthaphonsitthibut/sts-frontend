@@ -25,7 +25,11 @@ import {
 import { CopyButton } from "../../../components/layout/copy-button";
 import { optionalThaiPhone } from "../../../lib/validation";
 import { taskService } from "../api/task.service";
-import { buildLineShareUrl, formatDateTime } from "../lib/task-presentation";
+import {
+  buildLineShareUrl,
+  formatDateTime,
+  normalizeTaskPublicLink,
+} from "../lib/task-presentation";
 import type { TaskDelegationResponse } from "../types/task.types";
 
 const delegateSchema = z.object({
@@ -77,13 +81,18 @@ export function DelegatePage() {
                   </AlertDescription>
                 </Alert>
                 <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
-                  {result.magic_link}
+                  {normalizeTaskPublicLink(result.magic_link)}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
+                  <CopyButton
+                    label="คัดลอก"
+                    size="md"
+                    value={normalizeTaskPublicLink(result.magic_link)}
+                    variant="outline"
+                  />
                   <a
                     className={buttonVariants({ variant: "outline" })}
-                    href={buildLineShareUrl(result.magic_link)}
+                    href={buildLineShareUrl(normalizeTaskPublicLink(result.magic_link))}
                     rel="noreferrer"
                     target="_blank"
                   >

@@ -63,6 +63,34 @@ export function copyText(value: string): void {
   void navigator.clipboard?.writeText(value);
 }
 
+/**
+ * Rebuild a backend-issued task link onto the *current* origin (so it works even
+ * when the API returns its own host, e.g. in dev) and drop any legacy `#/` hash
+ * prefix. Keeps the link on our own domain — nothing is sent to a third party.
+ */
+export function normalizeTaskPublicLink(rawLink: string): string {
+  if (!rawLink || typeof window === "undefined") {
+    return rawLink;
+  }
+  try {
+    const url = new URL(rawLink, window.location.origin);
+    const path = url.hash.startsWith("#/") ? url.hash.slice(1) : url.pathname;
+    return `${window.location.origin}${path}${url.search}`;
+  } catch {
+    return rawLink;
+  }
+}
+
+/**
+ * Public link to hand out for a created link. LOGIN links open the magic-login
+ * page (so the holder is signed in with the assigned role); other types open the
+ * guest task page.
+ */
+export function buildTaskResultLink(rawLink: string, isLoginLink: boolean): string {
+  const normalized = normalizeTaskPublicLink(rawLink);
+  return isLoginLink ? normalized.replace("/task/", "/login/magic/") : normalized;
+}
+
 /** Turn a stored (often relative) link into a full shareable URL. */
 export function toAbsoluteUrl(value: string): string {
   if (!value) {

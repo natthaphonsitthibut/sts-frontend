@@ -39,7 +39,7 @@ import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEdit
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
-import { buildLineShareUrl, formatDateTime } from "../lib/task-presentation";
+import { buildLineShareUrl, buildTaskResultLink, formatDateTime } from "../lib/task-presentation";
 import {
   TASK_DURATION_UNIT_OPTIONS,
   TASK_TYPE_OPTIONS,
@@ -284,6 +284,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   }
 
   if (result) {
+    const publicLink = buildTaskResultLink(result.magic_link, type === "LOGIN");
     return (
       <Card>
         <CardHeader>
@@ -297,13 +298,13 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
             </AlertDescription>
           </Alert>
           <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
-            {result.magic_link}
+            {publicLink}
           </div>
           <div className="flex flex-wrap gap-2">
-            <CopyButton label="คัดลอก" size="md" value={result.magic_link} variant="outline" />
+            <CopyButton label="คัดลอก" size="md" value={publicLink} variant="outline" />
             <a
               className={buttonVariants({ variant: "outline" })}
-              href={buildLineShareUrl(result.magic_link)}
+              href={buildLineShareUrl(publicLink)}
               rel="noreferrer"
               target="_blank"
             >
