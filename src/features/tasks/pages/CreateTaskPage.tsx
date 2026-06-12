@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -133,6 +133,16 @@ const createTaskSchema = z
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
 
+/** Pre-fill passed from the case dashboard's "สร้างลิงก์" action (a flagged student). */
+interface VisitPrefill {
+  existing_case_id?: string;
+  student_id?: string | null;
+  student_name?: string | null;
+  student_school?: string | null;
+  student_address?: string | null;
+  reason_flagged?: string | null;
+}
+
 function makeDefaults(type: TaskType): CreateTaskFormValues {
   return {
     task_type: type,
@@ -155,6 +165,11 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
  */
 function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const [result, setResult] = useState<TaskCreateResponse | null>(null);
+  const location = useLocation();
+  const prefill =
+    type === "VISIT"
+      ? ((location.state as { prefill?: VisitPrefill } | null)?.prefill ?? null)
+      : null;
   const rolesQuery = useQuery({
     queryKey: ["task-create-roles"],
     queryFn: loginLinksService.getRoleOptions,
@@ -164,12 +179,26 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   // creator's own scope so every link type stays inside their allowed area.
   const scope = useScopeCascade({ lockToActorScope: true });
   const [dataScope, setDataScope] = useState<DataScope>({});
-  const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(
+    prefill?.student_name
+      ? {
+          personId: prefill.student_id ?? null,
+          name: prefill.student_name,
+          school: prefill.student_school ?? "",
+        }
+      : null,
+  );
   const [visitLat, setVisitLat] = useState("");
   const [visitLng, setVisitLng] = useState("");
 
   const form = useForm<CreateTaskFormValues>({
-    defaultValues: makeDefaults(type),
+    defaultValues: {
+      ...makeDefaults(type),
+      student_name: prefill?.student_name ?? "",
+      student_school: prefill?.student_school ?? "",
+      student_address: prefill?.student_address ?? "",
+      reason_flagged: prefill?.reason_flagged ?? "",
+    },
     resolver: zodResolver(createTaskSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
@@ -260,6 +289,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         student_lat: visitLat ? Number(visitLat) : null,
         student_lng: visitLng ? Number(visitLng) : null,
         reason_flagged: values.reason_flagged || null,
+        existing_case_id: prefill?.existing_case_id ?? null,
       });
     }
 

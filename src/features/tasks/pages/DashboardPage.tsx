@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Plus } from "lucide-react";
-import { Badge } from "../../../components/base";
+import { Button } from "../../../components/base";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -28,6 +28,7 @@ import {
 import { DASHBOARD_CASE_STATUS_OPTIONS } from "../lib/task-options";
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const casesQuery = useQuery({
@@ -140,7 +141,26 @@ export function DashboardPage() {
                       ดูรายละเอียด
                     </Link>
                   ) : (
-                    <Badge variant="secondary">ยังไม่มีลิงก์</Badge>
+                    <Button
+                      icon={Plus}
+                      onClick={() =>
+                        void navigate("/create/visit", {
+                          state: {
+                            prefill: {
+                              existing_case_id: String(item.id),
+                              student_id: item.student_id ?? null,
+                              student_name: item.student_name,
+                              student_school: item.student_school ?? null,
+                              student_address: item.student_address ?? null,
+                              reason_flagged: item.reason_flagged ?? item.reason ?? null,
+                            },
+                          },
+                        })
+                      }
+                      size="sm"
+                    >
+                      สร้างลิงก์
+                    </Button>
                   )}
                 </DataTableCell>
               </DataTableRow>
