@@ -37,5 +37,10 @@ export function getPageTitle(pathname: string): string {
     return "ข้อมูลนักเรียน";
   }
 
+  // /create/:type (per task type) keeps the same header as the /create menu item.
+  if (pathname.startsWith("/create")) {
+    return MENU_TITLES["/create"] || "สร้างลิงก์";
+  }
+
   return MENU_TITLES[pathname] || EXTRA_TITLES[pathname] || "Student Tracking System";
 }
