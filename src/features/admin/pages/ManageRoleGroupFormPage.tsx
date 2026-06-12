@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
   Checkbox,
+  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -15,7 +16,6 @@ import {
   Input,
   NumericInput,
   registerField,
-  Select,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -59,6 +59,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
     roleGroup?.default_permissions ?? [],
   );
   const hasNoPermissions = permissions.length === 0;
+  const scopeMode = useWatch({ control: form.control, name: "scope_mode" });
 
   function goBack(): void {
     void navigate(MANAGE_ROLE_GROUPS_PATH);
@@ -132,13 +133,18 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
 
           <FormItem>
             <FormLabel htmlFor="role-scope">ขอบเขตข้อมูล</FormLabel>
-            <Select id="role-scope" {...registerField(form, "scope_mode")}>
-              {SCOPE_MODE_ENTRIES.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              id="role-scope"
+              name="scope_mode"
+              onChange={(next) =>
+                form.setValue("scope_mode", next as RoleGroupFormValues["scope_mode"], {
+                  shouldValidate: form.formState.isSubmitted,
+                })
+              }
+              options={SCOPE_MODE_ENTRIES.map(([value, label]) => ({ value, label }))}
+              searchable={false}
+              value={scopeMode}
+            />
             <FormMessage<RoleGroupFormValues> name="scope_mode" />
           </FormItem>
         </div>

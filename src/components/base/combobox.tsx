@@ -16,15 +16,19 @@ export interface ComboboxProps {
   emptyText?: string;
   disabled?: boolean;
   id?: string;
+  name?: string;
+  /** When false, behaves as a plain dropdown (no typing) but keeps the styled panel. */
+  searchable?: boolean;
   "aria-invalid"?: boolean;
 }
 
 const MAX_VISIBLE = 50;
 
 /**
- * Searchable single-select: type to filter, click to pick. Use instead of a
- * native Select when the option list is large (e.g. schools), where scrolling a
- * plain dropdown is impractical. Selection is controlled via `value`/`onChange`.
+ * Single-select with a consistent styled dropdown panel used across the app.
+ * `searchable` (default) lets the user type to filter — best for large lists
+ * (e.g. schools); set `searchable={false}` for a plain click-to-pick dropdown
+ * that still shares the same panel look. Controlled via `value`/`onChange`.
  */
 export function Combobox({
   value,
@@ -34,29 +38,35 @@ export function Combobox({
   emptyText = "ไม่พบรายการ",
   disabled,
   id,
+  name,
+  searchable = true,
   "aria-invalid": ariaInvalid,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
-  const term = query.trim().toLowerCase();
+  const effectiveTerm = searchable ? query.trim().toLowerCase() : "";
   const filtered = useMemo(() => {
-    const matched = term
-      ? options.filter((option) => option.label.toLowerCase().includes(term))
+    const matched = effectiveTerm
+      ? options.filter((option) => option.label.toLowerCase().includes(effectiveTerm))
       : options;
     return matched.slice(0, MAX_VISIBLE);
-  }, [options, term]);
+  }, [options, effectiveTerm]);
 
   return (
     <div className="relative">
       <Input
         aria-invalid={ariaInvalid}
-        className="pr-10"
+        className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
         disabled={disabled}
         id={id}
+        name={name}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         onChange={(event) => {
+          if (!searchable) {
+            return;
+          }
           setQuery(event.target.value);
           setOpen(true);
         }}
@@ -65,7 +75,8 @@ export function Combobox({
           setOpen(true);
         }}
         placeholder={placeholder}
-        value={open ? query : selectedLabel}
+        readOnly={!searchable}
+        value={searchable ? (open ? query : selectedLabel) : selectedLabel}
       />
       <ChevronDown
         className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-primary"

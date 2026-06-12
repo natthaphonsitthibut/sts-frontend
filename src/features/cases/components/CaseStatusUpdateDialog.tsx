@@ -8,9 +8,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Combobox,
   FormErrorAlert,
   Label,
-  Select,
   Textarea,
 } from "../../../components/base";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
@@ -85,19 +85,16 @@ export function CaseStatusUpdateDialog({
 
             <div className="space-y-2">
               <Label htmlFor="case-action">การดำเนินการ</Label>
-              <Select
+              <Combobox
                 id="case-action"
-                onChange={(event) =>
-                  setAction(event.target.value as CaseReviewAction)
-                }
+                onChange={(next) => setAction(next as CaseReviewAction)}
+                options={CASE_REVIEW_ACTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                searchable={false}
                 value={action}
-              >
-                {CASE_REVIEW_ACTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+              />
             </div>
 
             <div className="space-y-2">

@@ -10,8 +10,8 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Combobox,
   Label,
-  Select,
 } from "../../../components/base";
 import {
   PageShell,
@@ -56,17 +56,16 @@ export function ImportDataPage() {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="import-target">ประเภทข้อมูล</Label>
-              <Select
+              <Combobox
                 id="import-target"
-                onChange={(event) => setTarget(event.target.value as ImportMode)}
+                onChange={(next) => setTarget(next as ImportMode)}
+                options={IMPORT_MODE_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                searchable={false}
                 value={target}
-              >
-                {IMPORT_MODE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+              />
             </div>
 
             <div className="mt-4">

@@ -23,7 +23,6 @@ import {
   Input,
   NumericInput,
   registerField,
-  Select,
 } from "../../../components/base";
 import {
   ChoiceCardButton,
@@ -158,6 +157,7 @@ export function CreateTaskPage() {
     resolver: zodResolver(createTaskSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
+  const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -509,14 +509,25 @@ export function CreateTaskPage() {
                       <FormLabel htmlFor="role" required>
                         ตำแหน่ง
                       </FormLabel>
-                      <Select id="role" {...registerField(form, "role")}>
-                        <option value="">เลือก role</option>
-                        {(rolesQuery.data ?? []).map((role) => (
-                          <option key={role.name} value={role.name}>
-                            {role.label}
-                          </option>
-                        ))}
-                      </Select>
+                      <Combobox
+                        aria-invalid={form.formState.errors.role ? true : undefined}
+                        id="role"
+                        name="role"
+                        onChange={(next) =>
+                          form.setValue("role", next, {
+                            shouldValidate: form.formState.isSubmitted,
+                          })
+                        }
+                        options={[
+                          { value: "", label: "เลือกตำแหน่ง" },
+                          ...(rolesQuery.data ?? []).map((role) => ({
+                            value: role.name,
+                            label: role.label,
+                          })),
+                        ]}
+                        searchable={false}
+                        value={selectedRole}
+                      />
                       <FormMessage<CreateTaskFormValues> name="role" />
                     </FormItem>
                     <PermissionScopeEditor
@@ -547,13 +558,23 @@ export function CreateTaskPage() {
                   </FormItem>
                   <FormItem>
                     <FormLabel htmlFor="expires_unit">หน่วย</FormLabel>
-                    <Select id="expires_unit" {...registerField(form, "expires_unit")}>
-                      {TASK_DURATION_UNIT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </Select>
+                    <Combobox
+                      id="expires_unit"
+                      name="expires_unit"
+                      onChange={(next) =>
+                        form.setValue(
+                          "expires_unit",
+                          next as CreateTaskFormValues["expires_unit"],
+                          { shouldValidate: form.formState.isSubmitted },
+                        )
+                      }
+                      options={TASK_DURATION_UNIT_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                      searchable={false}
+                      value={expiresUnit}
+                    />
                     <FormMessage<CreateTaskFormValues> name="expires_unit" />
                   </FormItem>
                 </div>

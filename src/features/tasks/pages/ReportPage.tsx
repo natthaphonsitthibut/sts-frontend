@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Camera, MapPin } from "lucide-react";
 import { z } from "zod";
 import {
@@ -11,6 +11,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -18,7 +19,6 @@ import {
   FormMessage,
   Input,
   registerField,
-  Select,
   Textarea,
 } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
@@ -47,6 +47,7 @@ export function ReportPage() {
     defaultValues: { causeCategory: "", causeDetail: "", recommendation: "" },
     resolver: zodResolver(reportSchema),
   });
+  const causeCategory = useWatch({ control: form.control, name: "causeCategory" });
 
   const taskQuery = useQuery({
     queryKey: ["report-task", token],
@@ -118,14 +119,25 @@ export function ReportPage() {
                   <FormLabel htmlFor="cause-category" required>
                     ประเภทสาเหตุ
                   </FormLabel>
-                  <Select id="cause-category" {...registerField(form, "causeCategory")}>
-                    <option value="">เลือกประเภท</option>
-                    {VISIT_CAUSE_CATEGORY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <Combobox
+                    aria-invalid={form.formState.errors.causeCategory ? true : undefined}
+                    id="cause-category"
+                    name="causeCategory"
+                    onChange={(next) =>
+                      form.setValue("causeCategory", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    options={[
+                      { value: "", label: "เลือกประเภท" },
+                      ...VISIT_CAUSE_CATEGORY_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      })),
+                    ]}
+                    searchable={false}
+                    value={causeCategory}
+                  />
                   <FormMessage<ReportFormValues> name="causeCategory" />
                 </FormItem>
 

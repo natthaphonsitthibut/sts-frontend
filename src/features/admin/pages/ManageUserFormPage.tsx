@@ -6,6 +6,7 @@ import { ArrowLeft, UserCog } from "lucide-react";
 import {
   Button,
   Card,
+  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -15,7 +16,6 @@ import {
   NumericInput,
   PasswordInput,
   registerField,
-  Select,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -146,6 +146,7 @@ function UserForm({
     resolver: zodResolver(userFormSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
+  const selectedStatus = useWatch({ control: form.control, name: "status" });
 
   const roleDefinition = useMemo(
     () => rolesCatalog.find((item) => item.name === selectedRole),
@@ -297,26 +298,45 @@ function UserForm({
               <FormLabel htmlFor="role" required>
                 ตำแหน่ง
               </FormLabel>
-              <Select id="role" {...registerField(form, "role")}>
-                <option value="">เลือกตำแหน่ง</option>
-                {rolesCatalog.map((role) => (
-                  <option key={role.name} value={role.name}>
-                    {role.label || ROLE_LABELS[role.name] || role.name}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                aria-invalid={form.formState.errors.role ? true : undefined}
+                id="role"
+                name="role"
+                onChange={(next) =>
+                  form.setValue("role", next, {
+                    shouldValidate: form.formState.isSubmitted,
+                  })
+                }
+                options={[
+                  { value: "", label: "เลือกตำแหน่ง" },
+                  ...rolesCatalog.map((role) => ({
+                    value: role.name,
+                    label: role.label || ROLE_LABELS[role.name] || role.name,
+                  })),
+                ]}
+                searchable={false}
+                value={selectedRole}
+              />
               <FormMessage<UserFormValues> name="role" />
             </FormItem>
 
             <FormItem>
               <FormLabel htmlFor="status">สถานะ</FormLabel>
-              <Select id="status" {...registerField(form, "status")}>
-                {USER_STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                id="status"
+                name="status"
+                onChange={(next) =>
+                  form.setValue("status", next, {
+                    shouldValidate: form.formState.isSubmitted,
+                  })
+                }
+                options={USER_STATUS_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                searchable={false}
+                value={selectedStatus}
+              />
               <FormMessage<UserFormValues> name="status" />
             </FormItem>
           </div>
