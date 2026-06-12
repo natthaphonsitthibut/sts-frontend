@@ -13,6 +13,7 @@ export interface TaskCreatePayload {
   expires_value: number;
   expires_unit: TaskDurationUnit;
   student_name?: string | null;
+  student_id?: string | null;
   student_school?: string | null;
   student_address?: string | null;
   student_lat?: number | null;

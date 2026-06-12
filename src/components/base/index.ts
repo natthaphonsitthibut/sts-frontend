@@ -12,6 +12,7 @@ export {
   type CardProps,
 } from "./card";
 export { Checkbox, type CheckboxProps } from "./checkbox";
+export { Combobox, type ComboboxOption, type ComboboxProps } from "./combobox";
 export { useConfirm, type ConfirmOptions } from "./confirm-dialog";
 export {
   Dialog,

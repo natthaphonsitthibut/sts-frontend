@@ -30,10 +30,12 @@ import {
   PageToolbar,
 } from "../../../components/layout/page-primitives";
 import { CopyButton } from "../../../components/layout/copy-button";
+import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
+import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import { buildLineShareUrl, formatDateTime } from "../lib/task-presentation";
@@ -78,31 +80,38 @@ const createTaskSchema = z
     expires_unit: z.string().min(1),
   })
   .superRefine((values, ctx) => {
-    if (values.assigned_to_email && !isEmail(values.assigned_to_email)) {
+    // Every link type needs a contactable assignee email.
+    if (!values.assigned_to_email) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["assigned_to_email"],
+        message: "กรุณากรอกอีเมลผู้รับมอบหมาย",
+      });
+    } else if (!isEmail(values.assigned_to_email)) {
       ctx.addIssue({
         code: "custom",
         path: ["assigned_to_email"],
         message: "รูปแบบอีเมลไม่ถูกต้อง",
       });
     }
-    if (values.task_type === "LOGIN") {
-      if (!values.assigned_to_email) {
+    if (values.task_type === "LOGIN" && !values.role) {
+      ctx.addIssue({ code: "custom", path: ["role"], message: "กรุณาเลือกตำแหน่ง" });
+    }
+    if (values.task_type === "VISIT") {
+      if (!values.student_name) {
         ctx.addIssue({
           code: "custom",
-          path: ["assigned_to_email"],
-          message: "ลิงก์เข้าสู่ระบบต้องระบุอีเมล",
+          path: ["student_name"],
+          message: "กรุณาเลือกหรือกรอกชื่อนักเรียน",
         });
       }
-      if (!values.role) {
-        ctx.addIssue({ code: "custom", path: ["role"], message: "กรุณาเลือกตำแหน่ง" });
+      if (!values.reason_flagged) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["reason_flagged"],
+          message: "กรุณากรอกเหตุผล",
+        });
       }
-    }
-    if (values.task_type === "VISIT" && !values.student_name) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["student_name"],
-        message: "กรุณากรอกชื่อนักเรียน",
-      });
     }
     if (values.task_type === "ATTENDANCE" && !values.subject) {
       ctx.addIssue({ code: "custom", path: ["subject"], message: "กรุณากรอกวิชา" });
@@ -133,11 +142,15 @@ export function CreateTaskPage() {
     queryFn: loginLinksService.getRoleOptions,
     enabled: type === "LOGIN",
   });
-  // Same school → grade → room cascade as the check-in page.
-  const scope = useScopeCascade();
+  // Same school → grade → room cascade as the check-in page, locked to the
+  // creator's own scope so every link type stays inside their allowed area.
+  const scope = useScopeCascade({ lockToActorScope: true });
   // LOGIN links can carry custom permissions / data scope (same editor as the
   // login-links feature) so this page is the single full create-link flow.
   const [dataScope, setDataScope] = useState<DataScope>({});
+  const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
+  const [visitLat, setVisitLat] = useState("");
+  const [visitLng, setVisitLng] = useState("");
 
   const form = useForm<CreateTaskFormValues>({
     defaultValues: DEFAULT_VALUES,
@@ -165,6 +178,10 @@ export function CreateTaskPage() {
 
   const scopeError =
     type === "LOGIN" ? getScopeValidationError(scopeMode, dataScope, roleLabel) : null;
+  // ATTENDANCE must target at least a school, otherwise there is no roster to check.
+  const locationError =
+    type === "ATTENDANCE" && !scope.schoolId ? "กรุณาเลือกโรงเรียนที่จะเช็คชื่อ" : null;
+  const submitBlockError = scopeError ?? locationError;
 
   const createTask = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
@@ -177,8 +194,26 @@ export function CreateTaskPage() {
     form.setValue("task_type", next);
   }
 
+  function handleStudentChange(next: SelectedStudent | null): void {
+    setSelectedStudent(next);
+    form.setValue("student_name", next?.name ?? "", {
+      shouldValidate: form.formState.isSubmitted,
+    });
+    form.setValue("student_school", next?.school ?? "");
+  }
+
+  function fillCurrentLocation(): void {
+    if (!navigator.geolocation) {
+      return;
+    }
+    navigator.geolocation.getCurrentPosition((position) => {
+      setVisitLat(String(position.coords.latitude));
+      setVisitLng(String(position.coords.longitude));
+    });
+  }
+
   function handleValid(values: CreateTaskFormValues): void {
-    if (!type || scopeError) {
+    if (!type || submitBlockError) {
       return;
     }
     const payload: TaskCreatePayload = {
@@ -193,8 +228,11 @@ export function CreateTaskPage() {
     if (type === "VISIT") {
       Object.assign(payload, {
         student_name: values.student_name,
+        student_id: selectedStudent?.personId ?? null,
         student_school: values.student_school || null,
         student_address: values.student_address || null,
+        student_lat: visitLat ? Number(visitLat) : null,
+        student_lng: visitLng ? Number(visitLng) : null,
         reason_flagged: values.reason_flagged || null,
       });
     }
@@ -312,7 +350,7 @@ export function CreateTaskPage() {
                     <FormMessage<CreateTaskFormValues> name="assigned_to_name" />
                   </FormItem>
                   <FormItem>
-                    <FormLabel htmlFor="assigned_to_email" required={type === "LOGIN"}>
+                    <FormLabel htmlFor="assigned_to_email" required>
                       อีเมล
                     </FormLabel>
                     <Input
@@ -325,39 +363,73 @@ export function CreateTaskPage() {
                 </div>
 
                 {type === "VISIT" ? (
-                  <div className="grid gap-x-4 sm:grid-cols-2">
+                  <div className="space-y-4">
                     <FormItem>
-                      <FormLabel htmlFor="student_name" required>
-                        ชื่อนักเรียน
-                      </FormLabel>
-                      <Input id="student_name" {...registerField(form, "student_name")} />
+                      <FormLabel required>นักเรียน</FormLabel>
+                      <StudentPicker
+                        disabled={createTask.isPending}
+                        onChange={handleStudentChange}
+                        value={selectedStudent}
+                      />
                       <FormMessage<CreateTaskFormValues> name="student_name" />
                     </FormItem>
+
                     <FormItem>
-                      <FormLabel htmlFor="student_school">โรงเรียน</FormLabel>
-                      <Input id="student_school" {...registerField(form, "student_school")} />
-                      <FormMessage<CreateTaskFormValues> name="student_school" />
-                    </FormItem>
-                    <FormItem className="sm:col-span-2">
                       <FormLabel htmlFor="student_address">ที่อยู่</FormLabel>
                       <Input id="student_address" {...registerField(form, "student_address")} />
                       <FormMessage<CreateTaskFormValues> name="student_address" />
                     </FormItem>
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel htmlFor="reason_flagged">สาเหตุ</FormLabel>
+
+                    <FormItem>
+                      <FormLabel htmlFor="reason_flagged" required>
+                        สาเหตุ
+                      </FormLabel>
                       <Input id="reason_flagged" {...registerField(form, "reason_flagged")} />
                       <FormMessage<CreateTaskFormValues> name="reason_flagged" />
                     </FormItem>
+
+                    <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                      <FormItem>
+                        <FormLabel htmlFor="visit-lat">Latitude</FormLabel>
+                        <Input
+                          id="visit-lat"
+                          inputMode="decimal"
+                          onChange={(event) => setVisitLat(event.target.value)}
+                          value={visitLat}
+                        />
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel htmlFor="visit-lng">Longitude</FormLabel>
+                        <Input
+                          id="visit-lng"
+                          inputMode="decimal"
+                          onChange={(event) => setVisitLng(event.target.value)}
+                          value={visitLng}
+                        />
+                      </FormItem>
+                      <Button
+                        icon={MapPin}
+                        onClick={fillCurrentLocation}
+                        type="button"
+                        variant="outline"
+                      >
+                        ใช้ตำแหน่งปัจจุบัน
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
 
                 {type === "ATTENDANCE" ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2 text-sm font-medium">
-                      โรงเรียน
+                      <span>
+                        โรงเรียน<span className="ml-1 text-red-600">*</span>
+                      </span>
                       <Select
-                        value={scope.schoolId}
+                        aria-invalid={locationError ? true : undefined}
+                        disabled={scope.schoolLocked}
                         onChange={(event) => scope.setSchoolId(event.target.value)}
+                        value={scope.schoolId}
                       >
                         <option value="">เลือกโรงเรียน</option>
                         {scope.schools.map((school) => (
@@ -366,16 +438,24 @@ export function CreateTaskPage() {
                           </option>
                         ))}
                       </Select>
+                      <span
+                        className={cn(
+                          "text-sm font-medium text-red-600",
+                          !locationError && "invisible",
+                        )}
+                      >
+                        {locationError ?? "."}
+                      </span>
                     </label>
                     <label className="space-y-2 text-sm font-medium">
                       ระดับชั้น
                       <Select
-                        disabled={!scope.schoolId}
-                        value={scope.grade}
+                        disabled={!scope.schoolId || scope.gradeLocked}
                         onChange={(event) => scope.setGrade(event.target.value)}
+                        value={scope.grade}
                       >
                         <option value="">
-                          {scope.schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน"}
+                          {scope.schoolId ? "เลือกชั้น (ถ้ามี)" : "เลือกโรงเรียนก่อน"}
                         </option>
                         {scope.gradeLevels.map((grade) => (
                           <option key={grade.id} value={grade.label}>
@@ -387,18 +467,21 @@ export function CreateTaskPage() {
                     <label className="space-y-2 text-sm font-medium">
                       ห้อง
                       <Select
-                        disabled={!scope.grade}
-                        value={scope.room}
+                        disabled={!scope.grade || scope.roomLocked}
                         onChange={(event) => scope.setRoom(event.target.value)}
+                        value={scope.room}
                       >
                         <option value="">
-                          {scope.grade ? "เลือกห้อง" : "เลือกชั้นก่อน"}
+                          {scope.grade ? "เลือกห้อง (ถ้ามี)" : "เลือกชั้นก่อน"}
                         </option>
                         {scope.rooms.map((room) => (
                           <option key={room} value={room}>
                             ห้อง {room}
                           </option>
                         ))}
+                        {scope.room && !scope.rooms.includes(scope.room) ? (
+                          <option value={scope.room}>ห้อง {scope.room}</option>
+                        ) : null}
                       </Select>
                     </label>
                     <FormItem>
@@ -467,13 +550,13 @@ export function CreateTaskPage() {
                 </div>
 
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-                  {scopeError ? (
+                  {submitBlockError ? (
                     <p className="text-sm font-medium text-red-600 sm:mr-auto">
-                      ยังสร้างไม่ได้: {scopeError}
+                      ยังสร้างไม่ได้: {submitBlockError}
                     </p>
                   ) : null}
                   <Button
-                    disabled={Boolean(scopeError)}
+                    disabled={Boolean(submitBlockError)}
                     isLoading={createTask.isPending}
                     loadingText="กำลังสร้าง"
                     size="lg"
