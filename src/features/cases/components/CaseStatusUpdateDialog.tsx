@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
-  AlertDescription,
   Button,
   Dialog,
   DialogBody,
@@ -10,6 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  FormErrorAlert,
   Label,
   Select,
   Textarea,
@@ -79,13 +78,10 @@ export function CaseStatusUpdateDialog({
 
         <DialogBody>
           <div className="space-y-4">
-            {updateCase.isError ? (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  ไม่สามารถอัปเดตเคสได้ กรุณาลองอีกครั้ง
-                </AlertDescription>
-              </Alert>
-            ) : null}
+            <FormErrorAlert
+              error={updateCase.error}
+              fallback="ไม่สามารถอัปเดตเคสได้ กรุณาลองอีกครั้ง"
+            />
 
             <div className="space-y-2">
               <Label htmlFor="case-action">การดำเนินการ</Label>

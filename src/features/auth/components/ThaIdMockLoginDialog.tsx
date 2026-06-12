@@ -16,7 +16,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  Input,
+  NumericInput,
+  registerField,
 } from "../../../components/base";
 import {
   thaidMockLoginSchema,
@@ -88,12 +89,11 @@ export function ThaIdMockLoginDialog({
 
               <FormItem>
                 <FormLabel htmlFor="personId">เลขบัตรประชาชน</FormLabel>
-                <Input
+                <NumericInput
                   id="personId"
-                  inputMode="numeric"
                   maxLength={13}
                   placeholder="กรอก PersonID_Onec 13 หลัก"
-                  {...form.register("personId")}
+                  {...registerField(form, "personId")}
                 />
                 <FormMessage<ThaIdMockLoginFormValues> name="personId" />
               </FormItem>

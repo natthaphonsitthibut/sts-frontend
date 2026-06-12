@@ -5,8 +5,10 @@ import {
   Badge,
   Button,
   buttonVariants,
+  useConfirm,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
+import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { CopyButton } from "../../../components/layout/copy-button";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
@@ -65,6 +67,15 @@ export function AttendanceLinksDashboardPage() {
   // Only the row currently mutating should show the spinner — a shared pending
   // flag would spin every lock button at once and reflow the whole column.
   const pendingLinkId = setLock.isPending ? setLock.variables?.id : undefined;
+  const { confirm, dialog: confirmDialog } = useConfirm();
+
+  async function handleToggleLock(linkId: string, locked: boolean): Promise<void> {
+    const confirmed = await confirm(getLinkLockConfirm(locked));
+    if (!confirmed) {
+      return;
+    }
+    setLock.mutate({ id: linkId, locked: !locked });
+  }
 
   const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
   const filteredTasks = useMemo(() => {
@@ -224,10 +235,7 @@ export function AttendanceLinksDashboardPage() {
                           icon={locked ? LockOpen : Lock}
                           isLoading={pendingLinkId === task.active_link_id}
                           onClick={() =>
-                            setLock.mutate({
-                              id: task.active_link_id || "",
-                              locked: !locked,
-                            })
+                            void handleToggleLock(task.active_link_id || "", locked)
                           }
                           size="sm"
                           variant={locked ? "outline" : "destructive"}
@@ -243,6 +251,7 @@ export function AttendanceLinksDashboardPage() {
           </DataTable>
         )}
       </div>
+      {confirmDialog}
     </PageShell>
   );
 }

@@ -13,6 +13,8 @@ interface DataEnvelope<T> {
 interface RoleCatalogEntry {
   name: string;
   label?: string;
+  default_permissions?: string[];
+  scope_mode?: RoleOption["scope_mode"];
 }
 
 function normalizeArrayResponse<T>(
@@ -41,6 +43,8 @@ async function getRoleOptions(): Promise<RoleOption[]> {
   return normalizeArrayResponse(response.data).map((role) => ({
     name: role.name,
     label: role.label || role.name,
+    default_permissions: role.default_permissions ?? [],
+    scope_mode: role.scope_mode ?? "flexible",
   }));
 }
 

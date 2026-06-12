@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalEmail, optionalThaiPhone, thaiNationalId } from "../../../lib/validation";
 
 export const userFormSchema = z.object({
   username: z.string().trim().min(1, "กรุณากรอกชื่อผู้ใช้งาน"),
@@ -10,9 +11,9 @@ export const userFormSchema = z.object({
     }),
   FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
   LastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
-  PersonID_Onec: z.string().trim().min(1, "กรุณากรอกเลขบัตรประชาชน"),
-  phone: z.string().trim(),
-  email: z.string().trim(),
+  PersonID_Onec: thaiNationalId,
+  phone: optionalThaiPhone,
+  email: optionalEmail,
   affiliation: z.string().trim(),
   role: z.string().trim().min(1, "กรุณาเลือกตำแหน่ง"),
   status: z.string().trim().min(1),

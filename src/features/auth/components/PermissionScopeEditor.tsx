@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { RotateCw } from "lucide-react";
 import {
   Alert,
   AlertDescription,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -12,26 +14,27 @@ import {
   Select,
   Skeleton,
 } from "../../../components/base";
+import { cn } from "../../../lib/utils";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type {
   GradeLevelOption,
   SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
-import {
-  MENU_ITEMS,
-  ROLE_BASELINES,
-  type DataScope,
-  type MenuItem,
-} from "../lib/permissions";
+import type { RoleScopeMode } from "../../admin/types/admin.types";
+import { MENU_ITEMS, type DataScope, type MenuItem } from "../lib/permissions";
+import { getScopeFieldStates, getScopeValidationError } from "../lib/scope-validation";
+import { useRefreshSpin } from "../../../hooks/useRefreshSpin";
 
 interface PermissionScopeEditorProps {
   role: string;
+  roleLabel: string;
+  scopeMode: RoleScopeMode;
+  /** Standard permissions for the selected role — used to colour the diff. */
+  baselinePermissions: string[];
   permissions: string[];
   dataScope: DataScope;
-  customizePermissions: boolean;
   onPermissionsChange: (permissions: string[]) => void;
   onDataScopeChange: (dataScope: DataScope) => void;
-  onCustomizePermissionsChange: (enabled: boolean) => void;
   disabled?: boolean;
 }
 
@@ -40,7 +43,6 @@ interface PermissionOption {
   label: string;
 }
 
-const EMPTY_PERMISSIONS: string[] = [];
 const EMPTY_SCOPE: DataScope = {};
 const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
@@ -81,30 +83,47 @@ function withSingleValue<T extends string | number>(
   };
 }
 
-function normalizePermissions(role: string, permissions: string[]): string[] {
-  if (permissions.length > 0) {
-    return permissions;
+/** Colour each permission by how it differs from the role's standard set. */
+function permissionLabelClass(checked: boolean, inBaseline: boolean): string {
+  if (checked && inBaseline) {
+    return "text-slate-700";
   }
-  return ROLE_BASELINES[role] ?? EMPTY_PERMISSIONS;
+  if (checked && !inBaseline) {
+    return "text-emerald-600 font-semibold";
+  }
+  if (!checked && inBaseline) {
+    return "text-red-600 line-through";
+  }
+  return "text-slate-400";
 }
 
 export function PermissionScopeEditor({
   role,
+  roleLabel,
+  scopeMode,
+  baselinePermissions,
   permissions,
   dataScope = EMPTY_SCOPE,
-  customizePermissions,
   onPermissionsChange,
   onDataScopeChange,
-  onCustomizePermissionsChange,
   disabled = false,
 }: PermissionScopeEditorProps) {
+  const hasRole = role.trim().length > 0;
+  const fieldStates = getScopeFieldStates(scopeMode);
+  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel);
+  const isGlobalScope = scopeMode === "global";
+  const usesAreaScope = !isGlobalScope && scopeMode !== "flexible";
+  const { isRefreshing, refresh } = useRefreshSpin();
+
   const schoolsQuery = useQuery({
     queryKey: ["permission-scope-schools"],
     queryFn: attendanceLookupService.getSchools,
+    enabled: !isGlobalScope,
   });
   const gradeLevelsQuery = useQuery({
     queryKey: ["permission-scope-grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
+    enabled: fieldStates.grade_levels !== "forbidden",
   });
 
   const selectedSchoolId = singleString(dataScope.school_ids);
@@ -122,7 +141,7 @@ export function PermissionScopeEditor({
   const roomsQuery = useQuery({
     queryKey: ["permission-scope-rooms", selectedGradeLabel, selectedSchoolId],
     queryFn: () => attendanceLookupService.getRooms(selectedGradeLabel, selectedSchoolId),
-    enabled: Boolean(selectedGradeLabel),
+    enabled: Boolean(selectedGradeLabel) && fieldStates.room_ids !== "forbidden",
   });
   const rooms = roomsQuery.data ?? EMPTY_ROOMS;
 
@@ -167,17 +186,15 @@ export function PermissionScopeEditor({
     [schools, selectedDistrict, selectedProvince, selectedSubDistrict],
   );
 
-  const effectivePermissions = normalizePermissions(role, permissions);
   const isLookupLoading = schoolsQuery.isLoading || gradeLevelsQuery.isLoading;
   const isLookupError = schoolsQuery.isError || gradeLevelsQuery.isError;
 
   function togglePermission(permissionId: string, checked: boolean): void {
-    const source = normalizePermissions(role, permissions);
     if (checked) {
-      onPermissionsChange(Array.from(new Set([...source, permissionId])));
+      onPermissionsChange(Array.from(new Set([...permissions, permissionId])));
       return;
     }
-    onPermissionsChange(source.filter((permission) => permission !== permissionId));
+    onPermissionsChange(permissions.filter((permission) => permission !== permissionId));
   }
 
   function setProvince(value: string): void {
@@ -218,40 +235,62 @@ export function PermissionScopeEditor({
     });
   }
 
+  function requiredEmptyClass(state: string, value: string): string {
+    return state === "required" && !value ? "border-red-300 focus:border-red-400" : "";
+  }
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
           <CardTitle className="text-base">สิทธิ์การใช้งาน</CardTitle>
+          <Button
+            disabled={disabled || !hasRole}
+            icon={RotateCw}
+            isLoading={isRefreshing}
+            loadingIconMotion="refresh"
+            loadingText="รีเซ็ตเป็นค่ามาตรฐาน"
+            onClick={() => void refresh(() => onPermissionsChange(baselinePermissions))}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            รีเซ็ตเป็นค่ามาตรฐาน
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Checkbox
-            checked={customizePermissions}
-            disabled={disabled}
-            label="กำหนดสิทธิ์เองแทนสิทธิ์มาตรฐานของตำแหน่ง"
-            onChange={(event) => {
-              const checked = event.target.checked;
-              onCustomizePermissionsChange(checked);
-              onPermissionsChange(checked ? normalizePermissions(role, permissions) : []);
-            }}
-          />
-          {customizePermissions ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {PERMISSION_OPTIONS.map((permission) => (
-                <Checkbox
-                  checked={effectivePermissions.includes(permission.id)}
-                  disabled={disabled}
-                  key={permission.id}
-                  label={permission.label}
-                  onChange={(event) =>
-                    togglePermission(permission.id, event.target.checked)
-                  }
-                />
-              ))}
-            </div>
+          {hasRole ? (
+            <>
+              <p className="text-sm text-slate-500">
+                แสดงสิทธิ์มาตรฐานของตำแหน่งไว้ให้แล้ว ปรับเพิ่มหรือเอาออกได้ตามต้องการ
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <span className="text-slate-600">● มาตรฐานของตำแหน่ง</span>
+                <span className="font-semibold text-emerald-600">● เพิ่มจากมาตรฐาน</span>
+                <span className="text-red-600 line-through">● เอาออกจากมาตรฐาน</span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {PERMISSION_OPTIONS.map((permission) => {
+                  const checked = permissions.includes(permission.id);
+                  const inBaseline = baselinePermissions.includes(permission.id);
+                  return (
+                    <Checkbox
+                      checked={checked}
+                      className={permissionLabelClass(checked, inBaseline)}
+                      disabled={disabled}
+                      key={permission.id}
+                      label={permission.label}
+                      onChange={(event) =>
+                        togglePermission(permission.id, event.target.checked)
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <p className="text-sm text-slate-500">
-              ใช้สิทธิ์มาตรฐานตามตำแหน่งที่เลือก หากต้องการจำกัดหรือเพิ่มสิทธิ์ให้เปิดการกำหนดเอง
+              เลือกตำแหน่งก่อน เพื่อกำหนดสิทธิ์การใช้งาน
             </p>
           )}
         </CardContent>
@@ -261,8 +300,16 @@ export function PermissionScopeEditor({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">ขอบเขตข้อมูล</CardTitle>
         </CardHeader>
-        <CardContent>
-          {isLookupError ? (
+        <CardContent className="space-y-3">
+          {!hasRole ? (
+            <p className="text-sm text-slate-500">
+              เลือกตำแหน่งก่อน เพื่อกำหนดขอบเขตข้อมูล
+            </p>
+          ) : isGlobalScope ? (
+            <p className="text-sm text-slate-500">
+              ตำแหน่งนี้ใช้ขอบเขตข้อมูลระดับประเทศ จึงไม่ต้องระบุพื้นที่
+            </p>
+          ) : isLookupError ? (
             <Alert variant="destructive">
               <AlertDescription>
                 ไม่สามารถโหลดข้อมูลโรงเรียนหรือระดับชั้นสำหรับกำหนดขอบเขตได้
@@ -270,139 +317,184 @@ export function PermissionScopeEditor({
             </Alert>
           ) : isLookupLoading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {Array.from({ length: 6 }).map((_, index) => (
+              {Array.from({ length: 4 }).map((_, index) => (
                 <Skeleton className="h-10 w-full" key={index} />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="scope-province">จังหวัด</Label>
-                <Select
-                  disabled={disabled}
-                  id="scope-province"
-                  onChange={(event) => setProvince(event.target.value)}
-                  value={selectedProvince}
-                >
-                  <option value="">ทั้งหมด</option>
-                  {provinces.map((province) => (
-                    <option key={province} value={province}>
-                      {province}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+            <>
+              {usesAreaScope ? (
+                <p className="text-sm text-slate-500">
+                  ตำแหน่งนี้ต้องระบุพื้นที่ตามระดับสิทธิ์ ไม่สามารถเลือก “ทั้งหมด” ได้
+                </p>
+              ) : null}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {fieldStates.provinces !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-province">
+                      จังหวัด
+                      {fieldStates.provinces === "required" ? (
+                        <span className="ml-1 text-red-600">*</span>
+                      ) : null}
+                    </Label>
+                    <Select
+                      className={requiredEmptyClass(fieldStates.provinces, selectedProvince)}
+                      disabled={disabled}
+                      id="scope-province"
+                      onChange={(event) => setProvince(event.target.value)}
+                      value={selectedProvince}
+                    >
+                      <option value="">
+                        {fieldStates.provinces === "required" ? "— เลือกจังหวัด —" : "ทั้งหมด"}
+                      </option>
+                      {provinces.map((province) => (
+                        <option key={province} value={province}>
+                          {province}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="scope-district">อำเภอ</Label>
-                <Select
-                  disabled={disabled}
-                  id="scope-district"
-                  onChange={(event) => setDistrict(event.target.value)}
-                  value={selectedDistrict}
-                >
-                  <option value="">ทั้งหมด</option>
-                  {districts.map((district) => (
-                    <option key={district} value={district}>
-                      {district}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+                {fieldStates.districts !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-district">
+                      อำเภอ
+                      {fieldStates.districts === "required" ? (
+                        <span className="ml-1 text-red-600">*</span>
+                      ) : null}
+                    </Label>
+                    <Select
+                      className={requiredEmptyClass(fieldStates.districts, selectedDistrict)}
+                      disabled={disabled}
+                      id="scope-district"
+                      onChange={(event) => setDistrict(event.target.value)}
+                      value={selectedDistrict}
+                    >
+                      <option value="">
+                        {fieldStates.districts === "required" ? "— เลือกอำเภอ —" : "ทั้งหมด"}
+                      </option>
+                      {districts.map((district) => (
+                        <option key={district} value={district}>
+                          {district}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="scope-sub-district">ตำบล</Label>
-                <Select
-                  disabled={disabled}
-                  id="scope-sub-district"
-                  onChange={(event) => setSubDistrict(event.target.value)}
-                  value={selectedSubDistrict}
-                >
-                  <option value="">ทั้งหมด</option>
-                  {subDistricts.map((subDistrict) => (
-                    <option key={subDistrict} value={subDistrict}>
-                      {subDistrict}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+                {fieldStates.sub_districts !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-sub-district">
+                      ตำบล
+                      {fieldStates.sub_districts === "required" ? (
+                        <span className="ml-1 text-red-600">*</span>
+                      ) : null}
+                    </Label>
+                    <Select
+                      className={requiredEmptyClass(fieldStates.sub_districts, selectedSubDistrict)}
+                      disabled={disabled}
+                      id="scope-sub-district"
+                      onChange={(event) => setSubDistrict(event.target.value)}
+                      value={selectedSubDistrict}
+                    >
+                      <option value="">
+                        {fieldStates.sub_districts === "required" ? "— เลือกตำบล —" : "ทั้งหมด"}
+                      </option>
+                      {subDistricts.map((subDistrict) => (
+                        <option key={subDistrict} value={subDistrict}>
+                          {subDistrict}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="scope-school">โรงเรียน</Label>
-                <Select
-                  disabled={disabled}
-                  id="scope-school"
-                  onChange={(event) => setSchool(event.target.value)}
-                  value={selectedSchoolId}
-                >
-                  <option value="">ทุกโรงเรียน</option>
-                  {filteredSchools.map((school) => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+                {fieldStates.school_ids !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-school">
+                      โรงเรียน
+                      {fieldStates.school_ids === "required" ? (
+                        <span className="ml-1 text-red-600">*</span>
+                      ) : null}
+                    </Label>
+                    <Select
+                      className={requiredEmptyClass(fieldStates.school_ids, selectedSchoolId)}
+                      disabled={disabled}
+                      id="scope-school"
+                      onChange={(event) => setSchool(event.target.value)}
+                      value={selectedSchoolId}
+                    >
+                      <option value="">
+                        {fieldStates.school_ids === "required" ? "— เลือกโรงเรียน —" : "ทุกโรงเรียน"}
+                      </option>
+                      {filteredSchools.map((school) => (
+                        <option key={school.id} value={school.id}>
+                          {school.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="scope-grade">ระดับชั้น</Label>
-                <Select
-                  disabled={disabled}
-                  id="scope-grade"
-                  onChange={(event) =>
-                    onDataScopeChange({
-                      ...withSingleValue(dataScope, "grade_levels", numberValue(event.target.value)),
-                      room_ids: undefined,
-                    })
-                  }
-                  value={selectedGradeId}
-                >
-                  <option value="">ทุกระดับชั้น</option>
-                  {gradeLevels.map((grade) => (
-                    <option key={grade.id} value={grade.id}>
-                      {grade.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+                {fieldStates.grade_levels !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-grade">ระดับชั้น</Label>
+                    <Select
+                      disabled={disabled}
+                      id="scope-grade"
+                      onChange={(event) =>
+                        onDataScopeChange({
+                          ...withSingleValue(
+                            dataScope,
+                            "grade_levels",
+                            numberValue(event.target.value),
+                          ),
+                          room_ids: undefined,
+                        })
+                      }
+                      value={selectedGradeId}
+                    >
+                      <option value="">ทุกระดับชั้น</option>
+                      {gradeLevels.map((grade) => (
+                        <option key={grade.id} value={grade.id}>
+                          {grade.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="scope-room">ห้อง</Label>
-                <Select
-                  disabled={disabled || !selectedGradeId}
-                  id="scope-room"
-                  onChange={(event) =>
-                    onDataScopeChange(withSingleValue(dataScope, "room_ids", event.target.value))
-                  }
-                  value={selectedRoom}
-                >
-                  <option value="">ทุกห้อง</option>
-                  {rooms.map((room) => (
-                    <option key={room} value={room}>
-                      {room}
-                    </option>
-                  ))}
-                  {selectedRoom && !rooms.includes(selectedRoom) ? (
-                    <option value={selectedRoom}>{selectedRoom}</option>
-                  ) : null}
-                </Select>
+                {fieldStates.room_ids !== "forbidden" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="scope-room">ห้อง</Label>
+                    <Select
+                      disabled={disabled || !selectedGradeId}
+                      id="scope-room"
+                      onChange={(event) =>
+                        onDataScopeChange(withSingleValue(dataScope, "room_ids", event.target.value))
+                      }
+                      value={selectedRoom}
+                    >
+                      <option value="">ทุกห้อง</option>
+                      {rooms.map((room) => (
+                        <option key={room} value={room}>
+                          {room}
+                        </option>
+                      ))}
+                      {selectedRoom && !rooms.includes(selectedRoom) ? (
+                        <option value={selectedRoom}>{selectedRoom}</option>
+                      ) : null}
+                    </Select>
+                  </div>
+                ) : null}
               </div>
-
-              <div className="sm:col-span-2">
-                <Checkbox
-                  checked={dataScope.own_only === true}
-                  disabled={disabled}
-                  label="เห็นเฉพาะข้อมูลของตนเอง"
-                  onChange={(event) =>
-                    onDataScopeChange({
-                      ...dataScope,
-                      own_only: event.target.checked ? true : undefined,
-                    })
-                  }
-                />
-              </div>
-            </div>
+            </>
           )}
+
+          <p className={cn("min-h-5 text-sm font-medium text-red-600", !scopeError && "invisible")}>
+            {scopeError ?? "."}
+          </p>
         </CardContent>
       </Card>
     </div>

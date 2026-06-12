@@ -19,6 +19,7 @@ import {
   ProgressBar,
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
+import { getApiErrorMessage } from "../../../lib/api-error";
 import { ImportDropZone } from "../components/ImportDropZone";
 import { useSubmitImport } from "../hooks/useSubmitImport";
 import { IMPORT_MODE_OPTIONS, type ImportMode } from "../types/import.types";
@@ -87,8 +88,10 @@ export function ImportDataPage() {
               <Alert className="mt-4" variant="destructive">
                 <AlertTitle>นำเข้าไม่สำเร็จ</AlertTitle>
                 <AlertDescription>
-                  เกิดข้อผิดพลาดระหว่างนำเข้าข้อมูล กรุณาตรวจสอบไฟล์และคอลัมน์ให้ตรงกับเทมเพลต
-                  แล้วลองอีกครั้ง
+                  {getApiErrorMessage(
+                    submitImport.error,
+                    "เกิดข้อผิดพลาดระหว่างนำเข้าข้อมูล กรุณาตรวจสอบไฟล์และคอลัมน์ให้ตรงกับเทมเพลตแล้วลองอีกครั้ง",
+                  )}
                 </AlertDescription>
               </Alert>
             ) : null}

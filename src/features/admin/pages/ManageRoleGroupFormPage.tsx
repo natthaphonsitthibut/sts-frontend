@@ -4,16 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
-  Alert,
-  AlertDescription,
   Button,
   Card,
   Checkbox,
   Form,
+  FormErrorAlert,
   FormItem,
   FormLabel,
   FormMessage,
   Input,
+  NumericInput,
+  registerField,
   Select,
 } from "../../../components/base";
 import {
@@ -57,6 +58,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
   const [permissions, setPermissions] = useState<string[]>(
     roleGroup?.default_permissions ?? [],
   );
+  const hasNoPermissions = permissions.length === 0;
 
   function goBack(): void {
     void navigate(MANAGE_ROLE_GROUPS_PATH);
@@ -71,6 +73,9 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
   }
 
   function handleSubmit(values: RoleGroupFormValues): void {
+    if (hasNoPermissions) {
+      return;
+    }
     saveRoleGroup.mutate(
       {
         originalName: roleGroup?.name ?? null,
@@ -89,41 +94,45 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
   return (
     <Form form={form} onSubmit={handleSubmit}>
       <Card className="p-6">
-        {saveRoleGroup.isError ? (
-          <Alert className="mb-4" variant="destructive">
-            <AlertDescription>
-              บันทึกกลุ่มสิทธิ์ไม่สำเร็จ กรุณาลองอีกครั้ง
-            </AlertDescription>
-          </Alert>
-        ) : null}
+        <FormErrorAlert
+          className="mb-4"
+          error={saveRoleGroup.error}
+          fallback="บันทึกกลุ่มสิทธิ์ไม่สำเร็จ กรุณาลองอีกครั้ง"
+        />
 
         <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
           <FormItem>
-            <FormLabel htmlFor="role-name">รหัส role</FormLabel>
+            <FormLabel htmlFor="role-name" required>
+              รหัส role
+            </FormLabel>
             <Input
               disabled={isEdit}
               id="role-name"
               placeholder="เช่น ADMIN_SCHOOL"
-              {...form.register("name")}
+              {...registerField(form, "name")}
             />
             <FormMessage<RoleGroupFormValues> name="name" />
           </FormItem>
 
           <FormItem>
-            <FormLabel htmlFor="role-label">ชื่อที่แสดง</FormLabel>
-            <Input id="role-label" {...form.register("label")} />
+            <FormLabel htmlFor="role-label" required>
+              ชื่อที่แสดง
+            </FormLabel>
+            <Input id="role-label" {...registerField(form, "label")} />
             <FormMessage<RoleGroupFormValues> name="label" />
           </FormItem>
 
           <FormItem>
-            <FormLabel htmlFor="role-rank">ลำดับขั้น (rank)</FormLabel>
-            <Input id="role-rank" type="number" {...form.register("rank")} />
+            <FormLabel htmlFor="role-rank" required>
+              ลำดับขั้น (rank)
+            </FormLabel>
+            <NumericInput id="role-rank" maxLength={2} {...registerField(form, "rank")} />
             <FormMessage<RoleGroupFormValues> name="rank" />
           </FormItem>
 
           <FormItem>
             <FormLabel htmlFor="role-scope">ขอบเขตข้อมูล</FormLabel>
-            <Select id="role-scope" {...form.register("scope_mode")}>
+            <Select id="role-scope" {...registerField(form, "scope_mode")}>
               {SCOPE_MODE_ENTRIES.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -148,6 +157,9 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
               />
             ))}
           </div>
+          <p className={`mt-2 text-sm font-medium text-red-600 ${hasNoPermissions ? "" : "invisible"}`}>
+            กรุณาเลือกสิทธิ์อย่างน้อย 1 รายการ
+          </p>
         </div>
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -155,6 +167,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
             ยกเลิก
           </Button>
           <Button
+            disabled={hasNoPermissions}
             isLoading={saveRoleGroup.isPending}
             loadingText="กำลังบันทึก"
             size="lg"

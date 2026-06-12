@@ -10,6 +10,7 @@ import {
   FormMessage,
   Input,
   PasswordInput,
+  registerField,
 } from "../../../components/base";
 import {
   adminLoginSchema,
@@ -47,7 +48,7 @@ export function AdminLoginForm() {
             id="username"
             placeholder="กรอกชื่อผู้ใช้งาน"
             autoComplete="username"
-            {...form.register("username")}
+            {...registerField(form, "username")}
           />
           <FormMessage<AdminLoginFormValues> name="username" />
         </FormItem>
@@ -58,7 +59,7 @@ export function AdminLoginForm() {
             id="password"
             placeholder="กรอกรหัสผ่าน"
             autoComplete="current-password"
-            {...form.register("password")}
+            {...registerField(form, "password")}
           />
           <div className="flex items-center justify-between gap-3">
             <FormMessage<AdminLoginFormValues> name="password" />

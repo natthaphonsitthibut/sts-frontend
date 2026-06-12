@@ -1,4 +1,5 @@
 import type { DataScope } from "../../auth/lib/permissions";
+import type { RoleScopeMode } from "../../admin/types/admin.types";
 
 export interface LoginLink {
   id: string;
@@ -34,4 +35,8 @@ export interface LinkAdminResponse {
 export interface RoleOption {
   name: string;
   label: string;
+  /** Standard permissions for this role — used to pre-fill the permission editor. */
+  default_permissions: string[];
+  /** Scope rule for this role — drives the scope guard in the editor. */
+  scope_mode: RoleScopeMode;
 }

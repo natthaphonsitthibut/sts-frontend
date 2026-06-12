@@ -42,15 +42,15 @@ function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: Login
       </a>
       <CopyButton value={getLoginLinkUrl(link.magic_link)} />
       <Button
-        // Fixed min width so toggling "เปิดลิงก์"/"ปิดลิงก์" never changes the
-        // button width and shifts the copy button beside it.
-        className="min-w-[124px]"
+        // Fixed min width so toggling "เปิด"/"ปิด" (different glyph counts) never
+        // changes the button width and shifts the copy button beside it.
+        className="min-w-[88px]"
         icon={locked ? LockOpen : Lock}
         onClick={() => onToggleLock(link)}
         size="sm"
         variant={locked ? "outline" : "destructive"}
       >
-        {locked ? "เปิดลิงก์" : "ปิดลิงก์"}
+        {locked ? "เปิด" : "ปิด"}
       </Button>
     </div>
   );

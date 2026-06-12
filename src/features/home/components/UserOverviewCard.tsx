@@ -1,4 +1,5 @@
 import { Badge, Card } from "../../../components/base";
+import { cn } from "../../../lib/utils";
 
 interface UserOverviewCardProps {
   displayName: string;
@@ -16,7 +17,7 @@ export function UserOverviewCard({
   className,
 }: UserOverviewCardProps) {
   return (
-    <Card className={className}>
+    <Card className={cn("border-slate-100", className)}>
       <div className="flex min-h-24 items-center gap-4 p-5">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-lg font-bold text-muted-foreground">
           {initials}

@@ -35,8 +35,17 @@ export {
   type FormMessageProps,
   type FormProps,
 } from "./form";
+export { FormErrorAlert } from "./form-error-alert";
+export { registerField } from "./register-field";
 export { IconButton, type IconButtonProps } from "./icon-button";
-export { Input, PasswordInput, type InputProps, type PasswordInputProps } from "./input";
+export {
+  Input,
+  NumericInput,
+  PasswordInput,
+  type InputProps,
+  type NumericInputProps,
+  type PasswordInputProps,
+} from "./input";
 export { Label, type LabelProps } from "./label";
 export { Select, type SelectProps } from "./select";
 export { Skeleton, type SkeletonProps } from "./skeleton";

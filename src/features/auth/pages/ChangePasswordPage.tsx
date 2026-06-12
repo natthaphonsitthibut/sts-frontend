@@ -13,10 +13,12 @@ import {
   CardHeader,
   CardTitle,
   Form,
+  FormErrorAlert,
   FormItem,
   FormLabel,
   FormMessage,
   PasswordInput,
+  registerField,
 } from "../../../components/base";
 import { authService } from "../api/auth.service";
 import {
@@ -97,11 +99,10 @@ export function ChangePasswordPage() {
               <div className="space-y-4">
                 <div className="min-h-[74px]">
                   {changePassword.isError ? (
-                    <Alert variant="destructive">
-                      <AlertDescription>
-                        เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง
-                      </AlertDescription>
-                    </Alert>
+                    <FormErrorAlert
+                      error={changePassword.error}
+                      fallback="เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง"
+                    />
                   ) : (
                     <Alert variant="warning">
                       <AlertDescription>
@@ -116,7 +117,7 @@ export function ChangePasswordPage() {
                   <PasswordInput
                     autoComplete="current-password"
                     id="currentPassword"
-                    {...form.register("currentPassword")}
+                    {...registerField(form, "currentPassword")}
                   />
                   <FormMessage<ChangePasswordFormValues> name="currentPassword" />
                 </FormItem>
@@ -126,7 +127,7 @@ export function ChangePasswordPage() {
                   <PasswordInput
                     autoComplete="new-password"
                     id="newPassword"
-                    {...form.register("newPassword")}
+                    {...registerField(form, "newPassword")}
                   />
                   <FormMessage<ChangePasswordFormValues> name="newPassword" />
                 </FormItem>
@@ -136,7 +137,7 @@ export function ChangePasswordPage() {
                   <PasswordInput
                     autoComplete="new-password"
                     id="confirmPassword"
-                    {...form.register("confirmPassword")}
+                    {...registerField(form, "confirmPassword")}
                   />
                   <FormMessage<ChangePasswordFormValues> name="confirmPassword" />
                 </FormItem>

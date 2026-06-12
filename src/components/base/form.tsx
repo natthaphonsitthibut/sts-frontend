@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import {
   FormProvider,
   useFormContext,
+  type FieldErrors,
   type FieldPath,
   type FieldValues,
   type UseFormReturn,
@@ -20,9 +21,26 @@ export function Form<TFieldValues extends FieldValues>({
   form,
   onSubmit,
 }: FormProps<TFieldValues>) {
+  // On a failed submit, scroll to and focus the first invalid field so the user
+  // is taken straight to what is missing instead of scrolling to find it. Shared
+  // here so every form gets the same behaviour.
+  function scrollToFirstError(errors: FieldErrors<TFieldValues>): void {
+    const firstName = Object.keys(errors)[0];
+    if (!firstName) {
+      return;
+    }
+    const field = document.querySelector(`[name="${firstName}"]`);
+    if (field instanceof HTMLElement) {
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      field.focus({ preventScroll: true });
+    }
+  }
+
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>{children}</form>
+      <form noValidate onSubmit={form.handleSubmit(onSubmit, scrollToFirstError)}>
+        {children}
+      </form>
     </FormProvider>
   );
 }

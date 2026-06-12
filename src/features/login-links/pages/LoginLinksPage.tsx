@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link2, Plus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
+import { getLinkLockConfirm } from "../../../lib/link-lock";
 import {
   EmptyState,
   ErrorState,
@@ -72,14 +73,7 @@ export function LoginLinksPage() {
 
   async function handleToggleLock(link: LoginLink): Promise<void> {
     const locked = isLoginLinkLocked(link);
-    const confirmed = await confirm({
-      title: locked ? "เปิดลิงก์อีกครั้ง" : "ปิดลิงก์",
-      description: locked
-        ? "ต้องการเปิดลิงก์นี้อีกครั้งใช่หรือไม่?"
-        : "ต้องการปิดลิงก์นี้ใช่หรือไม่?",
-      confirmText: locked ? "เปิดลิงก์" : "ปิดลิงก์",
-      variant: locked ? "default" : "destructive",
-    });
+    const confirmed = await confirm(getLinkLockConfirm(locked));
     if (!confirmed) {
       return;
     }

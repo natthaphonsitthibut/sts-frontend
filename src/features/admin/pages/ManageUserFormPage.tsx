@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { ArrowLeft, Copy, UserCog } from "lucide-react";
+import { ArrowLeft, UserCog } from "lucide-react";
 import {
-  Alert,
-  AlertDescription,
   Button,
   Card,
   Form,
+  FormErrorAlert,
   FormItem,
   FormLabel,
   FormMessage,
   Input,
+  NumericInput,
   PasswordInput,
+  registerField,
   Select,
 } from "../../../components/base";
 import {
@@ -23,7 +24,16 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
-import { ROLE_LABELS } from "../../auth/lib/permissions";
+import { CredentialDialog } from "../../../components/layout/credential-dialog";
+import {
+  ROLE_BASELINES,
+  ROLE_LABELS,
+  type DataScope,
+} from "../../auth/lib/permissions";
+import {
+  getScopeFieldStates,
+  getScopeValidationError,
+} from "../../auth/lib/scope-validation";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { useRolesCatalog, useSaveUser, useUsers } from "../hooks/useUsers";
 import {
@@ -35,14 +45,59 @@ import { USER_STATUS_OPTIONS } from "../lib/admin-presentation";
 import type {
   ManagedUser,
   RoleDefinition,
+  RoleScopeMode,
   UserSavePayload,
 } from "../types/admin.types";
 
 const MANAGE_USERS_PATH = "/manage-users";
 
+const SCOPE_KEYS = [
+  "provinces",
+  "districts",
+  "sub_districts",
+  "school_ids",
+  "grade_levels",
+  "room_ids",
+] as const;
+
 function normalizeOptionalText(value: string): string | undefined {
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const set = new Set(a);
+  return b.every((item) => set.has(item));
+}
+
+function clearForbiddenScopeFields(
+  scope: DataScope,
+  scopeMode: RoleScopeMode,
+): DataScope {
+  const states = getScopeFieldStates(scopeMode);
+  let changed = false;
+  const next: DataScope = { ...scope };
+  for (const key of SCOPE_KEYS) {
+    if (states[key] === "forbidden" && next[key] !== undefined) {
+      next[key] = undefined;
+      changed = true;
+    }
+  }
+  return changed ? next : scope;
+}
+
+function resolveBaseline(
+  role: string,
+  rolesCatalog: RoleDefinition[],
+): string[] {
+  const definition = rolesCatalog.find((item) => item.name === role);
+  if (definition?.default_permissions?.length) {
+    return definition.default_permissions;
+  }
+  return ROLE_BASELINES[role] ?? [];
 }
 
 function toDefaults(user: ManagedUser | null): UserFormValues {
@@ -75,22 +130,57 @@ function UserForm({
   const saveUser = useSaveUser();
   const isEdit = Boolean(user?.id);
   const [generatedPassword, setGeneratedPassword] = useState("");
-  const [customizePermissions, setCustomizePermissions] = useState(
-    Boolean(user?.permissions?.length),
+  const initialRole = user?.role || user?.roles?.[0] || "";
+  const initialScopeMode =
+    rolesCatalog.find((item) => item.name === initialRole)?.scope_mode ?? "flexible";
+  const [permissions, setPermissions] = useState(
+    user?.permissions?.length
+      ? user.permissions
+      : resolveBaseline(initialRole, rolesCatalog),
   );
-  const [permissions, setPermissions] = useState(user?.permissions ?? []);
-  const [dataScope, setDataScope] = useState(user?.data_scope ?? {});
+  const [dataScope, setDataScope] = useState(() =>
+    clearForbiddenScopeFields(user?.data_scope ?? {}, initialScopeMode),
+  );
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
     resolver: zodResolver(userFormSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
 
+  const roleDefinition = useMemo(
+    () => rolesCatalog.find((item) => item.name === selectedRole),
+    [rolesCatalog, selectedRole],
+  );
+  const baseline = useMemo(
+    () => resolveBaseline(selectedRole, rolesCatalog),
+    [selectedRole, rolesCatalog],
+  );
+  const scopeMode = roleDefinition?.scope_mode ?? "flexible";
+  const roleLabel = roleDefinition?.label ?? ROLE_LABELS[selectedRole] ?? selectedRole;
+
+  // Adjust dependent state when the role changes — done during render (React's
+  // recommended pattern) rather than in an effect: keep the permission set in
+  // step with the new role's standard set until the user customises it, and
+  // drop any scope levels the new role is not allowed to set.
+  const [trackedRole, setTrackedRole] = useState(selectedRole);
+  if (selectedRole !== trackedRole) {
+    setTrackedRole(selectedRole);
+    setPermissions(baseline);
+    setDataScope((current) => clearForbiddenScopeFields(current, scopeMode));
+  }
+
+  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel);
+  const isCustomized = !sameSet(permissions, baseline);
+
   function goBack(): void {
     void navigate(MANAGE_USERS_PATH);
   }
 
   function handleSubmit(values: UserFormValues): void {
+    if (scopeError) {
+      return;
+    }
+
     const role = values.role.trim();
     const password = normalizeOptionalText(values.password);
     const phone = normalizeOptionalText(values.phone);
@@ -105,7 +195,7 @@ function UserForm({
       PersonID_Onec: values.PersonID_Onec.trim(),
       role,
       roles: [role],
-      permissions: customizePermissions ? permissions : [],
+      permissions: isCustomized ? permissions : [],
       status: values.status,
       data_scope: dataScope,
       ...(phone ? { phone } : {}),
@@ -128,149 +218,134 @@ function UserForm({
     );
   }
 
-  function copyGeneratedPassword(): void {
-    if (!generatedPassword) {
-      return;
-    }
-    void navigator.clipboard?.writeText(generatedPassword);
-  }
-
   return (
-    <Form form={form} onSubmit={handleSubmit}>
-      <Card className="p-6">
-        {saveUser.isError ? (
-          <Alert className="mb-4" variant="destructive">
-            <AlertDescription>
-              บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {generatedPassword ? (
-          <Alert className="mb-4" variant="warning">
-            <AlertDescription>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  รหัสผ่านชั่วคราว:{" "}
-                  <span className="font-mono font-bold">{generatedPassword}</span>
-                </div>
-                <Button
-                  icon={Copy}
-                  onClick={copyGeneratedPassword}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  คัดลอก
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-          <FormItem>
-            <FormLabel htmlFor="username">ชื่อผู้ใช้งาน</FormLabel>
-            <Input id="username" {...form.register("username")} />
-            <FormMessage<UserFormValues> name="username" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="password">
-              {isEdit
-                ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)"
-                : "รหัสผ่าน (เว้นว่างเพื่อสร้างอัตโนมัติ)"}
-            </FormLabel>
-            <PasswordInput id="password" {...form.register("password")} />
-            <FormMessage<UserFormValues> name="password" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="FirstName">ชื่อ</FormLabel>
-            <Input id="FirstName" {...form.register("FirstName")} />
-            <FormMessage<UserFormValues> name="FirstName" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="LastName">นามสกุล</FormLabel>
-            <Input id="LastName" {...form.register("LastName")} />
-            <FormMessage<UserFormValues> name="LastName" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="PersonID_Onec">เลขบัตรประชาชน</FormLabel>
-            <Input id="PersonID_Onec" {...form.register("PersonID_Onec")} />
-            <FormMessage<UserFormValues> name="PersonID_Onec" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="phone">เบอร์โทร</FormLabel>
-            <Input id="phone" {...form.register("phone")} />
-            <FormMessage<UserFormValues> name="phone" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="email">อีเมล</FormLabel>
-            <Input id="email" type="email" {...form.register("email")} />
-            <FormMessage<UserFormValues> name="email" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="affiliation">สังกัด</FormLabel>
-            <Input id="affiliation" {...form.register("affiliation")} />
-            <FormMessage<UserFormValues> name="affiliation" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="role">ตำแหน่ง</FormLabel>
-            <Select id="role" {...form.register("role")}>
-              <option value="">เลือกตำแหน่ง</option>
-              {rolesCatalog.map((role) => (
-                <option key={role.name} value={role.name}>
-                  {role.label || ROLE_LABELS[role.name] || role.name}
-                </option>
-              ))}
-            </Select>
-            <FormMessage<UserFormValues> name="role" />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel htmlFor="status">สถานะ</FormLabel>
-            <Select id="status" {...form.register("status")}>
-              {USER_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            <FormMessage<UserFormValues> name="status" />
-          </FormItem>
-        </div>
-
-        <div className="mt-4">
-          <PermissionScopeEditor
-            customizePermissions={customizePermissions}
-            dataScope={dataScope}
-            disabled={saveUser.isPending || Boolean(generatedPassword)}
-            onCustomizePermissionsChange={setCustomizePermissions}
-            onDataScopeChange={setDataScope}
-            onPermissionsChange={setPermissions}
-            permissions={permissions}
-            role={selectedRole}
+    <>
+      <Form form={form} onSubmit={handleSubmit}>
+        <Card className="p-6">
+          <FormErrorAlert
+            className="mb-4"
+            error={saveUser.error}
+            fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
           />
-        </div>
 
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            onClick={goBack}
-            size="lg"
-            type="button"
-            variant={generatedPassword ? "default" : "ghost"}
-          >
-            {generatedPassword ? "เสร็จสิ้น" : "ยกเลิก"}
-          </Button>
-          {!generatedPassword ? (
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+            <FormItem>
+              <FormLabel htmlFor="username" required>
+                ชื่อผู้ใช้งาน
+              </FormLabel>
+              <Input id="username" {...registerField(form, "username")} />
+              <FormMessage<UserFormValues> name="username" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="password">
+                {isEdit
+                  ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)"
+                  : "รหัสผ่าน (เว้นว่างเพื่อสร้างอัตโนมัติ)"}
+              </FormLabel>
+              <PasswordInput id="password" {...registerField(form, "password")} />
+              <FormMessage<UserFormValues> name="password" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="FirstName" required>
+                ชื่อ
+              </FormLabel>
+              <Input id="FirstName" {...registerField(form, "FirstName")} />
+              <FormMessage<UserFormValues> name="FirstName" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="LastName" required>
+                นามสกุล
+              </FormLabel>
+              <Input id="LastName" {...registerField(form, "LastName")} />
+              <FormMessage<UserFormValues> name="LastName" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="PersonID_Onec" required>
+                เลขบัตรประชาชน
+              </FormLabel>
+              <NumericInput
+                id="PersonID_Onec"
+                maxLength={13}
+                {...registerField(form, "PersonID_Onec")}
+              />
+              <FormMessage<UserFormValues> name="PersonID_Onec" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="phone">เบอร์โทร</FormLabel>
+              <NumericInput id="phone" maxLength={10} {...registerField(form, "phone")} />
+              <FormMessage<UserFormValues> name="phone" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="email">อีเมล</FormLabel>
+              <Input id="email" type="email" {...registerField(form, "email")} />
+              <FormMessage<UserFormValues> name="email" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="affiliation">สังกัด</FormLabel>
+              <Input id="affiliation" {...registerField(form, "affiliation")} />
+              <FormMessage<UserFormValues> name="affiliation" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="role" required>
+                ตำแหน่ง
+              </FormLabel>
+              <Select id="role" {...registerField(form, "role")}>
+                <option value="">เลือกตำแหน่ง</option>
+                {rolesCatalog.map((role) => (
+                  <option key={role.name} value={role.name}>
+                    {role.label || ROLE_LABELS[role.name] || role.name}
+                  </option>
+                ))}
+              </Select>
+              <FormMessage<UserFormValues> name="role" />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel htmlFor="status">สถานะ</FormLabel>
+              <Select id="status" {...registerField(form, "status")}>
+                {USER_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <FormMessage<UserFormValues> name="status" />
+            </FormItem>
+          </div>
+
+          <div className="mt-4">
+            <PermissionScopeEditor
+              baselinePermissions={baseline}
+              dataScope={dataScope}
+              disabled={saveUser.isPending}
+              onDataScopeChange={setDataScope}
+              onPermissionsChange={setPermissions}
+              permissions={permissions}
+              role={selectedRole}
+              roleLabel={roleLabel}
+              scopeMode={scopeMode}
+            />
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {scopeError ? (
+              <p className="text-sm font-medium text-red-600 sm:mr-auto">
+                ยังบันทึกไม่ได้: {scopeError}
+              </p>
+            ) : null}
+            <Button onClick={goBack} size="lg" type="button" variant="ghost">
+              ยกเลิก
+            </Button>
             <Button
+              disabled={Boolean(scopeError)}
               isLoading={saveUser.isPending}
               loadingText="กำลังบันทึก"
               size="lg"
@@ -278,10 +353,19 @@ function UserForm({
             >
               บันทึก
             </Button>
-          ) : null}
-        </div>
-      </Card>
-    </Form>
+          </div>
+        </Card>
+      </Form>
+
+      <CredentialDialog
+        onClose={() => {
+          setGeneratedPassword("");
+          goBack();
+        }}
+        open={Boolean(generatedPassword)}
+        value={generatedPassword}
+      />
+    </>
   );
 }
 
