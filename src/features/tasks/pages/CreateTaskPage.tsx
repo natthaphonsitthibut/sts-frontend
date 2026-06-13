@@ -376,7 +376,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
             fallback="สร้างลิงก์ไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
           />
 
-          <div className="grid gap-x-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="assigned_to_name" required>
                 ผู้รับมอบหมาย
@@ -508,7 +508,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                   </FormItem>
                 </div>
               )}
-              <div className="grid gap-x-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormItem>
                   <FormLabel required>โรงเรียน</FormLabel>
                   <Combobox
