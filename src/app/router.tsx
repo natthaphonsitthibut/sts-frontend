@@ -110,7 +110,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "attendance-links/:token",
+        path: "attendance-links/:linkId",
         element: protectedElement(<AttendanceLinkDetailPage />, "attendance-dashboard"),
       },
       {

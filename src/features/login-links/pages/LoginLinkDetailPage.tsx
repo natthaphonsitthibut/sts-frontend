@@ -8,8 +8,10 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
+import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { getLeafMenuItems } from "../../auth/lib/permissions";
-import { useLoginLinks } from "../hooks/useLoginLinks";
+import { LOGIN_LINKS_QUERY_KEY, useLoginLinks } from "../hooks/useLoginLinks";
 import {
   formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
@@ -61,9 +63,16 @@ export function LoginLinkDetailPage() {
         title="รายละเอียดลิงก์เข้าสู่ระบบ"
         description={link.assigned_to_name ?? undefined}
         actions={
-          <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
-            ย้อนกลับ
-          </Button>
+          <div className="flex flex-nowrap items-center gap-3">
+            <LinkLockToggleButton
+              linkId={link.id}
+              locked={link.admin_locked ?? 0}
+              invalidateKeys={[[LOGIN_LINKS_QUERY_KEY]]}
+            />
+            <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+              ย้อนกลับ
+            </Button>
+          </div>
         }
       />
       <div className="space-y-5">
@@ -84,7 +93,7 @@ export function LoginLinkDetailPage() {
             </div>
             <div>
               <div className="text-sm text-slate-500">สถานะ</div>
-              <Badge variant={status.variant}>{status.label}</Badge>
+              <LinkStatusBadge label={status.label} variant={status.variant} />
             </div>
             <div>
               <div className="text-sm text-slate-500">สร้างเมื่อ</div>

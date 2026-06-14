@@ -1,5 +1,6 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
+  AdminLinkDetail,
   LinkAdminPayload,
   LinkAdminResponse,
   LoginLink,
@@ -59,8 +60,20 @@ async function setLinkAdminLock(
   return response.data;
 }
 
+async function getAdminLinkDetail(
+  linkId: string,
+  date?: string,
+): Promise<AdminLinkDetail> {
+  const response = await apiClient.get<AdminLinkDetail>(
+    `/api/task-links/${linkId}/detail`,
+    { params: date ? { date } : undefined },
+  );
+  return response.data;
+}
+
 export const loginLinksService = {
   getLoginLinks,
   getRoleOptions,
   setLinkAdminLock,
+  getAdminLinkDetail,
 };

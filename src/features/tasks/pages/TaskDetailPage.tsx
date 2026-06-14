@@ -9,6 +9,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
+import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -48,6 +49,8 @@ export function TaskDetailPage() {
 
   const task = taskQuery.data;
   const firstSubmission = task.chain.find((link) => link.submission)?.submission;
+  // Only the current active link in the chain can be opened/closed by an admin.
+  const activeLink = task.chain.find((link) => link.status === "ACTIVE");
 
   return (
     <PageShell>
@@ -56,9 +59,18 @@ export function TaskDetailPage() {
         title="รายละเอียดภารกิจ"
         description={task.task_id}
         actions={
-          <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
-            ย้อนกลับ
-          </Button>
+          <div className="flex flex-nowrap items-center gap-3">
+            {activeLink ? (
+              <LinkLockToggleButton
+                linkId={String(activeLink.id)}
+                locked={activeLink.admin_locked ?? 0}
+                invalidateKeys={[["task-chain", taskId]]}
+              />
+            ) : null}
+            <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+              ย้อนกลับ
+            </Button>
+          </div>
         }
       />
       <div className="space-y-5">

@@ -34,11 +34,6 @@ function getLinkState(task: AttendanceTask): "ACTIVE" | "LOCKED" | "EXPIRED" {
   return "ACTIVE";
 }
 
-/** The raw token is the last segment of the shared link path (".../task/<token>"). */
-function linkToken(activeLink: string | null): string {
-  return activeLink?.split("/").filter(Boolean).pop() ?? "";
-}
-
 function LinkStateBadge({ task }: { task: AttendanceTask }) {
   const state = getLinkState(task);
   if (state === "LOCKED") return <LinkStatusBadge label="ถูกปิด" variant="destructive" />;
@@ -208,10 +203,10 @@ export function AttendanceLinksDashboardPage() {
                   </DataTableCell>
                   <DataTableCell>
                     <div className="flex flex-nowrap items-center justify-end gap-3">
-                      {task.active_link ? (
+                      {task.active_link_id ? (
                         <DetailLinkButton
                           state={{ date: task.created_at?.split("T")[0] }}
-                          to={`/attendance-links/${linkToken(task.active_link)}`}
+                          to={`/attendance-links/${task.active_link_id}`}
                         />
                       ) : null}
                       {task.active_link_id ? (
