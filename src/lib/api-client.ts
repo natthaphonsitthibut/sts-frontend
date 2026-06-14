@@ -66,8 +66,15 @@ apiClient.interceptors.response.use(
     if (status === 401 && typeof window !== "undefined" && !isHandlingExpiredSession) {
       const currentUser = readStoredAuthUser();
       const onLoginPage = window.location.pathname.startsWith("/admin-access");
+      // Public magic-link / task-link pages return 401 when the *link* is
+      // invalid / closed / expired — not because the admin's session lapsed.
+      // Those pages show their own "ลิงก์ไม่ถูกต้องหรือหมดอายุ" card, so never
+      // hijack them into the admin login (which also wiped a real admin session).
+      const onPublicLinkPage =
+        window.location.pathname.startsWith("/login/magic/") ||
+        window.location.pathname.startsWith("/task/");
 
-      if (currentUser && !currentUser.virtual_login && !onLoginPage) {
+      if (currentUser && !currentUser.virtual_login && !onLoginPage && !onPublicLinkPage) {
         isHandlingExpiredSession = true;
         window.sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
         window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
