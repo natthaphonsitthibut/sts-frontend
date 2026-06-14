@@ -1,6 +1,7 @@
 import { Lock, LockOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, useConfirm } from "../base";
+import { cn } from "../../lib/utils";
 import { loginLinksService } from "../../features/login-links/api/login-links.service";
 import { getLinkLockConfirm, isLinkLocked } from "../../lib/link-lock";
 
@@ -15,8 +16,10 @@ export interface LinkLockToggleButtonProps {
 
 /**
  * Shared open/close-link control. One source of truth for the admin lock action
- * (confirm wording from {@link getLinkLockConfirm}, lock call, cache refresh) so
- * every detail page (login / attendance / visit) toggles a link the same way.
+ * — same confirm dialog ({@link useConfirm} + {@link getLinkLockConfirm}), lock
+ * call and cache refresh as the dashboards — so every detail page (login /
+ * attendance / visit) toggles a link the same way and looks like the table's
+ * open/close button (outline when closed, destructive when open).
  */
 export function LinkLockToggleButton({
   linkId,
@@ -25,7 +28,7 @@ export function LinkLockToggleButton({
   className,
 }: LinkLockToggleButtonProps) {
   const isLocked = isLinkLocked(locked);
-  const confirm = useConfirm();
+  const { confirm, dialog } = useConfirm();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -52,14 +55,17 @@ export function LinkLockToggleButton({
   }
 
   return (
-    <Button
-      className={className}
-      icon={isLocked ? LockOpen : Lock}
-      variant={isLocked ? "outline" : "destructive"}
-      isLoading={mutation.isPending}
-      onClick={() => void handleClick()}
-    >
-      {isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
-    </Button>
+    <>
+      <Button
+        className={cn("min-w-[88px]", className)}
+        icon={isLocked ? LockOpen : Lock}
+        variant={isLocked ? "outline" : "destructive"}
+        isLoading={mutation.isPending}
+        onClick={() => void handleClick()}
+      >
+        {isLocked ? "เปิด" : "ปิด"}
+      </Button>
+      {dialog}
+    </>
   );
 }
