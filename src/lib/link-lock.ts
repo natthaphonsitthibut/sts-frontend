@@ -1,6 +1,16 @@
 import type { ConfirmOptions } from "../components/base";
 
 /**
+ * One source of truth for "is this link closed by an admin?". Robust to however
+ * the API serialises the flag (number `1`, string `"1"`, boolean `true`) so the
+ * status badge never wrongly reads a closed link as active. Shared by login and
+ * attendance/visit links so the detection never drifts between features.
+ */
+export function isLinkLocked(value: unknown): boolean {
+  return value === true || value === 1 || value === "1" || value === "true";
+}
+
+/**
  * One source of truth for the open/close-link confirmation, shared by every
  * dashboard that toggles a link (attendance links, login links, …) so the
  * wording, button text and styling never drift between pages.

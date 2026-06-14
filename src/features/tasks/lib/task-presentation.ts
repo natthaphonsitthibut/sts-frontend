@@ -105,6 +105,6 @@ export function toAbsoluteUrl(value: string): string {
   return `${window.location.origin}${value.startsWith("/") ? "" : "/"}${value}`;
 }
 
-export function isLinkLocked(value: boolean | number | null | undefined): boolean {
-  return value === true || value === 1;
-}
+// Re-exported from the shared lock module so login + attendance/visit links
+// detect "closed" the same robust way (number 1 / string "1" / boolean true).
+export { isLinkLocked } from "../../../lib/link-lock";

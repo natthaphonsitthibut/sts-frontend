@@ -1,4 +1,5 @@
 import type { BadgeProps } from "../../../components/base";
+import { isLinkLocked } from "../../../lib/link-lock";
 import type { LoginLink } from "../types/login-links.types";
 
 /** The login magic link is the task link with /task/ swapped for /login/magic/. */
@@ -17,7 +18,7 @@ export function getLoginLinkUrl(magicLink: string): string {
 }
 
 export function isLoginLinkLocked(link: LoginLink): boolean {
-  return link.admin_locked === true || link.admin_locked === 1;
+  return isLinkLocked(link.admin_locked);
 }
 
 interface LoginLinkStatusMeta {
