@@ -44,7 +44,7 @@ export const DASHBOARD_CASE_STATUS_OPTIONS = [
 export const LINK_STATE_OPTIONS = [
   { value: "ALL", label: "ทั้งหมด" },
   { value: "ACTIVE", label: "ใช้งานได้" },
-  { value: "LOCKED", label: "ถูกล็อก" },
+  { value: "LOCKED", label: "ถูกปิด" },
   { value: "EXPIRED", label: "ไม่มีลิงก์" },
 ] as const;
 

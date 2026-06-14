@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
 import { Lock, LockOpen } from "lucide-react";
-import { Badge, Button } from "../../../components/base";
+import { Button } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -8,6 +7,8 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import {
   formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
@@ -22,19 +23,14 @@ interface LoginLinkTableProps {
 
 function StatusBadge({ link }: { link: LoginLink }) {
   const meta = getLoginLinkStatusMeta(link);
-  return <Badge variant={meta.variant}>{meta.label}</Badge>;
+  return <LinkStatusBadge label={meta.label} variant={meta.variant} />;
 }
 
 function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: LoginLink }) {
   const locked = isLoginLinkLocked(link);
   return (
     <div className="flex flex-nowrap items-center justify-end gap-3">
-      <Link
-        className="whitespace-nowrap text-sm font-semibold text-primary"
-        to={`/login-links/${link.id}`}
-      >
-        ดูรายละเอียด
-      </Link>
+      <DetailLinkButton to={`/login-links/${link.id}`} />
       <Button
         // Fixed min width so toggling "เปิด"/"ปิด" (different glyph counts) never
         // changes the button width and shifts the copy button beside it.

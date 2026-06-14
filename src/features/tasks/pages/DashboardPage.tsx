@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { Button } from "../../../components/base";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import {
   ErrorState,
   FilterSelect,
@@ -137,11 +138,12 @@ export function DashboardPage() {
                 </DataTableCell>
                 <DataTableCell className="text-right">
                   {item.task_id ? (
-                    <Link className="font-semibold text-primary" to={`/task-detail/${item.task_id}`}>
-                      ดูรายละเอียด
-                    </Link>
+                    // Same min width as the "สร้างลิงก์" button so the action column
+                    // stays one uniform width whichever action a row shows.
+                    <DetailLinkButton className="min-w-[140px]" to={`/task-detail/${item.task_id}`} />
                   ) : (
                     <Button
+                      className="min-w-[140px]"
                       icon={Plus}
                       onClick={() =>
                         void navigate("/create/visit", {

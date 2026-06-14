@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Lock, LockOpen, Plus } from "lucide-react";
-import { Badge, Button, useConfirm } from "../../../components/base";
+import { Button, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import {
   ErrorState,
   FilterSelect,
@@ -40,9 +41,9 @@ function linkToken(activeLink: string | null): string {
 
 function LinkStateBadge({ task }: { task: AttendanceTask }) {
   const state = getLinkState(task);
-  if (state === "LOCKED") return <Badge variant="warning">ถูกล็อก</Badge>;
-  if (state === "EXPIRED") return <Badge variant="secondary">ไม่มีลิงก์</Badge>;
-  return <Badge variant="success">ใช้งานได้</Badge>;
+  if (state === "LOCKED") return <LinkStatusBadge label="ถูกปิด" variant="destructive" />;
+  if (state === "EXPIRED") return <LinkStatusBadge label="ไม่มีลิงก์" variant="secondary" />;
+  return <LinkStatusBadge label="ใช้งานได้" variant="success" />;
 }
 
 export function AttendanceLinksDashboardPage() {
@@ -145,7 +146,7 @@ export function AttendanceLinksDashboardPage() {
           items={[
             { label: "ทั้งหมด", value: summary.total, tone: "default" },
             { label: "ใช้งานได้", value: summary.active, tone: "success" },
-            { label: "ถูกล็อก", value: summary.locked, tone: "danger" },
+            { label: "ถูกปิด", value: summary.locked, tone: "danger" },
             { label: "ไม่มีลิงก์", value: summary.expired, tone: "warning" },
           ]}
         />
@@ -208,13 +209,10 @@ export function AttendanceLinksDashboardPage() {
                   <DataTableCell>
                     <div className="flex flex-nowrap items-center justify-end gap-3">
                       {task.active_link ? (
-                        <Link
-                          className="whitespace-nowrap text-sm font-semibold text-primary"
+                        <DetailLinkButton
                           state={{ date: task.created_at?.split("T")[0] }}
                           to={`/attendance-links/${linkToken(task.active_link)}`}
-                        >
-                          ดูรายละเอียด
-                        </Link>
+                        />
                       ) : null}
                       {task.active_link_id ? (
                         <Button

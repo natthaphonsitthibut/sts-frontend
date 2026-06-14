@@ -41,13 +41,13 @@ export function getLoginLinkState(
 export const LOGIN_LINK_STATE_OPTIONS = [
   { value: "ALL", label: "ทั้งหมด" },
   { value: "ACTIVE", label: "ใช้งานอยู่" },
-  { value: "LOCKED", label: "ถูกปิดโดยผู้ดูแล" },
+  { value: "LOCKED", label: "ถูกปิด" },
   { value: "EXPIRED", label: "หมดอายุ" },
 ] as const;
 
 export function getLoginLinkStatusMeta(link: LoginLink): LoginLinkStatusMeta {
   if (isLoginLinkLocked(link)) {
-    return { label: "ถูกปิดโดยผู้ดูแล", variant: "destructive" };
+    return { label: "ถูกปิด", variant: "destructive" };
   }
 
   const expiresAt = new Date(link.expires_at);

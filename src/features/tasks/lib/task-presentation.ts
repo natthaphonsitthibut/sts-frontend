@@ -38,7 +38,7 @@ export function getTaskTypeLabel(type?: string | null): string {
 
 export function getStatusLabel(status?: string | null): string {
   if (status === "ACTIVE") return "ใช้งานได้";
-  if (status === "LOCKED") return "ถูกล็อก";
+  if (status === "LOCKED") return "ถูกปิด";
   if (status === "EXPIRED") return "หมดอายุ";
   if (status === "COMPLETED") return "เสร็จสิ้น";
   if (status === "OPEN") return "เปิดเคส";
