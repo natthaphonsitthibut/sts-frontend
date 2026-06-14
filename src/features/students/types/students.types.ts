@@ -32,6 +32,8 @@ export interface StudentDetail extends Record<string, unknown> {
   grade?: string;
   grade_label?: string;
   room?: string;
+  /** Pre-built Thai home address (from student_term) for visit-form prefill. */
+  address?: string;
 }
 
 export interface StudentCase {

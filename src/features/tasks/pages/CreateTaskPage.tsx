@@ -38,6 +38,7 @@ import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
+import { studentsService } from "../../students/api/students.service";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import { buildLineShareUrl, buildTaskResultLink, formatDateTime } from "../lib/task-presentation";
@@ -190,8 +191,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         }
       : null,
   );
-  const [visitLat, setVisitLat] = useState("");
-  const [visitLng, setVisitLng] = useState("");
 
   const form = useForm<CreateTaskFormValues>({
     defaultValues: {
@@ -250,8 +249,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     form.reset(makeDefaults(type));
     setDataScope({});
     setSelectedStudent(null);
-    setVisitLat("");
-    setVisitLng("");
     setPermissions([]);
     scope.reset();
   }
@@ -262,16 +259,25 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       shouldValidate: form.formState.isSubmitted,
     });
     form.setValue("student_school", next?.school ?? "");
+    if (next?.personId) {
+      void prefillStudentAddress(next.personId);
+    }
   }
 
-  function fillCurrentLocation(): void {
-    if (!navigator.geolocation) {
-      return;
+  // Pull the student's stored home address so the visit form prefills it. The
+  // address stays editable (in case the student moved before the record is
+  // updated). Replaces the old "current location" button, which captured the
+  // creator's GPS — not the student's home.
+  async function prefillStudentAddress(personId: string): Promise<void> {
+    try {
+      const detail = await studentsService.getStudentById(personId);
+      const address = typeof detail.address === "string" ? detail.address : "";
+      if (address) {
+        form.setValue("student_address", address);
+      }
+    } catch {
+      // leave the address field as-is (editable)
     }
-    navigator.geolocation.getCurrentPosition((position) => {
-      setVisitLat(String(position.coords.latitude));
-      setVisitLng(String(position.coords.longitude));
-    });
   }
 
   function handleValid(values: CreateTaskFormValues): void {
@@ -296,8 +302,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         student_id: selectedStudent?.personId ?? null,
         student_school: values.student_school || null,
         student_address: values.student_address || null,
-        student_lat: visitLat ? Number(visitLat) : null,
-        student_lng: visitLng ? Number(visitLng) : null,
+        student_lat: null,
+        student_lng: null,
         reason_flagged: values.reason_flagged || null,
         existing_case_id: prefill?.existing_case_id ?? null,
       });
@@ -410,7 +416,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
               </FormItem>
 
               <FormItem>
-                <FormLabel htmlFor="student_address">ที่อยู่</FormLabel>
+                <FormLabel htmlFor="student_address">ที่อยู่บ้านนักเรียน</FormLabel>
                 <Input id="student_address" {...registerField(form, "student_address")} />
                 <FormMessage<CreateTaskFormValues> name="student_address" />
               </FormItem>
@@ -423,34 +429,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                 <FormMessage<CreateTaskFormValues> name="reason_flagged" />
               </FormItem>
 
-              <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                <FormItem>
-                  <FormLabel htmlFor="visit-lat">Latitude</FormLabel>
-                  <Input
-                    id="visit-lat"
-                    inputMode="decimal"
-                    onChange={(event) => setVisitLat(event.target.value)}
-                    value={visitLat}
-                  />
-                </FormItem>
-                <FormItem>
-                  <FormLabel htmlFor="visit-lng">Longitude</FormLabel>
-                  <Input
-                    id="visit-lng"
-                    inputMode="decimal"
-                    onChange={(event) => setVisitLng(event.target.value)}
-                    value={visitLng}
-                  />
-                </FormItem>
-                <Button
-                  icon={MapPin}
-                  onClick={fillCurrentLocation}
-                  type="button"
-                  variant="outline"
-                >
-                  ใช้ตำแหน่งปัจจุบัน
-                </Button>
-              </div>
             </div>
           ) : null}
 
