@@ -10,7 +10,6 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  buttonVariants,
   Card,
   CardContent,
   CardHeader,
@@ -30,7 +29,7 @@ import {
   PageShell,
   PageToolbar,
 } from "../../../components/layout/page-primitives";
-import { CopyButton } from "../../../components/layout/copy-button";
+import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
@@ -41,7 +40,7 @@ import { StudentPicker, type SelectedStudent } from "../components/StudentPicker
 import { studentsService } from "../../students/api/students.service";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
-import { buildLineShareUrl, buildTaskResultLink, formatDateTime } from "../lib/task-presentation";
+import { buildTaskResultLink, formatDateTime } from "../lib/task-presentation";
 import {
   TASK_DURATION_UNIT_OPTIONS,
   TASK_TYPE_OPTIONS,
@@ -343,19 +342,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
               หมดอายุ {formatDateTime(result.expires_at)}
             </AlertDescription>
           </Alert>
-          <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
-            {publicLink}
-          </div>
+          <LinkShareActions link={publicLink} />
           <div className="flex flex-wrap gap-2">
-            <CopyButton label="คัดลอก" size="md" value={publicLink} variant="outline" />
-            <a
-              className={buttonVariants({ variant: "outline" })}
-              href={buildLineShareUrl(publicLink)}
-              rel="noreferrer"
-              target="_blank"
-            >
-              แชร์ผ่าน LINE
-            </a>
             <Button icon={Plus} onClick={startNewTask}>
               สร้างรายการใหม่
             </Button>
