@@ -342,12 +342,14 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
               หมดอายุ {formatDateTime(result.expires_at)}
             </AlertDescription>
           </Alert>
-          <LinkShareActions link={publicLink} />
-          <div className="flex flex-wrap gap-2">
-            <Button icon={Plus} onClick={startNewTask}>
-              สร้างรายการใหม่
-            </Button>
-          </div>
+          <LinkShareActions
+            link={publicLink}
+            trailing={
+              <Button icon={Plus} onClick={startNewTask}>
+                สร้างรายการใหม่
+              </Button>
+            }
+          />
           {result.qr_code_data ? (
             <div className="rounded-lg border border-slate-200 p-4 text-center">
               <img alt="QR Code" className="mx-auto size-48" src={result.qr_code_data} />
