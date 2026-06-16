@@ -21,9 +21,14 @@ import {
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { studentsService } from "../api/students.service";
+import {
+  PII_FIELD_GROUPS,
+  PII_FIELD_LABELS,
+  PII_REASON_OPTIONS,
+  isPiiReasonCode,
+} from "../pii.constants";
 import type {
   StudentPiiField,
-  StudentPiiFieldGroup,
   StudentPiiReasonCode,
   StudentPiiRevealResponse,
 } from "../types/students.types";
@@ -46,28 +51,6 @@ const DEFAULT_FORM_VALUES: RevealFormValues = {
   reason_code: "",
   reason_note: "",
 };
-
-const FIELD_LABELS: Record<StudentPiiField, string> = {
-  PersonID_Onec: "เลขบัตรประชาชน",
-  PassportNumber_Onec: "เลขหนังสือเดินทาง",
-};
-
-const FIELD_GROUPS: Record<StudentPiiField, StudentPiiFieldGroup> = {
-  PersonID_Onec: "NATIONAL_ID",
-  PassportNumber_Onec: "PASSPORT",
-};
-
-const REASON_OPTIONS: { value: StudentPiiReasonCode; label: string }[] = [
-  { value: "HOME_VISIT", label: "เยี่ยมบ้าน/ติดตาม" },
-  { value: "CONTACT_PARENT", label: "ติดต่อผู้ปกครอง" },
-  { value: "VERIFY_DATA", label: "ตรวจสอบ/แก้ไขข้อมูล" },
-  { value: "COORDINATE_AGENCY", label: "ประสานหน่วยงาน" },
-  { value: "OTHER", label: "อื่นๆ (ระบุ)" },
-];
-
-function isReasonCode(value: string): value is StudentPiiReasonCode {
-  return REASON_OPTIONS.some((option) => option.value === value);
-}
 
 function getHttpStatus(error: unknown): number | undefined {
   if (error && typeof error === "object" && "response" in error) {
@@ -93,7 +76,7 @@ export function StudentPiiRevealDialog({
   });
   const { clearErrors, reset, setError, setValue } = form;
   const noteRequired = reasonCode === "OTHER";
-  const fieldLabel = field ? FIELD_LABELS[field] : "";
+  const fieldLabel = field ? PII_FIELD_LABELS[field] : "";
 
   function closeDialog(): void {
     reset(DEFAULT_FORM_VALUES);
@@ -104,7 +87,7 @@ export function StudentPiiRevealDialog({
   }
 
   function handleReasonChange(nextValue: string): void {
-    const nextReasonCode = isReasonCode(nextValue) ? nextValue : "";
+    const nextReasonCode = isPiiReasonCode(nextValue) ? nextValue : "";
     setServerError("");
     setReasonCode(nextReasonCode);
     setValue("reason_code", nextReasonCode, { shouldDirty: true });
@@ -116,7 +99,7 @@ export function StudentPiiRevealDialog({
       return;
     }
 
-    if (!isReasonCode(values.reason_code)) {
+    if (!isPiiReasonCode(values.reason_code)) {
       setError("reason_code", {
         type: "required",
         message: "กรุณาเลือกเหตุผล",
@@ -138,7 +121,7 @@ export function StudentPiiRevealDialog({
 
     try {
       const response = await studentsService.revealStudentPii(studentId, {
-        field_group: FIELD_GROUPS[field],
+        field_group: PII_FIELD_GROUPS[field],
         reason_code: values.reason_code,
         reason_note: reasonNote || undefined,
       });
@@ -194,7 +177,7 @@ export function StudentPiiRevealDialog({
                   id="pii-reveal-reason"
                   name="reason_code"
                   onChange={handleReasonChange}
-                  options={REASON_OPTIONS}
+                  options={PII_REASON_OPTIONS}
                   placeholder="เลือกเหตุผล"
                   searchable={false}
                   value={reasonCode}

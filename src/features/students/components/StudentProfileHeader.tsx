@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Eye, MapPin, Phone, UserRound } from "lucide-react";
+import { Eye, EyeOff, MapPin, Phone, UserRound } from "lucide-react";
 import { Button, Card, IconButton } from "../../../components/base";
+import { PII_FIELDS, PII_FIELD_LABELS } from "../pii.constants";
 import type {
   StudentDetail,
   StudentPiiField,
@@ -12,13 +13,6 @@ interface StudentProfileHeaderProps {
   student: StudentDetail;
   studentId: string;
 }
-
-const PII_FIELDS: StudentPiiField[] = ["PersonID_Onec", "PassportNumber_Onec"];
-
-const PII_FIELD_LABELS: Record<StudentPiiField, string> = {
-  PersonID_Onec: "เลขบัตรประชาชน",
-  PassportNumber_Onec: "เลขหนังสือเดินทาง",
-};
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -69,26 +63,51 @@ export function StudentProfileHeader({
     });
   }
 
+  // Re-mask a previously revealed field within the session (no server call —
+  // the reveal was already audited). Keeps the toggle button in place so the
+  // row does not shift between masked/revealed states.
+  function handleHide(field: StudentPiiField): void {
+    setRevealedValues((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   function renderPiiField(field: StudentPiiField) {
+    const maskable = maskedFields.includes(field);
     const masked = isMasked(field);
 
     return (
       <div>
         {PII_FIELD_LABELS[field]}:{" "}
-        <span className="font-medium text-slate-800">
+        <span className="font-mono font-medium tabular-nums text-slate-800">
           {getFieldValue(field)}
         </span>
-        {masked ? (
-          <Button
-            className="ml-2 align-middle"
-            icon={Eye}
-            onClick={() => setRevealField(field)}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            แสดง
-          </Button>
+        {maskable ? (
+          masked ? (
+            <Button
+              className="ml-2 align-middle"
+              icon={Eye}
+              onClick={() => setRevealField(field)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              แสดง
+            </Button>
+          ) : (
+            <Button
+              className="ml-2 align-middle"
+              icon={EyeOff}
+              onClick={() => handleHide(field)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              ซ่อน
+            </Button>
+          )
         ) : null}
       </div>
     );
