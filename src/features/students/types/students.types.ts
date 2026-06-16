@@ -18,6 +18,7 @@ export interface StudentListQuery {
 
 export interface StudentDetail extends Record<string, unknown> {
   PersonID_Onec: string;
+  PassportNumber_Onec?: string;
   FirstName?: string;
   LastName?: string;
   FirstName_Onec?: string;
@@ -32,8 +33,31 @@ export interface StudentDetail extends Record<string, unknown> {
   grade?: string;
   grade_label?: string;
   room?: string;
+  masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;
+}
+
+export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";
+
+export type StudentPiiFieldGroup = "NATIONAL_ID" | "PASSPORT";
+
+export type StudentPiiReasonCode =
+  | "HOME_VISIT"
+  | "CONTACT_PARENT"
+  | "VERIFY_DATA"
+  | "COORDINATE_AGENCY"
+  | "OTHER";
+
+export interface StudentPiiRevealRequest {
+  field_group: StudentPiiFieldGroup;
+  reason_code: StudentPiiReasonCode;
+  reason_note?: string;
+}
+
+export interface StudentPiiRevealResponse {
+  field_group: StudentPiiFieldGroup;
+  values: Partial<Record<StudentPiiField, string>>;
 }
 
 export interface StudentCase {

@@ -77,7 +77,9 @@ function RiskHistoryPanel({
       {isLoading ? (
         <SkeletonStack lines={3} className="py-2" />
       ) : sortedCases.length === 0 ? (
-        <div className="py-6 text-center text-slate-500">ไม่มีประวัติการติดตาม</div>
+        <div className="py-6 text-center text-slate-500">
+          ไม่มีประวัติการติดตาม
+        </div>
       ) : (
         <>
           <ul className="divide-y divide-slate-100">
@@ -128,7 +130,10 @@ function AttendanceStat({
   return (
     <div className="rounded-lg border border-slate-200 p-4 text-center">
       <div className="mb-1 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
-        <span className={`size-2 rounded-full ${dotClass}`} aria-hidden="true" />
+        <span
+          className={`size-2 rounded-full ${dotClass}`}
+          aria-hidden="true"
+        />
         <span>{label}</span>
       </div>
       <div className="text-2xl font-bold text-slate-800">{value}</div>
@@ -142,7 +147,9 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 
   return (
     <Card className="h-full p-6">
-      <h2 className="mb-4 text-lg font-bold text-slate-800">ประวัติการเข้าเรียน</h2>
+      <h2 className="mb-4 text-lg font-bold text-slate-800">
+        ประวัติการเข้าเรียน
+      </h2>
 
       {isLoading ? (
         <SkeletonStack lines={3} className="py-2" />
@@ -207,7 +214,7 @@ export function StudentDetailPage() {
     );
   }
 
-  if (isError || !student) {
+  if (!studentId || isError || !student) {
     return (
       <PageShell maxWidthClassName="max-w-[1000px]">
         <EmptyState
@@ -226,7 +233,11 @@ export function StudentDetailPage() {
 
   return (
     <PageShell maxWidthClassName="max-w-[1000px]">
-      <StudentProfileHeader student={student} />
+      <StudentProfileHeader
+        key={studentId}
+        student={student}
+        studentId={studentId}
+      />
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <RiskHistoryPanel cases={cases} isLoading={casesLoading} />

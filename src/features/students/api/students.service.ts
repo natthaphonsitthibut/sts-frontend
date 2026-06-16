@@ -4,6 +4,8 @@ import type {
   StudentAttendanceSummaryResponse,
   StudentCase,
   StudentDetail,
+  StudentPiiRevealRequest,
+  StudentPiiRevealResponse,
   StudentListItem,
   StudentListQuery,
 } from "../types/students.types";
@@ -15,6 +17,10 @@ interface DataEnvelope<T> {
 interface StudentsService {
   getStudents: (query?: StudentListQuery) => Promise<StudentListItem[]>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
+  revealStudentPii: (
+    studentId: string,
+    payload: StudentPiiRevealRequest,
+  ) => Promise<StudentPiiRevealResponse>;
   getStudentCasesByName: (studentName: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
@@ -110,6 +116,17 @@ async function getStudentById(studentId: string): Promise<StudentDetail> {
   return response.data;
 }
 
+async function revealStudentPii(
+  studentId: string,
+  payload: StudentPiiRevealRequest,
+): Promise<StudentPiiRevealResponse> {
+  const response = await apiClient.post<StudentPiiRevealResponse>(
+    `/api/students/${studentId}/pii-reveal`,
+    payload,
+  );
+  return response.data;
+}
+
 async function getStudentCasesByName(
   studentName: string,
 ): Promise<StudentCase[]> {
@@ -140,7 +157,9 @@ async function getStudentAttendanceSummary(
     status: normalizeAttendanceStatus(record.status),
   }));
 
-  const stats = summaryRecords.reduce<StudentAttendanceSummaryResponse["stats"]>(
+  const stats = summaryRecords.reduce<
+    StudentAttendanceSummaryResponse["stats"]
+  >(
     (acc, record) => {
       if (record.status === "PRESENT") {
         acc.present += 1;
@@ -161,6 +180,7 @@ async function getStudentAttendanceSummary(
 export const studentsService: StudentsService = {
   getStudents,
   getStudentById,
+  revealStudentPii,
   getStudentCasesByName,
   getStudentAttendance,
   getStudentAttendanceSummary,

@@ -10,13 +10,7 @@ import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
 
-function AttendanceStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function AttendanceStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
       <div className="text-sm text-slate-500">{label}</div>
@@ -62,7 +56,11 @@ export function StudentSelfPage() {
   return (
     <PageShell maxWidthClassName="max-w-[980px]">
       <div className="space-y-5">
-        <StudentProfileHeader student={student} />
+        <StudentProfileHeader
+          key={studentId}
+          student={student}
+          studentId={studentId}
+        />
 
         <Card className="p-6">
           <h2 className="text-lg font-bold text-slate-900">สรุปการเข้าเรียน</h2>
