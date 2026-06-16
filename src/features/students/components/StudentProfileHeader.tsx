@@ -127,7 +127,7 @@ export function StudentProfileHeader({
                 <h1 className="text-2xl font-bold text-slate-800">
                   {fullName}
                 </h1>
-                <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:gap-x-6">
+                <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-1">
                   <div>
                     รหัสโรงเรียน:{" "}
                     <span className="font-medium text-slate-800">
