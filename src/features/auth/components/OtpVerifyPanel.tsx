@@ -72,6 +72,9 @@ export function OtpVerifyPanel({
   }
 
   async function handleVerify(): Promise<void> {
+    if (otp.length !== OTP_LENGTH || verifying) {
+      return;
+    }
     setError("");
     setVerifying(true);
     try {
@@ -102,16 +105,25 @@ export function OtpVerifyPanel({
         </Button>
       ) : (
         <>
-          <OtpInput autoFocus disabled={verifying} onChange={setOtp} value={otp} />
-          <Button
-            disabled={otp.length !== OTP_LENGTH}
-            fullWidth
-            isLoading={verifying}
-            loadingText="กำลังตรวจสอบ"
-            onClick={() => void handleVerify()}
+          {/* form so Enter (from any OTP box) submits — not click-only */}
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleVerify();
+            }}
           >
-            ตรวจสอบรหัส
-          </Button>
+            <OtpInput autoFocus disabled={verifying} onChange={setOtp} value={otp} />
+            <Button
+              disabled={otp.length !== OTP_LENGTH}
+              fullWidth
+              isLoading={verifying}
+              loadingText="กำลังตรวจสอบ"
+              type="submit"
+            >
+              ตรวจสอบรหัส
+            </Button>
+          </form>
           <Button
             disabled={cooldown > 0 || sending}
             fullWidth
@@ -120,6 +132,7 @@ export function OtpVerifyPanel({
             loadingIconMotion="refresh"
             loadingText="กำลังส่งรหัส"
             onClick={() => void handleRequest()}
+            type="button"
             variant="ghost"
           >
             {cooldown > 0 ? `ส่งรหัสอีกครั้งใน ${cooldown} วินาที` : "ส่งรหัสอีกครั้ง"}
