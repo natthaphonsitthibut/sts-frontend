@@ -27,6 +27,7 @@ export {
   type DialogProps,
 } from "./dialog";
 export { Divider, type DividerProps } from "./divider";
+export { OtpInput } from "./otp-input";
 export {
   Form,
   FormItem,

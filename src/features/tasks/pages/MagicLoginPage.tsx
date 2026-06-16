@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
-import { Alert, AlertDescription, Button, Card, CardContent, Input } from "../../../components/base";
+import { Alert, AlertDescription } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
+import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
+import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { authService } from "../../auth/api/auth.service";
 import {
   getEffectivePermissions,
@@ -42,8 +43,6 @@ export function MagicLoginPage() {
   const saveSession = useAuthSessionStore((state) => state.saveSession);
   const [loading, setLoading] = useState(true);
   const [otpRequired, setOtpRequired] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [payload, setPayload] = useState<MagicLoginVerifyResponse | null>(null);
 
@@ -86,65 +85,27 @@ export function MagicLoginPage() {
     };
   }, [completeLogin, readMagicToken, token]);
 
-  async function requestOtp(): Promise<void> {
-    setError("");
-    await authService.requestMagicOtp(token);
-    setOtpSent(true);
-  }
-
-  async function verifyOtp(): Promise<void> {
-    setError("");
-    const response = await authService.verifyMagicOtp(token, otp);
-    if (response.session_token) {
-      writeMagicToken(token, response.session_token, "local");
-      await completeLogin(response.session_token);
-    }
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <Card className="w-full max-w-[460px] rounded-lg">
-        <CardContent className="p-6">
-          <div className="mb-5 text-center">
-            <ShieldCheck className="mx-auto mb-3 size-10 text-primary" />
-            <h1 className="text-xl font-bold text-slate-900">ลิงก์เข้าสู่ระบบ</h1>
-            <p className="text-sm text-slate-500">{subtitle}</p>
-          </div>
-          {loading ? (
-            <SkeletonStack lines={3} className="py-2" />
-          ) : otpRequired ? (
-            <div className="space-y-4">
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
-              {!otpSent ? (
-                <Button fullWidth onClick={() => void requestOtp()}>
-                  รับรหัส OTP
-                </Button>
-              ) : (
-                <>
-                  <Input
-                    inputMode="numeric"
-                    maxLength={6}
-                    onChange={(event) => setOtp(event.target.value)}
-                    placeholder="000000"
-                    value={otp}
-                  />
-                  <Button disabled={otp.length !== 6} fullWidth onClick={() => void verifyOtp()}>
-                    ตรวจสอบรหัส
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+    <MagicAuthCard title="ลิงก์เข้าสู่ระบบ" subtitle={subtitle}>
+      {loading ? (
+        <SkeletonStack lines={3} className="py-2" />
+      ) : otpRequired ? (
+        <OtpVerifyPanel
+          onRequestOtp={() => authService.requestMagicOtp(token)}
+          onVerifyOtp={async (otp) => {
+            const response = await authService.verifyMagicOtp(token, otp);
+            if (!response.session_token) {
+              throw new Error("รหัส OTP ไม่ถูกต้องหรือหมดอายุ");
+            }
+            writeMagicToken(token, response.session_token, "local");
+            await completeLogin(response.session_token);
+          }}
+        />
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+    </MagicAuthCard>
   );
 }

@@ -12,9 +12,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,
 } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
+import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
+import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
 import {
@@ -28,8 +29,6 @@ export function TaskGuestPage() {
   const navigate = useNavigate();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
   const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
   const [selections, setSelections] = useState<Record<string, AttendanceTaskStatus>>({});
 
@@ -79,19 +78,6 @@ export function TaskGuestPage() {
     );
   }, [selections, studentsQuery.data]);
 
-  async function requestOtp(): Promise<void> {
-    await taskService.requestTaskOtp(token);
-    setOtpSent(true);
-  }
-
-  async function verifyOtp(): Promise<void> {
-    const response = await taskService.verifyTaskOtp(token, otp);
-    const nextToken = response.session_token || "";
-    if (nextToken) {
-      writeMagicToken(token, nextToken, "local");
-      setSessionToken(nextToken);
-    }
-  }
 
   if (taskQuery.isLoading) {
     return (
@@ -117,6 +103,27 @@ export function TaskGuestPage() {
 
   const task = taskQuery.data;
   const students = studentsQuery.data ?? [];
+
+  // Identity gate — same centred card as the login link, so every magic link
+  // verifies the same way. Once OTP passes, the session refetches the task and
+  // the real content (below) renders.
+  if (task.auth_required) {
+    return (
+      <MagicAuthCard title="ยืนยันตัวตน" subtitle={task.assigned_to_name || getTaskTypeLabel(task.type)}>
+        <OtpVerifyPanel
+          onRequestOtp={() => taskService.requestTaskOtp(token)}
+          onVerifyOtp={async (otp) => {
+            const response = await taskService.verifyTaskOtp(token, otp);
+            if (!response.session_token) {
+              throw new Error("รหัส OTP ไม่ถูกต้องหรือหมดอายุ");
+            }
+            writeMagicToken(token, response.session_token, "local");
+            setSessionToken(response.session_token);
+          }}
+        />
+      </MagicAuthCard>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 p-6">
@@ -150,28 +157,7 @@ export function TaskGuestPage() {
           </CardContent>
         </Card>
 
-        {task.auth_required ? (
-          <Card className="rounded-lg p-6">
-            <h2 className="mb-3 text-lg font-bold text-slate-900">ยืนยันตัวตน</h2>
-            {!otpSent ? (
-              <Button onClick={() => void requestOtp()}>รับรหัส OTP</Button>
-            ) : (
-              <div className="flex max-w-[360px] gap-2">
-                <Input
-                  inputMode="numeric"
-                  maxLength={6}
-                  onChange={(event) => setOtp(event.target.value)}
-                  value={otp}
-                />
-                <Button disabled={otp.length !== 6} onClick={() => void verifyOtp()}>
-                  ยืนยัน
-                </Button>
-              </div>
-            )}
-          </Card>
-        ) : null}
-
-        {task.type === "ATTENDANCE" && !task.auth_required ? (
+        {task.type === "ATTENDANCE" ? (
           <Card className="rounded-lg p-6">
             <div className="mb-4 flex flex-wrap gap-2">
               <Badge variant="success">มา {counts.present}</Badge>
@@ -207,7 +193,7 @@ export function TaskGuestPage() {
           </Card>
         ) : null}
 
-        {task.type === "VISIT" && !task.auth_required ? (
+        {task.type === "VISIT" ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <Link
               className={buttonVariants({ fullWidth: true, size: "lg" })}
