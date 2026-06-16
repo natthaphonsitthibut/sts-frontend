@@ -48,11 +48,12 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// When the admin session cookie has expired the client still looks "logged in"
-// (the user is cached in storage), so requests just start failing with 401 and
-// dropdowns silently go empty. Detect that once, clear the stale session, and
-// bounce to the login page so the user is never stranded. Guest/magic flows
-// (virtual_login) manage their own token errors, so they are left alone.
+// When a session goes stale the client still looks "logged in" (the user is
+// cached in storage), so requests just start failing with 401 and pages get
+// stranded in a 401 loop that a reload can't fix. Detect it once, clear the
+// session, and bounce to login. This also recovers the magic-login clobber case
+// (opening a /login/magic link overwrites the admin store with a virtual_login
+// user); public magic/task routes are excluded below so guest 401s are untouched.
 let isHandlingExpiredSession = false;
 
 apiClient.interceptors.response.use(
@@ -74,7 +75,7 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/");
 
-      if (currentUser && !currentUser.virtual_login && !onLoginPage && !onPublicLinkPage) {
+      if (currentUser && !onLoginPage && !onPublicLinkPage) {
         isHandlingExpiredSession = true;
         window.sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
         window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
