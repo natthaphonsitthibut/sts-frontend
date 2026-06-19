@@ -1,21 +1,31 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
+  PaginationMeta,
   StudentAttendanceCalendarRecord,
   StudentAttendanceSummaryResponse,
   StudentCase,
   StudentDetail,
+  StudentFilterOptions,
   StudentPiiRevealRequest,
   StudentPiiRevealResponse,
   StudentListItem,
   StudentListQuery,
+  StudentListResult,
 } from "../types/students.types";
 
 interface DataEnvelope<T> {
   data?: T;
+  meta?: PaginationMeta;
 }
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 interface StudentsService {
-  getStudents: (query?: StudentListQuery) => Promise<StudentListItem[]>;
+  getStudents: (query?: StudentListQuery) => Promise<StudentListResult>;
+  getFilterOptions: (
+    query?: Pick<StudentListQuery, "schoolId" | "grade">,
+  ) => Promise<StudentFilterOptions>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
   revealStudentPii: (
     studentId: string,
@@ -60,6 +70,12 @@ function buildStudentListParams(
   if (searchTerm) {
     params.searchTerm = searchTerm;
   }
+  if (typeof query.page === "number") {
+    params.page = String(query.page);
+  }
+  if (typeof query.limit === "number") {
+    params.limit = String(query.limit);
+  }
   return params;
 }
 
@@ -101,12 +117,50 @@ function normalizeAttendanceStatus(status: unknown): string {
 
 async function getStudents(
   query: StudentListQuery = {},
-): Promise<StudentListItem[]> {
+): Promise<StudentListResult> {
   const params = buildStudentListParams(query);
   const response = await apiClient.get<
     StudentListItem[] | DataEnvelope<StudentListItem[]>
   >("/api/students", { params });
-  return normalizeArrayResponse(response.data);
+
+  const items = normalizeArrayResponse(response.data);
+  const meta = Array.isArray(response.data) ? undefined : response.data?.meta;
+  const limit = meta?.limit ?? query.limit ?? DEFAULT_LIMIT;
+  const page = meta?.page ?? query.page ?? DEFAULT_PAGE;
+  const totalCount = meta?.totalCount ?? items.length;
+
+  return {
+    items,
+    meta: {
+      page,
+      limit,
+      totalCount,
+      totalPages: meta?.totalPages ?? (limit > 0 ? Math.ceil(totalCount / limit) : 0),
+    },
+  };
+}
+
+async function getFilterOptions(
+  query: Pick<StudentListQuery, "schoolId" | "grade"> = {},
+): Promise<StudentFilterOptions> {
+  const params: Record<string, string> = {};
+  const schoolId = query.schoolId?.trim();
+  if (schoolId) {
+    params.schoolId = schoolId;
+  }
+  if (query.grade && query.grade !== "ALL") {
+    params.grade = query.grade;
+  }
+
+  const response = await apiClient.get<DataEnvelope<StudentFilterOptions>>(
+    "/api/students/filter-options",
+    { params },
+  );
+
+  return {
+    grades: response.data?.data?.grades ?? [],
+    rooms: response.data?.data?.rooms ?? [],
+  };
 }
 
 async function getStudentById(studentId: string): Promise<StudentDetail> {
@@ -179,6 +233,7 @@ async function getStudentAttendanceSummary(
 
 export const studentsService: StudentsService = {
   getStudents,
+  getFilterOptions,
   getStudentById,
   revealStudentPii,
   getStudentCasesByName,

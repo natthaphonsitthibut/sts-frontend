@@ -85,11 +85,16 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
         grade: scope.grade || undefined,
         room: scope.room || undefined,
         searchTerm: term || undefined,
+        // Cap server-side: the picker only renders the first MAX_RESULTS.
+        limit: 50,
       }),
     enabled: canQuery,
   });
 
-  const students = useMemo(() => studentsQuery.data ?? [], [studentsQuery.data]);
+  const students = useMemo(
+    () => studentsQuery.data?.items ?? [],
+    [studentsQuery.data],
+  );
   const results = useMemo(() => students.slice(0, MAX_RESULTS), [students]);
 
   function handleProvince(next: string): void {

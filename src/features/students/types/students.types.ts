@@ -14,6 +14,25 @@ export interface StudentListQuery {
   grade?: string;
   room?: string;
   searchTerm?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface StudentListResult {
+  items: StudentListItem[];
+  meta: PaginationMeta;
+}
+
+export interface StudentFilterOptions {
+  grades: string[];
+  rooms: string[];
 }
 
 export interface StudentDetail extends Record<string, unknown> {
