@@ -11,29 +11,45 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { Pagination } from "../../../components/layout/pagination";
+import {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  type PaginatedSearchQuery,
+} from "../../../lib/pagination";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import type { RoleDefinition } from "../types/admin.types";
 
 export function ManageRoleGroupsPage() {
   const navigate = useNavigate();
-  const { roleGroups, isLoading, isError, refetch } = useRoleGroups();
   const deleteRoleGroup = useDeleteRoleGroup();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
 
-  const filteredRoleGroups = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return roleGroups;
-    }
-    return roleGroups.filter(
-      (role) =>
-        role.label.toLowerCase().includes(normalizedSearch) ||
-        role.name.toLowerCase().includes(normalizedSearch),
-    );
-  }, [roleGroups, searchQuery]);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+
+  const query = useMemo<PaginatedSearchQuery>(
+    () => ({ searchTerm: debouncedSearch || undefined, page, limit: rowsPerPage }),
+    [debouncedSearch, page, rowsPerPage],
+  );
+
+  const { roleGroups, meta, isLoading, isError, refetch } = useRoleGroups(query);
+  const totalCount = meta?.totalCount ?? 0;
+
+  function handleSearchChange(value: string): void {
+    setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleRowsPerPageChange(value: number): void {
+    setRowsPerPage(value);
+    setPage(1);
+  }
 
   function openEdit(roleGroup: RoleDefinition): void {
     void navigate(`/manage-role-groups/${encodeURIComponent(roleGroup.name)}/edit`);
@@ -68,7 +84,7 @@ export function ManageRoleGroupsPage() {
       >
         <ToolbarControls>
           <SearchInput
-            onChange={setSearchQuery}
+            onChange={handleSearchChange}
             placeholder="ค้นหาตำแหน่ง..."
             value={searchQuery}
           />
@@ -84,11 +100,24 @@ export function ManageRoleGroupsPage() {
       ) : isLoading ? (
         <SkeletonTable />
       ) : (
-        <RoleGroupTable
-          onDelete={handleDelete}
-          onEdit={openEdit}
-          roleGroups={filteredRoleGroups}
-        />
+        <>
+          <RoleGroupTable
+            onDelete={handleDelete}
+            onEdit={openEdit}
+            roleGroups={roleGroups}
+          />
+          {roleGroups.length > 0 ? (
+            <Pagination
+              onPageChange={setPage}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              totalCount={totalCount}
+              unitLabel="กลุ่ม"
+            />
+          ) : null}
+        </>
       )}
 
       {confirmDialog}

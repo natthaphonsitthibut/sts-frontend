@@ -1,4 +1,10 @@
 import { apiClient } from "../../../lib/api-client";
+import {
+  normalizePaginatedResponse,
+  toPaginationParams,
+  type PaginatedResult,
+  type PaginatedSearchQuery,
+} from "../../../lib/pagination";
 import type {
   ManagedUser,
   CreateUserResponse,
@@ -79,11 +85,17 @@ async function deleteUser(id: number): Promise<void> {
 }
 
 // --- Role groups ---
-async function getRoleGroups(): Promise<RoleDefinition[]> {
-  const response = await apiClient.get<
-    RoleDefinition[] | DataEnvelope<RoleDefinition[]>
-  >("/api/users/role-groups");
-  return normalizeArrayResponse(response.data);
+async function getRoleGroups(
+  query: PaginatedSearchQuery = {},
+): Promise<PaginatedResult<RoleDefinition>> {
+  const params: Record<string, string> = toPaginationParams(query);
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
+  const response = await apiClient.get("/api/users/role-groups", { params });
+  return normalizePaginatedResponse<RoleDefinition>(response.data, query);
 }
 
 async function createRoleGroup(payload: RoleGroupForm): Promise<void> {

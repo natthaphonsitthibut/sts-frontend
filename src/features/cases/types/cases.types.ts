@@ -22,6 +22,25 @@ export interface CaseRecord {
   created_at: string;
 }
 
+export interface CaseListQuery {
+  status?: string;
+  searchTerm?: string;
+  page?: number;
+  limit?: number;
+}
+
+/** Scope-aware case counts from `GET /api/stats` (server-computed aggregates). */
+export interface CaseStats {
+  total: number;
+  open: number;
+  inProgress: number;
+  awaitingHelp: number;
+  resolved: number;
+  today: number;
+  pendingReview: number;
+  activeLinks?: number;
+}
+
 export interface CaseReviewRecord {
   id: string;
   review_action: string;

@@ -1,12 +1,20 @@
 import { apiClient } from "../../../lib/api-client";
+import {
+  normalizePaginatedResponse,
+  toPaginationParams,
+  type PaginatedResult,
+} from "../../../lib/pagination";
 import type {
+  CaseListQuery,
   CaseRecord,
   CaseReviewPayload,
   CaseReviewResponse,
+  CaseStats,
 } from "../types/cases.types";
 
 interface CasesService {
-  getCases: () => Promise<CaseRecord[]>;
+  getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord>>;
+  getCaseStats: () => Promise<CaseStats>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
    * server-side by a review action (ASSIST / FORWARD / CLOSE) plus an optional
@@ -18,9 +26,25 @@ interface CasesService {
   ) => Promise<CaseReviewResponse>;
 }
 
-async function getCases(): Promise<CaseRecord[]> {
-  const response = await apiClient.get<CaseRecord[]>("/api/cases");
-  return Array.isArray(response.data) ? response.data : [];
+async function getCases(
+  query: CaseListQuery = {},
+): Promise<PaginatedResult<CaseRecord>> {
+  const params: Record<string, string> = toPaginationParams(query);
+  if (query.status && query.status !== "ALL") {
+    params.status = query.status;
+  }
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
+  const response = await apiClient.get("/api/cases", { params });
+  return normalizePaginatedResponse<CaseRecord>(response.data, query);
+}
+
+async function getCaseStats(): Promise<CaseStats> {
+  const response = await apiClient.get<CaseStats>("/api/stats");
+  return response.data;
 }
 
 async function reviewCase(
@@ -36,5 +60,6 @@ async function reviewCase(
 
 export const casesService: CasesService = {
   getCases,
+  getCaseStats,
   reviewCase,
 };
