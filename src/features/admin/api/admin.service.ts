@@ -32,6 +32,15 @@ function normalizeArrayResponse<T>(
   return [];
 }
 
+function normalizeManagedUser(user: ManagedUser): ManagedUser {
+  return {
+    ...user,
+    labels: user.labels || [],
+    permissions: user.permissions || [],
+    roles: user.roles || [],
+  };
+}
+
 // --- System settings ---
 async function getSettings(): Promise<SystemSetting[]> {
   const response = await apiClient.get<
@@ -52,16 +61,29 @@ async function updateSetting(
 }
 
 // --- Users ---
-async function getUsers(): Promise<ManagedUser[]> {
-  const response = await apiClient.get<
-    ManagedUser[] | DataEnvelope<ManagedUser[]>
-  >("/api/users");
-  return normalizeArrayResponse(response.data).map((user) => ({
-    ...user,
-    labels: user.labels || [],
-    permissions: user.permissions || [],
-    roles: user.roles || [],
-  }));
+async function getUsers(
+  query: PaginatedSearchQuery = {},
+): Promise<PaginatedResult<ManagedUser>> {
+  const params: Record<string, string> = toPaginationParams(query);
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
+  const response = await apiClient.get("/api/users", { params });
+  const result = normalizePaginatedResponse<ManagedUser>(response.data, query);
+  return {
+    ...result,
+    items: result.items.map(normalizeManagedUser),
+  };
+}
+
+async function getUser(id: number): Promise<ManagedUser> {
+  const response = await apiClient.get<ManagedUser | DataEnvelope<ManagedUser>>(
+    `/api/users/${id}`,
+  );
+  const user = "data" in response.data && response.data.data ? response.data.data : response.data;
+  return normalizeManagedUser(user as ManagedUser);
 }
 
 async function getRolesCatalog(): Promise<RoleDefinition[]> {
@@ -122,6 +144,7 @@ export const adminService = {
   getSettings,
   updateSetting,
   getUsers,
+  getUser,
   getRolesCatalog,
   createUser,
   updateUser,

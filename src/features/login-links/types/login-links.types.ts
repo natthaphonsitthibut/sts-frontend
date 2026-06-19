@@ -17,6 +17,20 @@ export interface LoginLink {
   login_data_scope?: DataScope;
 }
 
+export interface LoginLinkSummary {
+  total: number;
+  active: number;
+  locked: number;
+  expired: number;
+}
+
+export interface LoginLinkListQuery {
+  status?: string;
+  searchTerm?: string;
+  page?: number;
+  limit?: number;
+}
+
 export type LoginLinkDurationUnit = "minutes" | "hours" | "days";
 
 export type LinkAdminAction = "lock" | "unlock";
@@ -52,11 +66,13 @@ export interface AdminLinkDetail {
   subject: string | null;
   assigned_to_name: string | null;
   assigned_to_email: string | null;
+  created_at?: string | null;
   school_name: string | null;
   target_grade: string | null;
   target_room: string | null;
   target_school_id: number | string | null;
   login_role: string | null;
+  login_role_label?: string | null;
   login_permissions: string[];
   login_data_scope: DataScope;
   records: AdminLinkRecord[];

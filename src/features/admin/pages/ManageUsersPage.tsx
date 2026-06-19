@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, UserPlus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   EmptyState,
   ErrorState,
@@ -12,6 +13,8 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { Pagination } from "../../../components/layout/pagination";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { UserTable } from "../components/UserTable";
 import { useDeleteUser, useUsers } from "../hooks/useUsers";
 import { getUserDisplayName } from "../lib/admin-presentation";
@@ -19,23 +22,35 @@ import type { ManagedUser } from "../types/admin.types";
 
 export function ManageUsersPage() {
   const navigate = useNavigate();
-  const { users, isLoading, isError, refetch } = useUsers();
   const deleteUser = useDeleteUser();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
-  const filteredUsers = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return users;
-    }
-    return users.filter(
-      (user) =>
-        getUserDisplayName(user).toLowerCase().includes(normalizedSearch) ||
-        user.username.toLowerCase().includes(normalizedSearch),
-    );
-  }, [users, searchQuery]);
+  const query = useMemo(
+    () => ({
+      searchTerm: debouncedSearch || undefined,
+      page,
+      limit: rowsPerPage,
+    }),
+    [debouncedSearch, page, rowsPerPage],
+  );
+
+  const { users, meta, isLoading, isError, refetch } = useUsers(query);
+  const totalCount = meta?.totalCount ?? 0;
+
+  function handleSearchChange(value: string): void {
+    setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleRowsPerPageChange(value: number): void {
+    setRowsPerPage(value);
+    setPage(1);
+  }
 
   function openEdit(user: ManagedUser): void {
     if (user.id == null) {
@@ -73,7 +88,7 @@ export function ManageUsersPage() {
       >
         <ToolbarControls>
           <SearchInput
-            onChange={setSearchQuery}
+            onChange={handleSearchChange}
             placeholder="ค้นหาชื่อหรือ username..."
             value={searchQuery}
           />
@@ -88,14 +103,23 @@ export function ManageUsersPage() {
         />
       ) : isLoading ? (
         <SkeletonTable />
-      ) : filteredUsers.length === 0 ? (
-        <EmptyState title="ไม่พบผู้ใช้งาน" />
-      ) : (
-        <UserTable
-          onDelete={handleDelete}
-          onEdit={openEdit}
-          users={filteredUsers}
+      ) : users.length === 0 ? (
+        <EmptyState
+          title={debouncedSearch ? "ไม่พบผู้ใช้งานที่ค้นหา" : "ไม่พบผู้ใช้งาน"}
         />
+      ) : (
+        <>
+          <UserTable onDelete={handleDelete} onEdit={openEdit} users={users} />
+          <Pagination
+            onPageChange={setPage}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+            totalCount={totalCount}
+            unitLabel="คน"
+          />
+        </>
       )}
 
       {confirmDialog}

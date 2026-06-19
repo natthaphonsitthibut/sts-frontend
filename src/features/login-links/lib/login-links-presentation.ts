@@ -2,6 +2,9 @@ import type { BadgeProps } from "../../../components/base";
 import { isLinkLocked } from "../../../lib/link-lock";
 import type { LoginLink } from "../types/login-links.types";
 
+type LoginLinkLockInput = Pick<LoginLink, "admin_locked">;
+type LoginLinkStateInput = Pick<LoginLink, "admin_locked" | "expires_at">;
+
 /** The login magic link is the task link with /task/ swapped for /login/magic/. */
 export function getLoginLinkUrl(magicLink: string): string {
   if (!magicLink) {
@@ -17,7 +20,7 @@ export function getLoginLinkUrl(magicLink: string): string {
   return loginPath;
 }
 
-export function isLoginLinkLocked(link: LoginLink): boolean {
+export function isLoginLinkLocked(link: LoginLinkLockInput): boolean {
   return isLinkLocked(link.admin_locked);
 }
 
@@ -27,7 +30,7 @@ interface LoginLinkStatusMeta {
 }
 
 export function getLoginLinkState(
-  link: LoginLink,
+  link: LoginLinkStateInput,
 ): "ACTIVE" | "LOCKED" | "EXPIRED" {
   if (isLoginLinkLocked(link)) {
     return "LOCKED";
@@ -46,7 +49,7 @@ export const LOGIN_LINK_STATE_OPTIONS = [
   { value: "EXPIRED", label: "หมดอายุ" },
 ] as const;
 
-export function getLoginLinkStatusMeta(link: LoginLink): LoginLinkStatusMeta {
+export function getLoginLinkStatusMeta(link: LoginLinkStateInput): LoginLinkStatusMeta {
   if (isLoginLinkLocked(link)) {
     return { label: "ถูกปิด", variant: "destructive" };
   }

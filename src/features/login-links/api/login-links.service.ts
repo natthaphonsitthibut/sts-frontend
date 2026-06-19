@@ -1,9 +1,16 @@
 import { apiClient } from "../../../lib/api-client";
+import {
+  normalizePaginatedResponse,
+  toPaginationParams,
+  type PaginatedResult,
+} from "../../../lib/pagination";
 import type {
   AdminLinkDetail,
   LinkAdminPayload,
   LinkAdminResponse,
   LoginLink,
+  LoginLinkListQuery,
+  LoginLinkSummary,
   RoleOption,
 } from "../types/login-links.types";
 
@@ -18,6 +25,10 @@ interface RoleCatalogEntry {
   scope_mode?: RoleOption["scope_mode"];
 }
 
+export interface LoginLinksResult extends PaginatedResult<LoginLink> {
+  summary: LoginLinkSummary;
+}
+
 function normalizeArrayResponse<T>(
   data: T[] | DataEnvelope<T[]> | null | undefined,
 ): T[] {
@@ -30,11 +41,33 @@ function normalizeArrayResponse<T>(
   return [];
 }
 
-async function getLoginLinks(): Promise<LoginLink[]> {
-  const response = await apiClient.get<LoginLink[] | DataEnvelope<LoginLink[]>>(
-    "/api/tasks/login-links",
-  );
-  return normalizeArrayResponse(response.data);
+async function getLoginLinks(
+  query: LoginLinkListQuery = {},
+): Promise<LoginLinksResult> {
+  const params: Record<string, string> = toPaginationParams(query);
+  if (query.status && query.status !== "ALL") {
+    params.status = query.status;
+  }
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
+  const response = await apiClient.get<
+    | LoginLink[]
+    | (DataEnvelope<LoginLink[]> & { summary?: Partial<LoginLinkSummary> })
+  >("/api/tasks/login-links", { params });
+  const result = normalizePaginatedResponse<LoginLink>(response.data, query);
+  const summary = Array.isArray(response.data) ? undefined : response.data?.summary;
+  return {
+    ...result,
+    summary: {
+      total: summary?.total ?? result.meta.totalCount,
+      active: summary?.active ?? 0,
+      locked: summary?.locked ?? 0,
+      expired: summary?.expired ?? 0,
+    },
+  };
 }
 
 async function getRoleOptions(): Promise<RoleOption[]> {

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link2, Plus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   EmptyState,
   ErrorState,
@@ -14,62 +15,58 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { LoginLinkTable } from "../components/LoginLinkTable";
 import {
   useLoginLinks,
   useSetLinkLock,
 } from "../hooks/useLoginLinks";
 import {
-  getLoginLinkState,
-  getLoginLinkStatusMeta,
-  getLoginLinkUrl,
   isLoginLinkLocked,
   LOGIN_LINK_STATE_OPTIONS,
 } from "../lib/login-links-presentation";
-import type { LoginLink } from "../types/login-links.types";
+import type { LoginLink, LoginLinkListQuery } from "../types/login-links.types";
 
 export function LoginLinksPage() {
-  const { links, isLoading, isError, refetch } = useLoginLinks();
   const setLinkLock = useSetLinkLock();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
 
-  const filteredLinks = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-    return links.filter((link) => {
-      if (status !== "ALL" && getLoginLinkState(link) !== status) {
-        return false;
-      }
-      if (!normalizedSearch) {
-        return true;
-      }
-      const searchable = [
-        link.assigned_to_name,
-        link.assigned_to_email,
-        link.login_role_label,
-        link.login_role,
-        getLoginLinkStatusMeta(link).label,
-        getLoginLinkUrl(link.magic_link),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
-      return searchable.includes(normalizedSearch);
-    });
-  }, [links, searchQuery, status]);
-
-  const summary = useMemo(
+  const query = useMemo<LoginLinkListQuery>(
     () => ({
-      total: links.length,
-      active: links.filter((link) => getLoginLinkState(link) === "ACTIVE").length,
-      locked: links.filter((link) => getLoginLinkState(link) === "LOCKED").length,
-      expired: links.filter((link) => getLoginLinkState(link) === "EXPIRED").length,
+      status,
+      searchTerm: debouncedSearch || undefined,
+      page,
+      limit: rowsPerPage,
     }),
-    [links],
+    [status, debouncedSearch, page, rowsPerPage],
   );
+
+  const { links, meta, summary, isLoading, isError, refetch } = useLoginLinks(query);
+  const totalCount = meta?.totalCount ?? 0;
+  const hasActiveFilter = Boolean(debouncedSearch) || status !== "ALL";
+
+  function handleSearchChange(value: string): void {
+    setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleStatusChange(value: string): void {
+    setStatus(value);
+    setPage(1);
+  }
+
+  function handleRowsPerPageChange(value: number): void {
+    setRowsPerPage(value);
+    setPage(1);
+  }
 
   async function handleToggleLock(link: LoginLink): Promise<void> {
     const locked = isLoginLinkLocked(link);
@@ -105,14 +102,14 @@ export function LoginLinksPage() {
       >
         <ToolbarControls>
           <SearchInput
-            onChange={setSearchQuery}
+            onChange={handleSearchChange}
             placeholder="ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ..."
             value={searchQuery}
           />
           <FilterSelect
             ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
             className="sm:w-[220px]"
-            onChange={setStatus}
+            onChange={handleStatusChange}
             value={status}
           >
             {LOGIN_LINK_STATE_OPTIONS.map((option) => (
@@ -145,17 +142,26 @@ export function LoginLinksPage() {
         ) : links.length === 0 ? (
           <EmptyState
             icon={Link2}
-            title="ยังไม่มีลิงก์เข้าสู่ระบบ"
-            description="กดปุ่ม “สร้างลิงก์” เพื่อสร้างลิงก์เข้าสู่ระบบใหม่"
-          />
-        ) : filteredLinks.length === 0 ? (
-          <EmptyState
-            icon={Link2}
-            title="ไม่พบลิงก์ที่ค้นหา"
-            description="ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ"
+            title={hasActiveFilter ? "ไม่พบลิงก์ที่ค้นหา" : "ยังไม่มีลิงก์เข้าสู่ระบบ"}
+            description={
+              hasActiveFilter
+                ? "ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ"
+                : "กดปุ่ม “สร้างลิงก์” เพื่อสร้างลิงก์เข้าสู่ระบบใหม่"
+            }
           />
         ) : (
-          <LoginLinkTable links={filteredLinks} onToggleLock={handleToggleLock} />
+          <>
+            <LoginLinkTable links={links} onToggleLock={handleToggleLock} />
+            <Pagination
+              onPageChange={setPage}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              totalCount={totalCount}
+              unitLabel="ลิงก์"
+            />
+          </>
         )}
       </div>
 

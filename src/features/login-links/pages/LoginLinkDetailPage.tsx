@@ -11,7 +11,11 @@ import { LinkShareActions } from "../../../components/layout/link-share-actions"
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { getLeafMenuItems } from "../../auth/lib/permissions";
-import { LOGIN_LINKS_QUERY_KEY, useLoginLinks } from "../hooks/useLoginLinks";
+import {
+  LOGIN_LINK_DETAIL_QUERY_KEY,
+  LOGIN_LINKS_QUERY_KEY,
+  useLoginLinkDetail,
+} from "../hooks/useLoginLinks";
 import {
   formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
@@ -28,8 +32,7 @@ const PERMISSION_LABELS: Record<string, string> = Object.fromEntries(
  */
 export function LoginLinkDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
-  const { links, isLoading } = useLoginLinks();
-  const link = links.find((item) => item.id === id) ?? null;
+  const { data: link = null, isLoading } = useLoginLinkDetail(id);
 
   if (isLoading && !link) {
     return (
@@ -53,7 +56,7 @@ export function LoginLinkDetailPage() {
   }
 
   const status = getLoginLinkStatusMeta(link);
-  const url = getLoginLinkUrl(link.magic_link);
+  const url = getLoginLinkUrl(link.magic_link ?? "");
   const permissions = link.login_permissions ?? [];
 
   return (
@@ -65,9 +68,9 @@ export function LoginLinkDetailPage() {
         actions={
           <div className="flex flex-nowrap items-center gap-3">
             <LinkLockToggleButton
-              linkId={link.id}
+              linkId={link.link_id}
               locked={link.admin_locked ?? 0}
-              invalidateKeys={[[LOGIN_LINKS_QUERY_KEY]]}
+              invalidateKeys={[[LOGIN_LINKS_QUERY_KEY], [LOGIN_LINK_DETAIL_QUERY_KEY, id]]}
             />
             <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
               ย้อนกลับ
@@ -97,7 +100,7 @@ export function LoginLinkDetailPage() {
             </div>
             <div>
               <div className="text-sm text-slate-500">สร้างเมื่อ</div>
-              <div className="font-bold">{formatLoginLinkDateTime(link.created_at)}</div>
+              <div className="font-bold">{formatLoginLinkDateTime(link.created_at ?? "")}</div>
             </div>
             <div>
               <div className="text-sm text-slate-500">หมดอายุ</div>

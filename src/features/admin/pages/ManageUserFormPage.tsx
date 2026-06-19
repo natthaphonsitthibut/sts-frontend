@@ -35,7 +35,7 @@ import {
   getScopeValidationError,
 } from "../../auth/lib/scope-validation";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
-import { useRolesCatalog, useSaveUser, useUsers } from "../hooks/useUsers";
+import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
   EMPTY_USER_FORM,
   userFormSchema,
@@ -391,9 +391,13 @@ export function ManageUserFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-  const { users, isLoading, isError } = useUsers();
+  const userId = id ? Number(id) : null;
+  const {
+    data: user = null,
+    isLoading,
+    isError,
+  } = useUser(Number.isInteger(userId) ? userId : null);
   const rolesCatalog = useRolesCatalog();
-  const user = isEdit ? users.find((item) => String(item.id) === id) ?? null : null;
 
   return (
     <PageShell>
