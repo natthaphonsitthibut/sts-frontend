@@ -1,7 +1,6 @@
 import { apiClient } from "../../../lib/api-client";
 import { normalizeAttendanceSelectionStatus } from "../lib/attendance-presentation";
 import type {
-  AttendanceClassSummary,
   AttendanceHistoryRecord,
   AttendanceSaveRecord,
   AttendanceSaveResponse,
@@ -16,51 +15,11 @@ interface DataEnvelope<T> {
 
 interface AttendanceService {
   getStudents: (query: AttendanceStudentQuery) => Promise<AttendanceStudent[]>;
-  getHistory: (date: string) => Promise<AttendanceHistoryRecord[]>;
+  getHistory: (date: string, schoolId?: string) => Promise<AttendanceHistoryRecord[]>;
   getTasks: () => Promise<AttendanceTask[]>;
-  getDailyClassSummaries: (date: string) => Promise<AttendanceClassSummary[]>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
   ) => Promise<AttendanceSaveResponse>;
-}
-
-function matchesClass(
-  record: AttendanceHistoryRecord,
-  task: AttendanceTask,
-): boolean {
-  const gradeMatch = String(record.grade) === String(task.target_grade);
-  const roomMatch = String(record.room) === String(task.target_room);
-
-  if (task.target_school_id != null && record.school_id != null) {
-    return (
-      gradeMatch &&
-      roomMatch &&
-      String(record.school_id) === String(task.target_school_id)
-    );
-  }
-
-  return gradeMatch && roomMatch;
-}
-
-function summarizeClasses(
-  tasks: AttendanceTask[],
-  history: AttendanceHistoryRecord[],
-): AttendanceClassSummary[] {
-  return tasks.map((task) => {
-    const recordedCount = history.filter((record) =>
-      matchesClass(record, task),
-    ).length;
-
-    return {
-      id: task.task_id,
-      grade: task.target_grade,
-      room: task.target_room,
-      schoolId: task.target_school_id,
-      schoolName: task.target_school_name,
-      recordedCount,
-      status: recordedCount > 0 ? "COMPLETED" : "PENDING",
-    };
-  });
 }
 
 async function getStudents(
@@ -79,10 +38,13 @@ async function getStudents(
   return response.data.data || [];
 }
 
-async function getHistory(date: string): Promise<AttendanceHistoryRecord[]> {
+async function getHistory(
+  date: string,
+  schoolId?: string,
+): Promise<AttendanceHistoryRecord[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceHistoryRecord[]>>(
     "/api/attendance/history",
-    { params: { date } },
+    { params: { date, ...(schoolId ? { schoolId } : {}) } },
   );
 
   return (response.data.data || []).map((record) => ({
@@ -101,13 +63,6 @@ async function getTasks(): Promise<AttendanceTask[]> {
   );
 }
 
-async function getDailyClassSummaries(
-  date: string,
-): Promise<AttendanceClassSummary[]> {
-  const [tasks, history] = await Promise.all([getTasks(), getHistory(date)]);
-  return summarizeClasses(tasks, history);
-}
-
 async function saveAttendance(
   records: AttendanceSaveRecord[],
 ): Promise<AttendanceSaveResponse> {
@@ -122,6 +77,5 @@ export const attendanceService: AttendanceService = {
   getStudents,
   getHistory,
   getTasks,
-  getDailyClassSummaries,
   saveAttendance,
 };

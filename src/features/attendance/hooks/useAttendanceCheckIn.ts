@@ -168,11 +168,14 @@ export function useAttendanceCheckIn() {
   };
 }
 
-/** History view (past check-ins for a chosen date). */
-export function useAttendanceHistory(date: string) {
+/** History view (past check-ins for a chosen date, scoped to one school). */
+export function useAttendanceHistory(date: string, schoolId?: string) {
   const historyQuery = useQuery({
-    queryKey: ["attendance-checkin-history", date],
-    queryFn: () => attendanceService.getHistory(date),
+    queryKey: ["attendance-checkin-history", date, schoolId ?? ""],
+    queryFn: () => attendanceService.getHistory(date, schoolId),
+    // Server requires a school to avoid a nationwide day dump — don't fetch
+    // until one is selected.
+    enabled: Boolean(schoolId),
   });
   return {
     records: historyQuery.data ?? [],

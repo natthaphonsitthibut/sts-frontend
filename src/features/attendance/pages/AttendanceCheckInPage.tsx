@@ -69,7 +69,9 @@ export function AttendanceCheckInPage() {
   const [tab, setTab] = useState("today");
   const checkIn = useAttendanceCheckIn();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
-  const history = useAttendanceHistory(historyDate);
+  // Pass the selected school so the server scopes history to one school's day
+  // (it returns empty without it) — the history tab shares the today tab's scope.
+  const history = useAttendanceHistory(historyDate, checkIn.schoolId);
 
   const {
     scope,
