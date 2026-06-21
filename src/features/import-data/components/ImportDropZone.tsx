@@ -9,7 +9,7 @@ interface ImportDropZoneProps {
   disabled?: boolean;
 }
 
-const ACCEPTED = ".xlsx,.xls,.csv";
+const ACCEPTED = ".xlsx,.csv";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -74,7 +74,7 @@ export function ImportDropZone({
       <div className="text-base font-bold text-slate-700">
         ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์
       </div>
-      <div className="text-sm text-slate-400">รองรับไฟล์ .xlsx, .xls, .csv</div>
+      <div className="text-sm text-slate-400">รองรับไฟล์ .xlsx, .csv</div>
       <input
         accept={ACCEPTED}
         className="hidden"
