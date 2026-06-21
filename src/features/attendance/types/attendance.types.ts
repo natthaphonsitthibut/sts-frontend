@@ -67,6 +67,30 @@ export interface AttendanceTask {
   created_at: string;
 }
 
+export type AttendanceTaskLinkStatus = "ALL" | "ACTIVE" | "LOCKED" | "EXPIRED";
+
+export interface AttendanceTaskListQuery {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  status?: AttendanceTaskLinkStatus;
+}
+
+export interface AttendanceTaskSummary {
+  total: number;
+  active: number;
+  locked: number;
+  expired: number;
+}
+
+export interface AttendanceTasksPageResponse {
+  rows: AttendanceTask[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  summary: AttendanceTaskSummary;
+}
+
 export type AttendanceClassStatus = "COMPLETED" | "PENDING";
 
 /**
