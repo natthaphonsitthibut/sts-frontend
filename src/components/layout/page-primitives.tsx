@@ -197,6 +197,60 @@ export function CountBadge({ children, icon: Icon }: CountBadgeProps) {
   );
 }
 
+interface ListToolbarSearch {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}
+
+interface ListToolbarCount {
+  value: ReactNode;
+  icon?: LucideIcon;
+}
+
+interface ListPageToolbarProps extends Omit<PageToolbarProps, "children"> {
+  /** Optional search box — rendered first in the controls row. */
+  search?: ListToolbarSearch;
+  /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
+  filters?: ReactNode;
+  /** Optional result count — rendered last as a CountBadge. */
+  count?: ListToolbarCount;
+}
+
+/**
+ * Canonical list-page header: one shell every list page shares so search,
+ * filters and count always render in the same order with identical markup.
+ * Composes the existing primitives (PageToolbar → ToolbarControls →
+ * SearchInput/CountBadge) — not a new layout, just the uniform arrangement.
+ * Inherits the full PageToolbar prop surface (title/description/icon/tone/
+ * actions + section props), so it stays a superset, never a narrowing.
+ */
+export function ListPageToolbar({
+  count,
+  filters,
+  search,
+  ...toolbarProps
+}: ListPageToolbarProps) {
+  const hasControls = Boolean(search || filters || count);
+  return (
+    <PageToolbar {...toolbarProps}>
+      {hasControls ? (
+        <ToolbarControls>
+          {search ? (
+            <SearchInput
+              onChange={search.onChange}
+              placeholder={search.placeholder}
+              value={search.value}
+            />
+          ) : null}
+          {filters}
+          {count ? <CountBadge icon={count.icon}>{count.value}</CountBadge> : null}
+        </ToolbarControls>
+      ) : null}
+    </PageToolbar>
+  );
+}
+
 type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
 const summaryToneClasses: Record<

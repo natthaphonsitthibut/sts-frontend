@@ -1,10 +1,7 @@
 import { HeartHandshake } from "lucide-react";
 import {
-  CountBadge,
   FilterSelect,
-  PageToolbar,
-  SearchInput,
-  ToolbarControls,
+  ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
@@ -27,19 +24,17 @@ export function CaseListFilter({
   onRefresh,
 }: CaseListFilterProps) {
   return (
-    <PageToolbar
+    <ListPageToolbar
       icon={HeartHandshake}
       title="เคสช่วยเหลือนักเรียน"
       description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
       actions={<RefreshButton onRefresh={onRefresh} />}
-    >
-      <ToolbarControls>
-        <SearchInput
-          onChange={onSearchChange}
-          placeholder="ค้นหาชื่อนักเรียน..."
-          value={searchQuery}
-        />
-
+      search={{
+        value: searchQuery,
+        onChange: onSearchChange,
+        placeholder: "ค้นหาชื่อนักเรียน...",
+      }}
+      filters={
         <FilterSelect
           ariaLabel="กรองตามสถานะ"
           onChange={onStatusChange}
@@ -52,9 +47,8 @@ export function CaseListFilter({
             </option>
           ))}
         </FilterSelect>
-
-        <CountBadge>{count} เคส</CountBadge>
-      </ToolbarControls>
-    </PageToolbar>
+      }
+      count={{ value: `${count} เคส` }}
+    />
   );
 }

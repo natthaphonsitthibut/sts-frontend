@@ -6,11 +6,9 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   EmptyState,
   ErrorState,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
@@ -76,7 +74,7 @@ export function ManageUsersPage() {
 
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
-      <PageToolbar
+      <ListPageToolbar
         icon={Users}
         actions={
           <NavButton icon={UserPlus} to="/manage-users/new">
@@ -85,15 +83,12 @@ export function ManageUsersPage() {
         }
         title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={handleSearchChange}
-            placeholder="ค้นหาชื่อหรือ username..."
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+        search={{
+          value: searchQuery,
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาชื่อหรือ username...",
+        }}
+      />
 
       {isError ? (
         <ErrorState

@@ -1,10 +1,7 @@
 import { Users } from "lucide-react";
 import {
-  CountBadge,
   FilterSelect,
-  PageToolbar,
-  SearchInput,
-  ToolbarControls,
+  ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 
@@ -34,47 +31,46 @@ export function StudentSearchFilter({
   onRefresh,
 }: StudentSearchFilterProps) {
   return (
-    <PageToolbar
+    <ListPageToolbar
       icon={Users}
       title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       actions={<RefreshButton onRefresh={onRefresh} />}
-    >
-      <ToolbarControls>
-        <SearchInput
-          onChange={onSearchChange}
-          placeholder="ค้นหาชื่อหรือรหัส..."
-          value={searchQuery}
-        />
+      search={{
+        value: searchQuery,
+        onChange: onSearchChange,
+        placeholder: "ค้นหาชื่อหรือรหัส...",
+      }}
+      filters={
+        <>
+          <FilterSelect
+            ariaLabel="กรองตามระดับชั้น"
+            onChange={onGradeChange}
+            value={grade}
+          >
+            <option value="ALL">ทุกระดับชั้น</option>
+            {gradeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </FilterSelect>
 
-        <FilterSelect
-          ariaLabel="กรองตามระดับชั้น"
-          onChange={onGradeChange}
-          value={grade}
-        >
-          <option value="ALL">ทุกระดับชั้น</option>
-          {gradeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <FilterSelect
-          ariaLabel="กรองตามห้อง"
-          onChange={onRoomChange}
-          value={room}
-        >
-          <option value="ALL">ทุกห้อง</option>
-          {roomOptions.map((option) => (
-            <option key={option} value={option}>
-              ห้อง {option}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <CountBadge icon={Users}>{count} คน</CountBadge>
-      </ToolbarControls>
-    </PageToolbar>
+          <FilterSelect
+            ariaLabel="กรองตามห้อง"
+            onChange={onRoomChange}
+            value={room}
+          >
+            <option value="ALL">ทุกห้อง</option>
+            {roomOptions.map((option) => (
+              <option key={option} value={option}>
+                ห้อง {option}
+              </option>
+            ))}
+          </FilterSelect>
+        </>
+      }
+      count={{ value: `${count} คน`, icon: Users }}
+    />
   );
 }
