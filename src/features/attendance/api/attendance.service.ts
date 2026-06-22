@@ -144,7 +144,7 @@ async function getHistory(
 
   return (response.data.data || []).map((record) => ({
     ...record,
-    id: String(record.PersonID_Onec || record.student_id || record.id || ""),
+    id: String(record.student_id || record.id || ""),
     name: record.name || record.student_name || "",
     status: normalizeAttendanceSelectionStatus(record.status),
     recorded_by: record.RecordedBy || record.recorded_by || "Admin",

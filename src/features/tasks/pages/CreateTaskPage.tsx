@@ -267,9 +267,9 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   // address stays editable (in case the student moved before the record is
   // updated). Replaces the old "current location" button, which captured the
   // creator's GPS — not the student's home.
-  async function prefillStudentAddress(personId: string): Promise<void> {
+  async function prefillStudentAddress(studentId: string): Promise<void> {
     try {
-      const detail = await studentsService.getStudentById(personId);
+      const detail = await studentsService.getStudentById(studentId);
       const address = typeof detail.address === "string" ? detail.address : "";
       if (address) {
         form.setValue("student_address", address);

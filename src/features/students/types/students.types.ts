@@ -36,6 +36,8 @@ export interface StudentFilterOptions {
 }
 
 export interface StudentDetail extends Record<string, unknown> {
+  /** Opaque student UUID — the client-facing identifier after the B1.3 swap. */
+  id?: string;
   PersonID_Onec: string;
   PassportNumber_Onec?: string;
   FirstName?: string;

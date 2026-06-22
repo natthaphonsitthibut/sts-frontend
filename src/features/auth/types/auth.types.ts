@@ -10,6 +10,7 @@ export interface AuthUser {
   permissions: string[];
   data_scope?: DataScope;
   PersonID_Onec?: string;
+  student_uuid?: string;
   affiliation?: string | null;
   virtual_login?: boolean;
   magic_link_token?: string;

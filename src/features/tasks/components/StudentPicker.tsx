@@ -6,7 +6,7 @@ import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 
 export interface SelectedStudent {
-  /** PersonID of a linked student, or null when the name was typed manually. */
+  /** Opaque student id (uuid) of a linked student, or null when the name was typed manually. */
   personId: string | null;
   name: string;
   school: string;

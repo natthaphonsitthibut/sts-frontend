@@ -21,7 +21,10 @@ function AttendanceStat({ label, value }: { label: string; value: number }) {
 
 export function StudentSelfPage() {
   const user = useAuthSessionStore((state) => state.user);
-  const studentId = user?.PersonID_Onec;
+  // student_uuid is the opaque identifier returned by the backend after the
+  // B1.3 read-path swap. Fall back to PersonID_Onec for sessions persisted
+  // before the migration so existing logins don't silently break.
+  const studentId = user?.student_uuid ?? user?.PersonID_Onec;
   const { student, isLoading, isError } = useStudent(studentId);
   const { summary, isLoading: summaryLoading } =
     useStudentAttendanceSummary(studentId);
