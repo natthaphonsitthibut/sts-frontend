@@ -7,12 +7,10 @@ import {
   EmptyState,
   ErrorState,
   FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
   SummaryMetrics,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
@@ -87,7 +85,7 @@ export function LoginLinksPage() {
 
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
-      <PageToolbar
+      <ListPageToolbar
         icon={Link2}
         title="ลิงก์เข้าสู่ระบบ"
         description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
@@ -99,13 +97,12 @@ export function LoginLinksPage() {
             </NavButton>
           </div>
         }
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={handleSearchChange}
-            placeholder="ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ..."
-            value={searchQuery}
-          />
+        search={{
+          value: searchQuery,
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ...",
+        }}
+        filters={
           <FilterSelect
             ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
             className="sm:w-[220px]"
@@ -118,8 +115,8 @@ export function LoginLinksPage() {
               </option>
             ))}
           </FilterSelect>
-        </ToolbarControls>
-      </PageToolbar>
+        }
+      />
 
       <div className="space-y-5">
         <SummaryMetrics

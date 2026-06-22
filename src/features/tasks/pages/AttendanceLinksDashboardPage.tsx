@@ -17,12 +17,10 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   ErrorState,
   FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
   SummaryMetrics,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import {
   DataTable,
@@ -128,7 +126,7 @@ export function AttendanceLinksDashboardPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         icon={ClipboardCheck}
         title="ลิงก์เช็คชื่อ"
         description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
@@ -140,13 +138,12 @@ export function AttendanceLinksDashboardPage() {
             </NavButton>
           </div>
         }
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={handleSearchChange}
-            placeholder="ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ"
-            value={search}
-          />
+        search={{
+          value: search,
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ",
+        }}
+        filters={
           <FilterSelect
             ariaLabel="สถานะลิงก์เช็คชื่อ"
             className="sm:w-[220px]"
@@ -159,8 +156,8 @@ export function AttendanceLinksDashboardPage() {
               </option>
             ))}
           </FilterSelect>
-        </ToolbarControls>
-      </PageToolbar>
+        }
+      />
 
       <div className="space-y-5">
         <SummaryMetrics

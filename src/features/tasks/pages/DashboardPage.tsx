@@ -8,12 +8,10 @@ import { DetailLinkButton } from "../../../components/layout/detail-link-button"
 import {
   ErrorState,
   FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
   SummaryMetrics,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import {
   DataTable,
@@ -104,7 +102,7 @@ export function DashboardPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
         description="ติดตามสถานะเคสและลิงก์ภารกิจจากข้อมูล backend ปัจจุบัน"
@@ -116,13 +114,12 @@ export function DashboardPage() {
             </NavButton>
           </div>
         }
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={handleSearchChange}
-            placeholder="ค้นหาชื่อนักเรียน"
-            value={search}
-          />
+        search={{
+          value: search,
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาชื่อนักเรียน",
+        }}
+        filters={
           <FilterSelect
             ariaLabel="สถานะเคส"
             className="sm:w-[220px]"
@@ -135,8 +132,8 @@ export function DashboardPage() {
               </option>
             ))}
           </FilterSelect>
-        </ToolbarControls>
-      </PageToolbar>
+        }
+      />
 
       <div className="space-y-5">
         <SummaryMetrics items={summaryItems} />
