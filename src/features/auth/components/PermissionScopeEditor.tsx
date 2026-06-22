@@ -18,6 +18,7 @@ import { cn } from "../../../lib/utils";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type {
   GradeLevelOption,
+  LocationCatalog,
   SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
 import type { RoleScopeMode } from "../../admin/types/admin.types";
@@ -49,6 +50,7 @@ const EMPTY_SCOPE: DataScope = {};
 const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
 const EMPTY_ROOMS: string[] = [];
+const EMPTY_CATALOG: LocationCatalog = { provinces: [], districts: [], subDistricts: [] };
 
 function collectPermissionOptions(items: MenuItem[]): PermissionOption[] {
   return items.flatMap((item) => {
@@ -118,17 +120,6 @@ export function PermissionScopeEditor({
   const usesAreaScope = !isGlobalScope && scopeMode !== "flexible";
   const { isRefreshing, refresh } = useRefreshSpin();
 
-  const schoolsQuery = useQuery({
-    queryKey: ["permission-scope-schools"],
-    queryFn: attendanceLookupService.getSchools,
-    enabled: !isGlobalScope,
-  });
-  const gradeLevelsQuery = useQuery({
-    queryKey: ["permission-scope-grade-levels"],
-    queryFn: attendanceLookupService.getGradeLevels,
-    enabled: fieldStates.grade_levels !== "forbidden",
-  });
-
   const selectedSchoolId = singleString(dataScope.school_ids);
   const selectedGradeId = singleString(dataScope.grade_levels);
   const selectedRoom = singleString(dataScope.room_ids);
@@ -136,6 +127,31 @@ export function PermissionScopeEditor({
   const selectedDistrict = singleString(dataScope.districts);
   const selectedSubDistrict = singleString(dataScope.sub_districts);
 
+  const locationsQuery = useQuery({
+    queryKey: ["permission-scope-locations"],
+    queryFn: attendanceLookupService.getLocations,
+    enabled: !isGlobalScope,
+  });
+  const schoolsQuery = useQuery({
+    queryKey: ["permission-scope-schools", selectedProvince, selectedDistrict, selectedSubDistrict],
+    queryFn: () =>
+      attendanceLookupService.getSchools({
+        province: selectedProvince || undefined,
+        district: selectedDistrict || undefined,
+        subDistrict: selectedSubDistrict || undefined,
+        limit: 100,
+      }),
+    enabled:
+      !isGlobalScope &&
+      Boolean(selectedProvince || selectedDistrict || selectedSubDistrict || selectedSchoolId),
+  });
+  const gradeLevelsQuery = useQuery({
+    queryKey: ["permission-scope-grade-levels"],
+    queryFn: attendanceLookupService.getGradeLevels,
+    enabled: fieldStates.grade_levels !== "forbidden",
+  });
+
+  const catalog = locationsQuery.data ?? EMPTY_CATALOG;
   const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
   const selectedGradeLabel =
@@ -149,48 +165,37 @@ export function PermissionScopeEditor({
   const rooms = roomsQuery.data ?? EMPTY_ROOMS;
 
   const provinces = useMemo(
-    () =>
-      Array.from(
-        new Set(schools.map((school) => school.province).filter((value): value is string => Boolean(value))),
-      ).sort(),
-    [schools],
+    () => Array.from(new Set(catalog.provinces.filter(Boolean))).sort(),
+    [catalog.provinces],
   );
   const districts = useMemo(
     () =>
       Array.from(
         new Set(
-          schools
-            .filter((school) => !selectedProvince || school.province === selectedProvince)
-            .map((school) => school.district)
+          catalog.districts
+            .filter((d) => !selectedProvince || d.province === selectedProvince)
+            .map((d) => d.district)
             .filter((value): value is string => Boolean(value)),
         ),
       ).sort(),
-    [schools, selectedProvince],
+    [catalog.districts, selectedProvince],
   );
   const subDistricts = useMemo(
     () =>
       Array.from(
         new Set(
-          schools
-            .filter((school) => !selectedProvince || school.province === selectedProvince)
-            .filter((school) => !selectedDistrict || school.district === selectedDistrict)
-            .map((school) => school.sub_district)
+          catalog.subDistricts
+            .filter((d) => !selectedProvince || d.province === selectedProvince)
+            .filter((d) => !selectedDistrict || d.district === selectedDistrict)
+            .map((d) => d.sub_district)
             .filter((value): value is string => Boolean(value)),
         ),
       ).sort(),
-    [schools, selectedDistrict, selectedProvince],
-  );
-  const filteredSchools = useMemo(
-    () =>
-      schools
-        .filter((school) => !selectedProvince || school.province === selectedProvince)
-        .filter((school) => !selectedDistrict || school.district === selectedDistrict)
-        .filter((school) => !selectedSubDistrict || school.sub_district === selectedSubDistrict),
-    [schools, selectedDistrict, selectedProvince, selectedSubDistrict],
+    [catalog.subDistricts, selectedProvince, selectedDistrict],
   );
 
-  const isLookupLoading = schoolsQuery.isLoading || gradeLevelsQuery.isLoading;
-  const isLookupError = schoolsQuery.isError || gradeLevelsQuery.isError;
+  const isLookupLoading = locationsQuery.isLoading || gradeLevelsQuery.isLoading;
+  const isLookupError = locationsQuery.isError || gradeLevelsQuery.isError;
 
   function togglePermission(permissionId: string, checked: boolean): void {
     if (checked) {
@@ -436,7 +441,7 @@ export function PermissionScopeEditor({
                           label:
                             fieldStates.school_ids === "required" ? "เลือกโรงเรียน" : "ทุกโรงเรียน",
                         },
-                        ...filteredSchools.map((school) => ({
+                        ...schools.map((school) => ({
                           value: String(school.id),
                           label: school.name,
                         })),

@@ -4,6 +4,7 @@ import { UserRound, X } from "lucide-react";
 import { Button, Combobox, Input } from "../../../components/base";
 import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 
 export interface SelectedStudent {
   /** Opaque student id (uuid) of a linked student, or null when the name was typed manually. */
@@ -20,10 +21,6 @@ interface StudentPickerProps {
 
 const MAX_RESULTS = 30;
 
-function unique(values: Array<string | undefined>): string[] {
-  return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
-}
-
 /**
  * Pick a student from the real roster (scoped to the creator's own area) so a
  * home-visit links to an actual record instead of a free-typed name. Province →
@@ -33,43 +30,14 @@ function unique(values: Array<string | undefined>): string[] {
  */
 export function StudentPicker({ value, onChange, disabled }: StudentPickerProps) {
   const scope = useScopeCascade({ lockToActorScope: true });
-  const [province, setProvince] = useState("");
-  const [district, setDistrict] = useState("");
-  const [subDistrict, setSubDistrict] = useState("");
+  const area = useSchoolAreaFilter();
   const [search, setSearch] = useState("");
   const [manual, setManual] = useState(false);
 
-  const provinces = useMemo(
-    () => unique(scope.schools.map((school) => school.province)),
-    [scope.schools],
-  );
-  const districts = useMemo(
-    () =>
-      unique(
-        scope.schools
-          .filter((school) => !province || school.province === province)
-          .map((school) => school.district),
-      ),
-    [scope.schools, province],
-  );
-  const subDistricts = useMemo(
-    () =>
-      unique(
-        scope.schools
-          .filter((school) => !province || school.province === province)
-          .filter((school) => !district || school.district === district)
-          .map((school) => school.sub_district),
-      ),
-    [scope.schools, province, district],
-  );
   const schoolOptions = useMemo(
     () =>
-      scope.schools
-        .filter((school) => !province || school.province === province)
-        .filter((school) => !district || school.district === district)
-        .filter((school) => !subDistrict || school.sub_district === subDistrict)
-        .map((school) => ({ value: String(school.id), label: school.name })),
-    [scope.schools, province, district, subDistrict],
+      area.schools.map((school) => ({ value: String(school.id), label: school.name })),
+    [area.schools],
   );
 
   const term = search.trim();
@@ -98,20 +66,17 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   const results = useMemo(() => students.slice(0, MAX_RESULTS), [students]);
 
   function handleProvince(next: string): void {
-    setProvince(next);
-    setDistrict("");
-    setSubDistrict("");
+    area.setProvince(next);
     scope.setSchoolId("");
   }
 
   function handleDistrict(next: string): void {
-    setDistrict(next);
-    setSubDistrict("");
+    area.setDistrict(next);
     scope.setSchoolId("");
   }
 
   function handleSubDistrict(next: string): void {
-    setSubDistrict(next);
+    area.setSubDistrict(next);
     scope.setSchoolId("");
   }
 
@@ -173,30 +138,30 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             onChange={handleProvince}
             options={[
               { value: "", label: "ทุกจังหวัด" },
-              ...provinces.map((name) => ({ value: name, label: name })),
+              ...area.provinces.map((name) => ({ value: name, label: name })),
             ]}
             placeholder="ค้นหาจังหวัด"
-            value={province}
+            value={area.province}
           />
           <Combobox
-            disabled={disabled || !province}
+            disabled={disabled || !area.province}
             onChange={handleDistrict}
             options={[
               { value: "", label: "ทุกอำเภอ" },
-              ...districts.map((name) => ({ value: name, label: name })),
+              ...area.districts.map((name) => ({ value: name, label: name })),
             ]}
             placeholder="ค้นหาอำเภอ"
-            value={district}
+            value={area.district}
           />
           <Combobox
-            disabled={disabled || !district}
+            disabled={disabled || !area.district}
             onChange={handleSubDistrict}
             options={[
               { value: "", label: "ทุกตำบล" },
-              ...subDistricts.map((name) => ({ value: name, label: name })),
+              ...area.subDistricts.map((name) => ({ value: name, label: name })),
             ]}
             placeholder="ค้นหาตำบล"
-            value={subDistrict}
+            value={area.subDistrict}
           />
         </div>
       )}
@@ -206,7 +171,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           <Input
             className="sm:col-span-3"
             disabled
-            value={scope.schools.find((s) => String(s.id) === scope.schoolId)?.name ?? ""}
+            value={area.schools.find((s) => String(s.id) === scope.schoolId)?.name ?? ""}
           />
         ) : (
           <Combobox

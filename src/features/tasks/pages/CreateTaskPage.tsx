@@ -179,7 +179,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   // Same school → grade → room cascade as the check-in page, locked to the
   // creator's own scope so every link type stays inside their allowed area.
   const scope = useScopeCascade({ lockToActorScope: true });
-  const area = useSchoolAreaFilter(scope.schools);
+  const area = useSchoolAreaFilter();
   const [dataScope, setDataScope] = useState<DataScope>({});
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(
     prefill?.student_name

@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import type { SchoolOption } from "../../tasks/api/attendance-lookup.service";
+import { useQuery } from "@tanstack/react-query";
+import {
+  attendanceLookupService,
+  type SchoolOption,
+} from "../../tasks/api/attendance-lookup.service";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+
+const EMPTY_SCHOOLS: SchoolOption[] = [];
+const SCHOOL_LIMIT = 50;
 
 function unique(values: Array<string | undefined>): string[] {
   return Array.from(
@@ -8,42 +16,88 @@ function unique(values: Array<string | undefined>): string[] {
 }
 
 /**
- * Province → district → sub-district narrowing for a (potentially huge) school
- * list. Shared so every "pick a school" flow (home-visit student picker, the
- * check-in link form, …) filters schools the same way before the school combobox.
+ * Province → district → sub-district → school cascade, server-driven.
+ *
+ * Geo options come from the bounded `/locations` catalog (not a nationwide
+ * school dump), and the school list is fetched from the server narrowed by the
+ * selected geo and enforced against the actor's data scope. A scoped actor
+ * (school/area/own) loads immediately because the server already narrows their
+ * result; a national/global actor must pick a province (or type a 2+ char
+ * search) before we fetch, so no flow ever pulls the whole country's schools.
  * Selecting a level resets the levels below it.
  */
-export function useSchoolAreaFilter(schools: SchoolOption[]) {
+export function useSchoolAreaFilter() {
+  const actorScope = useAuthSessionStore((state) => state.user?.data_scope);
   const [province, setProvinceState] = useState("");
   const [district, setDistrictState] = useState("");
   const [subDistrict, setSubDistrict] = useState("");
+  const [schoolSearch, setSchoolSearch] = useState("");
 
-  const provinces = useMemo(() => unique(schools.map((s) => s.province)), [schools]);
+  const locationsQuery = useQuery({
+    queryKey: ["attendance-locations"],
+    queryFn: attendanceLookupService.getLocations,
+  });
+  const catalog = locationsQuery.data;
+
+  const provinces = useMemo(
+    () => [...(catalog?.provinces ?? [])].sort(),
+    [catalog],
+  );
   const districts = useMemo(
     () =>
       unique(
-        schools.filter((s) => !province || s.province === province).map((s) => s.district),
+        (catalog?.districts ?? [])
+          .filter((row) => !province || row.province === province)
+          .map((row) => row.district),
       ),
-    [schools, province],
+    [catalog, province],
   );
   const subDistricts = useMemo(
     () =>
       unique(
-        schools
-          .filter((s) => !province || s.province === province)
-          .filter((s) => !district || s.district === district)
-          .map((s) => s.sub_district),
+        (catalog?.subDistricts ?? [])
+          .filter((row) => !province || row.province === province)
+          .filter((row) => !district || row.district === district)
+          .map((row) => row.sub_district),
       ),
-    [schools, province, district],
+    [catalog, province, district],
   );
-  const filteredSchools = useMemo(
-    () =>
-      schools
-        .filter((s) => !province || s.province === province)
-        .filter((s) => !district || s.district === district)
-        .filter((s) => !subDistrict || s.sub_district === subDistrict),
-    [schools, province, district, subDistrict],
+
+  // A scoped actor is already narrowed server-side, so we can load their
+  // schools straight away. A national/global actor must narrow first (geo or
+  // search) so we never request a nationwide list.
+  const isScopedActor = Boolean(
+    actorScope?.school_ids?.length ||
+      actorScope?.provinces?.length ||
+      actorScope?.districts?.length ||
+      actorScope?.sub_districts?.length ||
+      actorScope?.own_only,
   );
+  const trimmedSearch = schoolSearch.trim();
+  const hasNarrowing = Boolean(
+    province || district || subDistrict || trimmedSearch.length >= 2,
+  );
+  const schoolsEnabled = isScopedActor || hasNarrowing;
+
+  const schoolsQuery = useQuery({
+    queryKey: [
+      "attendance-area-schools",
+      province,
+      district,
+      subDistrict,
+      trimmedSearch,
+    ],
+    queryFn: () =>
+      attendanceLookupService.getSchools({
+        province: province || undefined,
+        district: district || undefined,
+        subDistrict: subDistrict || undefined,
+        searchTerm: trimmedSearch || undefined,
+        limit: SCHOOL_LIMIT,
+      }),
+    enabled: schoolsEnabled,
+  });
+  const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
 
   function setProvince(value: string): void {
     setProvinceState(value);
@@ -63,9 +117,17 @@ export function useSchoolAreaFilter(schools: SchoolOption[]) {
     provinces,
     districts,
     subDistricts,
-    filteredSchools,
+    schools,
+    /** Schools are already narrowed server-side; alias kept for call sites. */
+    filteredSchools: schools,
+    schoolSearch,
+    setSchoolSearch,
     setProvince,
     setDistrict,
     setSubDistrict,
+    schoolsEnabled,
+    isLoading:
+      locationsQuery.isLoading || (schoolsEnabled && schoolsQuery.isLoading),
+    isError: locationsQuery.isError || schoolsQuery.isError,
   };
 }

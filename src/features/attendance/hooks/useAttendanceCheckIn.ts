@@ -42,7 +42,9 @@ export function useAttendanceCheckIn() {
   });
   const schoolsQuery = useQuery({
     queryKey: ["attendance-checkin-schools"],
-    queryFn: attendanceLookupService.getSchools,
+    // Scoped + capped server-side: a scope-locked teacher gets their own
+    // school; a broader admin gets a bounded list, never the whole country.
+    queryFn: () => attendanceLookupService.getSchools({ limit: 50 }),
   });
 
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;

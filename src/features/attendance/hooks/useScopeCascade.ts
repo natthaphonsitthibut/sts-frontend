@@ -3,21 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 import {
   attendanceLookupService,
   type GradeLevelOption,
-  type SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
-const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_ROOMS: string[] = [];
 
 interface UseScopeCascadeOptions {
   /**
    * Constrain and *lock* fields to the logged-in actor's data scope, so every
    * link-creation flow stays inside the creator's own scope (e.g. a single-school
-   * director can only target that school). The school list is already
-   * actor-scoped by the backend; this also pins grade/room when the actor's
-   * scope fixes them. Off by default so the check-in page keeps its behaviour.
+   * director can only target that school). The locked school comes from the
+   * actor's own scope; this also pins grade/room when the actor's scope fixes
+   * them. The school *options* are supplied by `useSchoolAreaFilter` (server
+   * driven). Off by default so the check-in page keeps its behaviour.
    */
   lockToActorScope?: boolean;
 }
@@ -44,24 +43,14 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
     queryKey: ["scope-cascade-grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
   });
-  const schoolsQuery = useQuery({
-    queryKey: ["scope-cascade-schools"],
-    queryFn: attendanceLookupService.getSchools,
-  });
-
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
-  const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
 
   const [schoolIdState, setSchoolIdState] = useState("");
   const [gradeState, setGradeState] = useState("");
   const [roomInput, setRoomInput] = useState("");
 
-  // A level the actor's scope pins (or the only option they can see) is locked.
-  const lockedSchoolId = lock
-    ? schools.length === 1
-      ? String(schools[0].id)
-      : singleId(actorScope?.school_ids)
-    : "";
+  // The locked school comes straight from the actor's own scope.
+  const lockedSchoolId = lock ? singleId(actorScope?.school_ids) : "";
   const schoolLocked = Boolean(lockedSchoolId);
   const schoolId = schoolLocked ? lockedSchoolId : schoolIdState;
 
@@ -109,7 +98,6 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
   }
 
   return {
-    schools,
     gradeLevels,
     rooms,
     schoolId,
