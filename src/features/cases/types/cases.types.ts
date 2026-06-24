@@ -52,7 +52,6 @@ export interface CaseReviewRecord {
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note?: string | null;
-  reviewed_by?: string | null;
 }
 
 export interface CaseReviewResponse {

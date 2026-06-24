@@ -6,6 +6,7 @@ import {
   Edit3,
   FileInput,
   GraduationCap,
+  HeartHandshake,
   Home,
   Link,
   Menu,
@@ -36,6 +37,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <FileInput className={className} aria-hidden="true" />;
     case "graduation":
       return <GraduationCap className={className} aria-hidden="true" />;
+    case "heart-handshake":
+      return <HeartHandshake className={className} aria-hidden="true" />;
     case "home":
       return <Home className={className} aria-hidden="true" />;
     case "link":

@@ -1,17 +1,13 @@
+import { Badge } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 import { getCaseStatusMeta } from "../lib/case-presentation";
 import type { CaseStatus } from "../types/cases.types";
 
-export function CaseStatusBadge({ status }: { status: CaseStatus }) {
-  const meta = getCaseStatusMeta(status);
+export function CaseStatusBadge({ status }: { status: CaseStatus | string }) {
+  const meta = getCaseStatusMeta(status as CaseStatus);
   return (
-    <span
-      className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold",
-        meta.badgeClass,
-      )}
-    >
+    <Badge className={cn("whitespace-nowrap", meta.badgeClass)} variant="secondary">
       {meta.label}
-    </span>
+    </Badge>
   );
 }

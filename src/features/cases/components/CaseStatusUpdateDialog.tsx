@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   Dialog,
@@ -13,50 +13,62 @@ import {
   Label,
   Textarea,
 } from "../../../components/base";
-import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useUpdateCase } from "../hooks/useUpdateCase";
-import { CASE_REVIEW_ACTIONS } from "../lib/case-presentation";
+import {
+  CASE_REVIEW_ACTIONS,
+  getCaseReviewActionPermission,
+} from "../lib/case-presentation";
 import type { CaseRecord, CaseReviewAction } from "../types/cases.types";
 
 interface CaseStatusUpdateDialogProps {
   caseRecord: CaseRecord | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdated?: () => void;
 }
 
 export function CaseStatusUpdateDialog({
   caseRecord,
   open,
   onOpenChange,
+  onUpdated,
 }: CaseStatusUpdateDialogProps) {
-  const user = useAuthSessionStore((state) => state.user);
+  const { can } = usePermissions();
   const updateCase = useUpdateCase();
   const [action, setAction] = useState<CaseReviewAction>("ASSIST");
   const [note, setNote] = useState("");
 
-  function resolveReviewedBy(): string {
-    const fullName = [user?.FirstName, user?.LastName]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    return fullName || user?.username || "Admin";
-  }
+  const allowedActions = useMemo(
+    () =>
+      CASE_REVIEW_ACTIONS.filter(
+        (option) =>
+          can("review-cases") && can(getCaseReviewActionPermission(option.value)),
+      ),
+    [can],
+  );
+
+  const selectedAction = allowedActions.some((option) => option.value === action)
+    ? action
+    : (allowedActions[0]?.value ?? "ASSIST");
 
   function handleSubmit(): void {
-    if (!caseRecord) {
+    if (!caseRecord || allowedActions.length === 0) {
       return;
     }
     updateCase.mutate(
       {
         caseId: caseRecord.id,
         payload: {
-          review_action: action,
+          review_action: selectedAction,
           review_note: note.trim() || null,
-          reviewed_by: resolveReviewedBy(),
         },
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          onUpdated?.();
+          onOpenChange(false);
+        },
       },
     );
   }
@@ -88,14 +100,19 @@ export function CaseStatusUpdateDialog({
               <Combobox
                 id="case-action"
                 onChange={(next) => setAction(next as CaseReviewAction)}
-                options={CASE_REVIEW_ACTIONS.map((option) => ({
+                options={allowedActions.map((option) => ({
                   value: option.value,
                   label: option.label,
                 }))}
                 searchable={false}
-                value={action}
+                value={selectedAction}
               />
             </div>
+            {allowedActions.length === 0 ? (
+              <p className="text-sm font-medium text-danger-700">
+                บัญชีนี้ไม่มีสิทธิ์เปลี่ยนสถานะเคส
+              </p>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="case-note">บันทึกเพิ่มเติม</Label>
@@ -118,7 +135,7 @@ export function CaseStatusUpdateDialog({
             ยกเลิก
           </Button>
           <Button
-            disabled={!caseRecord}
+            disabled={!caseRecord || allowedActions.length === 0}
             isLoading={updateCase.isPending}
             loadingText="กำลังบันทึก"
             onClick={handleSubmit}

@@ -21,7 +21,7 @@ export const CASE_STATUS_ORDER: KnownCaseStatus[] = [
 
 export const CASE_STATUS_META: Record<KnownCaseStatus, CaseStatusMeta> = {
   OPEN: {
-    label: "รอสร้างลิงค์",
+    label: "รอสร้างลิงก์",
     badgeClass: "bg-slate-100 text-slate-600",
   },
   PENDING_REVIEW: {
@@ -61,6 +61,16 @@ export const CASE_REVIEW_ACTIONS: ReviewActionOption[] = [
   { value: "FORWARD", label: "ส่งต่อหน่วยงาน/ผู้เกี่ยวข้อง" },
   { value: "CLOSE", label: "ปิดเคส" },
 ];
+
+export function getCaseReviewActionPermission(action: CaseReviewAction): string {
+  if (action === "CLOSE") {
+    return "close-case";
+  }
+  if (action === "FORWARD") {
+    return "forward-case";
+  }
+  return "review-cases";
+}
 
 export function getCaseReason(reason?: string | null, fallback?: string | null): string {
   return reason || fallback || "-";

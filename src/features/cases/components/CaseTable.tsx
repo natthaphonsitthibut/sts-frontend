@@ -1,5 +1,6 @@
-import { SquarePen } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "../../../components/base";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import {
   DataTable,
   DataTableCell,
@@ -13,16 +14,55 @@ import {
 } from "../lib/case-presentation";
 import type { CaseRecord } from "../types/cases.types";
 import { CaseStatusBadge } from "./CaseStatusBadge";
+import { CaseReviewActionButton } from "./CaseReviewActionButton";
 
 interface CaseTableProps {
   rows: CaseRecord[];
+  onCreateLink: (caseRecord: CaseRecord) => void;
   onUpdate: (caseRecord: CaseRecord) => void;
 }
 
-export function CaseTable({ rows, onUpdate }: CaseTableProps) {
+function CaseAction({
+  caseRecord,
+  onCreateLink,
+  onUpdate,
+}: {
+  caseRecord: CaseRecord;
+  onCreateLink: (caseRecord: CaseRecord) => void;
+  onUpdate: (caseRecord: CaseRecord) => void;
+}) {
+  if (!caseRecord.task_id) {
+    return (
+      <Button
+        className="min-w-[140px]"
+        icon={Plus}
+        onClick={() => onCreateLink(caseRecord)}
+        size="sm"
+      >
+        สร้างลิงก์
+      </Button>
+    );
+  }
+
+  if (caseRecord.status === "PENDING_REVIEW") {
+    return (
+      <CaseReviewActionButton onClick={() => onUpdate(caseRecord)}>
+        ดำเนินการ
+      </CaseReviewActionButton>
+    );
+  }
+
+  return (
+    <DetailLinkButton className="min-w-[140px]" to={`/task-detail/${caseRecord.task_id}`}>
+      ดูรายละเอียด
+    </DetailLinkButton>
+  );
+}
+
+export function CaseTable({ rows, onCreateLink, onUpdate }: CaseTableProps) {
   return (
     <div className="flex flex-col gap-2">
-      <DataTable headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", ""]}>
+      <DataTable headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "ดำเนินการ"]}>
         {rows.map((caseRecord) => (
           <DataTableRow key={caseRecord.id}>
             <DataTableCell>
@@ -43,14 +83,11 @@ export function CaseTable({ rows, onUpdate }: CaseTableProps) {
               {formatCaseDate(caseRecord.created_at)}
             </DataTableCell>
             <DataTableCell className="text-right">
-              <Button
-                icon={SquarePen}
-                onClick={() => onUpdate(caseRecord)}
-                size="sm"
-                variant="outline"
-              >
-                จัดการ
-              </Button>
+              <CaseAction
+                caseRecord={caseRecord}
+                onCreateLink={onCreateLink}
+                onUpdate={onUpdate}
+              />
             </DataTableCell>
           </DataTableRow>
         ))}
@@ -77,14 +114,11 @@ export function CaseTable({ rows, onUpdate }: CaseTableProps) {
               <span className="text-sm font-medium text-slate-500">
                 {formatCaseDate(caseRecord.created_at)}
               </span>
-              <Button
-                icon={SquarePen}
-                onClick={() => onUpdate(caseRecord)}
-                size="sm"
-                variant="outline"
-              >
-                จัดการ
-              </Button>
+              <CaseAction
+                caseRecord={caseRecord}
+                onCreateLink={onCreateLink}
+                onUpdate={onUpdate}
+              />
             </div>
           </TableCard>
         ))}

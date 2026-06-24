@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { CircleAlert } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card } from "../../../components/base";
+import { Button, Card } from "../../../components/base";
 import {
   EmptyState,
   PageShell,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
@@ -33,15 +34,6 @@ function resolveFullName(student: StudentDetail | undefined): string {
     return "";
   }
   return `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim();
-}
-
-function CaseStatusBadge({ status }: { status: string }) {
-  const isOpen = status === "OPEN";
-  return (
-    <Badge variant={isOpen ? "destructive" : "success"}>
-      {isOpen ? "กำลังดำเนินการ" : "เสร็จสิ้น"}
-    </Badge>
-  );
 }
 
 function RiskHistoryPanel({

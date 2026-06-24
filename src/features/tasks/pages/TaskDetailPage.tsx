@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardList } from "lucide-react";
@@ -10,6 +11,11 @@ import {
 } from "../../../components/layout/page-primitives";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
+import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
+import type { CaseRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -20,11 +26,31 @@ import {
 
 export function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
+  const { can } = usePermissions();
+  const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const taskQuery = useQuery({
     queryKey: ["task-chain", taskId],
     queryFn: () => taskService.getTaskChain(taskId || ""),
     enabled: Boolean(taskId),
   });
+  const taskData = taskQuery.data;
+  const caseRecord = useMemo<CaseRecord | null>(() => {
+    if (!taskData?.case_id) {
+      return null;
+    }
+
+    return {
+      id: taskData.case_id,
+      student_name: taskData.student_name || "-",
+      student_school: taskData.student_school || null,
+      student_address: taskData.student_address || null,
+      reason_flagged: taskData.reason_flagged || null,
+      status: taskData.case_status || "OPEN",
+      created_at: "",
+      task_id: taskData.task_id,
+    };
+  }, [taskData]);
+  const canUpdateCase = Boolean(caseRecord) && can("review-cases");
 
   if (taskQuery.isLoading) {
     return (
@@ -60,6 +86,14 @@ export function TaskDetailPage() {
         description={task.task_id}
         actions={
           <div className="flex flex-nowrap items-center gap-3">
+            {canUpdateCase ? (
+              <CaseReviewActionButton
+                onClick={() => setCaseDialogOpen(true)}
+                size="md"
+              >
+                ดำเนินการเคส
+              </CaseReviewActionButton>
+            ) : null}
             {activeLink ? (
               <LinkLockToggleButton
                 linkId={String(activeLink.id)}
@@ -84,7 +118,11 @@ export function TaskDetailPage() {
             </div>
             <div>
               <div className="text-sm text-slate-500">สถานะ</div>
-              <Badge variant="secondary">{getStatusLabel(task.case_status || task.task_status)}</Badge>
+              {task.case_status ? (
+                <CaseStatusBadge status={task.case_status} />
+              ) : (
+                <Badge variant="secondary">{getStatusLabel(task.task_status)}</Badge>
+              )}
             </div>
             <div>
               <div className="text-sm text-slate-500">นักเรียน</div>
@@ -165,6 +203,13 @@ export function TaskDetailPage() {
           </Card>
         ) : null}
       </div>
+      <CaseStatusUpdateDialog
+        key={caseRecord?.id ?? "none"}
+        caseRecord={caseRecord}
+        onOpenChange={setCaseDialogOpen}
+        onUpdated={() => void taskQuery.refetch()}
+        open={caseDialogOpen}
+      />
     </PageShell>
   );
 }

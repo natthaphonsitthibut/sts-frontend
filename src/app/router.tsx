@@ -100,7 +100,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "cases",
-        element: protectedElement(<CasesListPage />, "students"),
+        element: protectedElement(<CasesListPage />, "review-cases"),
       },
       {
         path: "attendance-dashboard",

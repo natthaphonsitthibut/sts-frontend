@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { HeartHandshake } from "lucide-react";
 import {
   EmptyState,
@@ -16,6 +17,7 @@ import { useCases } from "../hooks/useCases";
 import type { CaseListQuery, CaseRecord } from "../types/cases.types";
 
 export function CasesListPage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -58,6 +60,21 @@ export function CasesListPage() {
     setDialogOpen(true);
   }
 
+  function openCreateLink(caseRecord: CaseRecord): void {
+    void navigate("/create/visit", {
+      state: {
+        prefill: {
+          existing_case_id: String(caseRecord.id),
+          student_id: caseRecord.student_id ?? null,
+          student_name: caseRecord.student_name,
+          student_school: caseRecord.student_school ?? null,
+          student_address: caseRecord.student_address ?? null,
+          reason_flagged: caseRecord.reason_flagged ?? caseRecord.reason ?? null,
+        },
+      },
+    });
+  }
+
   return (
     <PageShell>
       <CaseListFilter
@@ -85,7 +102,7 @@ export function CasesListPage() {
         />
       ) : (
         <>
-          <CaseTable onUpdate={openUpdate} rows={cases} />
+          <CaseTable onCreateLink={openCreateLink} onUpdate={openUpdate} rows={cases} />
           <Pagination
             onPageChange={setPage}
             onRowsPerPageChange={handleRowsPerPageChange}
@@ -102,6 +119,7 @@ export function CasesListPage() {
         key={selectedCase?.id ?? "none"}
         caseRecord={selectedCase}
         onOpenChange={setDialogOpen}
+        onUpdated={() => void refetch()}
         open={dialogOpen}
       />
     </PageShell>

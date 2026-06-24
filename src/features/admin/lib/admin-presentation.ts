@@ -16,12 +16,20 @@ export const USER_STATUS_OPTIONS = [
   { value: "INACTIVE", label: "ปิดการใช้งาน" },
 ] as const;
 
+const ACTION_PERMISSIONS = [
+  { id: "close-case", label: "ปิดเคสช่วยเหลือ" },
+  { id: "forward-case", label: "ส่งต่อเคสช่วยเหลือ" },
+] as const;
+
 /** Assignable permissions (leaf menu ids + their labels). */
 export function getAssignablePermissions(): Array<{ id: string; label: string }> {
-  return getLeafMenuItems(MENU_ITEMS).map((item) => ({
-    id: item.id,
-    label: item.label,
-  }));
+  return [
+    ...getLeafMenuItems(MENU_ITEMS).map((item) => ({
+      id: item.id,
+      label: item.label,
+    })),
+    ...ACTION_PERMISSIONS,
+  ];
 }
 
 export function getUserDisplayName(user: ManagedUser): string {
