@@ -18,15 +18,18 @@ import { CaseReviewActionButton } from "./CaseReviewActionButton";
 
 interface CaseTableProps {
   rows: CaseRecord[];
+  canReviewCases?: boolean;
   onCreateLink: (caseRecord: CaseRecord) => void;
   onUpdate: (caseRecord: CaseRecord) => void;
 }
 
 function CaseAction({
+  canReviewCases,
   caseRecord,
   onCreateLink,
   onUpdate,
 }: {
+  canReviewCases: boolean;
   caseRecord: CaseRecord;
   onCreateLink: (caseRecord: CaseRecord) => void;
   onUpdate: (caseRecord: CaseRecord) => void;
@@ -44,7 +47,7 @@ function CaseAction({
     );
   }
 
-  if (caseRecord.status === "PENDING_REVIEW") {
+  if (canReviewCases && caseRecord.status === "PENDING_REVIEW") {
     return (
       <CaseReviewActionButton onClick={() => onUpdate(caseRecord)}>
         ดำเนินการ
@@ -59,7 +62,12 @@ function CaseAction({
   );
 }
 
-export function CaseTable({ rows, onCreateLink, onUpdate }: CaseTableProps) {
+export function CaseTable({
+  rows,
+  canReviewCases = true,
+  onCreateLink,
+  onUpdate,
+}: CaseTableProps) {
   return (
     <div className="flex flex-col gap-2">
       <DataTable headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "ดำเนินการ"]}>
@@ -84,6 +92,7 @@ export function CaseTable({ rows, onCreateLink, onUpdate }: CaseTableProps) {
             </DataTableCell>
             <DataTableCell className="text-right">
               <CaseAction
+                canReviewCases={canReviewCases}
                 caseRecord={caseRecord}
                 onCreateLink={onCreateLink}
                 onUpdate={onUpdate}
@@ -115,6 +124,7 @@ export function CaseTable({ rows, onCreateLink, onUpdate }: CaseTableProps) {
                 {formatCaseDate(caseRecord.created_at)}
               </span>
               <CaseAction
+                canReviewCases={canReviewCases}
                 caseRecord={caseRecord}
                 onCreateLink={onCreateLink}
                 onUpdate={onUpdate}

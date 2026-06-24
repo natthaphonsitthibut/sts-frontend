@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, Plus } from "lucide-react";
-import { Button } from "../../../components/base";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
-import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import {
   ErrorState,
   FilterSelect,
@@ -13,27 +11,26 @@ import {
   SkeletonTable,
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
-import {
-  DataTable,
-  DataTableCell,
-  DataTableRow,
-} from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { casesService } from "../../cases/api/cases.service";
-import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import type { CaseListQuery } from "../../cases/types/cases.types";
+import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
+import { CaseTable } from "../../cases/components/CaseTable";
+import type { CaseListQuery, CaseRecord } from "../../cases/types/cases.types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { formatDate } from "../lib/task-presentation";
 import { DASHBOARD_CASE_STATUS_OPTIONS } from "../lib/task-options";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
 
@@ -100,6 +97,30 @@ export function DashboardPage() {
     void statsQuery.refetch();
   }
 
+  function handleUpdated(): void {
+    handleRefresh();
+  }
+
+  function openUpdate(caseRecord: CaseRecord): void {
+    setSelectedCase(caseRecord);
+    setDialogOpen(true);
+  }
+
+  function openCreateLink(caseRecord: CaseRecord): void {
+    void navigate("/create/visit", {
+      state: {
+        prefill: {
+          existing_case_id: String(caseRecord.id),
+          student_id: caseRecord.student_id ?? null,
+          student_name: caseRecord.student_name,
+          student_school: caseRecord.student_school ?? null,
+          student_address: caseRecord.student_address ?? null,
+          reason_flagged: caseRecord.reason_flagged ?? caseRecord.reason ?? null,
+        },
+      },
+    });
+  }
+
   return (
     <PageShell>
       <ListPageToolbar
@@ -148,64 +169,18 @@ export function DashboardPage() {
           <SkeletonTable />
         ) : (
           <>
-            <DataTable
-              headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "จัดการ"]}
-              responsive={false}
-              footer={
-                cases.length === 0 ? (
-                  <div className="border-t border-slate-100 py-12 text-center text-slate-500">
-                    ไม่พบรายการตามตัวกรอง
-                  </div>
-                ) : null
-              }
-            >
-              {cases.map((item) => (
-                <DataTableRow key={item.id}>
-                  <DataTableCell>
-                    <div className="font-bold text-slate-900">{item.student_name}</div>
-                    <div className="text-xs text-slate-500">{item.student_school || "-"}</div>
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-600">
-                    {item.reason_flagged || item.reason || "-"}
-                  </DataTableCell>
-                  <DataTableCell>
-                    <CaseStatusBadge status={item.status} />
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-500">
-                    {formatDate(item.created_at)}
-                  </DataTableCell>
-                  <DataTableCell className="text-right">
-                    {item.task_id ? (
-                      // Same min width as the "สร้างลิงก์" button so the action column
-                      // stays one uniform width whichever action a row shows.
-                      <DetailLinkButton className="min-w-[140px]" to={`/task-detail/${item.task_id}`} />
-                    ) : (
-                      <Button
-                        className="min-w-[140px]"
-                        icon={Plus}
-                        onClick={() =>
-                          void navigate("/create/visit", {
-                            state: {
-                              prefill: {
-                                existing_case_id: String(item.id),
-                                student_id: item.student_id ?? null,
-                                student_name: item.student_name,
-                                student_school: item.student_school ?? null,
-                                student_address: item.student_address ?? null,
-                                reason_flagged: item.reason_flagged ?? item.reason ?? null,
-                              },
-                            },
-                          })
-                        }
-                        size="sm"
-                      >
-                        สร้างลิงก์
-                      </Button>
-                    )}
-                  </DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTable>
+            {cases.length === 0 ? (
+              <div className="rounded-lg border border-slate-200 bg-white py-12 text-center text-slate-500">
+                ไม่พบรายการตามตัวกรอง
+              </div>
+            ) : (
+              <CaseTable
+                canReviewCases={can("review-cases")}
+                onCreateLink={openCreateLink}
+                onUpdate={openUpdate}
+                rows={cases}
+              />
+            )}
             {cases.length > 0 ? (
               <Pagination
                 onPageChange={setPage}
@@ -220,6 +195,14 @@ export function DashboardPage() {
           </>
         )}
       </div>
+
+      <CaseStatusUpdateDialog
+        key={selectedCase?.id ?? "none"}
+        caseRecord={selectedCase}
+        onOpenChange={setDialogOpen}
+        onUpdated={handleUpdated}
+        open={dialogOpen}
+      />
     </PageShell>
   );
 }
