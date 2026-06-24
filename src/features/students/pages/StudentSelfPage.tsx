@@ -63,6 +63,7 @@ export function StudentSelfPage() {
           key={studentId}
           student={student}
           studentId={studentId}
+          piiRevealMode="direct"
         />
 
         <Card className="p-6">

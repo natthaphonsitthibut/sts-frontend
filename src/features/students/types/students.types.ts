@@ -72,7 +72,10 @@ export type StudentPiiReasonCode =
 
 export interface StudentPiiRevealRequest {
   field_group: StudentPiiFieldGroup;
-  reason_code: StudentPiiReasonCode;
+  // Omitted for data-subject self-reveal (the student viewing their own id):
+  // the backend waives the reason and records SELF_ACCESS. Staff reveals still
+  // send a reason_code.
+  reason_code?: StudentPiiReasonCode;
   reason_note?: string;
 }
 

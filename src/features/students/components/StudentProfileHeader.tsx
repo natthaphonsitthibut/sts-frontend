@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { Eye, EyeOff, MapPin, Phone, UserRound } from "lucide-react";
-import { Button, Card, IconButton } from "../../../components/base";
-import { PII_FIELDS, PII_FIELD_LABELS } from "../pii.constants";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Card,
+  IconButton,
+} from "../../../components/base";
+import { getApiErrorMessage } from "../../../lib/api-error";
+import { studentsService } from "../api/students.service";
+import {
+  PII_FIELDS,
+  PII_FIELD_GROUPS,
+  PII_FIELD_LABELS,
+} from "../pii.constants";
 import type {
   StudentDetail,
   StudentPiiField,
@@ -9,9 +21,15 @@ import type {
 } from "../types/students.types";
 import { StudentPiiRevealDialog } from "./StudentPiiRevealDialog";
 
+// "reasoned" = staff reveal: collect a reason via the dialog (audited with that
+// reason). "direct" = data-subject self-reveal: the student views their own id
+// with no reason prompt — the backend waives it and logs SELF_ACCESS.
+type PiiRevealMode = "reasoned" | "direct";
+
 interface StudentProfileHeaderProps {
   student: StudentDetail;
   studentId: string;
+  piiRevealMode?: PiiRevealMode;
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -33,11 +51,15 @@ function toDisplay(value: unknown): string {
 export function StudentProfileHeader({
   student,
   studentId,
+  piiRevealMode = "reasoned",
 }: StudentProfileHeaderProps) {
   const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
   const [revealedValues, setRevealedValues] = useState<
     Partial<Record<StudentPiiField, string>>
   >({});
+  const [directRevealing, setDirectRevealing] =
+    useState<StudentPiiField | null>(null);
+  const [directError, setDirectError] = useState("");
   const fullName =
     `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
     "ไม่ระบุชื่อ";
@@ -74,6 +96,33 @@ export function StudentProfileHeader({
     });
   }
 
+  // Self-reveal: no reason dialog. Call the reveal endpoint directly; the
+  // backend records SELF_ACCESS. One in-flight field at a time.
+  async function handleDirectReveal(field: StudentPiiField): Promise<void> {
+    setDirectError("");
+    setDirectRevealing(field);
+    try {
+      const response = await studentsService.revealStudentPii(studentId, {
+        field_group: PII_FIELD_GROUPS[field],
+      });
+      handleRevealed(response.values);
+    } catch (error) {
+      setDirectError(
+        getApiErrorMessage(error, "ไม่สามารถแสดงข้อมูลได้ กรุณาลองอีกครั้ง"),
+      );
+    } finally {
+      setDirectRevealing(null);
+    }
+  }
+
+  function handleRevealClick(field: StudentPiiField): void {
+    if (piiRevealMode === "direct") {
+      void handleDirectReveal(field);
+      return;
+    }
+    setRevealField(field);
+  }
+
   function renderPiiField(field: StudentPiiField) {
     const maskable = maskedFields.includes(field);
     const masked = isMasked(field);
@@ -88,8 +137,11 @@ export function StudentProfileHeader({
           masked ? (
             <Button
               className="ml-2 align-middle"
+              disabled={directRevealing !== null}
               icon={Eye}
-              onClick={() => setRevealField(field)}
+              isLoading={directRevealing === field}
+              loadingText="กำลังแสดง"
+              onClick={() => handleRevealClick(field)}
               size="sm"
               type="button"
               variant="ghost"
@@ -116,6 +168,11 @@ export function StudentProfileHeader({
   return (
     <>
       <Card className="mb-6 p-6">
+        {directError ? (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{directError}</AlertDescription>
+          </Alert>
+        ) : null}
         <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="flex size-[110px] shrink-0 items-center justify-center rounded-full bg-slate-200 shadow-md">
             <UserRound className="size-20 text-slate-500" aria-hidden="true" />
