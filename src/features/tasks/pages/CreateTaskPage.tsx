@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ import {
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
+import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -48,6 +49,7 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
+const EMPTY_LOCATION_OPTIONS: string[] = [];
 
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
 const PATH_TO_TYPE: Record<string, TaskType> = {
@@ -73,6 +75,16 @@ function isEmail(value: string): boolean {
   return z.string().email().safeParse(value).success;
 }
 
+function unique(values: Array<string | undefined>): string[] {
+  return Array.from(
+    new Set(values.filter((value): value is string => Boolean(value))),
+  ).sort();
+}
+
+function joinParts(parts: Array<string | null | undefined>): string {
+  return parts.map((part) => part?.trim()).filter(Boolean).join(" ");
+}
+
 const createTaskSchema = z
   .object({
     task_type: z.enum(["VISIT", "ATTENDANCE", "LOGIN"]),
@@ -80,8 +92,15 @@ const createTaskSchema = z
     assigned_to_email: z.string().trim(),
     role: z.string().trim(),
     student_name: z.string().trim(),
+    student_first_name: z.string().trim(),
+    student_last_name: z.string().trim(),
     student_school: z.string().trim(),
     student_address: z.string().trim(),
+    address_line: z.string().trim(),
+    address_province: z.string().trim(),
+    address_district: z.string().trim(),
+    address_sub_district: z.string().trim(),
+    postal_code: z.string().trim(),
     reason_flagged: z.string().trim(),
     subject: z.string().trim(),
     expires_value: z
@@ -119,6 +138,20 @@ const createTaskSchema = z
           message: "กรุณาเลือกหรือกรอกชื่อนักเรียน",
         });
       }
+      if (!values.student_school) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["student_school"],
+          message: "กรุณาเลือกโรงเรียน",
+        });
+      }
+      if (values.postal_code && !/^[0-9]{5}$/.test(values.postal_code)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["postal_code"],
+          message: "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
+        });
+      }
       if (!values.reason_flagged) {
         ctx.addIssue({
           code: "custom",
@@ -151,8 +184,15 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     assigned_to_email: "",
     role: "",
     student_name: "",
+    student_first_name: "",
+    student_last_name: "",
     student_school: "",
     student_address: "",
+    address_line: "",
+    address_province: "",
+    address_district: "",
+    address_sub_district: "",
+    postal_code: "",
     reason_flagged: "",
     subject: "",
     expires_value: "7",
@@ -186,7 +226,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       ? {
           personId: prefill.student_id ?? null,
           name: prefill.student_name,
+          firstName: null,
+          lastName: null,
           school: prefill.student_school ?? "",
+          schoolId: null,
         }
       : null,
   );
@@ -195,6 +238,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     defaultValues: {
       ...makeDefaults(type),
       student_name: prefill?.student_name ?? "",
+      address_line: prefill?.student_address ?? "",
       student_school: prefill?.student_school ?? "",
       student_address: prefill?.student_address ?? "",
       reason_flagged: prefill?.reason_flagged ?? "",
@@ -203,6 +247,38 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
+  const addressProvince = useWatch({ control: form.control, name: "address_province" });
+  const addressDistrict = useWatch({ control: form.control, name: "address_district" });
+  const addressSubDistrict = useWatch({ control: form.control, name: "address_sub_district" });
+  const locationQuery = useQuery({
+    queryKey: ["task-create-locations"],
+    queryFn: attendanceLookupService.getLocations,
+    enabled: type === "VISIT",
+  });
+  const locationCatalog = locationQuery.data;
+  const addressProvinces = useMemo(
+    () => [...(locationCatalog?.provinces ?? EMPTY_LOCATION_OPTIONS)].sort(),
+    [locationCatalog],
+  );
+  const addressDistricts = useMemo(
+    () =>
+      unique(
+        (locationCatalog?.districts ?? [])
+          .filter((row) => !addressProvince || row.province === addressProvince)
+          .map((row) => row.district),
+      ),
+    [locationCatalog, addressProvince],
+  );
+  const addressSubDistricts = useMemo(
+    () =>
+      unique(
+        (locationCatalog?.subDistricts ?? [])
+          .filter((row) => !addressProvince || row.province === addressProvince)
+          .filter((row) => !addressDistrict || row.district === addressDistrict)
+          .map((row) => row.sub_district),
+      ),
+    [locationCatalog, addressProvince, addressDistrict],
+  );
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -257,7 +333,15 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     form.setValue("student_name", next?.name ?? "", {
       shouldValidate: form.formState.isSubmitted,
     });
-    form.setValue("student_school", next?.school ?? "");
+    form.setValue("student_first_name", next?.firstName ?? "", {
+      shouldValidate: form.formState.isSubmitted,
+    });
+    form.setValue("student_last_name", next?.lastName ?? "", {
+      shouldValidate: form.formState.isSubmitted,
+    });
+    form.setValue("student_school", next?.school ?? "", {
+      shouldValidate: form.formState.isSubmitted,
+    });
     if (next?.personId) {
       void prefillStudentAddress(next.personId);
     }
@@ -273,6 +357,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       const address = typeof detail.address === "string" ? detail.address : "";
       if (address) {
         form.setValue("student_address", address);
+        form.setValue("address_line", address);
       }
     } catch {
       // leave the address field as-is (editable)
@@ -280,6 +365,22 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   }
 
   function handleValid(values: CreateTaskFormValues): void {
+    if (
+      type === "VISIT" &&
+      selectedStudent &&
+      !selectedStudent.personId &&
+      (!values.student_first_name || !values.student_last_name)
+    ) {
+      form.setError("student_name", {
+        type: "manual",
+        message: "กรุณากรอกชื่อและนามสกุล",
+      });
+      document
+        .getElementById("create-task-detail")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     if (submitBlockError) {
       document
         .getElementById("create-task-detail")
@@ -296,11 +397,32 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     };
 
     if (type === "VISIT") {
+      const studentName = joinParts([
+        values.student_first_name,
+        values.student_last_name,
+      ]) || values.student_name;
+      const studentAddress =
+        joinParts([
+          values.address_line,
+          values.address_sub_district,
+          values.address_district,
+          values.address_province,
+          values.postal_code,
+        ]) || values.student_address;
+
       Object.assign(payload, {
-        student_name: values.student_name,
+        student_name: studentName,
+        student_first_name: values.student_first_name || null,
+        student_last_name: values.student_last_name || null,
         student_id: selectedStudent?.personId ?? null,
         student_school: values.student_school || null,
-        student_address: values.student_address || null,
+        target_school_id: selectedStudent?.schoolId ? Number(selectedStudent.schoolId) : null,
+        student_address: studentAddress || null,
+        address_line: values.address_line || null,
+        address_province: values.address_province || null,
+        address_district: values.address_district || null,
+        address_sub_district: values.address_sub_district || null,
+        postal_code: values.postal_code || null,
         student_lat: null,
         student_lng: null,
         reason_flagged: values.reason_flagged || null,
@@ -403,12 +525,98 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                   value={selectedStudent}
                 />
                 <FormMessage<CreateTaskFormValues> name="student_name" />
+                <FormMessage<CreateTaskFormValues> name="student_school" />
               </FormItem>
 
               <FormItem>
-                <FormLabel htmlFor="student_address">ที่อยู่บ้านนักเรียน</FormLabel>
-                <Input id="student_address" {...registerField(form, "student_address")} />
-                <FormMessage<CreateTaskFormValues> name="student_address" />
+                <FormLabel htmlFor="address_line">ที่อยู่บ้านนักเรียน</FormLabel>
+                <Input
+                  id="address_line"
+                  placeholder="บ้านเลขที่ หมู่ ซอย ถนน หรือจุดสังเกต"
+                  {...registerField(form, "address_line")}
+                />
+                <FormMessage<CreateTaskFormValues> name="address_line" />
+              </FormItem>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormItem>
+                  <FormLabel>จังหวัด</FormLabel>
+                  <Combobox
+                    disabled={createTask.isPending || locationQuery.isLoading}
+                    onChange={(next) => {
+                      form.setValue("address_province", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                      form.setValue("address_district", "", {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                      form.setValue("address_sub_district", "", {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                    }}
+                    options={[
+                      { value: "", label: "เลือกจังหวัด" },
+                      ...addressProvinces.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาจังหวัด"
+                    value={addressProvince}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="address_province" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel>อำเภอ</FormLabel>
+                  <Combobox
+                    disabled={
+                      createTask.isPending || locationQuery.isLoading || !addressProvince
+                    }
+                    onChange={(next) => {
+                      form.setValue("address_district", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                      form.setValue("address_sub_district", "", {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                    }}
+                    options={[
+                      { value: "", label: "เลือกอำเภอ" },
+                      ...addressDistricts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาอำเภอ"
+                    value={addressDistrict}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="address_district" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel>ตำบล</FormLabel>
+                  <Combobox
+                    disabled={
+                      createTask.isPending || locationQuery.isLoading || !addressDistrict
+                    }
+                    onChange={(next) =>
+                      form.setValue("address_sub_district", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    options={[
+                      { value: "", label: "เลือกตำบล" },
+                      ...addressSubDistricts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาตำบล"
+                    value={addressSubDistrict}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="address_sub_district" />
+                </FormItem>
+              </div>
+
+              <FormItem>
+                <FormLabel htmlFor="postal_code">รหัสไปรษณีย์</FormLabel>
+                <Input
+                  id="postal_code"
+                  inputMode="numeric"
+                  maxLength={5}
+                  {...registerField(form, "postal_code")}
+                />
+                <FormMessage<CreateTaskFormValues> name="postal_code" />
               </FormItem>
 
               <FormItem>

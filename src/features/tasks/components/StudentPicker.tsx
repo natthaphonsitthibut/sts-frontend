@@ -10,7 +10,10 @@ export interface SelectedStudent {
   /** Opaque student id (uuid) of a linked student, or null when the name was typed manually. */
   personId: string | null;
   name: string;
+  firstName?: string | null;
+  lastName?: string | null;
   school: string;
+  schoolId?: string | null;
 }
 
 interface StudentPickerProps {
@@ -33,6 +36,8 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   const area = useSchoolAreaFilter();
   const [search, setSearch] = useState("");
   const [manual, setManual] = useState(false);
+  const [manualFirstName, setManualFirstName] = useState("");
+  const [manualLastName, setManualLastName] = useState("");
 
   const schoolOptions = useMemo(
     () =>
@@ -68,19 +73,64 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   function handleProvince(next: string): void {
     area.setProvince(next);
     scope.setSchoolId("");
+    if (manual) {
+      updateManualStudent(manualFirstName, manualLastName, "");
+    }
   }
 
   function handleDistrict(next: string): void {
     area.setDistrict(next);
     scope.setSchoolId("");
+    if (manual) {
+      updateManualStudent(manualFirstName, manualLastName, "");
+    }
   }
 
   function handleSubDistrict(next: string): void {
     area.setSubDistrict(next);
     scope.setSchoolId("");
+    if (manual) {
+      updateManualStudent(manualFirstName, manualLastName, "");
+    }
   }
 
-  if (value) {
+  function resolveSchoolName(schoolId: string): string {
+    return area.schools.find((school) => String(school.id) === schoolId)?.name ?? "";
+  }
+
+  function updateManualStudent(
+    firstName: string,
+    lastName: string,
+    schoolId = scope.schoolId,
+  ): void {
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const fullName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(" ");
+    if (!fullName) {
+      onChange(null);
+      return;
+    }
+
+    onChange({
+      personId: null,
+      name: fullName,
+      firstName: trimmedFirstName || null,
+      lastName: trimmedLastName || null,
+      school: resolveSchoolName(schoolId),
+      schoolId: schoolId || null,
+    });
+  }
+
+  function enterManualMode(): void {
+    setManualFirstName(search.trim());
+    setManualLastName("");
+    setManual(true);
+    if (search.trim()) {
+      updateManualStudent(search.trim(), "");
+    }
+  }
+
+  if (value && !(manual && !value.personId)) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
         <div className="min-w-0">
@@ -93,7 +143,12 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
         <Button
           disabled={disabled}
           icon={X}
-          onClick={() => onChange(null)}
+          onClick={() => {
+            onChange(null);
+            setManual(false);
+            setManualFirstName("");
+            setManualLastName("");
+          }}
           size="sm"
           type="button"
           variant="ghost"
@@ -107,20 +162,86 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   if (manual) {
     return (
       <div className="space-y-2">
-        <Input
-          disabled={disabled}
-          onChange={(event) =>
-            onChange(
-              event.target.value.trim()
-                ? { personId: null, name: event.target.value, school: "" }
-                : null,
-            )
-          }
-          placeholder="กรอกชื่อนักเรียน"
-        />
+        {scope.schoolLocked ? null : (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Combobox
+              disabled={disabled}
+              onChange={handleProvince}
+              options={[
+                { value: "", label: "ทุกจังหวัด" },
+                ...area.provinces.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาจังหวัด"
+              value={area.province}
+            />
+            <Combobox
+              disabled={disabled || !area.province}
+              onChange={handleDistrict}
+              options={[
+                { value: "", label: "ทุกอำเภอ" },
+                ...area.districts.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาอำเภอ"
+              value={area.district}
+            />
+            <Combobox
+              disabled={disabled || !area.district}
+              onChange={handleSubDistrict}
+              options={[
+                { value: "", label: "ทุกตำบล" },
+                ...area.subDistricts.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาตำบล"
+              value={area.subDistrict}
+            />
+          </div>
+        )}
+
+        {scope.schoolLocked ? (
+          <Input disabled value={resolveSchoolName(scope.schoolId)} />
+        ) : (
+          <Combobox
+            disabled={disabled}
+            onChange={(next) => {
+              scope.setSchoolId(next);
+              updateManualStudent(manualFirstName, manualLastName, next);
+            }}
+            options={[
+              { value: "", label: "เลือกโรงเรียน" },
+              ...schoolOptions,
+            ]}
+            placeholder="ค้นหาโรงเรียน"
+            value={scope.schoolId}
+          />
+        )}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            disabled={disabled}
+            onChange={(event) => {
+              setManualFirstName(event.target.value);
+              updateManualStudent(event.target.value, manualLastName);
+            }}
+            placeholder="ชื่อ"
+            value={manualFirstName}
+          />
+          <Input
+            disabled={disabled}
+            onChange={(event) => {
+              setManualLastName(event.target.value);
+              updateManualStudent(manualFirstName, event.target.value);
+            }}
+            placeholder="นามสกุล"
+            value={manualLastName}
+          />
+        </div>
         <button
           className="text-sm font-medium text-primary"
-          onClick={() => setManual(false)}
+          onClick={() => {
+            onChange(null);
+            setManual(false);
+            setManualFirstName("");
+            setManualLastName("");
+          }}
           type="button"
         >
           ← กลับไปค้นหาจากรายชื่อในระบบ
@@ -229,7 +350,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
                   onChange({
                     personId: student.id,
                     name: student.name,
+                    firstName: null,
+                    lastName: null,
                     school: student.school_name ?? "",
+                    schoolId: student.school_id ? String(student.school_id) : null,
                   })
                 }
                 type="button"
@@ -251,7 +375,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
 
       <button
         className="text-sm font-medium text-primary"
-        onClick={() => setManual(true)}
+        onClick={enterManualMode}
         type="button"
       >
         ไม่พบในระบบ? กรอกชื่อเอง
