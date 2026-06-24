@@ -15,7 +15,7 @@ import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
-import type { CaseRecord } from "../../cases/types/cases.types";
+import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -23,6 +23,61 @@ import {
   getTaskTypeLabel,
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
+
+const AGENCY_TYPE_LABELS: Record<string, string> = {
+  HOSPITAL: "โรงพยาบาล",
+  POLICE: "ตำรวจ",
+  SOCIAL_WELFARE: "พมจ./สังคมสงเคราะห์",
+  NGO: "องค์กรช่วยเหลือ",
+  EDUCATION: "หน่วยงานการศึกษา",
+  OTHER: "อื่น ๆ",
+};
+
+const REFERRAL_STATUS_LABELS: Record<string, string> = {
+  SENT: "ส่งต่อแล้ว",
+  ACKNOWLEDGED: "รับเรื่องแล้ว",
+  ACCEPTED: "รับดำเนินการ",
+  DECLINED: "ปฏิเสธ",
+  RETURNED: "ส่งกลับ",
+};
+
+function getAgencyTypeLabel(value?: string | null): string {
+  return value ? (AGENCY_TYPE_LABELS[value] ?? value) : "-";
+}
+
+function getReferralStatusLabel(value?: string | null): string {
+  return value ? (REFERRAL_STATUS_LABELS[value] ?? value) : "-";
+}
+
+function ReferralCard({ referral }: { referral: CaseReferralRecord }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="font-bold text-slate-900">
+            {referral.agency_name_snapshot}
+          </div>
+          <div className="text-sm text-slate-500">
+            {getAgencyTypeLabel(referral.agency_type_snapshot)}
+            {referral.contact_person ? ` · ${referral.contact_person}` : ""}
+          </div>
+        </div>
+        <Badge variant="warning">{getReferralStatusLabel(referral.status)}</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+        <div>ส่งโดย {referral.referred_by_label || "-"}</div>
+        <div>ส่งเมื่อ {formatDateTime(referral.referred_at)}</div>
+        <div>{referral.phone || "-"}</div>
+        <div>{referral.address || "-"}</div>
+      </div>
+      {referral.referral_note ? (
+        <div className="mt-3 text-sm font-medium text-slate-700">
+          {referral.referral_note}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
@@ -75,6 +130,7 @@ export function TaskDetailPage() {
 
   const task = taskQuery.data;
   const firstSubmission = task.chain.find((link) => link.submission)?.submission;
+  const referrals = task.referrals ?? [];
   // Only the current active link in the chain can be opened/closed by an admin.
   const activeLink = task.chain.find((link) => link.status === "ACTIVE");
 
@@ -199,6 +255,17 @@ export function TaskDetailPage() {
                   {firstSubmission.recommendation || "-"}
                 </div>
               </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {referrals.length > 0 ? (
+          <Card className="rounded-lg p-6">
+            <h2 className="mb-4 text-lg font-bold text-slate-900">ประวัติการส่งต่อ</h2>
+            <div className="space-y-3">
+              {referrals.map((referral) => (
+                <ReferralCard key={referral.id} referral={referral} />
+              ))}
             </div>
           </Card>
         ) : null}

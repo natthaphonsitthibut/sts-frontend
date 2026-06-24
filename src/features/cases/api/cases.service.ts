@@ -9,8 +9,14 @@ import type {
   CaseRecord,
   CaseReviewPayload,
   CaseReviewResponse,
+  CaseReferralRecord,
   CaseStats,
+  ReferralAgency,
 } from "../types/cases.types";
+
+interface DataEnvelope<T> {
+  data?: T;
+}
 
 interface CasesService {
   getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord>>;
@@ -24,6 +30,15 @@ interface CasesService {
     caseId: number,
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
+  getReferralAgencies: (caseId: number) => Promise<ReferralAgency[]>;
+  getCaseReferrals: (caseId: number) => Promise<CaseReferralRecord[]>;
+}
+
+function unwrapData<T>(data: T | DataEnvelope<T>): T {
+  if (data && typeof data === "object" && "data" in data) {
+    return (data as DataEnvelope<T>).data as T;
+  }
+  return data as T;
 }
 
 async function getCases(
@@ -58,8 +73,24 @@ async function reviewCase(
   return response.data;
 }
 
+async function getReferralAgencies(caseId: number): Promise<ReferralAgency[]> {
+  const response = await apiClient.get<ReferralAgency[] | DataEnvelope<ReferralAgency[]>>(
+    `/api/cases/${caseId}/referral-agencies`,
+  );
+  return unwrapData(response.data) || [];
+}
+
+async function getCaseReferrals(caseId: number): Promise<CaseReferralRecord[]> {
+  const response = await apiClient.get<CaseReferralRecord[] | DataEnvelope<CaseReferralRecord[]>>(
+    `/api/cases/${caseId}/referrals`,
+  );
+  return unwrapData(response.data) || [];
+}
+
 export const casesService: CasesService = {
   getCases,
   getCaseStats,
   reviewCase,
+  getReferralAgencies,
+  getCaseReferrals,
 };

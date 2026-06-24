@@ -1,4 +1,5 @@
 import type { DataScope } from "../../auth/lib/permissions";
+import type { CaseReferralRecord } from "../../cases/types/cases.types";
 
 export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
@@ -146,4 +147,5 @@ export interface TaskChainResponse {
   result_summary?: string | null;
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;
+  referrals?: CaseReferralRecord[];
 }

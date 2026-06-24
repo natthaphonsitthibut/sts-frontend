@@ -52,6 +52,38 @@ export interface CaseReviewRecord {
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note?: string | null;
+  agency_id?: number | null;
+  referral_note?: string | null;
+}
+
+export interface ReferralAgency {
+  id: number;
+  name: string;
+  agency_type: string;
+  province?: string | null;
+  district?: string | null;
+  sub_district?: string | null;
+  phone?: string | null;
+  contact_person?: string | null;
+  address?: string | null;
+}
+
+export interface CaseReferralRecord {
+  id: string;
+  case_id: number;
+  agency_id?: number | null;
+  agency_name_snapshot: string;
+  agency_type_snapshot: string;
+  referred_by?: number | null;
+  referred_by_label?: string | null;
+  referred_at: string;
+  referral_note?: string | null;
+  status: string;
+  outcome?: string | null;
+  responded_at?: string | null;
+  phone?: string | null;
+  contact_person?: string | null;
+  address?: string | null;
 }
 
 export interface CaseReviewResponse {
@@ -59,4 +91,5 @@ export interface CaseReviewResponse {
   message?: string;
   case?: Record<string, unknown> | null;
   review?: CaseReviewRecord | null;
+  referral?: CaseReferralRecord | null;
 }

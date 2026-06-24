@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Dialog,
@@ -14,6 +15,7 @@ import {
   Textarea,
 } from "../../../components/base";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { casesService } from "../api/cases.service";
 import { useUpdateCase } from "../hooks/useUpdateCase";
 import {
   CASE_REVIEW_ACTIONS,
@@ -38,6 +40,7 @@ export function CaseStatusUpdateDialog({
   const updateCase = useUpdateCase();
   const [action, setAction] = useState<CaseReviewAction>("ASSIST");
   const [note, setNote] = useState("");
+  const [agencyId, setAgencyId] = useState("");
 
   const allowedActions = useMemo(
     () =>
@@ -51,9 +54,24 @@ export function CaseStatusUpdateDialog({
   const selectedAction = allowedActions.some((option) => option.value === action)
     ? action
     : (allowedActions[0]?.value ?? "ASSIST");
+  const agencyQuery = useQuery({
+    queryKey: ["case-referral-agencies", caseRecord?.id],
+    queryFn: () => casesService.getReferralAgencies(caseRecord?.id ?? 0),
+    enabled: open && selectedAction === "FORWARD" && Boolean(caseRecord?.id),
+  });
+  const selectedAgencyId = agencyQuery.data?.some(
+    (agency) => String(agency.id) === agencyId,
+  )
+    ? agencyId
+    : "";
+  const requiresAgency = selectedAction === "FORWARD";
+  const submitDisabled =
+    !caseRecord ||
+    allowedActions.length === 0 ||
+    (requiresAgency && !selectedAgencyId);
 
   function handleSubmit(): void {
-    if (!caseRecord || allowedActions.length === 0) {
+    if (submitDisabled) {
       return;
     }
     updateCase.mutate(
@@ -62,6 +80,8 @@ export function CaseStatusUpdateDialog({
         payload: {
           review_action: selectedAction,
           review_note: note.trim() || null,
+          agency_id: requiresAgency ? Number(selectedAgencyId) : null,
+          referral_note: requiresAgency ? note.trim() || null : null,
         },
       },
       {
@@ -114,6 +134,34 @@ export function CaseStatusUpdateDialog({
               </p>
             ) : null}
 
+            {requiresAgency ? (
+              <div className="space-y-2">
+                <Label htmlFor="case-referral-agency">หน่วยงานปลายทาง</Label>
+                <Combobox
+                  disabled={agencyQuery.isLoading}
+                  id="case-referral-agency"
+                  onChange={setAgencyId}
+                  options={[
+                    { value: "", label: "เลือกหน่วยงาน" },
+                    ...(agencyQuery.data ?? []).map((agency) => ({
+                      value: String(agency.id),
+                      label: `${agency.name} · ${agency.agency_type}`,
+                    })),
+                  ]}
+                  placeholder="ค้นหาหน่วยงาน"
+                  value={selectedAgencyId}
+                />
+                {agencyQuery.isLoading ? (
+                  <p className="text-sm text-slate-500">กำลังโหลดหน่วยงาน...</p>
+                ) : null}
+                {!agencyQuery.isLoading && (agencyQuery.data ?? []).length === 0 ? (
+                  <p className="text-sm font-medium text-warning-700">
+                    ไม่พบหน่วยงานที่ตรงกับพื้นที่ของเคสนี้
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="case-note">บันทึกเพิ่มเติม</Label>
               <Textarea
@@ -135,7 +183,7 @@ export function CaseStatusUpdateDialog({
             ยกเลิก
           </Button>
           <Button
-            disabled={!caseRecord || allowedActions.length === 0}
+            disabled={submitDisabled}
             isLoading={updateCase.isPending}
             loadingText="กำลังบันทึก"
             onClick={handleSubmit}
