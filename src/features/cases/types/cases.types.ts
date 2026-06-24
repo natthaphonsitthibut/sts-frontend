@@ -8,6 +8,11 @@ export type KnownCaseStatus =
 export type CaseStatus = KnownCaseStatus | (string & {});
 
 export type CaseReviewAction = "ASSIST" | "FORWARD" | "CLOSE";
+export type CaseReferralOutcomeStatus =
+  | "ACKNOWLEDGED"
+  | "ACCEPTED"
+  | "DECLINED"
+  | "RETURNED";
 
 export interface CaseRecord {
   id: number;
@@ -84,6 +89,16 @@ export interface CaseReferralRecord {
   phone?: string | null;
   contact_person?: string | null;
   address?: string | null;
+}
+
+export interface CaseReferralOutcomePayload {
+  status: CaseReferralOutcomeStatus;
+  outcome?: string | null;
+}
+
+export interface CaseReferralOutcomeResponse {
+  success?: boolean;
+  data?: CaseReferralRecord | null;
 }
 
 export interface CaseReviewResponse {

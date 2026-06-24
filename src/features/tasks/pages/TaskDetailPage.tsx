@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, SquarePen } from "lucide-react";
 import { Badge, Button, Card } from "../../../components/base";
 import {
   ErrorState,
@@ -12,9 +12,15 @@ import {
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { CaseReferralOutcomeDialog } from "../../cases/components/CaseReferralOutcomeDialog";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
+import {
+  canUpdateReferralOutcome,
+  getAgencyTypeLabel,
+  getReferralStatusLabel,
+} from "../../cases/lib/case-referral-presentation";
 import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
 import {
@@ -24,32 +30,15 @@ import {
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
 
-const AGENCY_TYPE_LABELS: Record<string, string> = {
-  HOSPITAL: "โรงพยาบาล",
-  POLICE: "ตำรวจ",
-  SOCIAL_WELFARE: "พมจ./สังคมสงเคราะห์",
-  NGO: "องค์กรช่วยเหลือ",
-  EDUCATION: "หน่วยงานการศึกษา",
-  OTHER: "อื่น ๆ",
-};
-
-const REFERRAL_STATUS_LABELS: Record<string, string> = {
-  SENT: "ส่งต่อแล้ว",
-  ACKNOWLEDGED: "รับเรื่องแล้ว",
-  ACCEPTED: "รับดำเนินการ",
-  DECLINED: "ปฏิเสธ",
-  RETURNED: "ส่งกลับ",
-};
-
-function getAgencyTypeLabel(value?: string | null): string {
-  return value ? (AGENCY_TYPE_LABELS[value] ?? value) : "-";
-}
-
-function getReferralStatusLabel(value?: string | null): string {
-  return value ? (REFERRAL_STATUS_LABELS[value] ?? value) : "-";
-}
-
-function ReferralCard({ referral }: { referral: CaseReferralRecord }) {
+function ReferralCard({
+  canUpdate,
+  onUpdate,
+  referral,
+}: {
+  canUpdate: boolean;
+  onUpdate: (referral: CaseReferralRecord) => void;
+  referral: CaseReferralRecord;
+}) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -62,7 +51,19 @@ function ReferralCard({ referral }: { referral: CaseReferralRecord }) {
             {referral.contact_person ? ` · ${referral.contact_person}` : ""}
           </div>
         </div>
-        <Badge variant="warning">{getReferralStatusLabel(referral.status)}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="warning">{getReferralStatusLabel(referral.status)}</Badge>
+          {canUpdate ? (
+            <Button
+              icon={SquarePen}
+              onClick={() => onUpdate(referral)}
+              size="sm"
+              variant="outline"
+            >
+              บันทึกผลตอบรับ
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
         <div>ส่งโดย {referral.referred_by_label || "-"}</div>
@@ -75,6 +76,17 @@ function ReferralCard({ referral }: { referral: CaseReferralRecord }) {
           {referral.referral_note}
         </div>
       ) : null}
+      {referral.outcome ? (
+        <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="font-semibold text-slate-900">ผลตอบรับ</div>
+          <div>{referral.outcome}</div>
+          {referral.responded_at ? (
+            <div className="mt-1 text-xs text-slate-500">
+              อัปเดตเมื่อ {formatDateTime(referral.responded_at)}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -83,6 +95,8 @@ export function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const { can } = usePermissions();
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
+  const [selectedReferral, setSelectedReferral] = useState<CaseReferralRecord | null>(null);
+  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const taskQuery = useQuery({
     queryKey: ["task-chain", taskId],
     queryFn: () => taskService.getTaskChain(taskId || ""),
@@ -106,6 +120,13 @@ export function TaskDetailPage() {
     };
   }, [taskData]);
   const canUpdateCase = Boolean(caseRecord) && can("review-cases");
+  const canUpdateReferral =
+    Boolean(caseRecord) && can("review-cases") && can("forward-case");
+
+  function openReferralOutcome(referral: CaseReferralRecord): void {
+    setSelectedReferral(referral);
+    setReferralDialogOpen(true);
+  }
 
   if (taskQuery.isLoading) {
     return (
@@ -264,7 +285,14 @@ export function TaskDetailPage() {
             <h2 className="mb-4 text-lg font-bold text-slate-900">ประวัติการส่งต่อ</h2>
             <div className="space-y-3">
               {referrals.map((referral) => (
-                <ReferralCard key={referral.id} referral={referral} />
+                <ReferralCard
+                  canUpdate={
+                    canUpdateReferral && canUpdateReferralOutcome(referral.status)
+                  }
+                  key={referral.id}
+                  onUpdate={openReferralOutcome}
+                  referral={referral}
+                />
               ))}
             </div>
           </Card>
@@ -276,6 +304,14 @@ export function TaskDetailPage() {
         onOpenChange={setCaseDialogOpen}
         onUpdated={() => void taskQuery.refetch()}
         open={caseDialogOpen}
+      />
+      <CaseReferralOutcomeDialog
+        caseId={caseRecord?.id ?? null}
+        key={`${selectedReferral?.id ?? "none"}-${referralDialogOpen ? "open" : "closed"}`}
+        onOpenChange={setReferralDialogOpen}
+        onUpdated={() => void taskQuery.refetch()}
+        open={referralDialogOpen}
+        referral={selectedReferral}
       />
     </PageShell>
   );

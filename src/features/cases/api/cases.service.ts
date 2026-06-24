@@ -7,6 +7,8 @@ import {
 import type {
   CaseListQuery,
   CaseRecord,
+  CaseReferralOutcomePayload,
+  CaseReferralOutcomeResponse,
   CaseReviewPayload,
   CaseReviewResponse,
   CaseReferralRecord,
@@ -30,6 +32,11 @@ interface CasesService {
     caseId: number,
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
+  updateCaseReferralOutcome: (
+    caseId: number,
+    referralId: string,
+    payload: CaseReferralOutcomePayload,
+  ) => Promise<CaseReferralOutcomeResponse>;
   getReferralAgencies: (caseId: number) => Promise<ReferralAgency[]>;
   getCaseReferrals: (caseId: number) => Promise<CaseReferralRecord[]>;
 }
@@ -73,6 +80,18 @@ async function reviewCase(
   return response.data;
 }
 
+async function updateCaseReferralOutcome(
+  caseId: number,
+  referralId: string,
+  payload: CaseReferralOutcomePayload,
+): Promise<CaseReferralOutcomeResponse> {
+  const response = await apiClient.patch<CaseReferralOutcomeResponse>(
+    `/api/cases/${caseId}/referrals/${referralId}`,
+    payload,
+  );
+  return response.data;
+}
+
 async function getReferralAgencies(caseId: number): Promise<ReferralAgency[]> {
   const response = await apiClient.get<ReferralAgency[] | DataEnvelope<ReferralAgency[]>>(
     `/api/cases/${caseId}/referral-agencies`,
@@ -91,6 +110,7 @@ export const casesService: CasesService = {
   getCases,
   getCaseStats,
   reviewCase,
+  updateCaseReferralOutcome,
   getReferralAgencies,
   getCaseReferrals,
 };
