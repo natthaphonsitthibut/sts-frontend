@@ -54,6 +54,7 @@ export function TaskGuestPage() {
           student_id: student.id,
           status: selections[student.id] || "P_PRESENT",
         })),
+        sessionToken || undefined,
       ),
     onSuccess: () => {
       void navigate(`/task/${token}/success`, { replace: true });
