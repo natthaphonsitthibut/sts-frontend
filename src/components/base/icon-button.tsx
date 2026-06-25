@@ -12,7 +12,8 @@ const iconButtonVariants = cva(
         secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
         outline:
           "border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
-        ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-950",
+        ghost:
+          "border border-slate-200 bg-slate-50 text-slate-700 shadow-sm hover:bg-slate-100 hover:text-slate-950",
       },
       size: {
         sm: "size-8",

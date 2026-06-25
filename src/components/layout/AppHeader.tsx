@@ -32,7 +32,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex h-full items-center gap-3 px-4 lg:px-6">
         <IconButton
           aria-label="เปิดเมนู"
-          className="text-white hover:bg-white/15 hover:text-white lg:hidden"
+          className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white lg:hidden"
           icon={Menu}
           onClick={onMenuClick}
           variant="ghost"
@@ -50,14 +50,14 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         <div className="flex items-center gap-3">
           <IconButton
             aria-label="รายการแจ้งเตือน"
-            className="text-white hover:bg-white/10 hover:text-white"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
             icon={Bell}
             variant="ghost"
           />
           {canOpenSettings ? (
             <Link
               aria-label="ตั้งค่าระบบ"
-              className="inline-flex size-10 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white shadow-sm transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
               to="/settings"
             >
               <Settings className="size-5" aria-hidden="true" />

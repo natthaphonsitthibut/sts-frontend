@@ -9,7 +9,8 @@ export const buttonVariants = cva(
         secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200",
         outline:
           "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
-        ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-950",
+        ghost:
+          "border border-slate-200 bg-slate-50 text-slate-700 shadow-sm hover:bg-slate-100 hover:text-slate-950",
         destructive: "bg-danger text-white shadow-sm hover:bg-danger-700",
       },
       size: {
