@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ClipboardCheck,
+  HeartHandshake,
+  LayoutDashboard,
+  ListChecks,
+  Plus,
+} from "lucide-react";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -21,6 +30,15 @@ import { CaseTable } from "../../cases/components/CaseTable";
 import type { CaseListQuery, CaseRecord } from "../../cases/types/cases.types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { DASHBOARD_CASE_STATUS_OPTIONS } from "../lib/task-options";
+
+const CASE_STATUS_SUMMARY_ICONS = {
+  ALL: ListChecks,
+  OPEN: AlertCircle,
+  IN_PROGRESS: Clock,
+  PENDING_REVIEW: ClipboardCheck,
+  AWAITING_HELP: HeartHandshake,
+  RESOLVED: CheckCircle2,
+} as const;
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -74,6 +92,7 @@ export function DashboardPage() {
       label: option.label,
       value: countByStatus[option.value] ?? 0,
       tone: option.tone,
+      icon: CASE_STATUS_SUMMARY_ICONS[option.value],
     }));
   }, [statsQuery.data]);
 

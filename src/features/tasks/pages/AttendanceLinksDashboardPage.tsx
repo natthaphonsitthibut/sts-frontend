@@ -5,7 +5,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ClipboardCheck, Lock, LockOpen, Plus } from "lucide-react";
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  Clock,
+  Link2,
+  Lock,
+  LockOpen,
+  Plus,
+} from "lucide-react";
 import { Button, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -162,10 +170,10 @@ export function AttendanceLinksDashboardPage() {
       <div className="space-y-5">
         <SummaryMetrics
           items={[
-            { label: "ทั้งหมด", value: summary.total, tone: "default" },
-            { label: "ใช้งานได้", value: summary.active, tone: "success" },
-            { label: "ถูกปิด", value: summary.locked, tone: "danger" },
-            { label: "ไม่มีลิงก์", value: summary.expired, tone: "warning" },
+            { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
+            { label: "ใช้งานได้", value: summary.active, tone: "success", icon: CheckCircle2 },
+            { label: "ถูกปิด", value: summary.locked, tone: "danger", icon: Lock },
+            { label: "ไม่มีลิงก์", value: summary.expired, tone: "warning", icon: Clock },
           ]}
         />
 

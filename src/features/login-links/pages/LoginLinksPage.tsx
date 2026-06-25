@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link2, Plus } from "lucide-react";
+import { CheckCircle2, Clock, Link2, Lock, Plus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -121,10 +121,10 @@ export function LoginLinksPage() {
       <div className="space-y-5">
         <SummaryMetrics
           items={[
-            { label: "ทั้งหมด", value: summary.total, tone: "default" },
-            { label: "ใช้งานอยู่", value: summary.active, tone: "success" },
-            { label: "ถูกปิด", value: summary.locked, tone: "danger" },
-            { label: "หมดอายุ", value: summary.expired, tone: "warning" },
+            { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
+            { label: "ใช้งานอยู่", value: summary.active, tone: "success", icon: CheckCircle2 },
+            { label: "ถูกปิด", value: summary.locked, tone: "danger", icon: Lock },
+            { label: "หมดอายุ", value: summary.expired, tone: "warning", icon: Clock },
           ]}
         />
 
