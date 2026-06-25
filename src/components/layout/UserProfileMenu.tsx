@@ -4,6 +4,7 @@ import { Avatar, IconButton } from "../base";
 import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { authService } from "../../features/auth/api/auth.service";
+import { cn } from "../../lib/utils";
 
 function getDisplayName(firstName?: string | null, lastName?: string | null, username?: string): string {
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -19,7 +20,11 @@ function getInitials(displayName: string): string {
     .join("");
 }
 
-export function UserProfileMenu() {
+interface UserProfileMenuProps {
+  collapsed?: boolean;
+}
+
+export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
   const navigate = useNavigate();
   const user = useAuthSessionStore((state) => state.user);
   const clearSession = useAuthSessionStore((state) => state.clearSession);
@@ -40,9 +45,17 @@ export function UserProfileMenu() {
   }
 
   return (
-    <div className="flex items-center gap-3 border-t border-slate-200 p-3">
-      <Avatar fallback={getInitials(displayName)} className="size-10 bg-primary-soft font-semibold text-primary" />
-      <div className="min-w-0 flex-1">
+    <div
+      className={cn(
+        "flex items-center gap-3 border-t border-slate-200 p-3",
+        collapsed && "flex-col gap-2 px-2",
+      )}
+    >
+      <Avatar
+        fallback={getInitials(displayName)}
+        className="size-10 bg-primary-soft font-semibold text-primary"
+      />
+      <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
         <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
         <div className="truncate text-xs text-slate-500">{roleLabel}</div>
       </div>
@@ -51,6 +64,7 @@ export function UserProfileMenu() {
         className="text-slate-400 hover:bg-danger-100 hover:text-danger"
         icon={LogOut}
         onClick={() => void handleLogout()}
+        title={collapsed ? `ออกจากระบบ: ${displayName}` : undefined}
         variant="ghost"
       />
     </div>
