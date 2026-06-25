@@ -19,9 +19,14 @@ import { casesService } from "../api/cases.service";
 import { useUpdateCase } from "../hooks/useUpdateCase";
 import {
   CASE_REVIEW_ACTIONS,
+  CASE_RESOLUTION_OUTCOMES,
   getCaseReviewActionPermission,
 } from "../lib/case-presentation";
-import type { CaseRecord, CaseReviewAction } from "../types/cases.types";
+import type {
+  CaseRecord,
+  CaseResolutionOutcome,
+  CaseReviewAction,
+} from "../types/cases.types";
 
 interface CaseStatusUpdateDialogProps {
   caseRecord: CaseRecord | null;
@@ -41,6 +46,7 @@ export function CaseStatusUpdateDialog({
   const [action, setAction] = useState<CaseReviewAction>("ASSIST");
   const [note, setNote] = useState("");
   const [agencyId, setAgencyId] = useState("");
+  const [resolutionOutcome, setResolutionOutcome] = useState("");
 
   const allowedActions = useMemo(
     () =>
@@ -65,10 +71,17 @@ export function CaseStatusUpdateDialog({
     ? agencyId
     : "";
   const requiresAgency = selectedAction === "FORWARD";
+  const requiresResolutionOutcome = selectedAction === "CLOSE";
+  const selectedResolutionOutcome = CASE_RESOLUTION_OUTCOMES.some(
+    (option) => option.value === resolutionOutcome,
+  )
+    ? (resolutionOutcome as CaseResolutionOutcome)
+    : "";
   const submitDisabled =
     !caseRecord ||
     allowedActions.length === 0 ||
-    (requiresAgency && !selectedAgencyId);
+    (requiresAgency && !selectedAgencyId) ||
+    (requiresResolutionOutcome && !selectedResolutionOutcome);
 
   function handleSubmit(): void {
     if (submitDisabled) {
@@ -82,6 +95,9 @@ export function CaseStatusUpdateDialog({
           review_note: note.trim() || null,
           agency_id: requiresAgency ? Number(selectedAgencyId) : null,
           referral_note: requiresAgency ? note.trim() || null : null,
+          resolution_outcome: requiresResolutionOutcome
+            ? selectedResolutionOutcome || null
+            : null,
         },
       },
       {
@@ -159,6 +175,22 @@ export function CaseStatusUpdateDialog({
                     ไม่พบหน่วยงานที่ตรงกับพื้นที่ของเคสนี้
                   </p>
                 ) : null}
+              </div>
+            ) : null}
+
+            {requiresResolutionOutcome ? (
+              <div className="space-y-2">
+                <Label htmlFor="case-resolution-outcome">ผลลัพธ์การติดตาม</Label>
+                <Combobox
+                  id="case-resolution-outcome"
+                  onChange={setResolutionOutcome}
+                  options={[
+                    { value: "", label: "เลือกผลลัพธ์" },
+                    ...CASE_RESOLUTION_OUTCOMES,
+                  ]}
+                  searchable={false}
+                  value={selectedResolutionOutcome}
+                />
               </div>
             ) : null}
 

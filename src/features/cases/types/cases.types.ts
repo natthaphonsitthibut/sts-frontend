@@ -8,6 +8,14 @@ export type KnownCaseStatus =
 export type CaseStatus = KnownCaseStatus | (string & {});
 
 export type CaseReviewAction = "ASSIST" | "FORWARD" | "CLOSE";
+export type CaseResolutionOutcome =
+  | "RETURNED_TO_SCHOOL"
+  | "TRANSFERRED_SCHOOL"
+  | "ILLNESS"
+  | "WORKING"
+  | "UNREACHABLE"
+  | "REFERRED_EXTERNAL"
+  | "OTHER";
 export type CaseReferralOutcomeStatus =
   | "ACKNOWLEDGED"
   | "ACCEPTED"
@@ -49,6 +57,7 @@ export interface CaseStats {
 export interface CaseReviewRecord {
   id: string;
   review_action: string;
+  resolution_outcome?: CaseResolutionOutcome | null;
   reviewed_by: string;
   reviewed_at: string;
   review_note: string | null;
@@ -59,6 +68,7 @@ export interface CaseReviewPayload {
   review_note?: string | null;
   agency_id?: number | null;
   referral_note?: string | null;
+  resolution_outcome?: CaseResolutionOutcome | null;
 }
 
 export interface ReferralAgency {

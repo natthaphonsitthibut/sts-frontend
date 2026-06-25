@@ -1,5 +1,6 @@
 import type {
   CaseReviewAction,
+  CaseResolutionOutcome,
   CaseStatus,
   KnownCaseStatus,
 } from "../types/cases.types";
@@ -60,6 +61,21 @@ export const CASE_REVIEW_ACTIONS: ReviewActionOption[] = [
   { value: "ASSIST", label: "ให้ความช่วยเหลือ" },
   { value: "FORWARD", label: "ส่งต่อหน่วยงาน/ผู้เกี่ยวข้อง" },
   { value: "CLOSE", label: "ปิดเคส" },
+];
+
+interface ResolutionOutcomeOption {
+  value: CaseResolutionOutcome;
+  label: string;
+}
+
+export const CASE_RESOLUTION_OUTCOMES: ResolutionOutcomeOption[] = [
+  { value: "RETURNED_TO_SCHOOL", label: "กลับมาเรียนแล้ว" },
+  { value: "TRANSFERRED_SCHOOL", label: "ย้ายสถานศึกษา" },
+  { value: "ILLNESS", label: "เจ็บป่วย/รักษาตัว" },
+  { value: "WORKING", label: "ทำงานหรือมีภาระครอบครัว" },
+  { value: "UNREACHABLE", label: "ติดต่อไม่ได้" },
+  { value: "REFERRED_EXTERNAL", label: "ส่งต่อหน่วยงานภายนอก" },
+  { value: "OTHER", label: "อื่น ๆ" },
 ];
 
 export function getCaseReviewActionPermission(action: CaseReviewAction): string {
