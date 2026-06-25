@@ -137,7 +137,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           <div className="truncate text-sm font-bold text-slate-900">{value.name}</div>
           <div className="truncate text-xs text-slate-500">
             {value.school || "ไม่ระบุโรงเรียน"}
-            {value.personId ? ` · ${value.personId}` : " · กรอกเอง"}
+            {value.personId ? "" : " · กรอกเอง"}
           </div>
         </div>
         <Button

@@ -72,9 +72,6 @@ export function AttendanceStudentTable({
                 <h3 className="truncate text-base font-extrabold text-slate-800">
                   {student.name}
                 </h3>
-                <div className="mt-0.5 text-xs font-semibold text-slate-400">
-                  รหัส: {student.id}
-                </div>
               </div>
             </div>
 

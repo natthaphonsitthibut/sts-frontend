@@ -153,7 +153,6 @@ export function AttendanceLinkDetailPage() {
                       <div className="truncate text-sm font-medium text-slate-800">
                         {record.student_name}
                       </div>
-                      <div className="truncate text-xs text-slate-500">{record.student_id}</div>
                     </div>
                     <Badge variant={RECORD_STATUS_VARIANT[label] ?? "secondary"}>{label}</Badge>
                   </li>

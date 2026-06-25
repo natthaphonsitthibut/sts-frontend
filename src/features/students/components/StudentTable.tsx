@@ -42,9 +42,6 @@ function StudentIdentity({ student }: { student: StudentListItem }) {
         <h3 className="truncate text-lg font-extrabold tracking-[-0.01em] text-slate-800">
           {student.name}
         </h3>
-        <div className="mt-0.5 text-xs font-semibold text-slate-400">
-          รหัส: {student.id}
-        </div>
       </div>
     </div>
   );
