@@ -12,11 +12,13 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  useConfirm,
 } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { getAttendanceSaveConfirm } from "../../attendance/lib/attendance-save-confirm";
 import { taskService } from "../api/task.service";
 import {
   getTaskTypeLabel,
@@ -27,6 +29,7 @@ import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types
 export function TaskGuestPage() {
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
@@ -78,7 +81,6 @@ export function TaskGuestPage() {
     );
   }, [selections, studentsQuery.data]);
 
-
   if (taskQuery.isLoading) {
     return (
       <div className="min-h-screen bg-slate-100 p-6">
@@ -103,6 +105,19 @@ export function TaskGuestPage() {
 
   const task = taskQuery.data;
   const students = studentsQuery.data ?? [];
+
+  async function handleSubmitAttendance(): Promise<void> {
+    if (!students.length || submitAttendance.isPending) {
+      return;
+    }
+
+    const confirmed = await confirm(getAttendanceSaveConfirm(counts));
+    if (!confirmed) {
+      return;
+    }
+
+    submitAttendance.mutate(students);
+  }
 
   // Identity gate — same centred card as the login link, so every magic link
   // verifies the same way. Once OTP passes, the session refetches the task and
@@ -183,7 +198,7 @@ export function TaskGuestPage() {
                   icon={Save}
                   isLoading={submitAttendance.isPending}
                   loadingText="กำลังบันทึก"
-                  onClick={() => submitAttendance.mutate(students)}
+                  onClick={() => void handleSubmitAttendance()}
                   size="lg"
                 >
                   บันทึกข้อมูล
@@ -215,6 +230,7 @@ export function TaskGuestPage() {
             ) : null}
           </div>
         ) : null}
+        {confirmDialog}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   Input,
   Label,
   Tabs,
+  useConfirm,
 } from "../../../components/base";
 import {
   DataTable,
@@ -26,6 +27,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import type { BadgeProps } from "../../../components/base";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
+import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
@@ -68,6 +70,7 @@ function ScopeField({
 export function AttendanceCheckInPage() {
   const [tab, setTab] = useState("today");
   const checkIn = useAttendanceCheckIn();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
   // Pass the selected school so the server scopes history to one school's day
   // (it returns empty without it) — the history tab shares the today tab's scope.
@@ -97,6 +100,19 @@ export function AttendanceCheckInPage() {
   } = checkIn;
 
   const newCases = saveState.data?.newCases ?? [];
+
+  async function handleSave(): Promise<void> {
+    if (!students.length || saveState.isPending) {
+      return;
+    }
+
+    const confirmed = await confirm(getAttendanceSaveConfirm(counts));
+    if (!confirmed) {
+      return;
+    }
+
+    save();
+  }
 
   // History uses the same school/grade/room scope as the today tab — filter the
   // records client-side by the selected class so both tabs behave consistently.
@@ -262,7 +278,7 @@ export function AttendanceCheckInPage() {
                   icon={Save}
                   isLoading={saveState.isPending}
                   loadingText="กำลังบันทึก"
-                  onClick={save}
+                  onClick={() => void handleSave()}
                   size="lg"
                 >
                   บันทึกข้อมูล
@@ -309,6 +325,7 @@ export function AttendanceCheckInPage() {
           ))}
         </DataTable>
       )}
+      {confirmDialog}
     </PageShell>
   );
 }
