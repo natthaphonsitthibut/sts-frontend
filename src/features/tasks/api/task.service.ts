@@ -119,10 +119,12 @@ async function submitTaskReport(
 async function delegateTask(
   token: string,
   payload: TaskDelegationPayload,
+  magicSessionToken?: string,
 ): Promise<TaskDelegationResponse> {
   const response = await apiClient.post<TaskDelegationResponse>(
     `/tasks/${encodeURIComponent(token)}/delegate`,
     payload,
+    createMagicSessionConfig(magicSessionToken),
   );
   return response.data;
 }

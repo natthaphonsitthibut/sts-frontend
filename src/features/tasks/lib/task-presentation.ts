@@ -41,6 +41,7 @@ export function getStatusLabel(status?: string | null): string {
   if (status === "LOCKED") return "ถูกปิด";
   if (status === "EXPIRED") return "หมดอายุ";
   if (status === "COMPLETED") return "เสร็จสิ้น";
+  if (status === "DELEGATED") return "ส่งต่อแล้ว";
   if (status === "OPEN") return "เปิดเคส";
   if (status === "PENDING_REVIEW") return "รอตรวจ";
   if (status === "IN_PROGRESS") return "กำลังติดตาม";

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardList, SquarePen } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardList, SquarePen } from "lucide-react";
 import { Badge, Button, Card } from "../../../components/base";
 import {
   ErrorState,
@@ -223,22 +223,49 @@ export function TaskDetailPage() {
 
         <Card className="rounded-lg p-6">
           <h2 className="mb-4 text-lg font-bold text-slate-900">เส้นทางการมอบหมาย</h2>
-          <div className="space-y-3">
+          <ol className="relative space-y-0 before:absolute before:bottom-4 before:left-3 before:top-4 before:w-px before:bg-slate-200">
             {task.chain.map((link, index) => (
-              <div
-                className="rounded-lg border border-slate-200 bg-white p-4"
+              <li
+                className="relative min-w-0 border-b border-slate-100 py-4 pl-9 last:border-b-0"
                 key={link.id}
               >
+                <span className="absolute left-0 top-5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-primary text-xs font-bold text-white shadow-sm">
+                  {index + 1}
+                </span>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="font-bold text-slate-900">
-                      {index + 1}. {link.assigned_to_name || "ไม่ระบุผู้รับ"}
-                    </div>
+                  <div className="min-w-0">
+                    {index === 0 ? (
+                      <div className="font-bold text-slate-900">
+                        ผู้รับเริ่มต้น:{" "}
+                        {link.assigned_to_name || "ไม่ระบุผู้รับ"}
+                      </div>
+                    ) : (
+                      <div className="flex min-w-0 flex-wrap items-center gap-2 font-bold text-slate-900">
+                        <span className="break-words">
+                          {link.delegated_by_name || "ไม่ระบุผู้ส่ง"}
+                        </span>
+                        <ArrowRight
+                          className="size-4 shrink-0 text-slate-400"
+                          aria-hidden="true"
+                        />
+                        <span className="break-words">
+                          {link.assigned_to_name || "ไม่ระบุผู้รับ"}
+                        </span>
+                      </div>
+                    )}
                     <div className="text-sm text-slate-500">
-                      สร้างเมื่อ {formatDateTime(link.created_at)}
+                      {index === 0 ? "สร้างเมื่อ" : "ส่งต่อเมื่อ"}{" "}
+                      {formatDateTime(link.delegated_at || link.created_at)}
+                      {link.delegation_depth != null
+                        ? ` · ลำดับที่ ${Number(link.delegation_depth) + 1}`
+                        : ""}
                     </div>
                   </div>
-                  <Badge variant={link.status === "COMPLETED" ? "success" : "secondary"}>
+                  <Badge
+                    variant={
+                      link.status === "COMPLETED" ? "success" : "secondary"
+                    }
+                  >
                     {getStatusLabel(link.status)}
                   </Badge>
                 </div>
@@ -248,9 +275,9 @@ export function TaskDetailPage() {
                     link={normalizeTaskPublicLink(link.magic_link)}
                   />
                 ) : null}
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </Card>
 
         {firstSubmission ? (

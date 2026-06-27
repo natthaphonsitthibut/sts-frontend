@@ -24,6 +24,7 @@ import {
 } from "../../../components/base";
 import { CopyButton } from "../../../components/layout/copy-button";
 import { optionalThaiPhone } from "../../../lib/validation";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
 import {
   buildLineShareUrl,
@@ -35,6 +36,13 @@ import type { TaskDelegationResponse } from "../types/task.types";
 const delegateSchema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับงาน"),
   phone: optionalThaiPhone,
+  email: z
+    .string()
+    .trim()
+    .refine(
+      (value) => !value || z.string().email().safeParse(value).success,
+      "รูปแบบอีเมลไม่ถูกต้อง",
+    ),
   hours: z
     .string()
     .trim()
@@ -49,19 +57,25 @@ type DelegateFormValues = z.infer<typeof delegateSchema>;
 export function DelegatePage() {
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
   const [result, setResult] = useState<TaskDelegationResponse | null>(null);
   const form = useForm<DelegateFormValues>({
-    defaultValues: { name: "", phone: "", hours: "24" },
+    defaultValues: { name: "", phone: "", email: "", hours: "24" },
     resolver: zodResolver(delegateSchema),
   });
 
   const delegate = useMutation({
     mutationFn: (values: DelegateFormValues) =>
-      taskService.delegateTask(token, {
-        expires_in_hours: Number(values.hours) || 1,
-        new_assignee_name: values.name.trim(),
-        new_assignee_phone: values.phone.trim() || null,
-      }),
+      taskService.delegateTask(
+        token,
+        {
+          expires_in_hours: Number(values.hours) || 1,
+          new_assignee_email: values.email.trim() || null,
+          new_assignee_name: values.name.trim(),
+          new_assignee_phone: values.phone.trim() || null,
+        },
+        readMagicToken(token, "local") || undefined,
+      ),
     onSuccess: setResult,
     throwOnError: false,
   });
@@ -128,6 +142,18 @@ export function DelegatePage() {
                       {...registerField(form, "phone")}
                     />
                     <FormMessage<DelegateFormValues> name="phone" />
+                  </FormItem>
+
+                  <FormItem>
+                    <FormLabel htmlFor="delegate-email">อีเมลผู้รับงาน</FormLabel>
+                    <Input
+                      autoComplete="email"
+                      id="delegate-email"
+                      inputMode="email"
+                      type="email"
+                      {...registerField(form, "email")}
+                    />
+                    <FormMessage<DelegateFormValues> name="email" />
                   </FormItem>
 
                   <FormItem>

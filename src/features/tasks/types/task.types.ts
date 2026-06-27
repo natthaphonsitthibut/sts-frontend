@@ -119,6 +119,8 @@ export interface TaskChainLink {
   magic_link?: string | null;
   admin_locked?: boolean | number | null;
   delegation_depth?: number | null;
+  delegated_by_name?: string | null;
+  delegated_at?: string | null;
   submission?: TaskSubmission | null;
 }
 
