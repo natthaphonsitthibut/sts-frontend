@@ -1,0 +1,255 @@
+import { useEffect, useRef, useState } from "react";
+import { Crosshair, LoaderCircle, MapPin } from "lucide-react";
+import { Badge } from "../../../components/base";
+import { CopyButton } from "../../../components/layout/copy-button";
+import { appConfig } from "../../../config/env";
+import { cn } from "../../../lib/utils";
+import {
+  loadGoogleMaps,
+  type GoogleMapInstance,
+  type GoogleMarkerInstance,
+} from "../lib/google-maps-loader";
+
+type CoordinateValue = number | string | null | undefined;
+
+interface VisitMapPreviewProps {
+  title: string;
+  lat?: CoordinateValue;
+  lng?: CoordinateValue;
+  address?: string | null;
+  markerLabel?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  editable?: boolean;
+  onCoordinateChange?: (coordinates: { lat: number; lng: number }) => void;
+}
+
+const THAILAND_CENTER = { lat: 13.7563, lng: 100.5018 };
+
+function normalizeCoordinate(value: CoordinateValue): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function formatCoordinate(value: number): string {
+  return value.toFixed(6);
+}
+
+function coordinateSummary(lat: number, lng: number): string {
+  return `${formatCoordinate(lat)}, ${formatCoordinate(lng)}`;
+}
+
+export function VisitMapPreview({
+  title,
+  lat,
+  lng,
+  address,
+  markerLabel = "พิกัด",
+  emptyTitle = "ยังไม่มีพิกัด",
+  emptyDescription = "ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง",
+  className,
+  editable = false,
+  onCoordinateChange,
+}: VisitMapPreviewProps) {
+  const mapElementRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<GoogleMapInstance | null>(null);
+  const markerRef = useRef<GoogleMarkerInstance | null>(null);
+  const onCoordinateChangeRef = useRef(onCoordinateChange);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">(
+    appConfig.googleMapsBrowserKey ? "loading" : "error",
+  );
+  const parsedLat = normalizeCoordinate(lat);
+  const parsedLng = normalizeCoordinate(lng);
+  const hasCoordinates = parsedLat !== null && parsedLng !== null;
+  const coordinates = hasCoordinates
+    ? coordinateSummary(parsedLat, parsedLng)
+    : "";
+
+  useEffect(() => {
+    onCoordinateChangeRef.current = onCoordinateChange;
+  }, [onCoordinateChange]);
+
+  useEffect(() => {
+    return () => {
+      if (markerRef.current) {
+        window.google?.maps.event.clearInstanceListeners(markerRef.current);
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      if (mapRef.current) {
+        window.google?.maps.event.clearInstanceListeners(mapRef.current);
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!appConfig.googleMapsBrowserKey || !mapElementRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    void loadGoogleMaps()
+      .then((google) => {
+        if (cancelled || !mapElementRef.current) return;
+
+        const center = hasCoordinates
+          ? { lat: parsedLat, lng: parsedLng }
+          : THAILAND_CENTER;
+        const zoom = hasCoordinates ? 16 : 6;
+        const map =
+          mapRef.current ??
+          new google.maps.Map(mapElementRef.current, {
+            center,
+            zoom,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true,
+          });
+        mapRef.current = map;
+        map.setCenter(center);
+        map.setZoom(zoom);
+        google.maps.event.clearInstanceListeners(map);
+
+        if (hasCoordinates) {
+          const marker =
+            markerRef.current ??
+            new google.maps.Marker({
+              draggable: editable,
+              map,
+              position: center,
+              title: markerLabel,
+          });
+          markerRef.current = marker;
+          marker.setMap(map);
+          marker.setDraggable(editable);
+          marker.setPosition(center);
+          google.maps.event.clearInstanceListeners(marker);
+          if (editable && onCoordinateChangeRef.current) {
+            marker.addListener("dragend", (event) => {
+              const next = event.latLng ?? marker.getPosition();
+              if (next) {
+                onCoordinateChangeRef.current?.({ lat: next.lat(), lng: next.lng() });
+              }
+            });
+          }
+        } else if (markerRef.current) {
+          google.maps.event.clearInstanceListeners(markerRef.current);
+          markerRef.current.setMap(null);
+          markerRef.current = null;
+        }
+
+        if (editable && onCoordinateChangeRef.current) {
+          map.addListener("click", (event) => {
+            if (event.latLng) {
+              onCoordinateChangeRef.current?.({
+                lat: event.latLng.lat(),
+                lng: event.latLng.lng(),
+              });
+            }
+          });
+        }
+
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadState("error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    editable,
+    hasCoordinates,
+    markerLabel,
+    parsedLat,
+    parsedLng,
+  ]);
+
+  const showMap = appConfig.googleMapsBrowserKey && loadState !== "error";
+
+  return (
+    <div className={cn("rounded-lg border border-slate-200 bg-white p-4", className)}>
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <MapPin className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <h3 className="text-base font-extrabold text-slate-900">{title}</h3>
+          </div>
+          {address ? (
+            <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-600">
+              {address}
+            </p>
+          ) : null}
+        </div>
+        {hasCoordinates ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge variant="success">{markerLabel}</Badge>
+            <CopyButton label="คัดลอก" size="sm" value={coordinates} variant="outline" />
+          </div>
+        ) : (
+          <Badge variant="secondary">{emptyTitle}</Badge>
+        )}
+      </div>
+
+      <div className="relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+        {showMap ? (
+          <>
+            <div className="absolute inset-0" ref={mapElementRef} />
+            {loadState === "loading" ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                <LoaderCircle className="size-8 animate-spin text-primary" aria-hidden="true" />
+              </div>
+            ) : null}
+            {!hasCoordinates && loadState === "ready" ? (
+              <div className="absolute inset-x-4 top-4 rounded-lg bg-white/95 p-3 text-sm font-semibold text-slate-700 shadow">
+                {emptyDescription}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white px-6 text-center">
+            <Crosshair className="size-9 text-slate-400" aria-hidden="true" />
+            <div className="text-sm font-bold text-slate-700">
+              {appConfig.googleMapsBrowserKey ? "โหลดแผนที่ไม่สำเร็จ" : "ยังไม่ได้ตั้งค่า Google Maps"}
+            </div>
+            <div className="max-w-sm text-xs font-medium text-slate-500">
+              {appConfig.googleMapsBrowserKey
+                ? "ตรวจสอบโดเมนที่อนุญาตและสถานะ Maps JavaScript API"
+                : "ตั้งค่า VITE_GOOGLE_MAPS_BROWSER_KEY เพื่อเปิดแผนที่จริงในระบบ"}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {hasCoordinates ? (
+        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <div className="text-xs font-bold text-slate-500">Latitude</div>
+            <div className="font-mono font-semibold text-slate-900">
+              {formatCoordinate(parsedLat)}
+            </div>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <div className="text-xs font-bold text-slate-500">Longitude</div>
+            <div className="font-mono font-semibold text-slate-900">
+              {formatCoordinate(parsedLng)}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

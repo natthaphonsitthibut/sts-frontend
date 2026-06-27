@@ -24,6 +24,7 @@ import {
   getTaskTypeLabel,
 } from "../lib/task-presentation";
 import { AttendanceStudentTable } from "../../attendance/components/AttendanceStudentTable";
+import { VisitMapPreview } from "../components/VisitMapPreview";
 import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types";
 
 export function TaskGuestPage() {
@@ -168,6 +169,14 @@ export function TaskGuestPage() {
                 <div className="font-bold text-slate-900">{task.student_name || "-"}</div>
                 <div className="text-sm text-slate-600">{task.student_address || "-"}</div>
                 <div className="text-sm text-danger-700">{task.reason_flagged || "-"}</div>
+                <VisitMapPreview
+                  address={task.student_address}
+                  emptyDescription="ยังไม่มีพิกัดบ้านที่ยืนยันสำหรับภารกิจนี้"
+                  lat={task.student_lat}
+                  lng={task.student_lng}
+                  markerLabel="บ้านนักเรียน"
+                  title="แผนที่บ้านนักเรียน"
+                />
               </div>
             )}
           </CardContent>

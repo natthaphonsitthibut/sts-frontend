@@ -29,6 +29,7 @@ import {
   getTaskTypeLabel,
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
+import { VisitMapPreview } from "../components/VisitMapPreview";
 
 function ReferralCard({
   canUpdate,
@@ -275,6 +276,15 @@ export function TaskDetailPage() {
                 <div className="font-medium text-slate-700">
                   {firstSubmission.recommendation || "-"}
                 </div>
+              </div>
+              <div className="sm:col-span-2">
+                <VisitMapPreview
+                  emptyDescription="รายงานนี้ยังไม่มีพิกัดหน้างาน"
+                  lat={firstSubmission.visit_lat}
+                  lng={firstSubmission.visit_lng}
+                  markerLabel="หน้างาน"
+                  title="แผนที่พิกัดหน้างาน"
+                />
               </div>
             </div>
           </Card>

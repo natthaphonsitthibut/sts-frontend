@@ -46,5 +46,6 @@ function resolveThaIdMode(): ThaIdMode {
 export const appConfig = {
   apiBaseUrl: resolveApiBaseUrl(),
   apiPrefix: resolveApiPrefix(),
+  googleMapsBrowserKey: import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY?.trim() || "",
   thaidMode: resolveThaIdMode(),
 };

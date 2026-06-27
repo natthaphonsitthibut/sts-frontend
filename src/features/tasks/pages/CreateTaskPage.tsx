@@ -32,12 +32,14 @@ import {
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
+import { geoService } from "../api/geo.service";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
+import { VisitMapPreview } from "../components/VisitMapPreview";
 import { studentsService } from "../../students/api/students.service";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
@@ -233,6 +235,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         }
       : null,
   );
+  const [homeCoordinates, setHomeCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const form = useForm<CreateTaskFormValues>({
     defaultValues: {
@@ -250,6 +256,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const addressProvince = useWatch({ control: form.control, name: "address_province" });
   const addressDistrict = useWatch({ control: form.control, name: "address_district" });
   const addressSubDistrict = useWatch({ control: form.control, name: "address_sub_district" });
+  const addressLine = useWatch({ control: form.control, name: "address_line" });
+  const postalCode = useWatch({ control: form.control, name: "postal_code" });
   const locationQuery = useQuery({
     queryKey: ["task-create-locations"],
     queryFn: attendanceLookupService.getLocations,
@@ -318,18 +326,39 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     onSuccess: setResult,
     throwOnError: false,
   });
+  const geocodeAddress = useMutation({
+    mutationFn: (address: string) => geoService.geocodeAddress(address),
+    onSuccess: (result) => {
+      if (result) {
+        setHomeCoordinates({ lat: result.lat, lng: result.lng });
+      } else {
+        form.setError("address_line", {
+          type: "manual",
+          message: "ไม่พบพิกัดจากที่อยู่นี้ กรุณาตรวจสอบที่อยู่หรือลากหมุดเอง",
+        });
+      }
+    },
+    onError: () => {
+      form.setError("address_line", {
+        type: "manual",
+        message: "ค้นหาพิกัดไม่สำเร็จ กรุณาตรวจสอบ Google Maps server key หรือกรอกพิกัดจากแผนที่เอง",
+      });
+    },
+  });
 
   function startNewTask(): void {
     setResult(null);
     form.reset(makeDefaults(type));
     setDataScope({});
     setSelectedStudent(null);
+    setHomeCoordinates(null);
     setPermissions([]);
     scope.reset();
   }
 
   function handleStudentChange(next: SelectedStudent | null): void {
     setSelectedStudent(next);
+    setHomeCoordinates(null);
     form.setValue("student_name", next?.name ?? "", {
       shouldValidate: form.formState.isSubmitted,
     });
@@ -345,6 +374,29 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     if (next?.personId) {
       void prefillStudentAddress(next.personId);
     }
+  }
+
+  const visitAddress = useMemo(
+    () =>
+      joinParts([
+        addressLine,
+        addressSubDistrict,
+        addressDistrict,
+        addressProvince,
+        postalCode,
+      ]),
+    [addressDistrict, addressLine, addressProvince, addressSubDistrict, postalCode],
+  );
+
+  function handleGeocodeAddress(): void {
+    if (!visitAddress) {
+      form.setError("address_line", {
+        type: "manual",
+        message: "กรุณากรอกที่อยู่ก่อนค้นหาพิกัด",
+      });
+      return;
+    }
+    geocodeAddress.mutate(visitAddress);
   }
 
   // Pull the student's stored home address so the visit form prefills it. The
@@ -423,8 +475,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         address_district: values.address_district || null,
         address_sub_district: values.address_sub_district || null,
         postal_code: values.postal_code || null,
-        student_lat: null,
-        student_lng: null,
+        student_lat: homeCoordinates?.lat ?? null,
+        student_lng: homeCoordinates?.lng ?? null,
         reason_flagged: values.reason_flagged || null,
         existing_case_id: prefill?.existing_case_id ?? null,
       });
@@ -618,6 +670,37 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                 />
                 <FormMessage<CreateTaskFormValues> name="postal_code" />
               </FormItem>
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-bold text-slate-700">พิกัดบ้านนักเรียน</div>
+                    <div className="text-xs font-medium text-slate-500">
+                      ค้นหาจากที่อยู่ แล้วลากหมุดในแผนที่ให้ตรงก่อนสร้างลิงก์
+                    </div>
+                  </div>
+                  <Button
+                    icon={MapPin}
+                    isLoading={geocodeAddress.isPending}
+                    loadingText="กำลังค้นหา"
+                    onClick={handleGeocodeAddress}
+                    type="button"
+                    variant="outline"
+                  >
+                    ค้นหาพิกัดจากที่อยู่
+                  </Button>
+                </div>
+                <VisitMapPreview
+                  address={visitAddress || undefined}
+                  editable
+                  emptyDescription="ค้นหาพิกัดจากที่อยู่ หรือคลิกบนแผนที่หลังตั้งค่า Google Maps"
+                  lat={homeCoordinates?.lat}
+                  lng={homeCoordinates?.lng}
+                  markerLabel="บ้านนักเรียน"
+                  onCoordinateChange={setHomeCoordinates}
+                  title="แผนที่บ้านนักเรียน"
+                />
+              </div>
 
               <FormItem>
                 <FormLabel htmlFor="reason_flagged" required>
