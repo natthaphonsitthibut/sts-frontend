@@ -57,6 +57,10 @@ export function useAttendanceCheckIn() {
   const [selections, setSelections] = useState<
     Record<string, AttendanceSelectionStatus>
   >({});
+  const [previousSelections, setPreviousSelections] = useState<Record<
+    string,
+    AttendanceSelectionStatus
+  > | null>(null);
 
   // Effective filters: locked dimensions come straight from scope; unlocked
   // ones from user input. No effects, no stored-then-synced state.
@@ -113,7 +117,31 @@ export function useAttendanceCheckIn() {
   }, [students, selections]);
 
   function setStatus(studentId: string, status: AttendanceSelectionStatus): void {
+    setPreviousSelections(selections);
     setSelections((current) => ({ ...current, [studentId]: status }));
+  }
+
+  function setAllStatus(status: AttendanceSelectionStatus): void {
+    if (!students.length) {
+      return;
+    }
+
+    setPreviousSelections(selections);
+    setSelections(
+      students.reduce<Record<string, AttendanceSelectionStatus>>((next, student) => {
+        next[student.id] = status;
+        return next;
+      }, {}),
+    );
+  }
+
+  function undoSelections(): void {
+    if (!previousSelections) {
+      return;
+    }
+
+    setSelections(previousSelections);
+    setPreviousSelections(null);
   }
 
   // Changing the class resets unlocked downstream fields + marks.
@@ -121,17 +149,20 @@ export function useAttendanceCheckIn() {
     setSchoolInput(value);
     setRoomInput("");
     setSelections({});
+    setPreviousSelections(null);
   }
 
   function setGrade(value: string): void {
     setGradeInput(value);
     setRoomInput("");
     setSelections({});
+    setPreviousSelections(null);
   }
 
   function setRoom(value: string): void {
     setRoomInput(value);
     setSelections({});
+    setPreviousSelections(null);
   }
 
   function save(): void {
@@ -160,6 +191,9 @@ export function useAttendanceCheckIn() {
     students,
     selections,
     setStatus,
+    setAllStatus,
+    undoSelections,
+    canUndoSelections: Boolean(previousSelections),
     counts,
     canLoadRoster,
     isRosterLoading: studentsQuery.isLoading && canLoadRoster,

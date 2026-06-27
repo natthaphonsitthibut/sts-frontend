@@ -90,6 +90,9 @@ export function AttendanceCheckInPage() {
     students,
     selections,
     setStatus,
+    setAllStatus,
+    undoSelections,
+    canUndoSelections,
     counts,
     canLoadRoster,
     isRosterLoading,
@@ -265,7 +268,10 @@ export function AttendanceCheckInPage() {
               />
             ) : (
               <AttendanceStudentTable
+                canUndo={canUndoSelections}
+                onBulkStatusChange={setAllStatus}
                 onStatusChange={setStatus}
+                onUndo={undoSelections}
                 selections={selections}
                 students={students}
               />

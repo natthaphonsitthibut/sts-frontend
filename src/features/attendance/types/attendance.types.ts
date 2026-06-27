@@ -11,8 +11,8 @@ export interface AttendanceStudent {
   room: string;
   school_id?: string | number;
   school_name?: string;
-  total_late?: number;
-  total_absent?: number;
+  total_late?: number | string;
+  total_absent?: number | string;
 }
 
 export interface AttendanceStudentQuery {
