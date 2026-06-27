@@ -40,14 +40,14 @@ function unwrapData<T>(data: T | DataEnvelope<T>): T {
 
 async function getGradeLevels(): Promise<GradeLevelOption[]> {
   const response = await apiClient.get<GradeLevelOption[] | DataEnvelope<GradeLevelOption[]>>(
-    "/api/attendance/grade-levels",
+    "/attendance/grade-levels",
   );
   return unwrapData(response.data) || [];
 }
 
 async function getSchools(params: GetSchoolsParams = {}): Promise<SchoolOption[]> {
   const response = await apiClient.get<SchoolOption[] | DataEnvelope<SchoolOption[]>>(
-    "/api/attendance/schools",
+    "/attendance/schools",
     {
       params: {
         province: params.province || undefined,
@@ -63,7 +63,7 @@ async function getSchools(params: GetSchoolsParams = {}): Promise<SchoolOption[]
 
 async function getLocations(): Promise<LocationCatalog> {
   const response = await apiClient.get<LocationCatalog | DataEnvelope<LocationCatalog>>(
-    "/api/attendance/locations",
+    "/attendance/locations",
   );
   return unwrapData(response.data) || { provinces: [], districts: [], subDistricts: [] };
 }
@@ -74,7 +74,7 @@ async function getRooms(grade: string, schoolId?: string): Promise<string[]> {
   }
 
   const response = await apiClient.get<string[] | DataEnvelope<string[]>>(
-    "/api/attendance/rooms",
+    "/attendance/rooms",
     {
       params: {
         grade,

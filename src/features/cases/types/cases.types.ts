@@ -42,7 +42,7 @@ export interface CaseListQuery {
   limit?: number;
 }
 
-/** Scope-aware case counts from `GET /api/stats` (server-computed aggregates). */
+/** Scope-aware case counts from `GET /stats` through apiClient. */
 export interface CaseStats {
   total: number;
   open: number;

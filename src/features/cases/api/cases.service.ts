@@ -26,7 +26,7 @@ interface CasesService {
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
    * server-side by a review action (ASSIST / FORWARD / CLOSE) plus an optional
-   * note, via POST /api/cases/:id/review.
+   * note, via POST /cases/:id/review through apiClient.
    */
   reviewCase: (
     caseId: number,
@@ -60,12 +60,12 @@ async function getCases(
     params.searchTerm = searchTerm;
   }
 
-  const response = await apiClient.get("/api/cases", { params });
+  const response = await apiClient.get("/cases", { params });
   return normalizePaginatedResponse<CaseRecord>(response.data, query);
 }
 
 async function getCaseStats(): Promise<CaseStats> {
-  const response = await apiClient.get<CaseStats>("/api/stats");
+  const response = await apiClient.get<CaseStats>("/stats");
   return response.data;
 }
 
@@ -74,7 +74,7 @@ async function reviewCase(
   payload: CaseReviewPayload,
 ): Promise<CaseReviewResponse> {
   const response = await apiClient.post<CaseReviewResponse>(
-    `/api/cases/${caseId}/review`,
+    `/cases/${caseId}/review`,
     payload,
   );
   return response.data;
@@ -86,7 +86,7 @@ async function updateCaseReferralOutcome(
   payload: CaseReferralOutcomePayload,
 ): Promise<CaseReferralOutcomeResponse> {
   const response = await apiClient.patch<CaseReferralOutcomeResponse>(
-    `/api/cases/${caseId}/referrals/${referralId}`,
+    `/cases/${caseId}/referrals/${referralId}`,
     payload,
   );
   return response.data;
@@ -94,14 +94,14 @@ async function updateCaseReferralOutcome(
 
 async function getReferralAgencies(caseId: number): Promise<ReferralAgency[]> {
   const response = await apiClient.get<ReferralAgency[] | DataEnvelope<ReferralAgency[]>>(
-    `/api/cases/${caseId}/referral-agencies`,
+    `/cases/${caseId}/referral-agencies`,
   );
   return unwrapData(response.data) || [];
 }
 
 async function getCaseReferrals(caseId: number): Promise<CaseReferralRecord[]> {
   const response = await apiClient.get<CaseReferralRecord[] | DataEnvelope<CaseReferralRecord[]>>(
-    `/api/cases/${caseId}/referrals`,
+    `/cases/${caseId}/referrals`,
   );
   return unwrapData(response.data) || [];
 }

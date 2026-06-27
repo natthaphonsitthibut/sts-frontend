@@ -45,7 +45,7 @@ function normalizeManagedUser(user: ManagedUser): ManagedUser {
 async function getSettings(): Promise<SystemSetting[]> {
   const response = await apiClient.get<
     SystemSetting[] | DataEnvelope<SystemSetting[]>
-  >("/api/settings");
+  >("/settings");
   return normalizeArrayResponse(response.data);
 }
 
@@ -54,7 +54,7 @@ async function updateSetting(
   payload: SettingsUpdatePayload,
 ): Promise<SettingsUpdateResponse> {
   const response = await apiClient.put<SettingsUpdateResponse>(
-    `/api/settings/${encodeURIComponent(key)}`,
+    `/settings/${encodeURIComponent(key)}`,
     payload,
   );
   return response.data;
@@ -70,7 +70,7 @@ async function getUsers(
     params.searchTerm = searchTerm;
   }
 
-  const response = await apiClient.get("/api/users", { params });
+  const response = await apiClient.get("/users", { params });
   const result = normalizePaginatedResponse<ManagedUser>(response.data, query);
   return {
     ...result,
@@ -80,7 +80,7 @@ async function getUsers(
 
 async function getUser(id: number): Promise<ManagedUser> {
   const response = await apiClient.get<ManagedUser | DataEnvelope<ManagedUser>>(
-    `/api/users/${id}`,
+    `/users/${id}`,
   );
   const user = "data" in response.data && response.data.data ? response.data.data : response.data;
   return normalizeManagedUser(user as ManagedUser);
@@ -89,21 +89,21 @@ async function getUser(id: number): Promise<ManagedUser> {
 async function getRolesCatalog(): Promise<RoleDefinition[]> {
   const response = await apiClient.get<
     RoleDefinition[] | DataEnvelope<RoleDefinition[]>
-  >("/api/users/roles");
+  >("/users/roles");
   return normalizeArrayResponse(response.data);
 }
 
 async function createUser(payload: UserSavePayload): Promise<CreateUserResponse> {
-  const response = await apiClient.post<CreateUserResponse>("/api/users", payload);
+  const response = await apiClient.post<CreateUserResponse>("/users", payload);
   return response.data;
 }
 
 async function updateUser(id: number, payload: UserSavePayload): Promise<void> {
-  await apiClient.put(`/api/users/${id}`, payload);
+  await apiClient.put(`/users/${id}`, payload);
 }
 
 async function deleteUser(id: number): Promise<void> {
-  await apiClient.delete(`/api/users/${id}`);
+  await apiClient.delete(`/users/${id}`);
 }
 
 // --- Role groups ---
@@ -116,12 +116,12 @@ async function getRoleGroups(
     params.searchTerm = searchTerm;
   }
 
-  const response = await apiClient.get("/api/users/role-groups", { params });
+  const response = await apiClient.get("/users/role-groups", { params });
   return normalizePaginatedResponse<RoleDefinition>(response.data, query);
 }
 
 async function createRoleGroup(payload: RoleGroupForm): Promise<void> {
-  await apiClient.post("/api/users/role-groups", payload);
+  await apiClient.post("/users/role-groups", payload);
 }
 
 async function updateRoleGroup(
@@ -129,14 +129,14 @@ async function updateRoleGroup(
   payload: RoleGroupForm,
 ): Promise<void> {
   await apiClient.put(
-    `/api/users/role-groups/${encodeURIComponent(roleName)}`,
+    `/users/role-groups/${encodeURIComponent(roleName)}`,
     payload,
   );
 }
 
 async function deleteRoleGroup(roleName: string): Promise<void> {
   await apiClient.delete(
-    `/api/users/role-groups/${encodeURIComponent(roleName)}`,
+    `/users/role-groups/${encodeURIComponent(roleName)}`,
   );
 }
 

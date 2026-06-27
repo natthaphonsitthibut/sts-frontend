@@ -24,7 +24,7 @@ async function submitImport({
   formData.append("mapping", JSON.stringify(mapping));
 
   const response = await apiClient.post<ImportResult>(
-    "/api/imports/bulk",
+    "/imports/bulk",
     formData,
     {
       onUploadProgress: (event) => {

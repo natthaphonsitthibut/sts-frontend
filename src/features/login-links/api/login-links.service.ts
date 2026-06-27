@@ -56,7 +56,7 @@ async function getLoginLinks(
   const response = await apiClient.get<
     | LoginLink[]
     | (DataEnvelope<LoginLink[]> & { summary?: Partial<LoginLinkSummary> })
-  >("/api/tasks/login-links", { params });
+  >("/tasks/login-links", { params });
   const result = normalizePaginatedResponse<LoginLink>(response.data, query);
   const summary = Array.isArray(response.data) ? undefined : response.data?.summary;
   return {
@@ -73,7 +73,7 @@ async function getLoginLinks(
 async function getRoleOptions(): Promise<RoleOption[]> {
   const response = await apiClient.get<
     RoleCatalogEntry[] | DataEnvelope<RoleCatalogEntry[]>
-  >("/api/users/roles");
+  >("/users/roles");
   return normalizeArrayResponse(response.data).map((role) => ({
     name: role.name,
     label: role.label || role.name,
@@ -87,7 +87,7 @@ async function setLinkAdminLock(
   payload: LinkAdminPayload,
 ): Promise<LinkAdminResponse> {
   const response = await apiClient.post<LinkAdminResponse>(
-    `/api/task-links/${linkId}/admin-lock`,
+    `/task-links/${linkId}/admin-lock`,
     payload,
   );
   return response.data;
@@ -98,7 +98,7 @@ async function getAdminLinkDetail(
   date?: string,
 ): Promise<AdminLinkDetail> {
   const response = await apiClient.get<AdminLinkDetail>(
-    `/api/task-links/${linkId}/detail`,
+    `/task-links/${linkId}/detail`,
     { params: date ? { date } : undefined },
   );
   return response.data;

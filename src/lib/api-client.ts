@@ -4,6 +4,29 @@ import type { AuthUser } from "../features/auth/types/auth.types";
 
 const AUTH_USER_STORAGE_KEY = "sts_user";
 
+function joinBaseUrl(baseUrl: string, prefix: string): string {
+  const normalizedBaseUrl = baseUrl.trim();
+  const normalizedPrefix = prefix.trim();
+
+  if (!normalizedPrefix || normalizedPrefix === "/") {
+    return normalizedBaseUrl || "/";
+  }
+
+  if (!normalizedBaseUrl || normalizedBaseUrl === "/") {
+    return normalizedPrefix.startsWith("/") ? normalizedPrefix : `/${normalizedPrefix}`;
+  }
+
+  const baseWithoutTrailingSlash = normalizedBaseUrl.replace(/\/+$/, "");
+  const prefixWithLeadingSlash = normalizedPrefix.startsWith("/")
+    ? normalizedPrefix
+    : `/${normalizedPrefix}`;
+  if (baseWithoutTrailingSlash.endsWith(prefixWithLeadingSlash)) {
+    return baseWithoutTrailingSlash;
+  }
+
+  return `${baseWithoutTrailingSlash}/${normalizedPrefix.replace(/^\/+/, "")}`;
+}
+
 function readStoredAuthUser(): AuthUser | null {
   if (typeof window === "undefined") {
     return null;
@@ -25,7 +48,7 @@ function readStoredAuthUser(): AuthUser | null {
 }
 
 export const apiClient = axios.create({
-  baseURL: appConfig.apiBaseUrl,
+  baseURL: joinBaseUrl(appConfig.apiBaseUrl, appConfig.apiPrefix),
   // Admin identity is a server-signed httpOnly cookie — send it on every request.
   withCredentials: true,
 });

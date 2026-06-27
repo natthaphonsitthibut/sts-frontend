@@ -29,7 +29,7 @@ function createEmptyOverviewStats(): OverviewStatsData {
 
 async function getOverviewStats(): Promise<OverviewStatsData> {
   const response =
-    await apiClient.get<OverviewStatsResponse>("/api/stats/overview");
+    await apiClient.get<OverviewStatsResponse>("/stats/overview");
   const payload = response.data?.data;
 
   if (!payload) {

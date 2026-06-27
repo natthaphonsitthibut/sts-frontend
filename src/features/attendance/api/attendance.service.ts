@@ -121,7 +121,7 @@ async function getStudents(
   query: AttendanceStudentQuery,
 ): Promise<AttendanceStudent[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceStudent[]>>(
-    "/api/attendance/students",
+    "/attendance/students",
     {
       params: {
         grade: query.grade,
@@ -138,7 +138,7 @@ async function getHistory(
   schoolId?: string,
 ): Promise<AttendanceHistoryRecord[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceHistoryRecord[]>>(
-    "/api/attendance/history",
+    "/attendance/history",
     { params: { date, ...(schoolId ? { schoolId } : {}) } },
   );
 
@@ -194,7 +194,7 @@ async function getAttendanceTasksPage(
 
   const response = await apiClient.get<
     AttendanceTasksPageResponse | AttendanceTask[]
-  >("/api/attendance/tasks", { params });
+  >("/attendance/tasks", { params });
 
   return normalizeAttendanceTasksPageResponse(response.data, query);
 }
@@ -203,7 +203,7 @@ async function saveAttendance(
   records: AttendanceSaveRecord[],
 ): Promise<AttendanceSaveResponse> {
   const response = await apiClient.post<AttendanceSaveResponse>(
-    "/api/attendance",
+    "/attendance",
     { records },
   );
   return response.data;

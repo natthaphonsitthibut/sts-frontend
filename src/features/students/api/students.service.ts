@@ -121,7 +121,7 @@ async function getStudents(
   const params = buildStudentListParams(query);
   const response = await apiClient.get<
     StudentListItem[] | DataEnvelope<StudentListItem[]>
-  >("/api/students", { params });
+  >("/students", { params });
 
   const items = normalizeArrayResponse(response.data);
   const meta = Array.isArray(response.data) ? undefined : response.data?.meta;
@@ -153,7 +153,7 @@ async function getFilterOptions(
   }
 
   const response = await apiClient.get<DataEnvelope<StudentFilterOptions>>(
-    "/api/students/filter-options",
+    "/students/filter-options",
     { params },
   );
 
@@ -165,7 +165,7 @@ async function getFilterOptions(
 
 async function getStudentById(studentId: string): Promise<StudentDetail> {
   const response = await apiClient.get<StudentDetail>(
-    `/api/students/${studentId}`,
+    `/students/${studentId}`,
   );
   return response.data;
 }
@@ -175,7 +175,7 @@ async function revealStudentPii(
   payload: StudentPiiRevealRequest,
 ): Promise<StudentPiiRevealResponse> {
   const response = await apiClient.post<StudentPiiRevealResponse>(
-    `/api/students/${studentId}/pii-reveal`,
+    `/students/${studentId}/pii-reveal`,
     payload,
   );
   return response.data;
@@ -186,7 +186,7 @@ async function getStudentCasesByName(
 ): Promise<StudentCase[]> {
   const response = await apiClient.get<
     StudentCase[] | DataEnvelope<StudentCase[]>
-  >(`/api/students/cases/by-name/${encodeURIComponent(studentName)}`);
+  >(`/students/cases/by-name/${encodeURIComponent(studentName)}`);
   return normalizeArrayResponse(response.data);
 }
 
@@ -196,7 +196,7 @@ async function getStudentAttendance(
   const response = await apiClient.get<
     | StudentAttendanceCalendarRecord[]
     | DataEnvelope<StudentAttendanceCalendarRecord[]>
-  >(`/api/students/attendance/${studentId}`);
+  >(`/students/attendance/${studentId}`);
   return normalizeArrayResponse(response.data);
 }
 
