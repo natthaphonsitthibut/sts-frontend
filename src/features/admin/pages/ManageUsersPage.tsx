@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserPlus } from "lucide-react";
+import { KeyRound, Users, UserPlus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
@@ -77,9 +77,14 @@ export function ManageUsersPage() {
       <ListPageToolbar
         icon={Users}
         actions={
-          <NavButton icon={UserPlus} to="/manage-users/new">
-            เพิ่มผู้ใช้งาน
-          </NavButton>
+          <>
+            <NavButton icon={KeyRound} to="/manage-student-accounts" variant="outline">
+              บัญชีนักเรียน
+            </NavButton>
+            <NavButton icon={UserPlus} to="/manage-users/new">
+              เพิ่มผู้ใช้งาน
+            </NavButton>
+          </>
         }
         title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"

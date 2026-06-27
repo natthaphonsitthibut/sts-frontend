@@ -41,6 +41,11 @@ export const ManageUsersPage = lazy(() =>
     default: module.ManageUsersPage,
   })),
 );
+export const StudentAccountsPage = lazy(() =>
+  import("../features/admin/pages/StudentAccountsPage").then((module) => ({
+    default: module.StudentAccountsPage,
+  })),
+);
 export const ManageUserFormPage = lazy(() =>
   import("../features/admin/pages/ManageUserFormPage").then((module) => ({
     default: module.ManageUserFormPage,

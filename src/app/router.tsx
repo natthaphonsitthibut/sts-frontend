@@ -30,6 +30,7 @@ import {
   ReportPage,
   RouteSuspense,
   StudentDetailPage,
+  StudentAccountsPage,
   StudentListPage,
   StudentSelfPage,
   SuccessPage,
@@ -125,6 +126,10 @@ export const router = createBrowserRouter([
       {
         path: "manage-users",
         element: protectedElement(<ManageUsersPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-student-accounts",
+        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
       },
       {
         path: "manage-users/new",

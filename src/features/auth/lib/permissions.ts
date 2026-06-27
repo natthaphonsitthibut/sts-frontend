@@ -42,6 +42,7 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "attendance",
     "attendance-dashboard",
     "manage-users-list",
+    "manage-student-accounts",
     "manage-role-groups",
     "login-links",
     "settings",
@@ -58,6 +59,7 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "attendance",
     "attendance-dashboard",
     "manage-users-list",
+    "manage-student-accounts",
     "login-links",
   ],
   ADMIN_DISTRICT: [
@@ -71,6 +73,7 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "attendance",
     "attendance-dashboard",
     "manage-users-list",
+    "manage-student-accounts",
     "login-links",
   ],
   ADMIN_SUBDISTRICT: [
@@ -84,6 +87,7 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "attendance",
     "attendance-dashboard",
     "manage-users-list",
+    "manage-student-accounts",
     "login-links",
   ],
   ADMIN_SCHOOL: [
@@ -97,6 +101,7 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "attendance",
     "attendance-dashboard",
     "manage-users-list",
+    "manage-student-accounts",
     "login-links",
   ],
   DIRECTOR: [
@@ -192,6 +197,12 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "จัดการรายชื่อผู้ใช้งาน",
         iconName: "users",
         route: "/manage-users",
+      },
+      {
+        id: "manage-student-accounts",
+        label: "บัญชีนักเรียน",
+        iconName: "user-plus",
+        route: "/manage-student-accounts",
       },
       {
         id: "manage-role-groups",

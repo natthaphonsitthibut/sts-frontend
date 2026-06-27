@@ -63,6 +63,56 @@ export interface CreateUserResponse {
   must_change_password?: boolean;
 }
 
+export interface StudentAccountFilter {
+  schoolId?: number;
+  grade?: string;
+  room?: number;
+  onlyWithoutAccount?: boolean;
+  limit?: number;
+}
+
+export interface StudentAccountCandidate {
+  studentId: string;
+  studentName: string;
+  schoolId: number;
+  schoolName: string | null;
+  grade: string | null;
+  room: number | null;
+  academicYear: number | null;
+  semester: number | null;
+  hasActiveAccount: boolean;
+  username: string | null;
+}
+
+export interface StudentAccountPreview {
+  success: boolean;
+  data: {
+    summary: {
+      totalCount: number;
+      withoutAccountCount: number;
+      existingAccountCount: number;
+    };
+    candidates: StudentAccountCandidate[];
+    limit: number;
+  };
+}
+
+export interface StudentAccountCredential {
+  userId: number;
+  username: string;
+  tempPassword: string;
+  studentName: string;
+  schoolName: string | null;
+  grade: string | null;
+  room: number | null;
+}
+
+export interface StudentAccountGenerateResponse {
+  success: boolean;
+  createdCount: number;
+  credentials: StudentAccountCredential[];
+}
+
 // --- Roles / role groups ---
 export type RoleScopeMode =
   | "flexible"

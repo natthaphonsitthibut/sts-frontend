@@ -14,6 +14,7 @@ import {
   Tag,
   UserCircle,
   UserCog,
+  UserPlus,
   UserRound,
   Users,
 } from "lucide-react";
@@ -53,6 +54,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <UserCircle className={className} aria-hidden="true" />;
     case "user-graduate":
       return <UserRound className={className} aria-hidden="true" />;
+    case "user-plus":
+      return <UserPlus className={className} aria-hidden="true" />;
     case "user-tag":
       return <Tag className={className} aria-hidden="true" />;
     case "users-cog":

@@ -12,6 +12,9 @@ import type {
   RoleGroupForm,
   SettingsUpdatePayload,
   SettingsUpdateResponse,
+  StudentAccountFilter,
+  StudentAccountGenerateResponse,
+  StudentAccountPreview,
   SystemSetting,
   UserSavePayload,
 } from "../types/admin.types";
@@ -106,6 +109,26 @@ async function deleteUser(id: number): Promise<void> {
   await apiClient.delete(`/users/${id}`);
 }
 
+async function previewStudentAccounts(
+  payload: StudentAccountFilter,
+): Promise<StudentAccountPreview["data"]> {
+  const response = await apiClient.post<StudentAccountPreview>(
+    "/users/student-accounts/preview",
+    payload,
+  );
+  return response.data.data;
+}
+
+async function generateStudentAccounts(
+  payload: StudentAccountFilter,
+): Promise<StudentAccountGenerateResponse> {
+  const response = await apiClient.post<StudentAccountGenerateResponse>(
+    "/users/student-accounts/generate",
+    payload,
+  );
+  return response.data;
+}
+
 // --- Role groups ---
 async function getRoleGroups(
   query: PaginatedSearchQuery = {},
@@ -149,6 +172,8 @@ export const adminService = {
   createUser,
   updateUser,
   deleteUser,
+  previewStudentAccounts,
+  generateStudentAccounts,
   getRoleGroups,
   createRoleGroup,
   updateRoleGroup,
