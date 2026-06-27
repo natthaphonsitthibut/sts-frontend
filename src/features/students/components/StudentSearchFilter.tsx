@@ -39,7 +39,7 @@ export function StudentSearchFilter({
       search={{
         value: searchQuery,
         onChange: onSearchChange,
-        placeholder: "ค้นหาชื่อหรือรหัส...",
+        placeholder: "ค้นหาชื่อนักเรียน...",
       }}
       filters={
         <>

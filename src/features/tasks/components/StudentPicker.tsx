@@ -7,7 +7,7 @@ import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 
 export interface SelectedStudent {
-  /** Opaque student id (uuid) of a linked student, or null when the name was typed manually. */
+  /** Opaque linked-student identifier, or null when the name was typed manually. */
   personId: string | null;
   name: string;
   firstName?: string | null;
@@ -328,13 +328,13 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
       <Input
         disabled={disabled}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="พิมพ์ชื่อหรือเลขบัตรเพื่อค้นหานักเรียน"
+        placeholder="พิมพ์ชื่อนักเรียนเพื่อค้นหา"
         value={search}
       />
 
       {!canQuery ? (
         <p className="text-sm text-slate-500">
-          พิมพ์ชื่อหรือเลขบัตรอย่างน้อย 2 ตัว หรือเลือกโรงเรียนเพื่อดูทั้งห้อง
+          พิมพ์ชื่อนักเรียนอย่างน้อย 2 ตัว หรือเลือกโรงเรียนเพื่อดูทั้งห้อง
         </p>
       ) : studentsQuery.isLoading ? (
         <p className="text-sm text-slate-500">กำลังโหลดรายชื่อ...</p>
