@@ -7,6 +7,7 @@ import {
   AttendanceCheckInPage,
   AttendanceLinkDetailPage,
   AttendanceLinksDashboardPage,
+  AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
   ChangePasswordPage,
@@ -112,6 +113,10 @@ export const router = createBrowserRouter([
       {
         path: "attendance-links/:linkId",
         element: protectedElement(<AttendanceLinkDetailPage />, "attendance-dashboard"),
+      },
+      {
+        path: "attendance-operations",
+        element: protectedElement(<AttendanceOperationsPage />, "attendance-dashboard"),
       },
       {
         path: "import-data",

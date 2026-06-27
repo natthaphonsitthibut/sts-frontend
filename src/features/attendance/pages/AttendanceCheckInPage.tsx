@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, ClipboardCheck, ClipboardList, Save } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
+  LockOpen,
+  Save,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -31,6 +38,13 @@ import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
+import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
+import { getApiErrorMessage } from "../../../lib/api-error";
+import {
+  getTodayIso,
+  useAttendanceCheckIn,
+  useAttendanceHistory,
+} from "../hooks/useAttendanceCheckIn";
 
 const STATUS_BADGE_VARIANT: Record<
   AttendanceSelectionStatus,
@@ -41,11 +55,6 @@ const STATUS_BADGE_VARIANT: Record<
   P_ABSENT: "destructive",
   NONE: "secondary",
 };
-import {
-  getTodayIso,
-  useAttendanceCheckIn,
-  useAttendanceHistory,
-} from "../hooks/useAttendanceCheckIn";
 
 const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
@@ -69,6 +78,7 @@ function ScopeField({
 
 export function AttendanceCheckInPage() {
   const [tab, setTab] = useState("today");
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const checkIn = useAttendanceCheckIn();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
@@ -100,12 +110,18 @@ export function AttendanceCheckInPage() {
     refetchRoster,
     save,
     saveState,
+    sessionContext,
+    isSessionLoading,
+    isSessionError,
+    canEditAttendance,
+    reopen,
+    reopenState,
   } = checkIn;
 
   const newCases = saveState.data?.newCases ?? [];
 
   async function handleSave(): Promise<void> {
-    if (!students.length || saveState.isPending) {
+    if (!students.length || saveState.isPending || !canEditAttendance) {
       return;
     }
 
@@ -115,6 +131,11 @@ export function AttendanceCheckInPage() {
     }
 
     save();
+  }
+
+  async function handleReopen(reason: string): Promise<void> {
+    await reopen(reason);
+    setReopenDialogOpen(false);
   }
 
   // History uses the same school/grade/room scope as the today tab — filter the
@@ -223,7 +244,10 @@ export function AttendanceCheckInPage() {
               <Alert variant="destructive">
                 <AlertTitle>บันทึกไม่สำเร็จ</AlertTitle>
                 <AlertDescription>
-                  เกิดข้อผิดพลาดระหว่างบันทึกการเช็คชื่อ กรุณาลองอีกครั้ง
+                  {getApiErrorMessage(
+                    saveState.error,
+                    "เกิดข้อผิดพลาดระหว่างบันทึกการเช็คชื่อ กรุณาลองอีกครั้ง",
+                  )}
                 </AlertDescription>
               </Alert>
             </div>
@@ -246,6 +270,52 @@ export function AttendanceCheckInPage() {
             </div>
           ) : null}
 
+          {canLoadRoster && sessionContext && !sessionContext.calendarConfigured ? (
+            <div className="mb-4">
+              <Alert variant="warning">
+                <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
+                <div>
+                  <AlertTitle>ยังไม่ได้เปิดปฏิทินภาคเรียน</AlertTitle>
+                  <AlertDescription>
+                    บันทึกได้ แต่ระบบจะยังไม่สร้างเคสขาดเรียนอัตโนมัติจากรอบนี้
+                  </AlertDescription>
+                </div>
+              </Alert>
+            </div>
+          ) : null}
+
+          {sessionContext?.session?.status === "SUBMITTED" ? (
+            <div className="mb-4">
+              <Alert>
+                <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <AlertTitle>ส่งการเช็คชื่อแล้ว</AlertTitle>
+                    <AlertDescription>
+                      Revision {sessionContext.session.revision} · บันทึกแล้ว {sessionContext.session.recordedCount} คน
+                    </AlertDescription>
+                  </div>
+                  <Button
+                    icon={LockOpen}
+                    onClick={() => setReopenDialogOpen(true)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    เปิดแก้ไข
+                  </Button>
+                </div>
+              </Alert>
+            </div>
+          ) : null}
+
+          {isSessionError ? (
+            <div className="mb-4">
+              <Alert variant="destructive">
+                <AlertTitle>ตรวจสอบรอบเช็คชื่อไม่สำเร็จ</AlertTitle>
+                <AlertDescription>กรุณาโหลดหน้าใหม่ก่อนบันทึกข้อมูล</AlertDescription>
+              </Alert>
+            </div>
+          ) : null}
+
           <div className="space-y-4">
             {!canLoadRoster ? (
               <EmptyState
@@ -258,7 +328,7 @@ export function AttendanceCheckInPage() {
                 title="ไม่สามารถโหลดรายชื่อนักเรียนได้"
                 onRetry={() => void refetchRoster()}
               />
-            ) : isRosterLoading ? (
+            ) : isRosterLoading || isSessionLoading ? (
               <SkeletonTable rows={8} />
             ) : students.length === 0 ? (
               <EmptyState
@@ -269,6 +339,7 @@ export function AttendanceCheckInPage() {
             ) : (
               <AttendanceStudentTable
                 canUndo={canUndoSelections}
+                disabled={!canEditAttendance || isSessionError}
                 onBulkStatusChange={setAllStatus}
                 onStatusChange={setStatus}
                 onUndo={undoSelections}
@@ -277,7 +348,7 @@ export function AttendanceCheckInPage() {
               />
             )}
 
-            {canLoadRoster && students.length > 0 ? (
+            {canLoadRoster && students.length > 0 && canEditAttendance ? (
               <div className="pointer-events-none sticky bottom-4 z-10 mt-2 flex justify-end">
                 <Button
                   className="pointer-events-auto shadow-lg"
@@ -332,6 +403,13 @@ export function AttendanceCheckInPage() {
         </DataTable>
       )}
       {confirmDialog}
+      <AttendanceReopenDialog
+        error={reopenState.error}
+        isPending={reopenState.isPending}
+        onClose={() => setReopenDialogOpen(false)}
+        onSubmit={handleReopen}
+        open={reopenDialogOpen}
+      />
     </PageShell>
   );
 }

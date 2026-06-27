@@ -51,6 +51,86 @@ export interface AttendanceAutoCase {
 export interface AttendanceSaveResponse {
   success: boolean;
   newCases?: AttendanceAutoCase[];
+  calendarConfigured?: boolean;
+  session?: {
+    id: string;
+    status: AttendanceSessionStatus;
+    revision: number;
+  };
+}
+
+export type SchoolTermStatus = "DRAFT" | "ACTIVE" | "CLOSED";
+export type CalendarDayType = "SCHOOL_DAY" | "HOLIDAY" | "CANCELLED";
+export type AttendanceSessionStatus =
+  | "OPEN"
+  | "SUBMITTED"
+  | "REOPENED"
+  | "VOIDED";
+
+export interface AttendanceSession {
+  id: string;
+  status: AttendanceSessionStatus;
+  revision: number;
+  expectedRosterCount: number;
+  recordedCount: number;
+  submittedAt: string | null;
+  correctionReason: string | null;
+}
+
+export interface AttendanceSessionContext {
+  calendarConfigured: boolean;
+  term: {
+    id: string;
+    academicYear: number;
+    semester: number;
+    status: SchoolTermStatus;
+  } | null;
+  dayType: CalendarDayType | null;
+  expectedRosterCount: number;
+  session: AttendanceSession | null;
+}
+
+export interface SchoolTerm {
+  id: string;
+  schoolId: number;
+  schoolName: string;
+  academicYear: number;
+  semester: number;
+  startsOn: string | null;
+  endsOn: string | null;
+  status: SchoolTermStatus;
+  calendarDayCount: number;
+  schoolDayCount: number;
+}
+
+export interface SchoolCalendarDay {
+  id: string;
+  termId: string;
+  date: string;
+  dayType: CalendarDayType;
+  reason: string | null;
+  source: "GENERATED" | "MANUAL" | "IMPORT" | "BACKFILL";
+}
+
+export interface AttendanceReconciliationItem {
+  gradeLevelId: number;
+  grade: string;
+  room: number;
+  expectedRosterCount: number;
+  recordedCount: number;
+  sessionId: string | null;
+  sessionStatus: AttendanceSessionStatus | null;
+  revision: number | null;
+  operationalStatus: "COMPLETED" | "MISSING" | "INCOMPLETE";
+}
+
+export interface AttendanceReconciliationResponse {
+  rows: AttendanceReconciliationItem[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  dayType: CalendarDayType | null;
+  summary: { completed: number; missing: number; incomplete: number };
 }
 
 export interface AttendanceTask {

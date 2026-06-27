@@ -26,16 +26,19 @@ interface AttendanceStudentTableProps {
   onBulkStatusChange?: (status: AttendanceSelectionStatus) => void;
   onUndo?: () => void;
   canUndo?: boolean;
+  disabled?: boolean;
 }
 
 function StatusButton({
   status,
   isActive,
   onClick,
+  disabled,
 }: {
   status: AttendanceSelectionStatus;
   isActive: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   const meta = ATTENDANCE_STATUS_META[status];
   const Icon = meta.icon;
@@ -47,6 +50,7 @@ function StatusButton({
         "flex min-w-20 items-center justify-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-sm font-bold transition-all hover:-translate-y-0.5 active:scale-95",
         isActive ? meta.activeClass : meta.idleClass,
       )}
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >
@@ -72,6 +76,7 @@ export function AttendanceStudentTable({
   onBulkStatusChange,
   onUndo,
   canUndo,
+  disabled = false,
 }: AttendanceStudentTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "roll-call">("list");
@@ -180,6 +185,7 @@ export function AttendanceStudentTable({
               isActive={current === status}
               onClick={() => handleStatusChange(student.id, status)}
               status={status}
+              disabled={disabled}
             />
           ))}
         </div>
@@ -239,6 +245,7 @@ export function AttendanceStudentTable({
                 return (
                   <Button
                     key={status}
+                    disabled={disabled}
                     icon={meta.icon}
                     onClick={() => handleBulkStatusChange(status)}
                     size="sm"
@@ -249,7 +256,7 @@ export function AttendanceStudentTable({
                 );
               })}
               <Button
-                disabled={!canUndo || !onUndo}
+                disabled={disabled || !canUndo || !onUndo}
                 icon={Undo2}
                 onClick={handleUndo}
                 size="sm"

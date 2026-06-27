@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type {
   GradeLevelOption,
@@ -30,6 +30,7 @@ const EMPTY_STUDENTS: Awaited<
  * we avoid setState-in-effect churn.
  */
 export function useAttendanceCheckIn() {
+  const queryClient = useQueryClient();
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(
     () => resolveAttendanceScopeLock(user?.data_scope),
@@ -97,16 +98,71 @@ export function useAttendanceCheckIn() {
     enabled: canLoadRoster,
   });
 
+  const today = getTodayIso();
+  const sessionQuery = useQuery({
+    queryKey: ["attendance-session", schoolId, grade, room, today],
+    queryFn: () =>
+      attendanceService.getSessionContext({ schoolId, grade, room, date: today }),
+    enabled: canLoadRoster,
+  });
+  const existingAttendanceQuery = useQuery({
+    queryKey: ["attendance-checkin-history", today, schoolId],
+    queryFn: () => attendanceService.getHistory(today, schoolId),
+    enabled: canLoadRoster,
+  });
+
   const saveMutation = useMutation({
     mutationFn: (records: AttendanceSaveRecord[]) =>
       attendanceService.saveAttendance(records),
+    onSuccess: async () => {
+      setSelections({});
+      setPreviousSelections(null);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-session", schoolId, grade, room, today],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-checkin-history", today, schoolId],
+        }),
+      ]);
+    },
+  });
+  const reopenMutation = useMutation({
+    mutationFn: (reason: string) => {
+      const sessionId = sessionQuery.data?.session?.id;
+      if (!sessionId) throw new Error("Attendance session is missing");
+      return attendanceService.reopenSession(sessionId, reason);
+    },
+    onSuccess: async () => {
+      setSelections({});
+      setPreviousSelections(null);
+      await queryClient.invalidateQueries({
+        queryKey: ["attendance-session", schoolId, grade, room, today],
+      });
+    },
   });
 
   const students = studentsQuery.data ?? EMPTY_STUDENTS;
+  const existingSelections = useMemo(
+    () =>
+      (existingAttendanceQuery.data ?? []).reduce<
+        Record<string, AttendanceSelectionStatus>
+      >((next, record) => {
+        if (record.id) next[record.id] = record.status;
+        return next;
+      }, {}),
+    [existingAttendanceQuery.data],
+  );
+  const effectiveSelections = useMemo(
+    () => ({ ...existingSelections, ...selections }),
+    [existingSelections, selections],
+  );
+  const session = sessionQuery.data?.session ?? null;
+  const canEditAttendance = session?.status !== "SUBMITTED";
   const counts = useMemo(() => {
     return students.reduce(
       (acc, student) => {
-        const status = selections[student.id] ?? DEFAULT_STATUS;
+        const status = effectiveSelections[student.id] ?? DEFAULT_STATUS;
         if (status === "P_PRESENT") acc.present += 1;
         else if (status === "P_ABSENT") acc.absent += 1;
         else if (status === "P_LATE") acc.late += 1;
@@ -114,19 +170,20 @@ export function useAttendanceCheckIn() {
       },
       { present: 0, absent: 0, late: 0 },
     );
-  }, [students, selections]);
+  }, [students, effectiveSelections]);
 
   function setStatus(studentId: string, status: AttendanceSelectionStatus): void {
-    setPreviousSelections(selections);
+    if (!canEditAttendance) return;
+    setPreviousSelections(effectiveSelections);
     setSelections((current) => ({ ...current, [studentId]: status }));
   }
 
   function setAllStatus(status: AttendanceSelectionStatus): void {
-    if (!students.length) {
+    if (!students.length || !canEditAttendance) {
       return;
     }
 
-    setPreviousSelections(selections);
+    setPreviousSelections(effectiveSelections);
     setSelections(
       students.reduce<Record<string, AttendanceSelectionStatus>>((next, student) => {
         next[student.id] = status;
@@ -166,13 +223,13 @@ export function useAttendanceCheckIn() {
   }
 
   function save(): void {
-    if (!students.length) {
+    if (!students.length || !canEditAttendance) {
       return;
     }
     saveMutation.mutate(
       students.map((student) => ({
         student_id: student.id,
-        status: selections[student.id] ?? DEFAULT_STATUS,
+        status: effectiveSelections[student.id] ?? DEFAULT_STATUS,
       })),
     );
   }
@@ -189,7 +246,7 @@ export function useAttendanceCheckIn() {
     setGrade,
     setRoom,
     students,
-    selections,
+    selections: effectiveSelections,
     setStatus,
     setAllStatus,
     undoSelections,
@@ -201,6 +258,12 @@ export function useAttendanceCheckIn() {
     refetchRoster: studentsQuery.refetch,
     save,
     saveState: saveMutation,
+    sessionContext: sessionQuery.data ?? null,
+    isSessionLoading: sessionQuery.isLoading && canLoadRoster,
+    isSessionError: sessionQuery.isError,
+    canEditAttendance,
+    reopen: reopenMutation.mutateAsync,
+    reopenState: reopenMutation,
   };
 }
 

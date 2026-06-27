@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import {
   CheckCircle2,
+  CalendarDays,
   ClipboardCheck,
   Clock,
   Link2,
@@ -139,8 +140,11 @@ export function AttendanceLinksDashboardPage() {
         title="ลิงก์เช็คชื่อ"
         description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <RefreshButton onRefresh={() => tasksQuery.refetch()} />
+            <NavButton icon={CalendarDays} to="/attendance-operations">
+              ความครบถ้วน
+            </NavButton>
             <NavButton icon={Plus} to="/create">
               สร้างลิงก์
             </NavButton>

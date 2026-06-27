@@ -21,6 +21,11 @@ export const AttendanceRecordPage = lazy(() =>
     default: module.AttendanceRecordPage,
   })),
 );
+export const AttendanceOperationsPage = lazy(() =>
+  import("../features/attendance/pages/AttendanceOperationsPage").then((module) => ({
+    default: module.AttendanceOperationsPage,
+  })),
+);
 export const ManageRoleGroupsPage = lazy(() =>
   import("../features/admin/pages/ManageRoleGroupsPage").then((module) => ({
     default: module.ManageRoleGroupsPage,
