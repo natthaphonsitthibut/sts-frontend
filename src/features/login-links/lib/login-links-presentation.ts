@@ -1,4 +1,5 @@
 import type { BadgeProps } from "../../../components/base";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import { isLinkLocked } from "../../../lib/link-lock";
 import type { LoginLink } from "../types/login-links.types";
 
@@ -65,20 +66,7 @@ export function getLoginLinkStatusMeta(link: LoginLinkStateInput): LoginLinkStat
 }
 
 export function formatLoginLinkDateTime(value: string): string {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("th-TH", {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatThaiDateTime(value);
 }
 
 export const LOGIN_LINK_DURATION_UNITS = [

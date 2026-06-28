@@ -11,8 +11,8 @@ import {
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
-  formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
@@ -36,38 +36,36 @@ function getLoginLinkSortValue(link: LoginLink, key: string): string {
   if (key === "recipient") return link.assigned_to_name || "";
   if (key === "role") return link.login_role_label || link.login_role || "";
   if (key === "status") return getLoginLinkStatusMeta(link).label;
+  if (key === "starts") return link.created_at || "";
   if (key === "expires") return link.expires_at || "";
+  if (key === "remaining") return link.expires_at || "";
   return "";
 }
 
-function formatLinkAge(startValue?: string | null, endValue?: string | null): string {
-  if (!startValue || !endValue) return "-";
-  const start = new Date(startValue);
-  const end = new Date(endValue);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
-  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
-  const days = Math.floor(totalHours / 24);
-  const hours = totalHours % 24;
-  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
-  if (days > 0) return `${days} วัน`;
-  return `${hours} ชม.`;
-}
-
-function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: LoginLink }) {
+function LinkActions({
+  compact = false,
+  link,
+  onToggleLock,
+}: LoginLinkTableProps & { compact?: boolean; link: LoginLink }) {
   const locked = isLoginLinkLocked(link);
   return (
-    <div className="flex flex-nowrap items-center justify-end gap-3">
-      <DetailLinkButton to={`/login-links/${link.id}`} />
+    <div className="flex flex-nowrap items-center justify-center gap-2">
+      <DetailLinkButton
+        aria-label="ดูรายละเอียด"
+        className={compact ? "size-9 px-0" : undefined}
+        to={`/login-links/${link.id}`}
+      >
+        {compact ? null : "ดูรายละเอียด"}
+      </DetailLinkButton>
       <Button
-        // Fixed min width so toggling "เปิด"/"ปิด" (different glyph counts) never
-        // changes the button width and shifts the copy button beside it.
-        className="min-w-[88px]"
+        aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
+        className={compact ? "size-9 min-w-0 px-0" : "min-w-[88px]"}
         icon={locked ? LockOpen : Lock}
         onClick={() => onToggleLock(link)}
         size="sm"
         variant={locked ? "outline" : "destructive"}
       >
-        {locked ? "เปิด" : "ปิด"}
+        {compact ? null : locked ? "เปิด" : "ปิด"}
       </Button>
     </div>
   );
@@ -93,9 +91,17 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
           { label: "ผู้รับลิงก์", sortKey: "recipient" },
           { label: "ตำแหน่ง", sortKey: "role" },
           { label: "สถานะ", sortKey: "status" },
-          { label: "ช่วงเวลา", sortKey: "expires" },
+          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
           "จัดการ",
         ]}
+        columnWidths={[
+          "w-[22%]",
+          "w-[13%]",
+          "w-[13%]",
+          "w-[36%]",
+          "w-[16%]",
+        ]}
+        minWidthClassName="min-w-full"
         onSortChange={setSort}
         sort={sort}
       >
@@ -115,15 +121,20 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
             <DataTableCell>
               <StatusBadge link={link} />
             </DataTableCell>
-            <DataTableCell className="text-sm text-slate-500">
-              <div>เริ่ม {formatLoginLinkDateTime(link.created_at)}</div>
-              <div>หมดอายุ {formatLoginLinkDateTime(link.expires_at)}</div>
-              <div className="text-xs text-slate-400">
-                อายุ {formatLinkAge(link.created_at, link.expires_at)}
-              </div>
+            <DataTableCell>
+              <LinkTimeSummary
+                expiresAt={link.expires_at}
+                startsAt={link.created_at}
+                variant="columns"
+              />
             </DataTableCell>
             <DataTableCell>
-              <LinkActions link={link} links={links} onToggleLock={onToggleLock} />
+              <LinkActions
+                compact
+                link={link}
+                links={links}
+                onToggleLock={onToggleLock}
+              />
             </DataTableCell>
           </DataTableRow>
         ))}
@@ -143,15 +154,15 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
               </div>
               <StatusBadge link={link} />
             </div>
-            <div className="mt-2 text-xs text-slate-400">
-              เริ่ม {formatLoginLinkDateTime(link.created_at)}
-              <br />
-              หมดอายุ {formatLoginLinkDateTime(link.expires_at)}
-              <br />
-              อายุ {formatLinkAge(link.created_at, link.expires_at)}
+            <div className="mt-3 rounded-md bg-slate-50 p-3">
+              <LinkTimeSummary startsAt={link.created_at} expiresAt={link.expires_at} />
             </div>
             <div className="mt-4">
-              <LinkActions link={link} links={links} onToggleLock={onToggleLock} />
+              <LinkActions
+                link={link}
+                links={links}
+                onToggleLock={onToggleLock}
+              />
             </div>
           </TableCard>
         ))}

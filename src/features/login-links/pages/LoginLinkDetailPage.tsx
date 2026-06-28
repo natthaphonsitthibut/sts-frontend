@@ -9,6 +9,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { getLeafMenuItems } from "../../auth/lib/permissions";
 import {
@@ -17,7 +18,6 @@ import {
   useLoginLinkDetail,
 } from "../hooks/useLoginLinks";
 import {
-  formatLoginLinkDateTime,
   getLoginLinkStatusMeta,
   getLoginLinkUrl,
 } from "../lib/login-links-presentation";
@@ -98,13 +98,11 @@ export function LoginLinkDetailPage() {
               <div className="text-sm text-slate-500">สถานะ</div>
               <LinkStatusBadge label={status.label} variant={status.variant} />
             </div>
-            <div>
-              <div className="text-sm text-slate-500">เริ่มใช้งาน</div>
-              <div className="font-bold">{formatLoginLinkDateTime(link.created_at ?? "")}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500">หมดอายุ</div>
-              <div className="font-bold">{formatLoginLinkDateTime(link.expires_at)}</div>
+            <div className="sm:col-span-2">
+              <div className="text-sm text-slate-500">ช่วงเวลา</div>
+              <div className="mt-1 rounded-md bg-slate-50 p-3">
+                <LinkTimeSummary startsAt={link.created_at} expiresAt={link.expires_at} />
+              </div>
             </div>
           </div>
         </Card>

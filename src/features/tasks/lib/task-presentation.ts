@@ -1,32 +1,12 @@
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import type { AttendanceTaskStatus } from "../types/task.types";
 
 export function formatDateTime(value?: string | null): string {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatThaiDateTime(value);
 }
 
 export function formatDate(value?: string | null): string {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleDateString("th-TH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatThaiDate(value);
 }
 
 export function formatDateTimeRangeAge(

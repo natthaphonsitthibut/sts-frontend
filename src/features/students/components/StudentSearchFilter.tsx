@@ -38,7 +38,7 @@ export function StudentSearchFilter({
       icon={Users}
       title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
-      actions={<RefreshButton onRefresh={onRefresh} />}
+      tableActions={<RefreshButton onRefresh={onRefresh} />}
       search={{
         value: searchQuery,
         onChange: onSearchChange,

@@ -11,6 +11,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
+import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseReferralOutcomeDialog } from "../../cases/components/CaseReferralOutcomeDialog";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
@@ -25,7 +26,6 @@ import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.typ
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
-  formatDateTimeRangeAge,
   getStatusLabel,
   getTaskTypeLabel,
   normalizeTaskPublicLink,
@@ -254,19 +254,17 @@ export function TaskDetailPage() {
                         </span>
                       </div>
                     )}
-                    <div className="text-sm text-slate-500">
-                      {index === 0 ? "สร้างเมื่อ" : "ส่งต่อเมื่อ"}{" "}
-                      {formatDateTime(link.delegated_at || link.created_at)}
-                      {link.delegation_depth != null
-                        ? ` · ลำดับที่ ${Number(link.delegation_depth) + 1}`
-                        : ""}
-                    </div>
-                    {link.expires_at ? (
+                    {link.delegation_depth != null ? (
                       <div className="text-sm text-slate-500">
-                        หมดอายุ {formatDateTime(link.expires_at)} · อายุ{" "}
-                        {formatDateTimeRangeAge(link.created_at, link.expires_at)}
+                        ลำดับที่ {Number(link.delegation_depth) + 1}
                       </div>
                     ) : null}
+                    <LinkTimeSummary
+                      className="mt-2 max-w-sm"
+                      expiresAt={link.expires_at}
+                      startLabel={index === 0 ? "เริ่ม" : "ส่งต่อ"}
+                      startsAt={link.delegated_at || link.created_at}
+                    />
                   </div>
                   <Badge
                     variant={

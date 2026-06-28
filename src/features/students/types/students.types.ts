@@ -11,6 +11,9 @@ export interface StudentListItem {
 
 export interface StudentListQuery {
   schoolId?: string;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
   grade?: string;
   room?: string;
   searchTerm?: string;

@@ -6,6 +6,7 @@ import {
   ClipboardList,
   LockOpen,
   Save,
+  Search,
 } from "lucide-react";
 import {
   Alert,
@@ -61,6 +62,8 @@ const STATUS_BADGE_VARIANT: Record<
   NONE: "secondary",
 };
 
+const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
+
 const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
   { value: "history", label: "ประวัติการเช็คชื่อ" },
@@ -100,6 +103,7 @@ export function AttendanceCheckInPage() {
   const checkIn = useAttendanceCheckIn();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
+  const [historySearch, setHistorySearch] = useState("");
   // Pass the selected school so the server scopes history to one school's day
   // (it returns empty without it) — the history tab shares the today tab's scope.
   const history = useAttendanceHistory(historyDate, checkIn.schoolId);
@@ -158,7 +162,7 @@ export function AttendanceCheckInPage() {
 
   // History uses the same school/grade/room scope as the today tab — filter the
   // records client-side by the selected class so both tabs behave consistently.
-  const filteredHistory = useMemo(
+  const scopedHistory = useMemo(
     () =>
       history.records.filter(
         (record) =>
@@ -166,6 +170,29 @@ export function AttendanceCheckInPage() {
           (!room || String(record.room) === room),
       ),
     [history.records, grade, room],
+  );
+  const filteredHistory = useMemo(
+    () => {
+      const keyword = historySearch.trim().toLocaleLowerCase("th-TH");
+      return scopedHistory.filter((record) => {
+        if (!keyword) return true;
+        const statusLabel = ATTENDANCE_STATUS_META[record.status].label;
+        return [
+          record.name,
+          record.student_name,
+          record.grade,
+          String(record.room ?? ""),
+          record.recorded_by,
+          record.RecordedBy,
+          statusLabel,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLocaleLowerCase("th-TH")
+          .includes(keyword);
+      });
+    },
+    [historySearch, scopedHistory],
   );
   const sortedHistory = useMemo(() => {
     if (!historySort) return filteredHistory;
@@ -233,6 +260,7 @@ export function AttendanceCheckInPage() {
             ) : (
               <Input
                 aria-label="เลือกวันที่"
+                className={DATE_INPUT_CLASS_NAME}
                 type="date"
                 value={historyDate}
                 onChange={(event) => setHistoryDate(event.target.value)}
@@ -390,43 +418,74 @@ export function AttendanceCheckInPage() {
         />
       ) : history.isLoading ? (
         <SkeletonTable rows={6} />
-      ) : filteredHistory.length === 0 ? (
+      ) : scopedHistory.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title="ไม่พบประวัติการเช็คชื่อ"
           description="ยังไม่มีการบันทึกการเช็คชื่อตามวันที่และชั้นเรียนที่เลือก"
         />
       ) : (
-        <DataTable
-          headings={[
-            { label: "นักเรียน", sortKey: "student" },
-            { label: "ชั้น / ห้อง", sortKey: "class" },
-            { label: "สถานะ", sortKey: "status" },
-            { label: "ผู้บันทึก", sortKey: "recorder" },
-          ]}
-          onSortChange={setHistorySort}
-          responsive={false}
-          sort={historySort}
-        >
-          {sortedHistory.map((record) => (
-            <DataTableRow key={record.id}>
-              <DataTableCell className="font-bold text-slate-800">
-                {record.name || "-"}
-              </DataTableCell>
-              <DataTableCell className="text-sm text-slate-600">
-                {record.grade || "-"} / {formatStudentRoom(record.room)}
-              </DataTableCell>
-              <DataTableCell>
-                <Badge variant={STATUS_BADGE_VARIANT[record.status]}>
-                  {ATTENDANCE_STATUS_META[record.status].label}
-                </Badge>
-              </DataTableCell>
-              <DataTableCell className="text-sm text-slate-500">
-                {record.recorded_by || "-"}
-              </DataTableCell>
-            </DataTableRow>
-          ))}
-        </DataTable>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                />
+                <Input
+                  aria-label="ค้นหาประวัติเช็คชื่อ"
+                  className="pl-9"
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="ค้นหาชื่อนักเรียน ผู้บันทึก หรือสถานะ"
+                  value={historySearch}
+                />
+              </div>
+              <p className="shrink-0 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold tabular-nums text-slate-500">
+                แสดง {filteredHistory.length} จาก {scopedHistory.length} คน
+              </p>
+            </div>
+          </div>
+
+          {filteredHistory.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="ไม่พบประวัติการเช็คชื่อ"
+              description="ลองเปลี่ยนคำค้นหา ชั้นเรียน หรือห้อง"
+            />
+          ) : (
+            <DataTable
+              headings={[
+                { label: "นักเรียน", sortKey: "student" },
+                { label: "ชั้น / ห้อง", sortKey: "class" },
+                { label: "สถานะ", sortKey: "status" },
+                { label: "ผู้บันทึก", sortKey: "recorder" },
+              ]}
+              onSortChange={setHistorySort}
+              responsive={false}
+              sort={historySort}
+            >
+              {sortedHistory.map((record) => (
+                <DataTableRow key={record.id}>
+                  <DataTableCell className="font-bold text-slate-800">
+                    {record.name || "-"}
+                  </DataTableCell>
+                  <DataTableCell className="text-sm text-slate-600">
+                    {record.grade || "-"} / {formatStudentRoom(record.room)}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Badge variant={STATUS_BADGE_VARIANT[record.status]}>
+                      {ATTENDANCE_STATUS_META[record.status].label}
+                    </Badge>
+                  </DataTableCell>
+                  <DataTableCell className="text-sm text-slate-500">
+                    {record.recorded_by || "-"}
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTable>
+          )}
+        </div>
       )}
       {confirmDialog}
       <AttendanceReopenDialog

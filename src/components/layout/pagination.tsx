@@ -67,7 +67,10 @@ function buildPageItems(current: number, total: number): PageItem[] {
   const endPages = range(total - boundaryCount + 1, total);
 
   const siblingsStart = Math.max(
-    Math.min(current - siblingCount, total - boundaryCount - siblingCount * 2 - 1),
+    Math.min(
+      current - siblingCount,
+      total - boundaryCount - siblingCount * 2 - 1,
+    ),
     boundaryCount + 2,
   );
   const siblingsEnd = Math.min(
@@ -121,10 +124,6 @@ export function Pagination({
     goToPageDraft.page === page ? goToPageDraft.value : String(page);
   const totalPageDigits = String(totalPages).length;
   const pageNumberWidthClass = totalPages >= 1_000 ? "w-12" : "w-9";
-  const summaryWidthCh = Math.min(
-    Math.max(String(totalCount || 0).length * 3 + unitLabel.length + 16, 28),
-    54,
-  );
   const goToInputWidthCh = Math.min(Math.max(totalPageDigits + 3, 6), 12);
   const totalPagesLabelWidthCh = Math.min(Math.max(totalPageDigits + 2, 4), 14);
 
@@ -147,22 +146,21 @@ export function Pagination({
     "flex size-9 items-center justify-center rounded-full bg-white font-bold text-slate-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="mt-2 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-      <div
-        className="font-mono text-sm font-bold tabular-nums text-slate-900"
-        style={{ minWidth: `min(${summaryWidthCh}ch, 100%)` }}
-      >
+    <div className="mt-2 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+      <div className="w-full text-right font-mono text-sm font-bold tabular-nums text-slate-900">
         แสดง {formatFullNumber(start)}-{formatFullNumber(end)} จาก{" "}
         {formatFullNumber(totalCount)} {unitLabel}
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex w-full flex-wrap items-center justify-end gap-3">
         <label className="inline-flex items-center gap-2.5 text-sm font-bold text-slate-600">
           <span>ต่อหน้า</span>
           <Select
             aria-label="จำนวนรายการต่อหน้า"
             className="h-10 w-[124px] rounded-full border-slate-200 bg-white py-0 pl-4 pr-9 font-bold leading-none shadow-none"
-            onChange={(event) => onRowsPerPageChange(Number(event.target.value))}
+            onChange={(event) =>
+              onRowsPerPageChange(Number(event.target.value))
+            }
             value={rowsPerPage}
           >
             {rowsPerPageOptions.map((size) => (

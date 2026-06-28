@@ -4,6 +4,7 @@ import type {
   CaseStatus,
   KnownCaseStatus,
 } from "../types/cases.types";
+import { formatThaiDateTime } from "../../../lib/date-time";
 
 interface CaseStatusMeta {
   label: string;
@@ -93,16 +94,5 @@ export function getCaseReason(reason?: string | null, fallback?: string | null):
 }
 
 export function formatCaseDate(value: string): string {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleDateString("th-TH", {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-  });
+  return formatThaiDateTime(value);
 }

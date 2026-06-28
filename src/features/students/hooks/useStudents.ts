@@ -49,7 +49,10 @@ interface UseStudentFilterOptionsResult {
 }
 
 export function useStudentFilterOptions(
-  query: Pick<StudentListQuery, "schoolId" | "grade"> = {},
+  query: Pick<
+    StudentListQuery,
+    "schoolId" | "province" | "district" | "subDistrict" | "grade"
+  > = {},
 ): UseStudentFilterOptionsResult {
   const result = useQuery({
     queryKey: [STUDENT_FILTER_OPTIONS_QUERY_KEY, query],

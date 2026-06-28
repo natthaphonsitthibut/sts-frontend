@@ -169,7 +169,7 @@ export function DashboardPage() {
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
         description="ติดตามสถานะเคสและลิงก์ภารกิจจากข้อมูล backend ปัจจุบัน"
-        actions={
+        tableActions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={handleRefresh} />
             <NavButton icon={Plus} to="/create">

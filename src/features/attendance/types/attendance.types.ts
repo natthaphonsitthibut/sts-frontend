@@ -142,6 +142,8 @@ export interface AttendanceTask {
   target_school_name: string | null;
   link_assigned_to: string | null;
   active_link: string | null;
+  active_link_created_at?: string | null;
+  active_link_expires_at?: string | null;
   active_link_locked: boolean;
   active_link_id: string | null;
   created_at: string;

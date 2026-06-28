@@ -44,6 +44,8 @@ interface SchoolTermDialogProps {
   term: SchoolTerm | null;
 }
 
+const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
+
 function getDefaults(term: SchoolTerm | null): SchoolTermFormValues {
   return {
     academicYear: term?.academicYear ?? new Date().getFullYear() + 543,
@@ -108,12 +110,22 @@ export function SchoolTermDialog({
             </FormItem>
             <FormItem>
               <FormLabel htmlFor="term-start" required>วันเริ่ม</FormLabel>
-              <Input id="term-start" type="date" {...form.register("startsOn")} />
+              <Input
+                id="term-start"
+                className={DATE_INPUT_CLASS_NAME}
+                type="date"
+                {...form.register("startsOn")}
+              />
               <FormMessage<SchoolTermFormValues> name="startsOn" />
             </FormItem>
             <FormItem>
               <FormLabel htmlFor="term-end" required>วันสิ้นสุด</FormLabel>
-              <Input id="term-end" type="date" {...form.register("endsOn")} />
+              <Input
+                id="term-end"
+                className={DATE_INPUT_CLASS_NAME}
+                type="date"
+                {...form.register("endsOn")}
+              />
               <FormMessage<SchoolTermFormValues> name="endsOn" />
             </FormItem>
             <FormItem className="sm:col-span-2">

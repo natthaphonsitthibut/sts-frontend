@@ -126,7 +126,7 @@ export function LoginLinksPage() {
         icon={Link2}
         title="ลิงก์เข้าสู่ระบบ"
         description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
-        actions={
+        tableActions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={refetch} />
             <NavButton icon={Plus} to="/create">

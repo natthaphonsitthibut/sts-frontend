@@ -4,11 +4,9 @@ import { Plus, ShieldCheck } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import {
   ErrorState,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
@@ -72,24 +70,21 @@ export function ManageRoleGroupsPage() {
 
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
-      <PageToolbar
+      <ListPageToolbar
         icon={ShieldCheck}
-        actions={
+        tableActions={
           <NavButton icon={Plus} to="/manage-role-groups/new">
             เพิ่มกลุ่มสิทธิ์
           </NavButton>
         }
         title="จัดการกลุ่มผู้ใช้งาน"
         description="กำหนดกลุ่มสิทธิ์และแมปสิทธิ์การใช้งานของแต่ละตำแหน่ง"
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={handleSearchChange}
-            placeholder="ค้นหาตำแหน่ง..."
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+        search={{
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาตำแหน่ง...",
+          value: searchQuery,
+        }}
+      />
 
       {isError ? (
         <ErrorState

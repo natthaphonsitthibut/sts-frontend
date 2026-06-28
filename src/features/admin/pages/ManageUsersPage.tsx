@@ -112,7 +112,7 @@ export function ManageUsersPage() {
     <PageShell maxWidthClassName="max-w-[1100px]">
       <ListPageToolbar
         icon={Users}
-        actions={
+        tableActions={
           <>
             <NavButton icon={KeyRound} to="/manage-student-accounts" variant="outline">
               บัญชีนักเรียน

@@ -31,7 +31,7 @@ export function CaseListFilter({
       icon={HeartHandshake}
       title="เคสช่วยเหลือนักเรียน"
       description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
-      actions={<RefreshButton onRefresh={onRefresh} />}
+      tableActions={<RefreshButton onRefresh={onRefresh} />}
       search={{
         value: searchQuery,
         onChange: onSearchChange,

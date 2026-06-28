@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Copy, Download, KeyRound, Search, UserPlus } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
   Combobox,
   Input,
   Label,
+  Tabs,
 } from "../../../components/base";
 import {
   DataTable,
@@ -20,17 +21,21 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
+import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
   EmptyState,
   ErrorState,
   PageShell,
   PageToolbar,
   SummaryMetrics,
+  TableActionBar,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { adminService } from "../api/admin.service";
 import type {
   StudentAccountCandidate,
@@ -41,6 +46,11 @@ import type {
 const MIN_BULK_LIMIT = 1;
 const MAX_BULK_LIMIT = 200;
 const CREDENTIAL_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
+const PREVIEW_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
+const STUDENT_ACCOUNT_TABS = [
+  { value: "generate", label: "สร้างบัญชี" },
+  { value: "history", label: "ประวัติ" },
+];
 
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -51,13 +61,22 @@ function ScopeField({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function buildFilter(scope: ReturnType<typeof useScopeCascade>, limit: number): StudentAccountFilter {
+function buildFilter(
+  scope: ReturnType<typeof useScopeCascade>,
+  area: ReturnType<typeof useSchoolAreaFilter>,
+  limit: number,
+  page?: number,
+): StudentAccountFilter {
   const safeLimit = Math.min(Math.max(limit, MIN_BULK_LIMIT), MAX_BULK_LIMIT);
   return {
     schoolId: scope.schoolId ? Number(scope.schoolId) : undefined,
+    province: !scope.schoolId && area.province ? area.province : undefined,
+    district: !scope.schoolId && area.district ? area.district : undefined,
+    subDistrict: !scope.schoolId && area.subDistrict ? area.subDistrict : undefined,
     grade: scope.grade || undefined,
     room: scope.room ? Number(scope.room) : undefined,
     onlyWithoutAccount: true,
+    page,
     limit: safeLimit,
   };
 }
@@ -91,29 +110,14 @@ function getCredentialSortValue(credential: StudentAccountCredential, key: strin
   if (key === "school") return credential.schoolName ?? "";
   if (key === "class") return `${credential.grade ?? ""}/${credential.room ?? ""}`;
   if (key === "username") return credential.username;
-  if (key === "issued") return credential.temporaryPasswordIssuedAt ?? "";
+  if (key === "starts") return credential.temporaryPasswordIssuedAt ?? "";
   if (key === "expires") return credential.temporaryPasswordExpiresAt ?? "";
+  if (key === "remaining") return credential.temporaryPasswordExpiresAt ?? "";
   return "";
 }
 
 function formatCredentialDateTime(value?: string | null): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
-}
-
-function formatCredentialAge(issuedAt?: string | null, expiresAt?: string | null): string {
-  if (!issuedAt || !expiresAt) return "-";
-  const start = new Date(issuedAt);
-  const end = new Date(expiresAt);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
-  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
-  const days = Math.floor(totalHours / 24);
-  const hours = totalHours % 24;
-  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
-  if (days > 0) return `${days} วัน`;
-  return `${hours} ชม.`;
+  return formatThaiDateTime(value);
 }
 
 function credentialsToTsv(credentials: StudentAccountCredential[]): string {
@@ -126,7 +130,7 @@ function credentialsToTsv(credentials: StudentAccountCredential[]): string {
     "temp password",
     "เริ่มใช้",
     "หมดอายุ",
-    "อายุ",
+    "อายุที่เหลือ",
   ];
   return [
     header.join("\t"),
@@ -140,10 +144,7 @@ function credentialsToTsv(credentials: StudentAccountCredential[]): string {
         credential.tempPassword,
         formatCredentialDateTime(credential.temporaryPasswordIssuedAt),
         formatCredentialDateTime(credential.temporaryPasswordExpiresAt),
-        formatCredentialAge(
-          credential.temporaryPasswordIssuedAt,
-          credential.temporaryPasswordExpiresAt,
-        ),
+        formatThaiTimeRemaining(credential.temporaryPasswordExpiresAt),
       ].join("\t"),
     ),
   ].join("\n");
@@ -165,7 +166,7 @@ function credentialsToCsv(credentials: StudentAccountCredential[]): string {
     "temp password",
     "เริ่มใช้",
     "หมดอายุ",
-    "อายุ",
+    "อายุที่เหลือ",
   ];
   return [
     header.map(csvEscape).join(","),
@@ -179,10 +180,7 @@ function credentialsToCsv(credentials: StudentAccountCredential[]): string {
         credential.tempPassword,
         formatCredentialDateTime(credential.temporaryPasswordIssuedAt),
         formatCredentialDateTime(credential.temporaryPasswordExpiresAt),
-        formatCredentialAge(
-          credential.temporaryPasswordIssuedAt,
-          credential.temporaryPasswordExpiresAt,
-        ),
+        formatThaiTimeRemaining(credential.temporaryPasswordExpiresAt),
       ].map(csvEscape).join(","),
     ),
   ].join("\n");
@@ -201,45 +199,37 @@ function downloadTextFile(filename: string, content: string, type: string): void
 }
 
 function AccountGenerationProgress({ limit }: { limit: number }) {
-  const [progress, setProgress] = useState(8);
-
-  useEffect(() => {
-    const startedAt = Date.now();
-    const intervalId = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      setProgress((current) => {
-        if (elapsed < 1_200) return Math.min(68, current + 8);
-        if (elapsed < 5_000) return Math.min(88, current + 2);
-        return Math.min(94, current + 0.5);
-      });
-    }, 180);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
-  const displayProgress = Math.round(progress);
-
   return (
     <Alert className="border-primary/20 bg-white">
       <div className="flex items-center justify-between gap-3">
         <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
-        <div className="shrink-0 font-mono text-sm font-bold text-primary">
-          {displayProgress}%
-        </div>
+        <div className="shrink-0 text-sm font-bold text-primary">กำลังประมวลผล</div>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
-          style={{ width: `${displayProgress}%` }}
-        />
+        <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
       </div>
       <AlertDescription>
-        กำลังสร้างสูงสุด {limit} คนในรอบนี้ ระบบจะช้าลงใกล้ท้ายกระบวนการเพื่อรอผลจากเซิร์ฟเวอร์
+        กำลังสร้างสูงสุด {limit} คนในรอบนี้ ผลลัพธ์จะแสดงเมื่อเซิร์ฟเวอร์ทำงานเสร็จ
       </AlertDescription>
     </Alert>
   );
 }
 
-function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] }) {
+function CandidateTable({
+  candidates,
+  page,
+  rowsPerPage,
+  totalCount,
+  onPageChange,
+  onRowsPerPageChange,
+}: {
+  candidates: StudentAccountCandidate[];
+  page: number;
+  rowsPerPage: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (rowsPerPage: number) => void;
+}) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedCandidates = useMemo(() => {
     if (!sort) return candidates;
@@ -305,6 +295,17 @@ function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] 
           </TableCard>
         ))}
       </TableCardList>
+      {totalCount > 0 ? (
+        <Pagination
+          page={page}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={PREVIEW_PAGE_SIZE_OPTIONS}
+          totalCount={totalCount}
+          unitLabel="คน"
+          onPageChange={onPageChange}
+          onRowsPerPageChange={onRowsPerPageChange}
+        />
+      ) : null}
     </>
   );
 }
@@ -342,11 +343,17 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
           { label: "ชั้น/ห้อง", sortKey: "class" },
           { label: "username", sortKey: "username" },
           "temp password",
-          { label: "เริ่มใช้", sortKey: "issued" },
-          { label: "หมดอายุ", sortKey: "expires" },
-          "อายุ",
+          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เริ่มใช้" /> },
         ]}
-        minWidthClassName="min-w-[1240px]"
+        columnWidths={[
+          "w-[15%]",
+          "w-[15%]",
+          "w-[10%]",
+          "w-[13%]",
+          "w-[13%]",
+          "w-[34%]",
+        ]}
+        minWidthClassName="min-w-[980px]"
         onSortChange={setSort}
         sort={sort}
       >
@@ -367,17 +374,13 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             <DataTableCell className="font-mono text-sm font-bold text-slate-900">
               {credential.tempPassword}
             </DataTableCell>
-            <DataTableCell className="text-sm text-slate-600">
-              {formatCredentialDateTime(credential.temporaryPasswordIssuedAt)}
-            </DataTableCell>
-            <DataTableCell className="text-sm text-slate-600">
-              {formatCredentialDateTime(credential.temporaryPasswordExpiresAt)}
-            </DataTableCell>
-            <DataTableCell className="text-sm font-medium text-slate-700">
-              {formatCredentialAge(
-                credential.temporaryPasswordIssuedAt,
-                credential.temporaryPasswordExpiresAt,
-              )}
+            <DataTableCell>
+              <LinkTimeSummary
+                expiresAt={credential.temporaryPasswordExpiresAt}
+                startLabel="เริ่มใช้"
+                startsAt={credential.temporaryPasswordIssuedAt}
+                variant="columns"
+              />
             </DataTableCell>
           </DataTableRow>
         ))}
@@ -395,17 +398,11 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
                 {credential.tempPassword}
               </span>
             </div>
-            <div className="grid gap-1 text-xs text-slate-500">
-              <span>เริ่มใช้ {formatCredentialDateTime(credential.temporaryPasswordIssuedAt)}</span>
-              <span>หมดอายุ {formatCredentialDateTime(credential.temporaryPasswordExpiresAt)}</span>
-              <span>
-                อายุ{" "}
-                {formatCredentialAge(
-                  credential.temporaryPasswordIssuedAt,
-                  credential.temporaryPasswordExpiresAt,
-                )}
-              </span>
-            </div>
+            <LinkTimeSummary
+              expiresAt={credential.temporaryPasswordExpiresAt}
+              startLabel="เริ่มใช้"
+              startsAt={credential.temporaryPasswordIssuedAt}
+            />
           </TableCard>
         ))}
       </TableCardList>
@@ -430,18 +427,29 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
 export function StudentAccountsPage() {
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
+  const [activeTab, setActiveTab] = useState("generate");
   const [limit, setLimit] = useState(50);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [previewRowsPerPage, setPreviewRowsPerPage] = useState(20);
   const [credentialSession, setCredentialSession] = useState<{
     scopeKey: string;
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
-  const filter = useMemo(() => buildFilter(scope, limit), [scope, limit]);
-  const accountScopeKey = `${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
+  const previewFilter = useMemo(
+    () => buildFilter(scope, area, previewRowsPerPage, previewPage),
+    [area, previewPage, previewRowsPerPage, scope],
+  );
+  const generateFilter = useMemo(
+    () => buildFilter(scope, area, limit),
+    [area, limit, scope],
+  );
+  const accountScopeKey = `${area.province || ""}|${area.district || ""}|${area.subDistrict || ""}|${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
   const previewMutation = useMutation({
-    mutationFn: () => adminService.previewStudentAccounts(filter),
+    mutationFn: (payload?: StudentAccountFilter) =>
+      adminService.previewStudentAccounts(payload ?? previewFilter),
   });
   const generateMutation = useMutation({
-    mutationFn: () => adminService.generateStudentAccounts(filter),
+    mutationFn: () => adminService.generateStudentAccounts(generateFilter),
     onSuccess: (result) => {
       setCredentialSession((current) => {
         const currentCredentials =
@@ -457,12 +465,24 @@ export function StudentAccountsPage() {
           credentials: Array.from(byUser.values()),
         };
       });
-      previewMutation.mutate();
+      previewMutation.mutate(previewFilter);
     },
   });
   const preview = previewMutation.data;
   const generatedCredentials =
     credentialSession.scopeKey === accountScopeKey ? credentialSession.credentials : [];
+  const remainingAccountCount = previewMutation.isPending
+    ? undefined
+    : preview?.summary.withoutAccountCount;
+  const generateButtonLabel = generateMutation.isPending
+    ? "กำลังสร้างบัญชี"
+    : generatedCredentials.length === 0
+      ? "สร้างบัญชี"
+      : previewMutation.isPending
+        ? "กำลังตรวจรายการ"
+        : remainingAccountCount === 0
+          ? "สร้างครบแล้ว"
+          : "สร้างชุดถัดไป";
 
   async function copyCredentials(): Promise<void> {
     if (generatedCredentials.length === 0) return;
@@ -483,6 +503,7 @@ export function StudentAccountsPage() {
     value: string,
   ): void {
     area.setSchoolSearch("");
+    setPreviewPage(1);
     if (level === "province") {
       area.setProvince(value);
     } else if (level === "district") {
@@ -494,6 +515,7 @@ export function StudentAccountsPage() {
   }
 
   function setSchool(nextSchoolId: string): void {
+    setPreviewPage(1);
     scope.setSchoolId(nextSchoolId);
     const school = area.filteredSchools.find(
       (candidate) => String(candidate.id) === nextSchoolId,
@@ -511,38 +533,44 @@ export function StudentAccountsPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1180px]">
+    <PageShell>
       <PageToolbar
         icon={KeyRound}
         title="บัญชีนักเรียน"
         description="สร้าง username และรหัสผ่านชั่วคราวจาก roster ปัจจุบัน"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              icon={Search}
-              isLoading={previewMutation.isPending}
-              loadingText="กำลังตรวจ"
-              onClick={() => previewMutation.mutate()}
-            >
-              ดูตัวอย่าง
-            </Button>
-            <Button
-              disabled={
-                !preview ||
-                preview.summary.withoutAccountCount === 0 ||
-                previewMutation.isPending ||
-                generateMutation.isPending
-              }
-              icon={UserPlus}
-              onClick={() => generateMutation.mutate()}
-            >
-              {generateMutation.isPending
-                ? "กำลังสร้างบัญชี"
-                : generatedCredentials.length > 0
-                  ? "สร้างชุดถัดไป"
-                  : "สร้างบัญชี"}
-            </Button>
-          </div>
+          <Tabs
+            aria-label="โหมดบัญชีนักเรียน"
+            value={activeTab}
+            onChange={setActiveTab}
+            options={STUDENT_ACCOUNT_TABS}
+          />
+        }
+        footerActions={
+          activeTab === "generate" ? (
+            <>
+              <Button
+                icon={Search}
+                isLoading={previewMutation.isPending}
+                loadingText="กำลังตรวจ"
+                onClick={() => previewMutation.mutate(previewFilter)}
+              >
+                ดูตัวอย่าง
+              </Button>
+              <Button
+                disabled={
+                  !preview ||
+                  preview.summary.withoutAccountCount === 0 ||
+                  previewMutation.isPending ||
+                  generateMutation.isPending
+                }
+                icon={UserPlus}
+                onClick={() => generateMutation.mutate()}
+              >
+                {generateButtonLabel}
+              </Button>
+            </>
+          ) : undefined
         }
       >
         <ToolbarControls className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 md:items-start">
@@ -615,7 +643,10 @@ export function StudentAccountsPage() {
           <ScopeField label="ชั้น">
             <Combobox
               disabled={!scope.schoolId || scope.gradeLocked}
-              onChange={scope.setGrade}
+              onChange={(value) => {
+                setPreviewPage(1);
+                scope.setGrade(value);
+              }}
               options={[
                 { value: "", label: "ทุกชั้น" },
                 ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
@@ -627,7 +658,10 @@ export function StudentAccountsPage() {
           <ScopeField label="ห้อง">
             <Combobox
               disabled={!scope.grade || scope.roomLocked}
-              onChange={scope.setRoom}
+              onChange={(value) => {
+                setPreviewPage(1);
+                scope.setRoom(value);
+              }}
               options={[
                 { value: "", label: "ทุกห้อง" },
                 ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
@@ -636,75 +670,118 @@ export function StudentAccountsPage() {
               value={scope.room}
             />
           </ScopeField>
-          <ScopeField label={`จำนวนคนต่อรอบ (${MIN_BULK_LIMIT}-${MAX_BULK_LIMIT})`}>
-            <Input
-              min={MIN_BULK_LIMIT}
-              max={MAX_BULK_LIMIT}
-              onChange={(event) => handleLimitChange(event.target.value)}
-              type="number"
-              value={limit}
-            />
-          </ScopeField>
+          {activeTab === "generate" ? (
+            <ScopeField label={`จำนวนคนต่อรอบ (${MIN_BULK_LIMIT}-${MAX_BULK_LIMIT})`}>
+              <Input
+                min={MIN_BULK_LIMIT}
+                max={MAX_BULK_LIMIT}
+                onChange={(event) => handleLimitChange(event.target.value)}
+                type="number"
+                value={limit}
+              />
+            </ScopeField>
+          ) : null}
         </ToolbarControls>
       </PageToolbar>
 
-      {generateMutation.isPending ? (
-        <div className="mb-5">
-          <AccountGenerationProgress limit={limit} />
-        </div>
-      ) : null}
+      {activeTab === "generate" ? (
+        <>
+          {generateMutation.isPending ? (
+            <div className="mb-5">
+              <AccountGenerationProgress limit={limit} />
+            </div>
+          ) : null}
 
-      {previewMutation.isError ? (
-        <ErrorState
-          title="ตรวจรายชื่อไม่สำเร็จ"
-          description={getStudentAccountErrorMessage(previewMutation.error)}
-          onRetry={() => previewMutation.mutate()}
-        />
-      ) : preview ? (
-        <div className="space-y-5">
-          <SummaryMetrics
-            items={[
-              { label: "ในขอบเขต", value: preview.summary.totalCount },
-              { label: "ยังไม่มีบัญชี", value: preview.summary.withoutAccountCount },
-              { label: "มีบัญชีแล้ว", value: preview.summary.existingAccountCount },
-            ]}
-          />
-          <CandidateTable candidates={preview.candidates} />
-        </div>
+          {previewMutation.isError ? (
+            <ErrorState
+              title="ตรวจรายชื่อไม่สำเร็จ"
+              description={getStudentAccountErrorMessage(previewMutation.error)}
+              onRetry={() => previewMutation.mutate(previewFilter)}
+            />
+          ) : preview ? (
+            <div className="space-y-5">
+              <SummaryMetrics
+                items={[
+                  { label: "ในขอบเขต", value: preview.summary.totalCount },
+                  { label: "ยังไม่มีบัญชี", value: preview.summary.withoutAccountCount },
+                  { label: "มีบัญชีแล้ว", value: preview.summary.existingAccountCount },
+                ]}
+              />
+              <CandidateTable
+                candidates={preview.candidates}
+                page={preview.meta?.page ?? previewPage}
+                rowsPerPage={preview.meta?.limit ?? previewRowsPerPage}
+                totalCount={preview.meta?.totalCount ?? preview.summary.withoutAccountCount}
+                onPageChange={(nextPage) => {
+                  setPreviewPage(nextPage);
+                  previewMutation.mutate(
+                    buildFilter(scope, area, previewRowsPerPage, nextPage),
+                  );
+                }}
+                onRowsPerPageChange={(nextRowsPerPage) => {
+                  setPreviewRowsPerPage(nextRowsPerPage);
+                  setPreviewPage(1);
+                  previewMutation.mutate(
+                    buildFilter(scope, area, nextRowsPerPage, 1),
+                  );
+                }}
+              />
+            </div>
+          ) : (
+            <EmptyState icon={KeyRound} title="เลือกขอบเขตแล้วดูตัวอย่าง" />
+          )}
+
+          {generateMutation.isError ? (
+            <div className="mt-5">
+              <ErrorState
+                title="สร้างบัญชีไม่สำเร็จ"
+                description={getStudentAccountErrorMessage(generateMutation.error)}
+                onRetry={() => generateMutation.mutate()}
+              />
+            </div>
+          ) : null}
+
+          {generatedCredentials.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              <Alert variant="success">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <AlertTitle>สร้างบัญชีแล้ว {generatedCredentials.length} คน</AlertTitle>
+                    <AlertDescription>
+                      {previewMutation.isPending
+                        ? "กำลังตรวจรายการที่ยังไม่มีบัญชี"
+                        : remainingAccountCount && remainingAccountCount > 0
+                          ? `ยังเหลือ ${remainingAccountCount} คน กด “สร้างชุดถัดไป” เพื่อดำเนินการต่อ`
+                          : "สร้างบัญชีครบตามขอบเขตแล้ว คัดลอกหรือส่งออกผลลัพธ์ได้ทันที"}
+                    </AlertDescription>
+                  </div>
+                  <TableActionBar className="min-h-0 shrink-0">
+                    <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
+                      คัดลอกตาราง
+                    </Button>
+                    <Button icon={Download} onClick={exportCredentials} variant="outline">
+                      ส่งออก CSV
+                    </Button>
+                  </TableActionBar>
+                </div>
+              </Alert>
+              <CredentialTable credentials={generatedCredentials} />
+            </div>
+          ) : null}
+        </>
       ) : (
-        <EmptyState icon={KeyRound} title="เลือกขอบเขตแล้วดูตัวอย่าง" />
+        <AuditLogPanel
+          domain="student_accounts"
+          title="ประวัติบัญชีนักเรียน"
+          description="ดูรายการสร้างบัญชีนักเรียนย้อนหลังตามขอบเขตสิทธิ์และโรงเรียนที่เลือก"
+          province={generateFilter.province}
+          district={generateFilter.district}
+          subDistrict={generateFilter.subDistrict}
+          schoolId={generateFilter.schoolId}
+          showActionColumn={false}
+          showReferenceColumn={false}
+        />
       )}
-
-      {generateMutation.isError ? (
-        <div className="mt-5">
-          <ErrorState
-            title="สร้างบัญชีไม่สำเร็จ"
-            description={getStudentAccountErrorMessage(generateMutation.error)}
-            onRetry={() => generateMutation.mutate()}
-          />
-        </div>
-      ) : null}
-
-      {generatedCredentials.length > 0 ? (
-        <div className="mt-5 space-y-4">
-          <Alert>
-            <AlertTitle>สะสมบัญชีที่สร้างแล้ว {generatedCredentials.length} คน</AlertTitle>
-            <AlertDescription>
-              กด “สร้างชุดถัดไป” เพื่อสร้างต่อจากรายชื่อที่ยังไม่มีบัญชี
-              แล้วคัดลอกหรือส่งออกผลลัพธ์ทั้งหมดในชุดนี้
-            </AlertDescription>
-          </Alert>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
-              คัดลอกตาราง
-            </Button>
-            <Button icon={Download} onClick={exportCredentials} variant="outline">
-              ส่งออก CSV
-            </Button>
-          </div>
-          <CredentialTable credentials={generatedCredentials} />
-        </div>
-      ) : null}
     </PageShell>
   );
 }

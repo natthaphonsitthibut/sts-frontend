@@ -22,6 +22,7 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { NavButton } from "../../../components/layout/nav-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   ErrorState,
@@ -49,7 +50,7 @@ import type {
   AttendanceTaskListQuery,
   AttendanceTaskSummary,
 } from "../../attendance/types/attendance.types";
-import { formatDateTime, isLinkLocked } from "../lib/task-presentation";
+import { isLinkLocked } from "../lib/task-presentation";
 import { LINK_STATE_OPTIONS } from "../lib/task-options";
 
 const EMPTY_SUMMARY: AttendanceTaskSummary = {
@@ -83,7 +84,9 @@ function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
   if (key === "school") return task.target_school_name || "";
   if (key === "assignee") return task.link_assigned_to || "";
   if (key === "status") return getLinkState(task);
-  if (key === "created") return task.created_at || "";
+  if (key === "starts") return task.active_link_created_at || task.created_at || "";
+  if (key === "expires") return task.active_link_expires_at || "";
+  if (key === "remaining") return task.active_link_expires_at || "";
   return "";
 }
 
@@ -187,7 +190,7 @@ export function AttendanceLinksDashboardPage() {
         icon={ClipboardCheck}
         title="ลิงก์เช็คชื่อ"
         description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
-        actions={
+        tableActions={
           <div className="flex flex-wrap gap-2">
             <RefreshButton onRefresh={() => tasksQuery.refetch()} />
             <NavButton icon={CalendarDays} to="/attendance-operations">
@@ -254,18 +257,18 @@ export function AttendanceLinksDashboardPage() {
                 { label: "โรงเรียน", sortKey: "school" },
                 { label: "ผู้รับผิดชอบ", sortKey: "assignee" },
                 { label: "สถานะ", sortKey: "status" },
-                { label: "สร้างเมื่อ", sortKey: "created" },
+                { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
                 "จัดการ",
               ]}
               columnWidths={[
-                "w-[13%]",
-                "w-[18%]",
-                "w-[18%]",
                 "w-[11%]",
-                "w-[15%]",
-                "w-[25%]",
+                "w-[16%]",
+                "w-[14%]",
+                "w-[10%]",
+                "w-[35%]",
+                "w-[14%]",
               ]}
-              minWidthClassName="min-w-[900px]"
+              minWidthClassName="min-w-full"
               onSortChange={setSort}
               responsive={false}
               sort={sort}
@@ -293,23 +296,29 @@ export function AttendanceLinksDashboardPage() {
                     <DataTableCell>
                       <LinkStateBadge task={task} />
                     </DataTableCell>
-                    <DataTableCell className="text-sm text-slate-500">
-                      {formatDateTime(task.created_at)}
+                    <DataTableCell>
+                      <LinkTimeSummary
+                        expiresAt={task.active_link_expires_at}
+                        startsAt={task.active_link_created_at ?? task.created_at}
+                        variant="columns"
+                      />
                     </DataTableCell>
                     <DataTableCell>
-                      <div className="flex flex-nowrap items-center justify-end gap-3">
+                      <div className="flex flex-nowrap items-center justify-center gap-2">
                         {task.active_link_id ? (
                           <DetailLinkButton
+                            aria-label="ดูรายละเอียด"
+                            className="size-9 px-0"
                             state={{ date: task.created_at?.split("T")[0] }}
                             to={`/attendance-links/${task.active_link_id}`}
-                          />
+                          >
+                            {null}
+                          </DetailLinkButton>
                         ) : null}
                         {task.active_link_id ? (
                           <Button
-                            // Fixed min width so toggling "เปิด"/"ปิด" (different glyph
-                            // counts) never changes the button width and shifts the
-                            // copy button beside it.
-                            className="min-w-[88px]"
+                            aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
+                            className="size-9 min-w-0 px-0"
                             icon={locked ? LockOpen : Lock}
                             isLoading={pendingLinkId === task.active_link_id}
                             onClick={() =>
@@ -317,9 +326,7 @@ export function AttendanceLinksDashboardPage() {
                             }
                             size="sm"
                             variant={locked ? "outline" : "destructive"}
-                          >
-                            {locked ? "เปิด" : "ปิด"}
-                          </Button>
+                          />
                         ) : null}
                       </div>
                     </DataTableCell>

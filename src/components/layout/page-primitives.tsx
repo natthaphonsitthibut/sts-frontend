@@ -32,6 +32,7 @@ export function PageShell({
 interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   actions?: ReactNode;
   description?: ReactNode;
+  footerActions?: ReactNode;
   icon?: LucideIcon;
   title: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
@@ -69,6 +70,7 @@ export function PageToolbar({
   children,
   className,
   description,
+  footerActions,
   icon: Icon,
   title,
   tone = "default",
@@ -76,7 +78,7 @@ export function PageToolbar({
 }: PageToolbarProps) {
   const toneClasses = toolbarToneClasses[tone];
   return (
-    <div className="mb-5">
+    <div className="relative z-20 mb-5">
       {/* Header band — same fixed height on every page (controls live below, so a
           page with many filters never gets a taller header than one with none). */}
       <section
@@ -106,9 +108,19 @@ export function PageToolbar({
           ) : null}
         </div>
       </section>
-      {children ? (
-        <div className="mt-5 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
-          {children}
+      {children || footerActions ? (
+        <div className="mt-5 overflow-visible rounded-lg border border-slate-100 bg-white shadow-card">
+          {children ? <div className="p-4">{children}</div> : null}
+          {footerActions ? (
+            <div
+              className={cn(
+                "rounded-b-lg bg-slate-50 px-4 py-3",
+                children && "border-t border-slate-200",
+              )}
+            >
+              <TableActionBar>{footerActions}</TableActionBar>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -183,6 +195,18 @@ export function ToolbarControls({ className, ...props }: ComponentProps<"div">) 
   );
 }
 
+export function TableActionBar({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-10 flex-wrap items-center justify-end gap-2",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 interface CountBadgeProps {
   children: ReactNode;
   icon?: LucideIcon;
@@ -208,13 +232,16 @@ interface ListToolbarCount {
   icon?: LucideIcon;
 }
 
-interface ListPageToolbarProps extends Omit<PageToolbarProps, "children"> {
+interface ListPageToolbarProps
+  extends Omit<PageToolbarProps, "children" | "footerActions"> {
   /** Optional search box — rendered first in the controls row. */
   search?: ListToolbarSearch;
   /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
   filters?: ReactNode;
   /** Optional result count — rendered last as a CountBadge. */
   count?: ListToolbarCount;
+  /** Commands acting on the list — rendered below filters and aligned right. */
+  tableActions?: ReactNode;
 }
 
 /**
@@ -229,11 +256,12 @@ export function ListPageToolbar({
   count,
   filters,
   search,
+  tableActions,
   ...toolbarProps
 }: ListPageToolbarProps) {
   const hasControls = Boolean(search || filters || count);
   return (
-    <PageToolbar {...toolbarProps}>
+    <PageToolbar {...toolbarProps} footerActions={tableActions}>
       {hasControls ? (
         <div className="flex flex-col gap-3">
           {search || count ? (

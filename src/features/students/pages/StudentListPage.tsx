@@ -36,18 +36,34 @@ export function StudentListPage() {
   const query = useMemo<StudentListQuery>(
     () => ({
       schoolId: scope.schoolId || undefined,
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
       grade,
       room,
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [scope.schoolId, grade, room, debouncedSearch, page, rowsPerPage],
+    [
+      scope.schoolId,
+      schoolArea.province,
+      schoolArea.district,
+      schoolArea.subDistrict,
+      grade,
+      room,
+      debouncedSearch,
+      page,
+      rowsPerPage,
+    ],
   );
 
   const { students, meta, isLoading, isError, refetch } = useStudents(query);
   const { options } = useStudentFilterOptions({
     schoolId: scope.schoolId || undefined,
+    province: schoolArea.province || undefined,
+    district: schoolArea.district || undefined,
+    subDistrict: schoolArea.subDistrict || undefined,
     grade,
   });
 

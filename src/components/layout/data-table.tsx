@@ -20,6 +20,9 @@ export interface DataTableHeading {
   label: ReactNode;
   sortKey?: string;
   ariaLabel?: string;
+  colSpan?: number;
+  rowSpan?: number;
+  className?: string;
 }
 
 type DataTableHeadingInput = ReactNode | DataTableHeading;
@@ -27,6 +30,7 @@ type DataTableHeadingInput = ReactNode | DataTableHeading;
 interface DataTableProps {
   /** Column headings; empty string renders a spacer cell (e.g. an actions column). */
   headings: DataTableHeadingInput[];
+  headingRows?: DataTableHeadingInput[][];
   sort?: DataTableSortState;
   onSortChange?: (sort: DataTableSortState | undefined) => void;
   /**
@@ -79,12 +83,14 @@ export function DataTable({
   columnWidths,
   footer,
   headings,
+  headingRows,
   minWidthClassName = "min-w-[820px]",
   onSortChange,
   responsive = true,
   sort,
 }: DataTableProps) {
   const fixedLayout = Boolean(columnWidths);
+  const rows = headingRows ?? [headings];
   return (
     <div
       className={cn(
@@ -101,58 +107,70 @@ export function DataTable({
             minWidthClassName,
           )}
         >
+          {columnWidths ? (
+            <colgroup>
+              {columnWidths.map((width, index) => (
+                <col className={width} key={index} />
+              ))}
+            </colgroup>
+          ) : null}
           <thead>
-            <tr className="bg-muted">
-              {headings.map((heading, index) => {
-                const config = isHeadingConfig(heading)
-                  ? heading
-                  : { label: heading };
-                const sortKey = config.sortKey;
-                const isSortable = Boolean(sortKey && onSortChange);
-                const isActiveSort = Boolean(
-                  sortKey && sort?.key === sortKey,
-                );
-                const SortIcon = isActiveSort
-                  ? sort?.direction === "asc"
-                    ? ArrowUp
-                    : ArrowDown
-                  : ArrowUpDown;
+            {rows.map((headingRow, rowIndex) => (
+              <tr className="bg-muted" key={rowIndex}>
+                {headingRow.map((heading, index) => {
+                  const config = isHeadingConfig(heading)
+                    ? heading
+                    : { label: heading };
+                  const sortKey = config.sortKey;
+                  const isSortable = Boolean(sortKey && onSortChange);
+                  const isActiveSort = Boolean(
+                    sortKey && sort?.key === sortKey,
+                  );
+                  const SortIcon = isActiveSort
+                    ? sort?.direction === "asc"
+                      ? ArrowUp
+                      : ArrowDown
+                    : ArrowUpDown;
 
-                return (
-                  <th
-                    key={index}
-                    aria-sort={
-                      isActiveSort
-                        ? sort?.direction === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : undefined
-                    }
-                    className={cn(
-                      "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
-                      columnWidths?.[index],
-                    )}
-                  >
-                    {isSortable && sortKey && onSortChange ? (
-                      <button
-                        type="button"
-                        aria-label={config.ariaLabel}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                          isActiveSort && "text-primary",
-                        )}
-                        onClick={() => onSortChange(getNextSortState(sort, sortKey))}
-                      >
-                        <span>{config.label}</span>
-                        <SortIcon className="size-3.5" aria-hidden="true" />
-                      </button>
-                    ) : (
-                      config.label
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
+                  return (
+                    <th
+                      key={index}
+                      colSpan={config.colSpan}
+                      rowSpan={config.rowSpan}
+                      aria-sort={
+                        isActiveSort
+                          ? sort?.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                      className={cn(
+                        "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
+                        !headingRows && columnWidths?.[index],
+                        config.className,
+                      )}
+                    >
+                      {isSortable && sortKey && onSortChange ? (
+                        <button
+                          type="button"
+                          aria-label={config.ariaLabel}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            isActiveSort && "text-primary",
+                          )}
+                          onClick={() => onSortChange(getNextSortState(sort, sortKey))}
+                        >
+                          <span>{config.label}</span>
+                          <SortIcon className="size-3.5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        config.label
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </thead>
           <tbody>{children}</tbody>
         </table>

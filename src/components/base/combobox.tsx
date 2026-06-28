@@ -58,7 +58,7 @@ export function Combobox({
   }, [options, effectiveTerm]);
 
   return (
-    <div className="relative">
+    <div className={cn("relative", open && "z-50")}>
       <Input
         aria-invalid={ariaInvalid}
         className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
@@ -91,7 +91,7 @@ export function Combobox({
         aria-hidden="true"
       />
       {open ? (
-        <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <ul className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-500">{emptyText}</li>
           ) : (

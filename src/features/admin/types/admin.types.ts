@@ -1,3 +1,4 @@
+import type { PaginationMeta } from "../../../lib/pagination";
 import type { DataScope } from "../../auth/lib/permissions";
 
 // --- System settings ---
@@ -65,9 +66,13 @@ export interface CreateUserResponse {
 
 export interface StudentAccountFilter {
   schoolId?: number;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
   grade?: string;
   room?: number;
   onlyWithoutAccount?: boolean;
+  page?: number;
   limit?: number;
 }
 
@@ -94,6 +99,7 @@ export interface StudentAccountPreview {
     };
     candidates: StudentAccountCandidate[];
     limit: number;
+    meta?: PaginationMeta;
   };
 }
 

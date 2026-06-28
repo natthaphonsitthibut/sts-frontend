@@ -24,7 +24,10 @@ const DEFAULT_LIMIT = 20;
 interface StudentsService {
   getStudents: (query?: StudentListQuery) => Promise<StudentListResult>;
   getFilterOptions: (
-    query?: Pick<StudentListQuery, "schoolId" | "grade">,
+    query?: Pick<
+      StudentListQuery,
+      "schoolId" | "province" | "district" | "subDistrict" | "grade"
+    >,
   ) => Promise<StudentFilterOptions>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
   revealStudentPii: (
@@ -59,6 +62,18 @@ function buildStudentListParams(
   const schoolId = query.schoolId?.trim();
   if (schoolId) {
     params.schoolId = schoolId;
+  }
+  const province = query.province?.trim();
+  if (province) {
+    params.province = province;
+  }
+  const district = query.district?.trim();
+  if (district) {
+    params.district = district;
+  }
+  const subDistrict = query.subDistrict?.trim();
+  if (subDistrict) {
+    params.subDistrict = subDistrict;
   }
   if (query.grade && query.grade !== "ALL") {
     params.grade = query.grade;
@@ -135,18 +150,34 @@ async function getStudents(
       page,
       limit,
       totalCount,
-      totalPages: meta?.totalPages ?? (limit > 0 ? Math.ceil(totalCount / limit) : 0),
+      totalPages:
+        meta?.totalPages ?? (limit > 0 ? Math.ceil(totalCount / limit) : 0),
     },
   };
 }
 
 async function getFilterOptions(
-  query: Pick<StudentListQuery, "schoolId" | "grade"> = {},
+  query: Pick<
+    StudentListQuery,
+    "schoolId" | "province" | "district" | "subDistrict" | "grade"
+  > = {},
 ): Promise<StudentFilterOptions> {
   const params: Record<string, string> = {};
   const schoolId = query.schoolId?.trim();
   if (schoolId) {
     params.schoolId = schoolId;
+  }
+  const province = query.province?.trim();
+  if (province) {
+    params.province = province;
+  }
+  const district = query.district?.trim();
+  if (district) {
+    params.district = district;
+  }
+  const subDistrict = query.subDistrict?.trim();
+  if (subDistrict) {
+    params.subDistrict = subDistrict;
   }
   if (query.grade && query.grade !== "ALL") {
     params.grade = query.grade;
@@ -164,9 +195,7 @@ async function getFilterOptions(
 }
 
 async function getStudentById(studentId: string): Promise<StudentDetail> {
-  const response = await apiClient.get<StudentDetail>(
-    `/students/${studentId}`,
-  );
+  const response = await apiClient.get<StudentDetail>(`/students/${studentId}`);
   return response.data;
 }
 
