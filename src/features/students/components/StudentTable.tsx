@@ -28,7 +28,7 @@ interface StudentTableProps {
 function StudentAvatar({ name }: { name: string }) {
   return (
     <div
-      className="flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       style={getStudentAvatarGradient(name)}
     >
       {name?.[0] || "?"}
@@ -41,7 +41,7 @@ function StudentIdentity({ student }: { student: StudentListItem }) {
     <div className="flex items-center gap-4">
       <StudentAvatar name={student.name} />
       <div className="min-w-0">
-        <h3 className="truncate text-lg font-extrabold tracking-[-0.01em] text-slate-800">
+        <h3 className="truncate font-bold text-slate-800">
           {student.name}
         </h3>
       </div>
@@ -74,11 +74,15 @@ export function StudentTable({
   const baseIndex = (page - 1) * rowsPerPage;
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedRows = useMemo(() => {
-    if (!sort) return rows;
-    return [...rows].sort((a, b) => {
+    const indexedRows = rows.map((student, index) => ({ student, index }));
+    if (!sort) return indexedRows;
+    if (sort.key === "sequence") {
+      return sort.direction === "asc" ? indexedRows : [...indexedRows].reverse();
+    }
+    return indexedRows.sort((a, b) => {
       const result = compareText(
-        getStudentSortValue(a, sort.key),
-        getStudentSortValue(b, sort.key),
+        getStudentSortValue(a.student, sort.key),
+        getStudentSortValue(b.student, sort.key),
       );
       return sort.direction === "asc" ? result : -result;
     });
@@ -88,7 +92,7 @@ export function StudentTable({
     <div className="flex flex-col gap-2">
       <DataTable
         headings={[
-          "ลำดับ",
+          { label: "ลำดับ", sortKey: "sequence" },
           { label: "ชื่อ - นามสกุล", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
           { label: "ระดับชั้น", sortKey: "grade" },
@@ -98,7 +102,7 @@ export function StudentTable({
         onSortChange={setSort}
         sort={sort}
       >
-        {sortedRows.map((student, index) => (
+        {sortedRows.map(({ student, index }) => (
           <DataTableRow
             key={student.id}
             className="cursor-pointer"
@@ -113,10 +117,10 @@ export function StudentTable({
             <DataTableCell className="font-semibold text-slate-500">
               {student.school_name || "-"}
             </DataTableCell>
-            <DataTableCell className="text-center text-base font-bold text-slate-600">
+            <DataTableCell className="text-center font-bold text-slate-600">
               {student.grade || "-"}
             </DataTableCell>
-            <DataTableCell className="text-center text-base font-bold text-slate-600">
+            <DataTableCell className="text-center font-bold text-slate-600">
               {formatStudentRoom(student.room)}
             </DataTableCell>
           </DataTableRow>
@@ -124,7 +128,7 @@ export function StudentTable({
       </DataTable>
 
       <TableCardList>
-        {sortedRows.map((student) => (
+        {sortedRows.map(({ student }) => (
           <TableCard
             key={student.id}
             interactive

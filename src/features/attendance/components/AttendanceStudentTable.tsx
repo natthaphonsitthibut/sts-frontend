@@ -10,6 +10,12 @@ import {
 import { cn } from "../../../lib/utils";
 import { Badge, Button, Input } from "../../../components/base";
 import {
+  DataTable,
+  DataTableCell,
+  DataTableRow,
+  type DataTableSortState,
+} from "../../../components/layout/data-table";
+import {
   ATTENDANCE_RECORD_STATUSES,
   ATTENDANCE_STATUS_META,
   getAttendanceAvatarGradient,
@@ -27,6 +33,11 @@ interface AttendanceStudentTableProps {
   onUndo?: () => void;
   canUndo?: boolean;
   disabled?: boolean;
+}
+
+interface AttendanceRosterItem {
+  student: AttendanceStudent;
+  rosterNumber: number;
 }
 
 function StatusButton({
@@ -69,6 +80,38 @@ function toCount(value: number | string | undefined): number {
   return 0;
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getCurrentStatusLabel(
+  studentId: string,
+  selections: Record<string, AttendanceSelectionStatus>,
+): string {
+  const status = selections[studentId] ?? "P_PRESENT";
+  return ATTENDANCE_STATUS_META[status].label;
+}
+
+function compareRosterItems(
+  left: AttendanceRosterItem,
+  right: AttendanceRosterItem,
+  key: string,
+  selections: Record<string, AttendanceSelectionStatus>,
+): number {
+  if (key === "roster") return left.rosterNumber - right.rosterNumber;
+  if (key === "name") return compareText(left.student.name, right.student.name);
+  if (key === "absence") {
+    return toCount(left.student.total_absent) - toCount(right.student.total_absent);
+  }
+  if (key === "status") {
+    return compareText(
+      getCurrentStatusLabel(left.student.id, selections),
+      getCurrentStatusLabel(right.student.id, selections),
+    );
+  }
+  return 0;
+}
+
 export function AttendanceStudentTable({
   students,
   selections,
@@ -81,9 +124,14 @@ export function AttendanceStudentTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "roll-call">("list");
   const [activeRosterIndex, setActiveRosterIndex] = useState(0);
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
   const [reviewedStudentIds, setReviewedStudentIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [undoSnapshot, setUndoSnapshot] = useState<{
+    studentId: string | null;
+    reviewedStudentIds: Set<string>;
+  } | null>(null);
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const visibleStudents = useMemo(
@@ -99,6 +147,13 @@ export function AttendanceStudentTable({
         }),
     [normalizedSearch, students],
   );
+  const sortedVisibleStudents = useMemo(() => {
+    if (!sort) return visibleStudents;
+    return [...visibleStudents].sort((left, right) => {
+      const result = compareRosterItems(left, right, sort.key, selections);
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [selections, sort, visibleStudents]);
   const safeActiveRosterIndex = Math.min(
     activeRosterIndex,
     Math.max(visibleStudents.length - 1, 0),
@@ -116,6 +171,10 @@ export function AttendanceStudentTable({
     studentId: string,
     status: AttendanceSelectionStatus,
   ): void {
+    setUndoSnapshot({
+      studentId,
+      reviewedStudentIds: new Set(reviewedStudentIds),
+    });
     onStatusChange(studentId, status);
     setReviewedStudentIds((current) => new Set(current).add(studentId));
 
@@ -127,13 +186,80 @@ export function AttendanceStudentTable({
   }
 
   function handleBulkStatusChange(status: AttendanceSelectionStatus): void {
+    setUndoSnapshot({
+      studentId: activeRosterItem?.student.id ?? null,
+      reviewedStudentIds: new Set(reviewedStudentIds),
+    });
     onBulkStatusChange?.(status);
     setReviewedStudentIds(new Set(students.map((student) => student.id)));
   }
 
   function handleUndo(): void {
     onUndo?.();
-    setReviewedStudentIds(new Set());
+    if (undoSnapshot) {
+      setReviewedStudentIds(new Set(undoSnapshot.reviewedStudentIds));
+      if (viewMode === "roll-call" && undoSnapshot.studentId) {
+        const previousIndex = visibleStudents.findIndex(
+          ({ student }) => student.id === undoSnapshot.studentId,
+        );
+        if (previousIndex >= 0) {
+          setActiveRosterIndex(previousIndex);
+        }
+      }
+    } else {
+      setReviewedStudentIds(new Set());
+    }
+    setUndoSnapshot(null);
+  }
+
+  function renderStudentIdentity(student: AttendanceStudent) {
+    return (
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+          style={getAttendanceAvatarGradient(student.name)}
+        >
+          {student.name?.[0] || "?"}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate font-bold text-slate-800">
+            {student.name}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAbsenceRisk(student: AttendanceStudent) {
+    const totalAbsent = toCount(student.total_absent);
+    if (totalAbsent <= 0) {
+      return <span className="text-slate-400">-</span>;
+    }
+    return (
+      <Badge
+        className="w-fit"
+        variant={totalAbsent >= 2 ? "destructive" : "warning"}
+      >
+        ขาดสะสม {totalAbsent} วัน
+      </Badge>
+    );
+  }
+
+  function renderStatusControls(student: AttendanceStudent) {
+    const current = selections[student.id] ?? "P_PRESENT";
+    return (
+      <div className="flex flex-wrap gap-2 lg:justify-end">
+        {ATTENDANCE_RECORD_STATUSES.map((status) => (
+          <StatusButton
+            key={status}
+            isActive={current === status}
+            onClick={() => handleStatusChange(student.id, status)}
+            status={status}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    );
   }
 
   function renderStudentCard(
@@ -141,7 +267,6 @@ export function AttendanceStudentTable({
     rosterNumber: number,
     isRollCall = false,
   ) {
-    const current = selections[student.id] ?? "P_PRESENT";
     const totalAbsent = toCount(student.total_absent);
     const hasAbsenceRisk = totalAbsent > 0;
 
@@ -157,16 +282,8 @@ export function AttendanceStudentTable({
           <div className="flex w-6 shrink-0 justify-center text-sm font-semibold text-slate-400">
             {rosterNumber}
           </div>
-          <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-            style={getAttendanceAvatarGradient(student.name)}
-          >
-            {student.name?.[0] || "?"}
-          </div>
-          <div className="min-w-0 space-y-1">
-            <h3 className="truncate text-base font-extrabold text-slate-800">
-              {student.name}
-            </h3>
+          <div className="min-w-0 flex-1 space-y-1">
+            {renderStudentIdentity(student)}
             {hasAbsenceRisk ? (
               <Badge
                 className="w-fit"
@@ -178,17 +295,7 @@ export function AttendanceStudentTable({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          {ATTENDANCE_RECORD_STATUSES.map((status) => (
-            <StatusButton
-              key={status}
-              isActive={current === status}
-              onClick={() => handleStatusChange(student.id, status)}
-              status={status}
-              disabled={disabled}
-            />
-          ))}
-        </div>
+        {renderStatusControls(student)}
       </div>
     );
   }
@@ -197,8 +304,8 @@ export function AttendanceStudentTable({
     <div className="flex flex-col gap-3">
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="space-y-1.5">
-            <div className="relative">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                 aria-hidden="true"
@@ -214,7 +321,7 @@ export function AttendanceStudentTable({
                 value={searchTerm}
               />
             </div>
-            <p className="text-xs font-medium text-slate-500">
+            <p className="shrink-0 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold tabular-nums text-slate-500">
               แสดง {visibleStudents.length} จาก {students.length} คน
             </p>
           </div>
@@ -321,11 +428,32 @@ export function AttendanceStudentTable({
         </div>
       ) : null}
 
-      {viewMode === "list" || !onBulkStatusChange
-        ? visibleStudents.map(({ student, rosterNumber }) =>
-            renderStudentCard(student, rosterNumber),
-          )
-        : null}
+      {(viewMode === "list" || !onBulkStatusChange) && visibleStudents.length > 0 ? (
+        <DataTable
+          columnWidths={["w-[10%]", "w-[34%]", "w-[18%]", "w-[38%]"]}
+          headings={[
+            { label: "เลขที่", sortKey: "roster" },
+            { label: "นักเรียน", sortKey: "name" },
+            { label: "ขาดสะสม", sortKey: "absence" },
+            { label: "สถานะ", sortKey: "status" },
+          ]}
+          minWidthClassName="min-w-[760px]"
+          onSortChange={setSort}
+          responsive={false}
+          sort={sort}
+        >
+          {sortedVisibleStudents.map(({ student, rosterNumber }) => (
+            <DataTableRow key={student.id}>
+              <DataTableCell className="font-semibold text-slate-400">
+                {rosterNumber}
+              </DataTableCell>
+              <DataTableCell>{renderStudentIdentity(student)}</DataTableCell>
+              <DataTableCell>{renderAbsenceRisk(student)}</DataTableCell>
+              <DataTableCell>{renderStatusControls(student)}</DataTableCell>
+            </DataTableRow>
+          ))}
+        </DataTable>
+      ) : null}
     </div>
   );
 }

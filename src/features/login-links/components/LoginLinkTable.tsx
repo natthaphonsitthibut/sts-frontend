@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { Lock, LockOpen } from "lucide-react";
 import { Button } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
@@ -24,6 +26,31 @@ interface LoginLinkTableProps {
 function StatusBadge({ link }: { link: LoginLink }) {
   const meta = getLoginLinkStatusMeta(link);
   return <LinkStatusBadge label={meta.label} variant={meta.variant} />;
+}
+
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getLoginLinkSortValue(link: LoginLink, key: string): string {
+  if (key === "recipient") return link.assigned_to_name || "";
+  if (key === "role") return link.login_role_label || link.login_role || "";
+  if (key === "status") return getLoginLinkStatusMeta(link).label;
+  if (key === "expires") return link.expires_at || "";
+  return "";
+}
+
+function formatLinkAge(startValue?: string | null, endValue?: string | null): string {
+  if (!startValue || !endValue) return "-";
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
+  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
+  if (days > 0) return `${days} วัน`;
+  return `${hours} ชม.`;
 }
 
 function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: LoginLink }) {
@@ -47,10 +74,32 @@ function LinkActions({ link, onToggleLock }: LoginLinkTableProps & { link: Login
 }
 
 export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortedLinks = useMemo(() => {
+    if (!sort) return links;
+    return [...links].sort((a, b) => {
+      const result = compareText(
+        getLoginLinkSortValue(a, sort.key),
+        getLoginLinkSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [links, sort]);
+
   return (
     <div className="flex flex-col gap-2">
-      <DataTable headings={["ผู้รับลิงก์", "ตำแหน่ง", "สถานะ", "หมดอายุ", "จัดการ"]}>
-        {links.map((link) => (
+      <DataTable
+        headings={[
+          { label: "ผู้รับลิงก์", sortKey: "recipient" },
+          { label: "ตำแหน่ง", sortKey: "role" },
+          { label: "สถานะ", sortKey: "status" },
+          { label: "ช่วงเวลา", sortKey: "expires" },
+          "จัดการ",
+        ]}
+        onSortChange={setSort}
+        sort={sort}
+      >
+        {sortedLinks.map((link) => (
           <DataTableRow key={link.id}>
             <DataTableCell>
               <div className="font-bold text-slate-800">
@@ -67,7 +116,11 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
               <StatusBadge link={link} />
             </DataTableCell>
             <DataTableCell className="text-sm text-slate-500">
-              {formatLoginLinkDateTime(link.expires_at)}
+              <div>เริ่ม {formatLoginLinkDateTime(link.created_at)}</div>
+              <div>หมดอายุ {formatLoginLinkDateTime(link.expires_at)}</div>
+              <div className="text-xs text-slate-400">
+                อายุ {formatLinkAge(link.created_at, link.expires_at)}
+              </div>
             </DataTableCell>
             <DataTableCell>
               <LinkActions link={link} links={links} onToggleLock={onToggleLock} />
@@ -77,7 +130,7 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
       </DataTable>
 
       <TableCardList>
-        {links.map((link) => (
+        {sortedLinks.map((link) => (
           <TableCard key={link.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -91,7 +144,11 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
               <StatusBadge link={link} />
             </div>
             <div className="mt-2 text-xs text-slate-400">
+              เริ่ม {formatLoginLinkDateTime(link.created_at)}
+              <br />
               หมดอายุ {formatLoginLinkDateTime(link.expires_at)}
+              <br />
+              อายุ {formatLinkAge(link.created_at, link.expires_at)}
             </div>
             <div className="mt-4">
               <LinkActions link={link} links={links} onToggleLock={onToggleLock} />

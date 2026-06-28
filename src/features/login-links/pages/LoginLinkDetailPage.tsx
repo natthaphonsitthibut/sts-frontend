@@ -99,7 +99,7 @@ export function LoginLinkDetailPage() {
               <LinkStatusBadge label={status.label} variant={status.variant} />
             </div>
             <div>
-              <div className="text-sm text-slate-500">สร้างเมื่อ</div>
+              <div className="text-sm text-slate-500">เริ่มใช้งาน</div>
               <div className="font-bold">{formatLoginLinkDateTime(link.created_at ?? "")}</div>
             </div>
             <div>

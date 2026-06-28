@@ -25,6 +25,7 @@ import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.typ
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
+  formatDateTimeRangeAge,
   getStatusLabel,
   getTaskTypeLabel,
   normalizeTaskPublicLink,
@@ -260,6 +261,12 @@ export function TaskDetailPage() {
                         ? ` · ลำดับที่ ${Number(link.delegation_depth) + 1}`
                         : ""}
                     </div>
+                    {link.expires_at ? (
+                      <div className="text-sm text-slate-500">
+                        หมดอายุ {formatDateTime(link.expires_at)} · อายุ{" "}
+                        {formatDateTimeRangeAge(link.created_at, link.expires_at)}
+                      </div>
+                    ) : null}
                   </div>
                   <Badge
                     variant={

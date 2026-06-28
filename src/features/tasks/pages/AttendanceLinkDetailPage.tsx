@@ -13,7 +13,13 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type { AdminLinkDetail } from "../../login-links/types/login-links.types";
-import { formatDate, getAttendanceStatusLabel, toAbsoluteUrl } from "../lib/task-presentation";
+import {
+  formatDate,
+  formatDateTime,
+  formatDateTimeRangeAge,
+  getAttendanceStatusLabel,
+  toAbsoluteUrl,
+} from "../lib/task-presentation";
 
 export const ATTENDANCE_LINK_DETAIL_KEY = "attendance-link-detail";
 const ATTENDANCE_TASKS_KEY = "attendance-link-tasks";
@@ -123,6 +129,20 @@ export function AttendanceLinkDetailPage() {
             <div>
               <div className="text-sm text-slate-500">วันที่</div>
               <div className="font-bold">{formatDate(date)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">เริ่มใช้งาน</div>
+              <div className="font-bold">{formatDateTime(detail.created_at)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">หมดอายุ</div>
+              <div className="font-bold">{formatDateTime(detail.expires_at)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">อายุลิงก์</div>
+              <div className="font-bold">
+                {formatDateTimeRangeAge(detail.created_at, detail.expires_at)}
+              </div>
             </div>
           </div>
         </Card>

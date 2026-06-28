@@ -34,7 +34,7 @@ export function SidebarNavItem({
     item.children?.some((child) => child.route === location.pathname),
   );
   const [open, setOpen] = useState(hasActiveChild);
-  const expanded = open || hasActiveChild;
+  const expanded = open;
 
   function handleGroupToggle(): void {
     setOpen((value) => !value);

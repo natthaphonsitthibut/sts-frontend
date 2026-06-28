@@ -23,6 +23,7 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import {
   EmptyState,
@@ -37,7 +38,10 @@ import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
-import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import type {
+  AttendanceHistoryRecord,
+  AttendanceSelectionStatus,
+} from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -62,6 +66,18 @@ const TAB_OPTIONS = [
   { value: "history", label: "ประวัติการเช็คชื่อ" },
 ];
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getHistorySortValue(record: AttendanceHistoryRecord, key: string): string {
+  if (key === "student") return record.name || record.student_name || "";
+  if (key === "class") return `${record.grade || ""}/${formatStudentRoom(record.room)}`;
+  if (key === "status") return ATTENDANCE_STATUS_META[record.status].label;
+  if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
+  return "";
+}
+
 function ScopeField({
   label,
   children,
@@ -80,6 +96,7 @@ function ScopeField({
 export function AttendanceCheckInPage() {
   const [tab, setTab] = useState("today");
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
   const checkIn = useAttendanceCheckIn();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
@@ -150,6 +167,16 @@ export function AttendanceCheckInPage() {
       ),
     [history.records, grade, room],
   );
+  const sortedHistory = useMemo(() => {
+    if (!historySort) return filteredHistory;
+    return [...filteredHistory].sort((a, b) => {
+      const result = compareText(
+        getHistorySortValue(a, historySort.key),
+        getHistorySortValue(b, historySort.key),
+      );
+      return historySort.direction === "asc" ? result : -result;
+    });
+  }, [filteredHistory, historySort]);
 
   return (
     <PageShell className="pb-6">
@@ -371,10 +398,17 @@ export function AttendanceCheckInPage() {
         />
       ) : (
         <DataTable
-          headings={["นักเรียน", "ชั้น / ห้อง", "สถานะ", "ผู้บันทึก"]}
+          headings={[
+            { label: "นักเรียน", sortKey: "student" },
+            { label: "ชั้น / ห้อง", sortKey: "class" },
+            { label: "สถานะ", sortKey: "status" },
+            { label: "ผู้บันทึก", sortKey: "recorder" },
+          ]}
+          onSortChange={setHistorySort}
           responsive={false}
+          sort={historySort}
         >
-          {filteredHistory.map((record) => (
+          {sortedHistory.map((record) => (
             <DataTableRow key={record.id}>
               <DataTableCell className="font-bold text-slate-800">
                 {record.name || "-"}

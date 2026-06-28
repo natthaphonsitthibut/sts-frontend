@@ -29,6 +29,7 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
 import {
@@ -65,6 +66,53 @@ const STATUS_META: Record<
   INCOMPLETE: { label: "ไม่ครบ", variant: "warning" },
 };
 
+const TERM_STATUS_META: Record<
+  SchoolTerm["status"],
+  { label: string; variant: "success" | "secondary" | "warning" }
+> = {
+  DRAFT: { label: "ร่าง", variant: "warning" },
+  ACTIVE: { label: "เปิดใช้งาน", variant: "success" },
+  CLOSED: { label: "ปิดภาคเรียน", variant: "secondary" },
+};
+
+function formatTermOption(term: SchoolTerm): string {
+  return `${term.academicYear}/${term.semester} · ${TERM_STATUS_META[term.status].label}`;
+}
+
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function compareNumber(a: number | null | undefined, b: number | null | undefined): number {
+  return (a ?? -1) - (b ?? -1);
+}
+
+function compareReconciliationRows(
+  left: AttendanceReconciliationItem,
+  right: AttendanceReconciliationItem,
+  key: string,
+): number {
+  if (key === "class") {
+    return compareText(`${left.grade}/${left.room}`, `${right.grade}/${right.room}`);
+  }
+  if (key === "expected") {
+    return compareNumber(left.expectedRosterCount, right.expectedRosterCount);
+  }
+  if (key === "recorded") {
+    return compareNumber(left.recordedCount, right.recordedCount);
+  }
+  if (key === "revision") {
+    return compareNumber(left.revision, right.revision);
+  }
+  if (key === "status") {
+    return compareText(
+      STATUS_META[left.operationalStatus].label,
+      STATUS_META[right.operationalStatus].label,
+    );
+  }
+  return 0;
+}
+
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -85,6 +133,7 @@ export function AttendanceOperationsPage() {
   const [date, setDate] = useState(getTodayIso());
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [calendarEdit, setCalendarEdit] = useState<{
@@ -182,7 +231,17 @@ export function AttendanceOperationsPage() {
     missing: 0,
     incomplete: 0,
   };
-  const rows = reconciliationQuery.data?.rows ?? [];
+  const rows = useMemo(
+    () => reconciliationQuery.data?.rows ?? [],
+    [reconciliationQuery.data?.rows],
+  );
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows;
+    return [...rows].sort((a, b) => {
+      const result = compareReconciliationRows(a, b, sort.key);
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [rows, sort]);
 
   function handleSchoolChange(value: string): void {
     setSchoolInput(value);
@@ -200,8 +259,8 @@ export function AttendanceOperationsPage() {
     <PageShell>
       <PageToolbar
         icon={CalendarDays}
-        title="ความครบถ้วนการเช็คชื่อ"
-        description="ตรวจรอบเช็คชื่อรายวันตามภาคเรียนและปฏิทินโรงเรียน"
+        title="ตรวจสถานะเช็คชื่อรายวัน"
+        description="ดูว่าห้องไหนเช็คชื่อครบ ยังไม่เช็ค หรือเช็คไม่ครบในวันที่เลือก"
         actions={
           canManageCalendar && schoolId ? (
             <Button
@@ -232,8 +291,9 @@ export function AttendanceOperationsPage() {
               }}
               options={terms.map((term) => ({
                 value: term.id,
-                label: `${term.academicYear}/${term.semester} · ${term.status}`,
+                label: formatTermOption(term),
               }))}
+              placeholder="เลือกภาคเรียน"
               searchable={false}
               value={selectedTermId}
             />
@@ -256,8 +316,8 @@ export function AttendanceOperationsPage() {
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={selectedTerm.status === "ACTIVE" ? "success" : "secondary"}>
-                {selectedTerm.status}
+              <Badge variant={TERM_STATUS_META[selectedTerm.status].variant}>
+                {TERM_STATUS_META[selectedTerm.status].label}
               </Badge>
               <span className="text-sm font-semibold text-slate-600">
                 {selectedTerm.startsOn ?? "-"} ถึง {selectedTerm.endsOn ?? "-"}
@@ -329,7 +389,9 @@ export function AttendanceOperationsPage() {
           {selectedTerm.status !== "ACTIVE" ? (
             <Alert variant="warning">
               <AlertTitle>ภาคเรียนยังไม่เปิดใช้งาน</AlertTitle>
-              <AlertDescription>ตั้งช่วงวัน สร้างปฏิทิน แล้วเปลี่ยนสถานะเป็น ACTIVE</AlertDescription>
+              <AlertDescription>
+                ตั้งช่วงวัน สร้างปฏิทิน แล้วเปลี่ยนสถานะเป็น “เปิดใช้งาน”
+              </AlertDescription>
             </Alert>
           ) : null}
 
@@ -361,8 +423,19 @@ export function AttendanceOperationsPage() {
             <EmptyState icon={CalendarDays} title="ไม่มีห้องเรียนที่ต้องเช็คในวันนี้" />
           ) : (
             <>
-              <DataTable headings={["ชั้น / ห้อง", "รายชื่อ", "บันทึกแล้ว", "Revision", "สถานะ"]} responsive={false}>
-                {rows.map((row) => {
+              <DataTable
+                headings={[
+                  { label: "ชั้น / ห้อง", sortKey: "class" },
+                  { label: "รายชื่อ", sortKey: "expected" },
+                  { label: "บันทึกแล้ว", sortKey: "recorded" },
+                  { label: "Revision", sortKey: "revision" },
+                  { label: "สถานะ", sortKey: "status" },
+                ]}
+                onSortChange={setSort}
+                responsive={false}
+                sort={sort}
+              >
+                {sortedRows.map((row) => {
                   const meta = STATUS_META[row.operationalStatus];
                   return (
                     <DataTableRow key={`${row.gradeLevelId}-${row.room}`}>

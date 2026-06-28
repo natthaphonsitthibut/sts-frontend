@@ -179,7 +179,12 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
 export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
   // Fixed row height (content vertically centered) so every row in every table
   // is the same height regardless of 1-line vs 2-line cell content.
-  return <td className={cn("h-[68px] px-4 align-middle", className)} {...props} />;
+  return (
+    <td
+      className={cn("h-[68px] px-4 align-middle text-sm text-slate-600", className)}
+      {...props}
+    />
+  );
 }
 
 /** Mobile counterpart wrapper — a vertical stack shown only below `md`. */

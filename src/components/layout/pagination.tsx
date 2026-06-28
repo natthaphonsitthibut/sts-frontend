@@ -21,6 +21,27 @@ interface PaginationProps {
 
 type PageItem = number | "ellipsis";
 
+const fullNumberFormatter = new Intl.NumberFormat("en-US");
+
+function formatFullNumber(value: number): string {
+  return fullNumberFormatter.format(value);
+}
+
+function formatCompactPageNumber(value: number): string {
+  const units = [
+    { value: 1_000_000_000_000, suffix: "T" },
+    { value: 1_000_000_000, suffix: "B" },
+    { value: 1_000_000, suffix: "M" },
+    { value: 1_000, suffix: "K" },
+  ];
+  const unit = units.find((candidate) => value >= candidate.value);
+  if (!unit) return String(value);
+
+  const scaled = value / unit.value;
+  const fractionDigits = scaled < 10 && !Number.isInteger(scaled) ? 1 : 0;
+  return `${scaled.toFixed(fractionDigits).replace(/\.0$/, "")}${unit.suffix}`;
+}
+
 function range(start: number, end: number): number[] {
   const length = end - start + 1;
   return length > 0 ? Array.from({ length }, (_, index) => start + index) : [];
@@ -98,6 +119,14 @@ export function Pagination({
   const isLastPage = page >= totalPages;
   const goToPageValue =
     goToPageDraft.page === page ? goToPageDraft.value : String(page);
+  const totalPageDigits = String(totalPages).length;
+  const pageNumberWidthClass = totalPages >= 1_000 ? "w-12" : "w-9";
+  const summaryWidthCh = Math.min(
+    Math.max(String(totalCount || 0).length * 3 + unitLabel.length + 16, 28),
+    54,
+  );
+  const goToInputWidthCh = Math.min(Math.max(totalPageDigits + 3, 6), 12);
+  const totalPagesLabelWidthCh = Math.min(Math.max(totalPageDigits + 2, 4), 14);
 
   function submitGoToPage(): void {
     const nextPage = clampPage(Number(goToPageValue), totalPages);
@@ -119,8 +148,12 @@ export function Pagination({
 
   return (
     <div className="mt-2 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-      <div className="text-sm font-bold text-slate-900">
-        แสดง {start}-{end} จาก {totalCount} {unitLabel}
+      <div
+        className="font-mono text-sm font-bold tabular-nums text-slate-900"
+        style={{ minWidth: `min(${summaryWidthCh}ch, 100%)` }}
+      >
+        แสดง {formatFullNumber(start)}-{formatFullNumber(end)} จาก{" "}
+        {formatFullNumber(totalCount)} {unitLabel}
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
@@ -164,7 +197,10 @@ export function Pagination({
               <span
                 key={`ellipsis-${index}`}
                 aria-hidden="true"
-                className="flex min-h-9 min-w-9 items-center justify-center px-1 font-bold text-slate-400"
+                className={cn(
+                  "flex size-9 items-center justify-center font-bold text-slate-400",
+                  pageNumberWidthClass,
+                )}
               >
                 …
               </span>
@@ -172,17 +208,19 @@ export function Pagination({
               <button
                 key={item}
                 aria-current={item === page ? "page" : undefined}
-                aria-label={`หน้า ${item}`}
+                aria-label={`หน้า ${formatFullNumber(item)}`}
                 className={cn(
-                  "min-h-9 min-w-9 rounded-full px-2 font-bold transition-colors",
+                  "flex size-9 items-center justify-center rounded-full font-mono text-sm font-bold tabular-nums transition-colors",
+                  pageNumberWidthClass,
                   item === page
                     ? "bg-primary text-white shadow-lg shadow-primary/25"
                     : "text-slate-600 hover:bg-white hover:shadow-sm",
                 )}
                 onClick={() => onPageChange(item)}
+                title={`หน้า ${formatFullNumber(item)}`}
                 type="button"
               >
-                {item}
+                {formatCompactPageNumber(item)}
               </button>
             ),
           )}
@@ -210,7 +248,7 @@ export function Pagination({
           <span>ไปหน้า</span>
           <NumericInput
             aria-label="ไปยังหน้าที่"
-            className="h-9 w-16 rounded-full text-center font-bold"
+            className="h-9 rounded-full text-center font-mono font-bold tabular-nums"
             max={totalPages}
             min={1}
             onBlur={submitGoToPage}
@@ -218,9 +256,15 @@ export function Pagination({
               setGoToPageDraft({ page, value: event.target.value })
             }
             onKeyDown={handleGoToKeyDown}
+            style={{ width: `${goToInputWidthCh}ch` }}
             value={goToPageValue}
           />
-          <span className="text-slate-400">/ {totalPages}</span>
+          <span
+            className="font-mono tabular-nums text-slate-400"
+            style={{ minWidth: `${totalPagesLabelWidthCh}ch` }}
+          >
+            / {formatFullNumber(totalPages)}
+          </span>
         </label>
       </div>
     </div>

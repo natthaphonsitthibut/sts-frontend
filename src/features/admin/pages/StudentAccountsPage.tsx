@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Copy, KeyRound, Search, UserPlus } from "lucide-react";
+import { Copy, Download, KeyRound, Search, UserPlus } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -15,9 +15,11 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
@@ -38,6 +40,7 @@ import type {
 
 const MIN_BULK_LIMIT = 1;
 const MAX_BULK_LIMIT = 200;
+const CREDENTIAL_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -70,8 +73,61 @@ function getStudentAccountErrorMessage(error: unknown): string {
   return message;
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getCandidateSortValue(candidate: StudentAccountCandidate, key: string): string {
+  if (key === "name") return candidate.studentName;
+  if (key === "school") return candidate.schoolName ?? "";
+  if (key === "class") return `${candidate.grade ?? ""}/${candidate.room ?? ""}`;
+  if (key === "term") return `${candidate.academicYear ?? ""}/${candidate.semester ?? ""}`;
+  if (key === "status") return candidate.hasActiveAccount ? "มีบัญชีแล้ว" : "พร้อมสร้าง";
+  return "";
+}
+
+function getCredentialSortValue(credential: StudentAccountCredential, key: string): string {
+  if (key === "name") return credential.studentName;
+  if (key === "school") return credential.schoolName ?? "";
+  if (key === "class") return `${credential.grade ?? ""}/${credential.room ?? ""}`;
+  if (key === "username") return credential.username;
+  if (key === "issued") return credential.temporaryPasswordIssuedAt ?? "";
+  if (key === "expires") return credential.temporaryPasswordExpiresAt ?? "";
+  return "";
+}
+
+function formatCredentialDateTime(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatCredentialAge(issuedAt?: string | null, expiresAt?: string | null): string {
+  if (!issuedAt || !expiresAt) return "-";
+  const start = new Date(issuedAt);
+  const end = new Date(expiresAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
+  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
+  if (days > 0) return `${days} วัน`;
+  return `${hours} ชม.`;
+}
+
 function credentialsToTsv(credentials: StudentAccountCredential[]): string {
-  const header = ["ชื่อ", "โรงเรียน", "ชั้น", "ห้อง", "username", "temp password"];
+  const header = [
+    "ชื่อ",
+    "โรงเรียน",
+    "ชั้น",
+    "ห้อง",
+    "username",
+    "temp password",
+    "เริ่มใช้",
+    "หมดอายุ",
+    "อายุ",
+  ];
   return [
     header.join("\t"),
     ...credentials.map((credential) =>
@@ -82,12 +138,120 @@ function credentialsToTsv(credentials: StudentAccountCredential[]): string {
         credential.room ?? "",
         credential.username,
         credential.tempPassword,
+        formatCredentialDateTime(credential.temporaryPasswordIssuedAt),
+        formatCredentialDateTime(credential.temporaryPasswordExpiresAt),
+        formatCredentialAge(
+          credential.temporaryPasswordIssuedAt,
+          credential.temporaryPasswordExpiresAt,
+        ),
       ].join("\t"),
     ),
   ].join("\n");
 }
 
+function csvEscape(value: string | number | null | undefined): string {
+  const text = String(value ?? "");
+  if (!/[",\n\r]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function credentialsToCsv(credentials: StudentAccountCredential[]): string {
+  const header = [
+    "ชื่อ",
+    "โรงเรียน",
+    "ชั้น",
+    "ห้อง",
+    "username",
+    "temp password",
+    "เริ่มใช้",
+    "หมดอายุ",
+    "อายุ",
+  ];
+  return [
+    header.map(csvEscape).join(","),
+    ...credentials.map((credential) =>
+      [
+        credential.studentName,
+        credential.schoolName ?? "",
+        credential.grade ?? "",
+        credential.room ?? "",
+        credential.username,
+        credential.tempPassword,
+        formatCredentialDateTime(credential.temporaryPasswordIssuedAt),
+        formatCredentialDateTime(credential.temporaryPasswordExpiresAt),
+        formatCredentialAge(
+          credential.temporaryPasswordIssuedAt,
+          credential.temporaryPasswordExpiresAt,
+        ),
+      ].map(csvEscape).join(","),
+    ),
+  ].join("\n");
+}
+
+function downloadTextFile(filename: string, content: string, type: string): void {
+  const blob = new Blob([`\uFEFF${content}`], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function AccountGenerationProgress({ limit }: { limit: number }) {
+  const [progress, setProgress] = useState(8);
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      setProgress((current) => {
+        if (elapsed < 1_200) return Math.min(68, current + 8);
+        if (elapsed < 5_000) return Math.min(88, current + 2);
+        return Math.min(94, current + 0.5);
+      });
+    }, 180);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+  const displayProgress = Math.round(progress);
+
+  return (
+    <Alert className="border-primary/20 bg-white">
+      <div className="flex items-center justify-between gap-3">
+        <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
+        <div className="shrink-0 font-mono text-sm font-bold text-primary">
+          {displayProgress}%
+        </div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+          style={{ width: `${displayProgress}%` }}
+        />
+      </div>
+      <AlertDescription>
+        กำลังสร้างสูงสุด {limit} คนในรอบนี้ ระบบจะช้าลงใกล้ท้ายกระบวนการเพื่อรอผลจากเซิร์ฟเวอร์
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] }) {
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortedCandidates = useMemo(() => {
+    if (!sort) return candidates;
+    return [...candidates].sort((a, b) => {
+      const result = compareText(
+        getCandidateSortValue(a, sort.key),
+        getCandidateSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [candidates, sort]);
+
   if (candidates.length === 0) {
     return <EmptyState icon={UserPlus} title="ไม่มีนักเรียนที่ต้องสร้างบัญชี" />;
   }
@@ -95,10 +259,18 @@ function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] 
   return (
     <>
       <DataTable
-        headings={["ชื่อ", "โรงเรียน", "ชั้น/ห้อง", "ปี/เทอม", "สถานะบัญชี"]}
+        headings={[
+          { label: "ชื่อ", sortKey: "name" },
+          { label: "โรงเรียน", sortKey: "school" },
+          { label: "ชั้น/ห้อง", sortKey: "class" },
+          { label: "ปี/เทอม", sortKey: "term" },
+          { label: "สถานะบัญชี", sortKey: "status" },
+        ]}
         minWidthClassName="min-w-[860px]"
+        onSortChange={setSort}
+        sort={sort}
       >
-        {candidates.map((candidate) => (
+        {sortedCandidates.map((candidate) => (
           <DataTableRow key={candidate.studentId}>
             <DataTableCell className="font-bold text-slate-800">
               {candidate.studentName}
@@ -121,7 +293,7 @@ function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] 
         ))}
       </DataTable>
       <TableCardList>
-        {candidates.map((candidate) => (
+        {sortedCandidates.map((candidate) => (
           <TableCard key={candidate.studentId} className="space-y-2">
             <div className="font-bold text-slate-900">{candidate.studentName}</div>
             <div className="text-sm text-slate-600">
@@ -138,14 +310,47 @@ function CandidateTable({ candidates }: { candidates: StudentAccountCandidate[] 
 }
 
 function CredentialTable({ credentials }: { credentials: StudentAccountCredential[] }) {
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(50);
+  const sortedCredentials = useMemo(() => {
+    if (!sort) return credentials;
+    return [...credentials].sort((a, b) => {
+      const result = compareText(
+        getCredentialSortValue(a, sort.key),
+        getCredentialSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [credentials, sort]);
+  const safePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(sortedCredentials.length / rowsPerPage)),
+  );
+  const visibleCredentials = sortedCredentials.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
+  );
+
   if (credentials.length === 0) return null;
   return (
-    <>
+    <div className="space-y-3">
       <DataTable
-        headings={["ชื่อ", "โรงเรียน", "ชั้น/ห้อง", "username", "temp password"]}
-        minWidthClassName="min-w-[940px]"
+        headings={[
+          { label: "ชื่อ", sortKey: "name" },
+          { label: "โรงเรียน", sortKey: "school" },
+          { label: "ชั้น/ห้อง", sortKey: "class" },
+          { label: "username", sortKey: "username" },
+          "temp password",
+          { label: "เริ่มใช้", sortKey: "issued" },
+          { label: "หมดอายุ", sortKey: "expires" },
+          "อายุ",
+        ]}
+        minWidthClassName="min-w-[1240px]"
+        onSortChange={setSort}
+        sort={sort}
       >
-        {credentials.map((credential) => (
+        {visibleCredentials.map((credential) => (
           <DataTableRow key={credential.userId}>
             <DataTableCell className="font-bold text-slate-800">
               {credential.studentName}
@@ -162,11 +367,23 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             <DataTableCell className="font-mono text-sm font-bold text-slate-900">
               {credential.tempPassword}
             </DataTableCell>
+            <DataTableCell className="text-sm text-slate-600">
+              {formatCredentialDateTime(credential.temporaryPasswordIssuedAt)}
+            </DataTableCell>
+            <DataTableCell className="text-sm text-slate-600">
+              {formatCredentialDateTime(credential.temporaryPasswordExpiresAt)}
+            </DataTableCell>
+            <DataTableCell className="text-sm font-medium text-slate-700">
+              {formatCredentialAge(
+                credential.temporaryPasswordIssuedAt,
+                credential.temporaryPasswordExpiresAt,
+              )}
+            </DataTableCell>
           </DataTableRow>
         ))}
       </DataTable>
       <TableCardList>
-        {credentials.map((credential) => (
+        {visibleCredentials.map((credential) => (
           <TableCard key={credential.userId} className="space-y-2">
             <div className="font-bold text-slate-900">{credential.studentName}</div>
             <div className="text-sm text-slate-600">
@@ -178,10 +395,35 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
                 {credential.tempPassword}
               </span>
             </div>
+            <div className="grid gap-1 text-xs text-slate-500">
+              <span>เริ่มใช้ {formatCredentialDateTime(credential.temporaryPasswordIssuedAt)}</span>
+              <span>หมดอายุ {formatCredentialDateTime(credential.temporaryPasswordExpiresAt)}</span>
+              <span>
+                อายุ{" "}
+                {formatCredentialAge(
+                  credential.temporaryPasswordIssuedAt,
+                  credential.temporaryPasswordExpiresAt,
+                )}
+              </span>
+            </div>
           </TableCard>
         ))}
       </TableCardList>
-    </>
+      {credentials.length > rowsPerPage ? (
+        <Pagination
+          onPageChange={setPage}
+          onRowsPerPageChange={(next) => {
+            setRowsPerPage(next);
+            setPage(1);
+          }}
+          page={safePage}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={CREDENTIAL_PAGE_SIZE_OPTIONS}
+          totalCount={credentials.length}
+          unitLabel="บัญชี"
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -189,19 +431,51 @@ export function StudentAccountsPage() {
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
   const [limit, setLimit] = useState(50);
+  const [credentialSession, setCredentialSession] = useState<{
+    scopeKey: string;
+    credentials: StudentAccountCredential[];
+  }>({ scopeKey: "", credentials: [] });
   const filter = useMemo(() => buildFilter(scope, limit), [scope, limit]);
+  const accountScopeKey = `${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
   const previewMutation = useMutation({
     mutationFn: () => adminService.previewStudentAccounts(filter),
   });
   const generateMutation = useMutation({
     mutationFn: () => adminService.generateStudentAccounts(filter),
+    onSuccess: (result) => {
+      setCredentialSession((current) => {
+        const currentCredentials =
+          current.scopeKey === accountScopeKey ? current.credentials : [];
+        const byUser = new Map(
+          currentCredentials.map((credential) => [credential.userId, credential]),
+        );
+        for (const credential of result.credentials) {
+          byUser.set(credential.userId, credential);
+        }
+        return {
+          scopeKey: accountScopeKey,
+          credentials: Array.from(byUser.values()),
+        };
+      });
+      previewMutation.mutate();
+    },
   });
   const preview = previewMutation.data;
-  const credentials = generateMutation.data?.credentials ?? [];
+  const generatedCredentials =
+    credentialSession.scopeKey === accountScopeKey ? credentialSession.credentials : [];
 
   async function copyCredentials(): Promise<void> {
-    if (credentials.length === 0) return;
-    await navigator.clipboard.writeText(credentialsToTsv(credentials));
+    if (generatedCredentials.length === 0) return;
+    await navigator.clipboard.writeText(credentialsToTsv(generatedCredentials));
+  }
+
+  function exportCredentials(): void {
+    if (generatedCredentials.length === 0) return;
+    downloadTextFile(
+      "student-accounts.csv",
+      credentialsToCsv(generatedCredentials),
+      "text/csv;charset=utf-8",
+    );
   }
 
   function setAreaAndClearSchool(
@@ -253,13 +527,20 @@ export function StudentAccountsPage() {
               ดูตัวอย่าง
             </Button>
             <Button
-              disabled={!preview || preview.summary.withoutAccountCount === 0}
+              disabled={
+                !preview ||
+                preview.summary.withoutAccountCount === 0 ||
+                previewMutation.isPending ||
+                generateMutation.isPending
+              }
               icon={UserPlus}
-              isLoading={generateMutation.isPending}
-              loadingText="กำลังสร้าง"
               onClick={() => generateMutation.mutate()}
             >
-              สร้างบัญชี
+              {generateMutation.isPending
+                ? "กำลังสร้างบัญชี"
+                : generatedCredentials.length > 0
+                  ? "สร้างชุดถัดไป"
+                  : "สร้างบัญชี"}
             </Button>
           </div>
         }
@@ -367,6 +648,12 @@ export function StudentAccountsPage() {
         </ToolbarControls>
       </PageToolbar>
 
+      {generateMutation.isPending ? (
+        <div className="mb-5">
+          <AccountGenerationProgress limit={limit} />
+        </div>
+      ) : null}
+
       {previewMutation.isError ? (
         <ErrorState
           title="ตรวจรายชื่อไม่สำเร็จ"
@@ -398,20 +685,24 @@ export function StudentAccountsPage() {
         </div>
       ) : null}
 
-      {credentials.length > 0 ? (
+      {generatedCredentials.length > 0 ? (
         <div className="mt-5 space-y-4">
           <Alert>
-            <AlertTitle>สร้างบัญชีแล้ว {credentials.length} คน</AlertTitle>
+            <AlertTitle>สะสมบัญชีที่สร้างแล้ว {generatedCredentials.length} คน</AlertTitle>
             <AlertDescription>
-              รหัสผ่านชั่วคราวจะแสดงเฉพาะผลลัพธ์รอบนี้
+              กด “สร้างชุดถัดไป” เพื่อสร้างต่อจากรายชื่อที่ยังไม่มีบัญชี
+              แล้วคัดลอกหรือส่งออกผลลัพธ์ทั้งหมดในชุดนี้
             </AlertDescription>
           </Alert>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
               คัดลอกตาราง
             </Button>
+            <Button icon={Download} onClick={exportCredentials} variant="outline">
+              ส่งออก CSV
+            </Button>
           </div>
-          <CredentialTable credentials={credentials} />
+          <CredentialTable credentials={generatedCredentials} />
         </div>
       ) : null}
     </PageShell>

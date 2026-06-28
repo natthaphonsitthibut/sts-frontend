@@ -43,7 +43,11 @@ import { VisitMapPreview } from "../components/VisitMapPreview";
 import { studentsService } from "../../students/api/students.service";
 import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
-import { buildTaskResultLink, formatDateTime } from "../lib/task-presentation";
+import {
+  buildTaskResultLink,
+  formatDateTime,
+  formatDateTimeRangeAge,
+} from "../lib/task-presentation";
 import {
   TASK_DURATION_UNIT_OPTIONS,
   TASK_TYPE_OPTIONS,
@@ -513,7 +517,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
           <Alert variant="success">
             <AlertTitle>Magic link พร้อมใช้งาน</AlertTitle>
             <AlertDescription>
-              หมดอายุ {formatDateTime(result.expires_at)}
+              เริ่มใช้งานตอนนี้ · หมดอายุ {formatDateTime(result.expires_at)} · อายุ{" "}
+              {formatDateTimeRangeAge(new Date().toISOString(), result.expires_at)}
             </AlertDescription>
           </Alert>
           <LinkShareActions

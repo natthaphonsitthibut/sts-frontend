@@ -235,17 +235,22 @@ export function ListPageToolbar({
   return (
     <PageToolbar {...toolbarProps}>
       {hasControls ? (
-        <ToolbarControls>
-          {search ? (
-            <SearchInput
-              onChange={search.onChange}
-              placeholder={search.placeholder}
-              value={search.value}
-            />
+        <div className="flex flex-col gap-3">
+          {search || count ? (
+            <ToolbarControls>
+              {search ? (
+                <SearchInput
+                  className="sm:max-w-md"
+                  onChange={search.onChange}
+                  placeholder={search.placeholder}
+                  value={search.value}
+                />
+              ) : null}
+              {count ? <CountBadge icon={count.icon}>{count.value}</CountBadge> : null}
+            </ToolbarControls>
           ) : null}
-          {filters}
-          {count ? <CountBadge icon={count.icon}>{count.value}</CountBadge> : null}
-        </ToolbarControls>
+          {filters ? <ToolbarControls>{filters}</ToolbarControls> : null}
+        </div>
       ) : null}
     </PageToolbar>
   );

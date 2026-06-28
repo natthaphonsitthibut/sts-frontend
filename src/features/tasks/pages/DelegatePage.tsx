@@ -29,6 +29,7 @@ import { taskService } from "../api/task.service";
 import {
   buildLineShareUrl,
   formatDateTime,
+  formatDateTimeRangeAge,
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
 import type { TaskDelegationResponse } from "../types/task.types";
@@ -92,7 +93,9 @@ export function DelegatePage() {
               <div className="space-y-4">
                 <Alert variant="success">
                   <AlertDescription>
-                    ส่งต่อสำเร็จ ลิงก์หมดอายุ {formatDateTime(result.expires_at)}
+                    ส่งต่อสำเร็จ เริ่มใช้งานตอนนี้ · หมดอายุ{" "}
+                    {formatDateTime(result.expires_at)} · อายุ{" "}
+                    {formatDateTimeRangeAge(new Date().toISOString(), result.expires_at)}
                   </AlertDescription>
                 </Alert>
                 <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">

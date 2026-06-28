@@ -29,6 +29,26 @@ export function formatDate(value?: string | null): string {
   });
 }
 
+export function formatDateTimeRangeAge(
+  startValue?: string | null,
+  endValue?: string | null,
+): string {
+  if (!startValue || !endValue) {
+    return "-";
+  }
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "-";
+  }
+  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
+  if (days > 0) return `${days} วัน`;
+  return `${hours} ชม.`;
+}
+
 export function getTaskTypeLabel(type?: string | null): string {
   if (type === "ATTENDANCE") return "เช็คชื่อ";
   if (type === "VISIT") return "ลงพื้นที่";

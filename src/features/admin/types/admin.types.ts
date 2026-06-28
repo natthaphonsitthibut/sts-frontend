@@ -105,6 +105,8 @@ export interface StudentAccountCredential {
   schoolName: string | null;
   grade: string | null;
   room: number | null;
+  temporaryPasswordIssuedAt?: string | null;
+  temporaryPasswordExpiresAt?: string | null;
 }
 
 export interface StudentAccountGenerateResponse {

@@ -35,6 +35,7 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -73,11 +74,25 @@ function LinkStateBadge({ task }: { task: AttendanceTask }) {
   return <LinkStatusBadge label="ใช้งานได้" variant="success" />;
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
+  if (key === "class") return `${task.target_grade || ""}/${task.target_room || ""}`;
+  if (key === "school") return task.target_school_name || "";
+  if (key === "assignee") return task.link_assigned_to || "";
+  if (key === "status") return getLinkState(task);
+  if (key === "created") return task.created_at || "";
+  return "";
+}
+
 export function AttendanceLinksDashboardPage() {
   const [status, setStatus] = useState<AttendanceTaskLinkStatus>("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
   const queryClient = useQueryClient();
@@ -152,7 +167,17 @@ export function AttendanceLinksDashboardPage() {
     setLock.mutate({ id: linkId, locked: !locked });
   }
 
-  const tasks = tasksQuery.data?.rows ?? [];
+  const tasks = useMemo(() => tasksQuery.data?.rows ?? [], [tasksQuery.data?.rows]);
+  const sortedTasks = useMemo(() => {
+    if (!sort) return tasks;
+    return [...tasks].sort((a, b) => {
+      const result = compareText(
+        getAttendanceTaskSortValue(a, sort.key),
+        getAttendanceTaskSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [tasks, sort]);
   const totalCount = tasksQuery.data?.totalCount ?? 0;
   const summary = tasksQuery.data?.summary ?? EMPTY_SUMMARY;
 
@@ -225,11 +250,11 @@ export function AttendanceLinksDashboardPage() {
           <>
             <DataTable
               headings={[
-                "ชั้นเรียน",
-                "โรงเรียน",
-                "ผู้รับผิดชอบ",
-                "สถานะ",
-                "สร้างเมื่อ",
+                { label: "ชั้นเรียน", sortKey: "class" },
+                { label: "โรงเรียน", sortKey: "school" },
+                { label: "ผู้รับผิดชอบ", sortKey: "assignee" },
+                { label: "สถานะ", sortKey: "status" },
+                { label: "สร้างเมื่อ", sortKey: "created" },
                 "จัดการ",
               ]}
               columnWidths={[
@@ -241,7 +266,9 @@ export function AttendanceLinksDashboardPage() {
                 "w-[25%]",
               ]}
               minWidthClassName="min-w-[900px]"
+              onSortChange={setSort}
               responsive={false}
+              sort={sort}
               footer={
                 tasks.length === 0 ? (
                   <div className="border-t border-slate-100 py-12 text-center text-slate-500">
@@ -250,7 +277,7 @@ export function AttendanceLinksDashboardPage() {
                 ) : null
               }
             >
-              {tasks.map((task) => {
+              {sortedTasks.map((task) => {
                 const locked = isLinkLocked(task.active_link_locked);
                 return (
                   <DataTableRow key={task.task_id}>
