@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Menu } from "lucide-react";
 import { IconButton, Sheet, SheetHeader, SidebarContainer } from "../base";
 import {
   MENU_ITEMS,
@@ -18,21 +18,18 @@ interface AppSidebarProps {
 
 interface SidebarContentProps {
   collapsed?: boolean;
-  onExpandSidebar?: () => void;
   onNavigate?: () => void;
   onToggleCollapsed?: () => void;
 }
 
 function SidebarContent({
   collapsed = false,
-  onExpandSidebar,
   onNavigate,
   onToggleCollapsed,
 }: SidebarContentProps) {
   const user = useAuthSessionStore((state) => state.user);
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
   const visibleMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
-  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -55,12 +52,15 @@ function SidebarContent({
             <IconButton
               aria-expanded={!collapsed}
               aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "พับเมนูด้านข้าง"}
-              className="bg-white"
-              icon={ToggleIcon}
+              className={cn(
+                "border-transparent bg-transparent shadow-none hover:bg-slate-100",
+                collapsed && "text-slate-600",
+              )}
+              icon={Menu}
               onClick={onToggleCollapsed}
               size="sm"
               title={collapsed ? "ขยายเมนู" : "พับเมนู"}
-              variant="outline"
+              variant="ghost"
             />
           ) : null}
         </div>
@@ -70,7 +70,6 @@ function SidebarContent({
               collapsed={collapsed}
               item={item}
               key={item.id}
-              onExpandSidebar={onExpandSidebar}
               onNavigate={onNavigate}
             />
           ))}
@@ -83,7 +82,6 @@ function SidebarContent({
 
 export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
-  const setCollapsed = useSidebarUiStore((state) => state.setCollapsed);
   const toggleCollapsed = useSidebarUiStore((state) => state.toggleCollapsed);
 
   return (
@@ -96,7 +94,6 @@ export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) 
       >
         <SidebarContent
           collapsed={collapsed}
-          onExpandSidebar={() => setCollapsed(false)}
           onToggleCollapsed={toggleCollapsed}
         />
       </SidebarContainer>

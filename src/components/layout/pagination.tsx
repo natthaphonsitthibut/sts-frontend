@@ -4,7 +4,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Select } from "../base";
+import { useState, type KeyboardEvent } from "react";
+import { NumericInput, Select } from "../base";
 import { cn } from "../../lib/utils";
 
 interface PaginationProps {
@@ -70,6 +71,11 @@ function buildPageItems(current: number, total: number): PageItem[] {
   ];
 }
 
+function clampPage(page: number, totalPages: number): number {
+  if (!Number.isFinite(page)) return 1;
+  return Math.min(Math.max(page, 1), totalPages);
+}
+
 /** Central pagination control — page window, prev/next and rows-per-page select. */
 export function Pagination({
   onPageChange,
@@ -81,14 +87,35 @@ export function Pagination({
   unitLabel = "รายการ",
 }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
+  const [goToPageDraft, setGoToPageDraft] = useState({
+    page,
+    value: String(page),
+  });
   const start = totalCount === 0 ? 0 : (page - 1) * rowsPerPage + 1;
   const end = Math.min(page * rowsPerPage, totalCount);
   const pageItems = buildPageItems(page, totalPages);
   const isFirstPage = page <= 1;
   const isLastPage = page >= totalPages;
+  const goToPageValue =
+    goToPageDraft.page === page ? goToPageDraft.value : String(page);
+
+  function submitGoToPage(): void {
+    const nextPage = clampPage(Number(goToPageValue), totalPages);
+    setGoToPageDraft({ page: nextPage, value: String(nextPage) });
+    if (nextPage !== page) {
+      onPageChange(nextPage);
+    }
+  }
+
+  function handleGoToKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitGoToPage();
+    }
+  }
 
   const navButtonClass =
-    "flex size-9 items-center justify-center rounded-lg font-bold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40";
+    "flex size-9 items-center justify-center rounded-full bg-white font-bold text-slate-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div className="mt-2 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
@@ -101,19 +128,19 @@ export function Pagination({
           <span>ต่อหน้า</span>
           <Select
             aria-label="จำนวนรายการต่อหน้า"
-            className="h-9 w-[88px]"
+            className="h-10 w-[124px] rounded-full border-slate-200 bg-white py-0 pl-4 pr-9 font-bold leading-none shadow-none"
             onChange={(event) => onRowsPerPageChange(Number(event.target.value))}
             value={rowsPerPage}
           >
             {rowsPerPageOptions.map((size) => (
               <option key={size} value={size}>
-                {size}
+                {size} / หน้า
               </option>
             ))}
           </Select>
         </label>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 rounded-full bg-white p-1 ring-1 ring-slate-200">
           <button
             aria-label="หน้าแรก"
             className={navButtonClass}
@@ -147,10 +174,10 @@ export function Pagination({
                 aria-current={item === page ? "page" : undefined}
                 aria-label={`หน้า ${item}`}
                 className={cn(
-                  "min-h-9 min-w-9 rounded-lg px-2 font-bold transition-colors",
+                  "min-h-9 min-w-9 rounded-full px-2 font-bold transition-colors",
                   item === page
-                    ? "bg-primary text-white"
-                    : "text-slate-600 hover:bg-slate-100",
+                    ? "bg-primary text-white shadow-lg shadow-primary/25"
+                    : "text-slate-600 hover:bg-white hover:shadow-sm",
                 )}
                 onClick={() => onPageChange(item)}
                 type="button"
@@ -178,6 +205,23 @@ export function Pagination({
             <ChevronLast className="size-4" aria-hidden="true" />
           </button>
         </div>
+
+        <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-600">
+          <span>ไปหน้า</span>
+          <NumericInput
+            aria-label="ไปยังหน้าที่"
+            className="h-9 w-16 rounded-full text-center font-bold"
+            max={totalPages}
+            min={1}
+            onBlur={submitGoToPage}
+            onChange={(event) =>
+              setGoToPageDraft({ page, value: event.target.value })
+            }
+            onKeyDown={handleGoToKeyDown}
+            value={goToPageValue}
+          />
+          <span className="text-slate-400">/ {totalPages}</span>
+        </label>
       </div>
     </div>
   );

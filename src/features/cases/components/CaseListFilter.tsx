@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { HeartHandshake } from "lucide-react";
 import {
   FilterSelect,
@@ -11,6 +12,7 @@ interface CaseListFilterProps {
   onSearchChange: (value: string) => void;
   status: string;
   onStatusChange: (value: string) => void;
+  schoolFilters?: ReactNode;
   count: number;
   onRefresh: () => Promise<unknown> | unknown;
 }
@@ -20,6 +22,7 @@ export function CaseListFilter({
   onSearchChange,
   status,
   onStatusChange,
+  schoolFilters,
   count,
   onRefresh,
 }: CaseListFilterProps) {
@@ -35,18 +38,21 @@ export function CaseListFilter({
         placeholder: "ค้นหาชื่อนักเรียน...",
       }}
       filters={
-        <FilterSelect
-          ariaLabel="กรองตามสถานะ"
-          onChange={onStatusChange}
-          value={status}
-        >
-          <option value="ALL">ทั้งหมด</option>
-          {CASE_STATUS_ORDER.map((value) => (
-            <option key={value} value={value}>
-              {CASE_STATUS_META[value].label}
-            </option>
-          ))}
-        </FilterSelect>
+        <>
+          {schoolFilters}
+          <FilterSelect
+            ariaLabel="กรองตามสถานะ"
+            onChange={onStatusChange}
+            value={status}
+          >
+            <option value="ALL">ทั้งหมด</option>
+            {CASE_STATUS_ORDER.map((value) => (
+              <option key={value} value={value}>
+                {CASE_STATUS_META[value].label}
+              </option>
+            ))}
+          </FilterSelect>
+        </>
       }
       count={{ value: `${count} เคส` }}
     />

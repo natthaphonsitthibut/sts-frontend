@@ -34,6 +34,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import type { BadgeProps } from "../../../components/base";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
+import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
@@ -88,7 +89,6 @@ export function AttendanceCheckInPage() {
 
   const {
     scope,
-    schools,
     gradeLevels,
     rooms,
     schoolId,
@@ -116,6 +116,7 @@ export function AttendanceCheckInPage() {
     canEditAttendance,
     reopen,
     reopenState,
+    schoolArea,
   } = checkIn;
 
   const newCases = saveState.data?.newCases ?? [];
@@ -165,22 +166,13 @@ export function AttendanceCheckInPage() {
           />
         }
       >
-        <ToolbarControls className="sm:grid sm:grid-cols-4 sm:items-end">
-          <ScopeField label="โรงเรียน">
-            <Combobox
-              disabled={scope.isSchoolLocked}
-              onChange={(next) => setSchoolId(next)}
-              options={[
-                { value: "", label: "เลือกโรงเรียน" },
-                ...schools.map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                })),
-              ]}
-              placeholder="ค้นหาโรงเรียน"
-              value={schoolId}
-            />
-          </ScopeField>
+        <ToolbarControls className="sm:grid sm:grid-cols-2 sm:items-end lg:grid-cols-3 xl:grid-cols-7">
+          <SchoolAreaSchoolFilter
+            area={schoolArea}
+            onSchoolChange={setSchoolId}
+            schoolId={schoolId}
+            schoolLocked={scope.isSchoolLocked}
+          />
 
           <ScopeField label="ระดับชั้น">
             <Combobox

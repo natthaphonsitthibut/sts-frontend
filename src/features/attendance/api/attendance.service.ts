@@ -100,6 +100,15 @@ function filterLegacyTasks(
 
   return tasks.filter((task) => {
     if (!isAttendanceTask(task)) return false;
+    if (query.schoolId && String(task.target_school_id) !== String(query.schoolId)) {
+      return false;
+    }
+    if (query.grade && task.target_grade !== query.grade) {
+      return false;
+    }
+    if (query.room && String(task.target_room) !== String(query.room)) {
+      return false;
+    }
     if (query.status && query.status !== "ALL" && getTaskLinkState(task) !== query.status) {
       return false;
     }
@@ -224,6 +233,15 @@ async function getAttendanceTasksPage(
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
     params.searchTerm = searchTerm;
+  }
+  if (query.schoolId) {
+    params.schoolId = String(query.schoolId);
+  }
+  if (query.grade?.trim()) {
+    params.grade = query.grade.trim();
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
   }
 
   const response = await apiClient.get<

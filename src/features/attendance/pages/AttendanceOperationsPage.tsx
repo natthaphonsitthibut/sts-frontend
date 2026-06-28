@@ -42,13 +42,14 @@ import {
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
-import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { hasPermission } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../api/attendance.service";
+import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
 import { SchoolTermDialog, type SchoolTermFormValues } from "../components/SchoolTermDialog";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
 import { getTodayIso } from "../lib/attendance-presentation";
+import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import type {
   AttendanceReconciliationItem,
   CalendarDayType,
@@ -78,6 +79,7 @@ export function AttendanceOperationsPage() {
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "settings");
+  const schoolArea = useSchoolAreaFilter();
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
   const [date, setDate] = useState(getTodayIso());
@@ -91,10 +93,6 @@ export function AttendanceOperationsPage() {
     reason: string;
   } | null>(null);
 
-  const schoolsQuery = useQuery({
-    queryKey: ["attendance-operations-schools"],
-    queryFn: () => attendanceLookupService.getSchools({ limit: 50 }),
-  });
   const schoolId = scope.isSchoolLocked
     ? String(scope.lockedSchoolId ?? "")
     : schoolInput;
@@ -218,22 +216,13 @@ export function AttendanceOperationsPage() {
           ) : undefined
         }
       >
-        <ToolbarControls className="sm:grid sm:grid-cols-3 sm:items-end">
-          <ScopeField label="โรงเรียน">
-            <Combobox
-              disabled={scope.isSchoolLocked}
-              onChange={handleSchoolChange}
-              options={[
-                { value: "", label: "เลือกโรงเรียน" },
-                ...(schoolsQuery.data ?? []).map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                })),
-              ]}
-              placeholder="ค้นหาโรงเรียน"
-              value={schoolId}
-            />
-          </ScopeField>
+        <ToolbarControls className="sm:grid sm:grid-cols-2 sm:items-end lg:grid-cols-3 xl:grid-cols-6">
+          <SchoolAreaSchoolFilter
+            area={schoolArea}
+            onSchoolChange={handleSchoolChange}
+            schoolId={schoolId}
+            schoolLocked={scope.isSchoolLocked}
+          />
           <ScopeField label="ภาคเรียน">
             <Combobox
               disabled={!schoolId}

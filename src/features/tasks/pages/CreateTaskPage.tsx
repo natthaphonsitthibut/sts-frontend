@@ -715,58 +715,56 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
 
           {type === "ATTENDANCE" ? (
             <div className="space-y-4">
-              {scope.schoolLocked ? null : (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <FormItem>
-                    <FormLabel>จังหวัด</FormLabel>
-                    <Combobox
-                      disabled={createTask.isPending}
-                      onChange={(next) => {
-                        area.setProvince(next);
-                        scope.setSchoolId("");
-                      }}
-                      options={[
-                        { value: "", label: "ทุกจังหวัด" },
-                        ...area.provinces.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาจังหวัด"
-                      value={area.province}
-                    />
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel>อำเภอ</FormLabel>
-                    <Combobox
-                      disabled={createTask.isPending || !area.province}
-                      onChange={(next) => {
-                        area.setDistrict(next);
-                        scope.setSchoolId("");
-                      }}
-                      options={[
-                        { value: "", label: "ทุกอำเภอ" },
-                        ...area.districts.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาอำเภอ"
-                      value={area.district}
-                    />
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel>ตำบล</FormLabel>
-                    <Combobox
-                      disabled={createTask.isPending || !area.district}
-                      onChange={(next) => {
-                        area.setSubDistrict(next);
-                        scope.setSchoolId("");
-                      }}
-                      options={[
-                        { value: "", label: "ทุกตำบล" },
-                        ...area.subDistricts.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาตำบล"
-                      value={area.subDistrict}
-                    />
-                  </FormItem>
-                </div>
-              )}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormItem>
+                  <FormLabel>จังหวัด</FormLabel>
+                  <Combobox
+                    disabled={createTask.isPending || scope.schoolLocked}
+                    onChange={(next) => {
+                      area.setProvince(next);
+                      scope.setSchoolId("");
+                    }}
+                    options={[
+                      { value: "", label: "ทุกจังหวัด" },
+                      ...area.provinces.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาจังหวัด"
+                    value={area.province}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel>อำเภอ</FormLabel>
+                  <Combobox
+                    disabled={createTask.isPending || scope.schoolLocked || !area.province}
+                    onChange={(next) => {
+                      area.setDistrict(next);
+                      scope.setSchoolId("");
+                    }}
+                    options={[
+                      { value: "", label: "ทุกอำเภอ" },
+                      ...area.districts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาอำเภอ"
+                    value={area.district}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel>ตำบล</FormLabel>
+                  <Combobox
+                    disabled={createTask.isPending || scope.schoolLocked || !area.district}
+                    onChange={(next) => {
+                      area.setSubDistrict(next);
+                      scope.setSchoolId("");
+                    }}
+                    options={[
+                      { value: "", label: "ทุกตำบล" },
+                      ...area.subDistricts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาตำบล"
+                    value={area.subDistrict}
+                  />
+                </FormItem>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormItem>
                   <FormLabel required>โรงเรียน</FormLabel>
@@ -775,7 +773,19 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                       !scope.schoolId && form.formState.isSubmitted ? true : undefined
                     }
                     disabled={scope.schoolLocked}
-                    onChange={(next) => scope.setSchoolId(next)}
+                    emptyText={
+                      area.schoolsEnabled
+                        ? "ไม่พบโรงเรียน"
+                        : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+                    }
+                    onChange={(next) => {
+                      scope.setSchoolId(next);
+                      const school = area.filteredSchools.find(
+                        (candidate) => String(candidate.id) === next,
+                      );
+                      area.setAreaFromSchool(school);
+                    }}
+                    onSearchChange={area.setSchoolSearch}
                     options={[
                       { value: "", label: "เลือกโรงเรียน" },
                       ...area.filteredSchools.map((school) => ({

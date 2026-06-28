@@ -16,6 +16,9 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { LoginLinkTable } from "../components/LoginLinkTable";
 import {
   useLoginLinks,
@@ -34,6 +37,8 @@ export function LoginLinksPage() {
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
@@ -41,10 +46,27 @@ export function LoginLinksPage() {
     () => ({
       status,
       searchTerm: debouncedSearch || undefined,
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
+      schoolId: scope.schoolId || undefined,
+      gradeLevelId: scope.gradeLevelId,
+      room: scope.room || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [status, debouncedSearch, page, rowsPerPage],
+    [
+      status,
+      debouncedSearch,
+      schoolArea.province,
+      schoolArea.district,
+      schoolArea.subDistrict,
+      scope.schoolId,
+      scope.gradeLevelId,
+      scope.room,
+      page,
+      rowsPerPage,
+    ],
   );
 
   const { links, meta, summary, isLoading, isError, refetch } = useLoginLinks(query);
@@ -58,6 +80,21 @@ export function LoginLinksPage() {
 
   function handleStatusChange(value: string): void {
     setStatus(value);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setPage(1);
+  }
+
+  function handleGradeChange(value: string): void {
+    scope.setGrade(value);
+    setPage(1);
+  }
+
+  function handleRoomChange(value: string): void {
+    scope.setRoom(value);
     setPage(1);
   }
 
@@ -103,18 +140,27 @@ export function LoginLinksPage() {
           placeholder: "ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ...",
         }}
         filters={
-          <FilterSelect
-            ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
-            className="sm:w-[220px]"
-            onChange={handleStatusChange}
-            value={status}
-          >
-            {LOGIN_LINK_STATE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
+          <>
+            <SchoolClassRoomFilter
+              area={schoolArea}
+              onGradeChange={handleGradeChange}
+              onRoomChange={handleRoomChange}
+              onSchoolChange={handleSchoolChange}
+              scope={scope}
+            />
+            <FilterSelect
+              ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
+              className="sm:w-[220px]"
+              onChange={handleStatusChange}
+              value={status}
+            >
+              {LOGIN_LINK_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </>
         }
       />
 

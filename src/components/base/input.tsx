@@ -10,7 +10,7 @@ export function Input({ className, type = "text", ...props }: InputProps) {
   return (
     <input
       className={cn(
-        "flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20",
+        "box-border flex h-10 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-5 text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:opacity-100 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20",
         className,
       )}
       type={type}
@@ -69,7 +69,7 @@ export function PasswordInput({
       />
       <IconButton
         aria-label={visibilityLabel}
-        className="absolute right-1 top-1/2 size-8 -translate-y-1/2 text-slate-500 hover:bg-slate-100 hover:text-primary"
+        className="absolute right-1 top-1/2 size-8 -translate-y-1/2 border-transparent bg-white text-slate-500 shadow-none hover:bg-slate-50 hover:text-primary"
         icon={Icon}
         onClick={() => setVisible((current) => !current)}
         tabIndex={-1}

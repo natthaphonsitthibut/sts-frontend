@@ -8,6 +8,9 @@ import {
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
 import { StudentTable } from "../components/StudentTable";
 import { useStudentFilterOptions, useStudents } from "../hooks/useStudents";
@@ -24,23 +27,29 @@ export function StudentListPage() {
   const [room, setRoom] = useState("ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
   // Server is the source of truth for filtering, sorting and the page slice.
   const query = useMemo<StudentListQuery>(
     () => ({
+      schoolId: scope.schoolId || undefined,
       grade,
       room,
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [grade, room, debouncedSearch, page, rowsPerPage],
+    [scope.schoolId, grade, room, debouncedSearch, page, rowsPerPage],
   );
 
   const { students, meta, isLoading, isError, refetch } = useStudents(query);
-  const { options } = useStudentFilterOptions();
+  const { options } = useStudentFilterOptions({
+    schoolId: scope.schoolId || undefined,
+    grade,
+  });
 
   const totalCount = meta?.totalCount ?? 0;
 
@@ -49,6 +58,13 @@ export function StudentListPage() {
   // also disables prev/next at the bounds derived from totalCount.
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setGrade("ALL");
+    setRoom("ALL");
     setPage(1);
   }
 
@@ -81,6 +97,14 @@ export function StudentListPage() {
         onRefresh={refetch}
         onRoomChange={handleRoomChange}
         onSearchChange={handleSearchChange}
+        schoolFilters={
+          <SchoolAreaSchoolFilter
+            area={schoolArea}
+            onSchoolChange={handleSchoolChange}
+            schoolId={scope.schoolId}
+            schoolLocked={scope.schoolLocked}
+          />
+        }
         room={room}
         roomOptions={options.rooms}
         searchQuery={searchQuery}

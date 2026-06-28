@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
-import type {
-  GradeLevelOption,
-  SchoolOption,
-} from "../../tasks/api/attendance-lookup.service";
+import type { GradeLevelOption } from "../../tasks/api/attendance-lookup.service";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../api/attendance.service";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
 import { getTodayIso } from "../lib/attendance-presentation";
+import { useSchoolAreaFilter } from "./useSchoolAreaFilter";
 import type {
   AttendanceSaveRecord,
   AttendanceSelectionStatus,
@@ -16,7 +14,6 @@ import type {
 
 const DEFAULT_STATUS: AttendanceSelectionStatus = "P_PRESENT";
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
-const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_ROOMS: string[] = [];
 const EMPTY_STUDENTS: Awaited<
   ReturnType<typeof attendanceService.getStudents>
@@ -36,20 +33,14 @@ export function useAttendanceCheckIn() {
     () => resolveAttendanceScopeLock(user?.data_scope),
     [user],
   );
+  const schoolArea = useSchoolAreaFilter();
 
   const gradeLevelsQuery = useQuery({
     queryKey: ["attendance-checkin-grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
   });
-  const schoolsQuery = useQuery({
-    queryKey: ["attendance-checkin-schools"],
-    // Scoped + capped server-side: a scope-locked teacher gets their own
-    // school; a broader admin gets a bounded list, never the whole country.
-    queryFn: () => attendanceLookupService.getSchools({ limit: 50 }),
-  });
 
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
-  const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
 
   // Raw selections for the unlocked dimensions.
   const [schoolInput, setSchoolInput] = useState("");
@@ -236,8 +227,8 @@ export function useAttendanceCheckIn() {
 
   return {
     scope,
+    schoolArea,
     gradeLevels,
-    schools,
     rooms,
     schoolId,
     grade,

@@ -19,6 +19,15 @@ import type {
   UserSavePayload,
 } from "../types/admin.types";
 
+export interface UserListQuery extends PaginatedSearchQuery {
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  schoolId?: string;
+  gradeLevelId?: number | null;
+  room?: string;
+}
+
 interface DataEnvelope<T> {
   data?: T;
 }
@@ -65,12 +74,30 @@ async function updateSetting(
 
 // --- Users ---
 async function getUsers(
-  query: PaginatedSearchQuery = {},
+  query: UserListQuery = {},
 ): Promise<PaginatedResult<ManagedUser>> {
   const params: Record<string, string> = toPaginationParams(query);
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
     params.searchTerm = searchTerm;
+  }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
+  if (query.schoolId?.trim()) {
+    params.schoolId = query.schoolId.trim();
+  }
+  if (query.gradeLevelId) {
+    params.gradeLevelId = String(query.gradeLevelId);
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
   }
 
   const response = await apiClient.get("/users", { params });

@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { SquarePen, Trash2 } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
@@ -75,14 +77,46 @@ function RowActions({
   );
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getUserSortValue(user: ManagedUser, key: string): string {
+  if (key === "name") return getUserDisplayName(user);
+  if (key === "role") return getUserRoleText(user);
+  if (key === "affiliation") return user.affiliation || "";
+  if (key === "status") return user.status || "";
+  return "";
+}
+
 export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortedUsers = useMemo(() => {
+    if (!sort) return users;
+    return [...users].sort((a, b) => {
+      const result = compareText(
+        getUserSortValue(a, sort.key),
+        getUserSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [users, sort]);
+
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        headings={["ผู้ใช้งาน", "ตำแหน่ง", "สังกัด", "สถานะ", ""]}
+        headings={[
+          { label: "ผู้ใช้งาน", sortKey: "name" },
+          { label: "ตำแหน่ง", sortKey: "role" },
+          { label: "สังกัด", sortKey: "affiliation" },
+          { label: "สถานะ", sortKey: "status" },
+          "",
+        ]}
         minWidthClassName="min-w-[760px]"
+        onSortChange={setSort}
+        sort={sort}
       >
-        {users.map((user) => (
+        {sortedUsers.map((user) => (
           <DataTableRow key={user.id ?? user.username}>
             <DataTableCell>
               <UserIdentity user={user} />
@@ -109,7 +143,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
       </DataTable>
 
       <TableCardList>
-        {users.map((user) => (
+        {sortedUsers.map((user) => (
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
               <UserIdentity user={user} />

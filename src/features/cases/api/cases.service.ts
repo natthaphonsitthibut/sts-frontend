@@ -55,6 +55,15 @@ async function getCases(
   if (query.status && query.status !== "ALL") {
     params.status = query.status;
   }
+  if (query.schoolId?.trim()) {
+    params.schoolId = query.schoolId.trim();
+  }
+  if (query.grade?.trim()) {
+    params.grade = query.grade.trim();
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
+  }
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
     params.searchTerm = searchTerm;

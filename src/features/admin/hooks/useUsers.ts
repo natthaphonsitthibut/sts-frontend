@@ -4,8 +4,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { PaginatedSearchQuery, PaginationMeta } from "../../../lib/pagination";
-import { adminService } from "../api/admin.service";
+import type { PaginationMeta } from "../../../lib/pagination";
+import { adminService, type UserListQuery } from "../api/admin.service";
 import type {
   CreateUserResponse,
   ManagedUser,
@@ -28,7 +28,7 @@ interface UseUsersResult {
   refetch: () => void;
 }
 
-export function useUsers(query: PaginatedSearchQuery = {}): UseUsersResult {
+export function useUsers(query: UserListQuery = {}): UseUsersResult {
   const result = useQuery({
     queryKey: [USERS_QUERY_KEY, query],
     queryFn: () => adminService.getUsers(query),

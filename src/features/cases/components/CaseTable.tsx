@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
@@ -5,6 +6,7 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
@@ -62,16 +64,50 @@ function CaseAction({
   );
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
+  if (key === "student") return caseRecord.student_name || "";
+  if (key === "reason") return getCaseReason(caseRecord.reason, caseRecord.reason_flagged);
+  if (key === "status") return caseRecord.status || "";
+  if (key === "date") return caseRecord.created_at || "";
+  return "";
+}
+
 export function CaseTable({
   rows,
   canReviewCases = true,
   onCreateLink,
   onUpdate,
 }: CaseTableProps) {
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows;
+    return [...rows].sort((a, b) => {
+      const result = compareText(
+        getCaseSortValue(a, sort.key),
+        getCaseSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [rows, sort]);
+
   return (
     <div className="flex flex-col gap-2">
-      <DataTable headings={["นักเรียน", "สาเหตุ", "สถานะ", "วันที่", "ดำเนินการ"]}>
-        {rows.map((caseRecord) => (
+      <DataTable
+        headings={[
+          { label: "นักเรียน", sortKey: "student" },
+          { label: "สาเหตุ", sortKey: "reason" },
+          { label: "สถานะ", sortKey: "status" },
+          { label: "วันที่", sortKey: "date" },
+          "ดำเนินการ",
+        ]}
+        onSortChange={setSort}
+        sort={sort}
+      >
+        {sortedRows.map((caseRecord) => (
           <DataTableRow key={caseRecord.id}>
             <DataTableCell>
               <div className="font-bold text-slate-800">
@@ -103,7 +139,7 @@ export function CaseTable({
       </DataTable>
 
       <TableCardList>
-        {rows.map((caseRecord) => (
+        {sortedRows.map((caseRecord) => (
           <TableCard key={caseRecord.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

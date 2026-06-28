@@ -48,12 +48,15 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
     <div
       className={cn(
         "flex items-center gap-3 border-t border-slate-200 p-3",
-        collapsed && "flex-col gap-2 px-2",
+        collapsed && "flex-col gap-1.5 px-2",
       )}
     >
       <Avatar
         fallback={getInitials(displayName)}
-        className="size-10 bg-primary-soft font-semibold text-primary"
+        className={cn(
+          "size-10 bg-primary-soft font-semibold text-primary",
+          collapsed && "rounded-lg text-xs",
+        )}
       />
       <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
         <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
@@ -61,7 +64,10 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
       </div>
       <IconButton
         aria-label="ออกจากระบบ"
-        className="text-slate-400 hover:bg-danger-100 hover:text-danger"
+        className={cn(
+          "border-transparent bg-transparent text-slate-500 shadow-none hover:bg-danger-100 hover:text-danger",
+          collapsed && "size-10",
+        )}
         icon={LogOut}
         onClick={() => void handleLogout()}
         title={collapsed ? `ออกจากระบบ: ${displayName}` : undefined}

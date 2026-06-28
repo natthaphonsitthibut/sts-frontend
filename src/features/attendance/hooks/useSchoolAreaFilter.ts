@@ -100,14 +100,29 @@ export function useSchoolAreaFilter() {
   const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
 
   function setProvince(value: string): void {
+    setSchoolSearch("");
     setProvinceState(value);
     setDistrictState("");
     setSubDistrict("");
   }
 
   function setDistrict(value: string): void {
+    setSchoolSearch("");
     setDistrictState(value);
     setSubDistrict("");
+  }
+
+  function setSubDistrictValue(value: string): void {
+    setSchoolSearch("");
+    setSubDistrict(value);
+  }
+
+  function setAreaFromSchool(school: SchoolOption | undefined): void {
+    setSchoolSearch("");
+    if (!school) return;
+    setProvinceState(school.province ?? "");
+    setDistrictState(school.district ?? "");
+    setSubDistrict(school.sub_district ?? "");
   }
 
   return {
@@ -124,7 +139,8 @@ export function useSchoolAreaFilter() {
     setSchoolSearch,
     setProvince,
     setDistrict,
-    setSubDistrict,
+    setSubDistrict: setSubDistrictValue,
+    setAreaFromSchool,
     schoolsEnabled,
     isLoading:
       locationsQuery.isLoading || (schoolsEnabled && schoolsQuery.isLoading),

@@ -37,6 +37,9 @@ export interface CaseRecord {
 
 export interface CaseListQuery {
   status?: string;
+  schoolId?: string;
+  grade?: string;
+  room?: string;
   searchTerm?: string;
   page?: number;
   limit?: number;

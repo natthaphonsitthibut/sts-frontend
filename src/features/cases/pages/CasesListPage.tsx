@@ -10,6 +10,9 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
@@ -24,17 +27,22 @@ export function CasesListPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
   const query = useMemo<CaseListQuery>(
     () => ({
       status,
+      schoolId: scope.schoolId || undefined,
+      grade: scope.grade || undefined,
+      room: scope.room || undefined,
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [status, debouncedSearch, page, rowsPerPage],
+    [status, scope.schoolId, scope.grade, scope.room, debouncedSearch, page, rowsPerPage],
   );
 
   const { cases, meta, isLoading, isError, refetch } = useCases(query);
@@ -47,6 +55,21 @@ export function CasesListPage() {
 
   function handleStatusChange(value: string): void {
     setStatus(value);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setPage(1);
+  }
+
+  function handleGradeChange(value: string): void {
+    scope.setGrade(value);
+    setPage(1);
+  }
+
+  function handleRoomChange(value: string): void {
+    scope.setRoom(value);
     setPage(1);
   }
 
@@ -83,6 +106,15 @@ export function CasesListPage() {
         onSearchChange={handleSearchChange}
         onStatusChange={handleStatusChange}
         searchQuery={searchQuery}
+        schoolFilters={
+          <SchoolClassRoomFilter
+            area={schoolArea}
+            onGradeChange={handleGradeChange}
+            onRoomChange={handleRoomChange}
+            onSchoolChange={handleSchoolChange}
+            scope={scope}
+          />
+        }
         status={status}
       />
 

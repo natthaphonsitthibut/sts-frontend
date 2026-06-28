@@ -38,6 +38,9 @@ import {
 } from "../../../components/layout/data-table";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
+import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type {
   AttendanceTask,
@@ -75,16 +78,21 @@ export function AttendanceLinksDashboardPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
   const queryClient = useQueryClient();
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const query = useMemo<AttendanceTaskListQuery>(
     () => ({
       status,
       searchTerm: debouncedSearch || undefined,
+      schoolId: scope.schoolId || undefined,
+      grade: scope.grade || undefined,
+      room: scope.room || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [status, debouncedSearch, page, rowsPerPage],
+    [status, debouncedSearch, scope.schoolId, scope.grade, scope.room, page, rowsPerPage],
   );
   const tasksQuery = useQuery({
     queryKey: ["attendance-link-tasks", query],
@@ -113,6 +121,21 @@ export function AttendanceLinksDashboardPage() {
 
   function handleStatusChange(value: string): void {
     setStatus(value as AttendanceTaskLinkStatus);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setPage(1);
+  }
+
+  function handleGradeChange(value: string): void {
+    scope.setGrade(value);
+    setPage(1);
+  }
+
+  function handleRoomChange(value: string): void {
+    scope.setRoom(value);
     setPage(1);
   }
 
@@ -156,18 +179,27 @@ export function AttendanceLinksDashboardPage() {
           placeholder: "ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ",
         }}
         filters={
-          <FilterSelect
-            ariaLabel="สถานะลิงก์เช็คชื่อ"
-            className="sm:w-[220px]"
-            onChange={handleStatusChange}
-            value={status}
-          >
-            {LINK_STATE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
+          <>
+            <SchoolClassRoomFilter
+              area={schoolArea}
+              onGradeChange={handleGradeChange}
+              onRoomChange={handleRoomChange}
+              onSchoolChange={handleSchoolChange}
+              scope={scope}
+            />
+            <FilterSelect
+              ariaLabel="สถานะลิงก์เช็คชื่อ"
+              className="sm:w-[220px]"
+              onChange={handleStatusChange}
+              value={status}
+            >
+              {LINK_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </>
         }
       />
 

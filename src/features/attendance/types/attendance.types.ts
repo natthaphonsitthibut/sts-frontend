@@ -154,6 +154,9 @@ export interface AttendanceTaskListQuery {
   limit?: number;
   searchTerm?: string;
   status?: AttendanceTaskLinkStatus;
+  schoolId?: string | number;
+  grade?: string;
+  room?: string;
 }
 
 export interface AttendanceTaskSummary {

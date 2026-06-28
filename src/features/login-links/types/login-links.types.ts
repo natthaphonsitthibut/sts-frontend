@@ -27,6 +27,12 @@ export interface LoginLinkSummary {
 export interface LoginLinkListQuery {
   status?: string;
   searchTerm?: string;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  schoolId?: string;
+  gradeLevelId?: number | null;
+  room?: string;
   page?: number;
   limit?: number;
 }

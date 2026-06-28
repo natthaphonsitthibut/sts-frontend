@@ -98,6 +98,15 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
     return area.schools.find((school) => String(school.id) === schoolId)?.name ?? "";
   }
 
+  function handleSchool(next: string, updateManual = false): void {
+    scope.setSchoolId(next);
+    const school = area.schools.find((candidate) => String(candidate.id) === next);
+    area.setAreaFromSchool(school);
+    if (updateManual) {
+      updateManualStudent(manualFirstName, manualLastName, next);
+    }
+  }
+
   function updateManualStudent(
     firstName: string,
     lastName: string,
@@ -202,10 +211,13 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
         ) : (
           <Combobox
             disabled={disabled}
-            onChange={(next) => {
-              scope.setSchoolId(next);
-              updateManualStudent(manualFirstName, manualLastName, next);
-            }}
+            emptyText={
+              area.schoolsEnabled
+                ? "ไม่พบโรงเรียน"
+                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+            }
+            onChange={(next) => handleSchool(next, true)}
+            onSearchChange={area.setSchoolSearch}
             options={[
               { value: "", label: "เลือกโรงเรียน" },
               ...schoolOptions,
@@ -297,7 +309,13 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
         ) : (
           <Combobox
             disabled={disabled}
-            onChange={(next) => scope.setSchoolId(next)}
+            emptyText={
+              area.schoolsEnabled
+                ? "ไม่พบโรงเรียน"
+                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+            }
+            onChange={handleSchool}
+            onSearchChange={area.setSchoolSearch}
             options={[{ value: "", label: "ทุกโรงเรียน" }, ...schoolOptions]}
             placeholder="ค้นหาโรงเรียน"
             value={scope.schoolId}

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Users } from "lucide-react";
 import {
   FilterSelect,
@@ -14,6 +15,7 @@ interface StudentSearchFilterProps {
   room: string;
   onRoomChange: (value: string) => void;
   roomOptions: string[];
+  schoolFilters?: ReactNode;
   count: number;
   onRefresh: () => Promise<unknown> | unknown;
 }
@@ -27,6 +29,7 @@ export function StudentSearchFilter({
   room,
   onRoomChange,
   roomOptions,
+  schoolFilters,
   count,
   onRefresh,
 }: StudentSearchFilterProps) {
@@ -43,6 +46,8 @@ export function StudentSearchFilter({
       }}
       filters={
         <>
+          {schoolFilters}
+
           <FilterSelect
             ariaLabel="กรองตามระดับชั้น"
             onChange={onGradeChange}

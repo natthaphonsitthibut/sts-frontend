@@ -24,6 +24,9 @@ import { Pagination } from "../../../components/layout/pagination";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { casesService } from "../../cases/api/cases.service";
 import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
 import { CaseTable } from "../../cases/components/CaseTable";
@@ -49,17 +52,22 @@ export function DashboardPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
 
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
 
   const query = useMemo<CaseListQuery>(
     () => ({
       status,
+      schoolId: scope.schoolId || undefined,
+      grade: scope.grade || undefined,
+      room: scope.room || undefined,
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [status, debouncedSearch, page, rowsPerPage],
+    [status, scope.schoolId, scope.grade, scope.room, debouncedSearch, page, rowsPerPage],
   );
 
   const casesQuery = useQuery({
@@ -103,6 +111,21 @@ export function DashboardPage() {
 
   function handleStatusChange(value: string): void {
     setStatus(value);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setPage(1);
+  }
+
+  function handleGradeChange(value: string): void {
+    scope.setGrade(value);
+    setPage(1);
+  }
+
+  function handleRoomChange(value: string): void {
+    scope.setRoom(value);
     setPage(1);
   }
 
@@ -160,18 +183,27 @@ export function DashboardPage() {
           placeholder: "ค้นหาชื่อนักเรียน",
         }}
         filters={
-          <FilterSelect
-            ariaLabel="สถานะเคส"
-            className="sm:w-[220px]"
-            onChange={handleStatusChange}
-            value={status}
-          >
-            {DASHBOARD_CASE_STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
+          <>
+            <SchoolClassRoomFilter
+              area={schoolArea}
+              onGradeChange={handleGradeChange}
+              onRoomChange={handleRoomChange}
+              onSchoolChange={handleSchoolChange}
+              scope={scope}
+            />
+            <FilterSelect
+              ariaLabel="สถานะเคส"
+              className="sm:w-[220px]"
+              onChange={handleStatusChange}
+              value={status}
+            >
+              {DASHBOARD_CASE_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </>
         }
       />
 

@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
@@ -47,6 +49,18 @@ function StudentIdentity({ student }: { student: StudentListItem }) {
   );
 }
 
+function compareText(a: string | undefined, b: string | undefined): number {
+  return (a || "").localeCompare(b || "", "th");
+}
+
+function getStudentSortValue(student: StudentListItem, key: string): string {
+  if (key === "name") return student.name;
+  if (key === "school") return student.school_name || "";
+  if (key === "grade") return student.grade || "";
+  if (key === "room") return formatStudentRoom(student.room);
+  return "";
+}
+
 export function StudentTable({
   rows,
   totalCount,
@@ -58,14 +72,33 @@ export function StudentTable({
   onRowClick,
 }: StudentTableProps) {
   const baseIndex = (page - 1) * rowsPerPage;
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows;
+    return [...rows].sort((a, b) => {
+      const result = compareText(
+        getStudentSortValue(a, sort.key),
+        getStudentSortValue(b, sort.key),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [rows, sort]);
 
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        headings={["#", "ชื่อ - นามสกุล", "โรงเรียน", "ระดับชั้น", "ห้อง"]}
+        headings={[
+          "ลำดับ",
+          { label: "ชื่อ - นามสกุล", sortKey: "name" },
+          { label: "โรงเรียน", sortKey: "school" },
+          { label: "ระดับชั้น", sortKey: "grade" },
+          { label: "ห้อง", sortKey: "room" },
+        ]}
         minWidthClassName="min-w-[860px]"
+        onSortChange={setSort}
+        sort={sort}
       >
-        {rows.map((student, index) => (
+        {sortedRows.map((student, index) => (
           <DataTableRow
             key={student.id}
             className="cursor-pointer"
@@ -91,7 +124,7 @@ export function StudentTable({
       </DataTable>
 
       <TableCardList>
-        {rows.map((student) => (
+        {sortedRows.map((student) => (
           <TableCard
             key={student.id}
             interactive

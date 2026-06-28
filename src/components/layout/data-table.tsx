@@ -1,4 +1,5 @@
-import type { ComponentProps, ReactNode } from "react";
+import { isValidElement, type ComponentProps, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 /**
@@ -8,9 +9,26 @@ import { cn } from "../../lib/utils";
  * Desktop renders a bordered table; mobile is expected to render `TableCardList`.
  */
 
+export type DataTableSortDirection = "asc" | "desc";
+
+export interface DataTableSortState {
+  key: string;
+  direction: DataTableSortDirection;
+}
+
+export interface DataTableHeading {
+  label: ReactNode;
+  sortKey?: string;
+  ariaLabel?: string;
+}
+
+type DataTableHeadingInput = ReactNode | DataTableHeading;
+
 interface DataTableProps {
   /** Column headings; empty string renders a spacer cell (e.g. an actions column). */
-  headings: ReactNode[];
+  headings: DataTableHeadingInput[];
+  sort?: DataTableSortState;
+  onSortChange?: (sort: DataTableSortState | undefined) => void;
   /**
    * Per-column Tailwind width classes (e.g. `["w-[22%]", "w-[14%]"]`). When provided,
    * the table switches to a fixed layout so changing cell content (status badges,
@@ -33,6 +51,28 @@ interface DataTableProps {
   className?: string;
 }
 
+function isHeadingConfig(heading: DataTableHeadingInput): heading is DataTableHeading {
+  return (
+    typeof heading === "object" &&
+    heading !== null &&
+    !isValidElement(heading) &&
+    "label" in heading
+  );
+}
+
+function getNextSortState(
+  current: DataTableSortState | undefined,
+  sortKey: string,
+): DataTableSortState | undefined {
+  if (current?.key !== sortKey) {
+    return { key: sortKey, direction: "asc" };
+  }
+  if (current.direction === "asc") {
+    return { key: sortKey, direction: "desc" };
+  }
+  return undefined;
+}
+
 export function DataTable({
   children,
   className,
@@ -40,7 +80,9 @@ export function DataTable({
   footer,
   headings,
   minWidthClassName = "min-w-[820px]",
+  onSortChange,
   responsive = true,
+  sort,
 }: DataTableProps) {
   const fixedLayout = Boolean(columnWidths);
   return (
@@ -61,17 +103,55 @@ export function DataTable({
         >
           <thead>
             <tr className="bg-muted">
-              {headings.map((heading, index) => (
-                <th
-                  key={index}
-                  className={cn(
-                    "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
-                    columnWidths?.[index],
-                  )}
-                >
-                  {heading}
-                </th>
-              ))}
+              {headings.map((heading, index) => {
+                const config = isHeadingConfig(heading)
+                  ? heading
+                  : { label: heading };
+                const sortKey = config.sortKey;
+                const isSortable = Boolean(sortKey && onSortChange);
+                const isActiveSort = Boolean(
+                  sortKey && sort?.key === sortKey,
+                );
+                const SortIcon = isActiveSort
+                  ? sort?.direction === "asc"
+                    ? ArrowUp
+                    : ArrowDown
+                  : ArrowUpDown;
+
+                return (
+                  <th
+                    key={index}
+                    aria-sort={
+                      isActiveSort
+                        ? sort?.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : undefined
+                    }
+                    className={cn(
+                      "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
+                      columnWidths?.[index],
+                    )}
+                  >
+                    {isSortable && sortKey && onSortChange ? (
+                      <button
+                        type="button"
+                        aria-label={config.ariaLabel}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          isActiveSort && "text-primary",
+                        )}
+                        onClick={() => onSortChange(getNextSortState(sort, sortKey))}
+                      >
+                        <span>{config.label}</span>
+                        <SortIcon className="size-3.5" aria-hidden="true" />
+                      </button>
+                    ) : (
+                      config.label
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>{children}</tbody>

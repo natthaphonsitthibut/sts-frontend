@@ -17,6 +17,8 @@ export interface ComboboxProps {
   disabled?: boolean;
   id?: string;
   name?: string;
+  /** Optional hook for server-side narrowing while the user types. */
+  onSearchChange?: (value: string) => void;
   /** When false, behaves as a plain dropdown (no typing) but keeps the styled panel. */
   searchable?: boolean;
   "aria-invalid"?: boolean;
@@ -39,6 +41,7 @@ export function Combobox({
   disabled,
   id,
   name,
+  onSearchChange,
   searchable = true,
   "aria-invalid": ariaInvalid,
 }: ComboboxProps) {
@@ -68,6 +71,7 @@ export function Combobox({
             return;
           }
           setQuery(event.target.value);
+          onSearchChange?.(event.target.value);
           setOpen(true);
         }}
         // Reopen even when the field already has focus (e.g. right after a pick),
@@ -75,6 +79,7 @@ export function Combobox({
         onClick={() => setOpen(true)}
         onFocus={() => {
           setQuery("");
+          onSearchChange?.("");
           setOpen(true);
         }}
         placeholder={placeholder}

@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { KeyRound, Users, UserPlus } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import {
   EmptyState,
   ErrorState,
@@ -26,15 +29,33 @@ export function ManageUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const schoolArea = useSchoolAreaFilter();
+  const scope = useScopeCascade({ lockToActorScope: true });
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 
   const query = useMemo(
     () => ({
       searchTerm: debouncedSearch || undefined,
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
+      schoolId: scope.schoolId || undefined,
+      gradeLevelId: scope.gradeLevelId,
+      room: scope.room || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [debouncedSearch, page, rowsPerPage],
+    [
+      debouncedSearch,
+      schoolArea.province,
+      schoolArea.district,
+      schoolArea.subDistrict,
+      scope.schoolId,
+      scope.gradeLevelId,
+      scope.room,
+      page,
+      rowsPerPage,
+    ],
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
@@ -42,6 +63,21 @@ export function ManageUsersPage() {
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleSchoolChange(value: string): void {
+    scope.setSchoolId(value);
+    setPage(1);
+  }
+
+  function handleGradeChange(value: string): void {
+    scope.setGrade(value);
+    setPage(1);
+  }
+
+  function handleRoomChange(value: string): void {
+    scope.setRoom(value);
     setPage(1);
   }
 
@@ -93,6 +129,15 @@ export function ManageUsersPage() {
           onChange: handleSearchChange,
           placeholder: "ค้นหาชื่อหรือ username...",
         }}
+        filters={
+          <SchoolClassRoomFilter
+            area={schoolArea}
+            onGradeChange={handleGradeChange}
+            onRoomChange={handleRoomChange}
+            onSchoolChange={handleSchoolChange}
+            scope={scope}
+          />
+        }
       />
 
       {isError ? (

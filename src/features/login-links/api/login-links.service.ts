@@ -52,6 +52,24 @@ async function getLoginLinks(
   if (searchTerm) {
     params.searchTerm = searchTerm;
   }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
+  if (query.schoolId?.trim()) {
+    params.schoolId = query.schoolId.trim();
+  }
+  if (query.gradeLevelId) {
+    params.gradeLevelId = String(query.gradeLevelId);
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
+  }
 
   const response = await apiClient.get<
     | LoginLink[]

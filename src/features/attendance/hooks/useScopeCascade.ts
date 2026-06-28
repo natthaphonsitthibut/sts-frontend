@@ -77,6 +77,9 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
   function setSchoolId(value: string): void {
     if (schoolLocked) return;
     setSchoolIdState(value);
+    if (!gradeLocked) {
+      setGradeState("");
+    }
     setRoomInput("");
   }
 
@@ -101,6 +104,9 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
     gradeLevels,
     rooms,
     schoolId,
+    gradeLevelId: grade
+      ? (gradeLevels.find((level) => level.label === grade)?.id ?? null)
+      : null,
     grade,
     room,
     schoolLocked,
