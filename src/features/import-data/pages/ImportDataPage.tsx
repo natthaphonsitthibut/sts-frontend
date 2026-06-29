@@ -10,8 +10,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Combobox,
-  Label,
 } from "../../../components/base";
 import {
   PageShell,
@@ -22,11 +20,10 @@ import {
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { ImportDropZone } from "../components/ImportDropZone";
 import { useSubmitImport } from "../hooks/useSubmitImport";
-import { IMPORT_MODE_OPTIONS, type ImportMode } from "../types/import.types";
+import { STUDENT_TERM_IMPORT_LABEL } from "../types/import.types";
 
 export function ImportDataPage() {
   const submitImport = useSubmitImport();
-  const [target, setTarget] = useState<ImportMode>("student_term");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
 
@@ -35,7 +32,7 @@ export function ImportDataPage() {
       return;
     }
     setProgress(0);
-    submitImport.mutate({ file, target, onProgress: setProgress });
+    submitImport.mutate({ file, onProgress: setProgress });
   }
 
   const result = submitImport.data;
@@ -54,18 +51,11 @@ export function ImportDataPage() {
             <CardTitle>รายละเอียดการนำเข้า</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="import-target">ประเภทข้อมูล</Label>
-              <Combobox
-                id="import-target"
-                onChange={(next) => setTarget(next as ImportMode)}
-                options={IMPORT_MODE_OPTIONS.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))}
-                searchable={false}
-                value={target}
-              />
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-sm font-medium text-slate-500">ประเภทข้อมูล</div>
+              <div className="mt-1 font-bold text-slate-900">
+                {STUDENT_TERM_IMPORT_LABEL}
+              </div>
             </div>
 
             <div className="mt-4">
@@ -124,7 +114,7 @@ export function ImportDataPage() {
               <div>
                 <div className="text-sm font-medium text-slate-500">ประเภทข้อมูล</div>
                 <div className="mt-1 font-bold text-slate-900">
-                  {IMPORT_MODE_OPTIONS.find((option) => option.value === target)?.label}
+                  {STUDENT_TERM_IMPORT_LABEL}
                 </div>
               </div>
 

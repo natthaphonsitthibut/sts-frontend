@@ -1,4 +1,5 @@
-export type ImportMode = "student_term" | "student_dropouts";
+export const STUDENT_TERM_IMPORT_TARGET = "student_term";
+export const STUDENT_TERM_IMPORT_LABEL = "ข้อมูลนักเรียนในระบบ (รายภาคเรียน)";
 
 export interface ImportResult {
   success: boolean;
@@ -6,8 +7,3 @@ export interface ImportResult {
   rowsInserted: number;
   rowsSkipped: number;
 }
-
-export const IMPORT_MODE_OPTIONS: Array<{ value: ImportMode; label: string }> = [
-  { value: "student_term", label: "ข้อมูลนักเรียน (รายภาคเรียน)" },
-  { value: "student_dropouts", label: "ข้อมูลนักเรียนหลุดจากระบบ" },
-];

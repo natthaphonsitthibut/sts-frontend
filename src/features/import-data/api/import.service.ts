@@ -1,9 +1,11 @@
 import { apiClient } from "../../../lib/api-client";
-import type { ImportMode, ImportResult } from "../types/import.types";
+import {
+  STUDENT_TERM_IMPORT_TARGET,
+  type ImportResult,
+} from "../types/import.types";
 
 interface SubmitImportParams {
   file: File;
-  target: ImportMode;
   /**
    * Column → field mapping. The interactive mapping UI is deferred, so this
    * defaults to empty; the backend response is surfaced as-is for feedback.
@@ -14,13 +16,12 @@ interface SubmitImportParams {
 
 async function submitImport({
   file,
-  target,
   mapping = {},
   onProgress,
 }: SubmitImportParams): Promise<ImportResult> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("target", target);
+  formData.append("target", STUDENT_TERM_IMPORT_TARGET);
   formData.append("mapping", JSON.stringify(mapping));
 
   const response = await apiClient.post<ImportResult>(
