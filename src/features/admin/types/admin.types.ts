@@ -36,6 +36,9 @@ export interface ManagedUser {
   permissions: string[];
   status: string;
   data_scope?: DataScope;
+  must_change_password?: boolean;
+  temporary_password_issued_at?: string | null;
+  temporary_password_expires_at?: string | null;
   created_at?: string | null;
 }
 
@@ -62,6 +65,15 @@ export interface CreateUserResponse {
   userId: number;
   tempPassword?: string;
   must_change_password?: boolean;
+}
+
+export interface ReissueStudentPasswordResponse {
+  success: boolean;
+  userId: number;
+  username: string;
+  tempPassword: string;
+  temporaryPasswordIssuedAt: string;
+  temporaryPasswordExpiresAt: string;
 }
 
 export interface StudentAccountFilter {
@@ -130,6 +142,8 @@ export type RoleScopeMode =
   | "sub_district"
   | "school";
 
+export type RoleScopePolicy = "ASSIGNABLE" | "OWN_ONLY";
+
 export interface RoleDefinition {
   id: number;
   name: string;
@@ -137,6 +151,8 @@ export interface RoleDefinition {
   rank: number;
   default_permissions: string[];
   scope_mode: RoleScopeMode;
+  scope_policy: RoleScopePolicy;
+  is_assignable: boolean;
   is_system: boolean;
   user_count?: number;
   login_link_count?: number;
@@ -146,6 +162,6 @@ export interface RoleGroupForm {
   name: string;
   label: string;
   rank: number;
-  scope_mode: RoleScopeMode;
+  scope_mode?: RoleScopeMode;
   default_permissions: string[];
 }

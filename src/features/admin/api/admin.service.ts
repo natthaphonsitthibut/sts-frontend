@@ -9,6 +9,7 @@ import type {
   ManagedUser,
   CreateUserResponse,
   RoleDefinition,
+  ReissueStudentPasswordResponse,
   RoleGroupForm,
   SettingsUpdatePayload,
   SettingsUpdateResponse,
@@ -116,6 +117,15 @@ async function getUser(id: number): Promise<ManagedUser> {
   return normalizeManagedUser(user as ManagedUser);
 }
 
+async function reissueStudentTemporaryPassword(
+  id: number,
+): Promise<ReissueStudentPasswordResponse> {
+  const response = await apiClient.post<ReissueStudentPasswordResponse>(
+    `/users/student-accounts/${id}/reissue-temporary-password`,
+  );
+  return response.data;
+}
+
 async function getRolesCatalog(): Promise<RoleDefinition[]> {
   const response = await apiClient.get<
     RoleDefinition[] | DataEnvelope<RoleDefinition[]>
@@ -195,6 +205,7 @@ export const adminService = {
   updateSetting,
   getUsers,
   getUser,
+  reissueStudentTemporaryPassword,
   getRolesCatalog,
   createUser,
   updateUser,

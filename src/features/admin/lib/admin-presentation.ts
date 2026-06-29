@@ -1,15 +1,6 @@
 import type { CSSProperties } from "react";
 import { getLeafMenuItems, MENU_ITEMS } from "../../auth/lib/permissions";
-import type { ManagedUser, RoleScopeMode } from "../types/admin.types";
-
-export const ROLE_SCOPE_MODE_LABELS: Record<RoleScopeMode, string> = {
-  flexible: "ยืดหยุ่น (กำหนดตอนเพิ่มผู้ใช้)",
-  global: "ทั้งระบบ",
-  province: "ระดับจังหวัด",
-  district: "ระดับอำเภอ",
-  sub_district: "ระดับตำบล",
-  school: "ระดับโรงเรียน",
-};
+import type { ManagedUser } from "../types/admin.types";
 
 export const USER_STATUS_OPTIONS = [
   { value: "ACTIVE", label: "ใช้งาน" },

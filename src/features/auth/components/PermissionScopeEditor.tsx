@@ -21,7 +21,7 @@ import type {
   LocationCatalog,
   SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
-import type { RoleScopeMode } from "../../admin/types/admin.types";
+import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
 import { MENU_ITEMS, type DataScope, type MenuItem } from "../lib/permissions";
 import { getScopeFieldStates, getScopeValidationError } from "../lib/scope-validation";
 import { useRefreshSpin } from "../../../hooks/useRefreshSpin";
@@ -30,6 +30,7 @@ interface PermissionScopeEditorProps {
   role: string;
   roleLabel: string;
   scopeMode: RoleScopeMode;
+  scopePolicy?: RoleScopePolicy;
   /** Standard permissions for the selected role — used to colour the diff. */
   baselinePermissions: string[];
   permissions: string[];
@@ -105,6 +106,7 @@ export function PermissionScopeEditor({
   role,
   roleLabel,
   scopeMode,
+  scopePolicy = "ASSIGNABLE",
   baselinePermissions,
   permissions,
   dataScope = EMPTY_SCOPE,
@@ -115,8 +117,9 @@ export function PermissionScopeEditor({
 }: PermissionScopeEditorProps) {
   const hasRole = role.trim().length > 0;
   const fieldStates = getScopeFieldStates(scopeMode);
-  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel);
-  const isGlobalScope = scopeMode === "global";
+  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
+  const isOwnOnlyScope = scopePolicy === "OWN_ONLY";
+  const isGlobalScope = scopeMode === "global" || dataScope.global === true;
   const usesAreaScope = !isGlobalScope && scopeMode !== "flexible";
   const { isRefreshing, refresh } = useRefreshSpin();
 
@@ -130,7 +133,7 @@ export function PermissionScopeEditor({
   const locationsQuery = useQuery({
     queryKey: ["permission-scope-locations"],
     queryFn: attendanceLookupService.getLocations,
-    enabled: !isGlobalScope,
+    enabled: !isGlobalScope && !isOwnOnlyScope,
   });
   const schoolsQuery = useQuery({
     queryKey: ["permission-scope-schools", selectedProvince, selectedDistrict, selectedSubDistrict],
@@ -143,12 +146,13 @@ export function PermissionScopeEditor({
       }),
     enabled:
       !isGlobalScope &&
+      !isOwnOnlyScope &&
       Boolean(selectedProvince || selectedDistrict || selectedSubDistrict || selectedSchoolId),
   });
   const gradeLevelsQuery = useQuery({
     queryKey: ["permission-scope-grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
-    enabled: fieldStates.grade_levels !== "forbidden",
+    enabled: !isOwnOnlyScope && fieldStates.grade_levels !== "forbidden",
   });
 
   const catalog = locationsQuery.data ?? EMPTY_CATALOG;
@@ -305,9 +309,23 @@ export function PermissionScopeEditor({
           <CardTitle className="text-base">ขอบเขตข้อมูล</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {hasRole && scopeMode === "flexible" && !isOwnOnlyScope ? (
+            <Checkbox
+              checked={dataScope.global === true}
+              disabled={disabled}
+              label="เข้าถึงข้อมูลทั้งระบบ"
+              onChange={(event) =>
+                onDataScopeChange(event.target.checked ? { global: true } : {})
+              }
+            />
+          ) : null}
           {!hasRole ? (
             <p className="text-sm text-slate-500">
               เลือกตำแหน่งก่อน เพื่อกำหนดขอบเขตข้อมูล
+            </p>
+          ) : isOwnOnlyScope ? (
+            <p className="text-sm text-slate-500">
+              ตำแหน่งนี้เข้าถึงได้เฉพาะข้อมูลของผู้ใช้งานเอง
             </p>
           ) : isGlobalScope ? (
             <p className="text-sm text-slate-500">

@@ -1,4 +1,4 @@
-import type { RoleScopeMode } from "../../admin/types/admin.types";
+import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
 import type { DataScope } from "./permissions";
 
 /**
@@ -81,6 +81,7 @@ export function getScopeValidationError(
   scopeMode: RoleScopeMode,
   scope: DataScope,
   roleLabel: string,
+  scopePolicy: RoleScopePolicy = "ASSIGNABLE",
 ): string | null {
   const provinces = count(scope.provinces);
   const districts = count(scope.districts);
@@ -88,8 +89,24 @@ export function getScopeValidationError(
   const schools = count(scope.school_ids);
   const hasExtraSchoolFiltering = count(scope.grade_levels) > 0 || count(scope.room_ids) > 0;
 
+  if (scopePolicy === "OWN_ONLY") {
+    return scope.own_only === true ? null : `${roleLabel}ต้องใช้ขอบเขตข้อมูลเฉพาะตนเอง`;
+  }
+
   if (scopeMode === "flexible") {
-    return null;
+    const hasAreaScope =
+      provinces > 0 ||
+      districts > 0 ||
+      subDistricts > 0 ||
+      schools > 0 ||
+      hasExtraSchoolFiltering;
+    if (scope.global !== true && !hasAreaScope) {
+      return `${roleLabel}ต้องเลือกขอบเขตข้อมูล หรือเลือกทั้งระบบ`;
+    }
+    if (scope.global === true && hasAreaScope) {
+      return `${roleLabel}ห้ามเลือกทั้งระบบพร้อมกับพื้นที่`;
+    }
+    return scope.own_only === true ? `${roleLabel}ไม่สามารถใช้ขอบเขตเฉพาะตนเองได้` : null;
   }
 
   if (scopeMode === "global") {

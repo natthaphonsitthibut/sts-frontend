@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { KeyRound, Users, UserPlus } from "lucide-react";
-import { useConfirm } from "../../../components/base";
+import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -14,21 +14,28 @@ import {
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { CredentialDialog } from "../../../components/layout/credential-dialog";
 import { Pagination } from "../../../components/layout/pagination";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { UserTable } from "../components/UserTable";
-import { useDeleteUser, useUsers } from "../hooks/useUsers";
+import {
+  useDeleteUser,
+  useReissueStudentTemporaryPassword,
+  useUsers,
+} from "../hooks/useUsers";
 import { getUserDisplayName } from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
 
 export function ManageUsersPage() {
   const navigate = useNavigate();
   const deleteUser = useDeleteUser();
+  const reissuePassword = useReissueStudentTemporaryPassword();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [generatedPassword, setGeneratedPassword] = useState("");
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
@@ -108,6 +115,23 @@ export function ManageUsersPage() {
     }
   }
 
+  async function handleReissueTemporaryPassword(user: ManagedUser): Promise<void> {
+    if (user.id == null) {
+      return;
+    }
+    const confirmed = await confirm({
+      title: "ออกรหัสชั่วคราวใหม่",
+      description: `ต้องการออกรหัสใหม่ให้ "${getUserDisplayName(user)}" ใช่หรือไม่? รหัสเดิมจะใช้ไม่ได้ทันที`,
+      confirmText: "ออกรหัสใหม่",
+    });
+    if (!confirmed) {
+      return;
+    }
+    reissuePassword.mutate(user.id, {
+      onSuccess: (result) => setGeneratedPassword(result.tempPassword),
+    });
+  }
+
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
       <ListPageToolbar
@@ -140,6 +164,11 @@ export function ManageUsersPage() {
         }
       />
 
+      <FormErrorAlert
+        error={reissuePassword.error}
+        fallback="ออกรหัสชั่วคราวใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง"
+      />
+
       {isError ? (
         <ErrorState
           title="ไม่สามารถโหลดผู้ใช้งานได้"
@@ -154,7 +183,13 @@ export function ManageUsersPage() {
         />
       ) : (
         <>
-          <UserTable onDelete={handleDelete} onEdit={openEdit} users={users} />
+          <UserTable
+            onDelete={handleDelete}
+            onEdit={openEdit}
+            onReissueTemporaryPassword={handleReissueTemporaryPassword}
+            reissuingUserId={reissuePassword.isPending ? reissuePassword.variables : null}
+            users={users}
+          />
           <Pagination
             onPageChange={setPage}
             onRowsPerPageChange={handleRowsPerPageChange}
@@ -168,6 +203,12 @@ export function ManageUsersPage() {
       )}
 
       {confirmDialog}
+      <CredentialDialog
+        description="รหัสใหม่จะแสดงเพียงครั้งเดียวและมีอายุ 7 วัน นักเรียนต้องเปลี่ยนรหัสเมื่อเข้าสู่ระบบครั้งแรก"
+        onClose={() => setGeneratedPassword("")}
+        open={Boolean(generatedPassword)}
+        value={generatedPassword}
+      />
     </PageShell>
   );
 }

@@ -25,11 +25,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
-import {
-  ROLE_BASELINES,
-  ROLE_LABELS,
-  type DataScope,
-} from "../../auth/lib/permissions";
+import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import {
   getScopeFieldStates,
   getScopeValidationError,
@@ -97,7 +93,7 @@ function resolveBaseline(
   if (definition?.default_permissions?.length) {
     return definition.default_permissions;
   }
-  return ROLE_BASELINES[role] ?? [];
+  return [];
 }
 
 function toDefaults(user: ManagedUser | null): UserFormValues {
@@ -157,6 +153,7 @@ function UserForm({
     [selectedRole, rolesCatalog],
   );
   const scopeMode = roleDefinition?.scope_mode ?? "flexible";
+  const scopePolicy = roleDefinition?.scope_policy ?? "ASSIGNABLE";
   const roleLabel = roleDefinition?.label ?? ROLE_LABELS[selectedRole] ?? selectedRole;
 
   // Adjust dependent state when the role changes — done during render (React's
@@ -167,10 +164,16 @@ function UserForm({
   if (selectedRole !== trackedRole) {
     setTrackedRole(selectedRole);
     setPermissions(baseline);
-    setDataScope((current) => clearForbiddenScopeFields(current, scopeMode));
+    setDataScope((current) => {
+      const next = clearForbiddenScopeFields(current, scopeMode);
+      if (scopePolicy === "OWN_ONLY") {
+        return { ...next, global: undefined, own_only: true };
+      }
+      return { ...next, own_only: undefined };
+    });
   }
 
-  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel);
+  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
   const isCustomized = !sameSet(permissions, baseline);
 
   function goBack(): void {
@@ -355,6 +358,7 @@ function UserForm({
               role={selectedRole}
               roleLabel={roleLabel}
               scopeMode={scopeMode}
+              scopePolicy={scopePolicy}
               showErrors={form.formState.isSubmitted}
             />
           </div>

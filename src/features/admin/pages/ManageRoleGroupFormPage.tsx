@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
   Checkbox,
-  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -25,24 +24,23 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { useRoleGroups, useSaveRoleGroup } from "../hooks/useRoleGroups";
-import {
-  getAssignablePermissions,
-  ROLE_SCOPE_MODE_LABELS,
-} from "../lib/admin-presentation";
+import { getAssignablePermissions } from "../lib/admin-presentation";
 import {
   roleGroupFormSchema,
   type RoleGroupFormValues,
 } from "../schemas/role-group.schema";
-import type { RoleDefinition, RoleScopeMode } from "../types/admin.types";
+import type { RoleDefinition } from "../types/admin.types";
 
 const MANAGE_ROLE_GROUPS_PATH = "/manage-role-groups";
 const PERMISSION_OPTIONS = getAssignablePermissions();
-const SCOPE_MODE_ENTRIES = Object.entries(ROLE_SCOPE_MODE_LABELS) as Array<
-  [RoleScopeMode, string]
->;
-
 /** The actual form — mounted only once the role group is resolved so RHF gets correct defaults. */
-function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
+function RoleGroupForm({
+  roleGroup,
+  roleGroups,
+}: {
+  roleGroup: RoleDefinition | null;
+  roleGroups: RoleDefinition[];
+}) {
   const navigate = useNavigate();
   const saveRoleGroup = useSaveRoleGroup();
   const isEdit = Boolean(roleGroup);
@@ -51,7 +49,6 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
       name: roleGroup?.name ?? "",
       label: roleGroup?.label ?? "",
       rank: String(roleGroup?.rank ?? 1),
-      scope_mode: roleGroup?.scope_mode ?? "flexible",
     },
     resolver: zodResolver(roleGroupFormSchema),
   });
@@ -59,7 +56,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
     roleGroup?.default_permissions ?? [],
   );
   const hasNoPermissions = permissions.length === 0;
-  const scopeMode = useWatch({ control: form.control, name: "scope_mode" });
+  const rankRows = [...roleGroups].sort((left, right) => right.rank - left.rank);
 
   function goBack(): void {
     void navigate(MANAGE_ROLE_GROUPS_PATH);
@@ -84,7 +81,6 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
           name: values.name,
           label: values.label,
           rank: Number(values.rank),
-          scope_mode: values.scope_mode,
           default_permissions: permissions,
         },
       },
@@ -109,7 +105,7 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
             <Input
               disabled={isEdit}
               id="role-name"
-              placeholder="เช่น ADMIN_SCHOOL"
+              placeholder="เช่น CASE_COORDINATOR"
               {...registerField(form, "name")}
             />
             <FormMessage<RoleGroupFormValues> name="name" />
@@ -127,26 +123,45 @@ function RoleGroupForm({ roleGroup }: { roleGroup: RoleDefinition | null }) {
             <FormLabel htmlFor="role-rank" required>
               ลำดับขั้น (rank)
             </FormLabel>
-            <NumericInput id="role-rank" maxLength={2} {...registerField(form, "rank")} />
+            <NumericInput
+              aria-describedby="role-rank-description"
+              id="role-rank"
+              maxLength={2}
+              {...registerField(form, "rank")}
+            />
+            <p className="text-sm text-slate-500" id="role-rank-description">
+              เลขมากหมายถึงระดับสิทธิ์สูงกว่า ใช้กำหนดว่า role นี้สามารถจัดการ role ระดับใดได้
+            </p>
             <FormMessage<RoleGroupFormValues> name="rank" />
           </FormItem>
 
-          <FormItem>
-            <FormLabel htmlFor="role-scope">ขอบเขตข้อมูล</FormLabel>
-            <Combobox
-              id="role-scope"
-              name="scope_mode"
-              onChange={(next) =>
-                form.setValue("scope_mode", next as RoleGroupFormValues["scope_mode"], {
-                  shouldValidate: form.formState.isSubmitted,
-                })
-              }
-              options={SCOPE_MODE_ENTRIES.map(([value, label]) => ({ value, label }))}
-              searchable={false}
-              value={scopeMode}
-            />
-            <FormMessage<RoleGroupFormValues> name="scope_mode" />
-          </FormItem>
+          <div className="sm:col-span-2">
+            <div className="mb-2 text-sm font-bold text-slate-700">ตารางลำดับสิทธิ์</div>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="w-20 px-3 py-2 font-semibold">Rank</th>
+                    <th className="px-3 py-2 font-semibold">ตำแหน่ง</th>
+                    <th className="hidden px-3 py-2 font-semibold sm:table-cell">รหัส role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rankRows.map((role) => (
+                    <tr key={role.id ?? role.name}>
+                      <td className="px-3 py-2 font-bold tabular-nums text-slate-800">
+                        {role.rank}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-700">{role.label}</td>
+                      <td className="hidden px-3 py-2 font-mono text-xs text-slate-500 sm:table-cell">
+                        {role.name}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <div className="mt-2">
@@ -201,7 +216,7 @@ export function ManageRoleGroupFormPage() {
       <PageToolbar
         icon={ShieldCheck}
         title={isEdit ? "แก้ไขกลุ่มสิทธิ์" : "เพิ่มกลุ่มสิทธิ์"}
-        description="กำหนดรหัส ชื่อ ลำดับขั้น ขอบเขตข้อมูล และสิทธิ์การเข้าถึง"
+        description="กำหนดรหัส ชื่อ ลำดับขั้น และสิทธิ์การเข้าถึง โดยกำหนดขอบเขตข้อมูลตอนเพิ่มผู้ใช้"
         actions={
           <NavButton icon={ArrowLeft} to={MANAGE_ROLE_GROUPS_PATH} variant="outline">
             ย้อนกลับ
@@ -221,7 +236,7 @@ export function ManageRoleGroupFormPage() {
           onRetry={() => void navigate(MANAGE_ROLE_GROUPS_PATH)}
         />
       ) : (
-        <RoleGroupForm roleGroup={roleGroup} />
+        <RoleGroupForm roleGroup={roleGroup} roleGroups={roleGroups} />
       )}
     </PageShell>
   );

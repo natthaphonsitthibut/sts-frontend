@@ -15,14 +15,6 @@ export const roleGroupFormSchema = z.object({
     .trim()
     .regex(/^\d+$/, "ลำดับขั้นต้องเป็นจำนวนเต็ม")
     .refine((value) => Number(value) >= 1, "ลำดับขั้นต้องตั้งแต่ 1"),
-  scope_mode: z.enum([
-    "flexible",
-    "global",
-    "province",
-    "district",
-    "sub_district",
-    "school",
-  ]),
 });
 
 export type RoleGroupFormValues = z.infer<typeof roleGroupFormSchema>;

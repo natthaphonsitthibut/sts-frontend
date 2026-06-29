@@ -91,3 +91,15 @@ export function useDeleteUser() {
     },
   });
 }
+
+export function useReissueStudentTemporaryPassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminService.reissueStudentTemporaryPassword,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });
+    },
+  });
+}

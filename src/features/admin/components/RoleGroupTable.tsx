@@ -7,7 +7,6 @@ import {
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
-import { ROLE_SCOPE_MODE_LABELS } from "../lib/admin-presentation";
 import type { RoleDefinition } from "../types/admin.types";
 
 interface RoleGroupTableProps {
@@ -26,12 +25,7 @@ function compareNumber(a: number | null | undefined, b: number | null | undefine
 
 function compareRoleGroups(left: RoleDefinition, right: RoleDefinition, key: string): number {
   if (key === "role") return compareText(left.label || left.name, right.label || right.name);
-  if (key === "scope") {
-    return compareText(
-      ROLE_SCOPE_MODE_LABELS[left.scope_mode] ?? left.scope_mode,
-      ROLE_SCOPE_MODE_LABELS[right.scope_mode] ?? right.scope_mode,
-    );
-  }
+  if (key === "rank") return compareNumber(left.rank, right.rank);
   if (key === "permissions") {
     return compareNumber(left.default_permissions.length, right.default_permissions.length);
   }
@@ -57,12 +51,12 @@ export function RoleGroupTable({
     <DataTable
       headings={[
         { label: "ตำแหน่ง", sortKey: "role" },
-        { label: "ขอบเขตข้อมูล", sortKey: "scope" },
+        { label: "ลำดับขั้น", sortKey: "rank" },
         { label: "สิทธิ์", sortKey: "permissions" },
         { label: "ผู้ใช้", sortKey: "users" },
         "",
       ]}
-      minWidthClassName="min-w-[720px]"
+      minWidthClassName="min-w-[640px]"
       onSortChange={setSort}
       responsive={false}
       sort={sort}
@@ -92,8 +86,8 @@ export function RoleGroupTable({
               {role.name} · ลำดับ {role.rank}
             </div>
           </DataTableCell>
-          <DataTableCell className="text-sm text-slate-600">
-            {ROLE_SCOPE_MODE_LABELS[role.scope_mode] ?? role.scope_mode}
+          <DataTableCell className="text-sm font-bold tabular-nums text-slate-700">
+            {role.rank}
           </DataTableCell>
           <DataTableCell className="text-sm font-medium text-slate-500">
             {role.default_permissions.length} รายการ

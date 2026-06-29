@@ -1,4 +1,5 @@
 export interface DataScope {
+  global?: boolean;
   provinces?: string[];
   districts?: string[];
   sub_districts?: string[];
@@ -23,11 +24,7 @@ export const ROLE_RANKS: Record<string, number> = {
   TEACHER: 2,
   EXECUTIVE: 3,
   DIRECTOR: 4,
-  ADMIN_SCHOOL: 5,
-  ADMIN_SUBDISTRICT: 6,
-  ADMIN_DISTRICT: 7,
-  ADMIN_PROVINCE: 8,
-  ADMIN: 9,
+  ADMIN: 5,
 };
 
 export const ROLE_BASELINES: Record<string, string[]> = {
@@ -47,62 +44,6 @@ export const ROLE_BASELINES: Record<string, string[]> = {
     "login-links",
     "settings",
     "import-data",
-  ],
-  ADMIN_PROVINCE: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-student-accounts",
-    "login-links",
-  ],
-  ADMIN_DISTRICT: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-student-accounts",
-    "login-links",
-  ],
-  ADMIN_SUBDISTRICT: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-student-accounts",
-    "login-links",
-  ],
-  ADMIN_SCHOOL: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-student-accounts",
-    "login-links",
   ],
   DIRECTOR: [
     "home",
@@ -125,10 +66,6 @@ export const ROLE_BASELINES: Record<string, string[]> = {
 
 export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
-  ADMIN_PROVINCE: "แอดมินระดับจังหวัด",
-  ADMIN_DISTRICT: "แอดมินระดับอำเภอ",
-  ADMIN_SUBDISTRICT: "แอดมินระดับตำบล",
-  ADMIN_SCHOOL: "แอดมินระดับโรงเรียน",
   DIRECTOR: "ผู้อำนวยการ",
   EXECUTIVE: "ผู้บริหาร",
   TEACHER: "คุณครู",
@@ -230,8 +167,8 @@ export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
-  const rolePermissions = roles.flatMap((role) => ROLE_BASELINES[role] ?? []);
-  return Array.from(new Set([...rolePermissions, ...customPermissions]));
+  void roles;
+  return Array.from(new Set(customPermissions));
 }
 
 export function hasPermission(

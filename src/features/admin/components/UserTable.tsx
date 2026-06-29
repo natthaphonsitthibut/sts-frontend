@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { SquarePen, Trash2 } from "lucide-react";
+import { KeyRound, SquarePen, Trash2 } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -21,15 +21,32 @@ interface UserTableProps {
   users: ManagedUser[];
   onEdit: (user: ManagedUser) => void;
   onDelete: (user: ManagedUser) => void;
+  onReissueTemporaryPassword: (user: ManagedUser) => void;
+  reissuingUserId?: number | null;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const isActive = status === "ACTIVE";
-  return (
-    <Badge variant={isActive ? "success" : "secondary"}>
-      {isActive ? "ใช้งาน" : "ปิดการใช้งาน"}
-    </Badge>
-  );
+function getUserLifecycleStatus(user: ManagedUser): {
+  label: string;
+  variant: "success" | "secondary" | "warning";
+} {
+  if (user.status !== "ACTIVE") {
+    return { label: "ปิดการใช้งาน", variant: "secondary" };
+  }
+  if (user.must_change_password === true) {
+    const expiresAt = user.temporary_password_expires_at
+      ? new Date(user.temporary_password_expires_at)
+      : null;
+    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      return { label: "รหัสหมดอายุ", variant: "warning" };
+    }
+    return { label: "รอเข้าใช้ครั้งแรก", variant: "warning" };
+  }
+  return { label: "ใช้งาน", variant: "success" };
+}
+
+function StatusBadge({ user }: { user: ManagedUser }) {
+  const status = getUserLifecycleStatus(user);
+  return <Badge variant={status.variant}>{status.label}</Badge>;
 }
 
 function UserIdentity({ user }: { user: ManagedUser }) {
@@ -56,9 +73,21 @@ function RowActions({
   user,
   onEdit,
   onDelete,
+  onReissueTemporaryPassword,
+  reissuingUserId,
 }: UserTableProps & { user: ManagedUser }) {
   return (
     <div className="flex items-center justify-end gap-1">
+      {user.role === "STUDENT" && user.status === "ACTIVE" ? (
+        <IconButton
+          aria-label="ออกรหัสชั่วคราวใหม่"
+          className="text-warning"
+          disabled={reissuingUserId === user.id}
+          icon={KeyRound}
+          onClick={() => onReissueTemporaryPassword(user)}
+          variant="ghost"
+        />
+      ) : null}
       <IconButton
         aria-label="แก้ไขผู้ใช้งาน"
         className="text-primary"
@@ -85,11 +114,17 @@ function getUserSortValue(user: ManagedUser, key: string): string {
   if (key === "name") return getUserDisplayName(user);
   if (key === "role") return getUserRoleText(user);
   if (key === "affiliation") return user.affiliation || "";
-  if (key === "status") return user.status || "";
+  if (key === "status") return getUserLifecycleStatus(user).label;
   return "";
 }
 
-export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
+export function UserTable({
+  users,
+  onEdit,
+  onDelete,
+  onReissueTemporaryPassword,
+  reissuingUserId,
+}: UserTableProps) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedUsers = useMemo(() => {
     if (!sort) return users;
@@ -128,12 +163,14 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
               {user.affiliation || "-"}
             </DataTableCell>
             <DataTableCell>
-              <StatusBadge status={user.status} />
+              <StatusBadge user={user} />
             </DataTableCell>
             <DataTableCell>
               <RowActions
                 onDelete={onDelete}
                 onEdit={onEdit}
+                onReissueTemporaryPassword={onReissueTemporaryPassword}
+                reissuingUserId={reissuingUserId}
                 user={user}
                 users={users}
               />
@@ -147,7 +184,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
               <UserIdentity user={user} />
-              <StatusBadge status={user.status} />
+              <StatusBadge user={user} />
             </div>
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm text-slate-500">
@@ -156,6 +193,8 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
               <RowActions
                 onDelete={onDelete}
                 onEdit={onEdit}
+                onReissueTemporaryPassword={onReissueTemporaryPassword}
+                reissuingUserId={reissuingUserId}
                 user={user}
                 users={users}
               />
