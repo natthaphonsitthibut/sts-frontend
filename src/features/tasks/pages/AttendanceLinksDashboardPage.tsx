@@ -63,16 +63,29 @@ const EMPTY_SUMMARY: AttendanceTaskSummary = {
 function getLinkState(
   task: AttendanceTask,
 ): Exclude<AttendanceTaskLinkStatus, "ALL"> {
-  if (isLinkLocked(task.active_link_locked)) return "LOCKED";
+  if (
+    task.link_state === "ACTIVE" ||
+    task.link_state === "LOCKED" ||
+    task.link_state === "EXPIRED"
+  ) {
+    return task.link_state;
+  }
   if (!task.active_link) return "EXPIRED";
+  const expiresAt = task.active_link_expires_at
+    ? new Date(task.active_link_expires_at)
+    : null;
+  if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+    return "EXPIRED";
+  }
+  if (isLinkLocked(task.active_link_locked)) return "LOCKED";
   return "ACTIVE";
 }
 
-function LinkStateBadge({ task }: { task: AttendanceTask }) {
-  const state = getLinkState(task);
-  if (state === "LOCKED") return <LinkStatusBadge label="ถูกปิด" variant="destructive" />;
-  if (state === "EXPIRED") return <LinkStatusBadge label="ไม่มีลิงก์" variant="secondary" />;
-  return <LinkStatusBadge label="ใช้งานได้" variant="success" />;
+function AttendanceCheckBadge({ task }: { task: AttendanceTask }) {
+  if (task.attendance_check_status === "COMPLETED") {
+    return <LinkStatusBadge label="เช็คแล้ว" variant="success" />;
+  }
+  return <LinkStatusBadge label="ยังไม่เช็ค" variant="secondary" />;
 }
 
 function compareText(a: string | undefined, b: string | undefined): number {
@@ -83,7 +96,7 @@ function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
   if (key === "class") return `${task.target_grade || ""}/${task.target_room || ""}`;
   if (key === "school") return task.target_school_name || "";
   if (key === "assignee") return task.link_assigned_to || "";
-  if (key === "status") return getLinkState(task);
+  if (key === "status") return task.attendance_check_status || "NOT_CHECKED";
   if (key === "starts") return task.active_link_created_at || task.created_at || "";
   if (key === "expires") return task.active_link_expires_at || "";
   if (key === "remaining") return task.active_link_expires_at || "";
@@ -236,8 +249,8 @@ export function AttendanceLinksDashboardPage() {
           items={[
             { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
             { label: "ใช้งานได้", value: summary.active, tone: "success", icon: CheckCircle2 },
-            { label: "ถูกปิด", value: summary.locked, tone: "danger", icon: Lock },
-            { label: "ไม่มีลิงก์", value: summary.expired, tone: "warning", icon: Clock },
+            { label: "ปิดอยู่", value: summary.locked, tone: "danger", icon: Lock },
+            { label: "หมดอายุ", value: summary.expired, tone: "warning", icon: Clock },
           ]}
         />
 
@@ -255,18 +268,18 @@ export function AttendanceLinksDashboardPage() {
               headings={[
                 { label: "ชั้นเรียน", sortKey: "class" },
                 { label: "โรงเรียน", sortKey: "school" },
-                { label: "ผู้รับผิดชอบ", sortKey: "assignee" },
+                { label: "ผู้รับลิงก์", sortKey: "assignee" },
                 { label: "สถานะ", sortKey: "status" },
                 { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
                 "จัดการ",
               ]}
               columnWidths={[
-                "w-[11%]",
-                "w-[16%]",
-                "w-[14%]",
                 "w-[10%]",
-                "w-[35%]",
-                "w-[14%]",
+                "w-[16%]",
+                "w-[17%]",
+                "w-[12%]",
+                "w-[27%]",
+                "w-[18%]",
               ]}
               minWidthClassName="min-w-full"
               onSortChange={setSort}
@@ -282,6 +295,8 @@ export function AttendanceLinksDashboardPage() {
             >
               {sortedTasks.map((task) => {
                 const locked = isLinkLocked(task.active_link_locked);
+                const linkState = getLinkState(task);
+                const canToggleLink = task.active_link_id && linkState !== "EXPIRED";
                 return (
                   <DataTableRow key={task.task_id}>
                     <DataTableCell className="font-bold">
@@ -291,10 +306,12 @@ export function AttendanceLinksDashboardPage() {
                       {task.target_school_name || "-"}
                     </DataTableCell>
                     <DataTableCell className="text-sm">
-                      {task.link_assigned_to || "-"}
+                      <div className="font-bold text-slate-800">
+                        {task.link_assigned_to || "-"}
+                      </div>
                     </DataTableCell>
                     <DataTableCell>
-                      <LinkStateBadge task={task} />
+                      <AttendanceCheckBadge task={task} />
                     </DataTableCell>
                     <DataTableCell>
                       <LinkTimeSummary
@@ -303,22 +320,20 @@ export function AttendanceLinksDashboardPage() {
                         variant="columns"
                       />
                     </DataTableCell>
-                    <DataTableCell>
-                      <div className="flex flex-nowrap items-center justify-center gap-2">
+                    <DataTableCell className="pr-3">
+                      <div className="flex flex-nowrap items-center justify-end gap-2">
                         {task.active_link_id ? (
                           <DetailLinkButton
                             aria-label="ดูรายละเอียด"
-                            className="size-9 px-0"
+                            className="min-w-[128px]"
                             state={{ date: task.created_at?.split("T")[0] }}
                             to={`/attendance-links/${task.active_link_id}`}
-                          >
-                            {null}
-                          </DetailLinkButton>
+                          />
                         ) : null}
-                        {task.active_link_id ? (
+                        {canToggleLink ? (
                           <Button
                             aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
-                            className="size-9 min-w-0 px-0"
+                            className="size-9 shrink-0 px-0"
                             icon={locked ? LockOpen : Lock}
                             isLoading={pendingLinkId === task.active_link_id}
                             onClick={() =>
@@ -327,7 +342,9 @@ export function AttendanceLinksDashboardPage() {
                             size="sm"
                             variant={locked ? "outline" : "destructive"}
                           />
-                        ) : null}
+                        ) : (
+                          <span className="size-9 shrink-0" aria-hidden="true" />
+                        )}
                       </div>
                     </DataTableCell>
                   </DataTableRow>

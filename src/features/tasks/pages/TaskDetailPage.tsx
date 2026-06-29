@@ -27,6 +27,7 @@ import { taskService } from "../api/task.service";
 import {
   formatDateTime,
   getStatusLabel,
+  getTaskLinkDisplayStatus,
   getTaskTypeLabel,
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
@@ -155,7 +156,9 @@ export function TaskDetailPage() {
   const firstSubmission = task.chain.find((link) => link.submission)?.submission;
   const referrals = task.referrals ?? [];
   // Only the current active link in the chain can be opened/closed by an admin.
-  const activeLink = task.chain.find((link) => link.status === "ACTIVE");
+  const activeLink = task.chain.find(
+    (link) => getTaskLinkDisplayStatus(link).state === "ACTIVE",
+  );
 
   return (
     <PageShell>
@@ -225,63 +228,60 @@ export function TaskDetailPage() {
         <Card className="rounded-lg p-6">
           <h2 className="mb-4 text-lg font-bold text-slate-900">เส้นทางการมอบหมาย</h2>
           <ol className="relative space-y-0 before:absolute before:bottom-4 before:left-3 before:top-4 before:w-px before:bg-slate-200">
-            {task.chain.map((link, index) => (
-              <li
-                className="relative min-w-0 border-b border-slate-100 py-4 pl-9 last:border-b-0"
-                key={link.id}
-              >
-                <span className="absolute left-0 top-5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-primary text-xs font-bold text-white shadow-sm">
-                  {index + 1}
-                </span>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    {index === 0 ? (
-                      <div className="font-bold text-slate-900">
-                        ผู้รับเริ่มต้น:{" "}
-                        {link.assigned_to_name || "ไม่ระบุผู้รับ"}
-                      </div>
-                    ) : (
-                      <div className="flex min-w-0 flex-wrap items-center gap-2 font-bold text-slate-900">
-                        <span className="break-words">
-                          {link.delegated_by_name || "ไม่ระบุผู้ส่ง"}
-                        </span>
-                        <ArrowRight
-                          className="size-4 shrink-0 text-slate-400"
-                          aria-hidden="true"
-                        />
-                        <span className="break-words">
+            {task.chain.map((link, index) => {
+              const linkStatus = getTaskLinkDisplayStatus(link);
+              return (
+                <li
+                  className="relative min-w-0 border-b border-slate-100 py-4 pl-9 last:border-b-0"
+                  key={link.id}
+                >
+                  <span className="absolute left-0 top-5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-primary text-xs font-bold text-white shadow-sm">
+                    {index + 1}
+                  </span>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      {index === 0 ? (
+                        <div className="font-bold text-slate-900">
+                          ผู้รับเริ่มต้น:{" "}
                           {link.assigned_to_name || "ไม่ระบุผู้รับ"}
-                        </span>
-                      </div>
-                    )}
-                    {link.delegation_depth != null ? (
-                      <div className="text-sm text-slate-500">
-                        ลำดับที่ {Number(link.delegation_depth) + 1}
-                      </div>
-                    ) : null}
-                    <LinkTimeSummary
-                      className="mt-2 max-w-sm"
-                      expiresAt={link.expires_at}
-                      startLabel={index === 0 ? "เริ่ม" : "ส่งต่อ"}
-                      startsAt={link.delegated_at || link.created_at}
-                    />
+                        </div>
+                      ) : (
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 font-bold text-slate-900">
+                          <span className="break-words">
+                            {link.delegated_by_name || "ไม่ระบุผู้ส่ง"}
+                          </span>
+                          <ArrowRight
+                            className="size-4 shrink-0 text-slate-400"
+                            aria-hidden="true"
+                          />
+                          <span className="break-words">
+                            {link.assigned_to_name || "ไม่ระบุผู้รับ"}
+                          </span>
+                        </div>
+                      )}
+                      {link.delegation_depth != null ? (
+                        <div className="text-sm text-slate-500">
+                          ลำดับที่ {Number(link.delegation_depth) + 1}
+                        </div>
+                      ) : null}
+                      <LinkTimeSummary
+                        className="mt-2 max-w-sm"
+                        expiresAt={link.expires_at}
+                        startLabel={index === 0 ? "เริ่ม" : "ส่งต่อ"}
+                        startsAt={link.delegated_at || link.created_at}
+                      />
+                    </div>
+                    <Badge variant={linkStatus.variant}>{linkStatus.label}</Badge>
                   </div>
-                  <Badge
-                    variant={
-                      link.status === "COMPLETED" ? "success" : "secondary"
-                    }
-                  >
-                    {getStatusLabel(link.status)}
-                  </Badge>
-                </div>
-                {link.magic_link ? (
-                  <LinkShareActions
-                    className="mt-3"
-                    link={normalizeTaskPublicLink(link.magic_link)}
-                  />
-                ) : null}
-              </li>
-            ))}
+                  {link.magic_link ? (
+                    <LinkShareActions
+                      className="mt-3"
+                      link={normalizeTaskPublicLink(link.magic_link)}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
           </ol>
         </Card>
 

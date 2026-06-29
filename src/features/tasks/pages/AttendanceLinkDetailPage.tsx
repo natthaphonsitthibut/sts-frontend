@@ -31,11 +31,11 @@ const RECORD_STATUS_VARIANT: Record<string, "success" | "warning" | "destructive
 
 const LINK_STATUS: Record<
   AdminLinkDetail["status"],
-  { label: string; variant: "success" | "destructive" | "secondary" }
+  { label: string; variant: "success" | "destructive" | "warning" }
 > = {
   ACTIVE: { label: "ใช้งานได้", variant: "success" },
-  LOCKED: { label: "ถูกปิด", variant: "destructive" },
-  EXPIRED: { label: "หมดอายุ", variant: "secondary" },
+  LOCKED: { label: "ปิดอยู่", variant: "destructive" },
+  EXPIRED: { label: "หมดอายุ", variant: "warning" },
 };
 
 /**
@@ -80,6 +80,7 @@ export function AttendanceLinkDetailPage() {
   const records = detail.records ?? [];
   const publicLink = toAbsoluteUrl(detail.magic_link ?? "");
   const statusMeta = LINK_STATUS[detail.status];
+  const canToggleLink = detail.status !== "EXPIRED";
 
   return (
     <PageShell>
@@ -89,11 +90,13 @@ export function AttendanceLinkDetailPage() {
         description={`${detail.school_name ?? "-"} · ${detail.target_grade ?? "-"}/${detail.target_room ?? "-"}`}
         actions={
           <div className="flex flex-nowrap items-center gap-3">
-            <LinkLockToggleButton
-              linkId={detail.link_id}
-              locked={detail.admin_locked}
-              invalidateKeys={[[ATTENDANCE_LINK_DETAIL_KEY], [ATTENDANCE_TASKS_KEY]]}
-            />
+            {canToggleLink ? (
+              <LinkLockToggleButton
+                linkId={detail.link_id}
+                locked={detail.admin_locked}
+                invalidateKeys={[[ATTENDANCE_LINK_DETAIL_KEY], [ATTENDANCE_TASKS_KEY]]}
+              />
+            ) : null}
             <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
               ย้อนกลับ
             </Button>

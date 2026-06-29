@@ -41,7 +41,7 @@ import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEdit
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { studentsService } from "../../students/api/students.service";
-import { ROLE_BASELINES, ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
+import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import {
   buildTaskResultLink,
@@ -297,9 +297,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   );
   const baseline = selectedRoleOption?.default_permissions?.length
     ? selectedRoleOption.default_permissions
-    : ROLE_BASELINES[selectedRole] ?? EMPTY_PERMISSIONS;
+    : EMPTY_PERMISSIONS;
   const roleLabel = selectedRoleOption?.label ?? ROLE_LABELS[selectedRole] ?? selectedRole;
   const scopeMode = selectedRoleOption?.scope_mode ?? "flexible";
+  const scopePolicy = selectedRoleOption?.scope_policy ?? "ASSIGNABLE";
   const [permissions, setPermissions] = useState<string[]>(baseline);
   const isCustomized = !sameSet(permissions, baseline);
 
@@ -308,10 +309,17 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   if (selectedRole !== trackedRole) {
     setTrackedRole(selectedRole);
     setPermissions(baseline);
+    setDataScope((current) =>
+      scopePolicy === "OWN_ONLY"
+        ? { ...current, global: undefined, own_only: true }
+        : { ...current, own_only: undefined },
+    );
   }
 
   const scopeError =
-    type === "LOGIN" ? getScopeValidationError(scopeMode, dataScope, roleLabel) : null;
+    type === "LOGIN"
+      ? getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy)
+      : null;
   // ATTENDANCE must target at least a school, otherwise there is no roster to check.
   const locationError =
     type === "ATTENDANCE"
@@ -897,6 +905,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                 role={selectedRole}
                 roleLabel={roleLabel}
                 scopeMode={scopeMode}
+                scopePolicy={scopePolicy}
                 showErrors={form.formState.isSubmitted}
               />
             </>

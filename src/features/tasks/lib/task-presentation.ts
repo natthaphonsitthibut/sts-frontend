@@ -1,5 +1,8 @@
+import type { BadgeProps } from "../../../components/base";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
+import { isLinkLocked as isTaskLinkLocked } from "../../../lib/link-lock";
 import type { AttendanceTaskStatus } from "../types/task.types";
+import type { TaskChainLink } from "../types/task.types";
 
 export function formatDateTime(value?: string | null): string {
   return formatThaiDateTime(value);
@@ -38,7 +41,7 @@ export function getTaskTypeLabel(type?: string | null): string {
 
 export function getStatusLabel(status?: string | null): string {
   if (status === "ACTIVE") return "ใช้งานได้";
-  if (status === "LOCKED") return "ถูกปิด";
+  if (status === "LOCKED") return "ปิดอยู่";
   if (status === "EXPIRED") return "หมดอายุ";
   if (status === "COMPLETED") return "เสร็จสิ้น";
   if (status === "DELEGATED") return "ส่งต่อแล้ว";
@@ -48,6 +51,32 @@ export function getStatusLabel(status?: string | null): string {
   if (status === "AWAITING_HELP") return "รอช่วยเหลือ";
   if (status === "RESOLVED") return "ปิดเคส";
   return status || "-";
+}
+
+export interface TaskLinkDisplayStatus {
+  label: string;
+  variant: BadgeProps["variant"];
+  state: "ACTIVE" | "LOCKED" | "EXPIRED" | "COMPLETED" | "OTHER";
+}
+
+export function getTaskLinkDisplayStatus(link: TaskChainLink): TaskLinkDisplayStatus {
+  const hasSubmission = Boolean(link.submission?.submitted_at || link.submission);
+  if (link.status === "COMPLETED" || hasSubmission) {
+    return { label: "เสร็จสิ้น", variant: "success", state: "COMPLETED" };
+  }
+  const expiresAt = link.expires_at ? new Date(link.expires_at) : null;
+  if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+    return { label: "หมดอายุ", variant: "warning", state: "EXPIRED" };
+  }
+  if (isTaskLinkLocked(link.admin_locked)) {
+    return { label: "ปิดอยู่", variant: "destructive", state: "LOCKED" };
+  }
+
+  if (link.status === "ACTIVE") {
+    return { label: "ใช้งานได้", variant: "success", state: "ACTIVE" };
+  }
+
+  return { label: getStatusLabel(link.status), variant: "secondary", state: "OTHER" };
 }
 
 export function getAttendanceStatusLabel(status: AttendanceTaskStatus | string): string {
