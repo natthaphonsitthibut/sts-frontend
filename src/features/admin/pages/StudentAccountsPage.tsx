@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Copy, Download, KeyRound, Search, UserPlus } from "lucide-react";
 import {
@@ -198,15 +198,33 @@ function downloadTextFile(filename: string, content: string, type: string): void
   URL.revokeObjectURL(url);
 }
 
-function AccountGenerationProgress({ limit }: { limit: number }) {
+function AccountGenerationProgress({
+  limit,
+  progress,
+}: {
+  limit: number;
+  progress: number;
+}) {
   return (
     <Alert className="border-primary/20 bg-white">
       <div className="flex items-center justify-between gap-3">
         <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
-        <div className="shrink-0 text-sm font-bold text-primary">กำลังประมวลผล</div>
+        <div className="shrink-0 text-sm font-bold text-primary">
+          {Math.round(progress)}%
+        </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
+      <div
+        aria-label="กำลังประมวลผล"
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={Math.round(progress)}
+        className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+        role="progressbar"
+      >
+        <div
+          className="h-full w-full origin-left rounded-full bg-primary/70 transition-transform duration-200 ease-out"
+          style={{ transform: `scaleX(${progress / 100})` }}
+        />
       </div>
       <AlertDescription>
         กำลังสร้างสูงสุด {limit} คนในรอบนี้ ผลลัพธ์จะแสดงเมื่อเซิร์ฟเวอร์ทำงานเสร็จ
@@ -346,14 +364,14 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เริ่มใช้" /> },
         ]}
         columnWidths={[
-          "w-[15%]",
-          "w-[15%]",
-          "w-[10%]",
-          "w-[13%]",
-          "w-[13%]",
-          "w-[34%]",
+          "w-[14%]",
+          "w-[14%]",
+          "w-[8%]",
+          "w-[12%]",
+          "w-[20%]",
+          "w-[32%]",
         ]}
-        minWidthClassName="min-w-[980px]"
+        minWidthClassName="min-w-full"
         onSortChange={setSort}
         sort={sort}
       >
@@ -368,10 +386,10 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             <DataTableCell className="text-slate-600">
               {credential.grade ?? "-"} / {credential.room ?? "-"}
             </DataTableCell>
-            <DataTableCell className="font-mono text-sm text-slate-700">
+            <DataTableCell className="break-all font-mono text-sm leading-5 text-slate-700">
               {credential.username}
             </DataTableCell>
-            <DataTableCell className="font-mono text-sm font-bold text-slate-900">
+            <DataTableCell className="break-all font-mono text-sm font-bold leading-5 text-slate-900">
               {credential.tempPassword}
             </DataTableCell>
             <DataTableCell>
@@ -435,6 +453,7 @@ export function StudentAccountsPage() {
     scopeKey: string;
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
+  const [generationProgress, setGenerationProgress] = useState(0);
   const previewFilter = useMemo(
     () => buildFilter(scope, area, previewRowsPerPage, previewPage),
     [area, previewPage, previewRowsPerPage, scope],
@@ -451,6 +470,7 @@ export function StudentAccountsPage() {
   const generateMutation = useMutation({
     mutationFn: () => adminService.generateStudentAccounts(generateFilter),
     onSuccess: (result) => {
+      setGenerationProgress(100);
       setCredentialSession((current) => {
         const currentCredentials =
           current.scopeKey === accountScopeKey ? current.credentials : [];
@@ -466,6 +486,9 @@ export function StudentAccountsPage() {
         };
       });
       previewMutation.mutate(previewFilter);
+    },
+    onError: () => {
+      setGenerationProgress(0);
     },
   });
   const preview = previewMutation.data;
@@ -483,6 +506,27 @@ export function StudentAccountsPage() {
         : remainingAccountCount === 0
           ? "สร้างครบแล้ว"
           : "สร้างชุดถัดไป";
+
+  useEffect(() => {
+    if (!generateMutation.isPending) return;
+
+    const intervalId = window.setInterval(() => {
+      setGenerationProgress((current) => {
+        const cap = 92;
+        const distance = cap - current;
+        if (distance <= 0) return current;
+        const step = Math.max(distance * 0.06, 0.15);
+        return Math.min(current + step, cap);
+      });
+    }, 120);
+
+    return () => window.clearInterval(intervalId);
+  }, [generateMutation.isPending]);
+
+  function generateStudentAccounts(): void {
+    setGenerationProgress(12);
+    generateMutation.mutate();
+  }
 
   async function copyCredentials(): Promise<void> {
     if (generatedCredentials.length === 0) return;
@@ -565,7 +609,7 @@ export function StudentAccountsPage() {
                   generateMutation.isPending
                 }
                 icon={UserPlus}
-                onClick={() => generateMutation.mutate()}
+                onClick={generateStudentAccounts}
               >
                 {generateButtonLabel}
               </Button>
@@ -688,7 +732,7 @@ export function StudentAccountsPage() {
         <>
           {generateMutation.isPending ? (
             <div className="mb-5">
-              <AccountGenerationProgress limit={limit} />
+              <AccountGenerationProgress limit={limit} progress={generationProgress} />
             </div>
           ) : null}
 
@@ -736,7 +780,7 @@ export function StudentAccountsPage() {
               <ErrorState
                 title="สร้างบัญชีไม่สำเร็จ"
                 description={getStudentAccountErrorMessage(generateMutation.error)}
-                onRetry={() => generateMutation.mutate()}
+                onRetry={generateStudentAccounts}
               />
             </div>
           ) : null}
