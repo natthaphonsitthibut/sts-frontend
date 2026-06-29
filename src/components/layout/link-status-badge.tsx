@@ -9,12 +9,12 @@ export interface LinkStatusBadgeProps {
 
 /**
  * Shared status badge for every link table (login links, attendance/visit
- * links). Fixed min width + centred text so toggling open/closed — labels of
+ * links). Fixed width + centred text so toggling open/closed — labels of
  * different glyph counts — never changes the cell width and shifts the table.
  */
 export function LinkStatusBadge({ label, variant, className }: LinkStatusBadgeProps) {
   return (
-    <Badge variant={variant} className={cn("min-w-[96px] justify-center", className)}>
+    <Badge variant={variant} className={cn("w-[96px] justify-center", className)}>
       {label}
     </Badge>
   );

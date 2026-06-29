@@ -168,8 +168,8 @@ export function LoginLinksPage() {
         <SummaryMetrics
           items={[
             { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
-            { label: "ใช้งานอยู่", value: summary.active, tone: "success", icon: CheckCircle2 },
-            { label: "ถูกปิด", value: summary.locked, tone: "danger", icon: Lock },
+            { label: "ใช้งานได้", value: summary.active, tone: "success", icon: CheckCircle2 },
+            { label: "ปิดอยู่", value: summary.locked, tone: "danger", icon: Lock },
             { label: "หมดอายุ", value: summary.expired, tone: "warning", icon: Clock },
           ]}
         />

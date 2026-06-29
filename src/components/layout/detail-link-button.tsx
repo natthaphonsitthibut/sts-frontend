@@ -26,7 +26,7 @@ export function DetailLinkButton({
 }: DetailLinkButtonProps) {
   return (
     <Link
-      className={cn(buttonVariants({ variant, size }), "whitespace-nowrap", className)}
+      className={cn(buttonVariants({ variant, size }), "shrink-0 whitespace-nowrap", className)}
       {...props}
     >
       <Eye className="size-4" aria-hidden="true" />

@@ -23,6 +23,7 @@ interface RoleCatalogEntry {
   label?: string;
   default_permissions?: string[];
   scope_mode?: RoleOption["scope_mode"];
+  scope_policy?: RoleOption["scope_policy"];
 }
 
 export interface LoginLinksResult extends PaginatedResult<LoginLink> {
@@ -97,6 +98,7 @@ async function getRoleOptions(): Promise<RoleOption[]> {
     label: role.label || role.name,
     default_permissions: role.default_permissions ?? [],
     scope_mode: role.scope_mode ?? "flexible",
+    scope_policy: role.scope_policy ?? "ASSIGNABLE",
   }));
 }
 

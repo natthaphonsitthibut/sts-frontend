@@ -5,6 +5,7 @@ import type { LoginLink } from "../types/login-links.types";
 
 type LoginLinkLockInput = Pick<LoginLink, "admin_locked">;
 type LoginLinkStateInput = Pick<LoginLink, "admin_locked" | "expires_at">;
+type LoginLinkOutcomeInput = Pick<LoginLink, "admin_locked" | "first_used_at">;
 
 /** The login magic link is the task link with /task/ swapped for /login/magic/. */
 export function getLoginLinkUrl(magicLink: string): string {
@@ -33,36 +34,31 @@ interface LoginLinkStatusMeta {
 export function getLoginLinkState(
   link: LoginLinkStateInput,
 ): "ACTIVE" | "LOCKED" | "EXPIRED" {
-  if (isLoginLinkLocked(link)) {
-    return "LOCKED";
-  }
   const expiresAt = new Date(link.expires_at);
   if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
     return "EXPIRED";
+  }
+  if (isLoginLinkLocked(link)) {
+    return "LOCKED";
   }
   return "ACTIVE";
 }
 
 export const LOGIN_LINK_STATE_OPTIONS = [
   { value: "ALL", label: "ทั้งหมด" },
-  { value: "ACTIVE", label: "ใช้งานอยู่" },
-  { value: "LOCKED", label: "ถูกปิด" },
+  { value: "ACTIVE", label: "ใช้งานได้" },
+  { value: "LOCKED", label: "ปิดอยู่" },
   { value: "EXPIRED", label: "หมดอายุ" },
 ] as const;
 
-export function getLoginLinkStatusMeta(link: LoginLinkStateInput): LoginLinkStatusMeta {
+export function getLoginLinkStatusMeta(link: LoginLinkOutcomeInput): LoginLinkStatusMeta {
+  if (link.first_used_at) {
+    return { label: "เข้าใช้แล้ว", variant: "success" };
+  }
   if (isLoginLinkLocked(link)) {
-    return { label: "ถูกปิด", variant: "destructive" };
+    return { label: "ปิดอยู่", variant: "destructive" };
   }
-
-  const expiresAt = new Date(link.expires_at);
-  const isExpired =
-    !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now();
-  if (isExpired) {
-    return { label: "หมดอายุ", variant: "secondary" };
-  }
-
-  return { label: "ใช้งานอยู่", variant: "success" };
+  return { label: "ยังไม่เข้าใช้", variant: "secondary" };
 }
 
 export function formatLoginLinkDateTime(value: string): string {

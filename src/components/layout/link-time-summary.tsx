@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Badge, type BadgeProps } from "../base";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../lib/date-time";
 import { cn } from "../../lib/utils";
 import type { DataTableSortState } from "./data-table";
@@ -11,6 +12,20 @@ interface LinkTimeSummaryProps {
   variant?: "stacked" | "columns";
 }
 
+function getRemainingBadge(
+  expiresAt?: string | null,
+): { label: string; variant: BadgeProps["variant"] } {
+  if (!expiresAt) return { label: "-", variant: "secondary" };
+  const expires = new Date(expiresAt);
+  if (Number.isNaN(expires.getTime())) return { label: "-", variant: "secondary" };
+  const remainingMs = expires.getTime() - Date.now();
+  if (remainingMs <= 0) return { label: "หมดอายุ", variant: "warning" };
+  return {
+    label: formatThaiTimeRemaining(expires),
+    variant: remainingMs <= 24 * 60 * 60 * 1_000 ? "warning" : "secondary",
+  };
+}
+
 export function LinkTimeSummary({
   className,
   expiresAt,
@@ -18,20 +33,30 @@ export function LinkTimeSummary({
   startsAt,
   variant = "stacked",
 }: LinkTimeSummaryProps) {
+  const remainingBadge = getRemainingBadge(expiresAt);
   const rows = [
     { label: startLabel, value: formatThaiDateTime(startsAt) },
     { label: "หมดอายุ", value: formatThaiDateTime(expiresAt) },
-    { label: "อายุที่เหลือ", value: formatThaiTimeRemaining(expiresAt) },
+    { label: "อายุที่เหลือ", value: remainingBadge.label },
   ];
 
   if (variant === "columns") {
     return (
-      <div className={cn("grid grid-cols-3 gap-3 text-xs leading-5", className)}>
+      <div className={cn("grid grid-cols-3 gap-2 text-xs leading-5", className)}>
         {rows.map((row) => (
           <div className="min-w-0" key={row.label}>
-            <div className="truncate font-medium tabular-nums text-slate-700">
-              {row.value}
-            </div>
+            {row.label === "อายุที่เหลือ" ? (
+              <Badge
+                className="min-w-[96px] justify-center whitespace-nowrap"
+                variant={remainingBadge.variant}
+              >
+                {row.value}
+              </Badge>
+            ) : (
+              <div className="whitespace-normal break-words font-medium tabular-nums text-slate-700">
+                {row.value}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -48,8 +73,17 @@ export function LinkTimeSummary({
       {rows.map((row) => (
         <div className="contents" key={row.label}>
           <dt className="font-semibold text-slate-400">{row.label}</dt>
-          <dd className="min-w-0 truncate font-medium tabular-nums text-slate-600">
-            {row.value}
+          <dd className="min-w-0 whitespace-normal break-words font-medium tabular-nums text-slate-600">
+            {row.label === "อายุที่เหลือ" ? (
+              <Badge
+                className="min-w-[96px] justify-center whitespace-nowrap"
+                variant={remainingBadge.variant}
+              >
+                {row.value}
+              </Badge>
+            ) : (
+              row.value
+            )}
           </dd>
         </div>
       ))}
@@ -90,7 +124,7 @@ export function LinkTimeHeader({
   return (
     <div className="space-y-1">
       <div className="text-center">ช่วงเวลา</div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {items.map((item) => {
           const isActiveSort = sort?.key === item.sortKey;
           const SortIcon = isActiveSort
@@ -109,7 +143,7 @@ export function LinkTimeHeader({
               onClick={() => onSortChange(getNextSortState(sort, item.sortKey))}
               type="button"
             >
-              <span className="truncate">{item.label}</span>
+              <span className="whitespace-normal">{item.label}</span>
               <SortIcon className="size-3.5 shrink-0" aria-hidden="true" />
             </button>
           );

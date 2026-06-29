@@ -14,6 +14,7 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
   getLoginLinkStatusMeta,
+  getLoginLinkState,
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
 import type { LoginLink } from "../types/login-links.types";
@@ -48,25 +49,28 @@ function LinkActions({
   onToggleLock,
 }: LoginLinkTableProps & { compact?: boolean; link: LoginLink }) {
   const locked = isLoginLinkLocked(link);
+  const linkState = getLoginLinkState(link);
+  const canToggleLink = linkState !== "EXPIRED";
   return (
     <div className="flex flex-nowrap items-center justify-center gap-2">
       <DetailLinkButton
         aria-label="ดูรายละเอียด"
-        className={compact ? "size-9 px-0" : undefined}
         to={`/login-links/${link.id}`}
-      >
-        {compact ? null : "ดูรายละเอียด"}
-      </DetailLinkButton>
-      <Button
-        aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
-        className={compact ? "size-9 min-w-0 px-0" : "min-w-[88px]"}
-        icon={locked ? LockOpen : Lock}
-        onClick={() => onToggleLock(link)}
-        size="sm"
-        variant={locked ? "outline" : "destructive"}
-      >
-        {compact ? null : locked ? "เปิด" : "ปิด"}
-      </Button>
+      />
+      {canToggleLink ? (
+        <Button
+          aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
+          className={compact ? "size-9 shrink-0 px-0" : "min-w-[88px]"}
+          icon={locked ? LockOpen : Lock}
+          onClick={() => onToggleLock(link)}
+          size="sm"
+          variant={locked ? "outline" : "destructive"}
+        >
+          {compact ? null : locked ? "เปิด" : "ปิด"}
+        </Button>
+      ) : compact ? (
+        <span className="size-9 shrink-0" aria-hidden="true" />
+      ) : null}
     </div>
   );
 }
@@ -95,10 +99,10 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
           "จัดการ",
         ]}
         columnWidths={[
-          "w-[22%]",
+          "w-[24%]",
           "w-[13%]",
           "w-[13%]",
-          "w-[36%]",
+          "w-[34%]",
           "w-[16%]",
         ]}
         minWidthClassName="min-w-full"
@@ -110,9 +114,6 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
             <DataTableCell>
               <div className="font-bold text-slate-800">
                 {link.assigned_to_name || "-"}
-              </div>
-              <div className="mt-0.5 text-xs text-slate-400">
-                {link.assigned_to_email || "-"}
               </div>
             </DataTableCell>
             <DataTableCell className="text-sm font-medium text-slate-600">

@@ -57,13 +57,13 @@ export function LinkLockToggleButton({
   return (
     <>
       <Button
-        className={cn("min-w-[88px]", className)}
+        className={cn("min-w-[112px]", className)}
         icon={isLocked ? LockOpen : Lock}
         variant={isLocked ? "outline" : "destructive"}
         isLoading={mutation.isPending}
         onClick={() => void handleClick()}
       >
-        {isLocked ? "เปิด" : "ปิด"}
+        {isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
       </Button>
       {dialog}
     </>

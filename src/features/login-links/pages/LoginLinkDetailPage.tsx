@@ -18,6 +18,7 @@ import {
   useLoginLinkDetail,
 } from "../hooks/useLoginLinks";
 import {
+  getLoginLinkState,
   getLoginLinkStatusMeta,
   getLoginLinkUrl,
 } from "../lib/login-links-presentation";
@@ -56,8 +57,10 @@ export function LoginLinkDetailPage() {
   }
 
   const status = getLoginLinkStatusMeta(link);
+  const linkState = getLoginLinkState(link);
   const url = getLoginLinkUrl(link.magic_link ?? "");
   const permissions = link.login_permissions ?? [];
+  const canToggleLink = linkState !== "EXPIRED";
 
   return (
     <PageShell>
@@ -67,11 +70,13 @@ export function LoginLinkDetailPage() {
         description={link.assigned_to_name ?? undefined}
         actions={
           <div className="flex flex-nowrap items-center gap-3">
-            <LinkLockToggleButton
-              linkId={link.link_id}
-              locked={link.admin_locked ?? 0}
-              invalidateKeys={[[LOGIN_LINKS_QUERY_KEY], [LOGIN_LINK_DETAIL_QUERY_KEY, id]]}
-            />
+            {canToggleLink ? (
+              <LinkLockToggleButton
+                linkId={link.link_id}
+                locked={link.admin_locked ?? 0}
+                invalidateKeys={[[LOGIN_LINKS_QUERY_KEY], [LOGIN_LINK_DETAIL_QUERY_KEY, id]]}
+              />
+            ) : null}
             <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
               ย้อนกลับ
             </Button>

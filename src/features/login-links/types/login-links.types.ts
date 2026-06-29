@@ -1,5 +1,5 @@
 import type { DataScope } from "../../auth/lib/permissions";
-import type { RoleScopeMode } from "../../admin/types/admin.types";
+import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
 
 export interface LoginLink {
   id: string;
@@ -10,6 +10,7 @@ export interface LoginLink {
   status: string;
   magic_link: string;
   created_at: string;
+  first_used_at?: string | null;
   admin_locked?: boolean | number;
   login_role?: string | null;
   login_role_label?: string | null;
@@ -73,6 +74,7 @@ export interface AdminLinkDetail {
   assigned_to_name: string | null;
   assigned_to_email: string | null;
   created_at?: string | null;
+  first_used_at?: string | null;
   school_name: string | null;
   target_grade: string | null;
   target_room: string | null;
@@ -91,4 +93,5 @@ export interface RoleOption {
   default_permissions: string[];
   /** Scope rule for this role — drives the scope guard in the editor. */
   scope_mode: RoleScopeMode;
+  scope_policy: RoleScopePolicy;
 }
