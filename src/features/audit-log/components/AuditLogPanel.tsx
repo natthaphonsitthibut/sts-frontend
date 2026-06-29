@@ -1,8 +1,7 @@
-import { Eye, Search } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   Badge,
-  Button,
   Input,
   Label,
   Select,
@@ -15,14 +14,19 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { EmptyState, ErrorState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
+import {
+  formatAuditLogDetails,
+  getAuditLogTargetLabel,
+} from "../lib/audit-log-presentation";
 import { useAuditLog } from "../hooks/useAuditLog";
-import type { AuditLogDetail, AuditLogDomain, AuditLogEntry } from "../types/audit-log.types";
+import type { AuditLogDomain, AuditLogEntry } from "../types/audit-log.types";
 
 interface AuditLogActionOption {
   value: string;
@@ -45,64 +49,13 @@ interface AuditLogPanelProps {
 
 const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
-const TARGET_TYPE_LABELS: Record<string, string> = {
-  case: "เคสช่วยเหลือ",
-  case_referral: "การส่งต่อเคส",
-  import: "การนำเข้าข้อมูล",
-  role_group: "กลุ่มสิทธิ์",
-  student_accounts: "บัญชีนักเรียน",
-  task: "ภารกิจ",
-  task_link: "ลิงก์ภารกิจ",
-  user: "ผู้ใช้งาน",
-};
-
-function getTargetLabel(entry: AuditLogEntry): string {
-  const targetType = entry.targetType
-    ? TARGET_TYPE_LABELS[entry.targetType] || entry.targetType
-    : null;
-  if (!entry.targetType && !entry.targetId) return "-";
-  if (!entry.targetId) return targetType || "-";
-  if (!entry.targetType) return entry.targetId;
-  return `${targetType}: ${entry.targetId}`;
-}
-
-function formatDetails(details: AuditLogDetail[]): string {
-  if (details.length === 0) return "-";
-  return details.map((detail) => `${detail.label}: ${String(detail.value)}`).join(" · ");
-}
-
 function getAuditLogSortValue(entry: AuditLogEntry, key: string): string {
   if (key === "time") return entry.createdAt;
   if (key === "action") return entry.actionLabel;
   if (key === "actor") return entry.actorLabel;
-  if (key === "reference") return getTargetLabel(entry);
-  if (key === "details") return formatDetails(entry.details);
+  if (key === "reference") return getAuditLogTargetLabel(entry);
+  if (key === "details") return formatAuditLogDetails(entry.details);
   return "";
-}
-
-function AuditLogDetailBlock({ entry }: { entry: AuditLogEntry }) {
-  return (
-    <dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-      <dt className="font-semibold text-slate-500">เวลา</dt>
-      <dd className="font-medium tabular-nums text-slate-800">
-        {formatThaiDateTime(entry.createdAt)}
-      </dd>
-      <dt className="font-semibold text-slate-500">ผู้ทำรายการ</dt>
-      <dd className="font-medium text-slate-800">{entry.actorLabel}</dd>
-      {entry.targetId ? (
-        <>
-          <dt className="font-semibold text-slate-500">อ้างอิง</dt>
-          <dd className="break-all font-medium text-slate-800">{getTargetLabel(entry)}</dd>
-        </>
-      ) : null}
-      {entry.details.map((detail) => (
-        <div className="contents" key={detail.label}>
-          <dt className="font-semibold text-slate-500">{detail.label}</dt>
-          <dd className="break-words font-medium text-slate-800">{String(detail.value)}</dd>
-        </div>
-      ))}
-    </dl>
-  );
 }
 
 function AuditLogFilters({
@@ -199,7 +152,6 @@ function AuditLogTable({
   showReferenceColumn: boolean;
 }) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const sortedEntries = useMemo(() => {
     if (!sort) return entries;
     return [...entries].sort((left, right) => {
@@ -210,12 +162,6 @@ function AuditLogTable({
       return sort.direction === "asc" ? result : -result;
     });
   }, [entries, sort]);
-  const columnCount =
-    4 + (showActionColumn ? 1 : 0) + (showReferenceColumn ? 1 : 0);
-
-  function toggleDetails(entryId: string): void {
-    setExpandedEntryId((current) => (current === entryId ? null : entryId));
-  }
 
   return (
     <>
@@ -234,58 +180,43 @@ function AuditLogTable({
         onSortChange={setSort}
         sort={sort}
       >
-        {sortedEntries.map((entry) => {
-          const expanded = expandedEntryId === entry.id;
-          return (
-            <Fragment key={entry.id}>
-              <DataTableRow>
-                <DataTableCell className="text-sm font-medium tabular-nums text-slate-600">
-                  {formatThaiDateTime(entry.createdAt)}
-                </DataTableCell>
-                {showActionColumn ? (
-                  <DataTableCell>
-                    <Badge variant="secondary">{entry.actionLabel}</Badge>
-                  </DataTableCell>
-                ) : null}
-                <DataTableCell className="font-semibold text-slate-800">
-                  {entry.actorLabel}
-                </DataTableCell>
-                {showReferenceColumn ? (
-                  <DataTableCell className="font-mono text-sm text-slate-600">
-                    {getTargetLabel(entry)}
-                  </DataTableCell>
-                ) : null}
-                <DataTableCell className="text-sm text-slate-600">
-                  {formatDetails(entry.details)}
-                </DataTableCell>
-                <DataTableCell>
-                  <div className="flex justify-end">
-                    <Button
-                      aria-expanded={expanded}
-                      icon={Eye}
-                      onClick={() => toggleDetails(entry.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      {expanded ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
-                    </Button>
-                  </div>
-                </DataTableCell>
-              </DataTableRow>
-              {expanded ? (
-                <DataTableRow className="bg-slate-50 hover:bg-slate-50">
-                  <DataTableCell className="h-auto py-4" colSpan={columnCount}>
-                    <AuditLogDetailBlock entry={entry} />
-                  </DataTableCell>
-                </DataTableRow>
-              ) : null}
-            </Fragment>
-          );
-        })}
+        {sortedEntries.map((entry) => (
+          <DataTableRow key={entry.id}>
+            <DataTableCell className="text-sm font-medium tabular-nums text-slate-600">
+              {formatThaiDateTime(entry.createdAt)}
+            </DataTableCell>
+            {showActionColumn ? (
+              <DataTableCell>
+                <Badge variant="secondary">{entry.actionLabel}</Badge>
+              </DataTableCell>
+            ) : null}
+            <DataTableCell className="font-semibold text-slate-800">
+              {entry.actorLabel}
+            </DataTableCell>
+            {showReferenceColumn ? (
+              <DataTableCell className="font-mono text-sm text-slate-600">
+                {getAuditLogTargetLabel(entry)}
+              </DataTableCell>
+            ) : null}
+            <DataTableCell className="text-sm text-slate-600">
+              {formatAuditLogDetails(entry.details)}
+            </DataTableCell>
+            <DataTableCell>
+              <div className="flex justify-end">
+                <DetailLinkButton
+                  className="min-w-[140px]"
+                  size="sm"
+                  to={`/audit-log/${entry.id}`}
+                >
+                  ดูรายละเอียด
+                </DetailLinkButton>
+              </div>
+            </DataTableCell>
+          </DataTableRow>
+        ))}
       </DataTable>
       <TableCardList>
         {sortedEntries.map((entry) => {
-          const expanded = expandedEntryId === entry.id;
           return (
             <TableCard key={entry.id} className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -296,24 +227,20 @@ function AuditLogTable({
               </div>
               <div className="text-sm font-semibold text-slate-900">{entry.actorLabel}</div>
               {showReferenceColumn ? (
-                <div className="font-mono text-sm text-slate-600">{getTargetLabel(entry)}</div>
-              ) : null}
-              <div className="text-sm text-slate-600">{formatDetails(entry.details)}</div>
-              {expanded ? (
-                <div className="rounded-md bg-slate-50 p-3">
-                  <AuditLogDetailBlock entry={entry} />
+                <div className="font-mono text-sm text-slate-600">
+                  {getAuditLogTargetLabel(entry)}
                 </div>
               ) : null}
+              <div className="text-sm text-slate-600">
+                {formatAuditLogDetails(entry.details)}
+              </div>
               <div className="flex justify-end">
-                <Button
-                  aria-expanded={expanded}
-                  icon={Eye}
-                  onClick={() => toggleDetails(entry.id)}
+                <DetailLinkButton
                   size="sm"
-                  variant="outline"
+                  to={`/audit-log/${entry.id}`}
                 >
-                  {expanded ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
-                </Button>
+                  ดูรายละเอียด
+                </DetailLinkButton>
               </div>
             </TableCard>
           );

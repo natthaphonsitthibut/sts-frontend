@@ -4,6 +4,7 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import {
   AdminAccessPage,
+  AuditLogDetailPage,
   AttendanceCheckInPage,
   AttendanceLinkDetailPage,
   AttendanceLinksDashboardPage,
@@ -167,6 +168,10 @@ export const router = createBrowserRouter([
       {
         path: "login-links/:id",
         element: protectedElement(<LoginLinkDetailPage />, "login-links"),
+      },
+      {
+        path: "audit-log/:id",
+        element: protectedElement(<AuditLogDetailPage />),
       },
       {
         path: "settings",

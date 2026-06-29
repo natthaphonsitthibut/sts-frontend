@@ -34,3 +34,11 @@ export function useAuditLog(query: AuditLogQuery): UseAuditLogResult {
     },
   };
 }
+
+export function useAuditLogEntry(id: string) {
+  return useQuery({
+    queryKey: [AUDIT_LOG_QUERY_KEY, "detail", id],
+    queryFn: () => auditLogService.getAuditLogEntry(id),
+    enabled: Boolean(id),
+  });
+}

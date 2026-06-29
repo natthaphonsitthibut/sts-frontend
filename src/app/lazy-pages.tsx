@@ -6,6 +6,11 @@ export const AdminAccessPage = lazy(() =>
     default: module.AdminAccessPage,
   })),
 );
+export const AuditLogDetailPage = lazy(() =>
+  import("../features/audit-log/pages/AuditLogDetailPage").then((module) => ({
+    default: module.AuditLogDetailPage,
+  })),
+);
 export const ChangePasswordPage = lazy(() =>
   import("../features/auth/pages/ChangePasswordPage").then((module) => ({
     default: module.ChangePasswordPage,

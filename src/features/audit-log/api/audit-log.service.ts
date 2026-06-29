@@ -5,6 +5,14 @@ import {
 } from "../../../lib/pagination";
 import type { AuditLogQuery, AuditLogResult, AuditLogEntry } from "../types/audit-log.types";
 
+interface DataEnvelope<T> {
+  data: T;
+}
+
+function unwrapData<T>(body: T | DataEnvelope<T>): T {
+  return body && typeof body === "object" && "data" in body ? body.data : body;
+}
+
 function buildAuditLogParams(query: AuditLogQuery): Record<string, string> {
   const params: Record<string, string> = toPaginationParams(query);
   params.domain = query.domain;
@@ -53,6 +61,14 @@ async function getAuditLog(query: AuditLogQuery): Promise<AuditLogResult> {
   };
 }
 
+async function getAuditLogEntry(id: string): Promise<AuditLogEntry> {
+  const response = await apiClient.get<AuditLogEntry | DataEnvelope<AuditLogEntry>>(
+    `/audit-log/${id}`,
+  );
+  return unwrapData(response.data);
+}
+
 export const auditLogService = {
   getAuditLog,
+  getAuditLogEntry,
 };
