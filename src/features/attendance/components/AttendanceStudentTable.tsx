@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -39,6 +39,8 @@ interface AttendanceRosterItem {
   student: AttendanceStudent;
   rosterNumber: number;
 }
+
+const ROLL_CALL_ADVANCE_DELAY_MS = 700;
 
 function StatusButton({
   status,
@@ -125,9 +127,14 @@ export function AttendanceStudentTable({
   const [viewMode, setViewMode] = useState<"list" | "roll-call">("list");
   const [activeRosterIndex, setActiveRosterIndex] = useState(0);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const advanceTimerRef = useRef<number | null>(null);
   const [reviewedStudentIds, setReviewedStudentIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [pendingAdvance, setPendingAdvance] = useState<{
+    studentId: string;
+    status: AttendanceSelectionStatus;
+  } | null>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<{
     studentId: string | null;
     reviewedStudentIds: Set<string>;
@@ -166,11 +173,25 @@ export function AttendanceStudentTable({
     visibleStudents.length - reviewedVisibleCount,
     0,
   );
+  const pendingStatusMeta = pendingAdvance
+    ? ATTENDANCE_STATUS_META[pendingAdvance.status]
+    : null;
+  const PendingStatusIcon = pendingStatusMeta?.icon;
+
+  useEffect(
+    () => () => {
+      if (advanceTimerRef.current) {
+        window.clearTimeout(advanceTimerRef.current);
+      }
+    },
+    [],
+  );
 
   function handleStatusChange(
     studentId: string,
     status: AttendanceSelectionStatus,
   ): void {
+    if (pendingAdvance) return;
     setUndoSnapshot({
       studentId,
       reviewedStudentIds: new Set(reviewedStudentIds),
@@ -179,9 +200,14 @@ export function AttendanceStudentTable({
     setReviewedStudentIds((current) => new Set(current).add(studentId));
 
     if (viewMode === "roll-call") {
-      setActiveRosterIndex(
-        Math.min(safeActiveRosterIndex + 1, Math.max(visibleStudents.length - 1, 0)),
-      );
+      setPendingAdvance({ studentId, status });
+      advanceTimerRef.current = window.setTimeout(() => {
+        setActiveRosterIndex(
+          Math.min(safeActiveRosterIndex + 1, Math.max(visibleStudents.length - 1, 0)),
+        );
+        setPendingAdvance(null);
+        advanceTimerRef.current = null;
+      }, ROLL_CALL_ADVANCE_DELAY_MS);
     }
   }
 
@@ -195,6 +221,11 @@ export function AttendanceStudentTable({
   }
 
   function handleUndo(): void {
+    if (advanceTimerRef.current) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+    setPendingAdvance(null);
     onUndo?.();
     if (undoSnapshot) {
       setReviewedStudentIds(new Set(undoSnapshot.reviewedStudentIds));
@@ -245,8 +276,10 @@ export function AttendanceStudentTable({
     );
   }
 
-  function renderStatusControls(student: AttendanceStudent) {
-    const current = selections[student.id] ?? "P_PRESENT";
+  function renderStatusControls(student: AttendanceStudent, showDefaultStatus = true) {
+    const current = selections[student.id] ?? (showDefaultStatus ? "P_PRESENT" : undefined);
+    const controlsDisabled =
+      disabled || Boolean(pendingAdvance && pendingAdvance.studentId === student.id);
     return (
       <div className="flex flex-wrap gap-2 lg:justify-end">
         {ATTENDANCE_RECORD_STATUSES.map((status) => (
@@ -255,7 +288,7 @@ export function AttendanceStudentTable({
             isActive={current === status}
             onClick={() => handleStatusChange(student.id, status)}
             status={status}
-            disabled={disabled}
+            disabled={controlsDisabled}
           />
         ))}
       </div>
@@ -295,7 +328,7 @@ export function AttendanceStudentTable({
           </div>
         </div>
 
-        {renderStatusControls(student)}
+        {renderStatusControls(student, !isRollCall)}
       </div>
     );
   }
@@ -389,7 +422,7 @@ export function AttendanceStudentTable({
             </div>
             <div className="flex gap-2">
               <Button
-                disabled={safeActiveRosterIndex === 0}
+                disabled={Boolean(pendingAdvance) || safeActiveRosterIndex === 0}
                 icon={ChevronLeft}
                 onClick={() =>
                   setActiveRosterIndex(Math.max(safeActiveRosterIndex - 1, 0))
@@ -400,7 +433,10 @@ export function AttendanceStudentTable({
                 ก่อนหน้า
               </Button>
               <Button
-                disabled={safeActiveRosterIndex >= visibleStudents.length - 1}
+                disabled={
+                  Boolean(pendingAdvance) ||
+                  safeActiveRosterIndex >= visibleStudents.length - 1
+                }
                 icon={ChevronRight}
                 onClick={() =>
                   setActiveRosterIndex(
@@ -413,6 +449,23 @@ export function AttendanceStudentTable({
                 ถัดไป
               </Button>
             </div>
+          </div>
+          <div className="mb-3 min-h-9" aria-live="polite">
+            {pendingStatusMeta ? (
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-bold",
+                  pendingStatusMeta.displayClass,
+                )}
+              >
+                {PendingStatusIcon ? (
+                  <PendingStatusIcon className="size-4" aria-hidden="true" />
+                ) : null}
+                บันทึก {pendingStatusMeta.label}
+              </div>
+            ) : (
+              <div className="h-9" />
+            )}
           </div>
           {renderStudentCard(
             activeRosterItem.student,

@@ -133,6 +133,40 @@ export interface AttendanceReconciliationResponse {
   summary: { completed: number; missing: number; incomplete: number };
 }
 
+export type AttendanceSessionAnomalyType =
+  | "HOLIDAY_ATTENDANCE"
+  | "CANCELLED_ATTENDANCE"
+  | "OUT_OF_TERM"
+  | "MISSING_CALENDAR_DAY";
+
+export interface AttendanceSessionAnomalyItem {
+  sessionId: string;
+  date: string;
+  gradeLevelId: number;
+  grade: string;
+  room: number;
+  expectedRosterCount: number;
+  recordedCount: number;
+  sessionStatus: AttendanceSessionStatus;
+  revision: number;
+  dayType: CalendarDayType | null;
+  calendarReason: string | null;
+  anomalyType: AttendanceSessionAnomalyType;
+}
+
+export interface AttendanceSessionAnomaliesResponse {
+  rows: AttendanceSessionAnomalyItem[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  summary: {
+    holidayAttendance: number;
+    cancelledAttendance: number;
+    outOfTerm: number;
+    missingCalendarDay: number;
+  };
+}
+
 export interface AttendanceTask {
   task_id: string;
   task_type: string;
@@ -141,11 +175,18 @@ export interface AttendanceTask {
   target_school_id: string | number | null;
   target_school_name: string | null;
   link_assigned_to: string | null;
+  link_assigned_to_email?: string | null;
   active_link: string | null;
   active_link_created_at?: string | null;
   active_link_expires_at?: string | null;
   active_link_locked: boolean;
   active_link_id: string | null;
+  link_state?: Exclude<AttendanceTaskLinkStatus, "ALL"> | null;
+  attendance_session_id?: string | null;
+  attendance_session_status?: AttendanceSessionStatus | null;
+  attendance_expected_roster_count?: number | string | null;
+  attendance_recorded_count?: number | string | null;
+  attendance_check_status?: "COMPLETED" | "NOT_CHECKED" | null;
   created_at: string;
 }
 

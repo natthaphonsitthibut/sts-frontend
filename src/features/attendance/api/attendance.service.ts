@@ -9,6 +9,7 @@ import type {
   AttendanceReconciliationResponse,
   AttendanceSaveRecord,
   AttendanceSaveResponse,
+  AttendanceSessionAnomaliesResponse,
   AttendanceStudent,
   AttendanceStudentQuery,
   AttendanceSessionContext,
@@ -64,6 +65,11 @@ interface AttendanceService {
     page?: number;
     limit?: number;
   }) => Promise<AttendanceReconciliationResponse>;
+  getReconciliationAnomalies: (query: {
+    termId: string;
+    page?: number;
+    limit?: number;
+  }) => Promise<AttendanceSessionAnomaliesResponse>;
 }
 
 const ATTENDANCE_TASK_TYPE = "ATTENDANCE";
@@ -350,6 +356,18 @@ async function getReconciliation(query: {
   return response.data;
 }
 
+async function getReconciliationAnomalies(query: {
+  termId: string;
+  page?: number;
+  limit?: number;
+}): Promise<AttendanceSessionAnomaliesResponse> {
+  const response = await apiClient.get<AttendanceSessionAnomaliesResponse>(
+    "/attendance/reconciliation/anomalies",
+    { params: query },
+  );
+  return response.data;
+}
+
 export const attendanceService: AttendanceService = {
   getStudents,
   getHistory,
@@ -364,4 +382,5 @@ export const attendanceService: AttendanceService = {
   getCalendar,
   updateCalendarDay,
   getReconciliation,
+  getReconciliationAnomalies,
 };

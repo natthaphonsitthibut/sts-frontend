@@ -34,6 +34,8 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  TableCard,
+  TableCardList,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
@@ -59,6 +61,8 @@ import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
 import { getTodayIso } from "../lib/attendance-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import type {
+  AttendanceSessionAnomalyItem,
+  AttendanceSessionAnomalyType,
   AttendanceReconciliationItem,
   CalendarDayType,
   SchoolCalendarDay,
@@ -90,6 +94,16 @@ const CALENDAR_DAY_META: Record<
   SCHOOL_DAY: { label: "วันเรียน", variant: "success" },
   HOLIDAY: { label: "วันหยุด", variant: "secondary" },
   CANCELLED: { label: "ยกเลิกการเรียน", variant: "warning" },
+};
+
+const ANOMALY_META: Record<
+  AttendanceSessionAnomalyType,
+  { label: string; variant: "secondary" | "warning" | "destructive" }
+> = {
+  HOLIDAY_ATTENDANCE: { label: "เช็คชื่อในวันหยุด", variant: "warning" },
+  CANCELLED_ATTENDANCE: { label: "เช็คชื่อในวันยกเลิกเรียน", variant: "warning" },
+  OUT_OF_TERM: { label: "เช็คชื่อนอกช่วงภาคเรียน", variant: "destructive" },
+  MISSING_CALENDAR_DAY: { label: "ไม่มี calendar day", variant: "secondary" },
 };
 
 const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
@@ -206,6 +220,32 @@ function compareReconciliationRows(
       STATUS_META[left.operationalStatus].label,
       STATUS_META[right.operationalStatus].label,
     );
+  }
+  return 0;
+}
+
+function compareAnomalyRows(
+  left: AttendanceSessionAnomalyItem,
+  right: AttendanceSessionAnomalyItem,
+  key: string,
+): number {
+  if (key === "date") {
+    return compareText(left.date, right.date);
+  }
+  if (key === "class") {
+    return compareText(`${left.grade}/${left.room}`, `${right.grade}/${right.room}`);
+  }
+  if (key === "type") {
+    return compareText(
+      ANOMALY_META[left.anomalyType].label,
+      ANOMALY_META[right.anomalyType].label,
+    );
+  }
+  if (key === "recorded") {
+    return compareNumber(left.recordedCount, right.recordedCount);
+  }
+  if (key === "revision") {
+    return compareNumber(left.revision, right.revision);
   }
   return 0;
 }
@@ -348,7 +388,10 @@ export function AttendanceOperationsPage() {
   const [calendarDate, setCalendarDate] = useState(getTodayIso());
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [anomalyPage, setAnomalyPage] = useState(1);
+  const [anomalyRowsPerPage, setAnomalyRowsPerPage] = useState(10);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [anomalySort, setAnomalySort] = useState<DataTableSortState | undefined>();
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [calendarEdit, setCalendarEdit] = useState<{
@@ -420,6 +463,22 @@ export function AttendanceOperationsPage() {
     ),
     placeholderData: keepPreviousData,
   });
+  const anomalyQuery = useQuery({
+    queryKey: [
+      "attendance-reconciliation-anomalies",
+      selectedTermId,
+      anomalyPage,
+      anomalyRowsPerPage,
+    ],
+    queryFn: () =>
+      attendanceService.getReconciliationAnomalies({
+        termId: selectedTermId,
+        page: anomalyPage,
+        limit: anomalyRowsPerPage,
+      }),
+    enabled: Boolean(selectedTermId && !reconciliationTermInactive),
+    placeholderData: keepPreviousData,
+  });
 
   const termMutation = useMutation({
     mutationFn: (values: SchoolTermFormValues) => {
@@ -436,6 +495,7 @@ export function AttendanceOperationsPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["attendance-terms", schoolId] }),
         queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
       ]);
     },
   });
@@ -447,6 +507,7 @@ export function AttendanceOperationsPage() {
         queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
         queryClient.invalidateQueries({ queryKey: ["attendance-terms", schoolId] }),
         queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
       ]);
     },
   });
@@ -463,6 +524,7 @@ export function AttendanceOperationsPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
         queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
       ]);
     },
   });
@@ -483,6 +545,23 @@ export function AttendanceOperationsPage() {
       return sort.direction === "asc" ? result : -result;
     });
   }, [rows, sort]);
+  const anomalySummary = anomalyQuery.data?.summary ?? {
+    holidayAttendance: 0,
+    cancelledAttendance: 0,
+    outOfTerm: 0,
+    missingCalendarDay: 0,
+  };
+  const anomalyRows = useMemo(
+    () => anomalyQuery.data?.rows ?? [],
+    [anomalyQuery.data?.rows],
+  );
+  const sortedAnomalyRows = useMemo(() => {
+    if (!anomalySort) return anomalyRows;
+    return [...anomalyRows].sort((a, b) => {
+      const result = compareAnomalyRows(a, b, anomalySort.key);
+      return anomalySort.direction === "asc" ? result : -result;
+    });
+  }, [anomalyRows, anomalySort]);
   const reconciliationNotice = reconciliationTermInactive
     ? {
         title: "ภาคเรียนยังไม่เปิดใช้งาน",
@@ -514,6 +593,7 @@ export function AttendanceOperationsPage() {
     setSchoolInput(value);
     setTermInput("");
     setPage(1);
+    setAnomalyPage(1);
   }
 
   function handleDateChange(value: string): void {
@@ -908,7 +988,6 @@ export function AttendanceOperationsPage() {
                   { label: "สถานะ", sortKey: "status" },
                 ]}
                 onSortChange={setSort}
-                responsive={false}
                 sort={sort}
               >
                 {sortedRows.map((row) => {
@@ -924,6 +1003,28 @@ export function AttendanceOperationsPage() {
                   );
                 })}
               </DataTable>
+              <TableCardList>
+                {sortedRows.map((row) => {
+                  const meta = STATUS_META[row.operationalStatus];
+                  return (
+                    <TableCard key={`${row.gradeLevelId}-${row.room}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-base font-bold text-slate-900">
+                            {row.grade} / {row.room}
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
+                            <span>รายชื่อ {row.expectedRosterCount}</span>
+                            <span>บันทึกแล้ว {row.recordedCount}</span>
+                            <span>รอบ {row.revision ?? "-"}</span>
+                          </div>
+                        </div>
+                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                      </div>
+                    </TableCard>
+                  );
+                })}
+              </TableCardList>
               <Pagination
                 page={page}
                 onPageChange={setPage}
@@ -934,6 +1035,139 @@ export function AttendanceOperationsPage() {
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={PAGE_SIZE_OPTIONS}
                 totalCount={reconciliationQuery.data?.totalCount ?? 0}
+              />
+            </>
+          )}
+
+          <Card className="p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">รายการผิดปกติ</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  ตรวจ session ที่มีการเช็คชื่อแต่ไม่ตรงกับปฏิทินภาคเรียนที่เปิดใช้งาน
+                </p>
+              </div>
+              <Badge variant={anomalyQuery.data?.totalCount ? "warning" : "secondary"}>
+                {anomalyQuery.data?.totalCount ?? 0} รายการ
+              </Badge>
+            </div>
+          </Card>
+
+          <SummaryMetrics
+            items={[
+              {
+                label: "วันหยุด",
+                value: anomalySummary.holidayAttendance,
+                tone: "warning",
+                icon: CalendarDays,
+              },
+              {
+                label: "ยกเลิกเรียน",
+                value: anomalySummary.cancelledAttendance,
+                tone: "warning",
+                icon: CircleAlert,
+              },
+              {
+                label: "นอกภาคเรียน",
+                value: anomalySummary.outOfTerm,
+                tone: "danger",
+                icon: Clock3,
+              },
+              {
+                label: "ไม่มี calendar day",
+                value: anomalySummary.missingCalendarDay,
+                tone: "info",
+                icon: CalendarDays,
+              },
+            ]}
+          />
+
+          {reconciliationTermInactive ? (
+            <EmptyState icon={CalendarDays} title="เปิดใช้งานภาคเรียนก่อนตรวจรายการผิดปกติ" />
+          ) : anomalyQuery.isError ? (
+            <ErrorState
+              title="ไม่สามารถโหลดรายการผิดปกติได้"
+              description={getApiErrorMessage(
+                anomalyQuery.error,
+                "เกิดข้อผิดพลาดระหว่างโหลดข้อมูล กรุณาลองใหม่อีกครั้ง",
+              )}
+              onRetry={() => void anomalyQuery.refetch()}
+            />
+          ) : anomalyQuery.isLoading ? (
+            <SkeletonTable />
+          ) : sortedAnomalyRows.length === 0 ? (
+            <EmptyState icon={CheckCircle2} title="ไม่พบรายการผิดปกติในภาคเรียนนี้" />
+          ) : (
+            <>
+              <DataTable
+                headings={[
+                  { label: "วันที่", sortKey: "date" },
+                  { label: "ชั้น / ห้อง", sortKey: "class" },
+                  { label: "ประเภท", sortKey: "type" },
+                  { label: "บันทึกแล้ว", sortKey: "recorded" },
+                  { label: "รอบบันทึก", sortKey: "revision" },
+                  { label: "หมายเหตุปฏิทิน" },
+                ]}
+                onSortChange={setAnomalySort}
+                sort={anomalySort}
+              >
+                {sortedAnomalyRows.map((row) => {
+                  const meta = ANOMALY_META[row.anomalyType];
+                  return (
+                    <DataTableRow key={row.sessionId}>
+                      <DataTableCell className="font-semibold tabular-nums text-slate-800">
+                        {formatThaiDate(row.date)}
+                      </DataTableCell>
+                      <DataTableCell className="font-bold">{row.grade} / {row.room}</DataTableCell>
+                      <DataTableCell><Badge variant={meta.variant}>{meta.label}</Badge></DataTableCell>
+                      <DataTableCell>{row.recordedCount} / {row.expectedRosterCount}</DataTableCell>
+                      <DataTableCell>{row.revision}</DataTableCell>
+                      <DataTableCell className="text-slate-500">
+                        {row.calendarReason || "-"}
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })}
+              </DataTable>
+              <TableCardList>
+                {sortedAnomalyRows.map((row) => {
+                  const meta = ANOMALY_META[row.anomalyType];
+                  return (
+                    <TableCard key={row.sessionId}>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold tabular-nums text-slate-800">
+                              {formatThaiDate(row.date)}
+                            </div>
+                            <div className="mt-1 text-sm font-bold text-slate-900">
+                              {row.grade} / {row.room}
+                            </div>
+                          </div>
+                          <Badge variant={meta.variant}>{meta.label}</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
+                          <span>บันทึกแล้ว {row.recordedCount} / {row.expectedRosterCount}</span>
+                          <span>รอบ {row.revision}</span>
+                        </div>
+                        {row.calendarReason ? (
+                          <div className="text-sm text-slate-500">{row.calendarReason}</div>
+                        ) : null}
+                      </div>
+                    </TableCard>
+                  );
+                })}
+              </TableCardList>
+              <Pagination
+                page={anomalyPage}
+                onPageChange={setAnomalyPage}
+                onRowsPerPageChange={(next) => {
+                  setAnomalyRowsPerPage(next);
+                  setAnomalyPage(1);
+                }}
+                rowsPerPage={anomalyRowsPerPage}
+                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                totalCount={anomalyQuery.data?.totalCount ?? 0}
               />
             </>
           )}
