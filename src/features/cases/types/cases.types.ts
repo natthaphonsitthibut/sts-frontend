@@ -33,6 +33,11 @@ export interface CaseRecord {
   reason_flagged?: string | null;
   status: CaseStatus;
   created_at: string;
+  active_link_id?: string | null;
+  active_link_created_at?: string | null;
+  active_link_expires_at?: string | null;
+  active_link_assigned_to?: string | null;
+  link_state?: "ACTIVE" | "LOCKED" | "EXPIRED" | "NONE" | null;
 }
 
 export interface CaseListQuery {

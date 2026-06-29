@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
   DataTable,
   DataTableCell,
@@ -71,8 +72,11 @@ function compareText(a: string | undefined, b: string | undefined): number {
 function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
   if (key === "student") return caseRecord.student_name || "";
   if (key === "reason") return getCaseReason(caseRecord.reason, caseRecord.reason_flagged);
+  if (key === "assignee") return caseRecord.active_link_assigned_to || "";
   if (key === "status") return caseRecord.status || "";
-  if (key === "date") return caseRecord.created_at || "";
+  if (key === "starts") return caseRecord.active_link_created_at || caseRecord.created_at || "";
+  if (key === "expires") return caseRecord.active_link_expires_at || "";
+  if (key === "remaining") return caseRecord.active_link_expires_at || "";
   return "";
 }
 
@@ -100,10 +104,20 @@ export function CaseTable({
         headings={[
           { label: "นักเรียน", sortKey: "student" },
           { label: "สาเหตุ", sortKey: "reason" },
+          { label: "ผู้รับลิงก์", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
-          { label: "วันที่", sortKey: "date" },
+          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
           "ดำเนินการ",
         ]}
+        columnWidths={[
+          "w-[16%]",
+          "w-[22%]",
+          "w-[14%]",
+          "w-[13%]",
+          "w-[20%]",
+          "w-[15%]",
+        ]}
+        minWidthClassName="min-w-full"
         onSortChange={setSort}
         sort={sort}
       >
@@ -120,11 +134,24 @@ export function CaseTable({
             <DataTableCell className="text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
             </DataTableCell>
+            <DataTableCell className="text-sm text-slate-600">
+              {caseRecord.active_link_assigned_to || "-"}
+            </DataTableCell>
             <DataTableCell>
               <CaseStatusBadge status={caseRecord.status} />
             </DataTableCell>
-            <DataTableCell className="text-sm font-medium text-slate-500">
-              {formatCaseDate(caseRecord.created_at)}
+            <DataTableCell>
+              {caseRecord.task_id ? (
+                <LinkTimeSummary
+                  expiresAt={caseRecord.active_link_expires_at}
+                  startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                  variant="columns"
+                />
+              ) : (
+                <span className="text-sm font-medium tabular-nums text-slate-500">
+                  {formatCaseDate(caseRecord.created_at)}
+                </span>
+              )}
             </DataTableCell>
             <DataTableCell className="text-right">
               <CaseAction
@@ -155,10 +182,25 @@ export function CaseTable({
             <p className="mt-3 text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
             </p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">
-                {formatCaseDate(caseRecord.created_at)}
-              </span>
+            {caseRecord.task_id ? (
+              <div className="mt-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-500">ผู้รับลิงก์:</span>{" "}
+                {caseRecord.active_link_assigned_to || "-"}
+              </div>
+            ) : null}
+            <div className="mt-3 rounded-md bg-slate-50 p-3">
+              {caseRecord.task_id ? (
+                <LinkTimeSummary
+                  startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                  expiresAt={caseRecord.active_link_expires_at}
+                />
+              ) : (
+                <span className="text-sm font-medium text-slate-500">
+                  {formatCaseDate(caseRecord.created_at)}
+                </span>
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-end">
               <CaseAction
                 canReviewCases={canReviewCases}
                 caseRecord={caseRecord}

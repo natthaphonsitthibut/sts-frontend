@@ -20,6 +20,10 @@
   --color-primary-dark: #163b8f;
   --color-primary-soft: #e8f0ff;
 
+  /* External channel brand */
+  --color-line: #06c755;
+  --color-line-hover: #05b94d;
+
   /* Gold — premium accent (status / highlight only) */
   --color-gold: #b7791f;
 

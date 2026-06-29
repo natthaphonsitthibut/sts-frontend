@@ -35,7 +35,7 @@ export const CASE_STATUS_META: Record<KnownCaseStatus, CaseStatusMeta> = {
     badgeClass: "bg-primary/10 text-primary",
   },
   AWAITING_HELP: {
-    label: "รอรับความช่วยเหลือจากหน่วยงาน",
+    label: "รอรับความช่วยเหลือ",
     badgeClass: "bg-warning-100 text-warning-700",
   },
   RESOLVED: {
