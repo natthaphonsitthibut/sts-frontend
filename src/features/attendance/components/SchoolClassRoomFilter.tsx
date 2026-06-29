@@ -3,9 +3,21 @@ import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
 import { SchoolAreaSchoolFilter } from "./SchoolAreaSchoolFilter";
 
+type SchoolClassRoomScope = Pick<
+  ReturnType<typeof useScopeCascade>,
+  | "grade"
+  | "gradeLevels"
+  | "gradeLocked"
+  | "room"
+  | "roomLocked"
+  | "rooms"
+  | "schoolId"
+  | "schoolLocked"
+>;
+
 interface SchoolClassRoomFilterProps {
   area: ReturnType<typeof useSchoolAreaFilter>;
-  scope: ReturnType<typeof useScopeCascade>;
+  scope: SchoolClassRoomScope;
   onSchoolChange: (value: string) => void;
   onGradeChange: (value: string) => void;
   onRoomChange: (value: string) => void;

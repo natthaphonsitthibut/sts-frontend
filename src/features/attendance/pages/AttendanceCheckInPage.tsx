@@ -14,9 +14,7 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Combobox,
   Input,
-  Label,
   Tabs,
   useConfirm,
 } from "../../../components/base";
@@ -36,7 +34,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import type { BadgeProps } from "../../../components/base";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
-import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
+import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
 import type {
@@ -62,7 +60,7 @@ const STATUS_BADGE_VARIANT: Record<
   NONE: "secondary",
 };
 
-const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
+const DATE_INPUT_CLASS_NAME = "sm:w-[180px] text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
 const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
@@ -79,21 +77,6 @@ function getHistorySortValue(record: AttendanceHistoryRecord, key: string): stri
   if (key === "status") return ATTENDANCE_STATUS_META[record.status].label;
   if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
   return "";
-}
-
-function ScopeField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
 }
 
 export function AttendanceCheckInPage() {
@@ -141,6 +124,28 @@ export function AttendanceCheckInPage() {
   } = checkIn;
 
   const newCases = saveState.data?.newCases ?? [];
+  const filterScope = useMemo(
+    () => ({
+      grade,
+      gradeLevels,
+      gradeLocked: scope.isGradeLocked,
+      room,
+      roomLocked: scope.isRoomLocked,
+      rooms,
+      schoolId,
+      schoolLocked: scope.isSchoolLocked,
+    }),
+    [
+      grade,
+      gradeLevels,
+      room,
+      rooms,
+      schoolId,
+      scope.isGradeLocked,
+      scope.isRoomLocked,
+      scope.isSchoolLocked,
+    ],
+  );
 
   async function handleSave(): Promise<void> {
     if (!students.length || saveState.isPending || !canEditAttendance) {
@@ -220,53 +225,33 @@ export function AttendanceCheckInPage() {
           />
         }
       >
-        <ToolbarControls className="sm:grid sm:grid-cols-2 sm:items-end lg:grid-cols-3 xl:grid-cols-7">
-          <SchoolAreaSchoolFilter
+        <ToolbarControls>
+          <SchoolClassRoomFilter
             area={schoolArea}
+            onGradeChange={setGrade}
+            onRoomChange={setRoom}
             onSchoolChange={setSchoolId}
-            schoolId={schoolId}
-            schoolLocked={scope.isSchoolLocked}
+            scope={filterScope}
           />
 
-          <ScopeField label="ระดับชั้น">
-            <Combobox
-              disabled={scope.isGradeLocked || !schoolId}
-              onChange={(next) => setGrade(next)}
-              options={[
-                { value: "", label: schoolId ? "เลือกชั้น" : "เลือกโรงเรียนก่อน" },
-                ...gradeLevels.map((level) => ({ value: level.label, label: level.label })),
-              ]}
-              searchable={false}
-              value={grade}
+          {tab === "today" ? (
+            <Input
+              aria-label="วันที่"
+              className={DATE_INPUT_CLASS_NAME}
+              type="date"
+              value={getTodayIso()}
+              readOnly
+              disabled
             />
-          </ScopeField>
-
-          <ScopeField label="ห้อง">
-            <Combobox
-              disabled={scope.isRoomLocked || !grade}
-              onChange={(next) => setRoom(next)}
-              options={[
-                { value: "", label: grade ? "เลือกห้อง" : "เลือกชั้นก่อน" },
-                ...rooms.map((roomOption) => ({ value: roomOption, label: `ห้อง ${roomOption}` })),
-              ]}
-              searchable={false}
-              value={room}
+          ) : (
+            <Input
+              aria-label="เลือกวันที่"
+              className={DATE_INPUT_CLASS_NAME}
+              type="date"
+              value={historyDate}
+              onChange={(event) => setHistoryDate(event.target.value)}
             />
-          </ScopeField>
-
-          <ScopeField label="วันที่">
-            {tab === "today" ? (
-              <Input aria-label="วันที่" type="date" value={getTodayIso()} readOnly disabled />
-            ) : (
-              <Input
-                aria-label="เลือกวันที่"
-                className={DATE_INPUT_CLASS_NAME}
-                type="date"
-                value={historyDate}
-                onChange={(event) => setHistoryDate(event.target.value)}
-              />
-            )}
-          </ScopeField>
+          )}
         </ToolbarControls>
       </PageToolbar>
 

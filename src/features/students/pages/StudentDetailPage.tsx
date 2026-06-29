@@ -7,27 +7,13 @@ import {
   PageShell,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { formatThaiDate } from "../../../lib/date-time";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
 import { useStudentCases } from "../hooks/useStudentCases";
 import type { StudentCase, StudentDetail } from "../types/students.types";
-
-function formatThaiDate(dateString: string): string {
-  if (!dateString) {
-    return "-";
-  }
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return dateString;
-  }
-  return date.toLocaleDateString("th-TH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function resolveFullName(student: StudentDetail | undefined): string {
   if (!student) {

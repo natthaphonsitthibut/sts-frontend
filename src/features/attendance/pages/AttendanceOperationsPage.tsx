@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -47,6 +47,7 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatThaiDate } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { cn } from "../../../lib/utils";
 import { hasPermission } from "../../auth/lib/permissions";
@@ -336,6 +337,7 @@ function CalendarMonthGrid({
 
 export function AttendanceOperationsPage() {
   const queryClient = useQueryClient();
+  const reconciliationDateInputRef = useRef<HTMLInputElement | null>(null);
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "settings");
@@ -385,10 +387,11 @@ export function AttendanceOperationsPage() {
       selectedTerm.endsOn &&
       (date < selectedTerm.startsOn || date > selectedTerm.endsOn),
   );
+  const reconciliationTermInactive = Boolean(selectedTerm && selectedTerm.status !== "ACTIVE");
   const waitingForReconciliationCalendar =
-    selectedTerm?.status === "ACTIVE" && calendarQuery.isLoading;
+    !reconciliationTermInactive && calendarQuery.isLoading;
   const reconciliationCalendarMissing = Boolean(
-    selectedTerm?.status === "ACTIVE" && calendarQuery.isSuccess && !reconciliationCalendarDay,
+    !reconciliationTermInactive && calendarQuery.isSuccess && !reconciliationCalendarDay,
   );
   const calendarDayType =
     calendarEdit && calendarEdit.calendarDayId === selectedCalendarDay?.id
@@ -410,6 +413,7 @@ export function AttendanceOperationsPage() {
     enabled: Boolean(
       selectedTermId &&
         date &&
+        !reconciliationTermInactive &&
         !reconciliationDateOutOfRange &&
         !waitingForReconciliationCalendar &&
         !reconciliationCalendarMissing,
@@ -479,10 +483,16 @@ export function AttendanceOperationsPage() {
       return sort.direction === "asc" ? result : -result;
     });
   }, [rows, sort]);
-  const reconciliationNotice = reconciliationDateOutOfRange
+  const reconciliationNotice = reconciliationTermInactive
+    ? {
+        title: "ภาคเรียนยังไม่เปิดใช้งาน",
+        description: "เปิดใช้งานภาคเรียนก่อนตรวจสถานะเช็คชื่อรายวันจริง",
+        variant: "warning" as const,
+      }
+    : reconciliationDateOutOfRange
     ? {
         title: "วันที่ตรวจสอบอยู่นอกช่วงภาคเรียน",
-        description: `เลือกวันที่ระหว่าง ${selectedTerm?.startsOn ?? "-"} ถึง ${selectedTerm?.endsOn ?? "-"}`,
+        description: `เลือกวันที่ระหว่าง ${formatThaiDate(selectedTerm?.startsOn)} ถึง ${formatThaiDate(selectedTerm?.endsOn)}`,
         variant: "warning" as const,
       }
     : reconciliationCalendarMissing
@@ -510,6 +520,16 @@ export function AttendanceOperationsPage() {
     setDate(value);
     setPage(1);
     setCalendarEdit(null);
+  }
+
+  function openReconciliationDatePicker(): void {
+    const input = reconciliationDateInputRef.current;
+    if (!input) return;
+    try {
+      input.showPicker();
+    } catch {
+      input.click();
+    }
   }
 
   return (
@@ -580,7 +600,7 @@ export function AttendanceOperationsPage() {
                         {TERM_STATUS_META[selectedTerm.status].label}
                       </Badge>
                       <span className="text-sm font-semibold text-slate-600">
-                        {selectedTerm.startsOn ?? "-"} ถึง {selectedTerm.endsOn ?? "-"}
+                        {formatThaiDate(selectedTerm.startsOn)} ถึง {formatThaiDate(selectedTerm.endsOn)}
                       </span>
                     </div>
                   </div>
@@ -647,7 +667,7 @@ export function AttendanceOperationsPage() {
                           <Badge variant="warning">ยังไม่มีข้อมูลวันที่นี้</Badge>
                         )}
                         <span className="text-sm font-semibold tabular-nums text-slate-600">
-                          {effectiveCalendarDate}
+                          {formatThaiDate(effectiveCalendarDate)}
                         </span>
                       </div>
                     </div>
@@ -682,7 +702,7 @@ export function AttendanceOperationsPage() {
                         <div className="text-xs font-semibold text-slate-500">วันที่เลือก</div>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="font-extrabold tabular-nums text-slate-900">
-                            {effectiveCalendarDate}
+                            {formatThaiDate(effectiveCalendarDate)}
                           </span>
                           {selectedCalendarDay ? (
                             <Badge variant={CALENDAR_DAY_META[calendarDayType].variant}>
@@ -768,7 +788,9 @@ export function AttendanceOperationsPage() {
               <div className="space-y-2">
                 <h2 className="text-base font-bold text-slate-900">ตรวจความครบถ้วน</h2>
                 <div className="flex flex-wrap items-center gap-2">
-                  {reconciliationCalendarDay ? (
+                  {reconciliationTermInactive ? (
+                    <Badge variant="warning">ยังไม่เปิดใช้งาน</Badge>
+                  ) : reconciliationCalendarDay ? (
                     <Badge variant={CALENDAR_DAY_META[reconciliationCalendarDay.dayType].variant}>
                       {CALENDAR_DAY_META[reconciliationCalendarDay.dayType].label}
                     </Badge>
@@ -780,7 +802,7 @@ export function AttendanceOperationsPage() {
                     <Badge variant="secondary">กำลังตรวจ</Badge>
                   )}
                   <span className="text-sm font-semibold tabular-nums text-slate-600">
-                    {date}
+                    {formatThaiDate(date)}
                   </span>
                 </div>
               </div>
@@ -793,15 +815,27 @@ export function AttendanceOperationsPage() {
                 >
                   ย้อนกลับ
                 </Button>
-                <Input
-                  aria-label="วันที่ตรวจสอบ"
-                  className={DATE_INPUT_CLASS_NAME}
-                  max={selectedTerm.endsOn ?? undefined}
-                  min={selectedTerm.startsOn ?? undefined}
-                  onChange={(event) => handleDateChange(event.target.value)}
-                  type="date"
-                  value={date}
-                />
+                <div className="relative">
+                  <Input
+                    ref={reconciliationDateInputRef}
+                    aria-label="วันที่ตรวจสอบ"
+                    className={cn("sr-only", DATE_INPUT_CLASS_NAME)}
+                    max={selectedTerm.endsOn ?? undefined}
+                    min={selectedTerm.startsOn ?? undefined}
+                    onChange={(event) => handleDateChange(event.target.value)}
+                    tabIndex={-1}
+                    type="date"
+                    value={date}
+                  />
+                  <Button
+                    aria-label="เลือกวันที่ตรวจสอบ"
+                    className="h-10 w-full justify-start px-3 text-left font-semibold tabular-nums text-slate-900"
+                    onClick={openReconciliationDatePicker}
+                    variant="outline"
+                  >
+                    {formatThaiDate(date)}
+                  </Button>
+                </div>
                 <Button
                   disabled={isAfterMaxDate(date, selectedTerm.endsOn)}
                   icon={ChevronRight}
@@ -826,7 +860,7 @@ export function AttendanceOperationsPage() {
                 ) : null}
               </div>
             ) : null}
-            <div className="mt-4 min-h-[3.75rem]">
+            <div className="mt-4 min-h-[5.5rem]">
               {reconciliationNotice ? (
                 <Alert className="p-3 shadow-none" variant={reconciliationNotice.variant}>
                   <AlertTitle>{reconciliationNotice.title}</AlertTitle>
@@ -844,7 +878,9 @@ export function AttendanceOperationsPage() {
             ]}
           />
 
-          {reconciliationDateOutOfRange || reconciliationCalendarMissing ? (
+          {reconciliationTermInactive ? (
+            <EmptyState icon={CalendarDays} title="เปิดใช้งานภาคเรียนก่อนตรวจสถานะ" />
+          ) : reconciliationDateOutOfRange || reconciliationCalendarMissing ? (
             <EmptyState icon={CalendarDays} title="ยังไม่มีข้อมูลให้ตรวจสำหรับวันที่นี้" />
           ) : waitingForReconciliationCalendar ? (
             <SkeletonTable />
