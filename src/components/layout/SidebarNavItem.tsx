@@ -31,7 +31,11 @@ export function SidebarNavItem({
 }: SidebarNavItemProps) {
   const location = useLocation();
   const hasActiveChild = Boolean(
-    item.children?.some((child) => child.route === location.pathname),
+    item.children?.some(
+      (child) =>
+        child.route === location.pathname ||
+        (child.route !== "/" && location.pathname.startsWith(`${child.route}/`)),
+    ),
   );
   const [open, setOpen] = useState(hasActiveChild);
   const expanded = open;

@@ -25,6 +25,7 @@ collectMenuTitles(MENU_ITEMS, MENU_TITLES);
 const EXTRA_TITLES: Record<string, string> = {
   "/cases": "เคสช่วยเหลือนักเรียน",
   "/admin-access": "เข้าสู่ระบบ",
+  "/audit-log": "รายละเอียดบันทึกการใช้งาน",
   "/forbidden": "ไม่มีสิทธิ์เข้าถึง",
 };
 
@@ -35,6 +36,10 @@ export function getPageTitle(pathname: string): string {
 
   if (pathname.startsWith("/students/")) {
     return "ข้อมูลนักเรียน";
+  }
+
+  if (pathname.startsWith("/audit-log/")) {
+    return EXTRA_TITLES["/audit-log"];
   }
 
   // /create/:type (per task type) keeps the same header as the /create menu item.

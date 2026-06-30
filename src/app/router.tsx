@@ -171,7 +171,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "audit-log/:id",
-        element: protectedElement(<AuditLogDetailPage />),
+        element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
       {
         path: "settings",

@@ -13,6 +13,7 @@ export interface MenuItem {
   id: string;
   label: string;
   iconName?: string;
+  permissionId?: string;
   route?: string;
   children?: MenuItem[];
 }
@@ -25,43 +26,6 @@ export const ROLE_RANKS: Record<string, number> = {
   EXECUTIVE: 3,
   DIRECTOR: 4,
   ADMIN: 5,
-};
-
-export const ROLE_BASELINES: Record<string, string[]> = {
-  ADMIN: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-student-accounts",
-    "manage-role-groups",
-    "login-links",
-    "settings",
-    "import-data",
-  ],
-  DIRECTOR: [
-    "home",
-    "dashboard",
-    "students",
-    "review-cases",
-    "close-case",
-    "forward-case",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-    "settings",
-  ],
-  EXECUTIVE: ["home", "dashboard", "students", "review-cases", "attendance-dashboard"],
-  TEACHER: ["home", "students", "attendance"],
-  STUDENT: ["home", "student-self"],
 };
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -98,7 +62,6 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "user-circle",
     route: "/my-attendance",
   },
-  { id: "create", label: "สร้างลิงก์", iconName: "link", route: "/create" },
   {
     id: "import-data",
     label: "นำเข้าข้อมูล",
@@ -111,16 +74,29 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "clipboard-check",
     children: [
       {
+        id: "attendance",
+        label: "เช็คชื่อ",
+        iconName: "edit",
+        route: "/attendance",
+      },
+      {
         id: "attendance-dashboard",
         label: "ลิงก์เช็คชื่อ",
         iconName: "chart-bar",
         route: "/attendance-dashboard",
       },
       {
-        id: "attendance",
-        label: "เช็คชื่อ",
-        iconName: "edit",
-        route: "/attendance",
+        id: "attendance-operations",
+        label: "ความครบถ้วน",
+        iconName: "clipboard-check",
+        permissionId: "attendance-dashboard",
+        route: "/attendance-operations",
+      },
+      {
+        id: "create",
+        label: "สร้างลิงก์",
+        iconName: "link",
+        route: "/create",
       },
     ],
   },
@@ -191,14 +167,14 @@ export function filterMenuItems(
     .map((item) => {
       if (item.children) {
         const filteredChildren = item.children.filter((child) =>
-          hasPermission(userPermissions, child.id),
+          hasPermission(userPermissions, child.permissionId ?? child.id),
         );
         return filteredChildren.length > 0
           ? { ...item, children: filteredChildren }
           : null;
       }
 
-      return hasPermission(userPermissions, item.id) ? item : null;
+      return hasPermission(userPermissions, item.permissionId ?? item.id) ? item : null;
     })
     .filter((item): item is MenuItem => item !== null);
 }
