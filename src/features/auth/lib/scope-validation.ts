@@ -124,22 +124,22 @@ export function getScopeValidationError(
       return `${roleLabel}ต้องเลือกจังหวัด 1 แห่ง`;
     }
     if (districts > 0 || subDistricts > 0 || schools > 0 || hasExtraSchoolFiltering) {
-      return `${roleLabel}ห้ามจำกัดอำเภอ ตำบล โรงเรียน ชั้น หรือห้อง`;
+      return `${roleLabel}ห้ามจำกัดอำเภอ/เขต ตำบล/แขวง โรงเรียน ชั้น หรือห้อง`;
     }
   }
 
   if (scopeMode === "district") {
     if (provinces !== 1 || districts !== 1) {
-      return `${roleLabel}ต้องเลือกจังหวัดและอำเภออย่างละ 1 รายการ`;
+      return `${roleLabel}ต้องเลือกจังหวัดและอำเภอ/เขตอย่างละ 1 รายการ`;
     }
     if (subDistricts > 0 || schools > 0 || hasExtraSchoolFiltering) {
-      return `${roleLabel}ห้ามจำกัดตำบล โรงเรียน ชั้น หรือห้อง`;
+      return `${roleLabel}ห้ามจำกัดตำบล/แขวง โรงเรียน ชั้น หรือห้อง`;
     }
   }
 
   if (scopeMode === "sub_district") {
     if (provinces !== 1 || districts !== 1 || subDistricts !== 1) {
-      return `${roleLabel}ต้องเลือกจังหวัด อำเภอ และตำบลอย่างละ 1 รายการ`;
+      return `${roleLabel}ต้องเลือกจังหวัด อำเภอ/เขต และตำบล/แขวงอย่างละ 1 รายการ`;
     }
     if (schools > 0 || hasExtraSchoolFiltering) {
       return `${roleLabel}ห้ามจำกัดโรงเรียน ชั้น หรือห้อง`;
@@ -148,7 +148,7 @@ export function getScopeValidationError(
 
   if (scopeMode === "school") {
     if (provinces !== 1 || districts !== 1 || subDistricts !== 1 || schools !== 1) {
-      return `${roleLabel}ต้องเลือกจังหวัด อำเภอ ตำบล และโรงเรียนอย่างละ 1 รายการ`;
+      return `${roleLabel}ต้องเลือกจังหวัด อำเภอ/เขต ตำบล/แขวง และโรงเรียนอย่างละ 1 รายการ`;
     }
     if (hasExtraSchoolFiltering) {
       return `${roleLabel}ห้ามจำกัดระดับชั้นหรือห้องเรียน`;

@@ -382,7 +382,7 @@ export function PermissionScopeEditor({
                 {fieldStates.districts !== "forbidden" ? (
                   <div className="space-y-2">
                     <Label htmlFor="scope-district">
-                      อำเภอ
+                      อำเภอ/เขต
                       {fieldStates.districts === "required" ? (
                         <span className="ml-1 text-red-600">*</span>
                       ) : null}
@@ -397,11 +397,11 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.districts === "required" ? "เลือกอำเภอ" : "ทั้งหมด",
+                          label: fieldStates.districts === "required" ? "เลือกอำเภอ/เขต" : "ทั้งหมด",
                         },
                         ...districts.map((district) => ({ value: district, label: district })),
                       ]}
-                      placeholder="ค้นหาอำเภอ"
+                      placeholder="ค้นหาอำเภอ/เขต"
                       value={selectedDistrict}
                     />
                   </div>
@@ -410,7 +410,7 @@ export function PermissionScopeEditor({
                 {fieldStates.sub_districts !== "forbidden" ? (
                   <div className="space-y-2">
                     <Label htmlFor="scope-sub-district">
-                      ตำบล
+                      ตำบล/แขวง
                       {fieldStates.sub_districts === "required" ? (
                         <span className="ml-1 text-red-600">*</span>
                       ) : null}
@@ -425,14 +425,14 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.sub_districts === "required" ? "เลือกตำบล" : "ทั้งหมด",
+                          label: fieldStates.sub_districts === "required" ? "เลือกตำบล/แขวง" : "ทั้งหมด",
                         },
                         ...subDistricts.map((subDistrict) => ({
                           value: subDistrict,
                           label: subDistrict,
                         })),
                       ]}
-                      placeholder="ค้นหาตำบล"
+                      placeholder="ค้นหาตำบล/แขวง"
                       value={selectedSubDistrict}
                     />
                   </div>

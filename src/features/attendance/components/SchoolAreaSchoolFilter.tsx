@@ -57,8 +57,8 @@ export function SchoolAreaSchoolFilter({
           area.setDistrict(next);
           clearSchool();
         }}
-        options={toOptions(area.districts, "ทุกอำเภอ")}
-        placeholder="ค้นหาอำเภอ"
+        options={toOptions(area.districts, "ทุกอำเภอ/เขต")}
+        placeholder="ค้นหาอำเภอ/เขต"
         value={area.district}
       />
       <Combobox
@@ -67,8 +67,8 @@ export function SchoolAreaSchoolFilter({
           area.setSubDistrict(next);
           clearSchool();
         }}
-        options={toOptions(area.subDistricts, "ทุกตำบล")}
-        placeholder="ค้นหาตำบล"
+        options={toOptions(area.subDistricts, "ทุกตำบล/แขวง")}
+        placeholder="ค้นหาตำบล/แขวง"
         value={area.subDistrict}
       />
       <Combobox
@@ -77,7 +77,7 @@ export function SchoolAreaSchoolFilter({
           schoolEmptyText ??
           (area.schoolsEnabled
             ? "ไม่พบโรงเรียน"
-            : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล")
+            : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง")
         }
         onChange={selectSchool}
         onSearchChange={area.setSchoolSearch}

@@ -63,6 +63,12 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/my-attendance",
   },
   {
+    id: "create",
+    label: "สร้างลิงก์",
+    iconName: "link",
+    route: "/create",
+  },
+  {
     id: "import-data",
     label: "นำเข้าข้อมูล",
     iconName: "file-import",
@@ -91,12 +97,6 @@ export const MENU_ITEMS: MenuItem[] = [
         iconName: "clipboard-check",
         permissionId: "attendance-dashboard",
         route: "/attendance-operations",
-      },
-      {
-        id: "create",
-        label: "สร้างลิงก์",
-        iconName: "link",
-        route: "/create",
       },
     ],
   },

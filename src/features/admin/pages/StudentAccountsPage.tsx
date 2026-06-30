@@ -869,31 +869,31 @@ export function StudentAccountsPage() {
                     value={area.province}
                   />
                 </ScopeField>
-                <ScopeField label="อำเภอ">
+                <ScopeField label="อำเภอ/เขต">
                   <Combobox
                     disabled={!area.province}
                     onChange={(next) => {
                       setAreaAndClearSchool("district", next);
                     }}
                     options={[
-                      { value: "", label: "ทุกอำเภอ" },
+                      { value: "", label: "ทุกอำเภอ/เขต" },
                       ...area.districts.map((name) => ({ value: name, label: name })),
                     ]}
-                    placeholder="ค้นหาอำเภอ"
+                    placeholder="ค้นหาอำเภอ/เขต"
                     value={area.district}
                   />
                 </ScopeField>
-                <ScopeField label="ตำบล">
+                <ScopeField label="ตำบล/แขวง">
                   <Combobox
                     disabled={!area.district}
                     onChange={(next) => {
                       setAreaAndClearSchool("subDistrict", next);
                     }}
                     options={[
-                      { value: "", label: "ทุกตำบล" },
+                      { value: "", label: "ทุกตำบล/แขวง" },
                       ...area.subDistricts.map((name) => ({ value: name, label: name })),
                     ]}
-                    placeholder="ค้นหาตำบล"
+                    placeholder="ค้นหาตำบล/แขวง"
                     value={area.subDistrict}
                   />
                 </ScopeField>
@@ -905,7 +905,7 @@ export function StudentAccountsPage() {
                 emptyText={
                   area.schoolsEnabled
                     ? "ไม่พบโรงเรียน"
-                    : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+                    : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง"
                 }
                 onChange={setSchool}
                 onSearchChange={area.setSchoolSearch}
