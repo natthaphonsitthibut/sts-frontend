@@ -10,6 +10,10 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import {
+  LinkTimeHeader,
+  LinkTimeSummary,
+} from "../../../components/layout/link-time-summary";
+import {
   getUserAvatarGradient,
   getUserDisplayName,
   getUserInitial,
@@ -115,6 +119,9 @@ function getUserSortValue(user: ManagedUser, key: string): string {
   if (key === "role") return getUserRoleText(user);
   if (key === "affiliation") return user.affiliation || "";
   if (key === "status") return getUserLifecycleStatus(user).label;
+  if (key === "starts") return user.temporary_password_issued_at ?? "";
+  if (key === "expires") return user.temporary_password_expires_at ?? "";
+  if (key === "remaining") return user.temporary_password_expires_at ?? "";
   return "";
 }
 
@@ -145,9 +152,18 @@ export function UserTable({
           { label: "ตำแหน่ง", sortKey: "role" },
           { label: "สังกัด", sortKey: "affiliation" },
           { label: "สถานะ", sortKey: "status" },
+          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
           "",
         ]}
-        minWidthClassName="min-w-[760px]"
+        columnWidths={[
+          "w-[24%]",
+          "w-[12%]",
+          "w-[16%]",
+          "w-[12%]",
+          "w-[28%]",
+          "w-[8%]",
+        ]}
+        minWidthClassName="min-w-[960px]"
         onSortChange={setSort}
         sort={sort}
       >
@@ -164,6 +180,13 @@ export function UserTable({
             </DataTableCell>
             <DataTableCell>
               <StatusBadge user={user} />
+            </DataTableCell>
+            <DataTableCell>
+              <LinkTimeSummary
+                expiresAt={user.temporary_password_expires_at}
+                startsAt={user.temporary_password_issued_at}
+                variant="columns"
+              />
             </DataTableCell>
             <DataTableCell>
               <RowActions
@@ -197,6 +220,12 @@ export function UserTable({
                 reissuingUserId={reissuingUserId}
                 user={user}
                 users={users}
+              />
+            </div>
+            <div className="mt-3 rounded-md bg-slate-50 p-3">
+              <LinkTimeSummary
+                expiresAt={user.temporary_password_expires_at}
+                startsAt={user.temporary_password_issued_at}
               />
             </div>
           </TableCard>
