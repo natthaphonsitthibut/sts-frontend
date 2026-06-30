@@ -6,6 +6,7 @@ export interface GeocodeResult {
   formattedAddress: string | null;
   locationType: string | null;
   placeId: string | null;
+  postalCode: string | null;
   provider: "google";
 }
 

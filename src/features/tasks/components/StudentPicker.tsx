@@ -51,9 +51,21 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   const canQuery = !manual && (Boolean(scope.schoolId) || term.length >= 2);
 
   const studentsQuery = useQuery({
-    queryKey: ["student-picker", scope.schoolId, scope.grade, scope.room, term],
+    queryKey: [
+      "student-picker",
+      area.province,
+      area.district,
+      area.subDistrict,
+      scope.schoolId,
+      scope.grade,
+      scope.room,
+      term,
+    ],
     queryFn: () =>
       studentsService.getStudents({
+        province: area.province || undefined,
+        district: area.district || undefined,
+        subDistrict: area.subDistrict || undefined,
         schoolId: scope.schoolId || undefined,
         grade: scope.grade || undefined,
         room: scope.room || undefined,
@@ -154,6 +166,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           icon={X}
           onClick={() => {
             onChange(null);
+            setSearch("");
             setManual(false);
             setManualFirstName("");
             setManualLastName("");
@@ -187,20 +200,20 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
               disabled={disabled || !area.province}
               onChange={handleDistrict}
               options={[
-                { value: "", label: "ทุกอำเภอ" },
+                { value: "", label: "ทุกอำเภอ/เขต" },
                 ...area.districts.map((name) => ({ value: name, label: name })),
               ]}
-              placeholder="ค้นหาอำเภอ"
+              placeholder="ค้นหาอำเภอ/เขต"
               value={area.district}
             />
             <Combobox
               disabled={disabled || !area.district}
               onChange={handleSubDistrict}
               options={[
-                { value: "", label: "ทุกตำบล" },
+                { value: "", label: "ทุกตำบล/แขวง" },
                 ...area.subDistricts.map((name) => ({ value: name, label: name })),
               ]}
-              placeholder="ค้นหาตำบล"
+              placeholder="ค้นหาตำบล/แขวง"
               value={area.subDistrict}
             />
           </div>
@@ -214,7 +227,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             emptyText={
               area.schoolsEnabled
                 ? "ไม่พบโรงเรียน"
-                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง"
             }
             onChange={(next) => handleSchool(next, true)}
             onSearchChange={area.setSchoolSearch}
@@ -250,6 +263,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           className="text-sm font-medium text-primary"
           onClick={() => {
             onChange(null);
+            setSearch("");
             setManual(false);
             setManualFirstName("");
             setManualLastName("");
@@ -280,20 +294,20 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             disabled={disabled || !area.province}
             onChange={handleDistrict}
             options={[
-              { value: "", label: "ทุกอำเภอ" },
+              { value: "", label: "ทุกอำเภอ/เขต" },
               ...area.districts.map((name) => ({ value: name, label: name })),
             ]}
-            placeholder="ค้นหาอำเภอ"
+            placeholder="ค้นหาอำเภอ/เขต"
             value={area.district}
           />
           <Combobox
             disabled={disabled || !area.district}
             onChange={handleSubDistrict}
             options={[
-              { value: "", label: "ทุกตำบล" },
+              { value: "", label: "ทุกตำบล/แขวง" },
               ...area.subDistricts.map((name) => ({ value: name, label: name })),
             ]}
-            placeholder="ค้นหาตำบล"
+            placeholder="ค้นหาตำบล/แขวง"
             value={area.subDistrict}
           />
         </div>
@@ -312,7 +326,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             emptyText={
               area.schoolsEnabled
                 ? "ไม่พบโรงเรียน"
-                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+                : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง"
             }
             onChange={handleSchool}
             onSearchChange={area.setSchoolSearch}

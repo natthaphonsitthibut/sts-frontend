@@ -214,7 +214,7 @@ export function VisitMapPreview({
               </div>
             ) : null}
             {!hasCoordinates && loadState === "ready" ? (
-              <div className="absolute inset-x-4 top-4 rounded-lg bg-white/95 p-3 text-sm font-semibold text-slate-700 shadow">
+              <div className="absolute left-4 right-16 top-4 z-10 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 shadow">
                 {emptyDescription}
               </div>
             ) : null}
