@@ -85,18 +85,11 @@ function StatusBadge({ row }: { row: StudentAccountManagementItem }) {
 }
 
 function AccountState({ row }: { row: StudentAccountManagementItem }) {
+  const status = getStatusMeta(row.status);
   return (
-    <div className="space-y-1">
-      <StatusBadge row={row} />
-      <div className="text-xs font-medium text-slate-400">
-        {row.accountStatus || "-"}
-      </div>
-      {row.mustChangePassword ? (
-        <Badge className="justify-center" variant="warning">
-          ต้องเปลี่ยนรหัสผ่าน
-        </Badge>
-      ) : null}
-    </div>
+    <Badge className="w-full justify-center" variant={status.variant}>
+      {status.label}
+    </Badge>
   );
 }
 
@@ -303,14 +296,6 @@ export function StudentAccountManagementTable({
               <div className="mt-3 grid gap-1 text-sm text-slate-600">
                 <div className="font-medium">{row.schoolName || "-"}</div>
                 <div>{formatClassLevel(row)}</div>
-                <div className="text-xs font-medium text-slate-400">
-                  {row.accountStatus || "-"}
-                </div>
-                {row.mustChangePassword ? (
-                  <Badge className="w-fit" variant="warning">
-                    ต้องเปลี่ยนรหัสผ่าน
-                  </Badge>
-                ) : null}
               </div>
               <div className="mt-3 rounded-md bg-slate-50 p-3">
                 <LinkTimeSummary
