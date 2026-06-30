@@ -108,10 +108,10 @@ export function CaseTable({
         ]}
         columnWidths={[
           "w-[16%]",
-          "w-[22%]",
-          "w-[14%]",
+          "w-[18%]",
           "w-[13%]",
-          "w-[20%]",
+          "w-[12%]",
+          "w-[26%]",
           "w-[15%]",
         ]}
         minWidthClassName="min-w-full"

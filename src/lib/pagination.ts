@@ -7,6 +7,7 @@ export interface PaginationMeta {
   limit: number;
   totalCount: number;
   totalPages: number;
+  [key: string]: unknown;
 }
 
 export interface PaginatedResult<T> {
@@ -61,6 +62,7 @@ export function normalizePaginatedResponse<T>(
   return {
     items,
     meta: {
+      ...meta,
       page,
       limit,
       totalCount,

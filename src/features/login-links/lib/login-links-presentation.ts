@@ -45,18 +45,31 @@ export function getLoginLinkState(
 }
 
 export const LOGIN_LINK_STATE_OPTIONS = [
-  { value: "ALL", label: "ทั้งหมด" },
-  { value: "ACTIVE", label: "ใช้งานได้" },
-  { value: "LOCKED", label: "ปิดอยู่" },
-  { value: "EXPIRED", label: "หมดอายุ" },
+  { value: "ALL", label: "ทั้งหมด", tone: "default" },
+  { value: "ACTIVE", label: "ใช้งาน", tone: "success" },
+  { value: "LOCKED", label: "ปิดใช้งาน", tone: "danger" },
+  { value: "EXPIRED", label: "หมดอายุ", tone: "warning" },
 ] as const;
+
+const LOGIN_LINK_STATE_META: Record<
+  ReturnType<typeof getLoginLinkState>,
+  LoginLinkStatusMeta
+> = {
+  ACTIVE: { label: "ใช้งาน", variant: "success" },
+  LOCKED: { label: "ปิดใช้งาน", variant: "destructive" },
+  EXPIRED: { label: "หมดอายุ", variant: "warning" },
+};
+
+export function getLoginLinkStateMeta(link: LoginLinkStateInput): LoginLinkStatusMeta {
+  return LOGIN_LINK_STATE_META[getLoginLinkState(link)];
+}
 
 export function getLoginLinkStatusMeta(link: LoginLinkOutcomeInput): LoginLinkStatusMeta {
   if (link.first_used_at) {
     return { label: "เข้าใช้แล้ว", variant: "success" };
   }
   if (isLoginLinkLocked(link)) {
-    return { label: "ปิดอยู่", variant: "destructive" };
+    return { label: "ปิดใช้งาน", variant: "destructive" };
   }
   return { label: "ยังไม่เข้าใช้", variant: "secondary" };
 }

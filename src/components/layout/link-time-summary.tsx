@@ -49,17 +49,17 @@ export function LinkTimeSummary({
         )}
       >
         <div className="min-w-0 space-y-0.5">
-          <div className="break-words font-medium tabular-nums text-slate-700">
-            <span className="font-semibold text-slate-400">{startLabel} </span>
-            {rows[0].value}
+          <div className="flex gap-1 font-medium tabular-nums text-slate-700">
+            <span className="w-8 shrink-0 font-semibold text-slate-400">{startLabel}</span>
+            <span className="min-w-0 break-words">{rows[0].value}</span>
           </div>
-          <div className="break-words font-medium tabular-nums text-slate-700">
-            <span className="font-semibold text-slate-400">หมด </span>
-            {rows[1].value}
+          <div className="flex gap-1 font-medium tabular-nums text-slate-700">
+            <span className="w-8 shrink-0 font-semibold text-slate-400">หมด</span>
+            <span className="min-w-0 break-words">{rows[1].value}</span>
           </div>
         </div>
         <Badge
-          className="w-[96px] shrink-0 justify-center whitespace-nowrap"
+          className="min-w-[96px] shrink-0 justify-center whitespace-nowrap px-2.5"
           variant={remainingBadge.variant}
         >
           {remainingBadge.label}
@@ -164,7 +164,7 @@ export function LinkTimeHeader({
           {renderSortButton(startItem)}
           {renderSortButton(expireItem)}
         </div>
-        {renderSortButton(remainingItem, "w-[96px] shrink-0 justify-center")}
+        {renderSortButton(remainingItem, "min-w-[96px] shrink-0 justify-center")}
       </div>
     </div>
   );

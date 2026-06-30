@@ -288,42 +288,54 @@ type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
 const summaryToneClasses: Record<
   SummaryTone,
-  { card: string; accent: string; value: string; iconBg: string; iconColor: string }
+  {
+    accent: string;
+    surface: string;
+    iconBg: string;
+    iconColor: string;
+    ring: string;
+    value: string;
+  }
 > = {
   default: {
-    card: "border-slate-200 bg-white",
     accent: "bg-slate-300",
-    value: "text-slate-900",
+    surface: "bg-white",
     iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
+    ring: "ring-slate-200/80",
+    value: "text-slate-900",
   },
   success: {
-    card: "border-success-200 bg-white",
     accent: "bg-success",
-    value: "text-success-700",
+    surface: "bg-white",
     iconBg: "bg-success-100",
     iconColor: "text-success-700",
+    ring: "ring-success-200/80",
+    value: "text-success-700",
   },
   warning: {
-    card: "border-warning-200 bg-white",
     accent: "bg-warning",
-    value: "text-warning-700",
+    surface: "bg-white",
     iconBg: "bg-warning-100",
     iconColor: "text-warning-700",
+    ring: "ring-warning-200/80",
+    value: "text-warning-700",
   },
   danger: {
-    card: "border-danger-200 bg-white",
     accent: "bg-danger",
-    value: "text-danger-700",
+    surface: "bg-white",
     iconBg: "bg-danger-100",
     iconColor: "text-danger-700",
+    ring: "ring-danger-200/80",
+    value: "text-danger-700",
   },
   info: {
-    card: "border-primary/20 bg-white",
     accent: "bg-primary",
-    value: "text-primary",
+    surface: "bg-white",
     iconBg: "bg-primary-soft",
     iconColor: "text-primary",
+    ring: "ring-primary/20",
+    value: "text-primary",
   },
 };
 
@@ -334,51 +346,66 @@ interface SummaryMetric {
   icon?: LucideIcon;
 }
 
-/** Column layouts keyed by card count — keeps metric grids consistent system-wide. */
+/** Fixed-column layouts for callers that want an exact grid. */
 const summaryColumnClasses: Record<number, string> = {
   1: "grid-cols-1",
-  2: "grid-cols-1 sm:grid-cols-2",
-  3: "grid-cols-1 sm:grid-cols-3",
-  4: "grid-cols-1 sm:grid-cols-4",
+  2: "grid-cols-2",
+  3: "grid-cols-2 sm:grid-cols-3",
+  4: "grid-cols-2 sm:grid-cols-4",
+  5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
   6: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6",
 };
 
 interface SummaryMetricsProps {
   items: SummaryMetric[];
-  /** Override the column count; defaults to a layout derived from item count. */
+  /** Force an exact column count; otherwise cards auto-fit and fill the row. */
   columns?: keyof typeof summaryColumnClasses;
+  /** Center incomplete rows with fixed-width cards for status dashboards. */
+  centerRows?: boolean;
   className?: string;
 }
 
-export function SummaryMetrics({ className, columns, items }: SummaryMetricsProps) {
-  const resolvedColumns = columns ?? (items.length >= 5 ? 6 : 4);
-  const columnsClass =
-    summaryColumnClasses[resolvedColumns] ?? summaryColumnClasses[4];
+export function SummaryMetrics({ centerRows = false, className, columns, items }: SummaryMetricsProps) {
+  // Default: cards auto-fit and stretch to fill the available width, so a row
+  // with few cards never leaves an empty gap on the right and never gets cramped.
+  const columnsClass = columns
+    ? summaryColumnClasses[columns] ?? summaryColumnClasses[4]
+    : "[grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]";
+  const centeredCardClass =
+    items.length === 5
+      ? "w-full sm:w-[16.5rem] lg:w-[20rem]"
+      : "w-full sm:w-[16rem] lg:w-[16.5rem]";
   return (
-    <div className={cn("grid gap-3", columnsClass, className)}>
+    <div
+      className={cn(
+        centerRows ? "flex flex-wrap justify-center gap-3.5" : "grid gap-3.5",
+        !centerRows && columnsClass,
+        className,
+      )}
+    >
       {items.map((item, index) => {
         const tone = summaryToneClasses[item.tone ?? "default"];
         const Icon = item.icon;
         return (
           <div
             className={cn(
-              "overflow-hidden rounded-lg border shadow-card",
-              tone.card,
+              "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-100 px-4 py-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 transition-[border-color,box-shadow] hover:border-slate-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.09)]",
+              centerRows && centeredCardClass,
+              tone.surface,
+              tone.ring,
             )}
             key={index}
           >
-            <div className={cn("h-1.5", tone.accent)} />
-            <div className="flex items-center gap-3 p-4">
-              {Icon ? (
-                <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-lg", tone.iconBg)}>
-                  <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
-                </div>
-              ) : null}
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-500">{item.label}</div>
-                <div className={cn("text-2xl font-bold", tone.value)}>
-                  {item.value}
-                </div>
+            <span className={cn("absolute inset-x-0 top-0 h-1", tone.accent)} aria-hidden="true" />
+            {Icon ? (
+              <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", tone.iconBg)}>
+                <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
+              </div>
+            ) : null}
+            <div className="min-w-0">
+              <div className="truncate text-xs font-medium text-slate-500">{item.label}</div>
+              <div className={cn("text-2xl font-bold leading-tight tabular-nums", tone.value)}>
+                {item.value}
               </div>
             </div>
           </div>

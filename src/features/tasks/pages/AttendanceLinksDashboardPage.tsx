@@ -7,19 +7,16 @@ import {
 } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  CalendarDays,
   ClipboardCheck,
   Clock,
   Link2,
   Lock,
   LockOpen,
-  Plus,
 } from "lucide-react";
 import { Button, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { NavButton } from "../../../components/layout/nav-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
@@ -81,11 +78,15 @@ function getLinkState(
   return "ACTIVE";
 }
 
-function AttendanceCheckBadge({ task }: { task: AttendanceTask }) {
-  if (task.attendance_check_status === "COMPLETED") {
-    return <LinkStatusBadge label="เช็คแล้ว" variant="success" />;
+function AttendanceLinkStateBadge({ task }: { task: AttendanceTask }) {
+  const linkState = getLinkState(task);
+  if (linkState === "ACTIVE") {
+    return <LinkStatusBadge label="ใช้งาน" variant="success" />;
   }
-  return <LinkStatusBadge label="ยังไม่เช็ค" variant="secondary" />;
+  if (linkState === "LOCKED") {
+    return <LinkStatusBadge label="ปิดใช้งาน" variant="destructive" />;
+  }
+  return <LinkStatusBadge label="หมดอายุ" variant="warning" />;
 }
 
 function compareText(a: string | undefined, b: string | undefined): number {
@@ -96,7 +97,7 @@ function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
   if (key === "class") return `${task.target_grade || ""}/${task.target_room || ""}`;
   if (key === "school") return task.target_school_name || "";
   if (key === "assignee") return task.link_assigned_to || "";
-  if (key === "status") return task.attendance_check_status || "NOT_CHECKED";
+  if (key === "status") return getLinkState(task);
   if (key === "starts") return task.active_link_created_at || task.created_at || "";
   if (key === "expires") return task.active_link_expires_at || "";
   if (key === "remaining") return task.active_link_expires_at || "";
@@ -206,12 +207,6 @@ export function AttendanceLinksDashboardPage() {
         tableActions={
           <div className="flex flex-wrap gap-2">
             <RefreshButton onRefresh={() => tasksQuery.refetch()} />
-            <NavButton icon={CalendarDays} to="/attendance-operations">
-              ความครบถ้วน
-            </NavButton>
-            <NavButton icon={Plus} to="/create">
-              สร้างลิงก์
-            </NavButton>
           </div>
         }
         search={{
@@ -246,12 +241,26 @@ export function AttendanceLinksDashboardPage() {
 
       <div className="space-y-5">
         <SummaryMetrics
-          items={[
-            { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
-            { label: "ใช้งานได้", value: summary.active, tone: "success", icon: CheckCircle2 },
-            { label: "ปิดอยู่", value: summary.locked, tone: "danger", icon: Lock },
-            { label: "หมดอายุ", value: summary.expired, tone: "warning", icon: Clock },
-          ]}
+          items={LINK_STATE_OPTIONS.map((option) => ({
+            label: option.label,
+            value:
+              option.value === "ACTIVE"
+                ? summary.active
+                : option.value === "LOCKED"
+                  ? summary.locked
+                  : option.value === "EXPIRED"
+                    ? summary.expired
+                    : summary.total,
+            tone: option.tone,
+            icon:
+              option.value === "ACTIVE"
+                ? CheckCircle2
+                : option.value === "LOCKED"
+                  ? Lock
+                  : option.value === "EXPIRED"
+                    ? Clock
+                    : Link2,
+          }))}
         />
 
         {tasksQuery.isError ? (
@@ -311,7 +320,7 @@ export function AttendanceLinksDashboardPage() {
                       </div>
                     </DataTableCell>
                     <DataTableCell>
-                      <AttendanceCheckBadge task={task} />
+                    <AttendanceLinkStateBadge task={task} />
                     </DataTableCell>
                     <DataTableCell>
                       <LinkTimeSummary

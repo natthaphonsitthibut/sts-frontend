@@ -20,8 +20,10 @@ import type {
   StudentAccountGenerateResponse,
   StudentAccountListQuery,
   StudentAccountManagementItem,
+  StudentAccountPaginationMeta,
   StudentAccountPreview,
   SystemSetting,
+  UserPaginationMeta,
   UserSavePayload,
 } from "../types/admin.types";
 
@@ -82,7 +84,7 @@ async function updateSetting(
 // --- Users ---
 async function getUsers(
   query: UserListQuery = {},
-): Promise<PaginatedResult<ManagedUser>> {
+): Promise<PaginatedResult<ManagedUser> & { meta: UserPaginationMeta }> {
   const params: Record<string, string> = toPaginationParams(query);
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
@@ -115,7 +117,7 @@ async function getUsers(
   return {
     ...result,
     items: result.items.map(normalizeManagedUser),
-  };
+  } as PaginatedResult<ManagedUser> & { meta: UserPaginationMeta };
 }
 
 async function getUser(id: number): Promise<ManagedUser> {
@@ -126,11 +128,11 @@ async function getUser(id: number): Promise<ManagedUser> {
   return normalizeManagedUser(user as ManagedUser);
 }
 
-async function reissueStudentTemporaryPassword(
+async function reissueTemporaryPassword(
   id: number,
 ): Promise<ReissueStudentPasswordResponse> {
   const response = await apiClient.post<ReissueStudentPasswordResponse>(
-    `/users/student-accounts/${id}/reissue-temporary-password`,
+    `/users/${id}/reissue-temporary-password`,
   );
   return response.data;
 }
@@ -172,11 +174,12 @@ function toStudentAccountParams(
 
 async function getStudentAccounts(
   query: StudentAccountListQuery = {},
-): Promise<PaginatedResult<StudentAccountManagementItem>> {
+): Promise<PaginatedResult<StudentAccountManagementItem> & { meta: StudentAccountPaginationMeta }> {
   const response = await apiClient.get("/users/student-accounts", {
     params: toStudentAccountParams(query),
   });
-  return normalizePaginatedResponse<StudentAccountManagementItem>(response.data, query);
+  return normalizePaginatedResponse<StudentAccountManagementItem>(response.data, query) as
+    PaginatedResult<StudentAccountManagementItem> & { meta: StudentAccountPaginationMeta };
 }
 
 async function bulkReissueStudentTemporaryPasswords(
@@ -278,7 +281,7 @@ export const adminService = {
   getUsers,
   getUser,
   getStudentAccounts,
-  reissueStudentTemporaryPassword,
+  reissueTemporaryPassword,
   bulkReissueStudentTemporaryPasswords,
   deactivateStudentAccount,
   getRolesCatalog,

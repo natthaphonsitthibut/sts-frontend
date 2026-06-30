@@ -19,6 +19,7 @@ import {
 } from "../hooks/useLoginLinks";
 import {
   getLoginLinkState,
+  getLoginLinkStateMeta,
   getLoginLinkStatusMeta,
   getLoginLinkUrl,
 } from "../lib/login-links-presentation";
@@ -56,7 +57,8 @@ export function LoginLinkDetailPage() {
     );
   }
 
-  const status = getLoginLinkStatusMeta(link);
+  const status = getLoginLinkStateMeta(link);
+  const outcomeStatus = getLoginLinkStatusMeta(link);
   const linkState = getLoginLinkState(link);
   const url = getLoginLinkUrl(link.magic_link ?? "");
   const permissions = link.login_permissions ?? [];
@@ -102,6 +104,10 @@ export function LoginLinkDetailPage() {
             <div>
               <div className="text-sm text-slate-500">สถานะ</div>
               <LinkStatusBadge label={status.label} variant={status.variant} />
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">การเข้าใช้</div>
+              <LinkStatusBadge label={outcomeStatus.label} variant={outcomeStatus.variant} />
             </div>
             <div className="sm:col-span-2">
               <div className="text-sm text-slate-500">ช่วงเวลา</div>

@@ -10,6 +10,7 @@ interface CaseStatusMeta {
   label: string;
   /** Semantic badge classes (from the centralized @theme palette). */
   badgeClass: string;
+  summaryTone: "default" | "success" | "warning" | "danger" | "info";
 }
 
 // Status order used for the filter dropdown.
@@ -25,22 +26,27 @@ export const CASE_STATUS_META: Record<KnownCaseStatus, CaseStatusMeta> = {
   OPEN: {
     label: "รอสร้างลิงก์",
     badgeClass: "bg-slate-100 text-slate-600",
+    summaryTone: "default",
   },
   PENDING_REVIEW: {
     label: "รอตรวจผล",
-    badgeClass: "bg-warning-100 text-warning-700",
+    badgeClass: "bg-primary/10 text-primary",
+    summaryTone: "info",
   },
   IN_PROGRESS: {
     label: "กำลังติดตาม",
-    badgeClass: "bg-primary/10 text-primary",
+    badgeClass: "bg-warning-100 text-warning-700",
+    summaryTone: "warning",
   },
   AWAITING_HELP: {
     label: "รอช่วยเหลือ",
-    badgeClass: "bg-warning-100 text-warning-700",
+    badgeClass: "bg-danger-100 text-danger-700",
+    summaryTone: "danger",
   },
   RESOLVED: {
     label: "ปิดเคสแล้ว",
     badgeClass: "bg-success-100 text-success-700",
+    summaryTone: "success",
   },
 };
 
@@ -49,6 +55,7 @@ export function getCaseStatusMeta(status: CaseStatus): CaseStatusMeta {
     CASE_STATUS_META[status as KnownCaseStatus] ?? {
       label: status || "-",
       badgeClass: "bg-slate-100 text-slate-600",
+      summaryTone: "default",
     }
   );
 }

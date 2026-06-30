@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Copy, Download, KeyRound, Search, UserPlus } from "lucide-react";
+import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -27,15 +27,15 @@ import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link
 import {
   EmptyState,
   ErrorState,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
   SummaryMetrics,
   TableActionBar,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
@@ -46,6 +46,10 @@ import {
   useDeactivateStudentAccount,
   useStudentAccounts,
 } from "../hooks/useUsers";
+import {
+  ACCOUNT_LIFECYCLE_STATUS_META,
+  ACCOUNT_LIFECYCLE_STATUS_ORDER,
+} from "../lib/admin-presentation";
 import type {
   StudentAccountCandidate,
   StudentAccountCredential,
@@ -53,6 +57,7 @@ import type {
   StudentAccountListQuery,
   StudentAccountManagementItem,
   StudentAccountManagementStatus,
+  StudentAccountStatusCounts,
 } from "../types/admin.types";
 
 const MIN_BULK_LIMIT = 1;
@@ -69,16 +74,22 @@ const ACCOUNT_STATUS_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "", label: "ทุกสถานะ" },
-  { value: "PENDING_FIRST_LOGIN", label: "รอเข้าใช้ครั้งแรก" },
-  { value: "ACTIVE", label: "ใช้งานแล้ว" },
-  { value: "TEMP_PASSWORD_EXPIRED", label: "รหัสหมดอายุ" },
-  { value: "DISABLED", label: "ปิดใช้งาน" },
+  ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
+    value: status,
+    label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
+  })),
 ];
+const STUDENT_ACCOUNT_STATUS_ICONS = {
+  PENDING_FIRST_LOGIN: KeyRound,
+  ACTIVE: CheckCircle2,
+  TEMP_PASSWORD_EXPIRED: Clock,
+  DISABLED: UserX,
+} as const;
 
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div>
+      <Label className="sr-only">{label}</Label>
       {children}
     </div>
   );
@@ -124,6 +135,23 @@ function buildManagementQuery(
     page,
     limit,
   };
+}
+
+function getFallbackStatusCounts(
+  accounts: readonly StudentAccountManagementItem[],
+): StudentAccountStatusCounts {
+  return accounts.reduce<StudentAccountStatusCounts>(
+    (counts, account) => ({
+      ...counts,
+      [account.status]: counts[account.status] + 1,
+    }),
+    {
+      PENDING_FIRST_LOGIN: 0,
+      ACTIVE: 0,
+      TEMP_PASSWORD_EXPIRED: 0,
+      DISABLED: 0,
+    },
+  );
 }
 
 function getStudentAccountErrorMessage(error: unknown): string {
@@ -486,6 +514,7 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
 }
 
 export function StudentAccountsPage() {
+  const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
@@ -540,6 +569,18 @@ export function StudentAccountsPage() {
     isError: accountsError,
     refetch: refetchAccounts,
   } = useStudentAccounts(managementQuery);
+  const accountStatusCounts = useMemo(
+    () => accountsMeta?.statusCounts ?? getFallbackStatusCounts(accounts),
+    [accounts, accountsMeta?.statusCounts],
+  );
+  const accountStatusTotal = useMemo(
+    () =>
+      ACCOUNT_LIFECYCLE_STATUS_ORDER.reduce(
+        (total, status) => total + accountStatusCounts[status],
+        0,
+      ),
+    [accountStatusCounts],
+  );
   const bulkReissueMutation = useBulkReissueStudentTemporaryPasswords();
   const deactivateMutation = useDeactivateStudentAccount();
   const accountScopeKey = `${area.province || ""}|${area.district || ""}|${area.subDistrict || ""}|${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
@@ -787,7 +828,7 @@ export function StudentAccountsPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         icon={KeyRound}
         title="บัญชีนักเรียน"
         description="สร้าง username และรหัสผ่านชั่วคราวจาก roster ปัจจุบัน"
@@ -799,10 +840,148 @@ export function StudentAccountsPage() {
             options={STUDENT_ACCOUNT_TABS}
           />
         }
-        footerActions={
+        search={
+          activeTab === "manage"
+            ? {
+                value: searchQuery,
+                onChange: (value) => {
+                  setSearchQuery(value);
+                  resetManagementList();
+                },
+                placeholder: "ค้นหาชื่อหรือ username...",
+              }
+            : undefined
+        }
+        filters={
+          <>
+            {scope.schoolLocked ? null : (
+              <>
+                <ScopeField label="จังหวัด">
+                  <Combobox
+                    onChange={(next) => {
+                      setAreaAndClearSchool("province", next);
+                    }}
+                    options={[
+                      { value: "", label: "ทุกจังหวัด" },
+                      ...area.provinces.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาจังหวัด"
+                    value={area.province}
+                  />
+                </ScopeField>
+                <ScopeField label="อำเภอ">
+                  <Combobox
+                    disabled={!area.province}
+                    onChange={(next) => {
+                      setAreaAndClearSchool("district", next);
+                    }}
+                    options={[
+                      { value: "", label: "ทุกอำเภอ" },
+                      ...area.districts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาอำเภอ"
+                    value={area.district}
+                  />
+                </ScopeField>
+                <ScopeField label="ตำบล">
+                  <Combobox
+                    disabled={!area.district}
+                    onChange={(next) => {
+                      setAreaAndClearSchool("subDistrict", next);
+                    }}
+                    options={[
+                      { value: "", label: "ทุกตำบล" },
+                      ...area.subDistricts.map((name) => ({ value: name, label: name })),
+                    ]}
+                    placeholder="ค้นหาตำบล"
+                    value={area.subDistrict}
+                  />
+                </ScopeField>
+              </>
+            )}
+            <ScopeField label="โรงเรียน">
+              <Combobox
+                disabled={scope.schoolLocked}
+                emptyText={
+                  area.schoolsEnabled
+                    ? "ไม่พบโรงเรียน"
+                    : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
+                }
+                onChange={setSchool}
+                onSearchChange={area.setSchoolSearch}
+                options={[
+                  { value: "", label: "ทุกโรงเรียน" },
+                  ...area.filteredSchools.map((school) => ({
+                    value: String(school.id),
+                    label: school.name,
+                  })),
+                ]}
+                placeholder="ค้นหาโรงเรียน"
+                value={scope.schoolId}
+              />
+            </ScopeField>
+            <ScopeField label="ชั้น">
+              <Combobox
+                disabled={!scope.schoolId || scope.gradeLocked}
+                onChange={(value) => {
+                  setPreviewPage(1);
+                  resetManagementList();
+                  scope.setGrade(value);
+                }}
+                options={[
+                  { value: "", label: "ทุกชั้น" },
+                  ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
+                ]}
+                searchable={false}
+                value={scope.grade}
+              />
+            </ScopeField>
+            <ScopeField label="ห้อง">
+              <Combobox
+                disabled={!scope.grade || scope.roomLocked}
+                onChange={(value) => {
+                  setPreviewPage(1);
+                  resetManagementList();
+                  scope.setRoom(value);
+                }}
+                options={[
+                  { value: "", label: "ทุกห้อง" },
+                  ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+                ]}
+                searchable={false}
+                value={scope.room}
+              />
+            </ScopeField>
+            {activeTab === "generate" ? (
+              <ScopeField label={`จำนวนคนต่อรอบ (${MIN_BULK_LIMIT}-${MAX_BULK_LIMIT})`}>
+                <Input
+                  min={MIN_BULK_LIMIT}
+                  max={MAX_BULK_LIMIT}
+                  onChange={(event) => handleLimitChange(event.target.value)}
+                  type="number"
+                  value={limit}
+                />
+              </ScopeField>
+            ) : activeTab === "manage" ? (
+              <ScopeField label="สถานะบัญชี">
+                <Combobox
+                  onChange={(value) => {
+                    setAccountStatus(value as "" | StudentAccountManagementStatus);
+                    resetManagementList();
+                  }}
+                  options={ACCOUNT_STATUS_OPTIONS}
+                  searchable={false}
+                  value={accountStatus}
+                />
+              </ScopeField>
+            ) : null}
+          </>
+        }
+        tableActions={
           activeTab === "manage" ? (
             <>
               <Button
+                className="w-[14rem] shrink-0 transform-none transition-none hover:shadow-sm active:scale-100 disabled:opacity-100"
                 disabled={bulkReissueMutation.isPending}
                 icon={KeyRound}
                 onClick={() => void handleBulkReissueExpired()}
@@ -811,11 +990,15 @@ export function StudentAccountsPage() {
                 ออกรหัสใหม่ที่หมดอายุ
               </Button>
               <Button
+                className="w-[14rem] shrink-0 transform-none bg-primary text-white shadow-sm transition-none hover:bg-primary hover:shadow-sm active:scale-100 disabled:bg-primary disabled:text-white disabled:opacity-100"
                 disabled={selectedAccountIds.size === 0 || bulkReissueMutation.isPending}
                 icon={KeyRound}
                 onClick={() => void handleBulkReissueSelected()}
               >
-                ออกรหัสที่เลือก ({selectedAccountIds.size})
+                ออกรหัสที่เลือก{" "}
+                <span className="inline-block min-w-8 text-left tabular-nums">
+                  ({selectedAccountIds.size})
+                </span>
               </Button>
             </>
           ) : activeTab === "generate" ? (
@@ -843,143 +1026,7 @@ export function StudentAccountsPage() {
             </>
           ) : undefined
         }
-      >
-        <ToolbarControls className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 md:items-start">
-          {scope.schoolLocked ? null : (
-            <>
-              <ScopeField label="จังหวัด">
-                <Combobox
-                  onChange={(next) => {
-                    setAreaAndClearSchool("province", next);
-                  }}
-                  options={[
-                    { value: "", label: "ทุกจังหวัด" },
-                    ...area.provinces.map((name) => ({ value: name, label: name })),
-                  ]}
-                  placeholder="ค้นหาจังหวัด"
-                  value={area.province}
-                />
-              </ScopeField>
-              <ScopeField label="อำเภอ">
-                <Combobox
-                  disabled={!area.province}
-                  onChange={(next) => {
-                    setAreaAndClearSchool("district", next);
-                  }}
-                  options={[
-                    { value: "", label: "ทุกอำเภอ" },
-                    ...area.districts.map((name) => ({ value: name, label: name })),
-                  ]}
-                  placeholder="ค้นหาอำเภอ"
-                  value={area.district}
-                />
-              </ScopeField>
-              <ScopeField label="ตำบล">
-                <Combobox
-                  disabled={!area.district}
-                  onChange={(next) => {
-                    setAreaAndClearSchool("subDistrict", next);
-                  }}
-                  options={[
-                    { value: "", label: "ทุกตำบล" },
-                    ...area.subDistricts.map((name) => ({ value: name, label: name })),
-                  ]}
-                  placeholder="ค้นหาตำบล"
-                  value={area.subDistrict}
-                />
-              </ScopeField>
-            </>
-          )}
-          <ScopeField label="โรงเรียน">
-            <Combobox
-              disabled={scope.schoolLocked}
-              emptyText={
-                area.schoolsEnabled
-                  ? "ไม่พบโรงเรียน"
-                  : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/ตำบล"
-              }
-              onChange={setSchool}
-              onSearchChange={area.setSchoolSearch}
-              options={[
-                { value: "", label: "ทุกโรงเรียน" },
-                ...area.filteredSchools.map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                })),
-              ]}
-              placeholder="ค้นหาโรงเรียน"
-              value={scope.schoolId}
-            />
-          </ScopeField>
-          <ScopeField label="ชั้น">
-            <Combobox
-              disabled={!scope.schoolId || scope.gradeLocked}
-              onChange={(value) => {
-                setPreviewPage(1);
-                resetManagementList();
-                scope.setGrade(value);
-              }}
-              options={[
-                { value: "", label: "ทุกชั้น" },
-                ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
-              ]}
-              searchable={false}
-              value={scope.grade}
-            />
-          </ScopeField>
-          <ScopeField label="ห้อง">
-            <Combobox
-              disabled={!scope.grade || scope.roomLocked}
-              onChange={(value) => {
-                setPreviewPage(1);
-                resetManagementList();
-                scope.setRoom(value);
-              }}
-              options={[
-                { value: "", label: "ทุกห้อง" },
-                ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
-              ]}
-              searchable={false}
-              value={scope.room}
-            />
-          </ScopeField>
-          {activeTab === "generate" ? (
-            <ScopeField label={`จำนวนคนต่อรอบ (${MIN_BULK_LIMIT}-${MAX_BULK_LIMIT})`}>
-              <Input
-                min={MIN_BULK_LIMIT}
-                max={MAX_BULK_LIMIT}
-                onChange={(event) => handleLimitChange(event.target.value)}
-                type="number"
-                value={limit}
-              />
-            </ScopeField>
-          ) : activeTab === "manage" ? (
-            <>
-              <ScopeField label="ค้นหา">
-                <Input
-                  onChange={(event) => {
-                    setSearchQuery(event.target.value);
-                    resetManagementList();
-                  }}
-                  placeholder="ชื่อหรือ username"
-                  value={searchQuery}
-                />
-              </ScopeField>
-              <ScopeField label="สถานะบัญชี">
-                <Combobox
-                  onChange={(value) => {
-                    setAccountStatus(value as "" | StudentAccountManagementStatus);
-                    resetManagementList();
-                  }}
-                  options={ACCOUNT_STATUS_OPTIONS}
-                  searchable={false}
-                  value={accountStatus}
-                />
-              </ScopeField>
-            </>
-          ) : null}
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
       {activeTab === "manage" ? (
         <>
@@ -1002,14 +1049,20 @@ export function StudentAccountsPage() {
           ) : (
             <div className="space-y-4">
               <SummaryMetrics
+                centerRows
                 items={[
-                  { label: "ในขอบเขต", value: accountsMeta?.totalCount ?? 0 },
-                  { label: "ที่เลือก", value: selectedAccountIds.size },
                   {
-                    label: "หมดอายุในหน้านี้",
-                    value: accounts.filter((account) => account.status === "TEMP_PASSWORD_EXPIRED")
-                      .length,
+                    label: "ในขอบเขต",
+                    value: accountStatusTotal,
+                    tone: "default",
+                    icon: Users,
                   },
+                  ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
+                    label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
+                    value: accountStatusCounts[status],
+                    tone: ACCOUNT_LIFECYCLE_STATUS_META[status].summaryTone,
+                    icon: STUDENT_ACCOUNT_STATUS_ICONS[status],
+                  })),
                 ]}
               />
               <StudentAccountManagementTable
@@ -1089,9 +1142,24 @@ export function StudentAccountsPage() {
             <div className="space-y-5">
               <SummaryMetrics
                 items={[
-                  { label: "ในขอบเขต", value: preview.summary.totalCount },
-                  { label: "ยังไม่มีบัญชี", value: preview.summary.withoutAccountCount },
-                  { label: "มีบัญชีแล้ว", value: preview.summary.existingAccountCount },
+                  {
+                    label: "ในขอบเขต",
+                    value: preview.summary.totalCount,
+                    tone: "info",
+                    icon: Users,
+                  },
+                  {
+                    label: "พร้อมสร้าง",
+                    value: preview.summary.withoutAccountCount,
+                    tone: "warning",
+                    icon: UserPlus,
+                  },
+                  {
+                    label: "มีบัญชีแล้ว",
+                    value: preview.summary.existingAccountCount,
+                    tone: "default",
+                    icon: CheckCircle2,
+                  },
                 ]}
               />
               <CandidateTable
@@ -1156,7 +1224,7 @@ export function StudentAccountsPage() {
             </div>
           ) : null}
         </>
-      ) : (
+      ) : can("audit-log") ? (
         <AuditLogPanel
           domain="student_accounts"
           title="ประวัติบัญชีนักเรียน"
@@ -1168,6 +1236,10 @@ export function StudentAccountsPage() {
           showActionColumn={false}
           showReferenceColumn={false}
         />
+      ) : (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          บัญชีของคุณไม่มีสิทธิ์ดูบันทึกการใช้งาน (audit log)
+        </div>
       )}
       {confirmDialog}
     </PageShell>

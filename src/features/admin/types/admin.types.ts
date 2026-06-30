@@ -82,6 +82,16 @@ export type StudentAccountManagementStatus =
   | "TEMP_PASSWORD_EXPIRED"
   | "DISABLED";
 
+export type StudentAccountStatusCounts = Record<StudentAccountManagementStatus, number>;
+
+export interface UserPaginationMeta extends PaginationMeta {
+  lifecycleStatusCounts?: StudentAccountStatusCounts;
+}
+
+export interface StudentAccountPaginationMeta extends PaginationMeta {
+  statusCounts?: StudentAccountStatusCounts;
+}
+
 export interface StudentAccountListQuery extends StudentAccountFilter {
   searchTerm?: string;
   accountStatus?: StudentAccountManagementStatus;

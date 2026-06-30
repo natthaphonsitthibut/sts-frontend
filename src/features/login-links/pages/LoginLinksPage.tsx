@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Link2, Lock, Plus } from "lucide-react";
+import { CheckCircle2, Clock, Link2, Lock } from "lucide-react";
 import { useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -12,7 +12,6 @@ import {
   SkeletonTable,
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
-import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
@@ -129,9 +128,6 @@ export function LoginLinksPage() {
         tableActions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={refetch} />
-            <NavButton icon={Plus} to="/create">
-              สร้างลิงก์
-            </NavButton>
           </div>
         }
         search={{
@@ -166,12 +162,26 @@ export function LoginLinksPage() {
 
       <div className="space-y-5">
         <SummaryMetrics
-          items={[
-            { label: "ทั้งหมด", value: summary.total, tone: "default", icon: Link2 },
-            { label: "ใช้งานได้", value: summary.active, tone: "success", icon: CheckCircle2 },
-            { label: "ปิดอยู่", value: summary.locked, tone: "danger", icon: Lock },
-            { label: "หมดอายุ", value: summary.expired, tone: "warning", icon: Clock },
-          ]}
+          items={LOGIN_LINK_STATE_OPTIONS.map((option) => ({
+            label: option.label,
+            value:
+              option.value === "ACTIVE"
+                ? summary.active
+                : option.value === "LOCKED"
+                  ? summary.locked
+                  : option.value === "EXPIRED"
+                    ? summary.expired
+                    : summary.total,
+            tone: option.tone,
+            icon:
+              option.value === "ACTIVE"
+                ? CheckCircle2
+                : option.value === "LOCKED"
+                  ? Lock
+                  : option.value === "EXPIRED"
+                    ? Clock
+                    : Link2,
+          }))}
         />
 
         {isError ? (

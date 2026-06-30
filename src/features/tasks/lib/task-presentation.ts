@@ -40,8 +40,8 @@ export function getTaskTypeLabel(type?: string | null): string {
 }
 
 export function getStatusLabel(status?: string | null): string {
-  if (status === "ACTIVE") return "ใช้งานได้";
-  if (status === "LOCKED") return "ปิดอยู่";
+  if (status === "ACTIVE") return "ใช้งาน";
+  if (status === "LOCKED") return "ปิดใช้งาน";
   if (status === "EXPIRED") return "หมดอายุ";
   if (status === "COMPLETED") return "เสร็จสิ้น";
   if (status === "DELEGATED") return "ส่งต่อแล้ว";
@@ -69,11 +69,11 @@ export function getTaskLinkDisplayStatus(link: TaskChainLink): TaskLinkDisplaySt
     return { label: "หมดอายุ", variant: "warning", state: "EXPIRED" };
   }
   if (isTaskLinkLocked(link.admin_locked)) {
-    return { label: "ปิดอยู่", variant: "destructive", state: "LOCKED" };
+    return { label: "ปิดใช้งาน", variant: "destructive", state: "LOCKED" };
   }
 
   if (link.status === "ACTIVE") {
-    return { label: "ใช้งานได้", variant: "success", state: "ACTIVE" };
+    return { label: "ใช้งาน", variant: "success", state: "ACTIVE" };
   }
 
   return { label: getStatusLabel(link.status), variant: "secondary", state: "OTHER" };

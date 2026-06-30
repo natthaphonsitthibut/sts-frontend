@@ -14,11 +14,14 @@ import {
   LinkTimeSummary,
 } from "../../../components/layout/link-time-summary";
 import {
+  getAccountLifecycleStatusMeta,
+  getManagedUserLifecycleStatus,
   getUserAvatarGradient,
   getUserDisplayName,
   getUserInitial,
   getUserRoleText,
 } from "../lib/admin-presentation";
+import { cn } from "../../../lib/utils";
 import type { ManagedUser } from "../types/admin.types";
 
 interface UserTableProps {
@@ -29,28 +32,13 @@ interface UserTableProps {
   reissuingUserId?: number | null;
 }
 
-function getUserLifecycleStatus(user: ManagedUser): {
-  label: string;
-  variant: "success" | "secondary" | "warning";
-} {
-  if (user.status !== "ACTIVE") {
-    return { label: "ปิดการใช้งาน", variant: "secondary" };
-  }
-  if (user.must_change_password === true) {
-    const expiresAt = user.temporary_password_expires_at
-      ? new Date(user.temporary_password_expires_at)
-      : null;
-    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
-      return { label: "รหัสหมดอายุ", variant: "warning" };
-    }
-    return { label: "รอเข้าใช้ครั้งแรก", variant: "warning" };
-  }
-  return { label: "ใช้งาน", variant: "success" };
-}
-
 function StatusBadge({ user }: { user: ManagedUser }) {
-  const status = getUserLifecycleStatus(user);
-  return <Badge variant={status.variant}>{status.label}</Badge>;
+  const status = getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user));
+  return (
+    <Badge className={cn("whitespace-nowrap", status.badgeClass)} variant="secondary">
+      {status.label}
+    </Badge>
+  );
 }
 
 function UserIdentity({ user }: { user: ManagedUser }) {
@@ -82,7 +70,7 @@ function RowActions({
 }: UserTableProps & { user: ManagedUser }) {
   return (
     <div className="flex items-center justify-end gap-1">
-      {user.role === "STUDENT" && user.status === "ACTIVE" ? (
+      {user.status === "ACTIVE" ? (
         <IconButton
           aria-label="ออกรหัสชั่วคราวใหม่"
           className="text-warning"
@@ -118,7 +106,9 @@ function getUserSortValue(user: ManagedUser, key: string): string {
   if (key === "name") return getUserDisplayName(user);
   if (key === "role") return getUserRoleText(user);
   if (key === "affiliation") return user.affiliation || "";
-  if (key === "status") return getUserLifecycleStatus(user).label;
+  if (key === "status") {
+    return getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user)).label;
+  }
   if (key === "starts") return user.temporary_password_issued_at ?? "";
   if (key === "expires") return user.temporary_password_expires_at ?? "";
   if (key === "remaining") return user.temporary_password_expires_at ?? "";
@@ -156,14 +146,14 @@ export function UserTable({
           "",
         ]}
         columnWidths={[
-          "w-[24%]",
-          "w-[12%]",
-          "w-[16%]",
-          "w-[12%]",
+          "w-[21%]",
+          "w-[10%]",
+          "w-[14%]",
+          "w-[14%]",
           "w-[28%]",
-          "w-[8%]",
+          "w-[13%]",
         ]}
-        minWidthClassName="min-w-[960px]"
+        minWidthClassName="min-w-[1000px]"
         onSortChange={setSort}
         sort={sort}
       >

@@ -13,7 +13,7 @@ import { DetailLinkButton } from "../../../components/layout/detail-link-button"
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
-  getLoginLinkStatusMeta,
+  getLoginLinkStateMeta,
   getLoginLinkState,
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
@@ -25,7 +25,7 @@ interface LoginLinkTableProps {
 }
 
 function StatusBadge({ link }: { link: LoginLink }) {
-  const meta = getLoginLinkStatusMeta(link);
+  const meta = getLoginLinkStateMeta(link);
   return <LinkStatusBadge label={meta.label} variant={meta.variant} />;
 }
 
@@ -36,7 +36,7 @@ function compareText(a: string | undefined, b: string | undefined): number {
 function getLoginLinkSortValue(link: LoginLink, key: string): string {
   if (key === "recipient") return link.assigned_to_name || "";
   if (key === "role") return link.login_role_label || link.login_role || "";
-  if (key === "status") return getLoginLinkStatusMeta(link).label;
+  if (key === "status") return getLoginLinkStateMeta(link).label;
   if (key === "starts") return link.created_at || "";
   if (key === "expires") return link.expires_at || "";
   if (key === "remaining") return link.expires_at || "";

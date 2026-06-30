@@ -7,7 +7,7 @@ export function CaseStatusBadge({ status }: { status: CaseStatus | string }) {
   const meta = getCaseStatusMeta(status as CaseStatus);
   return (
     <Badge
-      className={cn("w-[112px] justify-center whitespace-nowrap", meta.badgeClass)}
+      className={cn("w-[104px] justify-center whitespace-nowrap px-2", meta.badgeClass)}
       variant="secondary"
     >
       {meta.label}

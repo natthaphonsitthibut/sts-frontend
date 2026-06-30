@@ -1,3 +1,5 @@
+import type { PaginationMeta } from "../../../lib/pagination";
+
 export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
@@ -48,6 +50,12 @@ export interface CaseListQuery {
   searchTerm?: string;
   page?: number;
   limit?: number;
+}
+
+export type CaseStatusCounts = Record<KnownCaseStatus, number>;
+
+export interface CasePaginationMeta extends PaginationMeta {
+  statusCounts?: Partial<CaseStatusCounts>;
 }
 
 /** Scope-aware case counts from `GET /stats` through apiClient. */

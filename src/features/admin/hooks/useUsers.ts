@@ -4,7 +4,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { PaginationMeta } from "../../../lib/pagination";
 import { adminService, type UserListQuery } from "../api/admin.service";
 import type {
   BulkReissueStudentAccountsPayload,
@@ -15,6 +14,8 @@ import type {
   RoleDefinition,
   StudentAccountListQuery,
   StudentAccountManagementItem,
+  StudentAccountPaginationMeta,
+  UserPaginationMeta,
   UserSavePayload,
 } from "../types/admin.types";
 
@@ -28,7 +29,7 @@ const EMPTY_ROLES: RoleDefinition[] = [];
 
 interface UseUsersResult {
   users: ManagedUser[];
-  meta: PaginationMeta | undefined;
+  meta: UserPaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;
@@ -36,7 +37,7 @@ interface UseUsersResult {
 
 interface UseStudentAccountsResult {
   accounts: StudentAccountManagementItem[];
-  meta: PaginationMeta | undefined;
+  meta: StudentAccountPaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;
@@ -157,14 +158,15 @@ export function useDeleteUser() {
   });
 }
 
-export function useReissueStudentTemporaryPassword() {
+export function useReissueTemporaryPassword() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: adminService.reissueStudentTemporaryPassword,
+    mutationFn: adminService.reissueTemporaryPassword,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_ACCOUNTS_QUERY_KEY] });
     },
   });
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { KeyRound, Users, UserPlus } from "lucide-react";
+import { CheckCircle2, Clock, KeyRound, Users, UserPlus, UserX } from "lucide-react";
 import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
@@ -12,6 +12,7 @@ import {
   ListPageToolbar,
   PageShell,
   SkeletonTable,
+  SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
@@ -20,16 +21,49 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { UserTable } from "../components/UserTable";
 import {
   useDeleteUser,
-  useReissueStudentTemporaryPassword,
+  useReissueTemporaryPassword,
   useUsers,
 } from "../hooks/useUsers";
-import { getUserDisplayName } from "../lib/admin-presentation";
-import type { ManagedUser } from "../types/admin.types";
+import {
+  ACCOUNT_LIFECYCLE_STATUS_META,
+  ACCOUNT_LIFECYCLE_STATUS_ORDER,
+  getManagedUserLifecycleStatus,
+  getUserDisplayName,
+} from "../lib/admin-presentation";
+import type {
+  ManagedUser,
+  StudentAccountStatusCounts,
+} from "../types/admin.types";
+
+const USER_STATUS_ICONS = {
+  PENDING_FIRST_LOGIN: KeyRound,
+  ACTIVE: CheckCircle2,
+  TEMP_PASSWORD_EXPIRED: Clock,
+  DISABLED: UserX,
+} as const;
+
+function getFallbackUserStatusCounts(users: readonly ManagedUser[]): StudentAccountStatusCounts {
+  return users.reduce<StudentAccountStatusCounts>(
+    (counts, user) => {
+      const status = getManagedUserLifecycleStatus(user);
+      return {
+        ...counts,
+        [status]: counts[status] + 1,
+      };
+    },
+    {
+      PENDING_FIRST_LOGIN: 0,
+      ACTIVE: 0,
+      TEMP_PASSWORD_EXPIRED: 0,
+      DISABLED: 0,
+    },
+  );
+}
 
 export function ManageUsersPage() {
   const navigate = useNavigate();
   const deleteUser = useDeleteUser();
-  const reissuePassword = useReissueStudentTemporaryPassword();
+  const reissuePassword = useReissueTemporaryPassword();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,6 +102,18 @@ export function ManageUsersPage() {
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
   const totalCount = meta?.totalCount ?? 0;
+  const lifecycleStatusCounts = useMemo(
+    () => meta?.lifecycleStatusCounts ?? getFallbackUserStatusCounts(users),
+    [meta?.lifecycleStatusCounts, users],
+  );
+  const lifecycleStatusTotal = useMemo(
+    () =>
+      ACCOUNT_LIFECYCLE_STATUS_ORDER.reduce(
+        (total, status) => total + lifecycleStatusCounts[status],
+        0,
+      ),
+    [lifecycleStatusCounts],
+  );
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
@@ -138,14 +184,9 @@ export function ManageUsersPage() {
       <ListPageToolbar
         icon={Users}
         tableActions={
-          <>
-            <NavButton icon={KeyRound} to="/manage-student-accounts" variant="outline">
-              บัญชีนักเรียน
-            </NavButton>
-            <NavButton icon={UserPlus} to="/manage-users/new">
-              เพิ่มผู้ใช้งาน
-            </NavButton>
-          </>
+          <NavButton icon={UserPlus} to="/manage-users/new">
+            เพิ่มผู้ใช้งาน
+          </NavButton>
         }
         title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
@@ -178,12 +219,31 @@ export function ManageUsersPage() {
         />
       ) : isLoading ? (
         <SkeletonTable />
-      ) : users.length === 0 ? (
-        <EmptyState
-          title={debouncedSearch ? "ไม่พบผู้ใช้งานที่ค้นหา" : "ไม่พบผู้ใช้งาน"}
-        />
       ) : (
-        <>
+        <div className="space-y-4">
+          <SummaryMetrics
+            centerRows
+            items={[
+              {
+                label: "ในขอบเขต",
+                value: lifecycleStatusTotal,
+                tone: "default",
+                icon: Users,
+              },
+              ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
+                label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
+                value: lifecycleStatusCounts[status],
+                tone: ACCOUNT_LIFECYCLE_STATUS_META[status].summaryTone,
+                icon: USER_STATUS_ICONS[status],
+              })),
+            ]}
+          />
+          {users.length === 0 ? (
+            <EmptyState
+              title={debouncedSearch ? "ไม่พบผู้ใช้งานที่ค้นหา" : "ไม่พบผู้ใช้งาน"}
+            />
+          ) : (
+            <>
           <UserTable
             onDelete={handleDelete}
             onEdit={openEdit}
@@ -200,12 +260,14 @@ export function ManageUsersPage() {
             totalCount={totalCount}
             unitLabel="คน"
           />
-        </>
+            </>
+          )}
+        </div>
       )}
 
       {confirmDialog}
       <CredentialDialog
-        description="รหัสใหม่จะแสดงเพียงครั้งเดียวและมีอายุ 7 วัน นักเรียนต้องเปลี่ยนรหัสเมื่อเข้าสู่ระบบครั้งแรก"
+        description="รหัสใหม่จะแสดงเพียงครั้งเดียวและมีอายุ 7 วัน ผู้ใช้งานต้องเปลี่ยนรหัสเมื่อเข้าสู่ระบบครั้งแรก"
         onClose={() => setGeneratedPassword("")}
         open={Boolean(generatedPassword)}
         value={generatedPassword}

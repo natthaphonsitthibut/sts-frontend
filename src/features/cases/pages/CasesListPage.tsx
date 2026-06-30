@@ -1,11 +1,19 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HeartHandshake } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock,
+  HeartHandshake,
+  ListChecks,
+} from "lucide-react";
 import {
   EmptyState,
   ErrorState,
   PageShell,
   SkeletonTable,
+  SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
@@ -17,7 +25,43 @@ import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
 import { useCases } from "../hooks/useCases";
-import type { CaseListQuery, CaseRecord } from "../types/cases.types";
+import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
+import type {
+  CaseListQuery,
+  CaseRecord,
+  CaseStatusCounts,
+  KnownCaseStatus,
+} from "../types/cases.types";
+
+const CASE_STATUS_ICONS = {
+  OPEN: AlertCircle,
+  PENDING_REVIEW: ClipboardCheck,
+  IN_PROGRESS: Clock,
+  AWAITING_HELP: HeartHandshake,
+  RESOLVED: CheckCircle2,
+} as const;
+
+function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): CaseStatusCounts {
+  return cases.reduce<CaseStatusCounts>(
+    (counts, caseRecord) => {
+      if (!CASE_STATUS_ORDER.includes(caseRecord.status as KnownCaseStatus)) {
+        return counts;
+      }
+      const status = caseRecord.status as KnownCaseStatus;
+      return {
+        ...counts,
+        [status]: counts[status] + 1,
+      };
+    },
+    {
+      OPEN: 0,
+      PENDING_REVIEW: 0,
+      IN_PROGRESS: 0,
+      AWAITING_HELP: 0,
+      RESOLVED: 0,
+    },
+  );
+}
 
 export function CasesListPage() {
   const navigate = useNavigate();
@@ -47,6 +91,17 @@ export function CasesListPage() {
 
   const { cases, meta, isLoading, isError, refetch } = useCases(query);
   const totalCount = meta?.totalCount ?? 0;
+  const statusCounts = useMemo(
+    () => ({
+      ...getFallbackCaseStatusCounts([]),
+      ...(meta?.statusCounts ?? getFallbackCaseStatusCounts(cases)),
+    }),
+    [cases, meta?.statusCounts],
+  );
+  const statusTotal = useMemo(
+    () => CASE_STATUS_ORDER.reduce((total, status) => total + statusCounts[status], 0),
+    [statusCounts],
+  );
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
@@ -126,25 +181,46 @@ export function CasesListPage() {
         />
       ) : isLoading ? (
         <SkeletonTable />
-      ) : cases.length === 0 ? (
-        <EmptyState
-          icon={HeartHandshake}
-          title="ไม่พบเคสช่วยเหลือ"
-          description="ลองปรับตัวกรองสถานะ หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
-        />
       ) : (
-        <>
-          <CaseTable onCreateLink={openCreateLink} onUpdate={openUpdate} rows={cases} />
-          <Pagination
-            onPageChange={setPage}
-            onRowsPerPageChange={handleRowsPerPageChange}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-            totalCount={totalCount}
-            unitLabel="เคส"
+        <div className="space-y-4">
+          <SummaryMetrics
+            centerRows
+            items={[
+              {
+                label: "ทั้งหมด",
+                value: statusTotal,
+                tone: "default",
+                icon: ListChecks,
+              },
+              ...CASE_STATUS_ORDER.map((caseStatus) => ({
+                label: CASE_STATUS_META[caseStatus].label,
+                value: statusCounts[caseStatus],
+                tone: CASE_STATUS_META[caseStatus].summaryTone,
+                icon: CASE_STATUS_ICONS[caseStatus],
+              })),
+            ]}
           />
-        </>
+          {cases.length === 0 ? (
+            <EmptyState
+              icon={HeartHandshake}
+              title="ไม่พบเคสช่วยเหลือ"
+              description="ลองปรับตัวกรองสถานะ หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
+            />
+          ) : (
+            <>
+              <CaseTable onCreateLink={openCreateLink} onUpdate={openUpdate} rows={cases} />
+              <Pagination
+                onPageChange={setPage}
+                onRowsPerPageChange={handleRowsPerPageChange}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                totalCount={totalCount}
+                unitLabel="เคส"
+              />
+            </>
+          )}
+        </div>
       )}
 
       <CaseStatusUpdateDialog

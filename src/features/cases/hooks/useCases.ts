@@ -1,7 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type { PaginationMeta } from "../../../lib/pagination";
 import { casesService } from "../api/cases.service";
-import type { CaseListQuery, CaseRecord } from "../types/cases.types";
+import type { CaseListQuery, CasePaginationMeta, CaseRecord } from "../types/cases.types";
 
 export const CASES_QUERY_KEY = "cases";
 
@@ -9,7 +8,7 @@ const EMPTY_CASES: CaseRecord[] = [];
 
 interface UseCasesResult {
   cases: CaseRecord[];
-  meta: PaginationMeta | undefined;
+  meta: CasePaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;

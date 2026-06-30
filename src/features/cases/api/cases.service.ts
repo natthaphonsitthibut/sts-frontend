@@ -6,6 +6,7 @@ import {
 } from "../../../lib/pagination";
 import type {
   CaseListQuery,
+  CasePaginationMeta,
   CaseRecord,
   CaseReferralOutcomePayload,
   CaseReferralOutcomeResponse,
@@ -21,7 +22,7 @@ interface DataEnvelope<T> {
 }
 
 interface CasesService {
-  getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord>>;
+  getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }>;
   getCaseStats: () => Promise<CaseStats>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
@@ -50,7 +51,7 @@ function unwrapData<T>(data: T | DataEnvelope<T>): T {
 
 async function getCases(
   query: CaseListQuery = {},
-): Promise<PaginatedResult<CaseRecord>> {
+): Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }> {
   const params: Record<string, string> = toPaginationParams(query);
   if (query.status && query.status !== "ALL") {
     params.status = query.status;
@@ -70,7 +71,8 @@ async function getCases(
   }
 
   const response = await apiClient.get("/cases", { params });
-  return normalizePaginatedResponse<CaseRecord>(response.data, query);
+  return normalizePaginatedResponse<CaseRecord>(response.data, query) as
+    PaginatedResult<CaseRecord> & { meta: CasePaginationMeta };
 }
 
 async function getCaseStats(): Promise<CaseStats> {

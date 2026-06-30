@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { KeyRound, UserX } from "lucide-react";
-import { Badge, Checkbox, IconButton, type BadgeProps } from "../../../components/base";
+import { Badge, Checkbox, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -12,8 +12,9 @@ import {
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import type {
   StudentAccountManagementItem,
-  StudentAccountManagementStatus,
 } from "../types/admin.types";
+import { getAccountLifecycleStatusMeta } from "../lib/admin-presentation";
+import { cn } from "../../../lib/utils";
 
 type IdCollection = ReadonlySet<number> | readonly number[];
 
@@ -50,28 +51,12 @@ function formatClassLevel(row: StudentAccountManagementItem): string {
   return `${row.grade ?? "-"} / ${row.room ?? "-"}`;
 }
 
-function getStatusMeta(status: StudentAccountManagementStatus): {
-  label: string;
-  variant: BadgeProps["variant"];
-} {
-  if (status === "ACTIVE") {
-    return { label: "ใช้งาน", variant: "success" };
-  }
-  if (status === "TEMP_PASSWORD_EXPIRED") {
-    return { label: "รหัสหมดอายุ", variant: "warning" };
-  }
-  if (status === "DISABLED") {
-    return { label: "ปิดใช้งาน", variant: "secondary" };
-  }
-  return { label: "รอเข้าใช้ครั้งแรก", variant: "warning" };
-}
-
 function getSortValue(row: StudentAccountManagementItem, key: string): string {
   if (key === "student") return row.studentName;
   if (key === "school") return row.schoolName ?? "";
   if (key === "class") return formatClassLevel(row);
   if (key === "username") return row.username;
-  if (key === "status") return getStatusMeta(row.status).label;
+  if (key === "status") return getAccountLifecycleStatusMeta(row.status).label;
   if (key === "accountStatus") return row.accountStatus ?? "";
   if (key === "starts") return row.temporaryPasswordIssuedAt ?? "";
   if (key === "expires") return row.temporaryPasswordExpiresAt ?? "";
@@ -80,14 +65,14 @@ function getSortValue(row: StudentAccountManagementItem, key: string): string {
 }
 
 function StatusBadge({ row }: { row: StudentAccountManagementItem }) {
-  const status = getStatusMeta(row.status);
-  return <Badge variant={status.variant}>{status.label}</Badge>;
+  const status = getAccountLifecycleStatusMeta(row.status);
+  return <Badge className={status.badgeClass} variant="secondary">{status.label}</Badge>;
 }
 
 function AccountState({ row }: { row: StudentAccountManagementItem }) {
-  const status = getStatusMeta(row.status);
+  const status = getAccountLifecycleStatusMeta(row.status);
   return (
-    <Badge className="w-full justify-center" variant={status.variant}>
+    <Badge className={cn("w-full justify-center", status.badgeClass)} variant="secondary">
       {status.label}
     </Badge>
   );

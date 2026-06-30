@@ -33,8 +33,8 @@ const LINK_STATUS: Record<
   AdminLinkDetail["status"],
   { label: string; variant: "success" | "destructive" | "warning" }
 > = {
-  ACTIVE: { label: "ใช้งานได้", variant: "success" },
-  LOCKED: { label: "ปิดอยู่", variant: "destructive" },
+  ACTIVE: { label: "ใช้งาน", variant: "success" },
+  LOCKED: { label: "ปิดใช้งาน", variant: "destructive" },
   EXPIRED: { label: "หมดอายุ", variant: "warning" },
 };
 

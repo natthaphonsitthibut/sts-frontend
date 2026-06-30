@@ -106,6 +106,15 @@ const ANOMALY_META: Record<
   MISSING_CALENDAR_DAY: { label: "ไม่มี calendar day", variant: "secondary" },
 };
 
+function getSummaryToneFromBadgeVariant(
+  variant: "success" | "secondary" | "warning" | "destructive",
+): "default" | "success" | "warning" | "danger" {
+  if (variant === "success") return "success";
+  if (variant === "warning") return "warning";
+  if (variant === "destructive") return "danger";
+  return "default";
+}
+
 const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 const CALENDAR_WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 const THAI_MONTH_FORMATTER = new Intl.DateTimeFormat("th-TH", {
@@ -952,9 +961,24 @@ export function AttendanceOperationsPage() {
 
           <SummaryMetrics
             items={[
-              { label: "ครบ", value: summary.completed, tone: "success", icon: CheckCircle2 },
-              { label: "ยังไม่เช็ค", value: summary.missing, tone: "danger", icon: Clock3 },
-              { label: "ไม่ครบ", value: summary.incomplete, tone: "warning", icon: CircleAlert },
+              {
+                label: STATUS_META.COMPLETED.label,
+                value: summary.completed,
+                tone: getSummaryToneFromBadgeVariant(STATUS_META.COMPLETED.variant),
+                icon: CheckCircle2,
+              },
+              {
+                label: STATUS_META.MISSING.label,
+                value: summary.missing,
+                tone: getSummaryToneFromBadgeVariant(STATUS_META.MISSING.variant),
+                icon: Clock3,
+              },
+              {
+                label: STATUS_META.INCOMPLETE.label,
+                value: summary.incomplete,
+                tone: getSummaryToneFromBadgeVariant(STATUS_META.INCOMPLETE.variant),
+                icon: CircleAlert,
+              },
             ]}
           />
 
@@ -1056,27 +1080,27 @@ export function AttendanceOperationsPage() {
           <SummaryMetrics
             items={[
               {
-                label: "วันหยุด",
+                label: ANOMALY_META.HOLIDAY_ATTENDANCE.label,
                 value: anomalySummary.holidayAttendance,
-                tone: "warning",
+                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.HOLIDAY_ATTENDANCE.variant),
                 icon: CalendarDays,
               },
               {
-                label: "ยกเลิกเรียน",
+                label: ANOMALY_META.CANCELLED_ATTENDANCE.label,
                 value: anomalySummary.cancelledAttendance,
-                tone: "warning",
+                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.CANCELLED_ATTENDANCE.variant),
                 icon: CircleAlert,
               },
               {
-                label: "นอกภาคเรียน",
+                label: ANOMALY_META.OUT_OF_TERM.label,
                 value: anomalySummary.outOfTerm,
-                tone: "danger",
+                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.OUT_OF_TERM.variant),
                 icon: Clock3,
               },
               {
-                label: "ไม่มี calendar day",
+                label: ANOMALY_META.MISSING_CALENDAR_DAY.label,
                 value: anomalySummary.missingCalendarDay,
-                tone: "info",
+                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.MISSING_CALENDAR_DAY.variant),
                 icon: CalendarDays,
               },
             ]}

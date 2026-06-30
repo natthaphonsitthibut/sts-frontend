@@ -9,10 +9,8 @@ import {
   LayoutDashboard,
   ListChecks,
   Meh,
-  Plus,
 } from "lucide-react";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { NavButton } from "../../../components/layout/nav-button";
 import {
   ErrorState,
   FilterSelect,
@@ -181,9 +179,6 @@ export function DashboardPage() {
         tableActions={
           <div className="flex gap-2">
             <RefreshButton onRefresh={handleRefresh} />
-            <NavButton icon={Plus} to="/create">
-              สร้างภารกิจใหม่
-            </NavButton>
           </div>
         }
         search={{
@@ -218,7 +213,7 @@ export function DashboardPage() {
 
       <div className="space-y-5">
         <SummaryMetrics
-          className="sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7"
+          centerRows
           items={summaryItems}
         />
 

@@ -1,26 +1,33 @@
 import type { CSSProperties } from "react";
 import { getLeafMenuItems, MENU_ITEMS } from "../../auth/lib/permissions";
-import type { ManagedUser } from "../types/admin.types";
+import type {
+  ManagedUser,
+  StudentAccountManagementStatus,
+} from "../types/admin.types";
 
 export const USER_STATUS_OPTIONS = [
   { value: "ACTIVE", label: "ใช้งาน" },
-  { value: "INACTIVE", label: "ปิดการใช้งาน" },
+  { value: "DISABLED", label: "ปิดใช้งาน" },
 ] as const;
 
 const ACTION_PERMISSIONS = [
   { id: "close-case", label: "ปิดเคสช่วยเหลือ" },
   { id: "forward-case", label: "ส่งต่อเคสช่วยเหลือ" },
+  { id: "audit-log", label: "ดูบันทึกการใช้งาน (audit log)" },
 ] as const;
 
 /** Assignable permissions (leaf menu ids + their labels). */
 export function getAssignablePermissions(): Array<{ id: string; label: string }> {
   return [
     ...getLeafMenuItems(MENU_ITEMS).map((item) => ({
-      id: item.id,
+      id: item.permissionId ?? item.id,
       label: item.label,
     })),
     ...ACTION_PERMISSIONS,
-  ];
+  ].filter(
+    (item, index, permissions) =>
+      permissions.findIndex((candidate) => candidate.id === item.id) === index,
+  );
 }
 
 export function getUserDisplayName(user: ManagedUser): string {
@@ -40,6 +47,69 @@ export function getUserRoleText(user: ManagedUser): string {
     return user.labels.join(", ");
   }
   return "ไม่มีตำแหน่ง";
+}
+
+type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
+
+interface AccountLifecycleStatusMeta {
+  label: string;
+  badgeClass: string;
+  summaryTone: SummaryTone;
+}
+
+export const ACCOUNT_LIFECYCLE_STATUS_ORDER: StudentAccountManagementStatus[] = [
+  "PENDING_FIRST_LOGIN",
+  "ACTIVE",
+  "TEMP_PASSWORD_EXPIRED",
+  "DISABLED",
+];
+
+export const ACCOUNT_LIFECYCLE_STATUS_META: Record<
+  StudentAccountManagementStatus,
+  AccountLifecycleStatusMeta
+> = {
+  PENDING_FIRST_LOGIN: {
+    label: "รอเปลี่ยนรหัส",
+    badgeClass: "bg-primary/10 text-primary",
+    summaryTone: "info",
+  },
+  ACTIVE: {
+    label: "ใช้งาน",
+    badgeClass: "bg-success-100 text-success-700",
+    summaryTone: "success",
+  },
+  TEMP_PASSWORD_EXPIRED: {
+    label: "รหัสหมดอายุ",
+    badgeClass: "bg-warning-100 text-warning-700",
+    summaryTone: "warning",
+  },
+  DISABLED: {
+    label: "ปิดใช้งาน",
+    badgeClass: "bg-danger-100 text-danger-700",
+    summaryTone: "danger",
+  },
+};
+
+export function getAccountLifecycleStatusMeta(
+  status: StudentAccountManagementStatus,
+): AccountLifecycleStatusMeta {
+  return ACCOUNT_LIFECYCLE_STATUS_META[status];
+}
+
+export function getManagedUserLifecycleStatus(user: ManagedUser): StudentAccountManagementStatus {
+  if (user.status !== "ACTIVE") {
+    return "DISABLED";
+  }
+  if (user.must_change_password === true) {
+    const expiresAt = user.temporary_password_expires_at
+      ? new Date(user.temporary_password_expires_at)
+      : null;
+    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      return "TEMP_PASSWORD_EXPIRED";
+    }
+    return "PENDING_FIRST_LOGIN";
+  }
+  return "ACTIVE";
 }
 
 const AVATAR_COLOR_PAIRS = [
