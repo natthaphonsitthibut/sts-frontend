@@ -8,6 +8,7 @@ import {
   HeartHandshake,
   LayoutDashboard,
   ListChecks,
+  Meh,
   Plus,
 } from "lucide-react";
 import { RefreshButton } from "../../../components/layout/refresh-button";
@@ -96,12 +97,20 @@ export function DashboardPage() {
       AWAITING_HELP: stats?.awaitingHelp ?? 0,
       RESOLVED: stats?.resolved ?? 0,
     };
-    return DASHBOARD_CASE_STATUS_OPTIONS.map((option) => ({
-      label: option.label,
-      value: countByStatus[option.value] ?? 0,
-      tone: option.tone,
-      icon: CASE_STATUS_SUMMARY_ICONS[option.value],
-    }));
+    return [
+      {
+        label: "เด็กเสี่ยง",
+        value: stats?.atRiskStudents?.toLocaleString() ?? 0,
+        tone: "warning" as const,
+        icon: Meh,
+      },
+      ...DASHBOARD_CASE_STATUS_OPTIONS.map((option) => ({
+        label: option.label,
+        value: countByStatus[option.value] ?? 0,
+        tone: option.tone,
+        icon: CASE_STATUS_SUMMARY_ICONS[option.value],
+      })),
+    ];
   }, [statsQuery.data]);
 
   function handleSearchChange(value: string): void {
@@ -208,7 +217,10 @@ export function DashboardPage() {
       />
 
       <div className="space-y-5">
-        <SummaryMetrics items={summaryItems} />
+        <SummaryMetrics
+          className="sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7"
+          items={summaryItems}
+        />
 
         {casesQuery.isError ? (
           <ErrorState

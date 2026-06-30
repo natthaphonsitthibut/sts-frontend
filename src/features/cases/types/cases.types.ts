@@ -53,6 +53,7 @@ export interface CaseListQuery {
 /** Scope-aware case counts from `GET /stats` through apiClient. */
 export interface CaseStats {
   total: number;
+  atRiskStudents?: number;
   open: number;
   inProgress: number;
   awaitingHelp: number;
