@@ -6,6 +6,9 @@ import {
   type PaginatedSearchQuery,
 } from "../../../lib/pagination";
 import type {
+  BulkReissueStudentAccountsPayload,
+  BulkReissueStudentAccountsResponse,
+  DeactivateStudentAccountResponse,
   ManagedUser,
   CreateUserResponse,
   RoleDefinition,
@@ -15,6 +18,8 @@ import type {
   SettingsUpdateResponse,
   StudentAccountFilter,
   StudentAccountGenerateResponse,
+  StudentAccountListQuery,
+  StudentAccountManagementItem,
   StudentAccountPreview,
   SystemSetting,
   UserSavePayload,
@@ -27,6 +32,7 @@ export interface UserListQuery extends PaginatedSearchQuery {
   schoolId?: string;
   gradeLevelId?: number | null;
   room?: string;
+  excludeRole?: string;
 }
 
 interface DataEnvelope<T> {
@@ -100,6 +106,9 @@ async function getUsers(
   if (query.room?.trim()) {
     params.room = query.room.trim();
   }
+  if (query.excludeRole?.trim()) {
+    params.excludeRole = query.excludeRole.trim();
+  }
 
   const response = await apiClient.get("/users", { params });
   const result = normalizePaginatedResponse<ManagedUser>(response.data, query);
@@ -122,6 +131,69 @@ async function reissueStudentTemporaryPassword(
 ): Promise<ReissueStudentPasswordResponse> {
   const response = await apiClient.post<ReissueStudentPasswordResponse>(
     `/users/student-accounts/${id}/reissue-temporary-password`,
+  );
+  return response.data;
+}
+
+function toStudentAccountParams(
+  query: StudentAccountListQuery = {},
+): Record<string, string> {
+  const params: Record<string, string> = toPaginationParams(query);
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
+  if (query.schoolId) {
+    params.schoolId = String(query.schoolId);
+  }
+  if (query.grade?.trim()) {
+    params.grade = query.grade.trim();
+  }
+  if (query.room) {
+    params.room = String(query.room);
+  }
+  if (query.accountStatus) {
+    params.accountStatus = query.accountStatus;
+  }
+  if (query.onlyExpired) {
+    params.onlyExpired = "true";
+  }
+  return params;
+}
+
+async function getStudentAccounts(
+  query: StudentAccountListQuery = {},
+): Promise<PaginatedResult<StudentAccountManagementItem>> {
+  const response = await apiClient.get("/users/student-accounts", {
+    params: toStudentAccountParams(query),
+  });
+  return normalizePaginatedResponse<StudentAccountManagementItem>(response.data, query);
+}
+
+async function bulkReissueStudentTemporaryPasswords(
+  payload: BulkReissueStudentAccountsPayload,
+): Promise<BulkReissueStudentAccountsResponse> {
+  const response = await apiClient.post<BulkReissueStudentAccountsResponse>(
+    "/users/student-accounts/bulk-reissue-temporary-password",
+    payload,
+  );
+  return response.data;
+}
+
+async function deactivateStudentAccount(
+  id: number,
+): Promise<DeactivateStudentAccountResponse> {
+  const response = await apiClient.post<DeactivateStudentAccountResponse>(
+    `/users/student-accounts/${id}/deactivate`,
   );
   return response.data;
 }
@@ -205,7 +277,10 @@ export const adminService = {
   updateSetting,
   getUsers,
   getUser,
+  getStudentAccounts,
   reissueStudentTemporaryPassword,
+  bulkReissueStudentTemporaryPasswords,
+  deactivateStudentAccount,
   getRolesCatalog,
   createUser,
   updateUser,

@@ -49,6 +49,7 @@ export function ManageUsersPage() {
       schoolId: scope.schoolId || undefined,
       gradeLevelId: scope.gradeLevelId,
       room: scope.room || undefined,
+      excludeRole: "STUDENT",
       page,
       limit: rowsPerPage,
     }),

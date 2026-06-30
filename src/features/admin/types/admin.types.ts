@@ -76,6 +76,58 @@ export interface ReissueStudentPasswordResponse {
   temporaryPasswordExpiresAt: string;
 }
 
+export type StudentAccountManagementStatus =
+  | "PENDING_FIRST_LOGIN"
+  | "ACTIVE"
+  | "TEMP_PASSWORD_EXPIRED"
+  | "DISABLED";
+
+export interface StudentAccountListQuery extends StudentAccountFilter {
+  searchTerm?: string;
+  accountStatus?: StudentAccountManagementStatus;
+  onlyExpired?: boolean;
+}
+
+export interface StudentAccountManagementItem {
+  userId: number;
+  username: string;
+  studentName: string;
+  schoolId: number | null;
+  schoolName: string | null;
+  grade: string | null;
+  gradeLevelId: number | null;
+  room: number | null;
+  academicYear?: number | null;
+  semester?: number | null;
+  status: StudentAccountManagementStatus;
+  accountStatus: string | null;
+  mustChangePassword: boolean;
+  temporaryPasswordIssuedAt: string | null;
+  temporaryPasswordExpiresAt: string | null;
+  temporaryPasswordRemainingSeconds?: number | null;
+  createdAt?: string | null;
+}
+
+export interface BulkReissueStudentAccountsPayload extends StudentAccountListQuery {
+  userIds?: number[];
+}
+
+export interface BulkReissueStudentAccountsResponse {
+  success: boolean;
+  requestedCount: number;
+  reissuedCount: number;
+  skippedCount: number;
+  credentials: StudentAccountCredential[];
+  skipped: Array<{ userId: number; reason: string }>;
+}
+
+export interface DeactivateStudentAccountResponse {
+  success: boolean;
+  userId: number;
+  status: "DISABLED";
+  reason: string | null;
+}
+
 export interface StudentAccountFilter {
   schoolId?: number;
   province?: string;

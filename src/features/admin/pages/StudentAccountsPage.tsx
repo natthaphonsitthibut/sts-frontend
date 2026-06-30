@@ -8,9 +8,11 @@ import {
   Badge,
   Button,
   Combobox,
+  FormErrorAlert,
   Input,
   Label,
   Tabs,
+  useConfirm,
 } from "../../../components/base";
 import {
   DataTable,
@@ -33,14 +35,24 @@ import {
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { adminService } from "../api/admin.service";
+import { StudentAccountManagementTable } from "../components/StudentAccountManagementTable";
+import {
+  useBulkReissueStudentTemporaryPasswords,
+  useDeactivateStudentAccount,
+  useStudentAccounts,
+} from "../hooks/useUsers";
 import type {
   StudentAccountCandidate,
   StudentAccountCredential,
   StudentAccountFilter,
+  StudentAccountListQuery,
+  StudentAccountManagementItem,
+  StudentAccountManagementStatus,
 } from "../types/admin.types";
 
 const MIN_BULK_LIMIT = 1;
@@ -48,8 +60,19 @@ const MAX_BULK_LIMIT = 200;
 const CREDENTIAL_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 const PREVIEW_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 const STUDENT_ACCOUNT_TABS = [
+  { value: "manage", label: "จัดการบัญชี" },
   { value: "generate", label: "สร้างบัญชี" },
   { value: "history", label: "ประวัติ" },
+];
+const ACCOUNT_STATUS_OPTIONS: Array<{
+  value: "" | StudentAccountManagementStatus;
+  label: string;
+}> = [
+  { value: "", label: "ทุกสถานะ" },
+  { value: "PENDING_FIRST_LOGIN", label: "รอเข้าใช้ครั้งแรก" },
+  { value: "ACTIVE", label: "ใช้งานแล้ว" },
+  { value: "TEMP_PASSWORD_EXPIRED", label: "รหัสหมดอายุ" },
+  { value: "DISABLED", label: "ปิดใช้งาน" },
 ];
 
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -78,6 +101,28 @@ function buildFilter(
     onlyWithoutAccount: true,
     page,
     limit: safeLimit,
+  };
+}
+
+function buildManagementQuery(
+  scope: ReturnType<typeof useScopeCascade>,
+  area: ReturnType<typeof useSchoolAreaFilter>,
+  limit: number,
+  page: number,
+  searchTerm: string,
+  accountStatus: "" | StudentAccountManagementStatus,
+): StudentAccountListQuery {
+  return {
+    schoolId: scope.schoolId ? Number(scope.schoolId) : undefined,
+    province: !scope.schoolId && area.province ? area.province : undefined,
+    district: !scope.schoolId && area.district ? area.district : undefined,
+    subDistrict: !scope.schoolId && area.subDistrict ? area.subDistrict : undefined,
+    grade: scope.grade || undefined,
+    room: scope.room ? Number(scope.room) : undefined,
+    searchTerm: searchTerm || undefined,
+    accountStatus: accountStatus || undefined,
+    page,
+    limit,
   };
 }
 
@@ -443,9 +488,17 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
 }
 
 export function StudentAccountsPage() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
-  const [activeTab, setActiveTab] = useState("generate");
+  const [activeTab, setActiveTab] = useState("manage");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [accountStatus, setAccountStatus] = useState<"" | StudentAccountManagementStatus>("");
+  const [managementPage, setManagementPage] = useState(1);
+  const [managementRowsPerPage, setManagementRowsPerPage] = useState(20);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const [limit, setLimit] = useState(50);
   const [previewPage, setPreviewPage] = useState(1);
   const [previewRowsPerPage, setPreviewRowsPerPage] = useState(20);
@@ -454,6 +507,26 @@ export function StudentAccountsPage() {
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
   const [generationProgress, setGenerationProgress] = useState(0);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  const managementQuery = useMemo(
+    () =>
+      buildManagementQuery(
+        scope,
+        area,
+        managementRowsPerPage,
+        managementPage,
+        debouncedSearch,
+        accountStatus,
+      ),
+    [
+      accountStatus,
+      area,
+      debouncedSearch,
+      managementPage,
+      managementRowsPerPage,
+      scope,
+    ],
+  );
   const previewFilter = useMemo(
     () => buildFilter(scope, area, previewRowsPerPage, previewPage),
     [area, previewPage, previewRowsPerPage, scope],
@@ -462,6 +535,15 @@ export function StudentAccountsPage() {
     () => buildFilter(scope, area, limit),
     [area, limit, scope],
   );
+  const {
+    accounts,
+    meta: accountsMeta,
+    isLoading: accountsLoading,
+    isError: accountsError,
+    refetch: refetchAccounts,
+  } = useStudentAccounts(managementQuery);
+  const bulkReissueMutation = useBulkReissueStudentTemporaryPasswords();
+  const deactivateMutation = useDeactivateStudentAccount();
   const accountScopeKey = `${area.province || ""}|${area.district || ""}|${area.subDistrict || ""}|${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
   const previewMutation = useMutation({
     mutationFn: (payload?: StudentAccountFilter) =>
@@ -523,6 +605,133 @@ export function StudentAccountsPage() {
     return () => window.clearInterval(intervalId);
   }, [generateMutation.isPending]);
 
+  function resetManagementList(): void {
+    setManagementPage(1);
+    setSelectedAccountIds(new Set());
+  }
+
+  function handleManagementRowsPerPageChange(value: number): void {
+    setManagementRowsPerPage(value);
+    setManagementPage(1);
+    setSelectedAccountIds(new Set());
+  }
+
+  function handleSelectRow(userId: number, selected: boolean): void {
+    setSelectedAccountIds((current) => {
+      const next = new Set(current);
+      if (selected) {
+        next.add(userId);
+      } else {
+        next.delete(userId);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAll(selected: boolean, rows: readonly StudentAccountManagementItem[]): void {
+    setSelectedAccountIds((current) => {
+      const next = new Set(current);
+      for (const row of rows) {
+        if (selected) {
+          next.add(row.userId);
+        } else {
+          next.delete(row.userId);
+        }
+      }
+      return next;
+    });
+  }
+
+  function storeReissuedCredentials(credentials: StudentAccountCredential[]): void {
+    if (credentials.length === 0) return;
+    setCredentialSession((current) => {
+      const currentCredentials =
+        current.scopeKey === accountScopeKey ? current.credentials : [];
+      const byUser = new Map(
+        currentCredentials.map((credential) => [credential.userId, credential]),
+      );
+      for (const credential of credentials) {
+        byUser.set(credential.userId, credential);
+      }
+      return {
+        scopeKey: accountScopeKey,
+        credentials: Array.from(byUser.values()),
+      };
+    });
+  }
+
+  async function handleBulkReissueSelected(): Promise<void> {
+    const userIds = Array.from(selectedAccountIds);
+    if (userIds.length === 0) return;
+    const confirmed = await confirm({
+      title: "ออกรหัสชั่วคราวใหม่",
+      description: `ต้องการออกรหัสใหม่ให้บัญชีนักเรียน ${userIds.length} คนใช่หรือไม่? รหัสเดิมจะใช้ไม่ได้ทันที`,
+      confirmText: "ออกรหัสใหม่",
+    });
+    if (!confirmed) return;
+    bulkReissueMutation.mutate(
+      { ...managementQuery, userIds },
+      {
+        onSuccess: (result) => {
+          storeReissuedCredentials(result.credentials);
+          setSelectedAccountIds(new Set());
+        },
+      },
+    );
+  }
+
+  async function handleBulkReissueExpired(): Promise<void> {
+    const confirmed = await confirm({
+      title: "ออกรหัสใหม่ให้บัญชีหมดอายุ",
+      description: "ต้องการออกรหัสใหม่ให้บัญชีนักเรียนที่รหัสหมดอายุในขอบเขตนี้ใช่หรือไม่?",
+      confirmText: "ออกรหัสใหม่",
+    });
+    if (!confirmed) return;
+    bulkReissueMutation.mutate(
+      { ...managementQuery, onlyExpired: true, page: 1, limit: MAX_BULK_LIMIT },
+      {
+        onSuccess: (result) => {
+          storeReissuedCredentials(result.credentials);
+          setSelectedAccountIds(new Set());
+        },
+      },
+    );
+  }
+
+  async function handleReissueRow(row: StudentAccountManagementItem): Promise<void> {
+    const confirmed = await confirm({
+      title: "ออกรหัสชั่วคราวใหม่",
+      description: `ต้องการออกรหัสใหม่ให้ "${row.studentName}" ใช่หรือไม่? รหัสเดิมจะใช้ไม่ได้ทันที`,
+      confirmText: "ออกรหัสใหม่",
+    });
+    if (!confirmed) return;
+    bulkReissueMutation.mutate(
+      { ...managementQuery, userIds: [row.userId] },
+      {
+        onSuccess: (result) => storeReissuedCredentials(result.credentials),
+      },
+    );
+  }
+
+  async function handleDeactivateRow(row: StudentAccountManagementItem): Promise<void> {
+    const confirmed = await confirm({
+      title: "ปิดใช้งานบัญชีนักเรียน",
+      description: `ต้องการปิดใช้งานบัญชีของ "${row.studentName}" ใช่หรือไม่?`,
+      confirmText: "ปิดใช้งาน",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
+    deactivateMutation.mutate(row.userId, {
+      onSuccess: () => {
+        setSelectedAccountIds((current) => {
+          const next = new Set(current);
+          next.delete(row.userId);
+          return next;
+        });
+      },
+    });
+  }
+
   function generateStudentAccounts(): void {
     setGenerationProgress(12);
     generateMutation.mutate();
@@ -548,6 +757,7 @@ export function StudentAccountsPage() {
   ): void {
     area.setSchoolSearch("");
     setPreviewPage(1);
+    resetManagementList();
     if (level === "province") {
       area.setProvince(value);
     } else if (level === "district") {
@@ -560,6 +770,7 @@ export function StudentAccountsPage() {
 
   function setSchool(nextSchoolId: string): void {
     setPreviewPage(1);
+    resetManagementList();
     scope.setSchoolId(nextSchoolId);
     const school = area.filteredSchools.find(
       (candidate) => String(candidate.id) === nextSchoolId,
@@ -591,7 +802,25 @@ export function StudentAccountsPage() {
           />
         }
         footerActions={
-          activeTab === "generate" ? (
+          activeTab === "manage" ? (
+            <>
+              <Button
+                disabled={bulkReissueMutation.isPending}
+                icon={KeyRound}
+                onClick={() => void handleBulkReissueExpired()}
+                variant="outline"
+              >
+                ออกรหัสใหม่ที่หมดอายุ
+              </Button>
+              <Button
+                disabled={selectedAccountIds.size === 0 || bulkReissueMutation.isPending}
+                icon={KeyRound}
+                onClick={() => void handleBulkReissueSelected()}
+              >
+                ออกรหัสที่เลือก ({selectedAccountIds.size})
+              </Button>
+            </>
+          ) : activeTab === "generate" ? (
             <>
               <Button
                 icon={Search}
@@ -689,6 +918,7 @@ export function StudentAccountsPage() {
               disabled={!scope.schoolId || scope.gradeLocked}
               onChange={(value) => {
                 setPreviewPage(1);
+                resetManagementList();
                 scope.setGrade(value);
               }}
               options={[
@@ -704,6 +934,7 @@ export function StudentAccountsPage() {
               disabled={!scope.grade || scope.roomLocked}
               onChange={(value) => {
                 setPreviewPage(1);
+                resetManagementList();
                 scope.setRoom(value);
               }}
               options={[
@@ -724,11 +955,125 @@ export function StudentAccountsPage() {
                 value={limit}
               />
             </ScopeField>
+          ) : activeTab === "manage" ? (
+            <>
+              <ScopeField label="ค้นหา">
+                <Input
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                    resetManagementList();
+                  }}
+                  placeholder="ชื่อหรือ username"
+                  value={searchQuery}
+                />
+              </ScopeField>
+              <ScopeField label="สถานะบัญชี">
+                <Combobox
+                  onChange={(value) => {
+                    setAccountStatus(value as "" | StudentAccountManagementStatus);
+                    resetManagementList();
+                  }}
+                  options={ACCOUNT_STATUS_OPTIONS}
+                  searchable={false}
+                  value={accountStatus}
+                />
+              </ScopeField>
+            </>
           ) : null}
         </ToolbarControls>
       </PageToolbar>
 
-      {activeTab === "generate" ? (
+      {activeTab === "manage" ? (
+        <>
+          <FormErrorAlert
+            error={bulkReissueMutation.error}
+            fallback="ออกรหัสชั่วคราวใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง"
+          />
+          <FormErrorAlert
+            error={deactivateMutation.error}
+            fallback="ปิดใช้งานบัญชีนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง"
+          />
+          {accountsError ? (
+            <ErrorState
+              title="โหลดบัญชีนักเรียนไม่สำเร็จ"
+              description="เกิดข้อผิดพลาดระหว่างโหลดรายการบัญชีนักเรียน"
+              onRetry={refetchAccounts}
+            />
+          ) : accountsLoading ? (
+            <EmptyState icon={KeyRound} title="กำลังโหลดบัญชีนักเรียน" />
+          ) : (
+            <div className="space-y-4">
+              <SummaryMetrics
+                items={[
+                  { label: "ในขอบเขต", value: accountsMeta?.totalCount ?? 0 },
+                  { label: "ที่เลือก", value: selectedAccountIds.size },
+                  {
+                    label: "หมดอายุในหน้านี้",
+                    value: accounts.filter((account) => account.status === "TEMP_PASSWORD_EXPIRED")
+                      .length,
+                  },
+                ]}
+              />
+              <StudentAccountManagementTable
+                onDeactivate={(row) => void handleDeactivateRow(row)}
+                onReissueTemporaryPassword={(row) =>
+                  void handleReissueRow(row)
+                }
+                onSelectAll={handleSelectAll}
+                onSelectRow={handleSelectRow}
+                pendingDeactivateIds={
+                  deactivateMutation.isPending && deactivateMutation.variables
+                    ? [deactivateMutation.variables]
+                    : []
+                }
+                pendingReissueIds={
+                  bulkReissueMutation.isPending
+                    ? bulkReissueMutation.variables.userIds ?? selectedAccountIds
+                    : []
+                }
+                rows={accounts}
+                selectedIds={selectedAccountIds}
+              />
+              <Pagination
+                onPageChange={(nextPage) => {
+                  setManagementPage(nextPage);
+                  setSelectedAccountIds(new Set());
+                }}
+                onRowsPerPageChange={handleManagementRowsPerPageChange}
+                page={accountsMeta?.page ?? managementPage}
+                rowsPerPage={accountsMeta?.limit ?? managementRowsPerPage}
+                rowsPerPageOptions={PREVIEW_PAGE_SIZE_OPTIONS}
+                totalCount={accountsMeta?.totalCount ?? 0}
+                unitLabel="บัญชี"
+              />
+            </div>
+          )}
+
+          {generatedCredentials.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              <Alert variant="success">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <AlertTitle>ออกรหัสใหม่แล้ว {generatedCredentials.length} บัญชี</AlertTitle>
+                    <AlertDescription>
+                      รหัสชั่วคราวแสดงเพียงครั้งเดียว คัดลอกหรือส่งออกผลลัพธ์ได้ทันที
+                    </AlertDescription>
+                  </div>
+                  <TableActionBar className="min-h-0 shrink-0">
+                    <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
+                      คัดลอกตาราง
+                    </Button>
+                    <Button icon={Download} onClick={exportCredentials} variant="outline">
+                      ส่งออก CSV
+                    </Button>
+                  </TableActionBar>
+                </div>
+              </Alert>
+              <CredentialTable credentials={generatedCredentials} />
+            </div>
+          ) : null}
+        </>
+      ) : activeTab === "generate" ? (
         <>
           {generateMutation.isPending ? (
             <div className="mb-5">
@@ -826,6 +1171,7 @@ export function StudentAccountsPage() {
           showReferenceColumn={false}
         />
       )}
+      {confirmDialog}
     </PageShell>
   );
 }

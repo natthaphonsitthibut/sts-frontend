@@ -7,21 +7,35 @@ import {
 import type { PaginationMeta } from "../../../lib/pagination";
 import { adminService, type UserListQuery } from "../api/admin.service";
 import type {
+  BulkReissueStudentAccountsPayload,
+  BulkReissueStudentAccountsResponse,
+  DeactivateStudentAccountResponse,
   CreateUserResponse,
   ManagedUser,
   RoleDefinition,
+  StudentAccountListQuery,
+  StudentAccountManagementItem,
   UserSavePayload,
 } from "../types/admin.types";
 
 export const USERS_QUERY_KEY = "admin-users";
 export const USER_QUERY_KEY = "admin-user";
 export const ROLES_CATALOG_QUERY_KEY = "admin-roles-catalog";
+export const STUDENT_ACCOUNTS_QUERY_KEY = "admin-student-accounts";
 
 const EMPTY_USERS: ManagedUser[] = [];
 const EMPTY_ROLES: RoleDefinition[] = [];
 
 interface UseUsersResult {
   users: ManagedUser[];
+  meta: PaginationMeta | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+interface UseStudentAccountsResult {
+  accounts: StudentAccountManagementItem[];
   meta: PaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -54,6 +68,26 @@ export function useUser(id: number | null) {
   });
 }
 
+export function useStudentAccounts(
+  query: StudentAccountListQuery = {},
+): UseStudentAccountsResult {
+  const result = useQuery({
+    queryKey: [STUDENT_ACCOUNTS_QUERY_KEY, query],
+    queryFn: () => adminService.getStudentAccounts(query),
+    placeholderData: keepPreviousData,
+  });
+
+  return {
+    accounts: result.data?.items ?? [],
+    meta: result.data?.meta,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: () => {
+      void result.refetch();
+    },
+  };
+}
+
 export function useRolesCatalog(): RoleDefinition[] {
   const result = useQuery({
     queryKey: [ROLES_CATALOG_QUERY_KEY],
@@ -76,6 +110,37 @@ export function useSaveUser() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_ACCOUNTS_QUERY_KEY] });
+    },
+  });
+}
+
+export function useBulkReissueStudentTemporaryPasswords() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    BulkReissueStudentAccountsResponse,
+    Error,
+    BulkReissueStudentAccountsPayload
+  >({
+    mutationFn: adminService.bulkReissueStudentTemporaryPasswords,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_ACCOUNTS_QUERY_KEY] });
+    },
+  });
+}
+
+export function useDeactivateStudentAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation<DeactivateStudentAccountResponse, Error, number>({
+    mutationFn: adminService.deactivateStudentAccount,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_ACCOUNTS_QUERY_KEY] });
     },
   });
 }
