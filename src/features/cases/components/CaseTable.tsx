@@ -11,10 +11,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import {
-  formatCaseDate,
-  getCaseReason,
-} from "../lib/case-presentation";
+import { getCaseReason } from "../lib/case-presentation";
 import type { CaseRecord } from "../types/cases.types";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { CaseReviewActionButton } from "./CaseReviewActionButton";
@@ -141,17 +138,11 @@ export function CaseTable({
               <CaseStatusBadge status={caseRecord.status} />
             </DataTableCell>
             <DataTableCell>
-              {caseRecord.task_id ? (
-                <LinkTimeSummary
-                  expiresAt={caseRecord.active_link_expires_at}
-                  startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
-                  variant="columns"
-                />
-              ) : (
-                <span className="text-sm font-medium tabular-nums text-slate-500">
-                  {formatCaseDate(caseRecord.created_at)}
-                </span>
-              )}
+              <LinkTimeSummary
+                expiresAt={caseRecord.active_link_expires_at}
+                startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                variant="columns"
+              />
             </DataTableCell>
             <DataTableCell className="text-right">
               <CaseAction
@@ -189,16 +180,10 @@ export function CaseTable({
               </div>
             ) : null}
             <div className="mt-3 rounded-md bg-slate-50 p-3">
-              {caseRecord.task_id ? (
-                <LinkTimeSummary
-                  startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
-                  expiresAt={caseRecord.active_link_expires_at}
-                />
-              ) : (
-                <span className="text-sm font-medium text-slate-500">
-                  {formatCaseDate(caseRecord.created_at)}
-                </span>
-              )}
+              <LinkTimeSummary
+                startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                expiresAt={caseRecord.active_link_expires_at}
+              />
             </div>
             <div className="mt-4 flex items-center justify-end">
               <CaseAction

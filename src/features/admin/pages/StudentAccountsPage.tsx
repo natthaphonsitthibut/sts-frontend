@@ -406,7 +406,7 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
           { label: "ชั้น/ห้อง", sortKey: "class" },
           { label: "username", sortKey: "username" },
           "temp password",
-          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เริ่มใช้" /> },
+          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
         ]}
         columnWidths={[
           "w-[14%]",
@@ -440,7 +440,6 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             <DataTableCell>
               <LinkTimeSummary
                 expiresAt={credential.temporaryPasswordExpiresAt}
-                startLabel="เริ่มใช้"
                 startsAt={credential.temporaryPasswordIssuedAt}
                 variant="columns"
               />
@@ -463,7 +462,6 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             </div>
             <LinkTimeSummary
               expiresAt={credential.temporaryPasswordExpiresAt}
-              startLabel="เริ่มใช้"
               startsAt={credential.temporaryPasswordIssuedAt}
             />
           </TableCard>

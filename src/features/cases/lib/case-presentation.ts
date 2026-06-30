@@ -27,7 +27,7 @@ export const CASE_STATUS_META: Record<KnownCaseStatus, CaseStatusMeta> = {
     badgeClass: "bg-slate-100 text-slate-600",
   },
   PENDING_REVIEW: {
-    label: "รอผอ.ประเมิน",
+    label: "รอตรวจผล",
     badgeClass: "bg-warning-100 text-warning-700",
   },
   IN_PROGRESS: {
@@ -35,11 +35,11 @@ export const CASE_STATUS_META: Record<KnownCaseStatus, CaseStatusMeta> = {
     badgeClass: "bg-primary/10 text-primary",
   },
   AWAITING_HELP: {
-    label: "รอรับความช่วยเหลือ",
+    label: "รอช่วยเหลือ",
     badgeClass: "bg-warning-100 text-warning-700",
   },
   RESOLVED: {
-    label: "ปิดเคสสำเร็จ",
+    label: "ปิดเคสแล้ว",
     badgeClass: "bg-success-100 text-success-700",
   },
 };

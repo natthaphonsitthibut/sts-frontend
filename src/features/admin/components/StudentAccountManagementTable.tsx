@@ -206,7 +206,6 @@ export function StudentAccountManagementTable({
               <LinkTimeHeader
                 onSortChange={setActiveSort}
                 sort={activeSort}
-                startLabel="ออกรหัส"
               />
             ),
           },
@@ -260,7 +259,6 @@ export function StudentAccountManagementTable({
               <DataTableCell>
                 <LinkTimeSummary
                   expiresAt={row.temporaryPasswordExpiresAt}
-                  startLabel="ออกรหัส"
                   startsAt={row.temporaryPasswordIssuedAt}
                   variant="columns"
                 />
@@ -317,7 +315,6 @@ export function StudentAccountManagementTable({
               <div className="mt-3 rounded-md bg-slate-50 p-3">
                 <LinkTimeSummary
                   expiresAt={row.temporaryPasswordExpiresAt}
-                  startLabel="ออกรหัส"
                   startsAt={row.temporaryPasswordIssuedAt}
                 />
               </div>

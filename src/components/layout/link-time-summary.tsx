@@ -36,29 +36,34 @@ export function LinkTimeSummary({
   const remainingBadge = getRemainingBadge(expiresAt);
   const rows = [
     { label: startLabel, value: formatThaiDateTime(startsAt) },
-    { label: "หมดอายุ", value: formatThaiDateTime(expiresAt) },
+    { label: "หมด", value: formatThaiDateTime(expiresAt) },
     { label: "อายุที่เหลือ", value: remainingBadge.label },
   ];
 
   if (variant === "columns") {
     return (
-      <div className={cn("grid grid-cols-3 gap-2 text-xs leading-5", className)}>
-        {rows.map((row) => (
-          <div className="min-w-0" key={row.label}>
-            {row.label === "อายุที่เหลือ" ? (
-              <Badge
-                className="min-w-[96px] justify-center whitespace-nowrap"
-                variant={remainingBadge.variant}
-              >
-                {row.value}
-              </Badge>
-            ) : (
-              <div className="whitespace-normal break-words font-medium tabular-nums text-slate-700">
-                {row.value}
-              </div>
-            )}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3 text-xs leading-5",
+          className,
+        )}
+      >
+        <div className="min-w-0 space-y-0.5">
+          <div className="break-words font-medium tabular-nums text-slate-700">
+            <span className="font-semibold text-slate-400">{startLabel} </span>
+            {rows[0].value}
           </div>
-        ))}
+          <div className="break-words font-medium tabular-nums text-slate-700">
+            <span className="font-semibold text-slate-400">หมด </span>
+            {rows[1].value}
+          </div>
+        </div>
+        <Badge
+          className="w-[96px] shrink-0 justify-center whitespace-nowrap"
+          variant={remainingBadge.variant}
+        >
+          {remainingBadge.label}
+        </Badge>
       </div>
     );
   }
@@ -117,37 +122,49 @@ export function LinkTimeHeader({
 }: LinkTimeHeaderProps) {
   const items = [
     { label: startLabel, sortKey: "starts" },
-    { label: "หมดอายุ", sortKey: "expires" },
+    { label: "หมด", sortKey: "expires" },
     { label: "อายุที่เหลือ", sortKey: "remaining" },
   ];
+
+  const renderSortButton = (
+    item: { label: string; sortKey: string },
+    extraClassName?: string,
+  ) => {
+    const isActiveSort = sort?.key === item.sortKey;
+    const SortIcon = isActiveSort
+      ? sort?.direction === "asc"
+        ? ArrowUp
+        : ArrowDown
+      : ArrowUpDown;
+    return (
+      <button
+        aria-label={`เรียงตาม${item.label}`}
+        className={cn(
+          "inline-flex min-w-0 items-center gap-1 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          isActiveSort && "text-primary",
+          extraClassName,
+        )}
+        key={item.sortKey}
+        onClick={() => onSortChange(getNextSortState(sort, item.sortKey))}
+        type="button"
+      >
+        <span className="whitespace-nowrap">{item.label}</span>
+        <SortIcon className="size-3.5 shrink-0" aria-hidden="true" />
+      </button>
+    );
+  };
+
+  const [startItem, expireItem, remainingItem] = items;
 
   return (
     <div className="space-y-1">
       <div className="text-center">ช่วงเวลา</div>
-      <div className="grid grid-cols-3 gap-2">
-        {items.map((item) => {
-          const isActiveSort = sort?.key === item.sortKey;
-          const SortIcon = isActiveSort
-            ? sort?.direction === "asc"
-              ? ArrowUp
-              : ArrowDown
-            : ArrowUpDown;
-          return (
-            <button
-              aria-label={`เรียงตาม${item.label}`}
-              className={cn(
-                "inline-flex min-w-0 items-center justify-center gap-1 rounded-md text-center transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                isActiveSort && "text-primary",
-              )}
-              key={item.sortKey}
-              onClick={() => onSortChange(getNextSortState(sort, item.sortKey))}
-              type="button"
-            >
-              <span className="whitespace-normal">{item.label}</span>
-              <SortIcon className="size-3.5 shrink-0" aria-hidden="true" />
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col items-start gap-0.5">
+          {renderSortButton(startItem)}
+          {renderSortButton(expireItem)}
+        </div>
+        {renderSortButton(remainingItem, "w-[96px] shrink-0 justify-center")}
       </div>
     </div>
   );
