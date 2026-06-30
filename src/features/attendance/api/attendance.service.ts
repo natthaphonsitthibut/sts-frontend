@@ -240,6 +240,15 @@ async function getAttendanceTasksPage(
   if (searchTerm) {
     params.searchTerm = searchTerm;
   }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
   if (query.schoolId) {
     params.schoolId = String(query.schoolId);
   }

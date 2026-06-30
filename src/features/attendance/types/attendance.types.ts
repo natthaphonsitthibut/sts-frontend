@@ -197,6 +197,9 @@ export interface AttendanceTaskListQuery {
   limit?: number;
   searchTerm?: string;
   status?: AttendanceTaskLinkStatus;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
   schoolId?: string | number;
   grade?: string;
   room?: string;

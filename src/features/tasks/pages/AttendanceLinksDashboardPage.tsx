@@ -118,13 +118,27 @@ export function AttendanceLinksDashboardPage() {
     () => ({
       status,
       searchTerm: debouncedSearch || undefined,
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
       schoolId: scope.schoolId || undefined,
       grade: scope.grade || undefined,
       room: scope.room || undefined,
       page,
       limit: rowsPerPage,
     }),
-    [status, debouncedSearch, scope.schoolId, scope.grade, scope.room, page, rowsPerPage],
+    [
+      status,
+      debouncedSearch,
+      schoolArea.province,
+      schoolArea.district,
+      schoolArea.subDistrict,
+      scope.schoolId,
+      scope.grade,
+      scope.room,
+      page,
+      rowsPerPage,
+    ],
   );
   const tasksQuery = useQuery({
     queryKey: ["attendance-link-tasks", query],

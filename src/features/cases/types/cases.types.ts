@@ -44,6 +44,9 @@ export interface CaseRecord {
 
 export interface CaseListQuery {
   status?: string;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
   schoolId?: string;
   grade?: string;
   room?: string;

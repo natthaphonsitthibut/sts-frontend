@@ -59,6 +59,9 @@ export function DashboardPage() {
   const query = useMemo<CaseListQuery>(
     () => ({
       status,
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
       schoolId: scope.schoolId || undefined,
       grade: scope.grade || undefined,
       room: scope.room || undefined,
@@ -66,7 +69,18 @@ export function DashboardPage() {
       page,
       limit: rowsPerPage,
     }),
-    [status, scope.schoolId, scope.grade, scope.room, debouncedSearch, page, rowsPerPage],
+    [
+      status,
+      schoolArea.province,
+      schoolArea.district,
+      schoolArea.subDistrict,
+      scope.schoolId,
+      scope.grade,
+      scope.room,
+      debouncedSearch,
+      page,
+      rowsPerPage,
+    ],
   );
 
   const casesQuery = useQuery({

@@ -56,6 +56,15 @@ async function getCases(
   if (query.status && query.status !== "ALL") {
     params.status = query.status;
   }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
   if (query.schoolId?.trim()) {
     params.schoolId = query.schoolId.trim();
   }
