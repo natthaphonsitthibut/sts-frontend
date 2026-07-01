@@ -6,11 +6,14 @@ import type {
   MagicLoginVerifyResponse,
   MagicOtpVerifyResponse,
   MockThaIdLoginPayload,
+  UpdateProfilePayload,
 } from "../types/auth.types";
 
 interface AuthService {
   changeOwnPassword: (payload: ChangePasswordPayload) => Promise<void>;
+  getMyProfile: () => Promise<AuthUser>;
   getUserProfile: (userId: number) => Promise<AuthUser>;
+  updateMyProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
   loginWithMockThaId: (payload: MockThaIdLoginPayload) => Promise<AuthUser>;
@@ -29,6 +32,18 @@ async function login(credentials: LoginCredentials): Promise<AuthUser> {
 
 async function getUserProfile(userId: number): Promise<AuthUser> {
   const response = await apiClient.get<AuthUser>(`/users/${userId}`);
+  return response.data;
+}
+
+async function getMyProfile(): Promise<AuthUser> {
+  const response = await apiClient.get<AuthUser>("/users/me");
+  return response.data;
+}
+
+async function updateMyProfile(
+  payload: UpdateProfilePayload,
+): Promise<AuthUser> {
+  const response = await apiClient.patch<AuthUser>("/users/me", payload);
   return response.data;
 }
 
@@ -85,11 +100,13 @@ async function verifyMagicOtp(
 
 export const authService: AuthService = {
   changeOwnPassword,
+  getMyProfile,
   getUserProfile,
   login,
   logout,
   loginWithMockThaId,
   requestMagicOtp,
+  updateMyProfile,
   verifyMagicLogin,
   verifyMagicOtp,
 };

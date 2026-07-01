@@ -14,6 +14,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const user = useAuthSessionStore((state) => state.user);
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
   const canOpenSettings = hasPermission(userPermissions, "settings");
+  const canEditProfile = !user?.virtual_login;
 
   const displayName =
     [user?.FirstName, user?.LastName].filter(Boolean).join(" ").trim() ||
@@ -63,15 +64,33 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               <Settings className="size-5" aria-hidden="true" />
             </Link>
           ) : null}
-          <div className="ml-1 hidden items-center gap-2 border-l border-white/20 pl-3 sm:flex">
-            <Avatar
-              fallback={initials}
-              className="size-9 bg-white font-semibold text-primary"
-            />
-            <span className="max-w-[140px] truncate text-sm font-semibold text-white">
-              {displayName}
-            </span>
-          </div>
+          {canEditProfile ? (
+            <div className="ml-1 hidden items-center border-l border-white/20 pl-3 sm:flex">
+              <Link
+                aria-label="โปรไฟล์ของฉัน"
+                className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
+                to="/profile"
+              >
+                <Avatar
+                  fallback={initials}
+                  className="size-9 bg-white font-semibold text-primary transition-transform hover:scale-105"
+                />
+                <span className="max-w-[140px] truncate text-sm font-semibold text-white">
+                  {displayName}
+                </span>
+              </Link>
+            </div>
+          ) : (
+            <div className="ml-1 hidden items-center gap-2 border-l border-white/20 pl-3 sm:flex">
+              <Avatar
+                fallback={initials}
+                className="size-9 bg-white font-semibold text-primary"
+              />
+              <span className="max-w-[140px] truncate text-sm font-semibold text-white">
+                {displayName}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </header>

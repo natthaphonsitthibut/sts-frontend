@@ -24,6 +24,7 @@ collectMenuTitles(MENU_ITEMS, MENU_TITLES);
 /** Routes not present in the sidebar menu still need a header title. */
 const EXTRA_TITLES: Record<string, string> = {
   "/cases": "เคสช่วยเหลือนักเรียน",
+  "/profile": "โปรไฟล์ของฉัน",
   "/admin-access": "เข้าสู่ระบบ",
   "/audit-log": "รายละเอียดบันทึกการใช้งาน",
   "/forbidden": "ไม่มีสิทธิ์เข้าถึง",

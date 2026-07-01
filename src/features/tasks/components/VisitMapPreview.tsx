@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Crosshair, LoaderCircle, MapPin } from "lucide-react";
 import { Badge } from "../../../components/base";
-import { CopyButton } from "../../../components/layout/copy-button";
 import { appConfig } from "../../../config/env";
 import { cn } from "../../../lib/utils";
 import {
@@ -12,7 +11,7 @@ import {
 
 type CoordinateValue = number | string | null | undefined;
 
-interface VisitMapPreviewProps {
+export interface VisitMapPreviewProps {
   title: string;
   lat?: CoordinateValue;
   lng?: CoordinateValue;
@@ -44,10 +43,6 @@ function formatCoordinate(value: number): string {
   return value.toFixed(6);
 }
 
-function coordinateSummary(lat: number, lng: number): string {
-  return `${formatCoordinate(lat)}, ${formatCoordinate(lng)}`;
-}
-
 export function VisitMapPreview({
   title,
   lat,
@@ -70,10 +65,6 @@ export function VisitMapPreview({
   const parsedLat = normalizeCoordinate(lat);
   const parsedLng = normalizeCoordinate(lng);
   const hasCoordinates = parsedLat !== null && parsedLng !== null;
-  const coordinates = hasCoordinates
-    ? coordinateSummary(parsedLat, parsedLng)
-    : "";
-
   useEffect(() => {
     onCoordinateChangeRef.current = onCoordinateChange;
   }, [onCoordinateChange]);
@@ -195,10 +186,9 @@ export function VisitMapPreview({
           ) : null}
         </div>
         {hasCoordinates ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <Badge variant="success">{markerLabel}</Badge>
-            <CopyButton label="คัดลอก" size="sm" value={coordinates} variant="outline" />
-          </div>
+          <Badge className="shrink-0" variant="success">
+            {markerLabel}
+          </Badge>
         ) : (
           <Badge variant="secondary">{emptyTitle}</Badge>
         )}

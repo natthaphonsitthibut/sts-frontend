@@ -16,6 +16,11 @@ export const ChangePasswordPage = lazy(() =>
     default: module.ChangePasswordPage,
   })),
 );
+export const ProfilePage = lazy(() =>
+  import("../features/auth/pages/ProfilePage").then((module) => ({
+    default: module.ProfilePage,
+  })),
+);
 export const AttendanceCheckInPage = lazy(() =>
   import("../features/attendance/pages/AttendanceCheckInPage").then((module) => ({
     default: module.AttendanceCheckInPage,

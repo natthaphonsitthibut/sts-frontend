@@ -28,6 +28,7 @@ import {
   ManageUserFormPage,
   ManageUsersPage,
   NotFoundPage,
+  ProfilePage,
   ReportPage,
   RouteSuspense,
   StudentDetailPage,
@@ -72,6 +73,10 @@ export const router = createBrowserRouter([
       {
         path: "change-password",
         element: withSuspense(<ChangePasswordPage />),
+      },
+      {
+        path: "profile",
+        element: protectedElement(<ProfilePage />),
       },
       {
         path: "students",

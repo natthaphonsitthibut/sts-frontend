@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Avatar, IconButton } from "../base";
 import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
@@ -32,6 +32,8 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
   const displayName = getDisplayName(user?.FirstName, user?.LastName, user?.username);
   const primaryRole = user?.roles?.[0];
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-";
+  // Magic/virtual sessions have no editable account, so hide the profile link.
+  const canEditProfile = !user?.virtual_login;
 
   async function handleLogout(): Promise<void> {
     // Best-effort: clear the server cookie, then always clear local state.
@@ -51,17 +53,43 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
         collapsed && "flex-col gap-1.5 px-2",
       )}
     >
-      <Avatar
-        fallback={getInitials(displayName)}
-        className={cn(
-          "size-10 bg-primary-soft font-semibold text-primary",
-          collapsed && "rounded-lg text-xs",
-        )}
-      />
-      <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
-        <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
-        <div className="truncate text-xs text-slate-500">{roleLabel}</div>
-      </div>
+      {canEditProfile ? (
+        <Link
+          aria-label="โปรไฟล์ของฉัน"
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            collapsed && "flex-none",
+          )}
+          title={collapsed ? "โปรไฟล์ของฉัน" : undefined}
+          to="/profile"
+        >
+          <Avatar
+            fallback={getInitials(displayName)}
+            className={cn(
+              "size-10 bg-primary-soft font-semibold text-primary transition-colors hover:bg-primary hover:text-white",
+              collapsed && "rounded-lg text-xs",
+            )}
+          />
+          <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
+            <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+            <div className="truncate text-xs text-slate-500">{roleLabel}</div>
+          </div>
+        </Link>
+      ) : (
+        <>
+          <Avatar
+            fallback={getInitials(displayName)}
+            className={cn(
+              "size-10 bg-primary-soft font-semibold text-primary",
+              collapsed && "rounded-lg text-xs",
+            )}
+          />
+          <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
+            <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+            <div className="truncate text-xs text-slate-500">{roleLabel}</div>
+          </div>
+        </>
+      )}
       <IconButton
         aria-label="ออกจากระบบ"
         className={cn(

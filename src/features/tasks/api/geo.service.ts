@@ -17,6 +17,14 @@ async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   return response.data;
 }
 
+async function geocodeProfileAddress(address: string): Promise<GeocodeResult | null> {
+  const response = await apiClient.get<GeocodeResult | null>("/geo/profile-geocode", {
+    params: { address, language: "th" },
+  });
+  return response.data;
+}
+
 export const geoService = {
   geocodeAddress,
+  geocodeProfileAddress,
 };
