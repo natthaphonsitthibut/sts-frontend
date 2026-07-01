@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  Alert,
   Badge,
   Button,
   Dialog,
@@ -106,9 +107,14 @@ export function UserSaveReviewDialog({
               label="ขอบเขตข้อมูล"
               value={
                 data.isNationwide ? (
-                  <span className="font-semibold text-amber-600">ทั้งประเทศ (ทุกจังหวัด)</span>
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Badge variant="warning">ทั้งประเทศ (ทุกจังหวัด)</Badge>
+                    <span className="text-xs font-medium text-warning-700">
+                      เข้าถึงข้อมูลได้ทุกจังหวัด — โปรดตรวจสอบให้แน่ใจ
+                    </span>
+                  </span>
                 ) : (
-                  <span className="text-slate-800">{data.scopeText}</span>
+                  <span className="font-medium text-slate-800">{data.scopeText}</span>
                 )
               }
             />
@@ -119,9 +125,9 @@ export function UserSaveReviewDialog({
             {data.isCustomized ? (
               <>
                 {data.addedPermissions.length > 0 ? (
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-emerald-600">
-                      เพิ่มจากมาตรฐาน ({data.addedPermissions.length})
+                  <div className="space-y-1 border-l-2 border-success-200 pl-3">
+                    <div className="text-xs font-semibold text-success-700">
+                      <span aria-hidden="true">+ </span>เพิ่มจากมาตรฐาน ({data.addedPermissions.length})
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {data.addedPermissions.map((permission) => (
@@ -133,9 +139,9 @@ export function UserSaveReviewDialog({
                   </div>
                 ) : null}
                 {data.removedPermissions.length > 0 ? (
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-danger-600">
-                      เอาออกจากมาตรฐาน ({data.removedPermissions.length})
+                  <div className="space-y-1 border-l-2 border-danger-200 pl-3">
+                    <div className="text-xs font-semibold text-danger-700">
+                      <span aria-hidden="true">− </span>เอาออกจากมาตรฐาน ({data.removedPermissions.length})
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {data.removedPermissions.map((permission) => (
@@ -163,7 +169,9 @@ export function UserSaveReviewDialog({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-danger-600">ยังไม่ได้เลือกสิทธิ์ใด ๆ</p>
+                <Alert variant="destructive" className="py-2 text-sm font-semibold">
+                  ยังไม่ได้เลือกสิทธิ์ใด ๆ
+                </Alert>
               )}
             </div>
           </section>

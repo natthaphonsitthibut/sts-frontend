@@ -87,7 +87,7 @@ export function TaskGuestPage() {
     return (
       <div className="min-h-screen bg-slate-100 p-6">
         <div className="mx-auto w-full max-w-[960px]">
-          <Card className="p-6">
+          <Card className="rounded-lg p-6">
             <SkeletonStack lines={5} />
           </Card>
         </div>
@@ -98,9 +98,11 @@ export function TaskGuestPage() {
   if (taskQuery.isError || !taskQuery.data) {
     return (
       <div className="min-h-screen bg-slate-100 p-6">
-        <Alert variant="destructive">
-          <AlertDescription>ไม่สามารถโหลดภารกิจจากลิงก์นี้ได้</AlertDescription>
-        </Alert>
+        <div className="mx-auto w-full max-w-[960px]">
+          <Alert variant="destructive">
+            <AlertDescription>ไม่สามารถโหลดภารกิจจากลิงก์นี้ได้</AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }

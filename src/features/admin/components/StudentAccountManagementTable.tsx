@@ -10,10 +10,11 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
-import type {
-  StudentAccountManagementItem,
-} from "../types/admin.types";
-import { getAccountLifecycleStatusMeta } from "../lib/admin-presentation";
+import type { StudentAccountManagementItem } from "../types/admin.types";
+import {
+  getAccountLifecycleStatusMeta,
+  getUserAvatarGradient,
+} from "../lib/admin-presentation";
 import { cn } from "../../../lib/utils";
 
 type IdCollection = ReadonlySet<number> | readonly number[];
@@ -105,15 +106,17 @@ function RowActions({
   const isReactivating = hasId(pendingReactivateIds, row.userId);
   return (
     <div className="flex items-center justify-end gap-1">
-      <IconButton
-        aria-busy={isReissuing}
-        aria-label={`ออกรหัสชั่วคราวใหม่ให้ ${row.studentName}`}
-        className="text-warning"
-        disabled={isDisabled || isReissuing || isDeactivating}
-        icon={KeyRound}
-        onClick={() => onReissueTemporaryPassword(row)}
-        variant="ghost"
-      />
+      {!isDisabled ? (
+        <IconButton
+          aria-busy={isReissuing}
+          aria-label={`ออกรหัสชั่วคราวใหม่ให้ ${row.studentName}`}
+          className="text-warning"
+          disabled={isReissuing || isDeactivating}
+          icon={KeyRound}
+          onClick={() => onReissueTemporaryPassword(row)}
+          variant="ghost"
+        />
+      ) : null}
       <IconButton
         aria-busy={isDeactivating}
         aria-label={`ปิดใช้งานบัญชีของ ${row.studentName}`}
@@ -139,11 +142,21 @@ function RowActions({
 }
 
 function StudentIdentity({ row }: { row: StudentAccountManagementItem }) {
+  const initial = row.studentName.trim().charAt(0) || "น";
   return (
-    <div className="min-w-0">
-      <div className="truncate font-bold text-slate-800">{row.studentName}</div>
-      <div className="truncate font-mono text-xs font-semibold text-slate-400">
-        @{row.username}
+    <div className="flex min-w-0 items-center gap-3">
+      <div
+        aria-hidden="true"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        style={getUserAvatarGradient(row.studentName)}
+      >
+        {initial}
+      </div>
+      <div className="min-w-0">
+        <div className="truncate font-bold text-slate-800">{row.studentName}</div>
+        <div className="truncate font-mono text-xs font-semibold text-slate-400">
+          @{row.username}
+        </div>
       </div>
     </div>
   );
