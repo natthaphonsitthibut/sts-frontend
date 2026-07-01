@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { KeyRound, UserX } from "lucide-react";
+import { KeyRound, UserCheck, UserX } from "lucide-react";
 import { Badge, Checkbox, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -32,8 +32,10 @@ export interface StudentAccountManagementTableProps {
   ) => void;
   onReissueTemporaryPassword: (row: StudentAccountManagementItem) => void;
   onDeactivate: (row: StudentAccountManagementItem) => void;
+  onReactivate: (row: StudentAccountManagementItem) => void;
   pendingReissueIds?: IdCollection;
   pendingDeactivateIds?: IdCollection;
+  pendingReactivateIds?: IdCollection;
   sort?: DataTableSortState;
   onSortChange?: (sort: DataTableSortState | undefined) => void;
 }
@@ -80,15 +82,19 @@ function AccountState({ row }: { row: StudentAccountManagementItem }) {
 
 function RowActions({
   pendingDeactivateIds,
+  pendingReactivateIds,
   pendingReissueIds,
   row,
   onDeactivate,
+  onReactivate,
   onReissueTemporaryPassword,
 }: Pick<
   StudentAccountManagementTableProps,
   | "onDeactivate"
+  | "onReactivate"
   | "onReissueTemporaryPassword"
   | "pendingDeactivateIds"
+  | "pendingReactivateIds"
   | "pendingReissueIds"
 > & {
   row: StudentAccountManagementItem;
@@ -96,6 +102,7 @@ function RowActions({
   const isDisabled = row.status === "DISABLED";
   const isReissuing = hasId(pendingReissueIds, row.userId);
   const isDeactivating = hasId(pendingDeactivateIds, row.userId);
+  const isReactivating = hasId(pendingReactivateIds, row.userId);
   return (
     <div className="flex items-center justify-end gap-1">
       <IconButton
@@ -111,11 +118,22 @@ function RowActions({
         aria-busy={isDeactivating}
         aria-label={`ปิดใช้งานบัญชีของ ${row.studentName}`}
         className="text-danger"
-        disabled={isDisabled || isDeactivating}
+        disabled={isDisabled || isDeactivating || isReissuing}
         icon={UserX}
         onClick={() => onDeactivate(row)}
         variant="ghost"
       />
+      {isDisabled ? (
+        <IconButton
+          aria-busy={isReactivating}
+          aria-label={`เปิดใช้งานบัญชีของ ${row.studentName}`}
+          className="text-success"
+          disabled={isReactivating}
+          icon={UserCheck}
+          onClick={() => onReactivate(row)}
+          variant="ghost"
+        />
+      ) : null}
     </div>
   );
 }
@@ -135,11 +153,13 @@ export function StudentAccountManagementTable({
   rows,
   selectedIds,
   onDeactivate,
+  onReactivate,
   onReissueTemporaryPassword,
   onSelectAll,
   onSelectRow,
   onSortChange,
   pendingDeactivateIds,
+  pendingReactivateIds,
   pendingReissueIds,
   sort,
 }: StudentAccountManagementTableProps) {
@@ -244,8 +264,10 @@ export function StudentAccountManagementTable({
               <DataTableCell>
                 <RowActions
                   onDeactivate={onDeactivate}
+                  onReactivate={onReactivate}
                   onReissueTemporaryPassword={onReissueTemporaryPassword}
                   pendingDeactivateIds={pendingDeactivateIds}
+                  pendingReactivateIds={pendingReactivateIds}
                   pendingReissueIds={pendingReissueIds}
                   row={row}
                 />
@@ -291,8 +313,10 @@ export function StudentAccountManagementTable({
               <div className="mt-4">
                 <RowActions
                   onDeactivate={onDeactivate}
+                  onReactivate={onReactivate}
                   onReissueTemporaryPassword={onReissueTemporaryPassword}
                   pendingDeactivateIds={pendingDeactivateIds}
+                  pendingReactivateIds={pendingReactivateIds}
                   pendingReissueIds={pendingReissueIds}
                   row={row}
                 />

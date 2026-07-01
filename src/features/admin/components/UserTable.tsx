@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { KeyRound, SquarePen, Trash2 } from "lucide-react";
+import { KeyRound, SquarePen, UserCheck, UserX } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -27,8 +27,11 @@ import type { ManagedUser } from "../types/admin.types";
 interface UserTableProps {
   users: ManagedUser[];
   onEdit: (user: ManagedUser) => void;
-  onDelete: (user: ManagedUser) => void;
+  onDeactivate: (user: ManagedUser) => void;
+  onReactivate: (user: ManagedUser) => void;
   onReissueTemporaryPassword: (user: ManagedUser) => void;
+  deactivatingUserId?: number | null;
+  reactivatingUserId?: number | null;
   reissuingUserId?: number | null;
 }
 
@@ -64,17 +67,25 @@ function UserIdentity({ user }: { user: ManagedUser }) {
 function RowActions({
   user,
   onEdit,
-  onDelete,
+  onDeactivate,
+  onReactivate,
   onReissueTemporaryPassword,
+  deactivatingUserId,
+  reactivatingUserId,
   reissuingUserId,
 }: UserTableProps & { user: ManagedUser }) {
+  const userId = user.id ?? -1;
+  const isDisabled = user.status !== "ACTIVE";
+  const isDeactivating = deactivatingUserId === userId;
+  const isReactivating = reactivatingUserId === userId;
+
   return (
     <div className="flex items-center justify-end gap-1">
-      {user.status === "ACTIVE" ? (
+      {!isDisabled ? (
         <IconButton
           aria-label="ออกรหัสชั่วคราวใหม่"
           className="text-warning"
-          disabled={reissuingUserId === user.id}
+          disabled={reissuingUserId === userId || isDeactivating}
           icon={KeyRound}
           onClick={() => onReissueTemporaryPassword(user)}
           variant="ghost"
@@ -83,17 +94,32 @@ function RowActions({
       <IconButton
         aria-label="แก้ไขผู้ใช้งาน"
         className="text-primary"
+        disabled={isDeactivating || isReactivating}
         icon={SquarePen}
         onClick={() => onEdit(user)}
         variant="ghost"
       />
-      <IconButton
-        aria-label="ลบผู้ใช้งาน"
-        className="text-danger"
-        icon={Trash2}
-        onClick={() => onDelete(user)}
-        variant="ghost"
-      />
+      {isDisabled ? (
+        <IconButton
+          aria-busy={isReactivating}
+          aria-label="เปิดใช้งานผู้ใช้งาน"
+          className="text-success"
+          disabled={isReactivating}
+          icon={UserCheck}
+          onClick={() => onReactivate(user)}
+          variant="ghost"
+        />
+      ) : (
+        <IconButton
+          aria-busy={isDeactivating}
+          aria-label="ปิดใช้งานผู้ใช้งาน"
+          className="text-danger"
+          disabled={isDeactivating}
+          icon={UserX}
+          onClick={() => onDeactivate(user)}
+          variant="ghost"
+        />
+      )}
     </div>
   );
 }
@@ -118,8 +144,11 @@ function getUserSortValue(user: ManagedUser, key: string): string {
 export function UserTable({
   users,
   onEdit,
-  onDelete,
+  onDeactivate,
+  onReactivate,
   onReissueTemporaryPassword,
+  deactivatingUserId,
+  reactivatingUserId,
   reissuingUserId,
 }: UserTableProps) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
@@ -180,9 +209,12 @@ export function UserTable({
             </DataTableCell>
             <DataTableCell>
               <RowActions
-                onDelete={onDelete}
+                deactivatingUserId={deactivatingUserId}
+                onDeactivate={onDeactivate}
                 onEdit={onEdit}
+                onReactivate={onReactivate}
                 onReissueTemporaryPassword={onReissueTemporaryPassword}
+                reactivatingUserId={reactivatingUserId}
                 reissuingUserId={reissuingUserId}
                 user={user}
                 users={users}
@@ -204,9 +236,12 @@ export function UserTable({
                 {getUserRoleText(user)}
               </div>
               <RowActions
-                onDelete={onDelete}
+                deactivatingUserId={deactivatingUserId}
+                onDeactivate={onDeactivate}
                 onEdit={onEdit}
+                onReactivate={onReactivate}
                 onReissueTemporaryPassword={onReissueTemporaryPassword}
+                reactivatingUserId={reactivatingUserId}
                 reissuingUserId={reissuingUserId}
                 user={user}
                 users={users}
