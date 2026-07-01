@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList } from "lucide-react";
-import { Badge, Button, Card } from "../../../components/base";
+import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -8,6 +8,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { NavButton } from "../../../components/layout/nav-button";
 import { AuditLogDetailBlock } from "../components/AuditLogDetailBlock";
 import { useAuditLogEntry } from "../hooks/useAuditLog";
 import { getAuditLogTargetLabel } from "../lib/audit-log-presentation";
@@ -46,9 +47,9 @@ export function AuditLogDetailPage() {
         title="รายละเอียดรายการ"
         description={`audit-log-${entry.id}`}
         actions={
-          <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
             ย้อนกลับ
-          </Button>
+          </NavButton>
         }
       />
       <div className="space-y-5">

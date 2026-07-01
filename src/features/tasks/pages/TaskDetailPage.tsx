@@ -12,6 +12,7 @@ import {
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import { NavButton } from "../../../components/layout/nav-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseReferralOutcomeDialog } from "../../cases/components/CaseReferralOutcomeDialog";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
@@ -183,9 +184,9 @@ export function TaskDetailPage() {
                 invalidateKeys={[["task-chain", taskId]]}
               />
             ) : null}
-            <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
               ย้อนกลับ
-            </Button>
+            </NavButton>
           </div>
         }
       />

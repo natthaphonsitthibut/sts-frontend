@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Save, TriangleAlert } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -15,6 +15,7 @@ import {
   SkeletonStack,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { useAttendanceClassRoster } from "../hooks/useAttendanceClassRoster";
@@ -22,7 +23,6 @@ import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 
 export function AttendanceRecordPage() {
-  const navigate = useNavigate();
   const { classId } = useParams<{ classId: string }>();
 
   const { task, students, isLoading, isError, notFound } =
@@ -80,13 +80,13 @@ export function AttendanceRecordPage() {
           title="ไม่พบชั้นเรียนนี้"
           description="ไม่พบข้อมูลชั้นเรียนสำหรับการเช็คชื่อ"
           action={
-            <Button
+            <NavButton
               icon={ArrowLeft}
-              onClick={() => void navigate("/attendance")}
+              to="/attendance"
               variant="outline"
             >
               กลับไปแดชบอร์ด
-            </Button>
+            </NavButton>
           }
         />
       </PageShell>
@@ -100,11 +100,11 @@ export function AttendanceRecordPage() {
       <Card className="mb-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Button
+            <NavButton
               aria-label="ย้อนกลับ"
               icon={ArrowLeft}
-              onClick={() => void navigate("/attendance")}
               size="sm"
+              to="/attendance"
               variant="ghost"
             />
             <div>

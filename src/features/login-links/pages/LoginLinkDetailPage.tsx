@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Link2 } from "lucide-react";
-import { Badge, Button, Card } from "../../../components/base";
+import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -11,6 +11,7 @@ import { LinkShareActions } from "../../../components/layout/link-share-actions"
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
+import { NavButton } from "../../../components/layout/nav-button";
 import { getLeafMenuItems } from "../../auth/lib/permissions";
 import {
   LOGIN_LINK_DETAIL_QUERY_KEY,
@@ -79,9 +80,9 @@ export function LoginLinkDetailPage() {
                 invalidateKeys={[[LOGIN_LINKS_QUERY_KEY], [LOGIN_LINK_DETAIL_QUERY_KEY, id]]}
               />
             ) : null}
-            <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
               ย้อนกลับ
-            </Button>
+            </NavButton>
           </div>
         }
       />

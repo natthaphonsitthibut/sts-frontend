@@ -1,7 +1,7 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { Badge, Button, Card } from "../../../components/base";
+import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -12,6 +12,7 @@ import { LinkShareActions } from "../../../components/layout/link-share-actions"
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import { NavButton } from "../../../components/layout/nav-button";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type { AdminLinkDetail } from "../../login-links/types/login-links.types";
 import {
@@ -97,9 +98,9 @@ export function AttendanceLinkDetailPage() {
                 invalidateKeys={[[ATTENDANCE_LINK_DETAIL_KEY], [ATTENDANCE_TASKS_KEY]]}
               />
             ) : null}
-            <Button icon={ArrowLeft} onClick={() => window.history.back()} variant="outline">
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
               ย้อนกลับ
-            </Button>
+            </NavButton>
           </div>
         }
       />
