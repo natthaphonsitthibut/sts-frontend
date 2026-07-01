@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { getLeafMenuItems, MENU_ITEMS } from "../../auth/lib/permissions";
 import type {
   ManagedUser,
   StudentAccountManagementStatus,
@@ -9,26 +8,6 @@ export const USER_STATUS_OPTIONS = [
   { value: "ACTIVE", label: "ใช้งาน" },
   { value: "DISABLED", label: "ปิดใช้งาน" },
 ] as const;
-
-const ACTION_PERMISSIONS = [
-  { id: "close-case", label: "ปิดเคสช่วยเหลือ" },
-  { id: "forward-case", label: "ส่งต่อเคสช่วยเหลือ" },
-  { id: "audit-log", label: "ดูบันทึกการใช้งาน (audit log)" },
-] as const;
-
-/** Assignable permissions (leaf menu ids + their labels). */
-export function getAssignablePermissions(): Array<{ id: string; label: string }> {
-  return [
-    ...getLeafMenuItems(MENU_ITEMS).map((item) => ({
-      id: item.permissionId ?? item.id,
-      label: item.label,
-    })),
-    ...ACTION_PERMISSIONS,
-  ].filter(
-    (item, index, permissions) =>
-      permissions.findIndex((candidate) => candidate.id === item.id) === index,
-  );
-}
 
 export function getUserDisplayName(user: ManagedUser): string {
   const fullName = [user.FirstName, user.LastName]

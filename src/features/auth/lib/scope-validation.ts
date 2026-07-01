@@ -100,9 +100,8 @@ export function getScopeValidationError(
       subDistricts > 0 ||
       schools > 0 ||
       hasExtraSchoolFiltering;
-    if (scope.global !== true && !hasAreaScope) {
-      return `${roleLabel}ต้องเลือกขอบเขตข้อมูล หรือเลือกทั้งระบบ`;
-    }
+    // Empty flexible scope = nationwide (valid). Mirrors the backend; the form
+    // asks for an explicit confirm before saving a nationwide account.
     if (scope.global === true && hasAreaScope) {
       return `${roleLabel}ห้ามเลือกทั้งระบบพร้อมกับพื้นที่`;
     }

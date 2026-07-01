@@ -1,20 +1,21 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
   Checkbox,
+  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
   FormLabel,
   FormMessage,
   Input,
-  NumericInput,
   registerField,
+  Skeleton,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -24,7 +25,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { useRoleGroups, useSaveRoleGroup } from "../hooks/useRoleGroups";
-import { getAssignablePermissions } from "../lib/admin-presentation";
+import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
 import {
   roleGroupFormSchema,
   type RoleGroupFormValues,
@@ -32,7 +33,6 @@ import {
 import type { RoleDefinition } from "../types/admin.types";
 
 const MANAGE_ROLE_GROUPS_PATH = "/manage-role-groups";
-const PERMISSION_OPTIONS = getAssignablePermissions();
 /** The actual form — mounted only once the role group is resolved so RHF gets correct defaults. */
 function RoleGroupForm({
   roleGroup,
@@ -56,7 +56,16 @@ function RoleGroupForm({
     roleGroup?.default_permissions ?? [],
   );
   const hasNoPermissions = permissions.length === 0;
+  const { catalog: permissionOptions, isLoading: permissionsLoading } = usePermissionCatalog();
   const rankRows = [...roleGroups].sort((left, right) => right.rank - left.rank);
+  // Nobody (not even ADMIN) can create a role above the highest existing rank —
+  // mirror the backend cap. Derived from the catalog, never hardcoded.
+  const maxRank = rankRows[0]?.rank ?? 1;
+  const selectedRank = useWatch({ control: form.control, name: "rank" });
+  const rankOptions = Array.from({ length: maxRank }, (_, index) => {
+    const value = String(index + 1);
+    return { value, label: value };
+  });
 
   function goBack(): void {
     void navigate(MANAGE_ROLE_GROUPS_PATH);
@@ -72,6 +81,13 @@ function RoleGroupForm({
 
   function handleSubmit(values: RoleGroupFormValues): void {
     if (hasNoPermissions) {
+      return;
+    }
+    const rankValue = Number(values.rank);
+    if (!Number.isInteger(rankValue) || rankValue < 1 || rankValue > maxRank) {
+      form.setError("rank", {
+        message: `ลำดับขั้นต้องอยู่ระหว่าง 1 ถึง ${maxRank}`,
+      });
       return;
     }
     saveRoleGroup.mutate(
@@ -123,14 +139,21 @@ function RoleGroupForm({
             <FormLabel htmlFor="role-rank" required>
               ลำดับขั้น (rank)
             </FormLabel>
-            <NumericInput
+            <Combobox
               aria-describedby="role-rank-description"
+              aria-invalid={form.formState.errors.rank ? true : undefined}
               id="role-rank"
-              maxLength={2}
-              {...registerField(form, "rank")}
+              onChange={(next) =>
+                form.setValue("rank", next, {
+                  shouldValidate: form.formState.isSubmitted,
+                })
+              }
+              options={rankOptions}
+              searchable={false}
+              value={selectedRank}
             />
             <p className="text-sm text-slate-500" id="role-rank-description">
-              เลขมากหมายถึงระดับสิทธิ์สูงกว่า ใช้กำหนดว่า role นี้สามารถจัดการ role ระดับใดได้
+              เลขมากหมายถึงระดับสิทธิ์สูงกว่า ใช้กำหนดว่า role นี้สามารถจัดการ role ระดับใดได้ (สูงสุด {maxRank})
             </p>
             <FormMessage<RoleGroupFormValues> name="rank" />
           </FormItem>
@@ -169,14 +192,18 @@ function RoleGroupForm({
             สิทธิ์การเข้าถึง ({permissions.length})
           </div>
           <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-2">
-            {PERMISSION_OPTIONS.map((option) => (
-              <Checkbox
-                checked={permissions.includes(option.id)}
-                key={option.id}
-                label={option.label}
-                onChange={() => togglePermission(option.id)}
-              />
-            ))}
+            {permissionsLoading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton className="h-6 w-full" key={index} />
+                ))
+              : permissionOptions.map((option) => (
+                  <Checkbox
+                    checked={permissions.includes(option.id)}
+                    key={option.id}
+                    label={option.label}
+                    onChange={() => togglePermission(option.id)}
+                  />
+                ))}
           </div>
           <p className={`mt-2 text-sm font-medium text-red-600 ${hasNoPermissions ? "" : "invisible"}`}>
             กรุณาเลือกสิทธิ์อย่างน้อย 1 รายการ

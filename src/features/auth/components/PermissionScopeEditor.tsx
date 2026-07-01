@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RotateCw } from "lucide-react";
 import {
@@ -22,9 +22,19 @@ import type {
   SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
 import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
-import { MENU_ITEMS, type DataScope, type MenuItem } from "../lib/permissions";
+import { type DataScope } from "../lib/permissions";
+import { usePermissionCatalog } from "../hooks/usePermissionCatalog";
 import { getScopeFieldStates, getScopeValidationError } from "../lib/scope-validation";
 import { useRefreshSpin } from "../../../hooks/useRefreshSpin";
+
+export interface ScopeSelectionLabels {
+  province: string;
+  district: string;
+  subDistrict: string;
+  school: string;
+  grade: string;
+  room: string;
+}
 
 interface PermissionScopeEditorProps {
   role: string;
@@ -37,14 +47,11 @@ interface PermissionScopeEditorProps {
   dataScope: DataScope;
   onPermissionsChange: (permissions: string[]) => void;
   onDataScopeChange: (dataScope: DataScope) => void;
+  /** Resolved human-readable labels for the current selection (names, not ids). */
+  onScopeLabelsChange?: (labels: ScopeSelectionLabels) => void;
   disabled?: boolean;
   /** Reveal scope validation errors — set true only after a submit attempt. */
   showErrors?: boolean;
-}
-
-interface PermissionOption {
-  id: string;
-  label: string;
 }
 
 const EMPTY_SCOPE: DataScope = {};
@@ -52,17 +59,6 @@ const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
 const EMPTY_ROOMS: string[] = [];
 const EMPTY_CATALOG: LocationCatalog = { provinces: [], districts: [], subDistricts: [] };
-
-function collectPermissionOptions(items: MenuItem[]): PermissionOption[] {
-  return items.flatMap((item) => {
-    if (item.children?.length) {
-      return collectPermissionOptions(item.children);
-    }
-    return [{ id: item.id, label: item.label }];
-  });
-}
-
-const PERMISSION_OPTIONS = collectPermissionOptions(MENU_ITEMS);
 
 function singleString(values: Array<string | number> | undefined): string {
   const value = values?.[0];
@@ -112,15 +108,20 @@ export function PermissionScopeEditor({
   dataScope = EMPTY_SCOPE,
   onPermissionsChange,
   onDataScopeChange,
+  onScopeLabelsChange,
   disabled = false,
   showErrors = false,
 }: PermissionScopeEditorProps) {
   const hasRole = role.trim().length > 0;
+  const { catalog: permissionCatalog, isLoading: permissionCatalogLoading } = usePermissionCatalog();
   const fieldStates = getScopeFieldStates(scopeMode);
   const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
   const isOwnOnlyScope = scopePolicy === "OWN_ONLY";
-  const isGlobalScope = scopeMode === "global" || dataScope.global === true;
-  const usesAreaScope = !isGlobalScope && scopeMode !== "flexible";
+  // Only a role whose scope_mode is fixed "global" is shown as nationwide-only.
+  // A flexible role always shows the area pickers: leaving them all empty
+  // ("ทุกจังหวัด") is itself the nationwide selection (confirmed on save).
+  const isGlobalScope = scopeMode === "global";
+  const usesAreaScope = scopeMode !== "global" && scopeMode !== "flexible";
   const { isRefreshing, refresh } = useRefreshSpin();
 
   const selectedSchoolId = singleString(dataScope.school_ids);
@@ -167,6 +168,29 @@ export function PermissionScopeEditor({
     enabled: Boolean(selectedGradeLabel) && fieldStates.room_ids !== "forbidden",
   });
   const rooms = roomsQuery.data ?? EMPTY_ROOMS;
+
+  // Lift resolved names (not ids) so a review dialog can show the real school /
+  // grade / room instead of "โรงเรียน 1 แห่ง".
+  const selectedSchoolName =
+    schools.find((school) => String(school.id) === selectedSchoolId)?.name ?? "";
+  useEffect(() => {
+    onScopeLabelsChange?.({
+      province: selectedProvince,
+      district: selectedDistrict,
+      subDistrict: selectedSubDistrict,
+      school: selectedSchoolName,
+      grade: selectedGradeLabel,
+      room: selectedRoom,
+    });
+  }, [
+    onScopeLabelsChange,
+    selectedProvince,
+    selectedDistrict,
+    selectedSubDistrict,
+    selectedSchoolName,
+    selectedGradeLabel,
+    selectedRoom,
+  ]);
 
   const provinces = useMemo(
     () => Array.from(new Set(catalog.provinces.filter(Boolean))).sort(),
@@ -277,24 +301,32 @@ export function PermissionScopeEditor({
                 <span className="font-semibold text-emerald-600">● เพิ่มจากมาตรฐาน</span>
                 <span className="text-red-600 line-through">● เอาออกจากมาตรฐาน</span>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {PERMISSION_OPTIONS.map((permission) => {
-                  const checked = permissions.includes(permission.id);
-                  const inBaseline = baselinePermissions.includes(permission.id);
-                  return (
-                    <Checkbox
-                      checked={checked}
-                      className={permissionLabelClass(checked, inBaseline)}
-                      disabled={disabled}
-                      key={permission.id}
-                      label={permission.label}
-                      onChange={(event) =>
-                        togglePermission(permission.id, event.target.checked)
-                      }
-                    />
-                  );
-                })}
-              </div>
+              {permissionCatalogLoading ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Skeleton className="h-6 w-full" key={index} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {permissionCatalog.map((permission) => {
+                    const checked = permissions.includes(permission.id);
+                    const inBaseline = baselinePermissions.includes(permission.id);
+                    return (
+                      <Checkbox
+                        checked={checked}
+                        className={permissionLabelClass(checked, inBaseline)}
+                        disabled={disabled}
+                        key={permission.id}
+                        label={permission.label}
+                        onChange={(event) =>
+                          togglePermission(permission.id, event.target.checked)
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </>
           ) : (
             <p className="text-sm text-slate-500">
@@ -309,16 +341,6 @@ export function PermissionScopeEditor({
           <CardTitle className="text-base">ขอบเขตข้อมูล</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {hasRole && scopeMode === "flexible" && !isOwnOnlyScope ? (
-            <Checkbox
-              checked={dataScope.global === true}
-              disabled={disabled}
-              label="เข้าถึงข้อมูลทั้งระบบ"
-              onChange={(event) =>
-                onDataScopeChange(event.target.checked ? { global: true } : {})
-              }
-            />
-          ) : null}
           {!hasRole ? (
             <p className="text-sm text-slate-500">
               เลือกตำแหน่งก่อน เพื่อกำหนดขอบเขตข้อมูล
@@ -369,7 +391,7 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.provinces === "required" ? "เลือกจังหวัด" : "ทั้งหมด",
+                          label: fieldStates.provinces === "required" ? "เลือกจังหวัด" : "ทุกจังหวัด",
                         },
                         ...provinces.map((province) => ({ value: province, label: province })),
                       ]}
@@ -397,7 +419,7 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.districts === "required" ? "เลือกอำเภอ/เขต" : "ทั้งหมด",
+                          label: fieldStates.districts === "required" ? "เลือกอำเภอ/เขต" : "ทุกอำเภอ/เขต",
                         },
                         ...districts.map((district) => ({ value: district, label: district })),
                       ]}
@@ -425,7 +447,7 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.sub_districts === "required" ? "เลือกตำบล/แขวง" : "ทั้งหมด",
+                          label: fieldStates.sub_districts === "required" ? "เลือกตำบล/แขวง" : "ทุกตำบล/แขวง",
                         },
                         ...subDistricts.map((subDistrict) => ({
                           value: subDistrict,

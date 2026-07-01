@@ -1,0 +1,182 @@
+import type { ReactNode } from "react";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/base";
+
+export interface UserSaveReview {
+  isEdit: boolean;
+  fullName: string;
+  username: string;
+  email: string | null;
+  phone: string | null;
+  affiliation: string | null;
+  personId: string | null;
+  roleLabel: string;
+  status: string;
+  scopeText: string;
+  isNationwide: boolean;
+  isCustomized: boolean;
+  permissions: string[];
+  addedPermissions: string[];
+  removedPermissions: string[];
+}
+
+interface UserSaveReviewDialogProps {
+  open: boolean;
+  data: UserSaveReview | null;
+  labelOf: (permissionId: string) => string;
+  isSubmitting?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "ใช้งาน",
+  DISABLED: "ปิดใช้งาน",
+};
+
+function maskPersonId(personId: string | null): string {
+  if (!personId) {
+    return "-";
+  }
+  const digits = personId.replace(/\D/g, "");
+  if (digits.length < 4) {
+    return "•••";
+  }
+  return `${"•".repeat(digits.length - 4)}${digits.slice(-4)}`;
+}
+
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex gap-2 text-sm">
+      <span className="w-28 shrink-0 text-slate-500">{label}</span>
+      <span className="min-w-0 flex-1 break-words text-slate-800">{value || "-"}</span>
+    </div>
+  );
+}
+
+export function UserSaveReviewDialog({
+  open,
+  data,
+  labelOf,
+  isSubmitting = false,
+  onConfirm,
+  onClose,
+}: UserSaveReviewDialogProps) {
+  if (!open || !data) {
+    return null;
+  }
+
+  return (
+    <Dialog open onOpenChange={(next) => (!next ? onClose() : undefined)}>
+      <DialogContent className="max-w-lg" onClose={onClose}>
+        <DialogHeader>
+          <DialogTitle>{data.isEdit ? "ตรวจสอบก่อนบันทึกการแก้ไข" : "ตรวจสอบก่อนสร้างบัญชี"}</DialogTitle>
+        </DialogHeader>
+        <DialogBody className="max-h-[60vh] space-y-5 overflow-y-auto">
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold text-slate-700">ข้อมูลผู้ใช้</h3>
+            <InfoRow label="ชื่อ-นามสกุล" value={data.fullName} />
+            <InfoRow label="ชื่อผู้ใช้" value={<span className="font-mono">{data.username}</span>} />
+            <InfoRow label="อีเมล" value={data.email} />
+            <InfoRow label="เบอร์โทร" value={data.phone} />
+            <InfoRow label="สังกัด" value={data.affiliation} />
+            <InfoRow label="เลขบัตร ปชช." value={maskPersonId(data.personId)} />
+            <InfoRow
+              label="สถานะบัญชี"
+              value={
+                <Badge variant={data.status === "ACTIVE" ? "success" : "secondary"}>
+                  {STATUS_LABELS[data.status] ?? data.status}
+                </Badge>
+              }
+            />
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold text-slate-700">ตำแหน่งและขอบเขต</h3>
+            <InfoRow label="ตำแหน่ง" value={data.roleLabel} />
+            <InfoRow
+              label="ขอบเขตข้อมูล"
+              value={
+                data.isNationwide ? (
+                  <span className="font-semibold text-amber-600">ทั้งประเทศ (ทุกจังหวัด)</span>
+                ) : (
+                  <span className="text-slate-800">{data.scopeText}</span>
+                )
+              }
+            />
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold text-slate-700">สิทธิ์การใช้งาน</h3>
+            {data.isCustomized ? (
+              <>
+                {data.addedPermissions.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-emerald-600">
+                      เพิ่มจากมาตรฐาน ({data.addedPermissions.length})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {data.addedPermissions.map((permission) => (
+                        <Badge key={permission} variant="success">
+                          {labelOf(permission)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {data.removedPermissions.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-danger-600">
+                      เอาออกจากมาตรฐาน ({data.removedPermissions.length})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {data.removedPermissions.map((permission) => (
+                        <Badge key={permission} variant="destructive">
+                          {labelOf(permission)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">ตามมาตรฐานของตำแหน่ง</p>
+            )}
+            <div className="space-y-1 pt-1">
+              <div className="text-xs font-semibold text-slate-500">
+                สิทธิ์ทั้งหมด ({data.permissions.length})
+              </div>
+              {data.permissions.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {data.permissions.map((permission) => (
+                    <Badge key={permission} variant={data.addedPermissions.includes(permission) ? "success" : "secondary"}>
+                      {labelOf(permission)}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-danger-600">ยังไม่ได้เลือกสิทธิ์ใด ๆ</p>
+              )}
+            </div>
+          </section>
+        </DialogBody>
+        <DialogFooter>
+          <Button disabled={isSubmitting} onClick={onClose} variant="outline">
+            ยกเลิก
+          </Button>
+          <Button isLoading={isSubmitting} loadingText="กำลังบันทึก" onClick={onConfirm}>
+            ยืนยันบันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -30,7 +30,12 @@ import {
   getScopeFieldStates,
   getScopeValidationError,
 } from "../../auth/lib/scope-validation";
-import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
+import {
+  PermissionScopeEditor,
+  type ScopeSelectionLabels,
+} from "../../auth/components/PermissionScopeEditor";
+import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { UserSaveReviewDialog, type UserSaveReview } from "../components/UserSaveReviewDialog";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
   EMPTY_USER_FORM,
@@ -83,6 +88,36 @@ function clearForbiddenScopeFields(
     }
   }
   return changed ? next : scope;
+}
+
+/**
+ * Human-readable one-line scope summary for the save review dialog. Prefers the
+ * resolved names lifted from the editor (school/grade/room) and falls back to
+ * the ids in dataScope for any level whose name has not resolved yet.
+ */
+function describeDataScope(
+  scope: DataScope,
+  scopePolicy: string,
+  labels: ScopeSelectionLabels | null,
+): string {
+  if (scopePolicy === "OWN_ONLY" || scope.own_only === true) {
+    return "เฉพาะข้อมูลของตนเอง";
+  }
+  const segments: string[] = [];
+  const push = (label: string, name: string, ids: unknown[] | undefined, fallback: string) => {
+    if (name) {
+      segments.push(`${label}: ${name}`);
+    } else if (ids?.length) {
+      segments.push(fallback);
+    }
+  };
+  push("จังหวัด", labels?.province ?? "", scope.provinces, `จังหวัด ${scope.provinces?.length} รายการ`);
+  push("อำเภอ/เขต", labels?.district ?? "", scope.districts, `อำเภอ/เขต ${scope.districts?.length} รายการ`);
+  push("ตำบล/แขวง", labels?.subDistrict ?? "", scope.sub_districts, `ตำบล/แขวง ${scope.sub_districts?.length} รายการ`);
+  push("โรงเรียน", labels?.school ?? "", scope.school_ids, `โรงเรียน ${scope.school_ids?.length} แห่ง`);
+  push("ระดับชั้น", labels?.grade ?? "", scope.grade_levels, `ระดับชั้น ${scope.grade_levels?.length} รายการ`);
+  push("ห้อง", labels?.room ?? "", scope.room_ids, `ห้อง ${scope.room_ids?.length} รายการ`);
+  return segments.length > 0 ? segments.join(" · ") : "ทั้งประเทศ (ทุกจังหวัด)";
 }
 
 function resolveBaseline(
@@ -175,11 +210,35 @@ function UserForm({
 
   const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
   const isCustomized = !sameSet(permissions, baseline);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null);
+  const [scopeLabels, setScopeLabels] = useState<ScopeSelectionLabels | null>(null);
+  const handleScopeLabelsChange = useCallback(
+    (labels: ScopeSelectionLabels) => setScopeLabels(labels),
+    [],
+  );
+  const { labelOf } = usePermissionCatalog();
+
+  // A flexible role with no area selected = nationwide access. Highlighted in
+  // the review dialog before saving (there is no longer a dedicated checkbox).
+  const isNationwideScope =
+    scopeMode === "flexible" &&
+    scopePolicy !== "OWN_ONLY" &&
+    dataScope.own_only !== true &&
+    ([
+      dataScope.provinces,
+      dataScope.districts,
+      dataScope.sub_districts,
+      dataScope.school_ids,
+      dataScope.grade_levels,
+      dataScope.room_ids,
+    ].every((values) => !Array.isArray(values) || values.length === 0));
 
   function goBack(): void {
     void navigate(MANAGE_USERS_PATH);
   }
 
+  // Step 1: validate scope, then open the review dialog for a final recheck.
   function handleSubmit(values: UserFormValues): void {
     if (scopeError) {
       document
@@ -187,7 +246,16 @@ function UserForm({
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setPendingValues(values);
+    setReviewOpen(true);
+  }
 
+  // Step 2: user confirmed in the review dialog — build the payload and save.
+  function confirmSave(): void {
+    if (!pendingValues) {
+      return;
+    }
+    const values = pendingValues;
     const role = values.role.trim();
     const password = normalizeOptionalText(values.password);
     const phone = normalizeOptionalText(values.phone);
@@ -215,15 +283,37 @@ function UserForm({
       { id: user?.id ?? null, payload },
       {
         onSuccess: (response) => {
+          setReviewOpen(false);
           if (!isEdit && response?.tempPassword) {
             setGeneratedPassword(response.tempPassword);
             return;
           }
           goBack();
         },
+        onError: () => setReviewOpen(false),
       },
     );
   }
+
+  const reviewData: UserSaveReview | null = pendingValues
+    ? {
+        isEdit,
+        fullName: `${pendingValues.FirstName} ${pendingValues.LastName}`.trim(),
+        username: pendingValues.username.trim(),
+        email: normalizeOptionalText(pendingValues.email) ?? null,
+        phone: normalizeOptionalText(pendingValues.phone) ?? null,
+        affiliation: normalizeOptionalText(pendingValues.affiliation) ?? null,
+        personId: pendingValues.PersonID_Onec.trim() || null,
+        roleLabel,
+        status: pendingValues.status,
+        scopeText: describeDataScope(dataScope, scopePolicy, scopeLabels),
+        isNationwide: isNationwideScope,
+        isCustomized,
+        permissions,
+        addedPermissions: permissions.filter((permission) => !baseline.includes(permission)),
+        removedPermissions: baseline.filter((permission) => !permissions.includes(permission)),
+      }
+    : null;
 
   return (
     <>
@@ -326,25 +416,27 @@ function UserForm({
               <FormMessage<UserFormValues> name="role" />
             </FormItem>
 
-            <FormItem>
-              <FormLabel htmlFor="status">สถานะ</FormLabel>
-              <Combobox
-                id="status"
-                name="status"
-                onChange={(next) =>
-                  form.setValue("status", next, {
-                    shouldValidate: form.formState.isSubmitted,
-                  })
-                }
-                options={USER_STATUS_OPTIONS.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))}
-                searchable={false}
-                value={selectedStatus}
-              />
-              <FormMessage<UserFormValues> name="status" />
-            </FormItem>
+            {!isEdit ? (
+              <FormItem>
+                <FormLabel htmlFor="status">สถานะ</FormLabel>
+                <Combobox
+                  id="status"
+                  name="status"
+                  onChange={(next) =>
+                    form.setValue("status", next, {
+                      shouldValidate: form.formState.isSubmitted,
+                    })
+                  }
+                  options={USER_STATUS_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                  searchable={false}
+                  value={selectedStatus}
+                />
+                <FormMessage<UserFormValues> name="status" />
+              </FormItem>
+            ) : null}
           </div>
 
           <div className="mt-4" id="user-permission-scope">
@@ -354,6 +446,7 @@ function UserForm({
               disabled={saveUser.isPending}
               onDataScopeChange={setDataScope}
               onPermissionsChange={setPermissions}
+              onScopeLabelsChange={handleScopeLabelsChange}
               permissions={permissions}
               role={selectedRole}
               roleLabel={roleLabel}
@@ -387,6 +480,14 @@ function UserForm({
         open={Boolean(generatedPassword)}
         value={generatedPassword}
       />
+      <UserSaveReviewDialog
+        data={reviewData}
+        labelOf={labelOf}
+        isSubmitting={saveUser.isPending}
+        onClose={() => setReviewOpen(false)}
+        onConfirm={confirmSave}
+        open={reviewOpen}
+      />
     </>
   );
 }
@@ -398,10 +499,15 @@ export function ManageUserFormPage() {
   const userId = id ? Number(id) : null;
   const {
     data: user = null,
-    isLoading,
-    isError,
+    isLoading: isUserLoading,
+    isError: isUserError,
   } = useUser(Number.isInteger(userId) ? userId : null);
-  const rolesCatalog = useRolesCatalog();
+  const {
+    rolesCatalog,
+    isLoading: isRolesLoading,
+    isError: isRolesError,
+    refetch: refetchRoles,
+  } = useRolesCatalog();
 
   return (
     <PageShell>
@@ -416,11 +522,17 @@ export function ManageUserFormPage() {
         }
       />
 
-      {isEdit && isLoading && !user ? (
+      {isRolesLoading || (isEdit && isUserLoading && !user) ? (
         <Card className="p-6">
           <SkeletonStack lines={6} />
         </Card>
-      ) : isEdit && (isError || !user) ? (
+      ) : isRolesError ? (
+        <ErrorState
+          title="ไม่สามารถโหลดข้อมูลตำแหน่งได้"
+          description="เกิดข้อผิดพลาดระหว่างโหลดตำแหน่งและนโยบายขอบเขตข้อมูล"
+          onRetry={refetchRoles}
+        />
+      ) : isEdit && (isUserError || !user) ? (
         <ErrorState
           title="ไม่พบผู้ใช้งาน"
           description="ไม่พบข้อมูลผู้ใช้งานที่ต้องการแก้ไข"
