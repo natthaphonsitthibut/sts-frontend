@@ -8,6 +8,8 @@ import {
 import type {
   BulkReissueStudentAccountsPayload,
   BulkReissueStudentAccountsResponse,
+  AccountDeactivationPayload,
+  AccountReactivateResponse,
   DeactivateStudentAccountResponse,
   ManagedUser,
   CreateUserResponse,
@@ -16,6 +18,10 @@ import type {
   RoleGroupForm,
   SettingsUpdatePayload,
   SettingsUpdateResponse,
+  StudentAccountBatchCredentialResponse,
+  StudentAccountBatchJobResponse,
+  StudentAccountBatchListQuery,
+  StudentAccountBatchListResponse,
   StudentAccountFilter,
   StudentAccountGenerateResponse,
   StudentAccountListQuery,
@@ -194,9 +200,18 @@ async function bulkReissueStudentTemporaryPasswords(
 
 async function deactivateStudentAccount(
   id: number,
+  payload?: AccountDeactivationPayload,
 ): Promise<DeactivateStudentAccountResponse> {
   const response = await apiClient.post<DeactivateStudentAccountResponse>(
     `/users/student-accounts/${id}/deactivate`,
+    payload,
+  );
+  return response.data;
+}
+
+async function reactivateStudentAccount(id: number): Promise<AccountReactivateResponse> {
+  const response = await apiClient.post<AccountReactivateResponse>(
+    `/users/student-accounts/${id}/reactivate`,
   );
   return response.data;
 }
@@ -221,6 +236,24 @@ async function deleteUser(id: number): Promise<void> {
   await apiClient.delete(`/users/${id}`);
 }
 
+async function deactivateAccount(
+  id: number,
+  payload: AccountDeactivationPayload,
+): Promise<DeactivateStudentAccountResponse> {
+  const response = await apiClient.post<DeactivateStudentAccountResponse>(
+    `/users/${id}/deactivate`,
+    payload,
+  );
+  return response.data;
+}
+
+async function reactivateAccount(id: number): Promise<AccountReactivateResponse> {
+  const response = await apiClient.post<AccountReactivateResponse>(
+    `/users/${id}/reactivate`,
+  );
+  return response.data;
+}
+
 async function previewStudentAccounts(
   payload: StudentAccountFilter,
 ): Promise<StudentAccountPreview["data"]> {
@@ -237,6 +270,73 @@ async function generateStudentAccounts(
   const response = await apiClient.post<StudentAccountGenerateResponse>(
     "/users/student-accounts/generate",
     payload,
+  );
+  return response.data;
+}
+
+// --- Async large-batch generation jobs ---
+async function enqueueStudentAccountBatch(
+  payload: StudentAccountFilter,
+): Promise<StudentAccountBatchJobResponse> {
+  const response = await apiClient.post<StudentAccountBatchJobResponse>(
+    "/users/student-accounts/batch-jobs",
+    payload,
+  );
+  return response.data;
+}
+
+async function getStudentAccountBatches(
+  query: StudentAccountBatchListQuery = {},
+): Promise<StudentAccountBatchListResponse> {
+  const params: Record<string, string> = {};
+  if (query.status) params.status = query.status;
+  if (query.page) params.page = String(query.page);
+  if (query.limit) params.limit = String(query.limit);
+  const response = await apiClient.get<StudentAccountBatchListResponse>(
+    "/users/student-accounts/batch-jobs",
+    { params },
+  );
+  return response.data;
+}
+
+async function getStudentAccountBatch(
+  id: string,
+): Promise<StudentAccountBatchJobResponse> {
+  const response = await apiClient.get<StudentAccountBatchJobResponse>(
+    `/users/student-accounts/batch-jobs/${id}`,
+  );
+  return response.data;
+}
+
+async function resumeStudentAccountBatch(
+  id: string,
+): Promise<StudentAccountBatchJobResponse> {
+  const response = await apiClient.post<StudentAccountBatchJobResponse>(
+    `/users/student-accounts/batch-jobs/${id}/resume`,
+  );
+  return response.data;
+}
+
+async function cancelStudentAccountBatch(
+  id: string,
+): Promise<StudentAccountBatchJobResponse> {
+  const response = await apiClient.post<StudentAccountBatchJobResponse>(
+    `/users/student-accounts/batch-jobs/${id}/cancel`,
+  );
+  return response.data;
+}
+
+async function downloadStudentAccountBatchCredentials(
+  id: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<StudentAccountBatchCredentialResponse> {
+  const params: Record<string, string> = {};
+  if (query.page) params.page = String(query.page);
+  if (query.limit) params.limit = String(query.limit);
+  const response = await apiClient.post<StudentAccountBatchCredentialResponse>(
+    `/users/student-accounts/batch-jobs/${id}/credentials`,
+    undefined,
+    { params },
   );
   return response.data;
 }
@@ -284,12 +384,21 @@ export const adminService = {
   reissueTemporaryPassword,
   bulkReissueStudentTemporaryPasswords,
   deactivateStudentAccount,
+  reactivateStudentAccount,
   getRolesCatalog,
   createUser,
   updateUser,
   deleteUser,
+  deactivateAccount,
+  reactivateAccount,
   previewStudentAccounts,
   generateStudentAccounts,
+  enqueueStudentAccountBatch,
+  getStudentAccountBatches,
+  getStudentAccountBatch,
+  resumeStudentAccountBatch,
+  cancelStudentAccountBatch,
+  downloadStudentAccountBatchCredentials,
   getRoleGroups,
   createRoleGroup,
   updateRoleGroup,

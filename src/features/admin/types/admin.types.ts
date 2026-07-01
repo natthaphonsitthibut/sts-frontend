@@ -39,6 +39,10 @@ export interface ManagedUser {
   must_change_password?: boolean;
   temporary_password_issued_at?: string | null;
   temporary_password_expires_at?: string | null;
+  deactivated_at?: string | null;
+  deactivated_by?: number | null;
+  deactivation_reason_code?: AccountDeactivationReasonCode | null;
+  deactivation_note?: string | null;
   created_at?: string | null;
 }
 
@@ -115,6 +119,10 @@ export interface StudentAccountManagementItem {
   temporaryPasswordIssuedAt: string | null;
   temporaryPasswordExpiresAt: string | null;
   temporaryPasswordRemainingSeconds?: number | null;
+  deactivatedAt?: string | null;
+  deactivatedBy?: number | null;
+  deactivationReasonCode?: AccountDeactivationReasonCode | null;
+  deactivationNote?: string | null;
   createdAt?: string | null;
 }
 
@@ -135,7 +143,28 @@ export interface DeactivateStudentAccountResponse {
   success: boolean;
   userId: number;
   status: "DISABLED";
+  reasonCode?: AccountDeactivationReasonCode | null;
+  note?: string | null;
   reason: string | null;
+}
+
+export type AccountDeactivationReasonCode =
+  | "STAFF_LEFT"
+  | "TRANSFERRED"
+  | "DUPLICATE"
+  | "SECURITY"
+  | "OTHER";
+
+export interface AccountDeactivationPayload {
+  reasonCode: AccountDeactivationReasonCode;
+  note?: string;
+}
+
+export interface AccountReactivateResponse {
+  success: boolean;
+  userId: number;
+  status: "ACTIVE";
+  needsReissue?: boolean;
 }
 
 export interface StudentAccountFilter {
@@ -193,6 +222,65 @@ export interface StudentAccountGenerateResponse {
   success: boolean;
   createdCount: number;
   credentials: StudentAccountCredential[];
+}
+
+// --- Async large-batch generation jobs ---
+export type StudentAccountBatchJobStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "COMPLETED"
+  | "FAILED"
+  | "INTERRUPTED"
+  | "CANCELED";
+
+export interface StudentAccountBatchJob {
+  id: string;
+  status: StudentAccountBatchJobStatus;
+  totalCandidates: number;
+  processedCount: number;
+  createdCount: number;
+  skippedCount: number;
+  failedCount: number;
+  errorSummary: string | null;
+  scope: {
+    schoolId: number | null;
+    province: string | null;
+    district: string | null;
+    subDistrict: string | null;
+    grade: string | null;
+    room: number | null;
+  };
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface StudentAccountBatchListQuery {
+  status?: StudentAccountBatchJobStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface StudentAccountBatchListResponse {
+  success: boolean;
+  data: StudentAccountBatchJob[];
+  meta: { page: number; limit: number; total: number };
+}
+
+export interface StudentAccountBatchJobResponse {
+  success: boolean;
+  data: StudentAccountBatchJob;
+}
+
+export interface StudentAccountBatchCredentialResponse {
+  success: boolean;
+  jobId: string;
+  meta: { page: number; limit: number; total: number };
+  reissuedCount: number;
+  skippedCount: number;
+  credentials: StudentAccountCredential[];
+  skipped: Array<{ userId: number; reason: string }>;
 }
 
 // --- Roles / role groups ---

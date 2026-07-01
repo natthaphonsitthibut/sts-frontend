@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX } from "lucide-react";
+import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX, X } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -40,10 +40,13 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { adminService } from "../api/admin.service";
+import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
+import { StudentAccountBatchPanel } from "../components/StudentAccountBatchPanel";
 import { StudentAccountManagementTable } from "../components/StudentAccountManagementTable";
 import {
   useBulkReissueStudentTemporaryPasswords,
   useDeactivateStudentAccount,
+  useReactivateStudentAccount,
   useStudentAccounts,
 } from "../hooks/useUsers";
 import {
@@ -51,6 +54,7 @@ import {
   ACCOUNT_LIFECYCLE_STATUS_ORDER,
 } from "../lib/admin-presentation";
 import type {
+  AccountDeactivationPayload,
   StudentAccountCandidate,
   StudentAccountCredential,
   StudentAccountFilter,
@@ -67,6 +71,7 @@ const PREVIEW_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 const STUDENT_ACCOUNT_TABS = [
   { value: "manage", label: "จัดการบัญชี" },
   { value: "generate", label: "สร้างบัญชี" },
+  { value: "batch", label: "งานชุดใหญ่" },
   { value: "history", label: "ประวัติ" },
 ];
 const ACCOUNT_STATUS_OPTIONS: Array<{
@@ -583,6 +588,9 @@ export function StudentAccountsPage() {
   );
   const bulkReissueMutation = useBulkReissueStudentTemporaryPasswords();
   const deactivateMutation = useDeactivateStudentAccount();
+  const reactivateMutation = useReactivateStudentAccount();
+  const [deactivationTarget, setDeactivationTarget] =
+    useState<StudentAccountManagementItem | null>(null);
   const accountScopeKey = `${area.province || ""}|${area.district || ""}|${area.subDistrict || ""}|${scope.schoolId || ""}|${scope.grade || ""}|${scope.room || ""}`;
   const previewMutation = useMutation({
     mutationFn: (payload?: StudentAccountFilter) =>
@@ -650,9 +658,9 @@ export function StudentAccountsPage() {
   }
 
   function handleManagementRowsPerPageChange(value: number): void {
+    // Same filtered dataset, just re-paginated — keep the selection.
     setManagementRowsPerPage(value);
     setManagementPage(1);
-    setSelectedAccountIds(new Set());
   }
 
   function handleSelectRow(userId: number, selected: boolean): void {
@@ -752,15 +760,35 @@ export function StudentAccountsPage() {
     );
   }
 
-  async function handleDeactivateRow(row: StudentAccountManagementItem): Promise<void> {
+  function handleDeactivateRow(row: StudentAccountManagementItem): void {
+    setDeactivationTarget(row);
+  }
+
+  function submitDeactivateStudentAccount(payload: AccountDeactivationPayload): void {
+    if (!deactivationTarget) return;
+    deactivateMutation.mutate(
+      { id: deactivationTarget.userId, payload },
+      {
+        onSuccess: () => {
+          setSelectedAccountIds((current) => {
+            const next = new Set(current);
+            next.delete(deactivationTarget.userId);
+            return next;
+          });
+          setDeactivationTarget(null);
+        },
+      },
+    );
+  }
+
+  async function handleReactivateRow(row: StudentAccountManagementItem): Promise<void> {
     const confirmed = await confirm({
-      title: "ปิดใช้งานบัญชีนักเรียน",
-      description: `ต้องการปิดใช้งานบัญชีของ "${row.studentName}" ใช่หรือไม่?`,
-      confirmText: "ปิดใช้งาน",
-      variant: "destructive",
+      title: "เปิดใช้งานบัญชีนักเรียน",
+      description: `ต้องการเปิดใช้งานบัญชีของ "${row.studentName}" อีกครั้งใช่หรือไม่?`,
+      confirmText: "เปิดใช้งาน",
     });
     if (!confirmed) return;
-    deactivateMutation.mutate(row.userId, {
+    reactivateMutation.mutate(row.userId, {
       onSuccess: () => {
         setSelectedAccountIds((current) => {
           const next = new Set(current);
@@ -980,6 +1008,16 @@ export function StudentAccountsPage() {
         tableActions={
           activeTab === "manage" ? (
             <>
+              {selectedAccountIds.size > 0 ? (
+                <Button
+                  className="shrink-0"
+                  icon={X}
+                  onClick={() => setSelectedAccountIds(new Set())}
+                  variant="ghost"
+                >
+                  ยกเลิกการเลือก
+                </Button>
+              ) : null}
               <Button
                 className="w-[14rem] shrink-0 transform-none transition-none hover:shadow-sm active:scale-100 disabled:opacity-100"
                 disabled={bulkReissueMutation.isPending}
@@ -1038,6 +1076,10 @@ export function StudentAccountsPage() {
             error={deactivateMutation.error}
             fallback="ปิดใช้งานบัญชีนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง"
           />
+          <FormErrorAlert
+            error={reactivateMutation.error}
+            fallback="เปิดใช้งานบัญชีนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง"
+          />
           {accountsError ? (
             <ErrorState
               title="โหลดบัญชีนักเรียนไม่สำเร็จ"
@@ -1067,6 +1109,7 @@ export function StudentAccountsPage() {
               />
               <StudentAccountManagementTable
                 onDeactivate={(row) => void handleDeactivateRow(row)}
+                onReactivate={(row) => void handleReactivateRow(row)}
                 onReissueTemporaryPassword={(row) =>
                   void handleReissueRow(row)
                 }
@@ -1074,7 +1117,12 @@ export function StudentAccountsPage() {
                 onSelectRow={handleSelectRow}
                 pendingDeactivateIds={
                   deactivateMutation.isPending && deactivateMutation.variables
-                    ? [deactivateMutation.variables]
+                    ? [deactivateMutation.variables.id]
+                    : []
+                }
+                pendingReactivateIds={
+                  reactivateMutation.isPending && reactivateMutation.variables
+                    ? [reactivateMutation.variables]
                     : []
                 }
                 pendingReissueIds={
@@ -1086,10 +1134,10 @@ export function StudentAccountsPage() {
                 selectedIds={selectedAccountIds}
               />
               <Pagination
-                onPageChange={(nextPage) => {
-                  setManagementPage(nextPage);
-                  setSelectedAccountIds(new Set());
-                }}
+                // Keep the selection across pages so a bulk action can span
+                // page 1 + page 2. It still resets on unmount (refresh /
+                // leaving the page) and on any filter/search/status change.
+                onPageChange={setManagementPage}
                 onRowsPerPageChange={handleManagementRowsPerPageChange}
                 page={accountsMeta?.page ?? managementPage}
                 rowsPerPage={accountsMeta?.limit ?? managementRowsPerPage}
@@ -1224,6 +1272,8 @@ export function StudentAccountsPage() {
             </div>
           ) : null}
         </>
+      ) : activeTab === "batch" ? (
+        <StudentAccountBatchPanel filter={generateFilter} />
       ) : can("audit-log") ? (
         <AuditLogPanel
           domain="student_accounts"
@@ -1242,6 +1292,26 @@ export function StudentAccountsPage() {
         </div>
       )}
       {confirmDialog}
+      <AccountDeactivationDialog
+        key={deactivationTarget?.userId ?? "none"}
+        error={
+          deactivateMutation.error
+            ? getApiErrorMessage(
+                deactivateMutation.error,
+                "ปิดใช้งานบัญชีนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง",
+              )
+            : undefined
+        }
+        isSubmitting={deactivateMutation.isPending}
+        onClose={() => setDeactivationTarget(null)}
+        onSubmit={submitDeactivateStudentAccount}
+        open={Boolean(deactivationTarget)}
+        targetName={
+          deactivationTarget
+            ? `ต้องการปิดใช้งานบัญชีของ "${deactivationTarget.studentName}"`
+            : ""
+        }
+      />
     </PageShell>
   );
 }
