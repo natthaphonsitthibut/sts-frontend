@@ -2,28 +2,34 @@ import type { CSSProperties } from "react";
 import { Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 
+const ATTENDANCE_STATUS_CODE = {
+  PRESENT: 1,
+  ABSENT: 2,
+  LATE: 3,
+} as const;
+
 export function normalizeAttendanceSelectionStatus(
   status: unknown,
 ): AttendanceSelectionStatus {
   if (
-    status === 1 ||
-    status === "1" ||
+    status === ATTENDANCE_STATUS_CODE.PRESENT ||
+    status === String(ATTENDANCE_STATUS_CODE.PRESENT) ||
     status === "P_PRESENT" ||
     status === "PRESENT"
   ) {
     return "P_PRESENT";
   }
   if (
-    status === 2 ||
-    status === "2" ||
+    status === ATTENDANCE_STATUS_CODE.ABSENT ||
+    status === String(ATTENDANCE_STATUS_CODE.ABSENT) ||
     status === "P_ABSENT" ||
     status === "ABSENT"
   ) {
     return "P_ABSENT";
   }
   if (
-    status === 3 ||
-    status === "3" ||
+    status === ATTENDANCE_STATUS_CODE.LATE ||
+    status === String(ATTENDANCE_STATUS_CODE.LATE) ||
     status === "P_LATE" ||
     status === "LATE"
   ) {

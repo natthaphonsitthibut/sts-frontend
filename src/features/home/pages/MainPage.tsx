@@ -1,4 +1,8 @@
-import { ErrorState, PageShell } from "../../../components/layout/page-primitives";
+import {
+  ErrorState,
+  PageShell,
+  SkeletonCards,
+} from "../../../components/layout/page-primitives";
 import { DataExportCard } from "../components/DataExportCard";
 import { HelpStatusPanel } from "../components/HelpStatusPanel";
 import { OverviewSummaryCards } from "../components/OverviewSummaryCards";
@@ -10,7 +14,7 @@ import { useOverviewStats } from "../hooks/useOverviewStats";
 export function MainPage() {
   const { displayName, roleLabel, initials, affiliation } =
     useCurrentUserPresentation();
-  const { overviewData, isError, refetch } = useOverviewStats();
+  const { overviewData, isLoading, isError, refetch } = useOverviewStats();
 
   return (
     <PageShell>
@@ -22,24 +26,31 @@ export function MainPage() {
           roleLabel={roleLabel}
         />
 
-        {isError ? (
+        {isLoading ? (
+          <>
+            <SkeletonCards count={3} />
+            <SkeletonCards count={3} />
+          </>
+        ) : isError ? (
           <ErrorState
             title="ไม่สามารถโหลดข้อมูลภาพรวมได้"
             description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลสรุปภาพรวม"
             onRetry={refetch}
           />
-        ) : null}
+        ) : (
+          <>
+            <OverviewSummaryCards overviewData={overviewData} />
 
-        <OverviewSummaryCards overviewData={overviewData} />
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <HelpStatusPanel
-            inProgress={overviewData.helpStats.inProgress}
-            waiting={overviewData.helpStats.waiting}
-          />
-          <ResolvedHelpCard resolved={overviewData.helpStats.resolved} />
-          <DataExportCard />
-        </div>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <HelpStatusPanel
+                inProgress={overviewData.helpStats.inProgress}
+                waiting={overviewData.helpStats.waiting}
+              />
+              <ResolvedHelpCard resolved={overviewData.helpStats.resolved} />
+              <DataExportCard />
+            </div>
+          </>
+        )}
       </div>
     </PageShell>
   );

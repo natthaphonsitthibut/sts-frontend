@@ -98,12 +98,28 @@ const CALENDAR_DAY_META: Record<
 
 const ANOMALY_META: Record<
   AttendanceSessionAnomalyType,
-  { label: string; variant: "secondary" | "warning" | "destructive" }
+  { label: string; variant: "secondary" | "warning" | "destructive"; description: string }
 > = {
-  HOLIDAY_ATTENDANCE: { label: "เช็คชื่อในวันหยุด", variant: "warning" },
-  CANCELLED_ATTENDANCE: { label: "เช็คชื่อในวันยกเลิกเรียน", variant: "warning" },
-  OUT_OF_TERM: { label: "เช็คชื่อนอกช่วงภาคเรียน", variant: "destructive" },
-  MISSING_CALENDAR_DAY: { label: "ไม่มี calendar day", variant: "secondary" },
+  HOLIDAY_ATTENDANCE: {
+    label: "เช็คชื่อในวันหยุด",
+    variant: "warning",
+    description: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  },
+  CANCELLED_ATTENDANCE: {
+    label: "เช็คชื่อในวันที่ยกเลิกเรียน",
+    variant: "warning",
+    description: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  },
+  OUT_OF_TERM: {
+    label: "เช็คชื่อนอกช่วงภาคเรียน",
+    variant: "destructive",
+    description: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  },
+  MISSING_CALENDAR_DAY: {
+    label: "ไม่มีวันในปฏิทิน",
+    variant: "secondary",
+    description: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  },
 };
 
 function getSummaryToneFromBadgeVariant(
@@ -387,6 +403,8 @@ function CalendarMonthGrid({
 export function AttendanceOperationsPage() {
   const queryClient = useQueryClient();
   const reconciliationDateInputRef = useRef<HTMLInputElement | null>(null);
+  const calendarSectionRef = useRef<HTMLDivElement | null>(null);
+  const reconciliationSectionRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "settings");
@@ -621,6 +639,21 @@ export function AttendanceOperationsPage() {
     }
   }
 
+  function scrollIntoView(element: HTMLElement | null): void {
+    element?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function focusCalendarDate(value: string): void {
+    setCalendarDate(value);
+    setCalendarEdit(null);
+    scrollIntoView(calendarSectionRef.current);
+  }
+
+  function focusReconciliationDate(value: string): void {
+    handleDateChange(value);
+    scrollIntoView(reconciliationSectionRef.current);
+  }
+
   return (
     <PageShell>
       <PageToolbar
@@ -738,7 +771,7 @@ export function AttendanceOperationsPage() {
             </Card>
 
             {canManageCalendar ? (
-              <Card className="p-5">
+              <Card className="p-5" ref={calendarSectionRef}>
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
@@ -872,7 +905,7 @@ export function AttendanceOperationsPage() {
             </Alert>
           ) : null}
 
-          <Card className="p-5">
+          <Card className="p-5" ref={reconciliationSectionRef}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
                 <h2 className="text-base font-bold text-slate-900">ตรวจความครบถ้วน</h2>
@@ -1130,7 +1163,8 @@ export function AttendanceOperationsPage() {
                   { label: "ประเภท", sortKey: "type" },
                   { label: "บันทึกแล้ว", sortKey: "recorded" },
                   { label: "รอบบันทึก", sortKey: "revision" },
-                  { label: "หมายเหตุปฏิทิน" },
+                  { label: "หมายเหตุ / แนวทางแก้" },
+                  { label: "จัดการ" },
                 ]}
                 onSortChange={setAnomalySort}
                 sort={anomalySort}
@@ -1147,7 +1181,30 @@ export function AttendanceOperationsPage() {
                       <DataTableCell>{row.recordedCount} / {row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.revision}</DataTableCell>
                       <DataTableCell className="text-slate-500">
-                        {row.calendarReason || "-"}
+                        <div>{row.calendarReason || "-"}</div>
+                        <div className="mt-1 text-xs text-slate-400">{meta.description}</div>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <div className="flex flex-wrap gap-2">
+                          {canManageCalendar ? (
+                            <Button
+                              icon={CalendarDays}
+                              onClick={() => focusCalendarDate(row.date)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              แก้ปฏิทิน
+                            </Button>
+                          ) : null}
+                          <Button
+                            icon={CheckCircle2}
+                            onClick={() => focusReconciliationDate(row.date)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            ตรวจวันนั้น
+                          </Button>
+                        </div>
                       </DataTableCell>
                     </DataTableRow>
                   );
@@ -1174,9 +1231,30 @@ export function AttendanceOperationsPage() {
                           <span>บันทึกแล้ว {row.recordedCount} / {row.expectedRosterCount}</span>
                           <span>รอบ {row.revision}</span>
                         </div>
-                        {row.calendarReason ? (
-                          <div className="text-sm text-slate-500">{row.calendarReason}</div>
-                        ) : null}
+                        <div className="space-y-1 text-sm text-slate-500">
+                          <div>{row.calendarReason || "-"}</div>
+                          <div className="text-xs text-slate-400">{meta.description}</div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {canManageCalendar ? (
+                            <Button
+                              icon={CalendarDays}
+                              onClick={() => focusCalendarDate(row.date)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              แก้ปฏิทิน
+                            </Button>
+                          ) : null}
+                          <Button
+                            icon={CheckCircle2}
+                            onClick={() => focusReconciliationDate(row.date)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            ตรวจวันนั้น
+                          </Button>
+                        </div>
                       </div>
                     </TableCard>
                   );
