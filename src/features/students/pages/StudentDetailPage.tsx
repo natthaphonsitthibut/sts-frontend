@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card } from "../../../components/base";
 import {
   EmptyState,
+  ErrorState,
   PageShell,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
@@ -24,10 +25,14 @@ function resolveFullName(student: StudentDetail | undefined): string {
 
 function RiskHistoryPanel({
   cases,
+  isError,
   isLoading,
+  onRetry,
 }: {
   cases: StudentCase[];
+  isError: boolean;
   isLoading: boolean;
+  onRetry: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
 
@@ -54,6 +59,8 @@ function RiskHistoryPanel({
 
       {isLoading ? (
         <SkeletonStack lines={3} className="py-2" />
+      ) : isError ? (
+        <ErrorState title="โหลดประวัติการติดตามไม่สำเร็จ" onRetry={onRetry} />
       ) : sortedCases.length === 0 ? (
         <div className="py-6 text-center text-slate-500">
           ไม่มีประวัติการติดตาม
@@ -120,7 +127,8 @@ function AttendanceStat({
 }
 
 function AttendancePanel({ studentId }: { studentId: string }) {
-  const { summary, isLoading } = useStudentAttendanceSummary(studentId);
+  const { summary, isLoading, isError, refetch } =
+    useStudentAttendanceSummary(studentId);
   const stats = summary?.stats;
 
   return (
@@ -131,6 +139,8 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 
       {isLoading ? (
         <SkeletonStack lines={3} className="py-2" />
+      ) : isError ? (
+        <ErrorState title="โหลดประวัติการเข้าเรียนไม่สำเร็จ" onRetry={refetch} />
       ) : !stats || stats.total === 0 ? (
         <div className="py-6 text-center text-slate-500">
           ไม่มีข้อมูลการเข้าเรียน
@@ -168,11 +178,14 @@ export function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
 
-  const { student, isLoading, isError } = useStudent(studentId);
+  const { student, isLoading, isError, refetch } = useStudent(studentId);
   const fullName = resolveFullName(student);
-  const { cases, isLoading: casesLoading } = useStudentCases(
-    fullName || undefined,
-  );
+  const {
+    cases,
+    isLoading: casesLoading,
+    isError: casesError,
+    refetch: refetchCases,
+  } = useStudentCases(fullName || undefined);
 
   if (isLoading) {
     return (
@@ -192,7 +205,19 @@ export function StudentDetailPage() {
     );
   }
 
-  if (!studentId || isError || !student) {
+  if (isError) {
+    return (
+      <PageShell maxWidthClassName="max-w-[1000px]">
+        <ErrorState
+          title="โหลดข้อมูลนักเรียนไม่สำเร็จ"
+          description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลนักเรียน กรุณาลองใหม่อีกครั้ง"
+          onRetry={refetch}
+        />
+      </PageShell>
+    );
+  }
+
+  if (!studentId || !student) {
     return (
       <PageShell maxWidthClassName="max-w-[1000px]">
         <EmptyState
@@ -218,7 +243,12 @@ export function StudentDetailPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <RiskHistoryPanel cases={cases} isLoading={casesLoading} />
+        <RiskHistoryPanel
+          cases={cases}
+          isError={casesError}
+          isLoading={casesLoading}
+          onRetry={refetchCases}
+        />
         {studentId ? <AttendancePanel studentId={studentId} /> : null}
       </div>
     </PageShell>

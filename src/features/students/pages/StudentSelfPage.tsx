@@ -2,6 +2,7 @@ import { CircleAlert } from "lucide-react";
 import { Card } from "../../../components/base";
 import {
   EmptyState,
+  ErrorState,
   PageShell,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
@@ -25,9 +26,13 @@ export function StudentSelfPage() {
   // B1.3 read-path swap. Fall back to PersonID_Onec for sessions persisted
   // before the migration so existing logins don't silently break.
   const studentId = user?.student_uuid ?? user?.PersonID_Onec;
-  const { student, isLoading, isError } = useStudent(studentId);
-  const { summary, isLoading: summaryLoading } =
-    useStudentAttendanceSummary(studentId);
+  const { student, isLoading, isError, refetch } = useStudent(studentId);
+  const {
+    summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useStudentAttendanceSummary(studentId);
 
   if (isLoading) {
     return (
@@ -42,7 +47,19 @@ export function StudentSelfPage() {
     );
   }
 
-  if (isError || !student || !studentId) {
+  if (isError) {
+    return (
+      <PageShell maxWidthClassName="max-w-[980px]">
+        <ErrorState
+          title="โหลดข้อมูลนักเรียนไม่สำเร็จ"
+          description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลของบัญชีนี้ กรุณาลองใหม่อีกครั้ง"
+          onRetry={refetch}
+        />
+      </PageShell>
+    );
+  }
+
+  if (!student || !studentId) {
     return (
       <PageShell maxWidthClassName="max-w-[980px]">
         <EmptyState
@@ -70,6 +87,12 @@ export function StudentSelfPage() {
           <h2 className="text-lg font-bold text-slate-900">สรุปการเข้าเรียน</h2>
           {summaryLoading ? (
             <SkeletonStack lines={2} className="mt-4" />
+          ) : summaryError ? (
+            <ErrorState
+              className="mt-4"
+              title="โหลดสรุปการเข้าเรียนไม่สำเร็จ"
+              onRetry={refetchSummary}
+            />
           ) : !stats || stats.total === 0 ? (
             <div className="py-8 text-center text-slate-500">
               ยังไม่มีข้อมูลการเข้าเรียน

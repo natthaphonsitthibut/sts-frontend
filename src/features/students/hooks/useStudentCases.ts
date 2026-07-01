@@ -9,6 +9,8 @@ const EMPTY_CASES: StudentCase[] = [];
 interface UseStudentCasesResult {
   cases: StudentCase[];
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }
 
 export function useStudentCases(
@@ -23,5 +25,9 @@ export function useStudentCases(
   return {
     cases: result.data ?? EMPTY_CASES,
     isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }

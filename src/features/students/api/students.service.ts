@@ -20,6 +20,50 @@ interface DataEnvelope<T> {
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
+const STUDENT_ATTENDANCE_STATUS_CODE = {
+  PRESENT: 1,
+  ABSENT: 2,
+  LATE: 3,
+  LEAVE: 4,
+} as const;
+const STUDENT_ATTENDANCE_STATUS_ALIASES = [
+  {
+    normalized: "PRESENT",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.PRESENT,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.PRESENT),
+      "P_PRESENT",
+      "PRESENT",
+    ],
+  },
+  {
+    normalized: "ABSENT",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.ABSENT,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.ABSENT),
+      "P_ABSENT",
+      "ABSENT",
+    ],
+  },
+  {
+    normalized: "LATE",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.LATE,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.LATE),
+      "P_LATE",
+      "LATE",
+    ],
+  },
+  {
+    normalized: "LEAVE",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.LEAVE,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.LEAVE),
+      "P_LEAVE",
+      "LEAVE",
+    ],
+  },
+] as const;
 
 interface StudentsService {
   getStudents: (query?: StudentListQuery) => Promise<StudentListResult>;
@@ -95,39 +139,11 @@ function buildStudentListParams(
 }
 
 function normalizeAttendanceStatus(status: unknown): string {
-  if (
-    status === 1 ||
-    status === "1" ||
-    status === "P_PRESENT" ||
-    status === "PRESENT"
-  ) {
-    return "PRESENT";
-  }
-  if (
-    status === 2 ||
-    status === "2" ||
-    status === "P_ABSENT" ||
-    status === "ABSENT"
-  ) {
-    return "ABSENT";
-  }
-  if (
-    status === 3 ||
-    status === "3" ||
-    status === "P_LATE" ||
-    status === "LATE"
-  ) {
-    return "LATE";
-  }
-  if (
-    status === 4 ||
-    status === "4" ||
-    status === "P_LEAVE" ||
-    status === "LEAVE"
-  ) {
-    return "LEAVE";
-  }
-  return "UNKNOWN";
+  return (
+    STUDENT_ATTENDANCE_STATUS_ALIASES.find((alias) =>
+      alias.values.some((value) => value === status),
+    )?.normalized ?? "UNKNOWN"
+  );
 }
 
 async function getStudents(

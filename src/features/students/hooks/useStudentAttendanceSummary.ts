@@ -7,6 +7,8 @@ export const STUDENT_ATTENDANCE_QUERY_KEY = "student-attendance-summary";
 interface UseStudentAttendanceSummaryResult {
   summary: StudentAttendanceSummaryResponse | undefined;
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }
 
 export function useStudentAttendanceSummary(
@@ -22,5 +24,9 @@ export function useStudentAttendanceSummary(
   return {
     summary: result.data,
     isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }
