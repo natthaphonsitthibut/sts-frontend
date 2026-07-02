@@ -81,6 +81,11 @@ export const StudentStatusesPage = lazy(() =>
     default: module.StudentStatusesPage,
   })),
 );
+export const MasterDataLookupsPage = lazy(() =>
+  import("../features/master-data-lookups/pages/MasterDataLookupsPage").then((module) => ({
+    default: module.MasterDataLookupsPage,
+  })),
+);
 export const CasesListPage = lazy(() =>
   import("../features/cases/pages/CasesListPage").then((module) => ({
     default: module.CasesListPage,

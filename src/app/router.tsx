@@ -23,6 +23,7 @@ import {
   LoginLinksPage,
   MagicLoginPage,
   MainPage,
+  MasterDataLookupsPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
   ManageUserFormPage,
@@ -196,6 +197,10 @@ export const router = createBrowserRouter([
       {
         path: "settings/student-statuses",
         element: protectedElement(<StudentStatusesPage />, "settings"),
+      },
+      {
+        path: "settings/master-data-lookups",
+        element: protectedElement(<MasterDataLookupsPage />, "settings"),
       },
       {
         path: "task-detail/:taskId",

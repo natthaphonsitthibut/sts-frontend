@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { GraduationCap, Settings } from "lucide-react";
+import { BookOpenText, GraduationCap, Settings } from "lucide-react";
 import {
   EmptyState,
   ErrorState,
@@ -56,9 +56,14 @@ export function SystemSettingsPage() {
     <PageShell maxWidthClassName="max-w-[1100px]">
       <PageToolbar
         actions={
-          <NavButton icon={GraduationCap} to="/settings/student-statuses" variant="outline">
-            สถานะนักเรียน
-          </NavButton>
+          <div className="flex flex-wrap gap-2">
+            <NavButton icon={BookOpenText} to="/settings/master-data-lookups" variant="outline">
+              ข้อมูลพื้นฐาน
+            </NavButton>
+            <NavButton icon={GraduationCap} to="/settings/student-statuses" variant="outline">
+              สถานะนักเรียน
+            </NavButton>
+          </div>
         }
         icon={Settings}
         title="ตั้งค่าระบบ"
