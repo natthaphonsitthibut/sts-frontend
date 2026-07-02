@@ -230,7 +230,7 @@ export function StudentProfileHeader({
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="ปีการศึกษา"
                 value={toDisplay(student.AcademicYear_Onec)}
@@ -240,6 +240,10 @@ export function StudentProfileHeader({
                 value={toDisplay(student.Semester_Onec)}
               />
               <StatCard label="GPAX" value={toDisplay(student.GPAX_Onec)} />
+              <StatCard
+                label="สถานะการศึกษา"
+                value={toDisplay(student.student_status_label ?? "ยังไม่ได้จับคู่")}
+              />
             </div>
           </div>
         </div>

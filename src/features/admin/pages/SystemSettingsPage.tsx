@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Settings } from "lucide-react";
+import { GraduationCap, Settings } from "lucide-react";
 import {
   EmptyState,
   ErrorState,
@@ -10,6 +10,7 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { SystemSettingCard } from "../components/SystemSettingCard";
+import { NavButton } from "../../../components/layout/nav-button";
 import {
   useSystemSettings,
   useUpdateSetting,
@@ -54,6 +55,11 @@ export function SystemSettingsPage() {
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
       <PageToolbar
+        actions={
+          <NavButton icon={GraduationCap} to="/settings/student-statuses" variant="outline">
+            สถานะนักเรียน
+          </NavButton>
+        }
         icon={Settings}
         title="ตั้งค่าระบบ"
         description="กำหนดพารามิเตอร์หลักที่ส่งผลต่อพฤติกรรมของระบบ"

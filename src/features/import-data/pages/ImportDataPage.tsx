@@ -185,11 +185,11 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
           <div className="mb-2">
             <div className="font-semibold text-slate-800">ตัวอย่างข้อมูลจากไฟล์</div>
             <div className="text-sm text-slate-500">
-              ชื่อใต้หัวตารางคือคอลัมน์ต้นทางที่ระบบจับคู่ ค่าโรงเรียนและชั้นจะแสดงชื่อที่ระบบค้นพบควบคู่กับรหัสจากไฟล์
+              ชื่อใต้หัวตารางคือคอลัมน์ต้นทางที่ระบบจับคู่ ค่าโรงเรียน ชั้น และสถานะจะแสดงชื่อที่ระบบค้นพบควบคู่กับรหัสจากไฟล์
             </div>
           </div>
           <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <div className="grid min-w-[980px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+            <div className="grid min-w-[1120px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
               <div>แถว</div>
               <div>
                 ชื่อ
@@ -218,12 +218,18 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                   {preview.mapping.RoomID_Onec ?? "-"}
                 </div>
               </div>
+              <div>
+                สถานะ
+                <div className="font-normal text-slate-400">
+                  {preview.mapping.StudentStatusID_Onec ?? "ยังไม่จับคู่"}
+                </div>
+              </div>
               <div>การทำงาน</div>
               <div>หมายเหตุ</div>
             </div>
             {preview.sampleRows.map((row) => (
               <div
-                className="grid min-w-[980px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] border-t border-slate-100 px-3 py-2 text-sm"
+                className="grid min-w-[1120px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] border-t border-slate-100 px-3 py-2 text-sm"
                 key={row.rowNumber}
               >
                 <div className="font-medium text-slate-500">{row.rowNumber}</div>
@@ -243,6 +249,10 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                 <div className="text-slate-700">
                   <div>{row.gradeLabel} · ห้อง {row.roomId}</div>
                   <div className="text-xs text-slate-500">รหัสชั้นจากไฟล์: {row.gradeLevelId}</div>
+                </div>
+                <div className="text-slate-700">
+                  <div>{row.studentStatusLabel}</div>
+                  <div className="text-xs text-slate-500">รหัสจากไฟล์: {row.studentStatusCode}</div>
                 </div>
                 <div>
                   <Badge variant={row.action === "insert" ? "success" : "warning"}>

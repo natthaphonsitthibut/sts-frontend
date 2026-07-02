@@ -36,6 +36,7 @@ import {
   StudentAccountsPage,
   StudentListPage,
   StudentSelfPage,
+  StudentStatusesPage,
   SuccessPage,
   SystemSettingsPage,
   TaskDetailPage,
@@ -191,6 +192,10 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: protectedElement(<SystemSettingsPage />, "settings"),
+      },
+      {
+        path: "settings/student-statuses",
+        element: protectedElement(<StudentStatusesPage />, "settings"),
       },
       {
         path: "task-detail/:taskId",

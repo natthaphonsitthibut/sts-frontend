@@ -7,6 +7,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { Badge } from "../../../components/base";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   formatStudentRoom,
@@ -58,6 +59,7 @@ function getStudentSortValue(student: StudentListItem, key: string): string {
   if (key === "school") return student.school_name || "";
   if (key === "grade") return student.grade || "";
   if (key === "room") return formatStudentRoom(student.room);
+  if (key === "status") return student.student_status_label || "";
   return "";
 }
 
@@ -97,8 +99,9 @@ export function StudentTable({
           { label: "โรงเรียน", sortKey: "school" },
           { label: "ระดับชั้น", sortKey: "grade" },
           { label: "ห้อง", sortKey: "room" },
+          { label: "สถานะ", sortKey: "status" },
         ]}
-        minWidthClassName="min-w-[860px]"
+        minWidthClassName="min-w-[960px]"
         onSortChange={setSort}
         sort={sort}
       >
@@ -123,6 +126,11 @@ export function StudentTable({
             <DataTableCell className="text-center font-bold text-slate-600">
               {formatStudentRoom(student.room)}
             </DataTableCell>
+            <DataTableCell>
+              <Badge variant={student.student_status_category === "UNMAPPED" ? "warning" : "secondary"}>
+                {student.student_status_label || "ยังไม่ได้จับคู่"}
+              </Badge>
+            </DataTableCell>
           </DataTableRow>
         ))}
       </DataTable>
@@ -144,6 +152,9 @@ export function StudentTable({
                 {student.grade || "-"} · {formatStudentRoom(student.room)}
               </span>
             </div>
+            <Badge className="w-fit" variant={student.student_status_category === "UNMAPPED" ? "warning" : "secondary"}>
+              {student.student_status_label || "ยังไม่ได้จับคู่"}
+            </Badge>
           </TableCard>
         ))}
       </TableCardList>

@@ -24,6 +24,9 @@ export interface ImportPreviewRow {
   gradeLevelId: string;
   gradeLabel: string;
   roomId: string;
+  studentStatusCode: string;
+  studentStatusLabel: string;
+  studentStatusCategory: string;
 }
 
 export interface ImportPreviewResult {

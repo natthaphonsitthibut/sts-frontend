@@ -76,6 +76,11 @@ export const SystemSettingsPage = lazy(() =>
     default: module.SystemSettingsPage,
   })),
 );
+export const StudentStatusesPage = lazy(() =>
+  import("../features/student-statuses/pages/StudentStatusesPage").then((module) => ({
+    default: module.StudentStatusesPage,
+  })),
+);
 export const CasesListPage = lazy(() =>
   import("../features/cases/pages/CasesListPage").then((module) => ({
     default: module.CasesListPage,

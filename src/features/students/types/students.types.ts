@@ -5,6 +5,8 @@ export interface StudentListItem {
   room: string;
   school_name?: string;
   school_id?: number | string;
+  student_status_label?: string;
+  student_status_category?: string;
   total_late?: number;
   total_absent?: number;
 }
@@ -57,6 +59,8 @@ export interface StudentDetail extends Record<string, unknown> {
   grade?: string;
   grade_label?: string;
   room?: string;
+  student_status_label?: string;
+  student_status_category?: string;
   masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;
