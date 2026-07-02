@@ -9,6 +9,11 @@ export interface DataScope {
   own_only?: boolean;
 }
 
+interface DataScopeSchoolLabel {
+  id: number | string;
+  name?: string | null;
+}
+
 export interface MenuItem {
   id: string;
   label: string;
@@ -35,6 +40,31 @@ export const ROLE_LABELS: Record<string, string> = {
   TEACHER: "คุณครู",
   STUDENT: "นักเรียน",
 };
+
+export function describeDataScopeForDisplay(
+  scope: DataScope | null | undefined,
+  schoolLabels: DataScopeSchoolLabel[] = [],
+): string {
+  if (!scope) return "-";
+  if (scope.own_only) return "เฉพาะข้อมูลของตนเอง";
+
+  const parts: string[] = [];
+  if (scope.global) parts.push("ทั้งประเทศ");
+  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
+  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
+  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
+  if (scope.school_ids?.length) {
+    const schoolText =
+      schoolLabels.length > 0
+        ? schoolLabels.map((school) => school.name ?? school.id).join(", ")
+        : scope.school_ids.join(", ");
+    parts.push(`โรงเรียน: ${schoolText}`);
+  }
+  if (scope.grade_levels?.length) parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
+  if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
+
+  return parts.length > 0 ? parts.join(" · ") : "ยังไม่กำหนดขอบเขต";
+}
 
 export const MENU_ITEMS: MenuItem[] = [
   { id: "home", label: "หน้าหลัก", iconName: "home", route: "/" },

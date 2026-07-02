@@ -38,6 +38,7 @@ import { attendanceLookupService } from "../../tasks/api/attendance-lookup.servi
 import { geoService } from "../../tasks/api/geo.service";
 import { getUserAvatarGradient } from "../../admin/lib/admin-presentation";
 import { authService } from "../api/auth.service";
+import { describeDataScopeForDisplay } from "../lib/permissions";
 import { useAuthSessionStore } from "../store/auth-session.store";
 import type { AuthUser, UpdateProfilePayload } from "../types/auth.types";
 
@@ -155,25 +156,7 @@ function ProfileIdentityCard({ user }: { user: AuthUser }) {
 }
 
 function describeProfileScope(user: AuthUser | null | undefined): string {
-  const scope = user?.data_scope;
-  if (!scope) return "-";
-  if (scope.own_only) return "เฉพาะข้อมูลของตนเอง";
-  const parts: string[] = [];
-  const schoolLabels = user?.data_scope_labels?.schools ?? [];
-  if (scope.global) parts.push("ทั้งประเทศ");
-  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
-  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
-  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
-  if (scope.school_ids?.length) {
-    const schoolText =
-      schoolLabels.length > 0
-        ? schoolLabels.map((school) => school.name ?? school.id).join(", ")
-        : scope.school_ids.join(", ");
-    parts.push(`โรงเรียน: ${schoolText}`);
-  }
-  if (scope.grade_levels?.length) parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
-  if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
-  return parts.length > 0 ? parts.join(" · ") : "ทั้งประเทศ";
+  return describeDataScopeForDisplay(user?.data_scope, user?.data_scope_labels?.schools);
 }
 
 function ProfileDetailItem({ label, value }: { label: string; value: string }) {
