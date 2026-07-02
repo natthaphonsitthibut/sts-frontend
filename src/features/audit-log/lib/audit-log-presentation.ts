@@ -29,6 +29,10 @@ export function getAuditLogTargetLabel(entry: AuditLogEntry): string {
   return `${targetType}: ${entry.targetId}`;
 }
 
+export function hasAuditLogTargetReference(entry: AuditLogEntry): boolean {
+  return Boolean(entry.targetLabel?.trim() || entry.targetId?.trim());
+}
+
 export function formatAuditLogDetails(details: AuditLogDetail[]): string {
   if (details.length === 0) return "-";
   return details.map((detail) => `${detail.label}: ${String(detail.value)}`).join(" · ");

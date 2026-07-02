@@ -212,6 +212,7 @@ export function ImportDataPage() {
           domain="imports"
           description="ดูรายการนำเข้าข้อมูลย้อนหลังตามขอบเขตสิทธิ์ของบัญชี"
           showActionColumn={false}
+          showReferenceColumn={false}
           title="ประวัติการนำเข้าข้อมูล"
         />
       )}

@@ -1,6 +1,9 @@
 import { Badge } from "../../../components/base";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import { getAuditLogTargetLabel } from "../lib/audit-log-presentation";
+import {
+  getAuditLogTargetLabel,
+  hasAuditLogTargetReference,
+} from "../lib/audit-log-presentation";
 import type { AuditLogEntry } from "../types/audit-log.types";
 
 export function AuditLogDetailBlock({
@@ -10,6 +13,8 @@ export function AuditLogDetailBlock({
   entry: AuditLogEntry;
   showSummary?: boolean;
 }) {
+  const hasTargetReference = hasAuditLogTargetReference(entry);
+
   return (
     <dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
       {showSummary ? (
@@ -24,10 +29,14 @@ export function AuditLogDetailBlock({
           </dd>
           <dt className="font-semibold text-slate-500">ผู้ทำรายการ</dt>
           <dd className="font-medium text-slate-800">{entry.actorLabel}</dd>
-          <dt className="font-semibold text-slate-500">อ้างอิง</dt>
-          <dd className="break-all font-medium text-slate-800">
-            {getAuditLogTargetLabel(entry)}
-          </dd>
+          {hasTargetReference ? (
+            <>
+              <dt className="font-semibold text-slate-500">อ้างอิง</dt>
+              <dd className="break-all font-medium text-slate-800">
+                {getAuditLogTargetLabel(entry)}
+              </dd>
+            </>
+          ) : null}
         </>
       ) : null}
       {entry.details.map((detail) => (

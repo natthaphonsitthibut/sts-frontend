@@ -11,7 +11,10 @@ import { formatThaiDateTime } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { AuditLogDetailBlock } from "../components/AuditLogDetailBlock";
 import { useAuditLogEntry } from "../hooks/useAuditLog";
-import { getAuditLogTargetLabel } from "../lib/audit-log-presentation";
+import {
+  getAuditLogTargetLabel,
+  hasAuditLogTargetReference,
+} from "../lib/audit-log-presentation";
 
 export function AuditLogDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -39,6 +42,7 @@ export function AuditLogDetailPage() {
   }
 
   const entry = detailQuery.data;
+  const hasTargetReference = hasAuditLogTargetReference(entry);
 
   return (
     <PageShell>
@@ -71,10 +75,12 @@ export function AuditLogDetailPage() {
               <div className="text-sm text-slate-500">ประเภท</div>
               <div className="font-bold">{entry.actionLabel}</div>
             </div>
-            <div>
-              <div className="text-sm text-slate-500">รหัสอ้างอิง</div>
-              <div className="break-all font-bold">{getAuditLogTargetLabel(entry)}</div>
-            </div>
+            {hasTargetReference ? (
+              <div>
+                <div className="text-sm text-slate-500">รหัสอ้างอิง</div>
+                <div className="break-all font-bold">{getAuditLogTargetLabel(entry)}</div>
+              </div>
+            ) : null}
           </div>
         </Card>
 
