@@ -77,7 +77,7 @@ export function AuditLogDetailPage() {
             </div>
             {hasTargetReference ? (
               <div>
-                <div className="text-sm text-slate-500">รหัสอ้างอิง</div>
+                <div className="text-sm text-slate-500">เป้าหมาย</div>
                 <div className="break-all font-bold">{getAuditLogTargetLabel(entry)}</div>
               </div>
             ) : null}

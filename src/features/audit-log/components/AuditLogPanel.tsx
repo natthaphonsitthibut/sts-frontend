@@ -96,7 +96,7 @@ function AuditLogFilters({
             id="audit-search"
             className="pl-9"
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="ผู้ทำรายการ หรือรหัสอ้างอิง"
+            placeholder="ผู้ทำรายการ หรือเป้าหมาย"
             value={searchTerm}
           />
         </div>

@@ -31,7 +31,7 @@ export function AuditLogDetailBlock({
           <dd className="font-medium text-slate-800">{entry.actorLabel}</dd>
           {hasTargetReference ? (
             <>
-              <dt className="font-semibold text-slate-500">อ้างอิง</dt>
+              <dt className="font-semibold text-slate-500">เป้าหมาย</dt>
               <dd className="break-all font-medium text-slate-800">
                 {getAuditLogTargetLabel(entry)}
               </dd>
