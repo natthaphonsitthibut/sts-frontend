@@ -34,9 +34,9 @@ const IMPORT_MAPPING_FIELDS = [
   { column: "PersonID_Onec", label: "เลขประจำตัว/เลขบัตร", required: true },
   { column: "FirstName_Onec", label: "ชื่อ", required: false },
   { column: "LastName_Onec", label: "นามสกุล", required: false },
-  { column: "AcademicYear_Onec", label: "ปีการศึกษา", required: false },
-  { column: "Semester_Onec", label: "เทอม", required: false },
-  { column: "SchoolID_Onec", label: "รหัสโรงเรียน", required: false },
+  { column: "AcademicYear_Onec", label: "ปีการศึกษา", required: true },
+  { column: "Semester_Onec", label: "เทอม", required: true },
+  { column: "SchoolID_Onec", label: "รหัสโรงเรียน", required: true },
   { column: "GradeLevelID_Onec", label: "ชั้นเรียน", required: false },
   { column: "RoomID_Onec", label: "ห้อง", required: false },
   { column: "VillageNumber_Onec", label: "หมู่", required: false },
@@ -76,25 +76,53 @@ function ImportMappingPanel({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {IMPORT_MAPPING_FIELDS.map((field) => (
-          <label className="space-y-1.5" key={field.column}>
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <span>{field.label}</span>
-              {field.required ? <Badge variant="warning">บังคับ</Badge> : null}
-            </div>
-            <Select
-              value={currentMapping[field.column] ?? ""}
-              onChange={(event) => onMappingChange(field.column, event.target.value)}
+        {IMPORT_MAPPING_FIELDS.map((field) => {
+          const sourceHeader = currentMapping[field.column];
+          const samples = preview.mappedColumnSamples[field.column] ?? [];
+          const sampleIsStale = sourceHeader !== preview.mapping[field.column];
+          return (
+            <label
+              className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-3"
+              key={field.column}
             >
-              <option value="">ไม่ใช้คอลัมน์นี้</option>
-              {preview.headers.map((header) => (
-                <option key={header} value={header}>
-                  {header}
-                </option>
-              ))}
-            </Select>
-          </label>
-        ))}
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <span>{field.label}</span>
+                {field.required ? <Badge variant="warning">บังคับ</Badge> : null}
+              </div>
+              <Select
+                value={currentMapping[field.column] ?? ""}
+                onChange={(event) => onMappingChange(field.column, event.target.value)}
+              >
+                <option value="">ไม่ใช้คอลัมน์นี้</option>
+                {preview.headers.map((header) => (
+                  <option key={header} value={header}>
+                    {header}
+                  </option>
+                ))}
+              </Select>
+              <div className="min-h-9 text-xs leading-5 text-slate-500">
+                {sourceHeader ? (
+                  <>
+                    <div>
+                      ค่าจากคอลัมน์{" "}
+                      <span className="font-semibold text-slate-700">“{sourceHeader}”</span>
+                    </div>
+                    <div>
+                      ตัวอย่าง:{" "}
+                      {sampleIsStale
+                        ? "กดตรวจสอบไฟล์อีกครั้งเพื่ออัปเดตตัวอย่าง"
+                        : samples.length > 0
+                          ? samples.join(" · ")
+                          : "ไม่มีค่าในแถวตัวอย่าง"}
+                    </div>
+                  </>
+                ) : (
+                  "ยังไม่ได้จับคู่กับคอลัมน์ในไฟล์"
+                )}
+              </div>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
@@ -117,11 +145,12 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
         columns={3}
         items={[
           { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default" },
-          { label: "พร้อมนำเข้า", value: preview.rowsReady, tone: "success" },
+          { label: "เพิ่มใหม่", value: preview.rowsToInsert, tone: "success" },
+          { label: "อัปเดตข้อมูลเดิม", value: preview.rowsToUpdate, tone: "default" },
           { label: "ข้าม", value: preview.rowsSkipped, tone: "warning" },
           { label: "ซ้ำในไฟล์", value: preview.duplicateRows, tone: "warning" },
-          { label: "มีอยู่แล้ว", value: preview.existingRows, tone: "warning" },
           { label: "ไม่มีรหัส", value: preview.missingPersonIdRows, tone: "danger" },
+          { label: "ข้อมูลภาคเรียนไม่ครบ", value: preview.missingNaturalKeyRows, tone: "danger" },
         ]}
       />
 
@@ -152,39 +181,84 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       ) : null}
 
       {preview.sampleRows.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <div className="grid min-w-[720px] grid-cols-[72px_minmax(120px,1fr)_minmax(120px,1fr)_110px_minmax(160px,1.4fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
-            <div>แถว</div>
-            <div>ชื่อ</div>
-            <div>โรงเรียน</div>
-            <div>สถานะ</div>
-            <div>หมายเหตุ</div>
+        <div>
+          <div className="mb-2">
+            <div className="font-semibold text-slate-800">ตัวอย่างข้อมูลจากไฟล์</div>
+            <div className="text-sm text-slate-500">
+              ชื่อใต้หัวตารางคือคอลัมน์ต้นทางที่ระบบจับคู่ ค่าโรงเรียนและชั้นจะแสดงชื่อที่ระบบค้นพบควบคู่กับรหัสจากไฟล์
+            </div>
           </div>
-          {preview.sampleRows.map((row) => (
-            <div
-              className="grid min-w-[720px] grid-cols-[72px_minmax(120px,1fr)_minmax(120px,1fr)_110px_minmax(160px,1.4fr)] border-t border-slate-100 px-3 py-2 text-sm"
-              key={row.rowNumber}
-            >
-              <div className="font-medium text-slate-500">{row.rowNumber}</div>
-              <div className="min-w-0">
-                <div className="truncate font-semibold text-slate-800">
-                  {row.firstName} {row.lastName}
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="grid min-w-[980px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+              <div>แถว</div>
+              <div>
+                ชื่อ
+                <div className="font-normal text-slate-400">
+                  {preview.mapping.FirstName_Onec ?? "ยังไม่จับคู่"} +{" "}
+                  {preview.mapping.LastName_Onec ?? "ยังไม่จับคู่"}
                 </div>
-                <div className="text-xs text-slate-400">{row.personIdMasked}</div>
-              </div>
-              <div className="text-slate-600">
-                {row.schoolId} · ปี {row.academicYear}/{row.semester} · ชั้น {row.gradeLevelId} ห้อง {row.roomId}
               </div>
               <div>
-                <Badge variant={row.status === "ready" ? "success" : "warning"}>
-                  {row.status === "ready" ? "พร้อม" : "ข้าม"}
-                </Badge>
+                โรงเรียน
+                <div className="font-normal text-slate-400">
+                  {preview.mapping.SchoolID_Onec ?? "ยังไม่จับคู่"}
+                </div>
               </div>
-              <div className="text-slate-500">
-                {row.issues.length > 0 ? row.issues.join(", ") : "-"}
+              <div>
+                ปี / เทอม
+                <div className="font-normal text-slate-400">
+                  {preview.mapping.AcademicYear_Onec ?? "-"} /{" "}
+                  {preview.mapping.Semester_Onec ?? "-"}
+                </div>
               </div>
+              <div>
+                ชั้น / ห้อง
+                <div className="font-normal text-slate-400">
+                  {preview.mapping.GradeLevelID_Onec ?? "-"} /{" "}
+                  {preview.mapping.RoomID_Onec ?? "-"}
+                </div>
+              </div>
+              <div>การทำงาน</div>
+              <div>หมายเหตุ</div>
             </div>
-          ))}
+            {preview.sampleRows.map((row) => (
+              <div
+                className="grid min-w-[980px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] border-t border-slate-100 px-3 py-2 text-sm"
+                key={row.rowNumber}
+              >
+                <div className="font-medium text-slate-500">{row.rowNumber}</div>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-slate-800">
+                    {row.firstName} {row.lastName}
+                  </div>
+                  <div className="text-xs text-slate-400">{row.personIdMasked}</div>
+                </div>
+                <div className="text-slate-700">
+                  <div className="font-medium">{row.schoolName}</div>
+                  <div className="text-xs text-slate-500">รหัสจากไฟล์: {row.schoolId}</div>
+                </div>
+                <div className="text-slate-700">
+                  ปี {row.academicYear} · เทอม {row.semester}
+                </div>
+                <div className="text-slate-700">
+                  <div>{row.gradeLabel} · ห้อง {row.roomId}</div>
+                  <div className="text-xs text-slate-500">รหัสชั้นจากไฟล์: {row.gradeLevelId}</div>
+                </div>
+                <div>
+                  <Badge variant={row.action === "insert" ? "success" : "warning"}>
+                    {row.action === "insert"
+                      ? "เพิ่มใหม่"
+                      : row.action === "update"
+                        ? "อัปเดต"
+                        : "ข้าม"}
+                  </Badge>
+                </div>
+                <div className="text-slate-500">
+                  {row.issues.length > 0 ? row.issues.join(", ") : "-"}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
@@ -242,9 +316,9 @@ export function ImportDataPage() {
       title: "ยืนยันการนำเข้าข้อมูล",
       description: (
         <span>
-          ระบบจะนำเข้า {preview.rowsReady.toLocaleString("en-US")} แถว
-          และข้าม {preview.rowsSkipped.toLocaleString("en-US")} แถว
-          หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
+          ระบบจะเพิ่มใหม่ {preview.rowsToInsert.toLocaleString("en-US")} แถว อัปเดตข้อมูลเดิม{" "}
+          {preview.rowsToUpdate.toLocaleString("en-US")} แถว และข้าม{" "}
+          {preview.rowsSkipped.toLocaleString("en-US")} แถว หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
         </span>
       ),
       confirmText: "นำเข้าข้อมูล",
@@ -469,6 +543,11 @@ export function ImportDataPage() {
                               label: "เพิ่มใหม่",
                               value: result.rowsInserted,
                               tone: "success",
+                            },
+                            {
+                              label: "อัปเดต",
+                              value: result.rowsUpdated,
+                              tone: "default",
                             },
                             {
                               label: "ข้าม",

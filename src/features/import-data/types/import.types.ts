@@ -5,20 +5,24 @@ export interface ImportResult {
   success: boolean;
   rowsProcessed: number;
   rowsInserted: number;
+  rowsUpdated: number;
   rowsSkipped: number;
 }
 
 export interface ImportPreviewRow {
   rowNumber: number;
   status: "ready" | "skipped";
+  action: "insert" | "update" | "skip";
   issues: string[];
   personIdMasked: string;
   firstName: string;
   lastName: string;
   schoolId: string;
+  schoolName: string;
   academicYear: string;
   semester: string;
   gradeLevelId: string;
+  gradeLabel: string;
   roomId: string;
 }
 
@@ -34,7 +38,11 @@ export interface ImportPreviewResult {
   duplicateRows: number;
   existingRows: number;
   missingPersonIdRows: number;
+  missingNaturalKeyRows: number;
+  rowsToInsert: number;
+  rowsToUpdate: number;
   mappedColumns: string[];
+  mappedColumnSamples: Record<string, string[]>;
   missingRequiredColumns: string[];
   missingRecommendedColumns: string[];
   unmappedHeaders: string[];
