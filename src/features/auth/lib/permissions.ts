@@ -143,8 +143,10 @@ export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
-  void roles;
-  return Array.from(new Set(customPermissions));
+  const roleDefaults = roles.some((role) => role === "ADMIN" || role === "DIRECTOR")
+    ? ["edit-students"]
+    : [];
+  return Array.from(new Set([...customPermissions, ...roleDefaults]));
 }
 
 export function hasPermission(
@@ -203,4 +205,3 @@ export function getLeafMenuItems(menuItems: MenuItem[] = MENU_ITEMS): MenuItem[]
       : [item],
   );
 }
-

@@ -11,6 +11,7 @@ import type {
   StudentListItem,
   StudentListQuery,
   StudentListResult,
+  StudentUpdatePayload,
 } from "../types/students.types";
 
 interface DataEnvelope<T> {
@@ -78,6 +79,7 @@ interface StudentsService {
     studentId: string,
     payload: StudentPiiRevealRequest,
   ) => Promise<StudentPiiRevealResponse>;
+  updateStudent: (studentId: string, payload: StudentUpdatePayload) => Promise<StudentDetail>;
   getStudentCasesByName: (studentName: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
@@ -226,6 +228,14 @@ async function revealStudentPii(
   return response.data;
 }
 
+async function updateStudent(
+  studentId: string,
+  payload: StudentUpdatePayload,
+): Promise<StudentDetail> {
+  const response = await apiClient.patch<StudentDetail>(`/students/${studentId}`, payload);
+  return response.data;
+}
+
 async function getStudentCasesByName(
   studentName: string,
 ): Promise<StudentCase[]> {
@@ -281,6 +291,7 @@ export const studentsService: StudentsService = {
   getFilterOptions,
   getStudentById,
   revealStudentPii,
+  updateStudent,
   getStudentCasesByName,
   getStudentAttendance,
   getStudentAttendanceSummary,

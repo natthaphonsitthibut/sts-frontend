@@ -82,7 +82,12 @@ export function PageToolbar({
       {/* Header band — same fixed height on every page (controls live below, so a
           page with many filters never gets a taller header than one with none). */}
       <section
-        className={cn("overflow-hidden rounded-lg border", toneClasses.surface, className)}
+        className={cn(
+          "overflow-hidden rounded-lg border",
+          toneClasses.surface,
+          footerActions && !children && "rounded-b-none",
+          className,
+        )}
         {...props}
       >
         <div className="flex min-h-24 flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -109,7 +114,12 @@ export function PageToolbar({
         </div>
       </section>
       {children || footerActions ? (
-        <div className="mt-5 overflow-visible rounded-lg border border-slate-100 bg-white shadow-card">
+        <div
+          className={cn(
+            "overflow-visible rounded-lg border border-slate-100 bg-white shadow-card",
+            children ? "mt-5" : "mt-0 rounded-t-none border-t-0",
+          )}
+        >
           {children ? <div className="p-4">{children}</div> : null}
           {footerActions ? (
             <div

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
 import { ArrowLeft, UserCog } from "lucide-react";
 import {
@@ -16,6 +17,7 @@ import {
   NumericInput,
   PasswordInput,
   registerField,
+  Tabs,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -25,6 +27,13 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
+import {
+  AddressFormSection,
+  type AddressFieldNames,
+} from "../../../components/address/AddressFormSection";
+import { stripAddressPrefix } from "../../../components/address/address-format";
+import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
+import { geoService } from "../../tasks/api/geo.service";
 import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import {
   getScopeFieldStates,
@@ -51,6 +60,22 @@ import type {
 } from "../types/admin.types";
 
 const MANAGE_USERS_PATH = "/manage-users";
+
+// The free-form `address_line` column backs the บ้านเลขที่ field; หมู่ keeps its
+// own `address_village_no` column. Mirrors the profile page mapping.
+const ADDRESS_NAMES: AddressFieldNames<UserFormValues> = {
+  houseNo: "address_line",
+  moo: "address_village_no",
+  street: "address_street",
+  soi: "address_soi",
+  trok: "address_trok",
+  province: "address_province",
+  district: "address_district",
+  subDistrict: "address_sub_district",
+  postalCode: "address_postal_code",
+  latitude: "address_latitude",
+  longitude: "address_longitude",
+};
 
 const SCOPE_KEYS = [
   "provinces",
@@ -144,6 +169,18 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
     phone: user.phone ?? "",
     email: user.email ?? "",
     affiliation: user.affiliation ?? "",
+    line_id: user.line_id ?? "",
+    address_line: user.address_line ?? "",
+    address_village_no: stripAddressPrefix("หมู่", user.address_village_no),
+    address_street: stripAddressPrefix("ถนน", user.address_street),
+    address_soi: stripAddressPrefix("ซอย", user.address_soi),
+    address_trok: stripAddressPrefix("ตรอก", user.address_trok),
+    address_sub_district: user.address_sub_district ?? "",
+    address_district: user.address_district ?? "",
+    address_province: user.address_province ?? "",
+    address_postal_code: user.address_postal_code ?? "",
+    address_latitude: user.address_latitude ?? null,
+    address_longitude: user.address_longitude ?? null,
     role: user.role || user.roles?.[0] || "",
     status: user.status || "ACTIVE",
   };
@@ -151,9 +188,11 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
 
 /** The actual form — mounted only once `user` is resolved so RHF gets correct defaults. */
 function UserForm({
+  activeTab,
   user,
   rolesCatalog,
 }: {
+  activeTab: "all" | "info" | "permissions";
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
 }) {
@@ -178,6 +217,22 @@ function UserForm({
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const selectedStatus = useWatch({ control: form.control, name: "status" });
+  const locationQuery = useQuery({
+    queryKey: ["attendance-locations"],
+    queryFn: attendanceLookupService.getLocations,
+  });
+  const geocode = useMutation({
+    mutationFn: geoService.geocodeProfileAddress,
+    onSuccess: (result) => {
+      if (!result) return;
+      form.setValue("address_latitude", result.lat, { shouldDirty: true });
+      form.setValue("address_longitude", result.lng, { shouldDirty: true });
+      if (result.postalCode) {
+        form.setValue("address_postal_code", result.postalCode, { shouldDirty: true });
+      }
+    },
+    throwOnError: false,
+  });
 
   const roleDefinition = useMemo(
     () => rolesCatalog.find((item) => item.name === selectedRole),
@@ -235,6 +290,10 @@ function UserForm({
     ].every((values) => !Array.isArray(values) || values.length === 0));
 
   function goBack(): void {
+    if (isEdit) {
+      void navigate(-1);
+      return;
+    }
     void navigate(MANAGE_USERS_PATH);
   }
 
@@ -273,6 +332,18 @@ function UserForm({
       permissions: isCustomized ? permissions : [],
       status: values.status,
       data_scope: dataScope,
+      line_id: values.line_id.trim(),
+      address_line: values.address_line.trim(),
+      address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
+      address_street: stripAddressPrefix("ถนน", values.address_street),
+      address_soi: stripAddressPrefix("ซอย", values.address_soi),
+      address_trok: stripAddressPrefix("ตรอก", values.address_trok),
+      address_sub_district: values.address_sub_district.trim(),
+      address_district: values.address_district.trim(),
+      address_province: values.address_province.trim(),
+      address_postal_code: values.address_postal_code.trim(),
+      address_latitude: values.address_latitude,
+      address_longitude: values.address_longitude,
       ...(phone ? { phone } : {}),
       ...(email ? { email } : {}),
       ...(affiliation ? { affiliation } : {}),
@@ -325,6 +396,8 @@ function UserForm({
             fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
           />
 
+          {activeTab !== "permissions" ? (
+          <>
           <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="username" required>
@@ -389,7 +462,35 @@ function UserForm({
               <Input id="affiliation" {...registerField(form, "affiliation")} />
               <FormMessage<UserFormValues> name="affiliation" />
             </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="line_id">LINE ID</FormLabel>
+              <Input id="line_id" {...registerField(form, "line_id")} />
+              <FormMessage<UserFormValues> name="line_id" />
+            </FormItem>
+          </div>
+          <div className="mt-6">
+            <AddressFormSection
+              catalog={locationQuery.data}
+              disabled={saveUser.isPending}
+              form={form}
+              geocodeError={geocode.isError ? (
+                <FormErrorAlert
+                  error={geocode.error}
+                  fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+                />
+              ) : null}
+              isGeocoding={geocode.isPending}
+              names={ADDRESS_NAMES}
+              onGeocode={(address) => geocode.mutate(address)}
+              showPlaceholders={!isEdit}
+              title="ที่อยู่ติดต่อ"
+            />
+          </div>
+          </>
+          ) : null}
 
+          {activeTab !== "info" ? (
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="role" required>
                 ตำแหน่ง
@@ -438,7 +539,9 @@ function UserForm({
               </FormItem>
             ) : null}
           </div>
+          ) : null}
 
+          {activeTab !== "info" ? (
           <div className="mt-4" id="user-permission-scope">
             <PermissionScopeEditor
               baselinePermissions={baseline}
@@ -455,6 +558,7 @@ function UserForm({
               showErrors={form.formState.isSubmitted}
             />
           </div>
+          ) : null}
 
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button onClick={goBack} size="lg" type="button" variant="outline">
@@ -508,6 +612,7 @@ export function ManageUserFormPage() {
     isError: isRolesError,
     refetch: refetchRoles,
   } = useRolesCatalog();
+  const [activeTab, setActiveTab] = useState<"info" | "permissions">("info");
 
   return (
     <PageShell>
@@ -515,10 +620,27 @@ export function ManageUserFormPage() {
         icon={UserCog}
         title={isEdit ? "แก้ไขผู้ใช้งาน" : "เพิ่มผู้ใช้งาน"}
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
-        actions={
-          <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
-            ย้อนกลับ
-          </NavButton>
+        actions={isEdit ? (
+          <Tabs
+            aria-label="โหมดแก้ไขผู้ใช้งาน"
+            onChange={(value) => setActiveTab(value === "permissions" ? "permissions" : "info")}
+            options={[
+              { value: "info", label: "ข้อมูล" },
+              { value: "permissions", label: "สิทธิ์" },
+            ]}
+            value={activeTab}
+          />
+        ) : undefined}
+        footerActions={
+          isEdit ? (
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          ) : (
+            <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          )
         }
       />
 
@@ -540,7 +662,11 @@ export function ManageUserFormPage() {
           onRetry={() => void navigate(MANAGE_USERS_PATH)}
         />
       ) : (
-        <UserForm user={user} rolesCatalog={rolesCatalog} />
+        <UserForm
+          activeTab={isEdit ? activeTab : "all"}
+          user={user}
+          rolesCatalog={rolesCatalog}
+        />
       )}
     </PageShell>
   );

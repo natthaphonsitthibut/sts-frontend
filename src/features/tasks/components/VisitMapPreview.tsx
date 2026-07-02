@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Crosshair, LoaderCircle, MapPin } from "lucide-react";
 import { Badge } from "../../../components/base";
 import { appConfig } from "../../../config/env";
@@ -20,6 +20,7 @@ export interface VisitMapPreviewProps {
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
+  details?: ReactNode;
   editable?: boolean;
   onCoordinateChange?: (coordinates: { lat: number; lng: number }) => void;
 }
@@ -52,6 +53,7 @@ export function VisitMapPreview({
   emptyTitle = "ยังไม่มีพิกัด",
   emptyDescription = "ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง",
   className,
+  details,
   editable = false,
   onCoordinateChange,
 }: VisitMapPreviewProps) {
@@ -193,6 +195,8 @@ export function VisitMapPreview({
           <Badge variant="secondary">{emptyTitle}</Badge>
         )}
       </div>
+
+      {details ? <div className="mb-3">{details}</div> : null}
 
       <div className="relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
         {showMap ? (

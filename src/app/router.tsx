@@ -32,6 +32,7 @@ import {
   ReportPage,
   RouteSuspense,
   StudentDetailPage,
+  StudentEditPage,
   StudentAccountsPage,
   StudentListPage,
   StudentSelfPage,
@@ -39,6 +40,7 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  UserDetailPage,
 } from "./lazy-pages";
 
 function withSuspense(children: ReactNode): ReactNode {
@@ -87,6 +89,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<StudentDetailPage />, "students"),
       },
       {
+        path: "students/:id/edit",
+        element: protectedElement(<StudentEditPage />, "edit-students"),
+      },
+      {
         path: "my-attendance",
         element: protectedElement(<StudentSelfPage />, "student-self"),
       },
@@ -132,6 +138,10 @@ export const router = createBrowserRouter([
       {
         path: "manage-users",
         element: protectedElement(<ManageUsersPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id",
+        element: protectedElement(<UserDetailPage />, "manage-users-list"),
       },
       {
         path: "manage-student-accounts",

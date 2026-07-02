@@ -26,10 +26,22 @@ export interface ManagedUser {
   FirstName: string | null;
   LastName: string | null;
   fullname?: string | null;
-  PersonID_Onec: string | null;
+  PersonID_Onec?: string | null;
   phone: string | null;
   email: string | null;
   affiliation: string | null;
+  line_id?: string | null;
+  address_line?: string | null;
+  address_village_no?: string | null;
+  address_street?: string | null;
+  address_soi?: string | null;
+  address_trok?: string | null;
+  address_sub_district?: string | null;
+  address_district?: string | null;
+  address_province?: string | null;
+  address_postal_code?: string | null;
+  address_latitude?: number | null;
+  address_longitude?: number | null;
   role?: string | null;
   roles: string[];
   labels?: string[];
@@ -44,6 +56,33 @@ export interface ManagedUser {
   deactivation_reason_code?: AccountDeactivationReasonCode | null;
   deactivation_note?: string | null;
   created_at?: string | null;
+  student_uuid?: string | null;
+}
+
+export interface ManagedUserDetail extends Omit<ManagedUser, "PersonID_Onec"> {
+  has_profile_location?: boolean;
+  data_scope_labels?: {
+    schools?: Array<{ id: number; name: string | null }>;
+  };
+}
+
+export interface UserAddressDetail {
+  address_line: string | null;
+  address_village_no: string | null;
+  address_street: string | null;
+  address_soi: string | null;
+  address_trok: string | null;
+  address_sub_district: string | null;
+  address_district: string | null;
+  address_province: string | null;
+  address_postal_code: string | null;
+  address_latitude: number | null;
+  address_longitude: number | null;
+}
+
+export interface UserAddressRevealPayload {
+  reason_code: string;
+  reason_note?: string;
 }
 
 export interface UserSavePayload {
@@ -56,6 +95,18 @@ export interface UserSavePayload {
   phone?: string;
   email?: string;
   affiliation?: string;
+  line_id?: string;
+  address_line?: string;
+  address_village_no?: string;
+  address_street?: string;
+  address_soi?: string;
+  address_trok?: string;
+  address_sub_district?: string;
+  address_district?: string;
+  address_province?: string;
+  address_postal_code?: string;
+  address_latitude?: number | null;
+  address_longitude?: number | null;
   role: string | null;
   roles: string[];
   labels?: string[];
@@ -105,6 +156,7 @@ export interface StudentAccountListQuery extends StudentAccountFilter {
 export interface StudentAccountManagementItem {
   userId: number;
   username: string;
+  studentId: string | null;
   studentName: string;
   schoolId: number | null;
   schoolName: string | null;

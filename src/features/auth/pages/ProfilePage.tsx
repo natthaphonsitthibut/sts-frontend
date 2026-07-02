@@ -1,19 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, MapPin, Search, UserRound } from "lucide-react";
-import { useMemo } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { CheckCircle2, ShieldCheck, UserRound } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -21,6 +21,7 @@ import {
   FormMessage,
   Input,
   registerField,
+  Tabs,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -28,9 +29,14 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
+import {
+  AddressFormSection,
+  type AddressFieldNames,
+} from "../../../components/address/AddressFormSection";
+import { stripAddressPrefix } from "../../../components/address/address-format";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { geoService } from "../../tasks/api/geo.service";
+import { getUserAvatarGradient } from "../../admin/lib/admin-presentation";
 import { authService } from "../api/auth.service";
 import { useAuthSessionStore } from "../store/auth-session.store";
 import type { AuthUser, UpdateProfilePayload } from "../types/auth.types";
@@ -59,6 +65,10 @@ const profileSchema = z.object({
   affiliation: z.string().trim().max(255, "หน่วยงานยาวเกินไป"),
   line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
   address_line: z.string().trim().max(255, "ที่อยู่ยาวเกินไป"),
+  address_village_no: z.string().trim().max(100, "หมู่/บ้านเลขที่ยาวเกินไป"),
+  address_street: z.string().trim().max(150, "ชื่อถนนยาวเกินไป"),
+  address_soi: z.string().trim().max(150, "ชื่อซอยยาวเกินไป"),
+  address_trok: z.string().trim().max(150, "ชื่อตรอกยาวเกินไป"),
   address_sub_district: z.string().trim().max(100, "ตำบล/แขวงยาวเกินไป"),
   address_district: z.string().trim().max(100, "อำเภอ/เขตยาวเกินไป"),
   address_province: z.string().trim().max(100, "จังหวัดยาวเกินไป"),
@@ -74,13 +84,21 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-function unique(values: string[]): string[] {
-  return Array.from(new Set(values.filter(Boolean))).sort();
-}
-
-function joinAddressParts(parts: Array<string | null | undefined>): string {
-  return parts.map((part) => part?.trim()).filter(Boolean).join(" ");
-}
+// The free-form `address_line` column now backs the บ้านเลขที่ field; หมู่ keeps
+// its own `address_village_no` column.
+const ADDRESS_NAMES: AddressFieldNames<ProfileFormValues> = {
+  houseNo: "address_line",
+  moo: "address_village_no",
+  street: "address_street",
+  soi: "address_soi",
+  trok: "address_trok",
+  province: "address_province",
+  district: "address_district",
+  subDistrict: "address_sub_district",
+  postalCode: "address_postal_code",
+  latitude: "address_latitude",
+  longitude: "address_longitude",
+};
 
 function toFormValues(user: AuthUser | null | undefined): ProfileFormValues {
   return {
@@ -91,6 +109,10 @@ function toFormValues(user: AuthUser | null | undefined): ProfileFormValues {
     affiliation: user?.affiliation ?? "",
     line_id: user?.line_id ?? "",
     address_line: user?.address_line ?? "",
+    address_village_no: stripAddressPrefix("หมู่", user?.address_village_no),
+    address_street: stripAddressPrefix("ถนน", user?.address_street),
+    address_soi: stripAddressPrefix("ซอย", user?.address_soi),
+    address_trok: stripAddressPrefix("ตรอก", user?.address_trok),
     address_sub_district: user?.address_sub_district ?? "",
     address_district: user?.address_district ?? "",
     address_province: user?.address_province ?? "",
@@ -100,8 +122,72 @@ function toFormValues(user: AuthUser | null | undefined): ProfileFormValues {
   };
 }
 
+function profileText(value: string | number | boolean | null | undefined): string {
+  if (value === true) return "ใช่";
+  if (value === false) return "ไม่ใช่";
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+}
+
+function ProfileIdentityCard({ user }: { user: AuthUser }) {
+  const displayName = [user.FirstName, user.LastName].filter(Boolean).join(" ").trim() || user.username;
+  const roleText = user.labels?.join(", ") || user.roles.join(", ") || "-";
+  return (
+    <Card className="mb-5">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div
+          className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-card"
+          style={getUserAvatarGradient(displayName)}
+        >
+          {displayName.charAt(0).toUpperCase() || "?"}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-2xl font-bold text-slate-900">{displayName}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <span>@{user.username}</span>
+            <span aria-hidden="true">•</span>
+            <span>{roleText}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function describeProfileScope(user: AuthUser | null | undefined): string {
+  const scope = user?.data_scope;
+  if (!scope) return "-";
+  if (scope.own_only) return "เฉพาะข้อมูลของตนเอง";
+  const parts: string[] = [];
+  const schoolLabels = user?.data_scope_labels?.schools ?? [];
+  if (scope.global) parts.push("ทั้งประเทศ");
+  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
+  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
+  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
+  if (scope.school_ids?.length) {
+    const schoolText =
+      schoolLabels.length > 0
+        ? schoolLabels.map((school) => school.name ?? school.id).join(", ")
+        : scope.school_ids.join(", ");
+    parts.push(`โรงเรียน: ${schoolText}`);
+  }
+  if (scope.grade_levels?.length) parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
+  if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
+  return parts.length > 0 ? parts.join(" · ") : "ทั้งประเทศ";
+}
+
+function ProfileDetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+      <div className="text-xs font-semibold text-slate-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</div>
+    </div>
+  );
+}
+
 export function ProfilePage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("info");
   const user = useAuthSessionStore((state) => state.user);
   const storageTarget = useAuthSessionStore((state) => state.storageTarget);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
@@ -130,52 +216,6 @@ export function ProfilePage() {
     resolver: zodResolver(profileSchema),
   });
 
-  const addressProvince = useWatch({ control: form.control, name: "address_province" });
-  const addressDistrict = useWatch({ control: form.control, name: "address_district" });
-  const addressSubDistrict = useWatch({
-    control: form.control,
-    name: "address_sub_district",
-  });
-  const addressLine = useWatch({ control: form.control, name: "address_line" });
-  const addressPostalCode = useWatch({
-    control: form.control,
-    name: "address_postal_code",
-  });
-  const addressLatitude = useWatch({
-    control: form.control,
-    name: "address_latitude",
-  });
-  const addressLongitude = useWatch({
-    control: form.control,
-    name: "address_longitude",
-  });
-  const locationCatalog = locationQuery.data;
-  const addressProvinces = useMemo(
-    () => unique([addressProvince, ...(locationCatalog?.provinces ?? [])]),
-    [addressProvince, locationCatalog],
-  );
-  const addressDistricts = useMemo(
-    () =>
-      unique([
-        addressDistrict,
-        ...(locationCatalog?.districts ?? [])
-          .filter((row) => !addressProvince || row.province === addressProvince)
-          .map((row) => row.district),
-      ]),
-    [addressDistrict, addressProvince, locationCatalog],
-  );
-  const addressSubDistricts = useMemo(
-    () =>
-      unique([
-        addressSubDistrict,
-        ...(locationCatalog?.subDistricts ?? [])
-          .filter((row) => !addressProvince || row.province === addressProvince)
-          .filter((row) => !addressDistrict || row.district === addressDistrict)
-          .map((row) => row.sub_district),
-      ]),
-    [addressDistrict, addressProvince, addressSubDistrict, locationCatalog],
-  );
-
   const updateProfile = useMutation({
     mutationFn: (payload: UpdateProfilePayload) =>
       authService.updateMyProfile(payload),
@@ -193,13 +233,8 @@ export function ProfilePage() {
     mutationFn: geoService.geocodeProfileAddress,
     onSuccess: (result) => {
       if (!result) {
-        form.setError("address_line", {
-          type: "manual",
-          message: "ไม่พบพิกัดจากที่อยู่นี้ กรุณาตรวจสอบข้อมูลหรือปักหมุดบนแผนที่",
-        });
         return;
       }
-      form.clearErrors("address_line");
       form.setValue("address_latitude", result.lat, { shouldDirty: true });
       form.setValue("address_longitude", result.lng, { shouldDirty: true });
       if (result.postalCode) {
@@ -225,6 +260,10 @@ export function ProfilePage() {
       affiliation: values.affiliation.trim(),
       line_id: values.line_id.trim(),
       address_line: values.address_line.trim(),
+      address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
+      address_street: stripAddressPrefix("ถนน", values.address_street),
+      address_soi: stripAddressPrefix("ซอย", values.address_soi),
+      address_trok: stripAddressPrefix("ตรอก", values.address_trok),
       address_sub_district: values.address_sub_district.trim(),
       address_district: values.address_district.trim(),
       address_province: values.address_province.trim(),
@@ -235,21 +274,28 @@ export function ProfilePage() {
   }
 
   const showSuccess = updateProfile.isSuccess && !form.formState.isDirty;
-  const fullAddress = joinAddressParts([
-    addressLine,
-    addressSubDistrict,
-    addressDistrict,
-    addressProvince,
-    addressPostalCode,
-  ]);
+  const profileUser = profileQuery.data ?? user;
 
   return (
     <PageShell>
       <PageToolbar
+        actions={
+          <Tabs
+            aria-label="โหมดโปรไฟล์ของฉัน"
+            onChange={setActiveTab}
+            options={[
+              { value: "info", label: "ข้อมูล" },
+              { value: "permissions", label: "สิทธิ์" },
+            ]}
+            value={activeTab}
+          />
+        }
         description="ตรวจสอบและแก้ไขข้อมูลส่วนตัวสำหรับการติดต่อและใช้งานระบบ"
         icon={UserRound}
         title="โปรไฟล์ของฉัน"
       />
+
+      {profileUser ? <ProfileIdentityCard user={profileUser} /> : null}
 
       {profileQuery.isLoading || locationQuery.isLoading ? (
         <SkeletonStack lines={8} />
@@ -261,7 +307,7 @@ export function ProfilePage() {
             void locationQuery.refetch();
           }}
         />
-      ) : (
+      ) : activeTab === "info" ? (
         <Form form={form} onSubmit={handleSubmit}>
           <div className="space-y-5">
             <Card className="rounded-lg">
@@ -294,7 +340,6 @@ export function ProfilePage() {
                     <Input
                       autoComplete="given-name"
                       id="FirstName"
-                      placeholder="เช่น สมชาย"
                       {...registerField(form, "FirstName")}
                     />
                     <FormMessage<ProfileFormValues> name="FirstName" />
@@ -307,7 +352,6 @@ export function ProfilePage() {
                     <Input
                       autoComplete="family-name"
                       id="LastName"
-                      placeholder="เช่น ใจดี"
                       {...registerField(form, "LastName")}
                     />
                     <FormMessage<ProfileFormValues> name="LastName" />
@@ -320,7 +364,6 @@ export function ProfilePage() {
                     autoComplete="tel"
                     id="phone"
                     inputMode="tel"
-                    placeholder="เช่น 0812345678"
                     {...registerField(form, "phone")}
                   />
                   <FormMessage<ProfileFormValues> name="phone" />
@@ -332,7 +375,6 @@ export function ProfilePage() {
                     autoComplete="email"
                     id="email"
                     type="email"
-                    placeholder="เช่น somchai.jaidee@school.ac.th"
                     {...registerField(form, "email")}
                   />
                   <FormMessage<ProfileFormValues> name="email" />
@@ -343,7 +385,6 @@ export function ProfilePage() {
                   <Input
                     autoComplete="organization"
                     id="affiliation"
-                    placeholder="เช่น โรงเรียนสาธิตเทศบาลนคร"
                     {...registerField(form, "affiliation")}
                   />
                   <FormMessage<ProfileFormValues> name="affiliation" />
@@ -354,7 +395,6 @@ export function ProfilePage() {
                   <Input
                     autoComplete="off"
                     id="line_id"
-                    placeholder="เช่น somchai.teacher"
                     {...registerField(form, "line_id")}
                   />
                   <FormMessage<ProfileFormValues> name="line_id" />
@@ -363,175 +403,79 @@ export function ProfilePage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MapPin className="size-5 text-primary" aria-hidden="true" />
-                  ที่อยู่ติดต่อ
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormItem>
-                  <FormLabel htmlFor="address_line">รายละเอียดที่อยู่</FormLabel>
-                  <Input
-                    autoComplete="street-address"
-                    id="address_line"
-                    placeholder="เช่น 99/9 หมู่ 5 ซอยสุขใจ ถนนประชาราษฎร์"
-                    {...registerField(form, "address_line")}
-                  />
-                  <FormMessage<ProfileFormValues> name="address_line" />
-                </FormItem>
+            <AddressFormSection
+              catalog={locationQuery.data}
+              disabled={updateProfile.isPending}
+              form={form}
+              geocodeError={geocodeProfileAddress.isError ? (
+                <FormErrorAlert
+                  error={geocodeProfileAddress.error}
+                  fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+                />
+              ) : null}
+              isGeocoding={geocodeProfileAddress.isPending}
+              names={ADDRESS_NAMES}
+              onGeocode={(address) => geocodeProfileAddress.mutate(address)}
+              title="ที่อยู่ติดต่อ"
+            />
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <FormItem>
-                    <FormLabel>จังหวัด</FormLabel>
-                    <Combobox
-                      disabled={updateProfile.isPending}
-                      onChange={(next) => {
-                        form.setValue("address_province", next, { shouldDirty: true });
-                        form.setValue("address_district", "", { shouldDirty: true });
-                        form.setValue("address_sub_district", "", { shouldDirty: true });
-                        form.setValue("address_postal_code", "", { shouldDirty: true });
-                      }}
-                      options={[
-                        { value: "", label: "เลือกจังหวัด" },
-                        ...addressProvinces.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาจังหวัด"
-                      value={addressProvince}
-                    />
-                    <FormMessage<ProfileFormValues> name="address_province" />
-                  </FormItem>
-
-                  <FormItem>
-                    <FormLabel>อำเภอ/เขต</FormLabel>
-                    <Combobox
-                      disabled={updateProfile.isPending || !addressProvince}
-                      onChange={(next) => {
-                        form.setValue("address_district", next, { shouldDirty: true });
-                        form.setValue("address_sub_district", "", { shouldDirty: true });
-                        form.setValue("address_postal_code", "", { shouldDirty: true });
-                      }}
-                      options={[
-                        { value: "", label: "เลือกอำเภอ/เขต" },
-                        ...addressDistricts.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาอำเภอ/เขต"
-                      value={addressDistrict}
-                    />
-                    <FormMessage<ProfileFormValues> name="address_district" />
-                  </FormItem>
-
-                  <FormItem>
-                    <FormLabel>ตำบล/แขวง</FormLabel>
-                    <Combobox
-                      disabled={updateProfile.isPending || !addressDistrict}
-                      onChange={(next) => {
-                        form.setValue("address_sub_district", next, { shouldDirty: true });
-                        form.setValue("address_postal_code", "", { shouldDirty: true });
-                      }}
-                      options={[
-                        { value: "", label: "เลือกตำบล/แขวง" },
-                        ...addressSubDistricts.map((name) => ({ value: name, label: name })),
-                      ]}
-                      placeholder="ค้นหาตำบล/แขวง"
-                      value={addressSubDistrict}
-                    />
-                    <FormMessage<ProfileFormValues> name="address_sub_district" />
-                  </FormItem>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormItem>
-                    <FormLabel htmlFor="address_postal_code">รหัสไปรษณีย์</FormLabel>
-                    <Input
-                      autoComplete="postal-code"
-                      id="address_postal_code"
-                      inputMode="numeric"
-                      maxLength={5}
-                      placeholder="เช่น 10110"
-                      {...registerField(form, "address_postal_code")}
-                    />
-                    <FormMessage<ProfileFormValues> name="address_postal_code" />
-                  </FormItem>
-                </div>
-
-                <div className="space-y-3 border-t border-slate-200 pt-4">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="text-sm font-bold text-slate-700">พิกัดที่อยู่ติดต่อ</div>
-                      <div className="text-xs text-slate-500">
-                        ใช้พิกัดที่บันทึกไว้ก่อน และค้นหาจากที่อยู่เมื่อยังไม่มีพิกัด
-                      </div>
-                    </div>
-                    <Button
-                      disabled={
-                        !fullAddress ||
-                        geocodeProfileAddress.isPending ||
-                        updateProfile.isPending
-                      }
-                      icon={Search}
-                      isLoading={geocodeProfileAddress.isPending}
-                      loadingText="กำลังค้นหา"
-                      onClick={() => geocodeProfileAddress.mutate(fullAddress)}
-                      type="button"
-                      variant="outline"
-                    >
-                      {addressLatitude !== null && addressLongitude !== null
-                        ? "ค้นหาพิกัดใหม่จากที่อยู่"
-                        : "ค้นหาพิกัดจากที่อยู่"}
-                    </Button>
-                  </div>
-
-                  {geocodeProfileAddress.isError ? (
-                    <FormErrorAlert
-                      error={geocodeProfileAddress.error}
-                      fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
-                    />
-                  ) : null}
-
-                  <LocationMapPicker
-                    address={fullAddress}
-                    editable
-                    emptyDescription="ค้นหาจากที่อยู่ หรือคลิกบนแผนที่เพื่อปักหมุด"
-                    emptyTitle="ยังไม่มีพิกัด"
-                    lat={addressLatitude}
-                    lng={addressLongitude}
-                    markerLabel="พิกัดที่อยู่"
-                    onCoordinateChange={(coordinates) => {
-                      form.setValue("address_latitude", coordinates.lat, {
-                        shouldDirty: true,
-                      });
-                      form.setValue("address_longitude", coordinates.lng, {
-                        shouldDirty: true,
-                      });
-                    }}
-                    title="ตำแหน่งที่อยู่บนแผนที่"
-                  />
-                </div>
-
-                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
-                  <Button
-                    disabled={updateProfile.isPending}
-                    onClick={() => form.reset(toFormValues(profileQuery.data ?? user))}
-                    type="button"
-                    variant="secondary"
-                  >
-                    ยกเลิกการแก้ไข
-                  </Button>
-                  <Button
-                    disabled={!form.formState.isDirty || geocodeProfileAddress.isPending}
-                    isLoading={updateProfile.isPending}
-                    loadingText="กำลังบันทึก"
-                    type="submit"
-                  >
-                    บันทึกโปรไฟล์
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+              <Button
+                disabled={updateProfile.isPending}
+                onClick={() => form.reset(toFormValues(profileQuery.data ?? user))}
+                type="button"
+                variant="secondary"
+              >
+                ยกเลิกการแก้ไข
+              </Button>
+              <Button
+                disabled={!form.formState.isDirty || geocodeProfileAddress.isPending}
+                isLoading={updateProfile.isPending}
+                loadingText="กำลังบันทึก"
+                type="submit"
+              >
+                บันทึกโปรไฟล์
+              </Button>
+            </div>
           </div>
         </Form>
+      ) : (
+        <div className="space-y-5">
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ShieldCheck className="size-5 text-primary" aria-hidden="true" />
+                สิทธิ์และขอบเขตข้อมูล
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ProfileDetailItem
+                  label="บทบาท"
+                  value={profileText(profileUser?.labels?.join(", ") || profileUser?.roles?.join(", "))}
+                />
+                <ProfileDetailItem
+                  label="ขอบเขตข้อมูล"
+                  value={describeProfileScope(profileUser)}
+                />
+              </div>
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">Permission</div>
+                <div className="flex flex-wrap gap-2">
+                  {profileUser?.permissions?.length ? (
+                    profileUser.permissions.map((permission) => (
+                      <Badge key={permission} variant="secondary">
+                        {permission}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-500">-</span>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </PageShell>
   );

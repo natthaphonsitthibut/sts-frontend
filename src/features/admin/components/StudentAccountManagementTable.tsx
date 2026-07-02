@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { KeyRound, UserCheck, UserX } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge, Checkbox, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -143,8 +144,8 @@ function RowActions({
 
 function StudentIdentity({ row }: { row: StudentAccountManagementItem }) {
   const initial = row.studentName.trim().charAt(0) || "น";
-  return (
-    <div className="flex min-w-0 items-center gap-3">
+  const content = (
+    <>
       <div
         aria-hidden="true"
         className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
@@ -158,6 +159,24 @@ function StudentIdentity({ row }: { row: StudentAccountManagementItem }) {
           @{row.username}
         </div>
       </div>
+    </>
+  );
+
+  if (row.studentId) {
+    return (
+      <Link
+        aria-label={`เปิดข้อมูลนักเรียน ${row.studentName}`}
+        className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        to={`/students/${row.studentId}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {content}
     </div>
   );
 }

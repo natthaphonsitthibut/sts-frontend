@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +39,16 @@ import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
-import { VisitMapPreview } from "../components/VisitMapPreview";
+import {
+  AddressFormSection,
+  type AddressFieldNames,
+} from "../../../components/address/AddressFormSection";
+import {
+  addressTextValue,
+  joinAddressParts,
+  prefixedAddressPart,
+  stripAddressPrefix,
+} from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
 import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
@@ -55,7 +64,6 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
-const EMPTY_LOCATION_OPTIONS: string[] = [];
 
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
 const PATH_TO_TYPE: Record<string, TaskType> = {
@@ -81,27 +89,6 @@ function isEmail(value: string): boolean {
   return z.string().email().safeParse(value).success;
 }
 
-function unique(values: Array<string | undefined>): string[] {
-  return Array.from(
-    new Set(values.filter((value): value is string => Boolean(value))),
-  ).sort();
-}
-
-function joinParts(parts: Array<string | null | undefined>): string {
-  return parts.map((part) => part?.trim()).filter(Boolean).join(" ");
-}
-
-function textValue(value: string | number | null | undefined): string {
-  return value === null || value === undefined ? "" : String(value).trim();
-}
-
-function prefixedAddressPart(
-  prefix: string,
-  value: string | number | null | undefined,
-): string {
-  const normalized = textValue(value);
-  return normalized ? `${prefix}${normalized}` : "";
-}
 
 const createTaskSchema = z
   .object({
@@ -115,10 +102,17 @@ const createTaskSchema = z
     student_school: z.string().trim(),
     student_address: z.string().trim(),
     address_line: z.string().trim(),
+    address_house_no: z.string().trim(),
+    address_village_no: z.string().trim(),
+    address_street: z.string().trim(),
+    address_soi: z.string().trim(),
+    address_trok: z.string().trim(),
     address_province: z.string().trim(),
     address_district: z.string().trim(),
     address_sub_district: z.string().trim(),
     postal_code: z.string().trim(),
+    address_latitude: z.number().min(-90).max(90).nullable(),
+    address_longitude: z.number().min(-180).max(180).nullable(),
     reason_flagged: z.string().trim(),
     subject: z.string().trim(),
     expires_value: z
@@ -185,6 +179,20 @@ const createTaskSchema = z
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
 
+const VISIT_ADDRESS_NAMES: AddressFieldNames<CreateTaskFormValues> = {
+  houseNo: "address_house_no",
+  moo: "address_village_no",
+  street: "address_street",
+  soi: "address_soi",
+  trok: "address_trok",
+  province: "address_province",
+  district: "address_district",
+  subDistrict: "address_sub_district",
+  postalCode: "postal_code",
+  latitude: "address_latitude",
+  longitude: "address_longitude",
+};
+
 /** Pre-fill passed from the case dashboard's "สร้างลิงก์" action (a flagged student). */
 interface VisitPrefill {
   existing_case_id?: string;
@@ -207,10 +215,17 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     student_school: "",
     student_address: "",
     address_line: "",
+    address_house_no: "",
+    address_village_no: "",
+    address_street: "",
+    address_soi: "",
+    address_trok: "",
     address_province: "",
     address_district: "",
     address_sub_district: "",
     postal_code: "",
+    address_latitude: null,
+    address_longitude: null,
     reason_flagged: "",
     subject: "",
     expires_value: "7",
@@ -251,11 +266,9 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         }
       : null,
   );
-  const [homeCoordinates, setHomeCoordinates] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-  const [geocodedAddress, setGeocodedAddress] = useState("");
+  // Guards the async student-detail fetch in prefill so a stale response cannot
+  // overwrite a newer student selection. Coordinates now live in the form and
+  // are auto-resolved by AddressFormSection.
   const addressRequestVersionRef = useRef(0);
 
   const form = useForm<CreateTaskFormValues>({
@@ -271,42 +284,11 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
-  const addressProvince = useWatch({ control: form.control, name: "address_province" });
-  const addressDistrict = useWatch({ control: form.control, name: "address_district" });
-  const addressSubDistrict = useWatch({ control: form.control, name: "address_sub_district" });
-  const addressLine = useWatch({ control: form.control, name: "address_line" });
-  const postalCode = useWatch({ control: form.control, name: "postal_code" });
   const locationQuery = useQuery({
     queryKey: ["task-create-locations"],
     queryFn: attendanceLookupService.getLocations,
     enabled: type === "VISIT",
   });
-  const locationCatalog = locationQuery.data;
-  const addressProvinces = useMemo(
-    () => unique([addressProvince, ...(locationCatalog?.provinces ?? EMPTY_LOCATION_OPTIONS)]),
-    [addressProvince, locationCatalog],
-  );
-  const addressDistricts = useMemo(
-    () =>
-      unique([
-        addressDistrict,
-        ...(locationCatalog?.districts ?? [])
-          .filter((row) => !addressProvince || row.province === addressProvince)
-          .map((row) => row.district),
-      ]),
-    [addressDistrict, addressProvince, locationCatalog],
-  );
-  const addressSubDistricts = useMemo(
-    () =>
-      unique([
-        addressSubDistrict,
-        ...(locationCatalog?.subDistricts ?? [])
-          .filter((row) => !addressProvince || row.province === addressProvince)
-          .filter((row) => !addressDistrict || row.district === addressDistrict)
-          .map((row) => row.sub_district),
-      ]),
-    [addressDistrict, addressProvince, addressSubDistrict, locationCatalog],
-  );
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -355,45 +337,20 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     throwOnError: false,
   });
   const geocodeAddress = useMutation({
-    mutationFn: ({ address }: { address: string; requestVersion: number }) =>
-      geoService.geocodeAddress(address),
-    onSuccess: (result, request) => {
-      if (request.requestVersion !== addressRequestVersionRef.current) {
+    mutationFn: (address: string) => geoService.geocodeProfileAddress(address),
+    onSuccess: (result) => {
+      if (!result) {
         return;
       }
-      if (result) {
-        setHomeCoordinates({ lat: result.lat, lng: result.lng });
-        if (result.postalCode) {
-          form.setValue("postal_code", result.postalCode, {
-            shouldValidate: form.formState.isSubmitted,
-          });
-        }
-        setGeocodedAddress(
-          joinParts([
-            form.getValues("address_line"),
-            form.getValues("address_sub_district"),
-            form.getValues("address_district"),
-            form.getValues("address_province"),
-            result.postalCode || form.getValues("postal_code"),
-          ]) || request.address,
-        );
-        form.clearErrors("address_line");
-      } else {
-        form.setError("address_line", {
-          type: "manual",
-          message: "ไม่พบพิกัดจากที่อยู่นี้ กรุณาตรวจสอบที่อยู่หรือลากหมุดเอง",
+      form.setValue("address_latitude", result.lat, { shouldDirty: true });
+      form.setValue("address_longitude", result.lng, { shouldDirty: true });
+      if (result.postalCode) {
+        form.setValue("postal_code", result.postalCode, {
+          shouldValidate: form.formState.isSubmitted,
         });
       }
     },
-    onError: (_error, request) => {
-      if (request.requestVersion !== addressRequestVersionRef.current) {
-        return;
-      }
-      form.setError("address_line", {
-        type: "manual",
-        message: "ค้นหาพิกัดไม่สำเร็จ กรุณาตรวจสอบ Google Maps server key หรือกรอกพิกัดจากแผนที่เอง",
-      });
-    },
+    throwOnError: false,
   });
 
   function startNewTask(): void {
@@ -402,8 +359,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     form.reset(makeDefaults(type));
     setDataScope({});
     setSelectedStudent(null);
-    setHomeCoordinates(null);
-    setGeocodedAddress("");
     setPermissions([]);
     scope.reset();
   }
@@ -412,10 +367,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     const requestVersion = addressRequestVersionRef.current + 1;
     addressRequestVersionRef.current = requestVersion;
     setSelectedStudent(next);
-    setHomeCoordinates(null);
-    setGeocodedAddress("");
-    geocodeAddress.reset();
-    form.clearErrors("address_line");
     form.setValue("student_name", next?.name ?? "", {
       shouldValidate: form.formState.isSubmitted,
     });
@@ -429,49 +380,20 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       shouldValidate: form.formState.isSubmitted,
     });
     form.setValue("student_address", "");
-    form.setValue("address_line", "");
+    form.setValue("address_house_no", "");
+    form.setValue("address_village_no", "");
+    form.setValue("address_street", "");
+    form.setValue("address_soi", "");
+    form.setValue("address_trok", "");
     form.setValue("address_province", "");
     form.setValue("address_district", "");
     form.setValue("address_sub_district", "");
     form.setValue("postal_code", "");
+    form.setValue("address_latitude", null);
+    form.setValue("address_longitude", null);
     if (next?.personId) {
       void prefillStudentAddress(next.personId, requestVersion);
     }
-  }
-
-  const visitAddress = useMemo(
-    () =>
-      joinParts([
-        addressLine,
-        addressSubDistrict,
-        addressDistrict,
-        addressProvince,
-        postalCode,
-      ]),
-    [addressDistrict, addressLine, addressProvince, addressSubDistrict, postalCode],
-  );
-  const activeHomeCoordinates =
-    homeCoordinates && (!geocodedAddress || geocodedAddress === visitAddress)
-      ? homeCoordinates
-      : null;
-  const addressErrorMessage = form.formState.errors.address_line?.message;
-  const shouldShowGeocodeButton =
-    !selectedStudent?.personId ||
-    (!geocodeAddress.isPending &&
-      (!activeHomeCoordinates || geocodedAddress !== visitAddress));
-
-  function handleGeocodeAddress(): void {
-    if (!visitAddress) {
-      form.setError("address_line", {
-        type: "manual",
-        message: "กรุณากรอกที่อยู่ก่อนค้นหาพิกัด",
-      });
-      return;
-    }
-    geocodeAddress.mutate({
-      address: visitAddress,
-      requestVersion: addressRequestVersionRef.current,
-    });
   }
 
   // Pull the student's stored home address so the visit form prefills it. The
@@ -488,17 +410,19 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         return;
       }
 
-      const addressLine = joinParts([
+      const houseNo = addressTextValue(detail.address_house_no);
+      const addressLine = joinAddressParts([
+        houseNo,
         prefixedAddressPart("หมู่ ", detail.VillageNumber_Onec),
         prefixedAddressPart("ตรอก", detail.Trok_Onec),
         prefixedAddressPart("ซอย", detail.Soi_Onec),
         prefixedAddressPart("ถนน", detail.Street_Onec),
       ]);
-      const province = textValue(detail.ProvinceNameThai_Onec);
-      const district = textValue(detail.DistrictNameThai_Onec);
-      const subDistrict = textValue(detail.SubDistrictNameThai_Onec);
-      const storedPostalCode = textValue(detail.PostalCode_Onec);
-      const structuredAddress = joinParts([
+      const province = addressTextValue(detail.ProvinceNameThai_Onec);
+      const district = addressTextValue(detail.DistrictNameThai_Onec);
+      const subDistrict = addressTextValue(detail.SubDistrictNameThai_Onec);
+      const storedPostalCode = addressTextValue(detail.PostalCode_Onec);
+      const structuredAddress = joinAddressParts([
         addressLine,
         subDistrict,
         district,
@@ -509,15 +433,18 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       const fullAddress = structuredAddress || fallbackAddress;
 
       form.setValue("student_address", fullAddress);
-      form.setValue("address_line", addressLine || (!structuredAddress ? fallbackAddress : ""));
+      form.setValue("address_house_no", houseNo);
+      form.setValue("address_village_no", stripAddressPrefix("หมู่", detail.VillageNumber_Onec));
+      form.setValue("address_street", stripAddressPrefix("ถนน", detail.Street_Onec));
+      form.setValue("address_soi", stripAddressPrefix("ซอย", detail.Soi_Onec));
+      form.setValue("address_trok", stripAddressPrefix("ตรอก", detail.Trok_Onec));
       form.setValue("address_province", province);
       form.setValue("address_district", district);
       form.setValue("address_sub_district", subDistrict);
       form.setValue("postal_code", storedPostalCode);
-
-      if (fullAddress) {
-        geocodeAddress.mutate({ address: fullAddress, requestVersion });
-      }
+      // Clear any stale pin so AddressFormSection auto-geocodes the new address.
+      form.setValue("address_latitude", null);
+      form.setValue("address_longitude", null);
     } catch {
       // Keep the cleared editable fields; the user can enter an unlisted address manually.
     }
@@ -556,13 +483,20 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     };
 
     if (type === "VISIT") {
-      const studentName = joinParts([
+      const studentName = joinAddressParts([
         values.student_first_name,
         values.student_last_name,
       ]) || values.student_name;
+      const composedAddressLine = joinAddressParts([
+        values.address_house_no,
+        prefixedAddressPart("หมู่ ", stripAddressPrefix("หมู่", values.address_village_no)),
+        prefixedAddressPart("ตรอก", stripAddressPrefix("ตรอก", values.address_trok)),
+        prefixedAddressPart("ซอย", stripAddressPrefix("ซอย", values.address_soi)),
+        prefixedAddressPart("ถนน", stripAddressPrefix("ถนน", values.address_street)),
+      ]);
       const studentAddress =
-        joinParts([
-          values.address_line,
+        joinAddressParts([
+          composedAddressLine,
           values.address_sub_district,
           values.address_district,
           values.address_province,
@@ -577,13 +511,13 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         student_school: values.student_school || null,
         target_school_id: selectedStudent?.schoolId ? Number(selectedStudent.schoolId) : null,
         student_address: studentAddress || null,
-        address_line: values.address_line || null,
+        address_line: composedAddressLine || null,
         address_province: values.address_province || null,
         address_district: values.address_district || null,
         address_sub_district: values.address_sub_district || null,
         postal_code: values.postal_code || null,
-        student_lat: activeHomeCoordinates?.lat ?? null,
-        student_lng: activeHomeCoordinates?.lng ?? null,
+        student_lat: values.address_latitude ?? null,
+        student_lng: values.address_longitude ?? null,
         reason_flagged: values.reason_flagged || null,
         existing_case_id: prefill?.existing_case_id ?? null,
       });
@@ -646,7 +580,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     <Form form={form} onSubmit={handleValid}>
       <Card id="create-task-detail">
         <CardHeader>
-          <CardTitle>รายละเอียด</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FilePlus2 className="size-5 text-primary" aria-hidden="true" />
+            รายละเอียด
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <FormErrorAlert
@@ -688,143 +625,22 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                 <FormMessage<CreateTaskFormValues> name="student_school" />
               </FormItem>
 
-              <FormItem>
-                <FormLabel htmlFor="address_line">ที่อยู่บ้านนักเรียน</FormLabel>
-                <Input
-                  id="address_line"
-                  placeholder="บ้านเลขที่ หมู่ ซอย ถนน หรือจุดสังเกต"
-                  {...registerField(form, "address_line")}
-                />
-              </FormItem>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <FormLabel className="sr-only">จังหวัด</FormLabel>
-                  <Combobox
-                    disabled={createTask.isPending || locationQuery.isLoading}
-                    onChange={(next) => {
-                      form.setValue("address_province", next, {
-                        shouldValidate: form.formState.isSubmitted,
-                      });
-                      form.setValue("address_district", "", {
-                        shouldValidate: form.formState.isSubmitted,
-                      });
-                      form.setValue("address_sub_district", "", {
-                        shouldValidate: form.formState.isSubmitted,
-                      });
-                    }}
-                    options={[
-                      { value: "", label: "เลือกจังหวัด" },
-                      ...addressProvinces.map((name) => ({ value: name, label: name })),
-                    ]}
-                    placeholder="ค้นหาจังหวัด"
-                    value={addressProvince}
+              <AddressFormSection
+                catalog={locationQuery.data}
+                disabled={createTask.isPending}
+                form={form}
+                geocodeError={geocodeAddress.isError ? (
+                  <FormErrorAlert
+                    error={geocodeAddress.error}
+                    fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาตรวจสอบที่อยู่หรือปักหมุดบนแผนที่"
                   />
-                </div>
-                <div>
-                  <FormLabel className="sr-only">อำเภอ/เขต</FormLabel>
-                  <Combobox
-                    disabled={
-                      createTask.isPending || locationQuery.isLoading || !addressProvince
-                    }
-                    onChange={(next) => {
-                      form.setValue("address_district", next, {
-                        shouldValidate: form.formState.isSubmitted,
-                      });
-                      form.setValue("address_sub_district", "", {
-                        shouldValidate: form.formState.isSubmitted,
-                      });
-                    }}
-                    options={[
-                      { value: "", label: "เลือกอำเภอ/เขต" },
-                      ...addressDistricts.map((name) => ({ value: name, label: name })),
-                    ]}
-                    placeholder="ค้นหาอำเภอ/เขต"
-                    value={addressDistrict}
-                  />
-                </div>
-                <div>
-                  <FormLabel className="sr-only">ตำบล/แขวง</FormLabel>
-                  <Combobox
-                    disabled={
-                      createTask.isPending || locationQuery.isLoading || !addressDistrict
-                    }
-                    onChange={(next) =>
-                      form.setValue("address_sub_district", next, {
-                        shouldValidate: form.formState.isSubmitted,
-                      })
-                    }
-                    options={[
-                      { value: "", label: "เลือกตำบล/แขวง" },
-                      ...addressSubDistricts.map((name) => ({ value: name, label: name })),
-                    ]}
-                    placeholder="ค้นหาตำบล/แขวง"
-                    value={addressSubDistrict}
-                  />
-                </div>
-              </div>
-
-              <FormItem>
-                <FormLabel className="sr-only" htmlFor="postal_code">
-                  รหัสไปรษณีย์
-                </FormLabel>
-                <Input
-                  id="postal_code"
-                  inputMode="numeric"
-                  maxLength={5}
-                  placeholder="รหัสไปรษณีย์"
-                  {...registerField(form, "postal_code")}
-                />
-                {form.formState.errors.postal_code?.message ? (
-                  <p className="text-sm font-medium text-red-600">
-                    {form.formState.errors.postal_code.message}
-                  </p>
                 ) : null}
-              </FormItem>
-
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-bold text-slate-700">พิกัดบ้านนักเรียน</div>
-                    <div className="text-xs font-medium text-slate-500">
-                      {addressErrorMessage
-                        ? addressErrorMessage
-                        : selectedStudent?.personId
-                        ? geocodeAddress.isPending
-                          ? "กำลังปักหมุดอัตโนมัติจากที่อยู่ของนักเรียน"
-                          : activeHomeCoordinates
-                            ? "ระบบปักหมุดจากข้อมูลนักเรียนแล้ว ลากหรือคลิกแผนที่เพื่อปรับได้"
-                            : "ไม่พบพิกัดอัตโนมัติ กรุณาตรวจที่อยู่ ค้นหาใหม่ หรือคลิกบนแผนที่"
-                        : "กรอกที่อยู่แล้วค้นหาพิกัด หรือคลิกบนแผนที่เพื่อปักหมุด"}
-                    </div>
-                  </div>
-                  {shouldShowGeocodeButton ? (
-                    <Button
-                      icon={MapPin}
-                      isLoading={geocodeAddress.isPending}
-                      loadingText="กำลังค้นหา"
-                      onClick={handleGeocodeAddress}
-                      type="button"
-                      variant="outline"
-                    >
-                      ค้นหาพิกัดจากที่อยู่
-                    </Button>
-                  ) : null}
-                </div>
-                <VisitMapPreview
-                  address={visitAddress || undefined}
-                  editable
-                  emptyDescription="ระบบกำลังค้นหาจากที่อยู่ หรือคลิกบนแผนที่เพื่อปักหมุดเอง"
-                  lat={activeHomeCoordinates?.lat}
-                  lng={activeHomeCoordinates?.lng}
-                  markerLabel="บ้านนักเรียน"
-                  onCoordinateChange={(coordinates) => {
-                    setHomeCoordinates(coordinates);
-                    setGeocodedAddress(visitAddress);
-                  }}
-                  title="แผนที่บ้านนักเรียน"
-                />
-              </div>
+                isGeocoding={geocodeAddress.isPending}
+                names={VISIT_ADDRESS_NAMES}
+                onGeocode={(address) => geocodeAddress.mutate(address)}
+                showPlaceholders
+                title="ที่อยู่บ้านนักเรียน"
+              />
 
               <FormItem>
                 <FormLabel htmlFor="reason_flagged" required>

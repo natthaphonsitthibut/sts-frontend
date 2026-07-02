@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, MapPin, Phone, UserRound } from "lucide-react";
+import { Eye, EyeOff, MapPin, Phone } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -19,6 +19,7 @@ import type {
   StudentPiiField,
   StudentPiiRevealResponse,
 } from "../types/students.types";
+import { getStudentAvatarGradient } from "../lib/student-presentation";
 import { StudentPiiRevealDialog } from "./StudentPiiRevealDialog";
 
 // "reasoned" = staff reveal: collect a reason via the dialog (audited with that
@@ -34,7 +35,7 @@ interface StudentProfileHeaderProps {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-3 text-center">
+    <div className="rounded-lg border border-slate-200 px-3 py-2.5 text-center">
       <div className="text-xs font-medium text-slate-500">{label}</div>
       <div className="text-base font-bold text-slate-800">{value}</div>
     </div>
@@ -46,6 +47,10 @@ function toDisplay(value: unknown): string {
     return "-";
   }
   return String(value);
+}
+
+function getSchoolDisplay(student: StudentDetail): string {
+  return toDisplay(student.school_name ?? student.SchoolID_Onec);
 }
 
 export function StudentProfileHeader({
@@ -167,28 +172,31 @@ export function StudentProfileHeader({
 
   return (
     <>
-      <Card className="mb-6 p-6">
+      <Card className="mb-5 p-5">
         {directError ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{directError}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
-          <div className="flex size-[110px] shrink-0 items-center justify-center rounded-full bg-slate-200 shadow-md">
-            <UserRound className="size-20 text-slate-500" aria-hidden="true" />
+        <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
+          <div
+            className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-md"
+            style={getStudentAvatarGradient(fullName)}
+          >
+            {fullName.charAt(0).toUpperCase() || "?"}
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
               <div className="w-full text-center md:text-left">
-                <h1 className="text-2xl font-bold text-slate-800">
+                <h1 className="text-xl font-bold leading-8 text-slate-800">
                   {fullName}
                 </h1>
                 <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-1">
                   <div>
-                    รหัสโรงเรียน:{" "}
+                    โรงเรียน:{" "}
                     <span className="font-medium text-slate-800">
-                      {toDisplay(student.SchoolID_Onec)}
+                      {getSchoolDisplay(student)}
                     </span>
                   </div>
                   {renderPiiField("PersonID_Onec")}
@@ -222,7 +230,7 @@ export function StudentProfileHeader({
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <StatCard
                 label="ปีการศึกษา"
                 value={toDisplay(student.AcademicYear_Onec)}

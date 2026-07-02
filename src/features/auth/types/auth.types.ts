@@ -9,6 +9,9 @@ export interface AuthUser {
   labels?: string[];
   permissions: string[];
   data_scope?: DataScope;
+  data_scope_labels?: {
+    schools?: Array<{ id: number; name: string | null }>;
+  };
   PersonID_Onec?: string;
   student_uuid?: string;
   phone?: string | null;
@@ -16,6 +19,10 @@ export interface AuthUser {
   affiliation?: string | null;
   line_id?: string | null;
   address_line?: string | null;
+  address_village_no?: string | null;
+  address_street?: string | null;
+  address_soi?: string | null;
+  address_trok?: string | null;
   address_sub_district?: string | null;
   address_district?: string | null;
   address_province?: string | null;
@@ -56,6 +63,10 @@ export interface UpdateProfilePayload {
   affiliation: string;
   line_id: string;
   address_line: string;
+  address_village_no: string;
+  address_street: string;
+  address_soi: string;
+  address_trok: string;
   address_sub_district: string;
   address_district: string;
   address_province: string;

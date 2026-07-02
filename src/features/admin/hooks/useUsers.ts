@@ -28,6 +28,7 @@ import type {
 
 export const USERS_QUERY_KEY = "admin-users";
 export const USER_QUERY_KEY = "admin-user";
+export const USER_DETAIL_QUERY_KEY = "admin-user-detail";
 export const ROLES_CATALOG_QUERY_KEY = "admin-roles-catalog";
 export const STUDENT_ACCOUNTS_QUERY_KEY = "admin-student-accounts";
 export const STUDENT_ACCOUNT_BATCHES_QUERY_KEY = "admin-student-account-batches";
@@ -87,6 +88,14 @@ export function useUser(id: number | null) {
   return useQuery({
     queryKey: [USER_QUERY_KEY, id],
     queryFn: () => adminService.getUser(id ?? 0),
+    enabled: id !== null,
+  });
+}
+
+export function useUserDetail(id: number | null) {
+  return useQuery({
+    queryKey: [USER_DETAIL_QUERY_KEY, id],
+    queryFn: () => adminService.getUserDetail(id ?? 0),
     enabled: id !== null,
   });
 }

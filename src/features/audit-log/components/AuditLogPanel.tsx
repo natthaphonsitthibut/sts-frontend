@@ -152,6 +152,7 @@ function AuditLogTable({
   showReferenceColumn: boolean;
 }) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const hasExtraColumns = showActionColumn || showReferenceColumn;
   const sortedEntries = useMemo(() => {
     if (!sort) return entries;
     return [...entries].sort((left, right) => {
@@ -171,35 +172,49 @@ function AuditLogTable({
           ...(showActionColumn ? [{ label: "ประเภท", sortKey: "action" }] : []),
           { label: "ผู้ทำรายการ", sortKey: "actor" },
           ...(showReferenceColumn
-            ? [{ label: "อ้างอิง", sortKey: "reference" }]
+            ? [{ label: "เป้าหมาย", sortKey: "reference" }]
             : []),
           { label: "รายละเอียด", sortKey: "details" },
           "จัดการ",
         ]}
-        minWidthClassName={showActionColumn || showReferenceColumn ? "min-w-[1060px]" : "min-w-[820px]"}
+        columnWidths={[
+          "w-[152px]",
+          ...(showActionColumn ? ["w-[190px]"] : []),
+          hasExtraColumns ? "w-[150px]" : "w-[28%]",
+          ...(showReferenceColumn ? ["w-[208px]"] : []),
+          "",
+          "w-[168px]",
+        ]}
+        minWidthClassName="min-w-0"
         onSortChange={setSort}
         sort={sort}
       >
         {sortedEntries.map((entry) => (
           <DataTableRow key={entry.id}>
-            <DataTableCell className="text-sm font-medium tabular-nums text-slate-600">
+            <DataTableCell className="whitespace-nowrap text-sm font-medium tabular-nums text-slate-600">
               {formatThaiDateTime(entry.createdAt)}
             </DataTableCell>
             {showActionColumn ? (
               <DataTableCell>
-                <Badge variant="secondary">{entry.actionLabel}</Badge>
+                <Badge className="whitespace-nowrap" variant="secondary">{entry.actionLabel}</Badge>
               </DataTableCell>
             ) : null}
             <DataTableCell className="font-semibold text-slate-800">
-              {entry.actorLabel}
+              <div className="truncate" title={entry.actorLabel}>
+                {entry.actorLabel}
+              </div>
             </DataTableCell>
             {showReferenceColumn ? (
               <DataTableCell className="font-mono text-sm text-slate-600">
-                {getAuditLogTargetLabel(entry)}
+                <div className="truncate" title={getAuditLogTargetLabel(entry)}>
+                  {getAuditLogTargetLabel(entry)}
+                </div>
               </DataTableCell>
             ) : null}
             <DataTableCell className="text-sm text-slate-600">
-              {formatAuditLogDetails(entry.details)}
+              <div className="line-clamp-2 break-words" title={formatAuditLogDetails(entry.details)}>
+                {formatAuditLogDetails(entry.details)}
+              </div>
             </DataTableCell>
             <DataTableCell>
               <div className="flex justify-end">

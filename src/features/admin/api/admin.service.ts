@@ -12,6 +12,7 @@ import type {
   AccountReactivateResponse,
   DeactivateStudentAccountResponse,
   ManagedUser,
+  ManagedUserDetail,
   CreateUserResponse,
   RoleDefinition,
   ReissueStudentPasswordResponse,
@@ -30,6 +31,8 @@ import type {
   StudentAccountPreview,
   SystemSetting,
   UserPaginationMeta,
+  UserAddressDetail,
+  UserAddressRevealPayload,
   UserSavePayload,
 } from "../types/admin.types";
 
@@ -132,6 +135,25 @@ async function getUser(id: number): Promise<ManagedUser> {
   );
   const user = "data" in response.data && response.data.data ? response.data.data : response.data;
   return normalizeManagedUser(user as ManagedUser);
+}
+
+async function getUserDetail(id: number): Promise<ManagedUserDetail> {
+  const response = await apiClient.get<
+    ManagedUserDetail | DataEnvelope<ManagedUserDetail>
+  >(`/users/${id}/detail`);
+  const user = "data" in response.data && response.data.data ? response.data.data : response.data;
+  return normalizeManagedUser(user as ManagedUser) as ManagedUserDetail;
+}
+
+async function revealUserAddress(
+  id: number,
+  payload: UserAddressRevealPayload,
+): Promise<UserAddressDetail> {
+  const response = await apiClient.post<UserAddressDetail>(
+    `/users/${id}/address-reveal`,
+    payload,
+  );
+  return response.data;
 }
 
 async function reissueTemporaryPassword(
@@ -380,6 +402,8 @@ export const adminService = {
   updateSetting,
   getUsers,
   getUser,
+  getUserDetail,
+  revealUserAddress,
   getStudentAccounts,
   reissueTemporaryPassword,
   bulkReissueStudentTemporaryPasswords,

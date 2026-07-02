@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { KeyRound, SquarePen, UserCheck, UserX } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
 import {
@@ -46,8 +47,8 @@ function StatusBadge({ user }: { user: ManagedUser }) {
 
 function UserIdentity({ user }: { user: ManagedUser }) {
   const displayName = getUserDisplayName(user);
-  return (
-    <div className="flex items-center gap-3">
+  const content = (
+    <>
       <div
         className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         style={getUserAvatarGradient(displayName)}
@@ -60,6 +61,23 @@ function UserIdentity({ user }: { user: ManagedUser }) {
           @{user.username}
         </div>
       </div>
+    </>
+  );
+
+  if (user.id) {
+    return (
+      <Link
+        className="flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
+        to={`/manage-users/${user.id}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {content}
     </div>
   );
 }

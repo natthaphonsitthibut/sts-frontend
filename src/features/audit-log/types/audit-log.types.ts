@@ -23,6 +23,8 @@ export interface AuditLogEntry {
   actorLabel: string;
   targetType?: string | null;
   targetId?: string | null;
+  /** Human-readable target (e.g. the affected account's username) when known. */
+  targetLabel?: string | null;
   createdAt: string;
   details: AuditLogDetail[];
 }

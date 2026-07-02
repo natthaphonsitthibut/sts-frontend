@@ -60,6 +60,7 @@ export interface StudentDetail extends Record<string, unknown> {
   masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;
+  address_house_no?: string | null;
   VillageNumber_Onec?: string | number | null;
   Street_Onec?: string | null;
   Soi_Onec?: string | null;
@@ -68,6 +69,25 @@ export interface StudentDetail extends Record<string, unknown> {
   DistrictNameThai_Onec?: string | null;
   SubDistrictNameThai_Onec?: string | null;
   PostalCode_Onec?: string | null;
+  address_latitude?: number | null;
+  address_longitude?: number | null;
+}
+
+export interface StudentUpdatePayload {
+  FirstName_Onec?: string;
+  MiddleName_Onec?: string | null;
+  LastName_Onec?: string;
+  address_house_no?: string | null;
+  VillageNumber_Onec?: string | null;
+  Street_Onec?: string | null;
+  Soi_Onec?: string | null;
+  Trok_Onec?: string | null;
+  ProvinceNameThai_Onec?: string | null;
+  DistrictNameThai_Onec?: string | null;
+  SubDistrictNameThai_Onec?: string | null;
+  PostalCode_Onec?: string | null;
+  address_latitude?: number | null;
+  address_longitude?: number | null;
 }
 
 export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";

@@ -1,15 +1,21 @@
 import { useMemo, useState } from "react";
-import { CircleAlert } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, CircleAlert, GraduationCap, SquarePen } from "lucide-react";
+import { useParams } from "react-router-dom";
 import { Button, Card } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
   PageShell,
+  PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import { formatThaiDate } from "../../../lib/date-time";
+import { NavButton } from "../../../components/layout/nav-button";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { geoService } from "../../tasks/api/geo.service";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
@@ -21,6 +27,102 @@ function resolveFullName(student: StudentDetail | undefined): string {
     return "";
   }
   return `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim();
+}
+
+function toDisplay(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  return String(value);
+}
+
+function readCoordinate(student: StudentDetail, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = student[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
+function AddressPanel({ student }: { student: StudentDetail }) {
+  const address = typeof student.address === "string" ? student.address.trim() : "";
+  const hasAddress = address.length > 0;
+  const storedLat = readCoordinate(student, ["address_latitude", "student_lat", "lat", "latitude"]);
+  const storedLng = readCoordinate(student, ["address_longitude", "student_lng", "lng", "longitude"]);
+  const hasStoredCoordinates = storedLat !== null && storedLng !== null;
+  const geocodeQuery = useQuery({
+    queryKey: ["students", "detail-address-geocode", address],
+    queryFn: () => geoService.geocodeProfileAddress(address),
+    enabled: hasAddress && !hasStoredCoordinates,
+    retry: false,
+    staleTime: 1000 * 60 * 10,
+  });
+  const fallbackLat = geocodeQuery.data?.lat ?? null;
+  const fallbackLng = geocodeQuery.data?.lng ?? null;
+  const lat = storedLat ?? fallbackLat;
+  const lng = storedLng ?? fallbackLng;
+  const hasMapCoordinates = lat !== null && lng !== null;
+  const addressDetails = (
+    <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <dt className="text-xs font-medium text-slate-500">จังหวัด</dt>
+        <dd className="mt-1 font-semibold text-slate-800">
+          {toDisplay(student.ProvinceNameThai_Onec)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs font-medium text-slate-500">อำเภอ/เขต</dt>
+        <dd className="mt-1 font-semibold text-slate-800">
+          {toDisplay(student.DistrictNameThai_Onec)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs font-medium text-slate-500">ตำบล/แขวง</dt>
+        <dd className="mt-1 font-semibold text-slate-800">
+          {toDisplay(student.SubDistrictNameThai_Onec)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs font-medium text-slate-500">รหัสไปรษณีย์</dt>
+        <dd className="mt-1 font-semibold text-slate-800">
+          {toDisplay(student.PostalCode_Onec)}
+        </dd>
+      </div>
+    </dl>
+  );
+
+  return (
+    <div className="mb-5">
+      <LocationMapPicker
+        address={hasAddress ? address : undefined}
+        details={addressDetails}
+        emptyDescription={
+          geocodeQuery.isFetching
+            ? "กำลังค้นหาพิกัดจากที่อยู่"
+            : "ยังไม่มีพิกัดบ้านจากข้อมูลนักเรียน ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง"
+        }
+        emptyTitle={
+          geocodeQuery.isFetching
+            ? "กำลังค้นหา"
+            : hasMapCoordinates
+              ? "มีพิกัด"
+              : "ยังไม่มีพิกัด"
+        }
+        lat={lat}
+        lng={lng}
+        markerLabel={hasStoredCoordinates ? "พิกัดที่ยืนยันแล้ว" : "พิกัดจากที่อยู่"}
+        title="ที่อยู่และแผนที่"
+      />
+    </div>
+  );
 }
 
 function RiskHistoryPanel({
@@ -52,8 +154,8 @@ function RiskHistoryPanel({
   const visibleCases = showAll ? sortedCases : sortedCases.slice(0, 3);
 
   return (
-    <Card className="p-6">
-      <h2 className="mb-4 text-lg font-bold text-slate-800">
+    <Card className="p-5">
+      <h2 className="mb-4 text-base font-bold text-slate-800">
         ประวัติการติดตามนักเรียน
       </h2>
 
@@ -132,8 +234,8 @@ function AttendancePanel({ studentId }: { studentId: string }) {
   const stats = summary?.stats;
 
   return (
-    <Card className="h-full p-6">
-      <h2 className="mb-4 text-lg font-bold text-slate-800">
+    <Card className="h-full p-5">
+      <h2 className="mb-4 text-base font-bold text-slate-800">
         ประวัติการเข้าเรียน
       </h2>
 
@@ -174,7 +276,7 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 }
 
 export function StudentDetailPage() {
-  const navigate = useNavigate();
+  const { can } = usePermissions();
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
 
@@ -189,15 +291,15 @@ export function StudentDetailPage() {
 
   if (isLoading) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
-        <Card className="mb-6 p-6">
+      <PageShell>
+        <Card className="mb-5 p-5">
           <SkeletonStack lines={3} />
         </Card>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <Card className="p-6">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Card className="p-5">
             <SkeletonStack lines={4} />
           </Card>
-          <Card className="p-6">
+          <Card className="p-5">
             <SkeletonStack lines={4} />
           </Card>
         </div>
@@ -207,7 +309,7 @@ export function StudentDetailPage() {
 
   if (isError) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <ErrorState
           title="โหลดข้อมูลนักเรียนไม่สำเร็จ"
           description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลนักเรียน กรุณาลองใหม่อีกครั้ง"
@@ -219,15 +321,15 @@ export function StudentDetailPage() {
 
   if (!studentId || !student) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <EmptyState
           icon={CircleAlert}
           title="ไม่พบข้อมูลนักเรียน"
           description="ไม่พบข้อมูลนักเรียนระเบียนหรือรหัสนี้ในระบบ"
           action={
-            <Button onClick={() => void navigate(-1)} variant="outline">
+            <NavButton to={-1} variant="outline">
               ย้อนกลับ
-            </Button>
+            </NavButton>
           }
         />
       </PageShell>
@@ -235,14 +337,36 @@ export function StudentDetailPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1000px]">
+    <PageShell>
+      <PageToolbar
+        footerActions={
+          <>
+            <NavButton
+              disabled={!can("edit-students")}
+              icon={SquarePen}
+              title={can("edit-students") ? undefined : "ไม่มีสิทธิ์แก้ไขข้อมูลนักเรียน"}
+              to={`/students/${studentId}/edit`}
+            >
+              แก้ไขข้อมูลนักเรียน
+            </NavButton>
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          </>
+        }
+        icon={GraduationCap}
+        title="รายละเอียดนักเรียน"
+      />
+
       <StudentProfileHeader
         key={studentId}
         student={student}
         studentId={studentId}
       />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <AddressPanel student={student} />
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <RiskHistoryPanel
           cases={cases}
           isError={casesError}
