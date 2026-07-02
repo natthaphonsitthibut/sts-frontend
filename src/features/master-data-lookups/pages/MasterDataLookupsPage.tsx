@@ -56,7 +56,7 @@ export function MasterDataLookupsPage() {
   const categoryQuery = useMasterDataLookups({
     table: "absence_reason_categories",
     page: 1,
-    limit: 100,
+    limit: 50,
   });
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.meta.totalCount ?? 0;
