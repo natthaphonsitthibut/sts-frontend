@@ -1,5 +1,6 @@
 import { apiClient } from "../../../lib/api-client";
 import {
+  type ImportPreviewResult,
   STUDENT_TERM_IMPORT_TARGET,
   type ImportResult,
 } from "../types/import.types";
@@ -38,6 +39,31 @@ async function submitImport({
   return response.data;
 }
 
+async function previewImport({
+  file,
+  mapping = {},
+  onProgress,
+}: SubmitImportParams): Promise<ImportPreviewResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("target", STUDENT_TERM_IMPORT_TARGET);
+  formData.append("mapping", JSON.stringify(mapping));
+
+  const response = await apiClient.post<ImportPreviewResult>(
+    "/imports/preview",
+    formData,
+    {
+      onUploadProgress: (event) => {
+        if (onProgress && event.total) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      },
+    },
+  );
+  return response.data;
+}
+
 export const importService = {
+  previewImport,
   submitImport,
 };

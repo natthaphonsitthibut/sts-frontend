@@ -10,7 +10,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Select,
   Tabs,
+  useConfirm,
 } from "../../../components/base";
 import {
   PageShell,
@@ -22,25 +24,241 @@ import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { ImportDropZone } from "../components/ImportDropZone";
-import { useSubmitImport } from "../hooks/useSubmitImport";
-import { STUDENT_TERM_IMPORT_LABEL } from "../types/import.types";
+import { usePreviewImport, useSubmitImport } from "../hooks/useSubmitImport";
+import {
+  STUDENT_TERM_IMPORT_LABEL,
+  type ImportPreviewResult,
+} from "../types/import.types";
+
+const IMPORT_MAPPING_FIELDS = [
+  { column: "PersonID_Onec", label: "เลขประจำตัว/เลขบัตร", required: true },
+  { column: "FirstName_Onec", label: "ชื่อ", required: false },
+  { column: "LastName_Onec", label: "นามสกุล", required: false },
+  { column: "AcademicYear_Onec", label: "ปีการศึกษา", required: false },
+  { column: "Semester_Onec", label: "เทอม", required: false },
+  { column: "SchoolID_Onec", label: "รหัสโรงเรียน", required: false },
+  { column: "GradeLevelID_Onec", label: "ชั้นเรียน", required: false },
+  { column: "RoomID_Onec", label: "ห้อง", required: false },
+  { column: "VillageNumber_Onec", label: "หมู่", required: false },
+  { column: "Street_Onec", label: "ถนน", required: false },
+  { column: "Soi_Onec", label: "ซอย", required: false },
+  { column: "Trok_Onec", label: "ตรอก", required: false },
+] as const;
+
+function effectiveMapping(
+  localMapping: Record<string, string>,
+  preview?: ImportPreviewResult,
+): Record<string, string> {
+  return Object.keys(localMapping).length > 0 ? localMapping : (preview?.mapping ?? {});
+}
+
+function ImportMappingPanel({
+  mapping,
+  onMappingChange,
+  preview,
+}: {
+  mapping: Record<string, string>;
+  onMappingChange: (column: string, header: string) => void;
+  preview: ImportPreviewResult;
+}) {
+  const currentMapping = effectiveMapping(mapping, preview);
+
+  return (
+    <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-bold text-slate-900">จับคู่คอลัมน์</div>
+          <div className="mt-1 text-sm text-slate-500">
+            ระบบจับคู่ให้อัตโนมัติเมื่อชื่อคอลัมน์ตรงเทมเพลต แก้ไขได้ก่อนตรวจสอบอีกครั้ง
+          </div>
+        </div>
+        <Badge variant="secondary">{preview.headers.length} คอลัมน์ในไฟล์</Badge>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {IMPORT_MAPPING_FIELDS.map((field) => (
+          <label className="space-y-1.5" key={field.column}>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <span>{field.label}</span>
+              {field.required ? <Badge variant="warning">บังคับ</Badge> : null}
+            </div>
+            <Select
+              value={currentMapping[field.column] ?? ""}
+              onChange={(event) => onMappingChange(field.column, event.target.value)}
+            >
+              <option value="">ไม่ใช้คอลัมน์นี้</option>
+              {preview.headers.map((header) => (
+                <option key={header} value={header}>
+                  {header}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
+  return (
+    <div className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-bold text-slate-900">ผลตรวจสอบไฟล์</div>
+          <div className="mt-1 text-sm text-slate-500">{preview.targetLabel}</div>
+        </div>
+        <Badge variant={preview.canImport ? "success" : "warning"}>
+          {preview.canImport ? "พร้อมนำเข้า" : "ต้องตรวจสอบ"}
+        </Badge>
+      </div>
+
+      <SummaryMetrics
+        columns={3}
+        items={[
+          { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default" },
+          { label: "พร้อมนำเข้า", value: preview.rowsReady, tone: "success" },
+          { label: "ข้าม", value: preview.rowsSkipped, tone: "warning" },
+          { label: "ซ้ำในไฟล์", value: preview.duplicateRows, tone: "warning" },
+          { label: "มีอยู่แล้ว", value: preview.existingRows, tone: "warning" },
+          { label: "ไม่มีรหัส", value: preview.missingPersonIdRows, tone: "danger" },
+        ]}
+      />
+
+      {preview.missingRequiredColumns.length > 0 ? (
+        <Alert variant="destructive">
+          <AlertTitle>คอลัมน์บังคับไม่ครบ</AlertTitle>
+          <AlertDescription>
+            {preview.missingRequiredColumns.join(", ")}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {preview.missingRecommendedColumns.length > 0 || preview.unmappedHeaders.length > 0 ? (
+        <Alert variant="warning">
+          <AlertTitle>มีข้อมูลที่ควรตรวจสอบ</AlertTitle>
+          <AlertDescription>
+            {preview.missingRecommendedColumns.length > 0
+              ? `คอลัมน์แนะนำที่ยังไม่พบ: ${preview.missingRecommendedColumns.join(", ")}`
+              : null}
+            {preview.missingRecommendedColumns.length > 0 && preview.unmappedHeaders.length > 0
+              ? " · "
+              : null}
+            {preview.unmappedHeaders.length > 0
+              ? `คอลัมน์ที่ไม่ได้ใช้: ${preview.unmappedHeaders.slice(0, 8).join(", ")}`
+              : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {preview.sampleRows.length > 0 ? (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="grid min-w-[720px] grid-cols-[72px_minmax(120px,1fr)_minmax(120px,1fr)_110px_minmax(160px,1.4fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
+            <div>แถว</div>
+            <div>ชื่อ</div>
+            <div>โรงเรียน</div>
+            <div>สถานะ</div>
+            <div>หมายเหตุ</div>
+          </div>
+          {preview.sampleRows.map((row) => (
+            <div
+              className="grid min-w-[720px] grid-cols-[72px_minmax(120px,1fr)_minmax(120px,1fr)_110px_minmax(160px,1.4fr)] border-t border-slate-100 px-3 py-2 text-sm"
+              key={row.rowNumber}
+            >
+              <div className="font-medium text-slate-500">{row.rowNumber}</div>
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-slate-800">
+                  {row.firstName} {row.lastName}
+                </div>
+                <div className="text-xs text-slate-400">{row.personIdMasked}</div>
+              </div>
+              <div className="text-slate-600">
+                {row.schoolId} · ปี {row.academicYear}/{row.semester} · ชั้น {row.gradeLevelId} ห้อง {row.roomId}
+              </div>
+              <div>
+                <Badge variant={row.status === "ready" ? "success" : "warning"}>
+                  {row.status === "ready" ? "พร้อม" : "ข้าม"}
+                </Badge>
+              </div>
+              <div className="text-slate-500">
+                {row.issues.length > 0 ? row.issues.join(", ") : "-"}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function ImportDataPage() {
   const { can } = usePermissions();
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
   const [activeTab, setActiveTab] = useState<"import" | "history">("import");
   const [file, setFile] = useState<File | null>(null);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [mappingDirty, setMappingDirty] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [previewProgress, setPreviewProgress] = useState(0);
 
-  function handleSubmit(): void {
+  async function handlePreview(): Promise<void> {
     if (!file) {
       return;
     }
+    setPreviewProgress(0);
+    submitImport.reset();
+    const nextPreview = await previewImport.mutateAsync({
+      file,
+      mapping,
+      onProgress: setPreviewProgress,
+    });
+    if (Object.keys(mapping).length === 0) {
+      setMapping(nextPreview.mapping);
+    }
+    setMappingDirty(false);
+  }
+
+  function handleMappingChange(column: string, header: string): void {
+    const baseMapping = effectiveMapping(mapping, previewImport.data);
+    const nextMapping = { ...baseMapping };
+    if (header) {
+      nextMapping[column] = header;
+    } else {
+      delete nextMapping[column];
+    }
+    setMapping(nextMapping);
+    setMappingDirty(true);
+    submitImport.reset();
+  }
+
+  async function handleSubmit(): Promise<void> {
+    const preview = previewImport.data;
+    if (!file || !preview?.canImport || mappingDirty) {
+      return;
+    }
+    const confirmed = await confirm({
+      title: "ยืนยันการนำเข้าข้อมูล",
+      description: (
+        <span>
+          ระบบจะนำเข้า {preview.rowsReady.toLocaleString("en-US")} แถว
+          และข้าม {preview.rowsSkipped.toLocaleString("en-US")} แถว
+          หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
+        </span>
+      ),
+      confirmText: "นำเข้าข้อมูล",
+    });
+    if (!confirmed) {
+      return;
+    }
     setProgress(0);
-    submitImport.mutate({ file, onProgress: setProgress });
+    submitImport.mutate({ file, mapping, onProgress: setProgress });
   }
 
   const result = submitImport.data;
+  const preview = previewImport.data;
+  const isBusy = previewImport.isPending || submitImport.isPending;
 
   return (
     <PageShell>
@@ -87,14 +305,27 @@ export function ImportDataPage() {
 
               <div className="mt-4">
                 <ImportDropZone
-                  disabled={submitImport.isPending}
+                  disabled={isBusy}
                   file={file}
                   onFileSelect={(next) => {
                     setFile(next);
+                    setMapping({});
+                    setMappingDirty(false);
+                    previewImport.reset();
                     submitImport.reset();
+                    setPreviewProgress(0);
+                    setProgress(0);
                   }}
                 />
               </div>
+
+              {previewImport.isPending ? (
+                <ProgressBar
+                  className="mt-4"
+                  label="กำลังตรวจสอบไฟล์..."
+                  value={previewProgress}
+                />
+              ) : null}
 
               {submitImport.isPending ? (
                 <ProgressBar
@@ -102,6 +333,37 @@ export function ImportDataPage() {
                   label="กำลังอัปโหลด..."
                   value={progress}
                 />
+              ) : null}
+
+              {previewImport.isError ? (
+                <Alert className="mt-4" variant="destructive">
+                  <AlertTitle>ตรวจสอบไฟล์ไม่สำเร็จ</AlertTitle>
+                  <AlertDescription>
+                    {getApiErrorMessage(
+                      previewImport.error,
+                      "เกิดข้อผิดพลาดระหว่างตรวจสอบไฟล์ กรุณาตรวจสอบชนิดไฟล์และหัวคอลัมน์แล้วลองอีกครั้ง",
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {preview ? (
+                <>
+                  <ImportMappingPanel
+                    mapping={mapping}
+                    onMappingChange={handleMappingChange}
+                    preview={preview}
+                  />
+                  {mappingDirty ? (
+                    <Alert className="mt-4" variant="warning">
+                      <AlertTitle>ต้องตรวจสอบไฟล์อีกครั้ง</AlertTitle>
+                      <AlertDescription>
+                        คุณเปลี่ยนการจับคู่คอลัมน์แล้ว กรุณากดตรวจสอบไฟล์อีกครั้งก่อนนำเข้า
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                  <ImportPreviewPanel preview={preview} />
+                </>
               ) : null}
 
               {submitImport.isError ? (
@@ -116,13 +378,24 @@ export function ImportDataPage() {
                 </Alert>
               ) : null}
 
-              <div className="mt-6 flex justify-end">
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button
-                  disabled={!file}
+                  disabled={!file || isBusy}
+                  icon={FileSpreadsheet}
+                  isLoading={previewImport.isPending}
+                  loadingText="กำลังตรวจสอบ"
+                  onClick={() => void handlePreview()}
+                  size="lg"
+                  variant="outline"
+                >
+                  ตรวจสอบไฟล์
+                </Button>
+                <Button
+                  disabled={!file || !preview?.canImport || mappingDirty || previewImport.isPending}
                   icon={Upload}
                   isLoading={submitImport.isPending}
                   loadingText="กำลังนำเข้า"
-                  onClick={handleSubmit}
+                  onClick={() => void handleSubmit()}
                   size="lg"
                 >
                   นำเข้าข้อมูล
@@ -136,8 +409,22 @@ export function ImportDataPage() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle>สถานะไฟล์</CardTitle>
-                  <Badge variant={file ? "success" : "secondary"}>
-                    {file ? "พร้อมนำเข้า" : "รอไฟล์"}
+                  <Badge
+                    variant={
+                      preview?.canImport && !mappingDirty
+                        ? "success"
+                        : file
+                          ? "warning"
+                          : "secondary"
+                    }
+                  >
+                    {preview?.canImport && !mappingDirty
+                      ? "พร้อมนำเข้า"
+                      : mappingDirty
+                        ? "ต้องตรวจสอบใหม่"
+                        : file
+                          ? "รอตรวจสอบ"
+                          : "รอไฟล์"}
                   </Badge>
                 </div>
               </CardHeader>
@@ -200,9 +487,8 @@ export function ImportDataPage() {
             <Alert>
               <AlertDescription>
                 หมายเหตุ:
-                หน้านี้รองรับการอัปโหลดไฟล์ที่มีหัวคอลัมน์ตรงตามเทมเพลต
-                ขั้นตอนจับคู่คอลัมน์
-                และการตรวจ/เพิ่มสถานศึกษาที่ยังไม่มีอยู่ในงานพอร์ตถัดไป
+                หน้านี้ตรวจสอบไฟล์ก่อนนำเข้าจริง และรองรับไฟล์ที่มีหัวคอลัมน์ตรงตามเทมเพลต
+                หากชื่อคอลัมน์ไม่ตรง สามารถจับคู่คอลัมน์หลักก่อนตรวจสอบอีกครั้ง
               </AlertDescription>
             </Alert>
           </div>
@@ -216,6 +502,7 @@ export function ImportDataPage() {
           title="ประวัติการนำเข้าข้อมูล"
         />
       )}
+      {confirmDialog}
     </PageShell>
   );
 }
