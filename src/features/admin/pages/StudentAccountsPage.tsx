@@ -29,6 +29,7 @@ import {
   ErrorState,
   ListPageToolbar,
   PageShell,
+  ProgressBar,
   SummaryMetrics,
   TableActionBar,
 } from "../../../components/layout/page-primitives";
@@ -285,25 +286,8 @@ function AccountGenerationProgress({
 }) {
   return (
     <Alert className="border-primary/20 bg-white">
-      <div className="flex items-center justify-between gap-3">
-        <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
-        <div className="shrink-0 text-sm font-bold text-primary">
-          {Math.round(progress)}%
-        </div>
-      </div>
-      <div
-        aria-label="กำลังประมวลผล"
-        aria-valuemax={100}
-        aria-valuemin={0}
-        aria-valuenow={Math.round(progress)}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
-        role="progressbar"
-      >
-        <div
-          className="h-full w-full origin-left rounded-full bg-primary/70 transition-transform duration-200 ease-out"
-          style={{ transform: `scaleX(${progress / 100})` }}
-        />
-      </div>
+      <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
+      <ProgressBar className="mt-3" label="กำลังประมวลผล" value={progress} />
       <AlertDescription>
         กำลังสร้างสูงสุด {limit} คนในรอบนี้ ผลลัพธ์จะแสดงเมื่อเซิร์ฟเวอร์ทำงานเสร็จ
       </AlertDescription>
