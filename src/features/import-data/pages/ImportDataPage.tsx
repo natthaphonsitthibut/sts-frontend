@@ -48,6 +48,7 @@ import {
 
 const IMPORT_MAPPING_FIELDS = [
   { column: "PersonID_Onec", label: "เลขประจำตัว/เลขบัตร", required: true },
+  { column: "FullName_Onec", label: "ชื่อ-นามสกุล (คอลัมน์เดียว)", required: false },
   { column: "FirstName_Onec", label: "ชื่อ", required: false },
   { column: "LastName_Onec", label: "นามสกุล", required: false },
   { column: "AcademicYear_Onec", label: "ปีการศึกษา", required: true },
@@ -85,7 +86,7 @@ function ImportMappingPanel({
         <div>
           <div className="font-bold text-slate-900">จับคู่คอลัมน์</div>
           <div className="mt-1 text-sm text-slate-500">
-            ระบบจับคู่ให้อัตโนมัติเมื่อชื่อคอลัมน์ตรงเทมเพลต แก้ไขได้ก่อนตรวจสอบอีกครั้ง
+            ระบบรองรับหัวคอลัมน์มาตรฐาน ชื่อทั่วไป หรือ ID และรองรับชื่อ-นามสกุลทั้งแบบรวมและแยกคอลัมน์
           </div>
         </div>
         <Badge variant="secondary">{preview.headers.length} คอลัมน์ในไฟล์</Badge>
@@ -96,6 +97,11 @@ function ImportMappingPanel({
           const sourceHeader = currentMapping[field.column];
           const samples = preview.mappedColumnSamples[field.column] ?? [];
           const sampleIsStale = sourceHeader !== preview.mapping[field.column];
+          const usedByAnotherField = new Set(
+            Object.entries(currentMapping)
+              .filter(([column]) => column !== field.column)
+              .map(([, header]) => header),
+          );
           return (
             <label
               className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-3"
@@ -111,7 +117,7 @@ function ImportMappingPanel({
               >
                 <option value="">ไม่ใช้คอลัมน์นี้</option>
                 {preview.headers.map((header) => (
-                  <option key={header} value={header}>
+                  <option disabled={usedByAnotherField.has(header)} key={header} value={header}>
                     {header}
                   </option>
                 ))}
@@ -129,7 +135,9 @@ function ImportMappingPanel({
                         ? "กดตรวจสอบไฟล์อีกครั้งเพื่ออัปเดตตัวอย่าง"
                         : samples.length > 0
                           ? samples.join(" · ")
-                          : "ไม่มีค่าในแถวตัวอย่าง"}
+                          : field.column === "PersonID_Onec"
+                            ? "ไม่พบค่าที่เป็นเลขประจำตัวในแถวตัวอย่าง"
+                            : "ไม่มีค่าในแถวตัวอย่าง"}
                     </div>
                   </>
                 ) : (
@@ -145,6 +153,12 @@ function ImportMappingPanel({
 }
 
 function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
+  const nameSource = preview.mapping.FullName_Onec
+    ? preview.mapping.FullName_Onec
+    : [preview.mapping.FirstName_Onec, preview.mapping.LastName_Onec]
+        .filter(Boolean)
+        .join(" + ") || "ยังไม่จับคู่";
+
   return (
     <div className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -227,8 +241,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
               <div>
                 ชื่อ
                 <div className="font-normal text-slate-400">
-                  {preview.mapping.FirstName_Onec ?? "ยังไม่จับคู่"} +{" "}
-                  {preview.mapping.LastName_Onec ?? "ยังไม่จับคู่"}
+                  {nameSource}
                 </div>
               </div>
               <div>
@@ -580,20 +593,56 @@ export function ImportDataPage() {
       />
 
       {activeTab === "import" ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div>
           <Card>
             <CardHeader>
-              <CardTitle>รายละเอียดการนำเข้า</CardTitle>
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>รายละเอียดการนำเข้า</CardTitle>
+                <Badge
+                  variant={
+                    preview?.canImport && !mappingDirty && !hasUnresolvedSchools
+                      ? "success"
+                      : file
+                        ? "warning"
+                        : "secondary"
+                  }
+                >
+                  {preview?.canImport && !mappingDirty && !hasUnresolvedSchools
+                    ? "พร้อมนำเข้า"
+                    : mappingDirty
+                      ? "ต้องตรวจสอบใหม่"
+                      : file
+                        ? "รอตรวจสอบ"
+                        : "รอไฟล์"}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-sm font-medium text-slate-500">
-                  ประเภทข้อมูล
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="text-sm font-medium text-slate-500">
+                    ประเภทข้อมูล
+                  </div>
+                  <div className="mt-1 font-bold text-slate-900">
+                    {STUDENT_TERM_IMPORT_LABEL}
+                  </div>
                 </div>
-                <div className="mt-1 font-bold text-slate-900">
-                  {STUDENT_TERM_IMPORT_LABEL}
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="text-sm font-medium text-slate-500">
+                    ไฟล์ที่เลือก
+                  </div>
+                  <div className="mt-1 truncate font-bold text-slate-900">
+                    {file?.name ?? "-"}
+                  </div>
                 </div>
               </div>
+
+              <Alert className="mt-4">
+                <AlertDescription>
+                  ระบบจะตรวจสอบไฟล์ก่อนนำเข้าจริง รองรับหัวคอลัมน์มาตรฐานและชื่อทั่วไป
+                  หากจับคู่ไม่ตรงสามารถเลือกคอลัมน์ใหม่แล้วตรวจสอบอีกครั้ง
+                </AlertDescription>
+              </Alert>
 
               <div className="mt-4">
                 <ImportDropZone
@@ -704,6 +753,35 @@ export function ImportDataPage() {
                 </Alert>
               ) : null}
 
+              {result ? (
+                <Alert className="mt-4" variant="success">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2
+                      className="mt-0.5 size-5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="w-full">
+                      <AlertTitle>นำเข้าข้อมูลสำเร็จ</AlertTitle>
+                      <SummaryMetrics
+                        className="mt-3"
+                        columns={5}
+                        items={[
+                          { label: "ทั้งหมด", value: result.rowsProcessed, tone: "default" },
+                          { label: "เพิ่มใหม่", value: result.rowsInserted, tone: "success" },
+                          { label: "อัปเดต", value: result.rowsUpdated, tone: "default" },
+                          { label: "ข้าม", value: result.rowsSkipped, tone: "warning" },
+                          {
+                            label: "รอตรวจสอบ",
+                            value: result.rowsQuarantined ?? 0,
+                            tone: "warning",
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </Alert>
+              ) : null}
+
               <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button
                   disabled={!file || isBusy}
@@ -735,105 +813,6 @@ export function ImportDataPage() {
               </div>
             </CardContent>
           </Card>
-
-          <div className="space-y-5">
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <CardTitle>สถานะไฟล์</CardTitle>
-                  <Badge
-                    variant={
-                      preview?.canImport && !mappingDirty && !hasUnresolvedSchools
-                        ? "success"
-                        : file
-                          ? "warning"
-                          : "secondary"
-                    }
-                  >
-                    {preview?.canImport && !mappingDirty && !hasUnresolvedSchools
-                      ? "พร้อมนำเข้า"
-                      : mappingDirty
-                        ? "ต้องตรวจสอบใหม่"
-                        : file
-                          ? "รอตรวจสอบ"
-                          : "รอไฟล์"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium text-slate-500">
-                    ประเภทข้อมูล
-                  </div>
-                  <div className="mt-1 font-bold text-slate-900">
-                    {STUDENT_TERM_IMPORT_LABEL}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-slate-500">
-                    ไฟล์ที่เลือก
-                  </div>
-                  <div className="mt-1 truncate font-bold text-slate-900">
-                    {file?.name ?? "-"}
-                  </div>
-                </div>
-
-                {result ? (
-                  <Alert variant="success">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2
-                        className="mt-0.5 size-5 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <div className="w-full">
-                        <AlertTitle>นำเข้าข้อมูลสำเร็จ</AlertTitle>
-                        <SummaryMetrics
-                          className="mt-3"
-                          columns={1}
-                          items={[
-                            {
-                              label: "ทั้งหมด",
-                              value: result.rowsProcessed,
-                              tone: "default",
-                            },
-                            {
-                              label: "เพิ่มใหม่",
-                              value: result.rowsInserted,
-                              tone: "success",
-                            },
-                            {
-                              label: "อัปเดต",
-                              value: result.rowsUpdated,
-                              tone: "default",
-                            },
-                            {
-                              label: "ข้าม",
-                              value: result.rowsSkipped,
-                              tone: "warning",
-                            },
-                            {
-                              label: "รอตรวจสอบ",
-                              value: result.rowsQuarantined ?? 0,
-                              tone: "warning",
-                            },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  </Alert>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Alert>
-              <AlertDescription>
-                หมายเหตุ:
-                หน้านี้ตรวจสอบไฟล์ก่อนนำเข้าจริง และรองรับไฟล์ที่มีหัวคอลัมน์ตรงตามเทมเพลต
-                หากชื่อคอลัมน์ไม่ตรง สามารถจับคู่คอลัมน์หลักก่อนตรวจสอบอีกครั้ง
-              </AlertDescription>
-            </Alert>
-          </div>
         </div>
       ) : activeTab === "quarantine" ? (
         <div className="space-y-4">
