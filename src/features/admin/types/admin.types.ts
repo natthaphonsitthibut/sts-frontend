@@ -2,16 +2,27 @@ import type { PaginationMeta } from "../../../lib/pagination";
 import type { DataScope } from "../../auth/lib/permissions";
 
 // --- System settings ---
+export type SystemSettingValueType = "integer" | "time" | "enum";
+
+export interface SystemSettingEnumOption {
+  value: string;
+  label: string;
+}
+
 export interface SystemSetting {
   setting_key: string;
   setting_value: string;
   description?: string | null;
   updated_at?: string | null;
+  value_type?: SystemSettingValueType | null;
+  enum_options?: SystemSettingEnumOption[] | null;
+  min?: number | null;
+  max?: number | null;
+  editable?: boolean;
 }
 
 export interface SettingsUpdatePayload {
   value: string;
-  description?: string | null;
 }
 
 export interface SettingsUpdateResponse {

@@ -11,6 +11,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { SystemSettingCard } from "../components/SystemSettingCard";
 import { NavButton } from "../../../components/layout/nav-button";
+import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   useSystemSettings,
   useUpdateSetting,
@@ -20,6 +21,10 @@ export function SystemSettingsPage() {
   const { settings, isLoading, isError, refetch } = useSystemSettings();
   const updateSetting = useUpdateSetting();
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredSettings = useMemo(() => {
@@ -40,15 +45,20 @@ export function SystemSettingsPage() {
     );
   }, [settings, searchQuery]);
 
-  function handleSave(
-    key: string,
-    value: string,
-    description?: string | null,
-  ): void {
+  function handleSave(key: string, value: string): void {
     setSavingKey(key);
+    setSaveError(null);
     updateSetting.mutate(
-      { key, payload: { value, description } },
-      { onSettled: () => setSavingKey(null) },
+      { key, payload: { value } },
+      {
+        onError: (error) => {
+          setSaveError({
+            key,
+            message: getApiErrorMessage(error, "บันทึกการตั้งค่าไม่สำเร็จ"),
+          });
+        },
+        onSettled: () => setSavingKey(null),
+      },
     );
   }
 
@@ -98,6 +108,9 @@ export function SystemSettingsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {filteredSettings.map((setting) => (
             <SystemSettingCard
+              errorMessage={
+                saveError?.key === setting.setting_key ? saveError.message : null
+              }
               isSaving={savingKey === setting.setting_key}
               key={setting.setting_key}
               onSave={handleSave}
