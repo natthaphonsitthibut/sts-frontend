@@ -43,3 +43,18 @@ export function formatThaiTimeRemaining(value?: string | Date | null): string {
   if (hours > 0) return `${hours} ชม.`;
   return `${minutes} นาที`;
 }
+
+export function formatThaiRelativeTime(value?: string | Date | null): string {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const totalMinutes = Math.floor((Date.now() - date.getTime()) / 60_000);
+  if (totalMinutes < 1) return "เมื่อสักครู่";
+  if (totalMinutes < 60) return `${totalMinutes} นาทีที่แล้ว`;
+  const hours = Math.floor(totalMinutes / 60);
+  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "เมื่อวาน";
+  if (days < 7) return `${days} วันที่แล้ว`;
+  return formatThaiDate(date);
+}

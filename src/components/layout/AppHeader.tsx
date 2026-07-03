@@ -1,8 +1,9 @@
-import { Bell, GraduationCap, Menu, Settings } from "lucide-react";
+import { GraduationCap, Menu, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar, IconButton } from "../base";
 import { hasPermission, getEffectivePermissions } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
+import { NotificationBell } from "../../features/notifications/components/NotificationBell";
 import { getPageTitle } from "./page-title";
 
 interface AppHeaderProps {
@@ -49,12 +50,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           {getPageTitle(location.pathname)}
         </h1>
         <div className="flex items-center gap-3">
-          <IconButton
-            aria-label="รายการแจ้งเตือน"
-            className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-            icon={Bell}
-            variant="ghost"
-          />
+          {canEditProfile ? <NotificationBell /> : null}
           {canOpenSettings ? (
             <Link
               aria-label="ตั้งค่าระบบ"
