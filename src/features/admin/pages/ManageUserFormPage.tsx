@@ -490,7 +490,7 @@ function UserForm({
           ) : null}
 
           {activeTab !== "info" ? (
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="role" required>
                 ตำแหน่ง

@@ -8,7 +8,6 @@ import { z } from "zod";
 import {
   Alert,
   AlertDescription,
-  Badge,
   Button,
   Card,
   CardContent,
@@ -38,6 +37,7 @@ import { attendanceLookupService } from "../../tasks/api/attendance-lookup.servi
 import { geoService } from "../../tasks/api/geo.service";
 import { getUserAvatarGradient } from "../../admin/lib/admin-presentation";
 import { authService } from "../api/auth.service";
+import { PermissionBadgeList } from "../components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../lib/permissions";
 import { useAuthSessionStore } from "../store/auth-session.store";
 import type { AuthUser, UpdateProfilePayload } from "../types/auth.types";
@@ -434,7 +434,7 @@ export function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <ProfileDetailItem
-                  label="บทบาท"
+                  label="ตำแหน่ง"
                   value={profileText(profileUser?.labels?.join(", ") || profileUser?.roles?.join(", "))}
                 />
                 <ProfileDetailItem
@@ -443,17 +443,9 @@ export function ProfilePage() {
                 />
               </div>
               <div>
-                <div className="mb-2 text-xs font-semibold text-slate-500">Permission</div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">สิทธิ์การใช้งาน</div>
                 <div className="flex flex-wrap gap-2">
-                  {profileUser?.permissions?.length ? (
-                    profileUser.permissions.map((permission) => (
-                      <Badge key={permission} variant="secondary">
-                        {permission}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-slate-500">-</span>
-                  )}
+                  <PermissionBadgeList permissions={profileUser?.permissions ?? []} />
                 </div>
               </div>
             </CardContent>

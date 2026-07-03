@@ -25,6 +25,7 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
+import { PermissionBadgeList } from "../../auth/components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { geoService } from "../../tasks/api/geo.service";
 import { UserAddressRevealDialog } from "../components/UserAddressRevealDialog";
@@ -268,7 +269,7 @@ function UserDetailContent({
         <>
           <DetailSection title="ข้อมูลบัญชี">
             <DetailItem label="ชื่อผู้ใช้" value={text(user.username)} />
-            <DetailItem label="บทบาท" value={getUserRoleText(user)} />
+            <DetailItem label="ตำแหน่ง" value={getUserRoleText(user)} />
             <DetailItem label="สถานะ" value={text(user.status)} />
             <DetailItem label="ต้องเปลี่ยนรหัส" value={text(user.must_change_password)} />
             <DetailItem label="สร้างเมื่อ" value={formatThaiDateTime(user.created_at)} />
@@ -276,19 +277,11 @@ function UserDetailContent({
           </DetailSection>
           <DetailSection title="สิทธิ์และขอบเขตข้อมูล">
             <DetailItem label="ขอบเขตข้อมูล" value={describeScope(user)} />
-            <DetailItem label="จำนวน permission" value={`${permissions.length} รายการ`} />
+            <DetailItem label="จำนวนสิทธิ์" value={`${permissions.length} รายการ`} />
             <div className="sm:col-span-2">
-              <div className="mb-2 text-xs font-semibold text-slate-500">Permission</div>
+              <div className="mb-2 text-xs font-semibold text-slate-500">สิทธิ์การใช้งาน</div>
               <div className="flex flex-wrap gap-2">
-                {permissions.length > 0 ? (
-                  permissions.map((permission) => (
-                    <Badge key={permission} variant="secondary">
-                      {permission}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">-</span>
-                )}
+                <PermissionBadgeList permissions={permissions} />
               </div>
             </div>
           </DetailSection>
