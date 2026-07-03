@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, FileSpreadsheet, Upload } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -10,24 +10,39 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
   Select,
   Tabs,
   useConfirm,
 } from "../../../components/base";
 import {
+  FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
   ProgressBar,
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { ImportDropZone } from "../components/ImportDropZone";
-import { usePreviewImport, useSubmitImport } from "../hooks/useSubmitImport";
+import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
-  STUDENT_TERM_IMPORT_LABEL,
+  useExportImportQuarantine,
+  useImportQuarantine,
+  usePreviewImport,
+  useSubmitImport,
+} from "../hooks/useSubmitImport";
+import {
   type ImportPreviewResult,
+  type QuarantinePageSize,
+  type QuarantineStatus,
+  REASON_LABELS,
+  STUDENT_TERM_IMPORT_LABEL,
 } from "../types/import.types";
 
 const IMPORT_MAPPING_FIELDS = [
@@ -147,12 +162,29 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
           { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default" },
           { label: "เพิ่มใหม่", value: preview.rowsToInsert, tone: "success" },
           { label: "อัปเดตข้อมูลเดิม", value: preview.rowsToUpdate, tone: "default" },
+          { label: "รอตรวจสอบ", value: preview.rowsToQuarantine ?? 0, tone: "warning" },
           { label: "ข้าม", value: preview.rowsSkipped, tone: "warning" },
           { label: "ซ้ำในไฟล์", value: preview.duplicateRows, tone: "warning" },
           { label: "ไม่มีรหัส", value: preview.missingPersonIdRows, tone: "danger" },
           { label: "ข้อมูลภาคเรียนไม่ครบ", value: preview.missingNaturalKeyRows, tone: "danger" },
+          { label: "ไม่พบโรงเรียน", value: preview.missingSchoolRows ?? 0, tone: "danger" },
+          { label: "ชั้นไม่ถูกต้อง", value: preview.gradeIssueRows ?? 0, tone: "danger" },
+          { label: "ห้องไม่ถูกต้อง", value: preview.roomIssueRows ?? 0, tone: "danger" },
+          {
+            label: "มีภาคเรียนในโรงเรียนอื่น",
+            value: preview.differentSchoolRows ?? 0,
+            tone: "warning",
+          },
         ]}
       />
+
+      <Alert>
+        <AlertTitle>กติกาการอัปเดต</AlertTitle>
+        <AlertDescription>
+          ค่าว่างจากไฟล์จะไม่ทับข้อมูลเดิม และระบบจะไม่เปลี่ยนบุคคล ปี เทอม หรือโรงเรียนของ enrollment เดิม
+          หากโรงเรียนต่างกัน ระบบจะสร้าง snapshot ใหม่
+        </AlertDescription>
+      </Alert>
 
       {preview.missingRequiredColumns.length > 0 ? (
         <Alert variant="destructive">
@@ -260,7 +292,9 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                       ? "เพิ่มใหม่"
                       : row.action === "update"
                         ? "อัปเดต"
-                        : "ข้าม"}
+                        : row.action === "quarantine"
+                          ? "รอตรวจสอบ"
+                          : "ข้าม"}
                   </Badge>
                 </div>
                 <div className="text-slate-500">
@@ -280,12 +314,83 @@ export function ImportDataPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
-  const [activeTab, setActiveTab] = useState<"import" | "history">("import");
+  const [activeTab, setActiveTab] = useState<"import" | "quarantine" | "history">("import");
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mappingDirty, setMappingDirty] = useState(false);
   const [progress, setProgress] = useState(0);
   const [previewProgress, setPreviewProgress] = useState(0);
+  const [schoolNames, setSchoolNames] = useState<Record<number, string>>({});
+
+  const [quarantinePage, setQuarantinePage] = useState(1);
+  const [quarantineRowsPerPage, setQuarantineRowsPerPage] =
+    useState<QuarantinePageSize>(20);
+  const [quarantineStatus, setQuarantineStatus] =
+    useState<QuarantineStatus>("PENDING");
+  const [quarantineReasonCode, setQuarantineReasonCode] = useState("");
+  const [quarantineSearch, setQuarantineSearch] = useState("");
+  const quarantineArea = useSchoolAreaFilter();
+  const quarantineScope = useScopeCascade({ lockToActorScope: true });
+  const debouncedQuarantineSearch = useDebouncedValue(
+    quarantineSearch.trim(),
+    350,
+  );
+  const quarantineSchoolId = quarantineScope.schoolId
+    ? Number(quarantineScope.schoolId)
+    : undefined;
+  const quarantineQuery = useImportQuarantine(
+    {
+      page: quarantinePage,
+      limit: quarantineRowsPerPage,
+      status: quarantineStatus,
+      reasonCode: quarantineReasonCode || undefined,
+      search: debouncedQuarantineSearch || undefined,
+      province: quarantineArea.province || undefined,
+      district: quarantineArea.district || undefined,
+      subDistrict: quarantineArea.subDistrict || undefined,
+      schoolId: quarantineSchoolId,
+    },
+    activeTab === "quarantine",
+  );
+  const exportQuarantine = useExportImportQuarantine();
+  const quarantineTotalCount = quarantineQuery.data?.meta.totalCount ?? 0;
+
+  function resetQuarantineList(): void {
+    setQuarantinePage(1);
+  }
+
+  async function downloadQuarantineReport(): Promise<void> {
+    const accepted = await confirm({
+      title: "ยืนยันการดาวน์โหลดรายงาน",
+      description:
+        "ระบบจะดาวน์โหลดรายการตาม filter ที่เลือกอยู่ และบันทึกการดาวน์โหลดไว้ในประวัติ",
+      confirmText: "ดาวน์โหลด",
+    });
+    if (!accepted) {
+      return;
+    }
+    try {
+      const blob = await exportQuarantine.mutateAsync({
+        status: quarantineStatus === "PENDING" ? "PENDING" : "REJECTED",
+        reasonCode: quarantineReasonCode || undefined,
+        search: debouncedQuarantineSearch || undefined,
+        province: quarantineArea.province || undefined,
+        district: quarantineArea.district || undefined,
+        subDistrict: quarantineArea.subDistrict || undefined,
+        schoolId: quarantineSchoolId,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `student-import-${quarantineStatus.toLowerCase()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      // Mutation state renders the API error in the quarantine tab body.
+    }
+  }
 
   async function handlePreview(): Promise<void> {
     if (!file) {
@@ -301,6 +406,9 @@ export function ImportDataPage() {
     if (Object.keys(mapping).length === 0) {
       setMapping(nextPreview.mapping);
     }
+    setSchoolNames(
+      Object.fromEntries((nextPreview.missingSchools ?? []).map((school) => [school.id, ""])),
+    );
     setMappingDirty(false);
   }
 
@@ -319,7 +427,11 @@ export function ImportDataPage() {
 
   async function handleSubmit(): Promise<void> {
     const preview = previewImport.data;
-    if (!file || !preview?.canImport || mappingDirty) {
+    const schools = (preview?.missingSchools ?? []).map((school) => ({
+      id: school.id,
+      name: schoolNames[school.id]?.trim() ?? "",
+    }));
+    if (!file || !preview?.canImport || mappingDirty || schools.some((school) => !school.name)) {
       return;
     }
     const confirmed = await confirm({
@@ -327,7 +439,8 @@ export function ImportDataPage() {
       description: (
         <span>
           ระบบจะเพิ่มใหม่ {preview.rowsToInsert.toLocaleString("en-US")} แถว อัปเดตข้อมูลเดิม{" "}
-          {preview.rowsToUpdate.toLocaleString("en-US")} แถว และข้าม{" "}
+          {preview.rowsToUpdate.toLocaleString("en-US")} แถว ส่งรอตรวจสอบ{" "}
+          {(preview.rowsToQuarantine ?? 0).toLocaleString("en-US")} แถว และข้าม{" "}
           {preview.rowsSkipped.toLocaleString("en-US")} แถว หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
         </span>
       ),
@@ -337,37 +450,122 @@ export function ImportDataPage() {
       return;
     }
     setProgress(0);
-    submitImport.mutate({ file, mapping, onProgress: setProgress });
+    submitImport.mutate({ file, mapping, schools, onProgress: setProgress });
   }
 
   const result = submitImport.data;
   const preview = previewImport.data;
   const isBusy = previewImport.isPending || submitImport.isPending;
+  const hasUnresolvedSchools = (preview?.missingSchools ?? []).some(
+    (school) => !schoolNames[school.id]?.trim(),
+  );
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         actions={
-          can("audit-log") ? (
-            <Tabs
-              aria-label="โหมดนำเข้าข้อมูล"
-              onChange={(value) =>
-                setActiveTab(value === "history" ? "history" : "import")
-              }
-              options={[
-                { value: "import", label: "นำเข้าข้อมูล" },
-                { value: "history", label: "ประวัติ" },
-              ]}
-              value={activeTab}
-            />
-          ) : undefined
+          <Tabs
+            aria-label="โหมดนำเข้าข้อมูล"
+            onChange={(value) =>
+              setActiveTab(
+                value === "quarantine" ? "quarantine" : value === "history" ? "history" : "import",
+              )
+            }
+            options={[
+              { value: "import", label: "นำเข้าข้อมูล" },
+              { value: "quarantine", label: "รอตรวจสอบ" },
+              ...(can("audit-log") ? [{ value: "history", label: "ประวัติ" }] : []),
+            ]}
+            value={activeTab}
+          />
         }
         icon={FileSpreadsheet}
         title="นำเข้าข้อมูล"
         description={
           activeTab === "import"
             ? "อัปโหลดไฟล์ Excel / CSV เพื่อนำเข้าข้อมูลนักเรียน"
-            : "ตรวจสอบประวัติการนำเข้าข้อมูลตามขอบเขตสิทธิ์"
+            : activeTab === "quarantine"
+              ? "แก้ไขรายการที่ต้องตรวจสอบก่อนเข้าสู่ข้อมูลนักเรียน"
+              : "ดูรายการนำเข้าข้อมูลย้อนหลังตามขอบเขตสิทธิ์ของบัญชี"
+        }
+        search={
+          activeTab === "quarantine"
+            ? {
+                value: quarantineSearch,
+                onChange: (value) => {
+                  setQuarantineSearch(value);
+                  resetQuarantineList();
+                },
+                placeholder: "ค้นหาชื่อนักเรียน หรือโรงเรียน...",
+              }
+            : undefined
+        }
+        count={
+          activeTab === "quarantine"
+            ? {
+                value: quarantineQuery.isFetching
+                  ? "กำลังอัปเดต"
+                  : `${quarantineTotalCount.toLocaleString("en-US")} รายการ`,
+              }
+            : undefined
+        }
+        filters={
+          activeTab === "quarantine" ? (
+            <>
+              <SchoolAreaSchoolFilter
+                area={quarantineArea}
+                onSchoolChange={(nextSchoolId) => {
+                  quarantineScope.setSchoolId(nextSchoolId);
+                  resetQuarantineList();
+                }}
+                schoolId={quarantineScope.schoolId}
+                schoolLocked={quarantineScope.schoolLocked}
+              />
+              <FilterSelect
+                ariaLabel="กรองตามสาเหตุ"
+                className="sm:w-[320px]"
+                onChange={(value) => {
+                  setQuarantineReasonCode(value);
+                  resetQuarantineList();
+                }}
+                value={quarantineReasonCode}
+              >
+                <option value="">ทุกสาเหตุ</option>
+                {Object.entries(REASON_LABELS).map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </FilterSelect>
+              <FilterSelect
+                ariaLabel="กรองตามสถานะ"
+                onChange={(value) => {
+                  setQuarantineStatus(value as QuarantineStatus);
+                  resetQuarantineList();
+                }}
+                value={quarantineStatus}
+              >
+                <option value="PENDING">รอตรวจสอบ</option>
+                <option value="RESOLVED">แก้ไขแล้ว</option>
+                <option value="REJECTED">ปฏิเสธแล้ว</option>
+              </FilterSelect>
+            </>
+          ) : undefined
+        }
+        tableActions={
+          activeTab === "quarantine" ? (
+            <Button
+              disabled={quarantineStatus === "RESOLVED"}
+              icon={Download}
+              isLoading={
+                quarantineStatus !== "RESOLVED" && exportQuarantine.isPending
+              }
+              onClick={() => void downloadQuarantineReport()}
+              variant="outline"
+            >
+              ดาวน์โหลดรายงาน
+            </Button>
+          ) : undefined
         }
       />
 
@@ -446,6 +644,40 @@ export function ImportDataPage() {
                       </AlertDescription>
                     </Alert>
                   ) : null}
+                  {(preview.missingSchools ?? []).length > 0 ? (
+                    <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <div>
+                        <div className="font-bold text-amber-950">เพิ่มข้อมูลโรงเรียนที่ยังไม่พบ</div>
+                        <div className="mt-1 text-sm text-amber-800">
+                          กรอกชื่อให้ครบทุกรหัสก่อนนำเข้า ระบบจะสร้างเฉพาะโรงเรียนที่ยังไม่มีในข้อมูลหลัก
+                        </div>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {(preview.missingSchools ?? []).map((school) => (
+                          <label
+                            className="space-y-1.5"
+                            htmlFor={`missing-school-${school.id}`}
+                            key={school.id}
+                          >
+                            <span className="text-sm font-semibold text-amber-950">
+                              รหัสโรงเรียน {school.id}
+                            </span>
+                            <Input
+                              id={`missing-school-${school.id}`}
+                              onChange={(event) =>
+                                setSchoolNames((current) => ({
+                                  ...current,
+                                  [school.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="ชื่อโรงเรียน"
+                              value={schoolNames[school.id] ?? ""}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <ImportPreviewPanel preview={preview} />
                 </>
               ) : null}
@@ -475,7 +707,13 @@ export function ImportDataPage() {
                   ตรวจสอบไฟล์
                 </Button>
                 <Button
-                  disabled={!file || !preview?.canImport || mappingDirty || previewImport.isPending}
+                  disabled={
+                    !file ||
+                    !preview?.canImport ||
+                    mappingDirty ||
+                    hasUnresolvedSchools ||
+                    previewImport.isPending
+                  }
                   icon={Upload}
                   isLoading={submitImport.isPending}
                   loadingText="กำลังนำเข้า"
@@ -495,14 +733,14 @@ export function ImportDataPage() {
                   <CardTitle>สถานะไฟล์</CardTitle>
                   <Badge
                     variant={
-                      preview?.canImport && !mappingDirty
+                      preview?.canImport && !mappingDirty && !hasUnresolvedSchools
                         ? "success"
                         : file
                           ? "warning"
                           : "secondary"
                     }
                   >
-                    {preview?.canImport && !mappingDirty
+                    {preview?.canImport && !mappingDirty && !hasUnresolvedSchools
                       ? "พร้อมนำเข้า"
                       : mappingDirty
                         ? "ต้องตรวจสอบใหม่"
@@ -564,6 +802,11 @@ export function ImportDataPage() {
                               value: result.rowsSkipped,
                               tone: "warning",
                             },
+                            {
+                              label: "รอตรวจสอบ",
+                              value: result.rowsQuarantined ?? 0,
+                              tone: "warning",
+                            },
                           ]}
                         />
                       </div>
@@ -581,6 +824,38 @@ export function ImportDataPage() {
               </AlertDescription>
             </Alert>
           </div>
+        </div>
+      ) : activeTab === "quarantine" ? (
+        <div className="space-y-4">
+          {exportQuarantine.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {getApiErrorMessage(
+                  exportQuarantine.error,
+                  "ดาวน์โหลดรายงานไม่สำเร็จ",
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <ImportQuarantinePanel
+            key={[
+              quarantineStatus,
+              quarantineReasonCode,
+              debouncedQuarantineSearch,
+              quarantineArea.province,
+              quarantineArea.district,
+              quarantineArea.subDistrict,
+              quarantineScope.schoolId,
+            ].join("|")}
+            onPageChange={setQuarantinePage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setQuarantineRowsPerPage(nextRowsPerPage);
+              setQuarantinePage(1);
+            }}
+            page={quarantinePage}
+            query={quarantineQuery}
+            rowsPerPage={quarantineRowsPerPage}
+          />
         </div>
       ) : (
         <AuditLogPanel
