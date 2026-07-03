@@ -48,7 +48,11 @@ import type {
   AttendanceTaskSummary,
 } from "../../attendance/types/attendance.types";
 import { isLinkLocked } from "../lib/task-presentation";
-import { LINK_STATE_OPTIONS } from "../lib/task-options";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 const EMPTY_SUMMARY: AttendanceTaskSummary = {
   total: 0,
@@ -78,15 +82,21 @@ function getLinkState(
   return "ACTIVE";
 }
 
-function AttendanceLinkStateBadge({ task }: { task: AttendanceTask }) {
+function AttendanceLinkStateBadge({
+  catalog,
+  task,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  task: AttendanceTask;
+}) {
   const linkState = getLinkState(task);
-  if (linkState === "ACTIVE") {
-    return <LinkStatusBadge label="ใช้งาน" variant="success" />;
-  }
-  if (linkState === "LOCKED") {
-    return <LinkStatusBadge label="ปิดใช้งาน" variant="destructive" />;
-  }
-  return <LinkStatusBadge label="หมดอายุ" variant="warning" />;
+  const item = findStatusCatalogItem(catalog, linkState);
+  return (
+    <LinkStatusBadge
+      label={item?.label ?? linkState}
+      variant={item?.badgeVariant ?? "secondary"}
+    />
+  );
 }
 
 function compareText(a: string | undefined, b: string | undefined): number {
@@ -105,6 +115,10 @@ function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
 }
 
 export function AttendanceLinksDashboardPage() {
+  const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
+  const linkStateOptions = linkStateCatalog.items.filter((item) =>
+    ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
+  );
   const [status, setStatus] = useState<AttendanceTaskLinkStatus>("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -243,8 +257,9 @@ export function AttendanceLinksDashboardPage() {
               onChange={handleStatusChange}
               value={status}
             >
-              {LINK_STATE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
+              <option value="ALL">ทั้งหมด</option>
+              {linkStateOptions.map((option) => (
+                <option key={option.code} value={option.code}>
                   {option.label}
                 </option>
               ))}
@@ -255,35 +270,48 @@ export function AttendanceLinksDashboardPage() {
 
       <div className="space-y-5">
         <SummaryMetrics
-          items={LINK_STATE_OPTIONS.map((option) => ({
+          items={[
+            { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
+            ...linkStateOptions,
+          ].map((option) => ({
             label: option.label,
             value:
-              option.value === "ACTIVE"
+              option.code === "ACTIVE"
                 ? summary.active
-                : option.value === "LOCKED"
+                : option.code === "LOCKED"
                   ? summary.locked
-                  : option.value === "EXPIRED"
+                  : option.code === "EXPIRED"
                     ? summary.expired
                     : summary.total,
-            tone: option.tone,
+            tone:
+              option.badgeVariant === "success"
+                ? "success"
+                : option.badgeVariant === "warning"
+                  ? "warning"
+                  : option.badgeVariant === "destructive"
+                    ? "danger"
+                    : "default",
             icon:
-              option.value === "ACTIVE"
+              option.code === "ACTIVE"
                 ? CheckCircle2
-                : option.value === "LOCKED"
+                : option.code === "LOCKED"
                   ? Lock
-                  : option.value === "EXPIRED"
+                  : option.code === "EXPIRED"
                     ? Clock
                     : Link2,
           }))}
         />
 
-        {tasksQuery.isError ? (
+        {tasksQuery.isError || linkStateCatalog.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดข้อมูลลิงก์เช็คชื่อได้"
             description="ตรวจสอบสิทธิ์หรือการเชื่อมต่อ backend แล้วลองอีกครั้ง"
-            onRetry={() => void tasksQuery.refetch()}
+            onRetry={() => {
+              void tasksQuery.refetch();
+              linkStateCatalog.refetch();
+            }}
           />
-        ) : tasksQuery.isLoading ? (
+        ) : tasksQuery.isLoading || linkStateCatalog.isLoading ? (
           <SkeletonTable />
         ) : (
           <>
@@ -334,7 +362,7 @@ export function AttendanceLinksDashboardPage() {
                       </div>
                     </DataTableCell>
                     <DataTableCell>
-                    <AttendanceLinkStateBadge task={task} />
+                    <AttendanceLinkStateBadge catalog={linkStateCatalog.items} task={task} />
                     </DataTableCell>
                     <DataTableCell>
                       <LinkTimeSummary

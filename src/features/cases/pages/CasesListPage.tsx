@@ -25,12 +25,10 @@ import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
 import { useCases } from "../hooks/useCases";
-import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   CaseListQuery,
   CaseRecord,
-  CaseStatusCounts,
-  KnownCaseStatus,
 } from "../types/cases.types";
 
 const CASE_STATUS_ICONS = {
@@ -41,25 +39,15 @@ const CASE_STATUS_ICONS = {
   RESOLVED: CheckCircle2,
 } as const;
 
-function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): CaseStatusCounts {
-  return cases.reduce<CaseStatusCounts>(
+function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<string, number> {
+  return cases.reduce<Record<string, number>>(
     (counts, caseRecord) => {
-      if (!CASE_STATUS_ORDER.includes(caseRecord.status as KnownCaseStatus)) {
-        return counts;
-      }
-      const status = caseRecord.status as KnownCaseStatus;
       return {
         ...counts,
-        [status]: counts[status] + 1,
+        [caseRecord.status]: (counts[caseRecord.status] ?? 0) + 1,
       };
     },
-    {
-      OPEN: 0,
-      PENDING_REVIEW: 0,
-      IN_PROGRESS: 0,
-      AWAITING_HELP: 0,
-      RESOLVED: 0,
-    },
+    {},
   );
 }
 
@@ -104,17 +92,18 @@ export function CasesListPage() {
   );
 
   const { cases, meta, isLoading, isError, refetch } = useCases(query);
+  const workflowStatuses = useStatusCatalog("CASE_WORKFLOW");
+  const statuses = workflowStatuses.items;
   const totalCount = meta?.totalCount ?? 0;
-  const statusCounts = useMemo(
+  const statusCounts = useMemo<Record<string, number>>(
     () => ({
-      ...getFallbackCaseStatusCounts([]),
       ...(meta?.statusCounts ?? getFallbackCaseStatusCounts(cases)),
     }),
     [cases, meta?.statusCounts],
   );
   const statusTotal = useMemo(
-    () => CASE_STATUS_ORDER.reduce((total, status) => total + statusCounts[status], 0),
-    [statusCounts],
+    () => statuses.reduce((total, item) => total + (statusCounts[item.code] ?? 0), 0),
+    [statusCounts, statuses],
   );
 
   function handleSearchChange(value: string): void {
@@ -185,15 +174,19 @@ export function CasesListPage() {
           />
         }
         status={status}
+        statuses={statuses}
       />
 
-      {isError ? (
+      {isError || workflowStatuses.isError ? (
         <ErrorState
           title="ไม่สามารถโหลดข้อมูลเคสได้"
           description="เกิดข้อผิดพลาดระหว่างโหลดรายการเคส"
-          onRetry={refetch}
-        />
-      ) : isLoading ? (
+            onRetry={() => {
+              refetch();
+              workflowStatuses.refetch();
+            }}
+          />
+      ) : isLoading || workflowStatuses.isLoading ? (
         <SkeletonTable />
       ) : (
         <div className="space-y-4">
@@ -206,11 +199,11 @@ export function CasesListPage() {
                 tone: "default",
                 icon: ListChecks,
               },
-              ...CASE_STATUS_ORDER.map((caseStatus) => ({
-                label: CASE_STATUS_META[caseStatus].label,
-                value: statusCounts[caseStatus],
-                tone: CASE_STATUS_META[caseStatus].summaryTone,
-                icon: CASE_STATUS_ICONS[caseStatus],
+              ...statuses.map((item) => ({
+                label: item.label,
+                value: statusCounts[item.code] ?? 0,
+                tone: item.summaryTone ?? undefined,
+                icon: CASE_STATUS_ICONS[item.code as keyof typeof CASE_STATUS_ICONS] ?? ListChecks,
               })),
             ]}
           />

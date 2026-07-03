@@ -22,8 +22,9 @@ import {
   getUserInitial,
   getUserRoleText,
 } from "../lib/admin-presentation";
-import { cn } from "../../../lib/utils";
 import type { ManagedUser } from "../types/admin.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface UserTableProps {
   users: ManagedUser[];
@@ -36,10 +37,16 @@ interface UserTableProps {
   reissuingUserId?: number | null;
 }
 
-function StatusBadge({ user }: { user: ManagedUser }) {
-  const status = getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user));
+function StatusBadge({
+  catalog,
+  user,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  user: ManagedUser;
+}) {
+  const status = getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user), catalog);
   return (
-    <Badge className={cn("whitespace-nowrap", status.badgeClass)} variant="secondary">
+    <Badge className="whitespace-nowrap" variant={status.badgeVariant}>
       {status.label}
     </Badge>
   );
@@ -146,12 +153,16 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
 }
 
-function getUserSortValue(user: ManagedUser, key: string): string {
+function getUserSortValue(
+  user: ManagedUser,
+  key: string,
+  catalog: readonly StatusCatalogItem[],
+): string {
   if (key === "name") return getUserDisplayName(user);
   if (key === "role") return getUserRoleText(user);
   if (key === "affiliation") return user.affiliation || "";
   if (key === "status") {
-    return getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user)).label;
+    return getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user), catalog).label;
   }
   if (key === "starts") return user.temporary_password_issued_at ?? "";
   if (key === "expires") return user.temporary_password_expires_at ?? "";
@@ -169,17 +180,18 @@ export function UserTable({
   reactivatingUserId,
   reissuingUserId,
 }: UserTableProps) {
+  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE").items;
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedUsers = useMemo(() => {
     if (!sort) return users;
     return [...users].sort((a, b) => {
       const result = compareText(
-        getUserSortValue(a, sort.key),
-        getUserSortValue(b, sort.key),
+        getUserSortValue(a, sort.key, lifecycleCatalog),
+        getUserSortValue(b, sort.key, lifecycleCatalog),
       );
       return sort.direction === "asc" ? result : -result;
     });
-  }, [users, sort]);
+  }, [lifecycleCatalog, users, sort]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -216,7 +228,7 @@ export function UserTable({
               {user.affiliation || "-"}
             </DataTableCell>
             <DataTableCell>
-              <StatusBadge user={user} />
+              <StatusBadge catalog={lifecycleCatalog} user={user} />
             </DataTableCell>
             <DataTableCell>
               <LinkTimeSummary
@@ -247,7 +259,7 @@ export function UserTable({
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
               <UserIdentity user={user} />
-              <StatusBadge user={user} />
+              <StatusBadge catalog={lifecycleCatalog} user={user} />
             </div>
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm text-slate-500">

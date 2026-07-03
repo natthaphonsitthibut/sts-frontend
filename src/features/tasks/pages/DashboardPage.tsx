@@ -30,11 +30,10 @@ import { casesService } from "../../cases/api/cases.service";
 import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
 import { CaseTable } from "../../cases/components/CaseTable";
 import type { CaseListQuery, CaseRecord } from "../../cases/types/cases.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { DASHBOARD_CASE_STATUS_OPTIONS } from "../lib/task-options";
 
 const CASE_STATUS_SUMMARY_ICONS = {
-  ALL: ListChecks,
   OPEN: AlertCircle,
   IN_PROGRESS: Clock,
   PENDING_REVIEW: ClipboardCheck,
@@ -95,20 +94,14 @@ export function DashboardPage() {
     queryKey: ["task-dashboard-stats"],
     queryFn: casesService.getCaseStats,
   });
+  const workflowStatuses = useStatusCatalog("CASE_WORKFLOW");
+  const statuses = workflowStatuses.items;
 
   const cases = casesQuery.data?.items ?? [];
   const totalCount = casesQuery.data?.meta?.totalCount ?? 0;
 
   const summaryItems = useMemo(() => {
     const stats = statsQuery.data;
-    const countByStatus: Record<string, number> = {
-      ALL: stats?.total ?? 0,
-      OPEN: stats?.open ?? 0,
-      IN_PROGRESS: stats?.inProgress ?? 0,
-      PENDING_REVIEW: stats?.pendingReview ?? 0,
-      AWAITING_HELP: stats?.awaitingHelp ?? 0,
-      RESOLVED: stats?.resolved ?? 0,
-    };
     return [
       {
         label: "เด็กเสี่ยง",
@@ -116,14 +109,22 @@ export function DashboardPage() {
         tone: "warning" as const,
         icon: Meh,
       },
-      ...DASHBOARD_CASE_STATUS_OPTIONS.map((option) => ({
-        label: option.label,
-        value: countByStatus[option.value] ?? 0,
-        tone: option.tone,
-        icon: CASE_STATUS_SUMMARY_ICONS[option.value],
+      {
+        label: "ทั้งหมด",
+        value: stats?.total ?? 0,
+        tone: "default" as const,
+        icon: ListChecks,
+      },
+      ...statuses.map((item) => ({
+        label: item.label,
+        value: stats?.statusCounts?.[item.code] ?? 0,
+        tone: item.summaryTone ?? undefined,
+        icon:
+          CASE_STATUS_SUMMARY_ICONS[item.code as keyof typeof CASE_STATUS_SUMMARY_ICONS] ??
+          ListChecks,
       })),
     ];
-  }, [statsQuery.data]);
+  }, [statsQuery.data, statuses]);
 
   function handleSearchChange(value: string): void {
     setSearch(value);
@@ -158,6 +159,7 @@ export function DashboardPage() {
   function handleRefresh(): void {
     void casesQuery.refetch();
     void statsQuery.refetch();
+    workflowStatuses.refetch();
   }
 
   function handleUpdated(): void {
@@ -215,9 +217,10 @@ export function DashboardPage() {
               onChange={handleStatusChange}
               value={status}
             >
-              {DASHBOARD_CASE_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              <option value="ALL">ทั้งหมด</option>
+              {statuses.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
                 </option>
               ))}
             </FilterSelect>
@@ -231,13 +234,13 @@ export function DashboardPage() {
           items={summaryItems}
         />
 
-        {casesQuery.isError ? (
+        {casesQuery.isError || workflowStatuses.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดข้อมูลเคสได้"
             description="ตรวจสอบการเชื่อมต่อ backend แล้วลองอีกครั้ง"
-            onRetry={() => void casesQuery.refetch()}
+            onRetry={handleRefresh}
           />
-        ) : casesQuery.isLoading ? (
+        ) : casesQuery.isLoading || workflowStatuses.isLoading ? (
           <SkeletonTable />
         ) : (
           <>

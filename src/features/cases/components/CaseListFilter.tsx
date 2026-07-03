@@ -5,7 +5,7 @@ import {
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface CaseListFilterProps {
   searchQuery: string;
@@ -15,6 +15,7 @@ interface CaseListFilterProps {
   schoolFilters?: ReactNode;
   count: number;
   onRefresh: () => Promise<unknown> | unknown;
+  statuses: readonly StatusCatalogItem[];
 }
 
 export function CaseListFilter({
@@ -25,6 +26,7 @@ export function CaseListFilter({
   schoolFilters,
   count,
   onRefresh,
+  statuses,
 }: CaseListFilterProps) {
   return (
     <ListPageToolbar
@@ -46,9 +48,9 @@ export function CaseListFilter({
             value={status}
           >
             <option value="ALL">ทั้งหมด</option>
-            {CASE_STATUS_ORDER.map((value) => (
-              <option key={value} value={value}>
-                {CASE_STATUS_META[value].label}
+            {statuses.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
               </option>
             ))}
           </FilterSelect>

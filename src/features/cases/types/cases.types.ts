@@ -9,6 +9,15 @@ export type KnownCaseStatus =
 
 export type CaseStatus = KnownCaseStatus | (string & {});
 
+export type CaseBadgeVariant =
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "success"
+  | "warning";
+
+export type CaseSummaryTone = "default" | "success" | "warning" | "danger" | "info";
+
 export type CaseReviewAction = "ASSIST" | "FORWARD" | "CLOSE";
 export type CaseResolutionOutcome =
   | "RETURNED_TO_SCHOOL"
@@ -34,6 +43,9 @@ export interface CaseRecord {
   reason?: string | null;
   reason_flagged?: string | null;
   status: CaseStatus;
+  status_label?: string | null;
+  status_badge_variant?: CaseBadgeVariant | null;
+  status_summary_tone?: CaseSummaryTone | null;
   created_at: string;
   active_link_id?: string | null;
   active_link_created_at?: string | null;
@@ -72,6 +84,7 @@ export interface CaseStats {
   today: number;
   pendingReview: number;
   activeLinks?: number;
+  statusCounts?: Partial<Record<CaseStatus, number>>;
 }
 
 export interface CaseReviewRecord {

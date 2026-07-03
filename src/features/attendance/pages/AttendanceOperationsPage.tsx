@@ -68,62 +68,33 @@ import type {
   SchoolCalendarDay,
   SchoolTerm,
 } from "../types/attendance.types";
+import type { BadgeProps } from "../../../components/base";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
-const STATUS_META: Record<
-  AttendanceReconciliationItem["operationalStatus"],
-  { label: string; variant: "success" | "warning" | "destructive" }
-> = {
-  COMPLETED: { label: "ครบ", variant: "success" },
-  MISSING: { label: "ยังไม่เช็ค", variant: "destructive" },
-  INCOMPLETE: { label: "ไม่ครบ", variant: "warning" },
-};
+function getCatalogMeta(items: readonly StatusCatalogItem[], code: string) {
+  const item = findStatusCatalogItem(items, code);
+  return {
+    label: item?.label ?? code,
+    variant: item?.badgeVariant ?? "secondary",
+  };
+}
 
-const TERM_STATUS_META: Record<
-  SchoolTerm["status"],
-  { label: string; variant: "success" | "secondary" | "warning" }
-> = {
-  DRAFT: { label: "ร่าง", variant: "warning" },
-  ACTIVE: { label: "เปิดใช้งาน", variant: "success" },
-  CLOSED: { label: "ปิดภาคเรียน", variant: "secondary" },
-};
-
-const CALENDAR_DAY_META: Record<
-  CalendarDayType,
-  { label: string; variant: "success" | "secondary" | "warning" }
-> = {
-  SCHOOL_DAY: { label: "วันเรียน", variant: "success" },
-  HOLIDAY: { label: "วันหยุด", variant: "secondary" },
-  CANCELLED: { label: "ยกเลิกการเรียน", variant: "warning" },
-};
-
-const ANOMALY_META: Record<
+const ANOMALY_DESCRIPTIONS: Record<
   AttendanceSessionAnomalyType,
-  { label: string; variant: "secondary" | "warning" | "destructive"; description: string }
+  string
 > = {
-  HOLIDAY_ATTENDANCE: {
-    label: "เช็คชื่อในวันหยุด",
-    variant: "warning",
-    description: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  },
-  CANCELLED_ATTENDANCE: {
-    label: "เช็คชื่อในวันที่ยกเลิกเรียน",
-    variant: "warning",
-    description: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  },
-  OUT_OF_TERM: {
-    label: "เช็คชื่อนอกช่วงภาคเรียน",
-    variant: "destructive",
-    description: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  },
-  MISSING_CALENDAR_DAY: {
-    label: "ไม่มีวันในปฏิทิน",
-    variant: "secondary",
-    description: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  },
+  HOLIDAY_ATTENDANCE: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  CANCELLED_ATTENDANCE: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  OUT_OF_TERM: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  MISSING_CALENDAR_DAY: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
 };
 
 function getSummaryToneFromBadgeVariant(
-  variant: "success" | "secondary" | "warning" | "destructive",
+  variant: NonNullable<BadgeProps["variant"]>,
 ): "default" | "success" | "warning" | "danger" {
   if (variant === "success") return "success";
   if (variant === "warning") return "warning";
@@ -138,8 +109,11 @@ const THAI_MONTH_FORMATTER = new Intl.DateTimeFormat("th-TH", {
   year: "numeric",
 });
 
-function formatTermOption(term: SchoolTerm): string {
-  return `${term.academicYear}/${term.semester} · ${TERM_STATUS_META[term.status].label}`;
+function formatTermOption(
+  term: SchoolTerm,
+  catalog: readonly StatusCatalogItem[],
+): string {
+  return `${term.academicYear}/${term.semester} · ${getCatalogMeta(catalog, term.status).label}`;
 }
 
 function pad2(value: number): string {
@@ -227,6 +201,7 @@ function compareReconciliationRows(
   left: AttendanceReconciliationItem,
   right: AttendanceReconciliationItem,
   key: string,
+  catalog: readonly StatusCatalogItem[],
 ): number {
   if (key === "class") {
     return compareText(`${left.grade}/${left.room}`, `${right.grade}/${right.room}`);
@@ -242,8 +217,8 @@ function compareReconciliationRows(
   }
   if (key === "status") {
     return compareText(
-      STATUS_META[left.operationalStatus].label,
-      STATUS_META[right.operationalStatus].label,
+      getCatalogMeta(catalog, left.operationalStatus).label,
+      getCatalogMeta(catalog, right.operationalStatus).label,
     );
   }
   return 0;
@@ -253,6 +228,7 @@ function compareAnomalyRows(
   left: AttendanceSessionAnomalyItem,
   right: AttendanceSessionAnomalyItem,
   key: string,
+  catalog: readonly StatusCatalogItem[],
 ): number {
   if (key === "date") {
     return compareText(left.date, right.date);
@@ -262,8 +238,8 @@ function compareAnomalyRows(
   }
   if (key === "type") {
     return compareText(
-      ANOMALY_META[left.anomalyType].label,
-      ANOMALY_META[right.anomalyType].label,
+      getCatalogMeta(catalog, left.anomalyType).label,
+      getCatalogMeta(catalog, right.anomalyType).label,
     );
   }
   if (key === "recorded") {
@@ -401,6 +377,10 @@ function CalendarMonthGrid({
 }
 
 export function AttendanceOperationsPage() {
+  const reconciliationStatusCatalog = useStatusCatalog("ATTENDANCE_RECONCILIATION");
+  const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
+  const calendarDayCatalog = useStatusCatalog("SCHOOL_CALENDAR_DAY");
+  const anomalyCatalog = useStatusCatalog("ATTENDANCE_ANOMALY");
   const queryClient = useQueryClient();
   const reconciliationDateInputRef = useRef<HTMLInputElement | null>(null);
   const calendarSectionRef = useRef<HTMLDivElement | null>(null);
@@ -568,10 +548,15 @@ export function AttendanceOperationsPage() {
   const sortedRows = useMemo(() => {
     if (!sort) return rows;
     return [...rows].sort((a, b) => {
-      const result = compareReconciliationRows(a, b, sort.key);
+      const result = compareReconciliationRows(
+        a,
+        b,
+        sort.key,
+        reconciliationStatusCatalog.items,
+      );
       return sort.direction === "asc" ? result : -result;
     });
-  }, [rows, sort]);
+  }, [reconciliationStatusCatalog.items, rows, sort]);
   const anomalySummary = anomalyQuery.data?.summary ?? {
     holidayAttendance: 0,
     cancelledAttendance: 0,
@@ -585,10 +570,10 @@ export function AttendanceOperationsPage() {
   const sortedAnomalyRows = useMemo(() => {
     if (!anomalySort) return anomalyRows;
     return [...anomalyRows].sort((a, b) => {
-      const result = compareAnomalyRows(a, b, anomalySort.key);
+      const result = compareAnomalyRows(a, b, anomalySort.key, anomalyCatalog.items);
       return anomalySort.direction === "asc" ? result : -result;
     });
-  }, [anomalyRows, anomalySort]);
+  }, [anomalyCatalog.items, anomalyRows, anomalySort]);
   const reconciliationNotice = reconciliationTermInactive
     ? {
         title: "ภาคเรียนยังไม่เปิดใช้งาน",
@@ -609,7 +594,7 @@ export function AttendanceOperationsPage() {
         }
       : reconciliationCalendarDay && reconciliationCalendarDay.dayType !== "SCHOOL_DAY"
         ? {
-            title: `วันที่ตรวจสอบเป็น${CALENDAR_DAY_META[reconciliationCalendarDay.dayType].label}`,
+            title: `วันที่ตรวจสอบเป็น${getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}`,
             description:
               reconciliationCalendarDay.reason || "วันนี้ไม่มีห้องเรียนที่ต้องเช็คชื่อ",
             variant: "default" as const,
@@ -691,7 +676,7 @@ export function AttendanceOperationsPage() {
               }}
               options={terms.map((term) => ({
                 value: term.id,
-                label: formatTermOption(term),
+                label: formatTermOption(term, termStatusCatalog.items),
               }))}
               placeholder="เลือกภาคเรียน"
               searchable={false}
@@ -718,8 +703,10 @@ export function AttendanceOperationsPage() {
                   <div className="space-y-2">
                     <h2 className="text-base font-bold text-slate-900">ภาคเรียนที่เลือก</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={TERM_STATUS_META[selectedTerm.status].variant}>
-                        {TERM_STATUS_META[selectedTerm.status].label}
+                      <Badge
+                        variant={getCatalogMeta(termStatusCatalog.items, selectedTerm.status).variant}
+                      >
+                        {getCatalogMeta(termStatusCatalog.items, selectedTerm.status).label}
                       </Badge>
                       <span className="text-sm font-semibold text-slate-600">
                         {formatThaiDate(selectedTerm.startsOn)} ถึง {formatThaiDate(selectedTerm.endsOn)}
@@ -782,8 +769,8 @@ export function AttendanceOperationsPage() {
                         ) : calendarQuery.isError ? (
                           <Badge variant="destructive">โหลดปฏิทินไม่สำเร็จ</Badge>
                         ) : selectedCalendarDay ? (
-                          <Badge variant={CALENDAR_DAY_META[calendarDayType].variant}>
-                            {CALENDAR_DAY_META[calendarDayType].label}
+                          <Badge variant={getCatalogMeta(calendarDayCatalog.items, calendarDayType).variant}>
+                            {getCatalogMeta(calendarDayCatalog.items, calendarDayType).label}
                           </Badge>
                         ) : (
                           <Badge variant="warning">ยังไม่มีข้อมูลวันที่นี้</Badge>
@@ -827,8 +814,8 @@ export function AttendanceOperationsPage() {
                             {formatThaiDate(effectiveCalendarDate)}
                           </span>
                           {selectedCalendarDay ? (
-                            <Badge variant={CALENDAR_DAY_META[calendarDayType].variant}>
-                              {CALENDAR_DAY_META[calendarDayType].label}
+                            <Badge variant={getCatalogMeta(calendarDayCatalog.items, calendarDayType).variant}>
+                              {getCatalogMeta(calendarDayCatalog.items, calendarDayType).label}
                             </Badge>
                           ) : (
                             <Badge variant="warning">ยังไม่มีข้อมูล</Badge>
@@ -913,8 +900,8 @@ export function AttendanceOperationsPage() {
                   {reconciliationTermInactive ? (
                     <Badge variant="warning">ยังไม่เปิดใช้งาน</Badge>
                   ) : reconciliationCalendarDay ? (
-                    <Badge variant={CALENDAR_DAY_META[reconciliationCalendarDay.dayType].variant}>
-                      {CALENDAR_DAY_META[reconciliationCalendarDay.dayType].label}
+                    <Badge variant={getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).variant}>
+                      {getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}
                     </Badge>
                   ) : reconciliationDateOutOfRange ? (
                     <Badge variant="warning">นอกช่วงภาคเรียน</Badge>
@@ -995,21 +982,27 @@ export function AttendanceOperationsPage() {
           <SummaryMetrics
             items={[
               {
-                label: STATUS_META.COMPLETED.label,
+                label: getCatalogMeta(reconciliationStatusCatalog.items, "COMPLETED").label,
                 value: summary.completed,
-                tone: getSummaryToneFromBadgeVariant(STATUS_META.COMPLETED.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(reconciliationStatusCatalog.items, "COMPLETED").variant,
+                ),
                 icon: CheckCircle2,
               },
               {
-                label: STATUS_META.MISSING.label,
+                label: getCatalogMeta(reconciliationStatusCatalog.items, "MISSING").label,
                 value: summary.missing,
-                tone: getSummaryToneFromBadgeVariant(STATUS_META.MISSING.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(reconciliationStatusCatalog.items, "MISSING").variant,
+                ),
                 icon: Clock3,
               },
               {
-                label: STATUS_META.INCOMPLETE.label,
+                label: getCatalogMeta(reconciliationStatusCatalog.items, "INCOMPLETE").label,
                 value: summary.incomplete,
-                tone: getSummaryToneFromBadgeVariant(STATUS_META.INCOMPLETE.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(reconciliationStatusCatalog.items, "INCOMPLETE").variant,
+                ),
                 icon: CircleAlert,
               },
             ]}
@@ -1048,7 +1041,10 @@ export function AttendanceOperationsPage() {
                 sort={sort}
               >
                 {sortedRows.map((row) => {
-                  const meta = STATUS_META[row.operationalStatus];
+                  const meta = getCatalogMeta(
+                    reconciliationStatusCatalog.items,
+                    row.operationalStatus,
+                  );
                   return (
                     <DataTableRow key={`${row.gradeLevelId}-${row.room}`}>
                       <DataTableCell className="font-bold">{row.grade} / {row.room}</DataTableCell>
@@ -1062,7 +1058,10 @@ export function AttendanceOperationsPage() {
               </DataTable>
               <TableCardList>
                 {sortedRows.map((row) => {
-                  const meta = STATUS_META[row.operationalStatus];
+                  const meta = getCatalogMeta(
+                    reconciliationStatusCatalog.items,
+                    row.operationalStatus,
+                  );
                   return (
                     <TableCard key={`${row.gradeLevelId}-${row.room}`}>
                       <div className="flex items-start justify-between gap-3">
@@ -1113,27 +1112,35 @@ export function AttendanceOperationsPage() {
           <SummaryMetrics
             items={[
               {
-                label: ANOMALY_META.HOLIDAY_ATTENDANCE.label,
+                label: getCatalogMeta(anomalyCatalog.items, "HOLIDAY_ATTENDANCE").label,
                 value: anomalySummary.holidayAttendance,
-                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.HOLIDAY_ATTENDANCE.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(anomalyCatalog.items, "HOLIDAY_ATTENDANCE").variant,
+                ),
                 icon: CalendarDays,
               },
               {
-                label: ANOMALY_META.CANCELLED_ATTENDANCE.label,
+                label: getCatalogMeta(anomalyCatalog.items, "CANCELLED_ATTENDANCE").label,
                 value: anomalySummary.cancelledAttendance,
-                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.CANCELLED_ATTENDANCE.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(anomalyCatalog.items, "CANCELLED_ATTENDANCE").variant,
+                ),
                 icon: CircleAlert,
               },
               {
-                label: ANOMALY_META.OUT_OF_TERM.label,
+                label: getCatalogMeta(anomalyCatalog.items, "OUT_OF_TERM").label,
                 value: anomalySummary.outOfTerm,
-                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.OUT_OF_TERM.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(anomalyCatalog.items, "OUT_OF_TERM").variant,
+                ),
                 icon: Clock3,
               },
               {
-                label: ANOMALY_META.MISSING_CALENDAR_DAY.label,
+                label: getCatalogMeta(anomalyCatalog.items, "MISSING_CALENDAR_DAY").label,
                 value: anomalySummary.missingCalendarDay,
-                tone: getSummaryToneFromBadgeVariant(ANOMALY_META.MISSING_CALENDAR_DAY.variant),
+                tone: getSummaryToneFromBadgeVariant(
+                  getCatalogMeta(anomalyCatalog.items, "MISSING_CALENDAR_DAY").variant,
+                ),
                 icon: CalendarDays,
               },
             ]}
@@ -1170,7 +1177,7 @@ export function AttendanceOperationsPage() {
                 sort={anomalySort}
               >
                 {sortedAnomalyRows.map((row) => {
-                  const meta = ANOMALY_META[row.anomalyType];
+                  const meta = getCatalogMeta(anomalyCatalog.items, row.anomalyType);
                   return (
                     <DataTableRow key={row.sessionId}>
                       <DataTableCell className="font-semibold tabular-nums text-slate-800">
@@ -1182,7 +1189,9 @@ export function AttendanceOperationsPage() {
                       <DataTableCell>{row.revision}</DataTableCell>
                       <DataTableCell className="text-slate-500">
                         <div>{row.calendarReason || "-"}</div>
-                        <div className="mt-1 text-xs text-slate-400">{meta.description}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {ANOMALY_DESCRIPTIONS[row.anomalyType]}
+                        </div>
                       </DataTableCell>
                       <DataTableCell>
                         <div className="flex flex-wrap gap-2">
@@ -1212,7 +1221,7 @@ export function AttendanceOperationsPage() {
               </DataTable>
               <TableCardList>
                 {sortedAnomalyRows.map((row) => {
-                  const meta = ANOMALY_META[row.anomalyType];
+                  const meta = getCatalogMeta(anomalyCatalog.items, row.anomalyType);
                   return (
                     <TableCard key={row.sessionId}>
                       <div className="flex flex-col gap-3">
@@ -1233,7 +1242,9 @@ export function AttendanceOperationsPage() {
                         </div>
                         <div className="space-y-1 text-sm text-slate-500">
                           <div>{row.calendarReason || "-"}</div>
-                          <div className="text-xs text-slate-400">{meta.description}</div>
+                          <div className="text-xs text-slate-400">
+                            {ANOMALY_DESCRIPTIONS[row.anomalyType]}
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {canManageCalendar ? (

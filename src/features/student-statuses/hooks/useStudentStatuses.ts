@@ -30,6 +30,7 @@ export function useSaveStudentStatus() {
         ? studentStatusService.update(code, {
             labelTh: payload.labelTh,
             category: payload.category,
+            badgeVariant: payload.badgeVariant,
             isActiveForLogin: payload.isActiveForLogin,
             isTerminal: payload.isTerminal,
             requiresFollowup: payload.requiresFollowup,

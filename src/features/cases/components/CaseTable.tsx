@@ -135,7 +135,11 @@ export function CaseTable({
               {caseRecord.active_link_assigned_to || "-"}
             </DataTableCell>
             <DataTableCell>
-              <CaseStatusBadge status={caseRecord.status} />
+              <CaseStatusBadge
+                badgeVariant={caseRecord.status_badge_variant}
+                label={caseRecord.status_label}
+                status={caseRecord.status}
+              />
             </DataTableCell>
             <DataTableCell>
               <LinkTimeSummary
@@ -168,7 +172,11 @@ export function CaseTable({
                   {caseRecord.student_school || "-"}
                 </div>
               </div>
-              <CaseStatusBadge status={caseRecord.status} />
+              <CaseStatusBadge
+                badgeVariant={caseRecord.status_badge_variant}
+                label={caseRecord.status_label}
+                status={caseRecord.status}
+              />
             </div>
             <p className="mt-3 text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}

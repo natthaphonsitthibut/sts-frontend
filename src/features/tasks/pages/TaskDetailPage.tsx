@@ -21,7 +21,6 @@ import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateD
 import {
   canUpdateReferralOutcome,
   getAgencyTypeLabel,
-  getReferralStatusLabel,
 } from "../../cases/lib/case-referral-presentation";
 import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
@@ -33,16 +32,24 @@ import {
   normalizeTaskPublicLink,
 } from "../lib/task-presentation";
 import { VisitMapPreview } from "../components/VisitMapPreview";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 function ReferralCard({
   canUpdate,
   onUpdate,
   referral,
+  statusCatalog,
 }: {
   canUpdate: boolean;
   onUpdate: (referral: CaseReferralRecord) => void;
   referral: CaseReferralRecord;
+  statusCatalog: readonly StatusCatalogItem[];
 }) {
+  const referralStatus = findStatusCatalogItem(statusCatalog, referral.status);
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -56,7 +63,9 @@ function ReferralCard({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="warning">{getReferralStatusLabel(referral.status)}</Badge>
+          <Badge variant={referralStatus?.badgeVariant ?? "secondary"}>
+            {referralStatus?.label ?? referral.status}
+          </Badge>
           {canUpdate ? (
             <Button
               icon={SquarePen}
@@ -96,6 +105,11 @@ function ReferralCard({
 }
 
 export function TaskDetailPage() {
+  const caseStatusCatalog = useStatusCatalog("CASE_WORKFLOW").items;
+  const taskStatusCatalog = useStatusCatalog("TASK_WORKFLOW").items;
+  const linkDisplayCatalog = useStatusCatalog("TASK_LINK_STATE").items;
+  const linkStatusCatalog = useStatusCatalog("TASK_LINK_STATUS").items;
+  const referralStatusCatalog = useStatusCatalog("CASE_REFERRAL").items;
   const { taskId } = useParams<{ taskId: string }>();
   const { can } = usePermissions();
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
@@ -158,8 +172,11 @@ export function TaskDetailPage() {
   const referrals = task.referrals ?? [];
   // Only the current active link in the chain can be opened/closed by an admin.
   const activeLink = task.chain.find(
-    (link) => getTaskLinkDisplayStatus(link).state === "ACTIVE",
+    (link) =>
+      getTaskLinkDisplayStatus(link, linkDisplayCatalog, linkStatusCatalog).state === "ACTIVE",
   );
+  const caseStatus = findStatusCatalogItem(caseStatusCatalog, task.case_status);
+  const taskStatus = findStatusCatalogItem(taskStatusCatalog, task.task_status);
 
   return (
     <PageShell>
@@ -202,9 +219,15 @@ export function TaskDetailPage() {
             <div>
               <div className="text-sm text-slate-500">สถานะ</div>
               {task.case_status ? (
-                <CaseStatusBadge status={task.case_status} />
+                <CaseStatusBadge
+                  badgeVariant={caseStatus?.badgeVariant}
+                  label={caseStatus?.label}
+                  status={task.case_status}
+                />
               ) : (
-                <Badge variant="secondary">{getStatusLabel(task.task_status)}</Badge>
+                <Badge variant={taskStatus?.badgeVariant ?? "secondary"}>
+                  {getStatusLabel(task.task_status, taskStatusCatalog)}
+                </Badge>
               )}
             </div>
             <div>
@@ -230,7 +253,11 @@ export function TaskDetailPage() {
           <h2 className="mb-4 text-lg font-bold text-slate-900">เส้นทางการมอบหมาย</h2>
           <ol className="relative space-y-0 before:absolute before:bottom-4 before:left-3 before:top-4 before:w-px before:bg-slate-200">
             {task.chain.map((link, index) => {
-              const linkStatus = getTaskLinkDisplayStatus(link);
+              const linkStatus = getTaskLinkDisplayStatus(
+                link,
+                linkDisplayCatalog,
+                linkStatusCatalog,
+              );
               return (
                 <li
                   className="relative min-w-0 border-b border-slate-100 py-4 pl-9 last:border-b-0"
@@ -335,6 +362,7 @@ export function TaskDetailPage() {
                   key={referral.id}
                   onUpdate={openReferralOutcome}
                   referral={referral}
+                  statusCatalog={referralStatusCatalog}
                 />
               ))}
             </div>

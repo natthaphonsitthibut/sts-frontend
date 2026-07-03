@@ -101,6 +101,11 @@ export const ImportDataPage = lazy(() =>
     default: module.ImportDataPage,
   })),
 );
+export const ImportQuarantineDetailPage = lazy(() =>
+  import("../features/import-data/pages/ImportQuarantineDetailPage").then((module) => ({
+    default: module.ImportQuarantineDetailPage,
+  })),
+);
 export const LoginLinksPage = lazy(() =>
   import("../features/login-links/pages/LoginLinksPage").then((module) => ({
     default: module.LoginLinksPage,

@@ -3,6 +3,8 @@ import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { isLinkLocked as isTaskLinkLocked } from "../../../lib/link-lock";
 import type { AttendanceTaskStatus } from "../types/task.types";
 import type { TaskChainLink } from "../types/task.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 export function formatDateTime(value?: string | null): string {
   return formatThaiDateTime(value);
@@ -39,18 +41,11 @@ export function getTaskTypeLabel(type?: string | null): string {
   return type || "-";
 }
 
-export function getStatusLabel(status?: string | null): string {
-  if (status === "ACTIVE") return "ใช้งาน";
-  if (status === "LOCKED") return "ปิดใช้งาน";
-  if (status === "EXPIRED") return "หมดอายุ";
-  if (status === "COMPLETED") return "เสร็จสิ้น";
-  if (status === "DELEGATED") return "ส่งต่อแล้ว";
-  if (status === "OPEN") return "เปิดเคส";
-  if (status === "PENDING_REVIEW") return "รอตรวจ";
-  if (status === "IN_PROGRESS") return "กำลังติดตาม";
-  if (status === "AWAITING_HELP") return "รอช่วยเหลือ";
-  if (status === "RESOLVED") return "ปิดเคส";
-  return status || "-";
+export function getStatusLabel(
+  status: string | null | undefined,
+  catalog: readonly StatusCatalogItem[],
+): string {
+  return findStatusCatalogItem(catalog, status)?.label ?? status ?? "-";
 }
 
 export interface TaskLinkDisplayStatus {
@@ -59,30 +54,61 @@ export interface TaskLinkDisplayStatus {
   state: "ACTIVE" | "LOCKED" | "EXPIRED" | "COMPLETED" | "OTHER";
 }
 
-export function getTaskLinkDisplayStatus(link: TaskChainLink): TaskLinkDisplayStatus {
+export function getTaskLinkDisplayStatus(
+  link: TaskChainLink,
+  displayCatalog: readonly StatusCatalogItem[],
+  persistedCatalog: readonly StatusCatalogItem[] = [],
+): TaskLinkDisplayStatus {
   const hasSubmission = Boolean(link.submission?.submitted_at || link.submission);
   if (link.status === "COMPLETED" || hasSubmission) {
-    return { label: "เสร็จสิ้น", variant: "success", state: "COMPLETED" };
+    const item = findStatusCatalogItem(displayCatalog, "COMPLETED");
+    return {
+      label: item?.label ?? "COMPLETED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "COMPLETED",
+    };
   }
   const expiresAt = link.expires_at ? new Date(link.expires_at) : null;
   if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
-    return { label: "หมดอายุ", variant: "warning", state: "EXPIRED" };
+    const item = findStatusCatalogItem(displayCatalog, "EXPIRED");
+    return {
+      label: item?.label ?? "EXPIRED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "EXPIRED",
+    };
   }
   if (isTaskLinkLocked(link.admin_locked)) {
-    return { label: "ปิดใช้งาน", variant: "destructive", state: "LOCKED" };
+    const item = findStatusCatalogItem(displayCatalog, "LOCKED");
+    return {
+      label: item?.label ?? "LOCKED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "LOCKED",
+    };
   }
 
   if (link.status === "ACTIVE") {
-    return { label: "ใช้งาน", variant: "success", state: "ACTIVE" };
+    const item = findStatusCatalogItem(displayCatalog, "ACTIVE");
+    return {
+      label: item?.label ?? "ACTIVE",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "ACTIVE",
+    };
   }
 
-  return { label: getStatusLabel(link.status), variant: "secondary", state: "OTHER" };
+  const item = findStatusCatalogItem(persistedCatalog, link.status);
+  return {
+    label: item?.label ?? link.status ?? "-",
+    variant: item?.badgeVariant ?? "secondary",
+    state: "OTHER",
+  };
 }
 
-export function getAttendanceStatusLabel(status: AttendanceTaskStatus | string): string {
-  if (status === "P_ABSENT" || status === "2" || status === "ABSENT") return "ขาด";
-  if (status === "P_LATE" || status === "3" || status === "LATE") return "สาย";
-  return "มา";
+export function getAttendanceStatusItem(
+  status: AttendanceTaskStatus | string,
+  catalog: readonly StatusCatalogItem[],
+): StatusCatalogItem | undefined {
+  const alias = status === "ABSENT" ? "P_ABSENT" : status === "LATE" ? "P_LATE" : status;
+  return findStatusCatalogItem(catalog, alias);
 }
 
 export function buildLineShareUrl(url: string): string {

@@ -18,6 +18,7 @@ import {
   ExpiredPage,
   ForbiddenPage,
   ImportDataPage,
+  ImportQuarantineDetailPage,
   LockedPage,
   LoginLinkDetailPage,
   LoginLinksPage,
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<ProfilePage />),
       },
       {
+        path: "profile/permissions",
+        element: protectedElement(<ProfilePage />),
+      },
+      {
         path: "students",
         element: protectedElement(<StudentListPage />, "students"),
       },
@@ -108,6 +113,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance",
+        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        path: "attendance/history",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
       {
@@ -138,6 +147,18 @@ export const router = createBrowserRouter([
         element: protectedElement(<ImportDataPage />, "import-data"),
       },
       {
+        path: "import-data/quarantine",
+        element: protectedElement(<ImportDataPage />, "import-data"),
+      },
+      {
+        path: "import-data/history",
+        element: protectedElement(<ImportDataPage />, "import-data"),
+      },
+      {
+        path: "import-data/quarantine/:id",
+        element: protectedElement(<ImportQuarantineDetailPage />, "import-data"),
+      },
+      {
         path: "manage-users",
         element: protectedElement(<ManageUsersPage />, "manage-users-list"),
       },
@@ -146,8 +167,28 @@ export const router = createBrowserRouter([
         element: protectedElement(<UserDetailPage />, "manage-users-list"),
       },
       {
+        path: "manage-users/:id/permissions",
+        element: protectedElement(<UserDetailPage />, "manage-users-list"),
+      },
+      {
         path: "manage-student-accounts",
         element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
+      },
+      {
+        path: "manage-student-accounts/generate",
+        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
+      },
+      {
+        path: "manage-student-accounts/batch",
+        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
+      },
+      {
+        path: "manage-student-accounts/history",
+        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
+      },
+      {
+        path: "manage-users/history",
+        element: protectedElement(<ManageUsersPage />, "manage-users-list"),
       },
       {
         path: "manage-users/new",
@@ -155,6 +196,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "manage-users/:id/edit",
+        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id/edit/permissions",
         element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
       },
       {

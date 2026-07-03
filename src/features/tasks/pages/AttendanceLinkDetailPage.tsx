@@ -14,30 +14,18 @@ import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggl
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
 import { loginLinksService } from "../../login-links/api/login-links.service";
-import type { AdminLinkDetail } from "../../login-links/types/login-links.types";
 import {
   formatDate,
-  getAttendanceStatusLabel,
+  getAttendanceStatusItem,
   toAbsoluteUrl,
 } from "../lib/task-presentation";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
 
 export const ATTENDANCE_LINK_DETAIL_KEY = "attendance-link-detail";
 const ATTENDANCE_TASKS_KEY = "attendance-link-tasks";
-
-const RECORD_STATUS_VARIANT: Record<string, "success" | "warning" | "destructive"> = {
-  มา: "success",
-  สาย: "warning",
-  ขาด: "destructive",
-};
-
-const LINK_STATUS: Record<
-  AdminLinkDetail["status"],
-  { label: string; variant: "success" | "destructive" | "warning" }
-> = {
-  ACTIVE: { label: "ใช้งาน", variant: "success" },
-  LOCKED: { label: "ปิดใช้งาน", variant: "destructive" },
-  EXPIRED: { label: "หมดอายุ", variant: "warning" },
-};
 
 /**
  * Detail page for one attendance link — who was checked and their status.
@@ -45,6 +33,8 @@ const LINK_STATUS: Record<
  * expired, and lets the admin open/close it from here.
  */
 export function AttendanceLinkDetailPage() {
+  const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE").items;
+  const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const { linkId = "" } = useParams<{ linkId: string }>();
   const location = useLocation();
   const stateDate = (location.state as { date?: string } | null)?.date;
@@ -80,7 +70,7 @@ export function AttendanceLinkDetailPage() {
   const detail = detailQuery.data;
   const records = detail.records ?? [];
   const publicLink = toAbsoluteUrl(detail.magic_link ?? "");
-  const statusMeta = LINK_STATUS[detail.status];
+  const statusMeta = findStatusCatalogItem(linkStateCatalog, detail.status);
   const canToggleLink = detail.status !== "EXPIRED";
 
   return (
@@ -108,7 +98,10 @@ export function AttendanceLinkDetailPage() {
         <Card className="rounded-lg p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-slate-900">ข้อมูลการเช็คชื่อ</h2>
-            <LinkStatusBadge label={statusMeta.label} variant={statusMeta.variant} />
+            <LinkStatusBadge
+              label={statusMeta?.label ?? detail.status}
+              variant={statusMeta?.badgeVariant ?? "secondary"}
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -160,7 +153,10 @@ export function AttendanceLinkDetailPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {records.map((record) => {
-                const label = getAttendanceStatusLabel(String(record.status));
+                const status = getAttendanceStatusItem(
+                  String(record.status),
+                  attendanceStatusCatalog,
+                );
                 return (
                   <li
                     className="flex items-center justify-between gap-3 py-2.5"
@@ -171,7 +167,9 @@ export function AttendanceLinkDetailPage() {
                         {record.student_name}
                       </div>
                     </div>
-                    <Badge variant={RECORD_STATUS_VARIANT[label] ?? "secondary"}>{label}</Badge>
+                    <Badge variant={status?.badgeVariant ?? "secondary"}>
+                      {status?.shortLabel ?? status?.label ?? String(record.status)}
+                    </Badge>
                   </li>
                 );
               })}

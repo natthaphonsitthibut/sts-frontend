@@ -16,7 +16,8 @@ import {
   getAccountLifecycleStatusMeta,
   getUserAvatarGradient,
 } from "../lib/admin-presentation";
-import { cn } from "../../../lib/utils";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 type IdCollection = ReadonlySet<number> | readonly number[];
 
@@ -55,12 +56,16 @@ function formatClassLevel(row: StudentAccountManagementItem): string {
   return `${row.grade ?? "-"} / ${row.room ?? "-"}`;
 }
 
-function getSortValue(row: StudentAccountManagementItem, key: string): string {
+function getSortValue(
+  row: StudentAccountManagementItem,
+  key: string,
+  catalog: readonly StatusCatalogItem[],
+): string {
   if (key === "student") return row.studentName;
   if (key === "school") return row.schoolName ?? "";
   if (key === "class") return formatClassLevel(row);
   if (key === "username") return row.username;
-  if (key === "status") return getAccountLifecycleStatusMeta(row.status).label;
+  if (key === "status") return getAccountLifecycleStatusMeta(row.status, catalog).label;
   if (key === "accountStatus") return row.accountStatus ?? "";
   if (key === "starts") return row.temporaryPasswordIssuedAt ?? "";
   if (key === "expires") return row.temporaryPasswordExpiresAt ?? "";
@@ -68,15 +73,27 @@ function getSortValue(row: StudentAccountManagementItem, key: string): string {
   return "";
 }
 
-function StatusBadge({ row }: { row: StudentAccountManagementItem }) {
-  const status = getAccountLifecycleStatusMeta(row.status);
-  return <Badge className={status.badgeClass} variant="secondary">{status.label}</Badge>;
+function StatusBadge({
+  catalog,
+  row,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  row: StudentAccountManagementItem;
+}) {
+  const status = getAccountLifecycleStatusMeta(row.status, catalog);
+  return <Badge variant={status.badgeVariant}>{status.label}</Badge>;
 }
 
-function AccountState({ row }: { row: StudentAccountManagementItem }) {
-  const status = getAccountLifecycleStatusMeta(row.status);
+function AccountState({
+  catalog,
+  row,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  row: StudentAccountManagementItem;
+}) {
+  const status = getAccountLifecycleStatusMeta(row.status, catalog);
   return (
-    <Badge className={cn("w-full justify-center", status.badgeClass)} variant="secondary">
+    <Badge className="w-full justify-center" variant={status.badgeVariant}>
       {status.label}
     </Badge>
   );
@@ -195,6 +212,7 @@ export function StudentAccountManagementTable({
   pendingReissueIds,
   sort,
 }: StudentAccountManagementTableProps) {
+  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE").items;
   const [localSort, setLocalSort] = useState<DataTableSortState | undefined>();
   const activeSort = onSortChange ? sort : localSort;
   const setActiveSort = onSortChange ?? setLocalSort;
@@ -203,12 +221,12 @@ export function StudentAccountManagementTable({
     if (!activeSort) return rows;
     return [...rows].sort((left, right) => {
       const result = compareText(
-        getSortValue(left, activeSort.key),
-        getSortValue(right, activeSort.key),
+        getSortValue(left, activeSort.key, lifecycleCatalog),
+        getSortValue(right, activeSort.key, lifecycleCatalog),
       );
       return activeSort.direction === "asc" ? result : -result;
     });
-  }, [rows, activeSort]);
+  }, [activeSort, lifecycleCatalog, rows]);
 
   const allSelected =
     sortedRows.length > 0 && sortedRows.every((row) => hasId(selectedIds, row.userId));
@@ -284,7 +302,7 @@ export function StudentAccountManagementTable({
                 {formatClassLevel(row)}
               </DataTableCell>
               <DataTableCell>
-                <AccountState row={row} />
+                <AccountState catalog={lifecycleCatalog} row={row} />
               </DataTableCell>
               <DataTableCell>
                 <LinkTimeSummary
@@ -330,7 +348,7 @@ export function StudentAccountManagementTable({
                   />
                   <StudentIdentity row={row} />
                 </div>
-                <StatusBadge row={row} />
+                <StatusBadge catalog={lifecycleCatalog} row={row} />
               </div>
               <div className="mt-3 grid gap-1 text-sm text-slate-600">
                 <div className="font-medium">{row.schoolName || "-"}</div>

@@ -23,6 +23,7 @@ import {
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
@@ -34,6 +35,7 @@ import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
   useExportImportQuarantine,
   useImportQuarantine,
+  useImportQuarantineLookups,
   usePreviewImport,
   useSubmitImport,
 } from "../hooks/useSubmitImport";
@@ -41,7 +43,6 @@ import {
   type ImportPreviewResult,
   type QuarantinePageSize,
   type QuarantineStatus,
-  REASON_LABELS,
   STUDENT_TERM_IMPORT_LABEL,
 } from "../types/import.types";
 
@@ -314,7 +315,14 @@ export function ImportDataPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
-  const [activeTab, setActiveTab] = useState<"import" | "quarantine" | "history">("import");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      import: "/import-data",
+      quarantine: "/import-data/quarantine",
+      history: "/import-data/history",
+    } as const,
+    "import",
+  );
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mappingDirty, setMappingDirty] = useState(false);
@@ -352,8 +360,12 @@ export function ImportDataPage() {
     },
     activeTab === "quarantine",
   );
+  const quarantineLookups = useImportQuarantineLookups();
   const exportQuarantine = useExportImportQuarantine();
   const quarantineTotalCount = quarantineQuery.data?.meta.totalCount ?? 0;
+  const retryEligibleLabel =
+    quarantineLookups.data?.resolutionStates.find((state) => state.code === "RETRY_ELIGIBLE")
+      ?.label ?? "RETRY_ELIGIBLE";
 
   function resetQuarantineList(): void {
     setQuarantinePage(1);
@@ -371,7 +383,7 @@ export function ImportDataPage() {
     }
     try {
       const blob = await exportQuarantine.mutateAsync({
-        status: quarantineStatus === "PENDING" ? "PENDING" : "REJECTED",
+        status: quarantineStatus,
         reasonCode: quarantineReasonCode || undefined,
         search: debouncedQuarantineSearch || undefined,
         province: quarantineArea.province || undefined,
@@ -466,11 +478,7 @@ export function ImportDataPage() {
         actions={
           <Tabs
             aria-label="โหมดนำเข้าข้อมูล"
-            onChange={(value) =>
-              setActiveTab(
-                value === "quarantine" ? "quarantine" : value === "history" ? "history" : "import",
-              )
-            }
+            onChange={setActiveTab}
             options={[
               { value: "import", label: "นำเข้าข้อมูล" },
               { value: "quarantine", label: "รอตรวจสอบ" },
@@ -531,9 +539,9 @@ export function ImportDataPage() {
                 value={quarantineReasonCode}
               >
                 <option value="">ทุกสาเหตุ</option>
-                {Object.entries(REASON_LABELS).map(([code, label]) => (
-                  <option key={code} value={code}>
-                    {label}
+                {(quarantineLookups.data?.reasons ?? []).map((reason) => (
+                  <option key={reason.code} value={reason.code}>
+                    {reason.label}
                   </option>
                 ))}
               </FilterSelect>
@@ -545,9 +553,14 @@ export function ImportDataPage() {
                 }}
                 value={quarantineStatus}
               >
-                <option value="PENDING">รอตรวจสอบ</option>
-                <option value="RESOLVED">แก้ไขแล้ว</option>
-                <option value="REJECTED">ปฏิเสธแล้ว</option>
+                {!quarantineLookups.data ? (
+                  <option value={quarantineStatus}>{quarantineStatus}</option>
+                ) : null}
+                {(quarantineLookups.data?.statuses ?? []).map((status) => (
+                  <option key={status.code} value={status.code}>
+                    {status.label}
+                  </option>
+                ))}
               </FilterSelect>
             </>
           ) : undefined
@@ -555,11 +568,8 @@ export function ImportDataPage() {
         tableActions={
           activeTab === "quarantine" ? (
             <Button
-              disabled={quarantineStatus === "RESOLVED"}
               icon={Download}
-              isLoading={
-                quarantineStatus !== "RESOLVED" && exportQuarantine.isPending
-              }
+              isLoading={exportQuarantine.isPending}
               onClick={() => void downloadQuarantineReport()}
               variant="outline"
             >
@@ -838,6 +848,14 @@ export function ImportDataPage() {
             </Alert>
           ) : null}
           <ImportQuarantinePanel
+            filters={{
+              reasonCode: quarantineReasonCode || undefined,
+              search: debouncedQuarantineSearch || undefined,
+              province: quarantineArea.province || undefined,
+              district: quarantineArea.district || undefined,
+              subDistrict: quarantineArea.subDistrict || undefined,
+              schoolId: quarantineSchoolId,
+            }}
             key={[
               quarantineStatus,
               quarantineReasonCode,
@@ -854,14 +872,21 @@ export function ImportDataPage() {
             }}
             page={quarantinePage}
             query={quarantineQuery}
+            retryEligibleLabel={retryEligibleLabel}
             rowsPerPage={quarantineRowsPerPage}
+            showRetryBanner={quarantineStatus === "PENDING"}
           />
         </div>
       ) : (
         <AuditLogPanel
+          actionOptions={[
+            { value: "DATA_IMPORT", label: "นำเข้าข้อมูล" },
+            { value: "IMPORT_QUARANTINE_RESOLVED", label: "แก้ไขรายการรอตรวจสอบ" },
+            { value: "IMPORT_QUARANTINE_REJECTED", label: "ปฏิเสธรายการรอตรวจสอบ" },
+            { value: "IMPORT_QUARANTINE_EXPORT", label: "ดาวน์โหลดรายงาน" },
+          ]}
           domain="imports"
           description="ดูรายการนำเข้าข้อมูลย้อนหลังตามขอบเขตสิทธิ์ของบัญชี"
-          showActionColumn={false}
           showReferenceColumn={false}
           title="ประวัติการนำเข้าข้อมูล"
         />

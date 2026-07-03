@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { FormErrorAlert, Tabs, useConfirm } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -37,12 +38,8 @@ import {
   useReissueTemporaryPassword,
   useUsers,
 } from "../hooks/useUsers";
-import {
-  ACCOUNT_LIFECYCLE_STATUS_META,
-  ACCOUNT_LIFECYCLE_STATUS_ORDER,
-  getManagedUserLifecycleStatus,
-  getUserDisplayName,
-} from "../lib/admin-presentation";
+import { getManagedUserLifecycleStatus, getUserDisplayName } from "../lib/admin-presentation";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   AccountDeactivationPayload,
   ManagedUser,
@@ -94,7 +91,13 @@ export function ManageUsersPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"manage" | "history">("manage");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      manage: "/manage-users",
+      history: "/manage-users/history",
+    } as const,
+    "manage",
+  );
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [generatedPassword, setGeneratedPassword] = useState("");
@@ -131,6 +134,7 @@ export function ManageUsersPage() {
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
+  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE");
   const totalCount = meta?.totalCount ?? 0;
   const lifecycleStatusCounts = useMemo(
     () => meta?.lifecycleStatusCounts ?? getFallbackUserStatusCounts(users),
@@ -138,11 +142,13 @@ export function ManageUsersPage() {
   );
   const lifecycleStatusTotal = useMemo(
     () =>
-      ACCOUNT_LIFECYCLE_STATUS_ORDER.reduce(
-        (total, status) => total + lifecycleStatusCounts[status],
+      lifecycleCatalog.items.reduce(
+        (total, item) =>
+          total +
+          (lifecycleStatusCounts[item.code as keyof StudentAccountStatusCounts] ?? 0),
         0,
       ),
-    [lifecycleStatusCounts],
+    [lifecycleCatalog.items, lifecycleStatusCounts],
   );
 
   function handleSearchChange(value: string): void {
@@ -235,9 +241,7 @@ export function ManageUsersPage() {
           can("audit-log") ? (
             <Tabs
               aria-label="โหมดจัดการผู้ใช้งาน"
-              onChange={(value) =>
-                setActiveTab(value === "history" ? "history" : "manage")
-              }
+              onChange={setActiveTab}
               options={[
                 { value: "manage", label: "จัดการผู้ใช้งาน" },
                 { value: "history", label: "ประวัติ" },
@@ -295,13 +299,16 @@ export function ManageUsersPage() {
             fallback="เปิดใช้งานบัญชีไม่สำเร็จ กรุณาลองอีกครั้ง"
           />
 
-          {isError ? (
+          {isError || lifecycleCatalog.isError ? (
             <ErrorState
               title="ไม่สามารถโหลดผู้ใช้งานได้"
               description="เกิดข้อผิดพลาดระหว่างโหลดรายชื่อผู้ใช้งาน"
-              onRetry={refetch}
+              onRetry={() => {
+                refetch();
+                lifecycleCatalog.refetch();
+              }}
             />
-          ) : isLoading ? (
+          ) : isLoading || lifecycleCatalog.isLoading ? (
             <SkeletonTable />
           ) : (
             <div className="space-y-4">
@@ -314,11 +321,13 @@ export function ManageUsersPage() {
                     tone: "default",
                     icon: Users,
                   },
-                  ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
-                    label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
-                    value: lifecycleStatusCounts[status],
-                    tone: ACCOUNT_LIFECYCLE_STATUS_META[status].summaryTone,
-                    icon: USER_STATUS_ICONS[status],
+                  ...lifecycleCatalog.items.map((item) => ({
+                    label: item.label,
+                    value:
+                      lifecycleStatusCounts[item.code as keyof StudentAccountStatusCounts] ?? 0,
+                    tone: item.summaryTone ?? "default",
+                    icon:
+                      USER_STATUS_ICONS[item.code as keyof typeof USER_STATUS_ICONS] ?? Users,
                   })),
                 ]}
               />

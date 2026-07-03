@@ -1,16 +1,27 @@
 import { Badge } from "../../../components/base";
-import { cn } from "../../../lib/utils";
-import { getCaseStatusMeta } from "../lib/case-presentation";
-import type { CaseStatus } from "../types/cases.types";
+import type { CaseBadgeVariant, CaseStatus } from "../types/cases.types";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
 
-export function CaseStatusBadge({ status }: { status: CaseStatus | string }) {
-  const meta = getCaseStatusMeta(status as CaseStatus);
+export function CaseStatusBadge({
+  badgeVariant,
+  label,
+  status,
+}: {
+  badgeVariant?: CaseBadgeVariant | null;
+  label?: string | null;
+  status: CaseStatus | string;
+}) {
+  const catalog = useStatusCatalog("CASE_WORKFLOW").items;
+  const item = findStatusCatalogItem(catalog, status);
   return (
     <Badge
-      className={cn("w-[104px] justify-center whitespace-nowrap px-2", meta.badgeClass)}
-      variant="secondary"
+      className="w-[104px] justify-center whitespace-nowrap px-2"
+      variant={badgeVariant ?? item?.badgeVariant ?? "secondary"}
     >
-      {meta.label}
+      {label || item?.label || status || "-"}
     </Badge>
   );
 }

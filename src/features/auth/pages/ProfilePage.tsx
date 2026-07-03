@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ShieldCheck, UserRound } from "lucide-react";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Navigate } from "react-router-dom";
 import { z } from "zod";
@@ -41,6 +40,7 @@ import { PermissionBadgeList } from "../components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../lib/permissions";
 import { useAuthSessionStore } from "../store/auth-session.store";
 import type { AuthUser, UpdateProfilePayload } from "../types/auth.types";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
 
@@ -170,7 +170,13 @@ function ProfileDetailItem({ label, value }: { label: string; value: string }) {
 
 export function ProfilePage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("info");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      info: "/profile",
+      permissions: "/profile/permissions",
+    } as const,
+    "info",
+  );
   const user = useAuthSessionStore((state) => state.user);
   const storageTarget = useAuthSessionStore((state) => state.storageTarget);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);

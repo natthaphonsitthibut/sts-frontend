@@ -24,7 +24,6 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import { cn } from "../../../lib/utils";
 import { PermissionBadgeList } from "../../auth/components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { geoService } from "../../tasks/api/geo.service";
@@ -39,6 +38,8 @@ import {
 } from "../lib/admin-presentation";
 import { useUserDetail } from "../hooks/useUsers";
 import type { ManagedUserDetail, UserAddressDetail } from "../types/admin.types";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 function parseUserId(value: string | undefined): number | null {
   if (!value) return null;
@@ -68,7 +69,11 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function UserHero({ user }: { user: ManagedUserDetail }) {
   const displayName = getUserDisplayName(user);
-  const lifecycle = getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user));
+  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE").items;
+  const lifecycle = getAccountLifecycleStatusMeta(
+    getManagedUserLifecycleStatus(user),
+    lifecycleCatalog,
+  );
 
   return (
     <Card>
@@ -89,7 +94,7 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
             </div>
           </div>
         </div>
-        <Badge className={cn("w-fit whitespace-nowrap", lifecycle.badgeClass)} variant="secondary">
+        <Badge className="w-fit whitespace-nowrap" variant={lifecycle.badgeVariant}>
           {lifecycle.label}
         </Badge>
       </CardContent>
@@ -310,7 +315,13 @@ function UserDetailContent({
 export function UserDetailPage() {
   const { id: rawId } = useParams();
   const userId = parseUserId(rawId);
-  const [activeTab, setActiveTab] = useState("info");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      info: `/manage-users/${userId ?? rawId ?? ""}`,
+      permissions: `/manage-users/${userId ?? rawId ?? ""}/permissions`,
+    } as const,
+    "info",
+  );
   const query = useUserDetail(userId);
 
   if (userId === null) {

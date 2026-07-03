@@ -5,7 +5,6 @@ import { ClipboardCheck, MapPin, Save } from "lucide-react";
 import {
   Alert,
   AlertDescription,
-  Badge,
   Button,
   buttonVariants,
   Card,
@@ -26,8 +25,11 @@ import {
 import { AttendanceStudentTable } from "../../attendance/components/AttendanceStudentTable";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types";
+import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
+import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 export function TaskGuestPage() {
+  const attendanceStatusCatalog = usePublicAttendanceStatusCatalog();
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -186,10 +188,11 @@ export function TaskGuestPage() {
 
         {task.type === "ATTENDANCE" ? (
           <Card className="rounded-lg p-6">
-            <div className="mb-4 flex flex-wrap gap-2">
-              <Badge variant="success">มา {counts.present}</Badge>
-              <Badge variant="warning">สาย {counts.late}</Badge>
-              <Badge variant="destructive">ขาด {counts.absent}</Badge>
+            <div className="mb-4">
+              <AttendanceCountBadges
+                catalog={attendanceStatusCatalog.data ?? []}
+                counts={counts}
+              />
             </div>
             {studentsQuery.isLoading ? (
               <SkeletonStack lines={4} className="py-2" />

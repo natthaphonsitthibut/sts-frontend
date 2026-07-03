@@ -17,13 +17,15 @@ import {
 } from "../../../components/layout/data-table";
 import {
   ATTENDANCE_RECORD_STATUSES,
-  ATTENDANCE_STATUS_META,
+  getAttendanceStatusPresentation,
   getAttendanceAvatarGradient,
 } from "../lib/attendance-presentation";
 import type {
   AttendanceSelectionStatus,
   AttendanceStudent,
 } from "../types/attendance.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface AttendanceStudentTableProps {
   students: AttendanceStudent[];
@@ -47,13 +49,15 @@ function StatusButton({
   isActive,
   onClick,
   disabled,
+  catalog,
 }: {
   status: AttendanceSelectionStatus;
   isActive: boolean;
   onClick: () => void;
   disabled?: boolean;
+  catalog: readonly StatusCatalogItem[];
 }) {
-  const meta = ATTENDANCE_STATUS_META[status];
+  const meta = getAttendanceStatusPresentation(status, catalog);
   const Icon = meta.icon;
 
   return (
@@ -89,9 +93,10 @@ function compareText(a: string | undefined, b: string | undefined): number {
 function getCurrentStatusLabel(
   studentId: string,
   selections: Record<string, AttendanceSelectionStatus>,
+  catalog: readonly StatusCatalogItem[],
 ): string {
   const status = selections[studentId] ?? "P_PRESENT";
-  return ATTENDANCE_STATUS_META[status].label;
+  return getAttendanceStatusPresentation(status, catalog).label;
 }
 
 function compareRosterItems(
@@ -99,6 +104,7 @@ function compareRosterItems(
   right: AttendanceRosterItem,
   key: string,
   selections: Record<string, AttendanceSelectionStatus>,
+  catalog: readonly StatusCatalogItem[],
 ): number {
   if (key === "roster") return left.rosterNumber - right.rosterNumber;
   if (key === "name") return compareText(left.student.name, right.student.name);
@@ -107,8 +113,8 @@ function compareRosterItems(
   }
   if (key === "status") {
     return compareText(
-      getCurrentStatusLabel(left.student.id, selections),
-      getCurrentStatusLabel(right.student.id, selections),
+      getCurrentStatusLabel(left.student.id, selections, catalog),
+      getCurrentStatusLabel(right.student.id, selections, catalog),
     );
   }
   return 0;
@@ -123,6 +129,7 @@ export function AttendanceStudentTable({
   canUndo,
   disabled = false,
 }: AttendanceStudentTableProps) {
+  const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "roll-call">("list");
   const [activeRosterIndex, setActiveRosterIndex] = useState(0);
@@ -157,10 +164,16 @@ export function AttendanceStudentTable({
   const sortedVisibleStudents = useMemo(() => {
     if (!sort) return visibleStudents;
     return [...visibleStudents].sort((left, right) => {
-      const result = compareRosterItems(left, right, sort.key, selections);
+      const result = compareRosterItems(
+        left,
+        right,
+        sort.key,
+        selections,
+        attendanceStatusCatalog,
+      );
       return sort.direction === "asc" ? result : -result;
     });
-  }, [selections, sort, visibleStudents]);
+  }, [attendanceStatusCatalog, selections, sort, visibleStudents]);
   const safeActiveRosterIndex = Math.min(
     activeRosterIndex,
     Math.max(visibleStudents.length - 1, 0),
@@ -174,7 +187,7 @@ export function AttendanceStudentTable({
     0,
   );
   const pendingStatusMeta = pendingAdvance
-    ? ATTENDANCE_STATUS_META[pendingAdvance.status]
+    ? getAttendanceStatusPresentation(pendingAdvance.status, attendanceStatusCatalog)
     : null;
   const PendingStatusIcon = pendingStatusMeta?.icon;
 
@@ -284,6 +297,7 @@ export function AttendanceStudentTable({
       <div className="flex flex-wrap gap-2 lg:justify-end">
         {ATTENDANCE_RECORD_STATUSES.map((status) => (
           <StatusButton
+            catalog={attendanceStatusCatalog}
             key={status}
             isActive={current === status}
             onClick={() => handleStatusChange(student.id, status)}
@@ -381,7 +395,7 @@ export function AttendanceStudentTable({
                 ไล่ทีละคน
               </Button>
               {ATTENDANCE_RECORD_STATUSES.map((status) => {
-                const meta = ATTENDANCE_STATUS_META[status];
+                const meta = getAttendanceStatusPresentation(status, attendanceStatusCatalog);
                 return (
                   <Button
                     key={status}

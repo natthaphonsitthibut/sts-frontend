@@ -27,6 +27,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import {
   AddressFormSection,
   type AddressFieldNames,
@@ -51,7 +52,7 @@ import {
   userFormSchema,
   type UserFormValues,
 } from "../schemas/user.schema";
-import { USER_STATUS_OPTIONS } from "../lib/admin-presentation";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   ManagedUser,
   RoleDefinition,
@@ -196,6 +197,7 @@ function UserForm({
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
 }) {
+  const accountStatuses = useStatusCatalog("USER_ACCOUNT_STATUS").items;
   const navigate = useNavigate();
   const saveUser = useSaveUser();
   const isEdit = Boolean(user?.id);
@@ -528,8 +530,8 @@ function UserForm({
                       shouldValidate: form.formState.isSubmitted,
                     })
                   }
-                  options={USER_STATUS_OPTIONS.map((option) => ({
-                    value: option.value,
+                  options={accountStatuses.map((option) => ({
+                    value: option.code,
                     label: option.label,
                   }))}
                   searchable={false}
@@ -612,7 +614,13 @@ export function ManageUserFormPage() {
     isError: isRolesError,
     refetch: refetchRoles,
   } = useRolesCatalog();
-  const [activeTab, setActiveTab] = useState<"info" | "permissions">("info");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      info: id ? `/manage-users/${id}/edit` : "/manage-users/new",
+      permissions: id ? `/manage-users/${id}/edit/permissions` : "/manage-users/new",
+    } as const,
+    "info",
+  );
 
   return (
     <PageShell>
@@ -623,7 +631,7 @@ export function ManageUserFormPage() {
         actions={isEdit ? (
           <Tabs
             aria-label="โหมดแก้ไขผู้ใช้งาน"
-            onChange={(value) => setActiveTab(value === "permissions" ? "permissions" : "info")}
+            onChange={setActiveTab}
             options={[
               { value: "info", label: "ข้อมูล" },
               { value: "permissions", label: "สิทธิ์" },

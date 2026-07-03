@@ -7,6 +7,7 @@ export interface StudentListItem {
   school_id?: number | string;
   student_status_label?: string;
   student_status_category?: string;
+  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
   total_late?: number;
   total_absent?: number;
 }
@@ -61,6 +62,7 @@ export interface StudentDetail extends Record<string, unknown> {
   room?: string;
   student_status_label?: string;
   student_status_category?: string;
+  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
   masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;

@@ -3,11 +3,8 @@ import type {
   ManagedUser,
   StudentAccountManagementStatus,
 } from "../types/admin.types";
-
-export const USER_STATUS_OPTIONS = [
-  { value: "ACTIVE", label: "ใช้งาน" },
-  { value: "DISABLED", label: "ปิดใช้งาน" },
-] as const;
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 export function getUserDisplayName(user: ManagedUser): string {
   const fullName = [user.FirstName, user.LastName]
@@ -28,51 +25,22 @@ export function getUserRoleText(user: ManagedUser): string {
   return "ไม่มีตำแหน่ง";
 }
 
-type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
-
 interface AccountLifecycleStatusMeta {
   label: string;
-  badgeClass: string;
-  summaryTone: SummaryTone;
+  badgeVariant: StatusCatalogItem["badgeVariant"];
+  summaryTone: NonNullable<StatusCatalogItem["summaryTone"]>;
 }
-
-export const ACCOUNT_LIFECYCLE_STATUS_ORDER: StudentAccountManagementStatus[] = [
-  "PENDING_FIRST_LOGIN",
-  "ACTIVE",
-  "TEMP_PASSWORD_EXPIRED",
-  "DISABLED",
-];
-
-export const ACCOUNT_LIFECYCLE_STATUS_META: Record<
-  StudentAccountManagementStatus,
-  AccountLifecycleStatusMeta
-> = {
-  PENDING_FIRST_LOGIN: {
-    label: "รอเปลี่ยนรหัส",
-    badgeClass: "bg-primary/10 text-primary",
-    summaryTone: "info",
-  },
-  ACTIVE: {
-    label: "ใช้งาน",
-    badgeClass: "bg-success-100 text-success-700",
-    summaryTone: "success",
-  },
-  TEMP_PASSWORD_EXPIRED: {
-    label: "รหัสหมดอายุ",
-    badgeClass: "bg-warning-100 text-warning-700",
-    summaryTone: "warning",
-  },
-  DISABLED: {
-    label: "ปิดใช้งาน",
-    badgeClass: "bg-danger-100 text-danger-700",
-    summaryTone: "danger",
-  },
-};
 
 export function getAccountLifecycleStatusMeta(
   status: StudentAccountManagementStatus,
+  catalog: readonly StatusCatalogItem[] = [],
 ): AccountLifecycleStatusMeta {
-  return ACCOUNT_LIFECYCLE_STATUS_META[status];
+  const item = findStatusCatalogItem(catalog, status);
+  return {
+    label: item?.label ?? status,
+    badgeVariant: item?.badgeVariant ?? "secondary",
+    summaryTone: item?.summaryTone ?? "default",
+  };
 }
 
 export function getManagedUserLifecycleStatus(user: ManagedUser): StudentAccountManagementStatus {

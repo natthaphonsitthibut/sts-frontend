@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 const ATTENDANCE_STATUS_CODE = {
   PRESENT: 1,
@@ -38,11 +40,7 @@ export function normalizeAttendanceSelectionStatus(
   return "NONE";
 }
 
-interface AttendanceStatusMeta {
-  /** Short label used on the inline record buttons. */
-  shortLabel: string;
-  /** Full label used on the read-only history/display chip. */
-  label: string;
+interface AttendanceStatusStyle {
   icon: LucideIcon;
   /** Idle (unselected) record-button classes. */
   idleClass: string;
@@ -53,13 +51,11 @@ interface AttendanceStatusMeta {
 }
 
 // Color tokens copied verbatim from the legacy Quasar AttendancePage styles.
-export const ATTENDANCE_STATUS_META: Record<
+export const ATTENDANCE_STATUS_STYLE: Record<
   AttendanceSelectionStatus,
-  AttendanceStatusMeta
+  AttendanceStatusStyle
 > = {
   P_PRESENT: {
-    shortLabel: "มา",
-    label: "มาเรียน",
     icon: Check,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
@@ -67,8 +63,6 @@ export const ATTENDANCE_STATUS_META: Record<
     displayClass: "bg-gradient-to-br from-success-100 to-success-200 text-success-700",
   },
   P_ABSENT: {
-    shortLabel: "ขาด",
-    label: "ขาด",
     icon: X,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
@@ -76,8 +70,6 @@ export const ATTENDANCE_STATUS_META: Record<
     displayClass: "bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700",
   },
   P_LATE: {
-    shortLabel: "สาย",
-    label: "สาย",
     icon: Clock,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
@@ -85,14 +77,26 @@ export const ATTENDANCE_STATUS_META: Record<
     displayClass: "bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700",
   },
   NONE: {
-    shortLabel: "ไม่เช็ค",
-    label: "ไม่ได้เช็คชื่อ",
     icon: HelpCircle,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass: "border-slate-300 bg-slate-100 text-slate-400",
     displayClass: "bg-slate-100 text-slate-400",
   },
 };
+
+export function getAttendanceStatusPresentation(
+  status: AttendanceSelectionStatus,
+  catalog: readonly StatusCatalogItem[],
+) {
+  const style = ATTENDANCE_STATUS_STYLE[status];
+  const item = findStatusCatalogItem(catalog, status);
+  return {
+    ...style,
+    shortLabel: item?.shortLabel ?? item?.label ?? status,
+    label: item?.label ?? status,
+    badgeVariant: item?.badgeVariant ?? "secondary",
+  };
+}
 
 /** Record-page status buttons in legacy display order: มา / ขาด / สาย. */
 export const ATTENDANCE_RECORD_STATUSES: AttendanceSelectionStatus[] = [

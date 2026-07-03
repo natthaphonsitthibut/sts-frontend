@@ -14,11 +14,11 @@ import {
   Textarea,
 } from "../../../components/base";
 import { useUpdateCaseReferral } from "../hooks/useUpdateCaseReferral";
-import { CASE_REFERRAL_OUTCOME_OPTIONS } from "../lib/case-referral-presentation";
 import type {
   CaseReferralOutcomeStatus,
   CaseReferralRecord,
 } from "../types/cases.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 interface CaseReferralOutcomeDialogProps {
   caseId: number | null;
@@ -41,6 +41,7 @@ export function CaseReferralOutcomeDialog({
   onOpenChange,
   onUpdated,
 }: CaseReferralOutcomeDialogProps) {
+  const referralStatuses = useStatusCatalog("CASE_REFERRAL").items;
   const updateReferral = useUpdateCaseReferral();
   const [status, setStatus] = useState<CaseReferralOutcomeStatus>(
     getInitialStatus(referral),
@@ -97,7 +98,9 @@ export function CaseReferralOutcomeDialog({
               <Combobox
                 id="referral-outcome-status"
                 onChange={(next) => setStatus(next as CaseReferralOutcomeStatus)}
-                options={CASE_REFERRAL_OUTCOME_OPTIONS}
+                options={referralStatuses
+                  .filter((item) => item.code !== "SENT")
+                  .map((item) => ({ value: item.code, label: item.label }))}
                 searchable={false}
                 value={status}
               />

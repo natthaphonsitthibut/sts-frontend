@@ -32,15 +32,11 @@ import {
   SkeletonTable,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import type { BadgeProps } from "../../../components/base";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
-import { ATTENDANCE_STATUS_META } from "../lib/attendance-presentation";
-import type {
-  AttendanceHistoryRecord,
-  AttendanceSelectionStatus,
-} from "../types/attendance.types";
+import { getAttendanceStatusPresentation } from "../lib/attendance-presentation";
+import type { AttendanceHistoryRecord } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -49,16 +45,10 @@ import {
   useAttendanceCheckIn,
   useAttendanceHistory,
 } from "../hooks/useAttendanceCheckIn";
-
-const STATUS_BADGE_VARIANT: Record<
-  AttendanceSelectionStatus,
-  BadgeProps["variant"]
-> = {
-  P_PRESENT: "success",
-  P_LATE: "warning",
-  P_ABSENT: "destructive",
-  NONE: "secondary",
-};
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 
 const DATE_INPUT_CLASS_NAME = "sm:w-[180px] text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
@@ -71,16 +61,27 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
 }
 
-function getHistorySortValue(record: AttendanceHistoryRecord, key: string): string {
+function getHistorySortValue(
+  record: AttendanceHistoryRecord,
+  key: string,
+  catalog: readonly StatusCatalogItem[],
+): string {
   if (key === "student") return record.name || record.student_name || "";
   if (key === "class") return `${record.grade || ""}/${formatStudentRoom(record.room)}`;
-  if (key === "status") return ATTENDANCE_STATUS_META[record.status].label;
+  if (key === "status") return getAttendanceStatusPresentation(record.status, catalog).label;
   if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
   return "";
 }
 
 export function AttendanceCheckInPage() {
-  const [tab, setTab] = useState("today");
+  const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
+  const [tab, setTab] = useRouteTab(
+    {
+      today: "/attendance",
+      history: "/attendance/history",
+    } as const,
+    "today",
+  );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
   const checkIn = useAttendanceCheckIn();
@@ -181,7 +182,10 @@ export function AttendanceCheckInPage() {
       const keyword = historySearch.trim().toLocaleLowerCase("th-TH");
       return scopedHistory.filter((record) => {
         if (!keyword) return true;
-        const statusLabel = ATTENDANCE_STATUS_META[record.status].label;
+        const statusLabel = getAttendanceStatusPresentation(
+          record.status,
+          attendanceStatusCatalog,
+        ).label;
         return [
           record.name,
           record.student_name,
@@ -197,18 +201,18 @@ export function AttendanceCheckInPage() {
           .includes(keyword);
       });
     },
-    [historySearch, scopedHistory],
+    [attendanceStatusCatalog, historySearch, scopedHistory],
   );
   const sortedHistory = useMemo(() => {
     if (!historySort) return filteredHistory;
     return [...filteredHistory].sort((a, b) => {
       const result = compareText(
-        getHistorySortValue(a, historySort.key),
-        getHistorySortValue(b, historySort.key),
+        getHistorySortValue(a, historySort.key, attendanceStatusCatalog),
+        getHistorySortValue(b, historySort.key, attendanceStatusCatalog),
       );
       return historySort.direction === "asc" ? result : -result;
     });
-  }, [filteredHistory, historySort]);
+  }, [attendanceStatusCatalog, filteredHistory, historySort]);
 
   return (
     <PageShell className="pb-6">
@@ -258,16 +262,8 @@ export function AttendanceCheckInPage() {
       {tab === "today" ? (
         <>
           {canLoadRoster && students.length > 0 ? (
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Badge className="min-w-[68px]" variant="success">
-                มา {counts.present}
-              </Badge>
-              <Badge className="min-w-[68px]" variant="warning">
-                สาย {counts.late}
-              </Badge>
-              <Badge className="min-w-[68px]" variant="destructive">
-                ขาด {counts.absent}
-              </Badge>
+            <div className="mb-3">
+              <AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />
             </div>
           ) : null}
 
@@ -459,8 +455,18 @@ export function AttendanceCheckInPage() {
                     {record.grade || "-"} / {formatStudentRoom(record.room)}
                   </DataTableCell>
                   <DataTableCell>
-                    <Badge variant={STATUS_BADGE_VARIANT[record.status]}>
-                      {ATTENDANCE_STATUS_META[record.status].label}
+                    <Badge
+                      variant={
+                        getAttendanceStatusPresentation(
+                          record.status,
+                          attendanceStatusCatalog,
+                        ).badgeVariant
+                      }
+                    >
+                      {getAttendanceStatusPresentation(
+                        record.status,
+                        attendanceStatusCatalog,
+                      ).label}
                     </Badge>
                   </DataTableCell>
                   <DataTableCell className="text-sm text-slate-500">

@@ -49,18 +49,10 @@ import type {
   StudentAccountCredential,
   StudentAccountFilter,
 } from "../types/admin.types";
-
-const STATUS_META: Record<
-  StudentAccountBatchJobStatus,
-  { label: string; variant: "default" | "secondary" | "success" | "warning" | "destructive" }
-> = {
-  PENDING: { label: "รอเริ่ม", variant: "secondary" },
-  RUNNING: { label: "กำลังทำงาน", variant: "default" },
-  COMPLETED: { label: "เสร็จสิ้น", variant: "success" },
-  FAILED: { label: "ล้มเหลว", variant: "destructive" },
-  INTERRUPTED: { label: "หยุดชะงัก", variant: "warning" },
-  CANCELED: { label: "ยกเลิกแล้ว", variant: "secondary" },
-};
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
 
 const ACTIVE_STATUSES: ReadonlySet<StudentAccountBatchJobStatus> = new Set(["PENDING", "RUNNING"]);
 const RESUMABLE_STATUSES: ReadonlySet<StudentAccountBatchJobStatus> = new Set([
@@ -109,6 +101,7 @@ const DEFAULT_CREDENTIAL_LIMIT = 100;
 type CredentialMeta = StudentAccountBatchCredentialResponse["meta"];
 
 export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFilter }) {
+  const statusCatalog = useStatusCatalog("STUDENT_ACCOUNT_BATCH_JOB");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<StudentAccountCredential[]>([]);
@@ -236,13 +229,16 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
       <FormErrorAlert error={cancelMutation.error} fallback="ยกเลิกงานไม่สำเร็จ" />
       <FormErrorAlert error={credentialsMutation.error} fallback="ดึงรหัสชั่วคราวไม่สำเร็จ" />
 
-      {listQuery.isError ? (
+      {listQuery.isError || statusCatalog.isError ? (
         <ErrorState
           title="โหลดรายการงานไม่สำเร็จ"
           description="เกิดข้อผิดพลาดระหว่างโหลดงานสร้างบัญชีแบบชุด"
-          onRetry={() => void listQuery.refetch()}
+          onRetry={() => {
+            void listQuery.refetch();
+            statusCatalog.refetch();
+          }}
         />
-      ) : listQuery.isLoading ? (
+      ) : listQuery.isLoading || statusCatalog.isLoading ? (
         <EmptyState icon={Rocket} title="กำลังโหลดรายการงาน" />
       ) : jobs.length === 0 ? (
         <EmptyState
@@ -262,7 +258,7 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
           minWidthClassName="min-w-[900px]"
         >
           {jobs.map((job) => {
-            const meta = STATUS_META[job.status];
+            const meta = findStatusCatalogItem(statusCatalog.items, job.status);
             return (
               <DataTableRow
                 key={job.id}
@@ -273,7 +269,9 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
                 </DataTableCell>
                 <DataTableCell className="text-slate-700">{scopeLabel(job.scope)}</DataTableCell>
                 <DataTableCell>
-                  <Badge variant={meta.variant}>{meta.label}</Badge>
+                  <Badge variant={meta?.badgeVariant ?? "secondary"}>
+                    {meta?.label ?? job.status}
+                  </Badge>
                 </DataTableCell>
                 <DataTableCell className="min-w-[180px]">
                   <ProgressBar
@@ -321,8 +319,14 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-900">รายละเอียดงาน</span>
-              <Badge variant={STATUS_META[selectedJob.status].variant}>
-                {STATUS_META[selectedJob.status].label}
+              <Badge
+                variant={
+                  findStatusCatalogItem(statusCatalog.items, selectedJob.status)
+                    ?.badgeVariant ?? "secondary"
+                }
+              >
+                {findStatusCatalogItem(statusCatalog.items, selectedJob.status)?.label ??
+                  selectedJob.status}
               </Badge>
             </div>
             <Button

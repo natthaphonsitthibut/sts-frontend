@@ -2,6 +2,8 @@ import type { BadgeProps } from "../../../components/base";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { isLinkLocked } from "../../../lib/link-lock";
 import type { LoginLink } from "../types/login-links.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 type LoginLinkLockInput = Pick<LoginLink, "admin_locked">;
 type LoginLinkStateInput = Pick<LoginLink, "admin_locked" | "expires_at">;
@@ -44,34 +46,33 @@ export function getLoginLinkState(
   return "ACTIVE";
 }
 
-export const LOGIN_LINK_STATE_OPTIONS = [
-  { value: "ALL", label: "ทั้งหมด", tone: "default" },
-  { value: "ACTIVE", label: "ใช้งาน", tone: "success" },
-  { value: "LOCKED", label: "ปิดใช้งาน", tone: "danger" },
-  { value: "EXPIRED", label: "หมดอายุ", tone: "warning" },
-] as const;
-
-const LOGIN_LINK_STATE_META: Record<
-  ReturnType<typeof getLoginLinkState>,
-  LoginLinkStatusMeta
-> = {
-  ACTIVE: { label: "ใช้งาน", variant: "success" },
-  LOCKED: { label: "ปิดใช้งาน", variant: "destructive" },
-  EXPIRED: { label: "หมดอายุ", variant: "warning" },
-};
-
-export function getLoginLinkStateMeta(link: LoginLinkStateInput): LoginLinkStatusMeta {
-  return LOGIN_LINK_STATE_META[getLoginLinkState(link)];
+function statusMeta(
+  catalog: readonly StatusCatalogItem[],
+  code: string,
+): LoginLinkStatusMeta {
+  const item = findStatusCatalogItem(catalog, code);
+  return { label: item?.label ?? code, variant: item?.badgeVariant ?? "secondary" };
 }
 
-export function getLoginLinkStatusMeta(link: LoginLinkOutcomeInput): LoginLinkStatusMeta {
+export function getLoginLinkStateMeta(
+  link: LoginLinkStateInput,
+  catalog: readonly StatusCatalogItem[],
+): LoginLinkStatusMeta {
+  return statusMeta(catalog, getLoginLinkState(link));
+}
+
+export function getLoginLinkStatusMeta(
+  link: LoginLinkOutcomeInput,
+  stateCatalog: readonly StatusCatalogItem[],
+  usageCatalog: readonly StatusCatalogItem[],
+): LoginLinkStatusMeta {
   if (link.first_used_at) {
-    return { label: "เข้าใช้แล้ว", variant: "success" };
+    return statusMeta(usageCatalog, "USED");
   }
   if (isLoginLinkLocked(link)) {
-    return { label: "ปิดใช้งาน", variant: "destructive" };
+    return statusMeta(stateCatalog, "LOCKED");
   }
-  return { label: "ยังไม่เข้าใช้", variant: "secondary" };
+  return statusMeta(usageCatalog, "UNUSED");
 }
 
 export function formatLoginLinkDateTime(value: string): string {

@@ -18,14 +18,22 @@ import {
   isLoginLinkLocked,
 } from "../lib/login-links-presentation";
 import type { LoginLink } from "../types/login-links.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface LoginLinkTableProps {
   links: LoginLink[];
   onToggleLock: (link: LoginLink) => void;
 }
 
-function StatusBadge({ link }: { link: LoginLink }) {
-  const meta = getLoginLinkStateMeta(link);
+function StatusBadge({
+  catalog,
+  link,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  link: LoginLink;
+}) {
+  const meta = getLoginLinkStateMeta(link, catalog);
   return <LinkStatusBadge label={meta.label} variant={meta.variant} />;
 }
 
@@ -33,10 +41,14 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
 }
 
-function getLoginLinkSortValue(link: LoginLink, key: string): string {
+function getLoginLinkSortValue(
+  link: LoginLink,
+  key: string,
+  catalog: readonly StatusCatalogItem[],
+): string {
   if (key === "recipient") return link.assigned_to_name || "";
   if (key === "role") return link.login_role_label || link.login_role || "";
-  if (key === "status") return getLoginLinkStateMeta(link).label;
+  if (key === "status") return getLoginLinkStateMeta(link, catalog).label;
   if (key === "starts") return link.created_at || "";
   if (key === "expires") return link.expires_at || "";
   if (key === "remaining") return link.expires_at || "";
@@ -76,17 +88,18 @@ function LinkActions({
 }
 
 export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
+  const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE").items;
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedLinks = useMemo(() => {
     if (!sort) return links;
     return [...links].sort((a, b) => {
       const result = compareText(
-        getLoginLinkSortValue(a, sort.key),
-        getLoginLinkSortValue(b, sort.key),
+        getLoginLinkSortValue(a, sort.key, linkStateCatalog),
+        getLoginLinkSortValue(b, sort.key, linkStateCatalog),
       );
       return sort.direction === "asc" ? result : -result;
     });
-  }, [links, sort]);
+  }, [linkStateCatalog, links, sort]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -120,7 +133,7 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
               {link.login_role_label || link.login_role || "-"}
             </DataTableCell>
             <DataTableCell>
-              <StatusBadge link={link} />
+              <StatusBadge catalog={linkStateCatalog} link={link} />
             </DataTableCell>
             <DataTableCell>
               <LinkTimeSummary
@@ -153,7 +166,7 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
                   {link.login_role_label || link.login_role || "-"}
                 </div>
               </div>
-              <StatusBadge link={link} />
+              <StatusBadge catalog={linkStateCatalog} link={link} />
             </div>
             <div className="mt-3 rounded-md bg-slate-50 p-3">
               <LinkTimeSummary startsAt={link.created_at} expiresAt={link.expires_at} />

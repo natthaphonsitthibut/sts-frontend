@@ -24,6 +24,7 @@ import {
   getLoginLinkStatusMeta,
   getLoginLinkUrl,
 } from "../lib/login-links-presentation";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 const PERMISSION_LABELS: Record<string, string> = Object.fromEntries(
   getLeafMenuItems().map((item) => [item.id, item.label]),
@@ -34,6 +35,8 @@ const PERMISSION_LABELS: Record<string, string> = Object.fromEntries(
  * and the shareable link. Same layout as the other dashboards' detail pages.
  */
 export function LoginLinkDetailPage() {
+  const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE").items;
+  const linkUsageCatalog = useStatusCatalog("LOGIN_LINK_USAGE").items;
   const { id = "" } = useParams<{ id: string }>();
   const { data: link = null, isLoading } = useLoginLinkDetail(id);
 
@@ -58,8 +61,12 @@ export function LoginLinkDetailPage() {
     );
   }
 
-  const status = getLoginLinkStateMeta(link);
-  const outcomeStatus = getLoginLinkStatusMeta(link);
+  const status = getLoginLinkStateMeta(link, linkStateCatalog);
+  const outcomeStatus = getLoginLinkStatusMeta(
+    link,
+    linkStateCatalog,
+    linkUsageCatalog,
+  );
   const linkState = getLoginLinkState(link);
   const url = getLoginLinkUrl(link.magic_link ?? "");
   const permissions = link.login_permissions ?? [];

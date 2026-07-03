@@ -21,6 +21,7 @@ export interface ComboboxProps {
   onSearchChange?: (value: string) => void;
   /** When false, behaves as a plain dropdown (no typing) but keeps the styled panel. */
   searchable?: boolean;
+  menuPlacement?: "bottom" | "top";
   "aria-invalid"?: boolean;
 }
 
@@ -43,6 +44,7 @@ export function Combobox({
   name,
   onSearchChange,
   searchable = true,
+  menuPlacement = "bottom",
   "aria-invalid": ariaInvalid,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
@@ -91,7 +93,12 @@ export function Combobox({
         aria-hidden="true"
       />
       {open ? (
-        <ul className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <ul
+          className={cn(
+            "absolute z-50 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg",
+            menuPlacement === "top" ? "bottom-full mb-1" : "mt-1",
+          )}
+        >
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-500">{emptyText}</li>
           ) : (

@@ -48,6 +48,8 @@ interface DataTableProps {
    * should stay scrollable on every breakpoint.
    */
   responsive?: boolean;
+  /** Breakpoint where the desktop table replaces its paired card list. */
+  responsiveBreakpoint?: "md" | "lg";
   /** `<tr>` rows for the table body. */
   children: ReactNode;
   /** Extra content rendered after the table inside the shell (e.g. empty state). */
@@ -87,6 +89,7 @@ export function DataTable({
   minWidthClassName = "min-w-[820px]",
   onSortChange,
   responsive = true,
+  responsiveBreakpoint = "md",
   sort,
 }: DataTableProps) {
   const fixedLayout = Boolean(columnWidths);
@@ -95,7 +98,8 @@ export function DataTable({
     <div
       className={cn(
         "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card",
-        responsive && "hidden md:block",
+        responsive &&
+          (responsiveBreakpoint === "lg" ? "hidden lg:block" : "hidden md:block"),
         className,
       )}
     >
@@ -206,9 +210,24 @@ export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
 }
 
 /** Mobile counterpart wrapper — a vertical stack shown only below `md`. */
-export function TableCardList({ className, ...props }: ComponentProps<"div">) {
+interface TableCardListProps extends ComponentProps<"div"> {
+  desktopBreakpoint?: "md" | "lg";
+}
+
+export function TableCardList({
+  className,
+  desktopBreakpoint = "md",
+  ...props
+}: TableCardListProps) {
   return (
-    <div className={cn("flex flex-col gap-3 md:hidden", className)} {...props} />
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 

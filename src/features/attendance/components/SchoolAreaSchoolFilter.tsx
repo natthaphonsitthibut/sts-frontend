@@ -5,6 +5,7 @@ interface SchoolAreaSchoolFilterProps {
   area: ReturnType<typeof useSchoolAreaFilter>;
   schoolId: string;
   onSchoolChange: (value: string) => void;
+  selectedSchoolFallback?: { id: number | string; name: string | null | undefined };
   schoolLocked?: boolean;
   disabled?: boolean;
   schoolPlaceholder?: string;
@@ -22,6 +23,7 @@ export function SchoolAreaSchoolFilter({
   area,
   disabled,
   onSchoolChange,
+  selectedSchoolFallback,
   schoolEmptyText,
   schoolId,
   schoolLocked = false,
@@ -38,6 +40,19 @@ export function SchoolAreaSchoolFilter({
     );
     area.setAreaFromSchool(school);
   }
+
+  const selectedFallbackLabel = selectedSchoolFallback?.name?.trim();
+  const selectedFallbackOption =
+    selectedFallbackLabel &&
+    schoolId &&
+    selectedSchoolFallback &&
+    String(selectedSchoolFallback.id) === schoolId &&
+    !area.filteredSchools.some((school) => String(school.id) === schoolId)
+      ? {
+          value: schoolId,
+          label: selectedFallbackLabel,
+        }
+      : null;
 
   return (
     <>
@@ -83,6 +98,7 @@ export function SchoolAreaSchoolFilter({
         onSearchChange={area.setSchoolSearch}
         options={[
           { value: "", label: "ทุกโรงเรียน" },
+          ...(selectedFallbackOption ? [selectedFallbackOption] : []),
           ...area.filteredSchools.map((school) => ({
             value: String(school.id),
             label: school.name,

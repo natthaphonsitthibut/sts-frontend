@@ -48,5 +48,14 @@ export function getPageTitle(pathname: string): string {
     return MENU_TITLES["/create"] || "สร้างลิงก์";
   }
 
-  return MENU_TITLES[pathname] || EXTRA_TITLES[pathname] || "Student Tracking System";
+  const exactTitle = MENU_TITLES[pathname] || EXTRA_TITLES[pathname];
+  if (exactTitle) return exactTitle;
+
+  const parentRoute = [...Object.keys(MENU_TITLES), ...Object.keys(EXTRA_TITLES)]
+    .filter((route) => route !== "/" && pathname.startsWith(`${route}/`))
+    .sort((left, right) => right.length - left.length)[0];
+
+  return parentRoute
+    ? MENU_TITLES[parentRoute] || EXTRA_TITLES[parentRoute]
+    : "Student Tracking System";
 }

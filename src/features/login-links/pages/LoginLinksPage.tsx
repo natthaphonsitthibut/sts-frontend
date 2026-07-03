@@ -25,11 +25,15 @@ import {
 } from "../hooks/useLoginLinks";
 import {
   isLoginLinkLocked,
-  LOGIN_LINK_STATE_OPTIONS,
 } from "../lib/login-links-presentation";
 import type { LoginLink, LoginLinkListQuery } from "../types/login-links.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 export function LoginLinksPage() {
+  const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
+  const linkStateOptions = linkStateCatalog.items.filter((item) =>
+    ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
+  );
   const setLinkLock = useSetLinkLock();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,8 +154,9 @@ export function LoginLinksPage() {
               onChange={handleStatusChange}
               value={status}
             >
-              {LOGIN_LINK_STATE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
+              <option value="ALL">ทั้งหมด</option>
+              {linkStateOptions.map((option) => (
+                <option key={option.code} value={option.code}>
                   {option.label}
                 </option>
               ))}
@@ -162,35 +167,48 @@ export function LoginLinksPage() {
 
       <div className="space-y-5">
         <SummaryMetrics
-          items={LOGIN_LINK_STATE_OPTIONS.map((option) => ({
+          items={[
+            { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
+            ...linkStateOptions,
+          ].map((option) => ({
             label: option.label,
             value:
-              option.value === "ACTIVE"
+              option.code === "ACTIVE"
                 ? summary.active
-                : option.value === "LOCKED"
+                : option.code === "LOCKED"
                   ? summary.locked
-                  : option.value === "EXPIRED"
+                  : option.code === "EXPIRED"
                     ? summary.expired
                     : summary.total,
-            tone: option.tone,
+            tone:
+              option.badgeVariant === "success"
+                ? "success"
+                : option.badgeVariant === "warning"
+                  ? "warning"
+                  : option.badgeVariant === "destructive"
+                    ? "danger"
+                    : "default",
             icon:
-              option.value === "ACTIVE"
+              option.code === "ACTIVE"
                 ? CheckCircle2
-                : option.value === "LOCKED"
+                : option.code === "LOCKED"
                   ? Lock
-                  : option.value === "EXPIRED"
+                  : option.code === "EXPIRED"
                     ? Clock
                     : Link2,
           }))}
         />
 
-        {isError ? (
+        {isError || linkStateCatalog.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดลิงก์ได้"
             description="เกิดข้อผิดพลาดระหว่างโหลดรายการลิงก์เข้าสู่ระบบ"
-            onRetry={refetch}
+            onRetry={() => {
+              refetch();
+              linkStateCatalog.refetch();
+            }}
           />
-        ) : isLoading ? (
+        ) : isLoading || linkStateCatalog.isLoading ? (
           <SkeletonTable />
         ) : links.length === 0 ? (
           <EmptyState

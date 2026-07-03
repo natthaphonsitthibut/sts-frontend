@@ -10,6 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/base";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
 
 export interface UserSaveReview {
   isEdit: boolean;
@@ -37,11 +41,6 @@ interface UserSaveReviewDialogProps {
   onConfirm: () => void;
   onClose: () => void;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "ใช้งาน",
-  DISABLED: "ปิดใช้งาน",
-};
 
 function maskPersonId(personId: string | null): string {
   if (!personId) {
@@ -71,6 +70,7 @@ export function UserSaveReviewDialog({
   onConfirm,
   onClose,
 }: UserSaveReviewDialogProps) {
+  const accountStatuses = useStatusCatalog("USER_ACCOUNT_STATUS").items;
   if (!open || !data) {
     return null;
   }
@@ -93,8 +93,13 @@ export function UserSaveReviewDialog({
             <InfoRow
               label="สถานะบัญชี"
               value={
-                <Badge variant={data.status === "ACTIVE" ? "success" : "secondary"}>
-                  {STATUS_LABELS[data.status] ?? data.status}
+                <Badge
+                  variant={
+                    findStatusCatalogItem(accountStatuses, data.status)?.badgeVariant ??
+                    "secondary"
+                  }
+                >
+                  {findStatusCatalogItem(accountStatuses, data.status)?.label ?? data.status}
                 </Badge>
               }
             />

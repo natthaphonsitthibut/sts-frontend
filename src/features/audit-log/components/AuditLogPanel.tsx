@@ -96,7 +96,7 @@ function AuditLogFilters({
             id="audit-search"
             className="pl-9"
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="ผู้ทำรายการ หรือเป้าหมาย"
+            placeholder="ค้นหาผู้ทำรายการ"
             value={searchTerm}
           />
         </div>
@@ -178,15 +178,16 @@ function AuditLogTable({
           "จัดการ",
         ]}
         columnWidths={[
-          "w-[152px]",
-          ...(showActionColumn ? ["w-[190px]"] : []),
-          hasExtraColumns ? "w-[150px]" : "w-[28%]",
-          ...(showReferenceColumn ? ["w-[208px]"] : []),
-          "",
-          "w-[168px]",
+          "w-[14%]",
+          ...(showActionColumn ? [showReferenceColumn ? "w-[22%]" : "w-[24%]"] : []),
+          hasExtraColumns ? (showReferenceColumn ? "w-[14%]" : "w-[16%]") : "w-[26%]",
+          ...(showReferenceColumn ? ["w-[18%]"] : []),
+          showReferenceColumn ? "w-[17%]" : showActionColumn ? "w-[31%]" : "w-[45%]",
+          "w-[15%]",
         ]}
-        minWidthClassName="min-w-0"
+        minWidthClassName="min-w-full"
         onSortChange={setSort}
+        responsiveBreakpoint="lg"
         sort={sort}
       >
         {sortedEntries.map((entry) => (
@@ -196,7 +197,13 @@ function AuditLogTable({
             </DataTableCell>
             {showActionColumn ? (
               <DataTableCell>
-                <Badge className="whitespace-nowrap" variant="secondary">{entry.actionLabel}</Badge>
+                <Badge
+                  className="whitespace-nowrap"
+                  title={entry.actionLabel}
+                  variant="secondary"
+                >
+                  {entry.actionLabel}
+                </Badge>
               </DataTableCell>
             ) : null}
             <DataTableCell className="font-semibold text-slate-800">
@@ -230,7 +237,7 @@ function AuditLogTable({
           </DataTableRow>
         ))}
       </DataTable>
-      <TableCardList>
+      <TableCardList desktopBreakpoint="lg">
         {sortedEntries.map((entry) => {
           return (
             <TableCard key={entry.id} className="space-y-3">

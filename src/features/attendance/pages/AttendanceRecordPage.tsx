@@ -5,7 +5,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Card,
 } from "../../../components/base";
@@ -21,8 +20,11 @@ import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { useAttendanceClassRoster } from "../hooks/useAttendanceClassRoster";
 import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 
 export function AttendanceRecordPage() {
+  const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const { classId } = useParams<{ classId: string }>();
 
   const { task, students, isLoading, isError, notFound } =
@@ -117,11 +119,7 @@ export function AttendanceRecordPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Badge variant="success">มา {counts.present}</Badge>
-            <Badge variant="warning">สาย {counts.late}</Badge>
-            <Badge variant="destructive">ขาด {counts.absent}</Badge>
-          </div>
+          <AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />
         </div>
       </Card>
 

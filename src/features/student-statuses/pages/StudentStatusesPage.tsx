@@ -27,28 +27,42 @@ import {
   useStudentStatuses,
 } from "../hooks/useStudentStatuses";
 import type { StudentStatus } from "../types/student-status.types";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
-const CATEGORY_LABELS: Record<StudentStatus["category"], string> = {
-  ACTIVE: "กำลังศึกษา",
-  GRADUATED: "สำเร็จการศึกษา",
-  WITHDRAWN: "ลาออก/พ้นสภาพ",
-  TRANSFERRED: "ย้ายสถานศึกษา",
-  DECEASED: "เสียชีวิต",
-  UNMAPPED: "ยังไม่ได้จับคู่",
-};
-
-function StatusFlags({ status }: { status: StudentStatus }) {
+function StatusFlags({
+  catalog,
+  status,
+}: {
+  catalog: readonly StatusCatalogItem[];
+  status: StudentStatus;
+}) {
+  const flags = [
+    status.isActiveForLogin ? "LOGIN_ALLOWED" : null,
+    status.isTerminal ? "TERMINAL" : null,
+    status.requiresFollowup ? "FOLLOWUP_REQUIRED" : null,
+    !status.isEnabled ? "DISABLED" : null,
+  ].filter((value): value is string => Boolean(value));
   return (
     <div className="flex flex-wrap gap-1.5">
-      {status.isActiveForLogin ? <Badge variant="success">นโยบาย: เข้าสู่ระบบได้</Badge> : null}
-      {status.isTerminal ? <Badge variant="secondary">สิ้นสุด</Badge> : null}
-      {status.requiresFollowup ? <Badge variant="warning">ควรพิจารณาติดตาม</Badge> : null}
-      {!status.isEnabled ? <Badge variant="destructive">ปิดใช้งาน</Badge> : null}
+      {flags.map((code) => {
+        const item = findStatusCatalogItem(catalog, code);
+        return (
+          <Badge key={code} variant={item?.badgeVariant ?? "secondary"}>
+            {item?.label ?? code}
+          </Badge>
+        );
+      })}
     </div>
   );
 }
 
 export function StudentStatusesPage() {
+  const categoryCatalog = useStatusCatalog("STUDENT_STATUS_CATEGORY");
+  const flagCatalog = useStatusCatalog("STUDENT_STATUS_FLAG");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -113,9 +127,13 @@ export function StudentStatusesPage() {
         fallback="ปิดใช้งานสถานะนักเรียนไม่สำเร็จ"
       />
 
-      {query.isError ? (
-        <ErrorState title="ไม่สามารถโหลดสถานะนักเรียนได้" onRetry={() => { void query.refetch(); }} />
-      ) : query.isLoading ? (
+      {query.isError || categoryCatalog.isError || flagCatalog.isError ? (
+        <ErrorState title="ไม่สามารถโหลดสถานะนักเรียนได้" onRetry={() => {
+          void query.refetch();
+          categoryCatalog.refetch();
+          flagCatalog.refetch();
+        }} />
+      ) : query.isLoading || categoryCatalog.isLoading || flagCatalog.isLoading ? (
         <SkeletonStack lines={5} />
       ) : rows.length === 0 ? (
         <EmptyState icon={GraduationCap} title={search ? "ไม่พบสถานะที่ค้นหา" : "ยังไม่มีสถานะนักเรียน"} />
@@ -141,8 +159,10 @@ export function StudentStatusesPage() {
               <DataTableRow key={status.code}>
                 <DataTableCell className="font-mono font-bold">{status.code}</DataTableCell>
                 <DataTableCell className="font-bold text-slate-800">{status.labelTh}</DataTableCell>
-                <DataTableCell>{CATEGORY_LABELS[status.category]}</DataTableCell>
-                <DataTableCell><StatusFlags status={status} /></DataTableCell>
+                <DataTableCell>
+                  {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}
+                </DataTableCell>
+                <DataTableCell><StatusFlags catalog={flagCatalog.items} status={status} /></DataTableCell>
                 <DataTableCell>{status.usageCount.toLocaleString("th-TH")} รายการ</DataTableCell>
                 <DataTableCell>
                   <div className="flex gap-2">
@@ -159,10 +179,10 @@ export function StudentStatusesPage() {
             {rows.map((status) => (
               <TableCard className="space-y-3" key={status.code}>
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="font-bold text-slate-800">{status.labelTh}</p><p className="text-sm text-slate-500">รหัส {status.code} · {CATEGORY_LABELS[status.category]}</p></div>
+                  <div><p className="font-bold text-slate-800">{status.labelTh}</p><p className="text-sm text-slate-500">รหัส {status.code} · {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}</p></div>
                   <Button aria-label={`แก้ไข ${status.labelTh}`} icon={Pencil} onClick={() => openEdit(status)} size="sm" variant="outline">แก้ไข</Button>
                 </div>
-                <StatusFlags status={status} />
+                <StatusFlags catalog={flagCatalog.items} status={status} />
                 <p className="text-sm text-slate-500">ใช้งานอยู่ {status.usageCount.toLocaleString("th-TH")} รายการ</p>
                 {status.isEnabled ? <Button className="w-full" icon={PowerOff} onClick={() => { void handleDisable(status); }} size="sm" variant="destructive">ปิดใช้งาน</Button> : null}
               </TableCard>

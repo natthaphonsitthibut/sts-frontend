@@ -65,9 +65,14 @@ export interface ImportQuarantineItem {
   id: string;
   schoolId: number | null;
   schoolName: string | null;
+  schoolDistrict: string | null;
+  schoolSubDistrict: string | null;
   sourceRowNumber: number;
   reasonCode: string;
+  reasonLabel: string;
   status: "PENDING" | "RESOLVED" | "REJECTED";
+  statusLabel: string;
+  statusBadgeVariant: BadgeVariant;
   target: string;
   student: {
     personIdMasked: string;
@@ -75,10 +80,36 @@ export interface ImportQuarantineItem {
     lastName: string;
     academicYear: string;
     semester: string;
+    province: string | null;
+    gradeLevelId: string | null;
+    gradeLabel: string | null;
+    roomId: string | null;
+    studentStatusCode: string | null;
+    studentStatusLabel: string | null;
   };
   createdAt: string;
   resolvedAt: string | null;
+  resolutionNote: string | null;
+  resolvedByName: string | null;
+  changedFieldLabels: string[];
+  changedFieldDetails: Array<{
+    label: string;
+    oldValue: string;
+    newValue: string;
+  }>;
+  resolution: {
+    state: "ACTION_REQUIRED" | "DECISION_REQUIRED" | "RETRY_ELIGIBLE" | "BLOCKED";
+    action: "EDIT_FIELDS" | "SELECT_CANDIDATE" | "RETRY" | "OPEN_REVIEW" | "NONE";
+    code: string;
+    label: string;
+    message: string;
+    variant: BadgeVariant;
+    editableFields: string[];
+  };
+  editableValues: Record<string, string>;
 }
+
+export type BadgeVariant = "default" | "secondary" | "destructive" | "success" | "warning";
 
 export interface ImportQuarantineResponse {
   items: ImportQuarantineItem[];
@@ -88,20 +119,17 @@ export interface ImportQuarantineResponse {
 export type QuarantineStatus = "PENDING" | "RESOLVED" | "REJECTED";
 export type QuarantinePageSize = 10 | 20 | 50;
 
-export const REASON_LABELS: Record<string, string> = {
-  IDENTIFIER_CONFLICT: "เลขนี้ตรงกับหลายโปรไฟล์ในระบบ",
-  UNMAPPED_STUDENT_STATUS: "สถานะนักเรียนยังไม่จับคู่",
-  MISSING_NATURAL_KEY_FIELD: "ข้อมูลภาคเรียนบังคับไม่ครบหรือไม่ถูกต้อง",
-  BLANK_REQUIRED_IDENTITY: "ไม่มีรหัสประจำตัว",
-  DUPLICATE_ROW_IN_FILE: "แถวซ้ำในไฟล์",
-  MULTIPLE_ACTIVE_ENROLLMENTS: "พบการลงทะเบียนที่ยังใช้งานหลายรายการ",
-  NAME_CONFLICT_FOR_IDENTIFIER: "ชื่อไม่ตรงกับรหัสประจำตัวเดิม",
-  INVALID_NATIONAL_ID_CHECKSUM: "เลขประจำตัวประชาชนไม่ผ่านการตรวจสอบ",
-  SCHOOL_NOT_FOUND: "ไม่พบโรงเรียนในข้อมูลหลัก",
-  GRADE_NOT_FOUND: "ไม่พบชั้นเรียนในข้อมูลหลัก",
-  ROOM_NOT_FOUND: "ไม่พบห้องเรียนในข้อมูลหลัก",
-  STATUS_CAUSE_UNMAPPED: "สาเหตุสถานะนักเรียนยังไม่จับคู่",
-};
+export interface ImportQuarantineLookupOption {
+  code: string;
+  label: string;
+  variant?: BadgeVariant;
+}
+
+export interface ImportQuarantineLookupResponse {
+  reasons: ImportQuarantineLookupOption[];
+  resolutionStates: ImportQuarantineLookupOption[];
+  statuses: ImportQuarantineLookupOption[];
+}
 
 export interface ImportQuarantineFilterParams {
   reasonCode?: string;
@@ -118,9 +146,61 @@ export interface ImportQuarantineListParams extends ImportQuarantineFilterParams
   status?: "PENDING" | "RESOLVED" | "REJECTED";
 }
 
-export interface ImportQuarantineCandidate {
-  candidateKey: string;
+export interface ImportQuarantinePersonContext {
   firstName: string;
   lastName: string;
   personIdMasked: string;
+  schoolName: string | null;
+  province: string | null;
+  gradeLevelId: number | null;
+  gradeLevelLabel: string | null;
+  roomId: string | null;
+  academicYear: string | null;
+  semester: string | null;
+  studentStatusCode: number | null;
+  studentStatusLabel: string | null;
 }
+
+export interface ImportQuarantineCandidate extends ImportQuarantinePersonContext {
+  candidateKey: string;
+}
+
+export interface ImportQuarantineCandidateResponse {
+  items: ImportQuarantineCandidate[];
+  meta: { totalCount: number; visibleCount: number };
+  importRow: ImportQuarantinePersonContext | null;
+}
+
+export interface ImportQuarantineRetrySummary {
+  readyCount: number;
+  batchLimit: number;
+}
+
+export interface ImportQuarantineRetryResult {
+  selectedCount: number;
+  processedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  remainingReadyCount: number;
+  batchLimit: number;
+  items: Array<{
+    id: string;
+    sourceRowNumber: number;
+    studentName: string;
+    outcome: "IMPORTED" | "NEEDS_ACTION" | "FAILED";
+    code: string;
+    message: string;
+  }>;
+}
+
+export type ImportQuarantineEditableValues = Partial<
+  Record<
+    | "AcademicYear_Onec"
+    | "Semester_Onec"
+    | "SchoolID_Onec"
+    | "GradeLevelID_Onec"
+    | "RoomID_Onec"
+    | "StudentStatusID_Onec",
+    string
+  >
+>;

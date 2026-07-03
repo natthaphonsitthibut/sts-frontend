@@ -28,16 +28,24 @@ import {
   type MasterDataLookup,
   type MasterDataLookupTable,
 } from "../types/master-data-lookup.types";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
-function statusBadge(row: MasterDataLookup) {
-  return row.is_active === false ? (
-    <Badge variant="secondary">ปิดใช้งาน</Badge>
-  ) : (
-    <Badge variant="success">เปิดใช้งาน</Badge>
+function statusBadge(row: MasterDataLookup, catalog: readonly StatusCatalogItem[]) {
+  const code = row.is_active === false ? "INACTIVE" : "ACTIVE";
+  const item = findStatusCatalogItem(catalog, code);
+  return (
+    <Badge variant={item?.badgeVariant ?? "secondary"}>
+      {item?.label ?? code}
+    </Badge>
   );
 }
 
 export function MasterDataLookupsPage() {
+  const activityCatalog = useStatusCatalog("RECORD_ACTIVITY");
   const [table, setTable] = useState<MasterDataLookupTable>("school_affiliations");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
@@ -138,7 +146,7 @@ export function MasterDataLookupsPage() {
                     {row.note ? <p>{row.note}</p> : <p className="text-slate-400">ไม่มีหมายเหตุ</p>}
                   </div>
                 </DataTableCell>
-                <DataTableCell>{statusBadge(row)}</DataTableCell>
+                <DataTableCell>{statusBadge(row, activityCatalog.items)}</DataTableCell>
                 <DataTableCell>
                   <Button
                     aria-label={`แก้ไข ${row.name}`}
@@ -161,7 +169,7 @@ export function MasterDataLookupsPage() {
                     <p className="font-bold text-slate-800">{row.name}</p>
                     <p className="text-sm text-slate-500">รหัส {row.code}</p>
                   </div>
-                  {statusBadge(row)}
+                  {statusBadge(row, activityCatalog.items)}
                 </div>
                 {config.hasLegalCategory && row.legal_category ? (
                   <p className="text-sm text-slate-600">หมวดตามกฎหมาย: {row.legal_category}</p>

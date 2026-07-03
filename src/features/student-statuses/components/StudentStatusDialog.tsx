@@ -27,24 +27,16 @@ import {
   type StudentStatusFormValues,
 } from "../schemas/student-status.schema";
 import {
-  STUDENT_STATUS_CATEGORIES,
+  STUDENT_STATUS_BADGE_VARIANTS,
   type StudentStatus,
-  type StudentStatusCategory,
 } from "../types/student-status.types";
-
-const CATEGORY_LABELS: Record<StudentStatusCategory, string> = {
-  ACTIVE: "กำลังศึกษา",
-  GRADUATED: "สำเร็จการศึกษา",
-  WITHDRAWN: "ลาออก/พ้นสภาพ",
-  TRANSFERRED: "ย้ายสถานศึกษา",
-  DECEASED: "เสียชีวิต",
-  UNMAPPED: "ยังไม่ได้จับคู่",
-};
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 const EMPTY_FORM: StudentStatusFormValues = {
   code: "",
   labelTh: "",
   category: "UNMAPPED",
+  badgeVariant: "warning",
   isActiveForLogin: false,
   isTerminal: false,
   requiresFollowup: false,
@@ -64,6 +56,7 @@ export function StudentStatusDialog({
   open,
   status,
 }: StudentStatusDialogProps) {
+  const categories = useStatusCatalog("STUDENT_STATUS_CATEGORY").items;
   const saveStatus = useSaveStudentStatus();
   const form = useForm<StudentStatusFormValues>({
     defaultValues: EMPTY_FORM,
@@ -78,6 +71,7 @@ export function StudentStatusDialog({
             code: String(status.code),
             labelTh: status.labelTh,
             category: status.category,
+            badgeVariant: status.badgeVariant,
             isActiveForLogin: status.isActiveForLogin,
             isTerminal: status.isTerminal,
             requiresFollowup: status.requiresFollowup,
@@ -101,6 +95,7 @@ export function StudentStatusDialog({
       code: Number(values.code),
       labelTh: values.labelTh.trim(),
       category: values.category,
+      badgeVariant: values.badgeVariant,
       isActiveForLogin: values.isActiveForLogin,
       isTerminal: values.isTerminal,
       requiresFollowup: values.requiresFollowup,
@@ -153,8 +148,8 @@ export function StudentStatusDialog({
               <FormItem>
                 <FormLabel htmlFor="student-status-category" required>หมวดสถานะ</FormLabel>
                 <Select id="student-status-category" {...registerField(form, "category")}>
-                  {STUDENT_STATUS_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>
+                  {categories.map((category) => (
+                    <option key={category.code} value={category.code}>{category.label}</option>
                   ))}
                 </Select>
                 <FormMessage<StudentStatusFormValues> name="category" />
@@ -163,6 +158,15 @@ export function StudentStatusDialog({
                 <FormLabel htmlFor="student-status-source" required>ระบบต้นทาง</FormLabel>
                 <Input id="student-status-source" {...registerField(form, "sourceSystem")} />
                 <FormMessage<StudentStatusFormValues> name="sourceSystem" />
+              </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="student-status-badge" required>รูปแบบป้ายสถานะ</FormLabel>
+                <Select id="student-status-badge" {...registerField(form, "badgeVariant")}>
+                  {STUDENT_STATUS_BADGE_VARIANTS.map((variant) => (
+                    <option key={variant} value={variant}>{variant}</option>
+                  ))}
+                </Select>
+                <FormMessage<StudentStatusFormValues> name="badgeVariant" />
               </FormItem>
               <FormItem>
                 <FormLabel htmlFor="student-status-sort" required>ลำดับแสดงผล</FormLabel>

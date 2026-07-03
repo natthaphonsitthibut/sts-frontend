@@ -1,10 +1,15 @@
 import { apiClient } from "../../../lib/api-client";
 import {
   type ImportPreviewResult,
-  type ImportQuarantineCandidate,
+  type ImportQuarantineCandidateResponse,
   type ImportQuarantineFilterParams,
+  type ImportQuarantineEditableValues,
+  type ImportQuarantineItem,
   type ImportQuarantineListParams,
+  type ImportQuarantineLookupResponse,
   type ImportQuarantineResponse,
+  type ImportQuarantineRetryResult,
+  type ImportQuarantineRetrySummary,
   STUDENT_TERM_IMPORT_TARGET,
   type ImportResult,
 } from "../types/import.types";
@@ -103,13 +108,47 @@ async function listQuarantine(
   return response.data;
 }
 
+async function getQuarantine(id: string): Promise<ImportQuarantineItem> {
+  const response = await apiClient.get<ImportQuarantineItem>(
+    `/imports/quarantine/${id}`,
+  );
+  return response.data;
+}
+
+async function getQuarantineLookups(): Promise<ImportQuarantineLookupResponse> {
+  const response = await apiClient.get<ImportQuarantineLookupResponse>(
+    "/imports/quarantine-lookups",
+  );
+  return response.data;
+}
+
 async function listQuarantineCandidates(
   id: string,
-): Promise<ImportQuarantineCandidate[]> {
-  const response = await apiClient.get<{ items: ImportQuarantineCandidate[] }>(
+): Promise<ImportQuarantineCandidateResponse> {
+  const response = await apiClient.get<ImportQuarantineCandidateResponse>(
     `/imports/quarantine/${id}/candidates`,
   );
-  return response.data.items;
+  return response.data;
+}
+
+async function getRetryableQuarantineSummary(
+  filters: ImportQuarantineFilterParams,
+): Promise<ImportQuarantineRetrySummary> {
+  const response = await apiClient.get<ImportQuarantineRetrySummary>(
+    "/imports/quarantine-retryable-summary",
+    { params: quarantineFilterParams(filters) },
+  );
+  return response.data;
+}
+
+async function retryReadyQuarantine(
+  filters: ImportQuarantineFilterParams,
+): Promise<ImportQuarantineRetryResult> {
+  const response = await apiClient.post<ImportQuarantineRetryResult>(
+    "/imports/quarantine-retry",
+    quarantineFilterParams(filters),
+  );
+  return response.data;
 }
 
 async function resolveQuarantine(
@@ -123,8 +162,20 @@ async function resolveQuarantine(
   return response.data;
 }
 
+async function fixQuarantineValues(
+  id: string,
+  values: ImportQuarantineEditableValues,
+): Promise<{ id: string; status: "RESOLVED"; changedFields: string[] }> {
+  const response = await apiClient.patch<{
+    id: string;
+    status: "RESOLVED";
+    changedFields: string[];
+  }>(`/imports/quarantine/${id}/values`, { values });
+  return response.data;
+}
+
 async function exportQuarantine(
-  params: ImportQuarantineFilterParams & { status: "PENDING" | "REJECTED" },
+  params: ImportQuarantineFilterParams & { status: "PENDING" | "RESOLVED" | "REJECTED" },
 ): Promise<Blob> {
   const response = await apiClient.get<Blob>("/imports/quarantine-export", {
     params: { status: params.status, ...quarantineFilterParams(params) },
@@ -136,8 +187,13 @@ async function exportQuarantine(
 export const importService = {
   previewImport,
   submitImport,
+  getQuarantine,
+  getQuarantineLookups,
   listQuarantine,
   listQuarantineCandidates,
+  getRetryableQuarantineSummary,
+  retryReadyQuarantine,
   resolveQuarantine,
+  fixQuarantineValues,
   exportQuarantine,
 };

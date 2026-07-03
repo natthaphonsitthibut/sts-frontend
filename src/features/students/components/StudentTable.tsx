@@ -127,7 +127,7 @@ export function StudentTable({
               {formatStudentRoom(student.room)}
             </DataTableCell>
             <DataTableCell>
-              <Badge variant={student.student_status_category === "UNMAPPED" ? "warning" : "secondary"}>
+              <Badge variant={student.student_status_badge_variant ?? "secondary"}>
                 {student.student_status_label || "ยังไม่ได้จับคู่"}
               </Badge>
             </DataTableCell>
@@ -152,7 +152,7 @@ export function StudentTable({
                 {student.grade || "-"} · {formatStudentRoom(student.room)}
               </span>
             </div>
-            <Badge className="w-fit" variant={student.student_status_category === "UNMAPPED" ? "warning" : "secondary"}>
+            <Badge className="w-fit" variant={student.student_status_badge_variant ?? "secondary"}>
               {student.student_status_label || "ยังไม่ได้จับคู่"}
             </Badge>
           </TableCard>

@@ -36,6 +36,7 @@ import {
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
@@ -50,10 +51,7 @@ import {
   useReactivateStudentAccount,
   useStudentAccounts,
 } from "../hooks/useUsers";
-import {
-  ACCOUNT_LIFECYCLE_STATUS_META,
-  ACCOUNT_LIFECYCLE_STATUS_ORDER,
-} from "../lib/admin-presentation";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   AccountDeactivationPayload,
   StudentAccountCandidate,
@@ -74,16 +72,6 @@ const STUDENT_ACCOUNT_TABS = [
   { value: "generate", label: "สร้างบัญชี" },
   { value: "batch", label: "งานชุดใหญ่" },
   { value: "history", label: "ประวัติ" },
-];
-const ACCOUNT_STATUS_OPTIONS: Array<{
-  value: "" | StudentAccountManagementStatus;
-  label: string;
-}> = [
-  { value: "", label: "ทุกสถานะ" },
-  ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
-    value: status,
-    label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
-  })),
 ];
 const STUDENT_ACCOUNT_STATUS_ICONS = {
   PENDING_FIRST_LOGIN: KeyRound,
@@ -507,7 +495,15 @@ export function StudentAccountsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
-  const [activeTab, setActiveTab] = useState("manage");
+  const [activeTab, setActiveTab] = useRouteTab(
+    {
+      manage: "/manage-student-accounts",
+      generate: "/manage-student-accounts/generate",
+      batch: "/manage-student-accounts/batch",
+      history: "/manage-student-accounts/history",
+    } as const,
+    "manage",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [accountStatus, setAccountStatus] = useState<"" | StudentAccountManagementStatus>("");
   const [managementPage, setManagementPage] = useState(1);
@@ -558,17 +554,29 @@ export function StudentAccountsPage() {
     isError: accountsError,
     refetch: refetchAccounts,
   } = useStudentAccounts(managementQuery);
+  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE");
+  const accountStatusOptions: Array<{
+    value: "" | StudentAccountManagementStatus;
+    label: string;
+  }> = [
+    { value: "", label: "ทุกสถานะ" },
+    ...lifecycleCatalog.items.map((item) => ({
+      value: item.code as StudentAccountManagementStatus,
+      label: item.label,
+    })),
+  ];
   const accountStatusCounts = useMemo(
     () => accountsMeta?.statusCounts ?? getFallbackStatusCounts(accounts),
     [accounts, accountsMeta?.statusCounts],
   );
   const accountStatusTotal = useMemo(
     () =>
-      ACCOUNT_LIFECYCLE_STATUS_ORDER.reduce(
-        (total, status) => total + accountStatusCounts[status],
+      lifecycleCatalog.items.reduce(
+        (total, item) =>
+          total + (accountStatusCounts[item.code as StudentAccountManagementStatus] ?? 0),
         0,
       ),
-    [accountStatusCounts],
+    [accountStatusCounts, lifecycleCatalog.items],
   );
   const bulkReissueMutation = useBulkReissueStudentTemporaryPasswords();
   const deactivateMutation = useDeactivateStudentAccount();
@@ -988,7 +996,7 @@ export function StudentAccountsPage() {
                     setAccountStatus(value as "" | StudentAccountManagementStatus);
                     resetManagementList();
                   }}
-                  options={ACCOUNT_STATUS_OPTIONS}
+                    options={accountStatusOptions}
                   searchable={false}
                   value={accountStatus}
                 />
@@ -1071,13 +1079,16 @@ export function StudentAccountsPage() {
             error={reactivateMutation.error}
             fallback="เปิดใช้งานบัญชีนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง"
           />
-          {accountsError ? (
+          {accountsError || lifecycleCatalog.isError ? (
             <ErrorState
               title="โหลดบัญชีนักเรียนไม่สำเร็จ"
               description="เกิดข้อผิดพลาดระหว่างโหลดรายการบัญชีนักเรียน"
-              onRetry={refetchAccounts}
+              onRetry={() => {
+                refetchAccounts();
+                lifecycleCatalog.refetch();
+              }}
             />
-          ) : accountsLoading ? (
+          ) : accountsLoading || lifecycleCatalog.isLoading ? (
             <EmptyState icon={KeyRound} title="กำลังโหลดบัญชีนักเรียน" />
           ) : (
             <div className="space-y-4">
@@ -1090,11 +1101,15 @@ export function StudentAccountsPage() {
                     tone: "default",
                     icon: Users,
                   },
-                  ...ACCOUNT_LIFECYCLE_STATUS_ORDER.map((status) => ({
-                    label: ACCOUNT_LIFECYCLE_STATUS_META[status].label,
-                    value: accountStatusCounts[status],
-                    tone: ACCOUNT_LIFECYCLE_STATUS_META[status].summaryTone,
-                    icon: STUDENT_ACCOUNT_STATUS_ICONS[status],
+                  ...lifecycleCatalog.items.map((item) => ({
+                    label: item.label,
+                    value:
+                      accountStatusCounts[item.code as StudentAccountManagementStatus] ?? 0,
+                    tone: item.summaryTone ?? "default",
+                    icon:
+                      STUDENT_ACCOUNT_STATUS_ICONS[
+                        item.code as keyof typeof STUDENT_ACCOUNT_STATUS_ICONS
+                      ] ?? Users,
                   })),
                 ]}
               />

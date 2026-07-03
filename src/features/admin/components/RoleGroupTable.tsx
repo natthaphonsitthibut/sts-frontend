@@ -8,6 +8,10 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import type { RoleDefinition } from "../types/admin.types";
+import {
+  findStatusCatalogItem,
+  useStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
 
 interface RoleGroupTableProps {
   roleGroups: RoleDefinition[];
@@ -38,6 +42,8 @@ export function RoleGroupTable({
   onEdit,
   onDelete,
 }: RoleGroupTableProps) {
+  const roleOriginCatalog = useStatusCatalog("ROLE_ORIGIN").items;
+  const systemOrigin = findStatusCatalogItem(roleOriginCatalog, "SYSTEM");
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedRoleGroups = useMemo(() => {
     if (!sort) return roleGroups;
@@ -76,9 +82,9 @@ export function RoleGroupTable({
                 {role.label || role.name}
               </span>
               {role.is_system ? (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant={systemOrigin?.badgeVariant ?? "secondary"} className="gap-1">
                   <Lock className="size-3" aria-hidden="true" />
-                  ระบบ
+                  {systemOrigin?.label ?? "SYSTEM"}
                 </Badge>
               ) : null}
             </div>

@@ -10,11 +10,20 @@ export const STUDENT_STATUS_CATEGORIES = [
 ] as const;
 
 export type StudentStatusCategory = (typeof STUDENT_STATUS_CATEGORIES)[number];
+export const STUDENT_STATUS_BADGE_VARIANTS = [
+  "default",
+  "secondary",
+  "destructive",
+  "success",
+  "warning",
+] as const;
+export type StudentStatusBadgeVariant = (typeof STUDENT_STATUS_BADGE_VARIANTS)[number];
 
 export interface StudentStatus {
   code: number;
   labelTh: string;
   category: StudentStatusCategory;
+  badgeVariant: StudentStatusBadgeVariant;
   isActiveForLogin: boolean;
   isTerminal: boolean;
   requiresFollowup: boolean;
@@ -28,6 +37,7 @@ export interface StudentStatusPayload {
   code: number;
   labelTh: string;
   category: StudentStatusCategory;
+  badgeVariant: StudentStatusBadgeVariant;
   isActiveForLogin: boolean;
   isTerminal: boolean;
   requiresFollowup: boolean;
