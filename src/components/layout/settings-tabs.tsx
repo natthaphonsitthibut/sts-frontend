@@ -1,0 +1,26 @@
+import { Tabs } from "../base";
+import { useRouteTab } from "../../hooks/useRouteTab";
+
+const SETTINGS_TAB_ROUTES = {
+  system: "/settings",
+  "master-data": "/settings/master-data-lookups",
+  "student-statuses": "/settings/student-statuses",
+} as const;
+
+/** Route-backed tab strip shared by every page under the settings section. */
+export function SettingsTabs() {
+  const [activeTab, setActiveTab] = useRouteTab(SETTINGS_TAB_ROUTES, "system");
+
+  return (
+    <Tabs
+      aria-label="หมวดการตั้งค่า"
+      onChange={setActiveTab}
+      options={[
+        { value: "system", label: "ตั้งค่าระบบ" },
+        { value: "master-data", label: "ข้อมูลพื้นฐาน" },
+        { value: "student-statuses", label: "สถานะนักเรียน" },
+      ]}
+      value={activeTab}
+    />
+  );
+}

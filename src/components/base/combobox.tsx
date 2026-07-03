@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Input } from "./input";
@@ -49,6 +49,7 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
   const effectiveTerm = searchable ? query.trim().toLowerCase() : "";
@@ -59,8 +60,35 @@ export function Combobox({
     return matched.slice(0, MAX_VISIBLE);
   }, [options, effectiveTerm]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent | TouchEvent): void {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
   return (
-    <div className={cn("relative", open && "z-50")}>
+    <div className={cn("relative", open && "z-50")} ref={containerRef}>
       <Input
         aria-invalid={ariaInvalid}
         className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
@@ -89,7 +117,11 @@ export function Combobox({
         value={searchable ? (open ? query : selectedLabel) : selectedLabel}
       />
       <ChevronDown
-        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-primary"
+        className={cn(
+          "pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-primary transition-transform",
+          open && "rotate-180",
+          disabled && "text-slate-400",
+        )}
         aria-hidden="true"
       />
       {open ? (

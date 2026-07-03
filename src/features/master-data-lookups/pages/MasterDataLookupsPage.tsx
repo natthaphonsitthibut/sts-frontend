@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { BookOpenText, CirclePlus, Database, Pencil } from "lucide-react";
-import { Badge, Button, FormErrorAlert, Select } from "../../../components/base";
+import { Badge, Button, FormErrorAlert } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -12,12 +12,12 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonStack,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { SettingsTabs } from "../../../components/layout/settings-tabs";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { MasterDataLookupDialog } from "../components/MasterDataLookupDialog";
@@ -93,29 +93,33 @@ export function MasterDataLookupsPage() {
 
   return (
     <PageShell>
-      <PageToolbar
-        actions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มรายการ</Button>}
+      <ListPageToolbar
+        actions={<SettingsTabs />}
+        tableActions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มรายการ</Button>}
         description={config.description}
         icon={Database}
         title="ข้อมูลพื้นฐานเพิ่มเติม"
-      >
-        <ToolbarControls>
-          <Select
-            aria-label="เลือกประเภทข้อมูลพื้นฐาน"
-            onChange={(event) => handleTableChange(event.target.value)}
+        search={{
+          value: search,
+          onChange: (value) => {
+            setSearch(value);
+            setPage(1);
+          },
+          placeholder: "ค้นหารหัส ชื่อ หรือหมายเหตุ...",
+        }}
+        count={{ value: `${totalCount.toLocaleString("en-US")} รายการ` }}
+        filters={
+          <FilterSelect
+            ariaLabel="เลือกประเภทข้อมูลพื้นฐาน"
+            onChange={handleTableChange}
             value={table}
           >
             {MASTER_DATA_LOOKUP_CONFIGS.map((item) => (
               <option key={item.table} value={item.table}>{item.title}</option>
             ))}
-          </Select>
-          <SearchInput
-            onChange={(value) => { setSearch(value); setPage(1); }}
-            placeholder="ค้นหารหัส ชื่อ หรือหมายเหตุ..."
-            value={search}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+          </FilterSelect>
+        }
+      />
 
       <FormErrorAlert className="mb-4" error={query.error} fallback={`โหลด${config.title}ไม่สำเร็จ`} />
 

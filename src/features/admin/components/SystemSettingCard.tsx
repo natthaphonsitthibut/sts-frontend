@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Card, Input, Select } from "../../../components/base";
 import type { SystemSetting } from "../types/admin.types";
+import { TimePicker } from "./TimePicker";
 
 interface SystemSettingCardProps {
   setting: SystemSetting;
@@ -39,11 +40,9 @@ function SettingValueInput({
 
   if (setting.value_type === "time") {
     return (
-      <Input
-        aria-label={ariaLabel}
-        className="sm:flex-1"
-        onChange={(event) => onChange(event.target.value)}
-        type="time"
+      <TimePicker
+        ariaLabel={ariaLabel}
+        onChange={onChange}
         value={value}
       />
     );

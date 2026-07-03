@@ -13,12 +13,11 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonStack,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { SettingsTabs } from "../../../components/layout/settings-tabs";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentStatusDialog } from "../components/StudentStatusDialog";
@@ -106,20 +105,22 @@ export function StudentStatusesPage() {
 
   return (
     <PageShell>
-      <PageToolbar
-        actions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button>}
+      <ListPageToolbar
+        actions={<SettingsTabs />}
+        tableActions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button>}
         description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยน login หรือสร้าง Case ช่วยเหลืออัตโนมัติ"
         icon={GraduationCap}
         title="ข้อมูลพื้นฐานสถานะนักเรียน"
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={(value) => { setSearch(value); setPage(1); }}
-            placeholder="ค้นหารหัส ชื่อ หมวด หรือระบบต้นทาง..."
-            value={search}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+        search={{
+          value: search,
+          onChange: (value) => {
+            setSearch(value);
+            setPage(1);
+          },
+          placeholder: "ค้นหารหัส ชื่อ หมวด หรือระบบต้นทาง...",
+        }}
+        count={{ value: `${totalCount.toLocaleString("en-US")} รายการ` }}
+      />
 
       <FormErrorAlert
         className="mb-4"

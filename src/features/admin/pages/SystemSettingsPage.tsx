@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpenText, GraduationCap, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import {
   EmptyState,
   ErrorState,
@@ -10,7 +10,7 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { SystemSettingCard } from "../components/SystemSettingCard";
-import { NavButton } from "../../../components/layout/nav-button";
+import { SettingsTabs } from "../../../components/layout/settings-tabs";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   useSystemSettings,
@@ -65,16 +65,7 @@ export function SystemSettingsPage() {
   return (
     <PageShell maxWidthClassName="max-w-[1100px]">
       <PageToolbar
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <NavButton icon={BookOpenText} to="/settings/master-data-lookups" variant="outline">
-              ข้อมูลพื้นฐาน
-            </NavButton>
-            <NavButton icon={GraduationCap} to="/settings/student-statuses" variant="outline">
-              สถานะนักเรียน
-            </NavButton>
-          </div>
-        }
+        actions={<SettingsTabs />}
         icon={Settings}
         title="ตั้งค่าระบบ"
         description="กำหนดพารามิเตอร์หลักที่ส่งผลต่อพฤติกรรมของระบบ"

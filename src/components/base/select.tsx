@@ -1,6 +1,7 @@
 import {
   Children,
   isValidElement,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -70,6 +71,7 @@ export function Select({
   ...props
 }: SelectProps) {
   const innerRef = useRef<HTMLSelectElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [internalValue, setInternalValue] = useState(
     defaultValue === undefined ? "" : String(defaultValue),
@@ -100,8 +102,31 @@ export function Select({
     } as unknown as ChangeEvent<HTMLSelectElement>);
   }
 
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent | TouchEvent): void {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <select
         aria-hidden="true"
         className="sr-only"
