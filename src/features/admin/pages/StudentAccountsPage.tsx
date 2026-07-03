@@ -793,8 +793,15 @@ export function StudentAccountsPage() {
     await navigator.clipboard.writeText(credentialsToTsv(generatedCredentials));
   }
 
-  function exportCredentials(): void {
+  async function exportCredentials(): Promise<void> {
     if (generatedCredentials.length === 0) return;
+    const accepted = await confirm({
+      title: "ยืนยันการดาวน์โหลดไฟล์บัญชี",
+      description:
+        "ไฟล์ CSV มีชื่อผู้ใช้และรหัสผ่านชั่วคราวของนักเรียน กรุณาเก็บรักษาและส่งต่ออย่างปลอดภัย",
+      confirmText: "ดาวน์โหลด",
+    });
+    if (!accepted) return;
     downloadTextFile(
       "student-accounts.csv",
       credentialsToCsv(generatedCredentials),
@@ -1146,7 +1153,7 @@ export function StudentAccountsPage() {
                     <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
                       คัดลอกตาราง
                     </Button>
-                    <Button icon={Download} onClick={exportCredentials} variant="outline">
+                    <Button icon={Download} onClick={() => void exportCredentials()} variant="outline">
                       ส่งออก CSV
                     </Button>
                   </TableActionBar>
@@ -1246,7 +1253,7 @@ export function StudentAccountsPage() {
                     <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
                       คัดลอกตาราง
                     </Button>
-                    <Button icon={Download} onClick={exportCredentials} variant="outline">
+                    <Button icon={Download} onClick={() => void exportCredentials()} variant="outline">
                       ส่งออก CSV
                     </Button>
                   </TableActionBar>

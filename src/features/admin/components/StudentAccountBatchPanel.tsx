@@ -459,7 +459,7 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
                     <Button icon={Copy} variant="outline" onClick={() => void copyCredentials()}>
                       คัดลอกตาราง
                     </Button>
-                    <Button icon={Download} variant="outline" onClick={exportCredentials}>
+                    <Button icon={Download} variant="outline" onClick={() => void exportCredentials()}>
                       ส่งออก CSV
                     </Button>
                   </TableActionBar>
