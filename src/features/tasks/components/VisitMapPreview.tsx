@@ -27,6 +27,11 @@ export interface VisitMapPreviewProps {
 
 const THAILAND_CENTER = { lat: 13.7563, lng: 100.5018 };
 
+type SmokeInspectableMapElement = HTMLDivElement & {
+  __stsGoogleMap?: GoogleMapInstance;
+  __stsGoogleMarker?: GoogleMarkerInstance | null;
+};
+
 function normalizeCoordinate(value: CoordinateValue): number | null {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : null;
@@ -72,11 +77,17 @@ export function VisitMapPreview({
   }, [onCoordinateChange]);
 
   useEffect(() => {
+    const mapElement = mapElementRef.current;
     return () => {
       if (markerRef.current) {
         window.google?.maps.event.clearInstanceListeners(markerRef.current);
         markerRef.current.setMap(null);
         markerRef.current = null;
+      }
+      if (appConfig.isDevelopment && mapElement) {
+        const smokeElement = mapElement as SmokeInspectableMapElement;
+        delete smokeElement.__stsGoogleMap;
+        delete smokeElement.__stsGoogleMarker;
       }
       if (mapRef.current) {
         window.google?.maps.event.clearInstanceListeners(mapRef.current);
@@ -109,6 +120,9 @@ export function VisitMapPreview({
             fullscreenControl: true,
           });
         mapRef.current = map;
+        if (appConfig.isDevelopment) {
+          (mapElementRef.current as SmokeInspectableMapElement).__stsGoogleMap = map;
+        }
         map.setCenter(center);
         map.setZoom(zoom);
         google.maps.event.clearInstanceListeners(map);
@@ -123,6 +137,9 @@ export function VisitMapPreview({
               title: markerLabel,
           });
           markerRef.current = marker;
+          if (appConfig.isDevelopment) {
+            (mapElementRef.current as SmokeInspectableMapElement).__stsGoogleMarker = marker;
+          }
           marker.setMap(map);
           marker.setDraggable(editable);
           marker.setPosition(center);
@@ -139,6 +156,9 @@ export function VisitMapPreview({
           google.maps.event.clearInstanceListeners(markerRef.current);
           markerRef.current.setMap(null);
           markerRef.current = null;
+          if (appConfig.isDevelopment) {
+            (mapElementRef.current as SmokeInspectableMapElement).__stsGoogleMarker = null;
+          }
         }
 
         if (editable && onCoordinateChangeRef.current) {
@@ -201,7 +221,7 @@ export function VisitMapPreview({
       <div className="relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
         {showMap ? (
           <>
-            <div className="absolute inset-0" ref={mapElementRef} />
+            <div className="absolute inset-0" data-sts-map-surface ref={mapElementRef} />
             {loadState === "loading" ? (
               <div className="absolute inset-0 flex items-center justify-center bg-white/70">
                 <LoaderCircle className="size-8 animate-spin text-primary" aria-hidden="true" />

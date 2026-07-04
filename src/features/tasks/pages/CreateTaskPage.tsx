@@ -337,7 +337,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     throwOnError: false,
   });
   const geocodeAddress = useMutation({
-    mutationFn: (address: string) => geoService.geocodeProfileAddress(address),
+    mutationFn: (address: string) => geoService.geocodeAddress(address),
     onSuccess: (result) => {
       if (!result) {
         return;
@@ -626,6 +626,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
               </FormItem>
 
               <AddressFormSection
+                autoGeocode={false}
                 catalog={locationQuery.data}
                 disabled={createTask.isPending}
                 form={form}
