@@ -10,6 +10,8 @@ export type AuditLogDomain =
   | "tasks"
   | "attendance";
 
+export type AuditLogTaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
+
 export interface AuditLogDetail {
   label: string;
   value: string | number | boolean | null;
@@ -39,6 +41,10 @@ export interface AuditLogQuery {
   district?: string;
   subDistrict?: string;
   schoolId?: number;
+  taskType?: AuditLogTaskType;
+  targetType?: string;
+  targetId?: string;
+  caseId?: number;
   page?: number;
   limit?: number;
 }

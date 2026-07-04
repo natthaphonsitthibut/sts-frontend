@@ -8,9 +8,11 @@ import {
   HeartHandshake,
   ListChecks,
 } from "lucide-react";
+import { Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
+  ListPageToolbar,
   PageShell,
   SkeletonTable,
   SummaryMetrics,
@@ -18,9 +20,13 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
@@ -39,6 +45,19 @@ const CASE_STATUS_ICONS = {
   RESOLVED: CheckCircle2,
 } as const;
 
+const CASE_TAB_ROUTES = {
+  list: "/cases",
+  history: "/cases/history",
+} as const;
+
+const CASE_AUDIT_ACTION_OPTIONS = [
+  { value: "CASE_REVIEW", label: "ตรวจสอบเคส" },
+  { value: "CASE_CLOSE", label: "ปิดเคส" },
+  { value: "CASE_FORWARD", label: "ส่งต่อเคส" },
+  { value: "CASE_REFERRAL_OUTCOME_UPDATE", label: "บันทึกผลการส่งต่อ" },
+  { value: "CASE_AUTO_CANCEL", label: "ยกเลิกเคสอัตโนมัติ" },
+] as const;
+
 function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<string, number> {
   return cases.reduce<Record<string, number>>(
     (counts, caseRecord) => {
@@ -53,6 +72,10 @@ function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<strin
 
 export function CasesListPage() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
+  const [activeTab, setActiveTab] = useRouteTab(CASE_TAB_ROUTES, "list");
+  const canViewAuditLog = can("audit-log");
+  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -158,34 +181,85 @@ export function CasesListPage() {
 
   return (
     <PageShell>
-      <CaseListFilter
-        count={totalCount}
-        onRefresh={refetch}
-        onSearchChange={handleSearchChange}
-        onStatusChange={handleStatusChange}
-        searchQuery={searchQuery}
-        schoolFilters={
-          <SchoolClassRoomFilter
-            area={schoolArea}
-            onGradeChange={handleGradeChange}
-            onRoomChange={handleRoomChange}
-            onSchoolChange={handleSchoolChange}
-            scope={scope}
-          />
-        }
-        status={status}
-        statuses={statuses}
-      />
+      {effectiveTab === "list" ? (
+        <CaseListFilter
+          actions={
+            canViewAuditLog ? (
+              <Tabs
+                aria-label="โหมดเคสช่วยเหลือ"
+                onChange={setActiveTab}
+                options={[
+                  { value: "list", label: "รายการ" },
+                  { value: "history", label: "ประวัติ" },
+                ]}
+                value={activeTab}
+              />
+            ) : undefined
+          }
+          count={totalCount}
+          onRefresh={refetch}
+          onSearchChange={handleSearchChange}
+          onStatusChange={handleStatusChange}
+          searchQuery={searchQuery}
+          schoolFilters={
+            <SchoolClassRoomFilter
+              area={schoolArea}
+              onGradeChange={handleGradeChange}
+              onRoomChange={handleRoomChange}
+              onSchoolChange={handleSchoolChange}
+              scope={scope}
+            />
+          }
+          status={status}
+          statuses={statuses}
+        />
+      ) : (
+        <ListPageToolbar
+          actions={
+            <Tabs
+              aria-label="โหมดเคสช่วยเหลือ"
+              onChange={setActiveTab}
+              options={[
+                { value: "list", label: "รายการ" },
+                { value: "history", label: "ประวัติ" },
+              ]}
+              value={activeTab}
+            />
+          }
+          description="ดูประวัติการตรวจสอบ ส่งต่อ และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          filters={
+            <SchoolAreaSchoolFilter
+              area={schoolArea}
+              onSchoolChange={handleSchoolChange}
+              schoolId={scope.schoolId}
+              schoolLocked={scope.schoolLocked}
+            />
+          }
+          icon={HeartHandshake}
+          title="เคสช่วยเหลือนักเรียน"
+        />
+      )}
 
-      {isError || workflowStatuses.isError ? (
+      {effectiveTab === "history" ? (
+        <AuditLogPanel
+          actionOptions={CASE_AUDIT_ACTION_OPTIONS}
+          description="ดูประวัติการตรวจสอบ ส่งต่อ และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          district={schoolArea.district || undefined}
+          domain="cases"
+          province={schoolArea.province || undefined}
+          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
+          subDistrict={schoolArea.subDistrict || undefined}
+          title="ประวัติเคสช่วยเหลือนักเรียน"
+        />
+      ) : isError || workflowStatuses.isError ? (
         <ErrorState
           title="ไม่สามารถโหลดข้อมูลเคสได้"
           description="เกิดข้อผิดพลาดระหว่างโหลดรายการเคส"
-            onRetry={() => {
-              refetch();
-              workflowStatuses.refetch();
-            }}
-          />
+          onRetry={() => {
+            refetch();
+            workflowStatuses.refetch();
+          }}
+        />
       ) : isLoading || workflowStatuses.isLoading ? (
         <SkeletonTable />
       ) : (

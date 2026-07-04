@@ -51,7 +51,7 @@ interface UseStudentFilterOptionsResult {
 export function useStudentFilterOptions(
   query: Pick<
     StudentListQuery,
-    "schoolId" | "province" | "district" | "subDistrict" | "grade"
+    "schoolId" | "province" | "district" | "subDistrict" | "grade" | "enrollmentState"
   > = {},
 ): UseStudentFilterOptionsResult {
   const result = useQuery({

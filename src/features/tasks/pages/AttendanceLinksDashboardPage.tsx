@@ -13,9 +13,10 @@ import {
   Lock,
   LockOpen,
 } from "lucide-react";
-import { Button, useConfirm } from "../../../components/base";
+import { Button, Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
@@ -37,9 +38,12 @@ import {
 } from "../../../components/layout/data-table";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import type {
   AttendanceTask,
@@ -60,6 +64,18 @@ const EMPTY_SUMMARY: AttendanceTaskSummary = {
   locked: 0,
   expired: 0,
 };
+
+const ATTENDANCE_LINK_TAB_ROUTES = {
+  list: "/attendance-dashboard",
+  history: "/attendance-dashboard/history",
+} as const;
+
+const ATTENDANCE_LINK_AUDIT_ACTION_OPTIONS = [
+  { value: "TASK_CREATE", label: "สร้างภารกิจหรือลิงก์" },
+  { value: "LINK_LOCK", label: "ปิดลิงก์" },
+  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
+  { value: "TASK_DELETE", label: "ลบภารกิจ" },
+] as const;
 
 function getLinkState(
   task: AttendanceTask,
@@ -115,6 +131,10 @@ function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
 }
 
 export function AttendanceLinksDashboardPage() {
+  const { can } = usePermissions();
+  const [activeTab, setActiveTab] = useRouteTab(ATTENDANCE_LINK_TAB_ROUTES, "list");
+  const canViewAuditLog = can("audit-log");
+  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
     ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
@@ -228,79 +248,132 @@ export function AttendanceLinksDashboardPage() {
 
   return (
     <PageShell>
-      <ListPageToolbar
-        icon={ClipboardCheck}
-        title="ลิงก์เช็คชื่อ"
-        description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
-        tableActions={
-          <div className="flex flex-wrap gap-2">
-            <RefreshButton onRefresh={() => tasksQuery.refetch()} />
-          </div>
-        }
-        search={{
-          value: search,
-          onChange: handleSearchChange,
-          placeholder: "ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ",
-        }}
-        filters={
-          <>
-            <SchoolClassRoomFilter
-              area={schoolArea}
-              onGradeChange={handleGradeChange}
-              onRoomChange={handleRoomChange}
-              onSchoolChange={handleSchoolChange}
-              scope={scope}
-            />
-            <FilterSelect
-              ariaLabel="สถานะลิงก์เช็คชื่อ"
-              className="sm:w-[220px]"
-              onChange={handleStatusChange}
-              value={status}
-            >
-              <option value="ALL">ทั้งหมด</option>
-              {linkStateOptions.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </FilterSelect>
-          </>
-        }
-      />
-
-      <div className="space-y-5">
-        <SummaryMetrics
-          items={[
-            { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
-            ...linkStateOptions,
-          ].map((option) => ({
-            label: option.label,
-            value:
-              option.code === "ACTIVE"
-                ? summary.active
-                : option.code === "LOCKED"
-                  ? summary.locked
-                  : option.code === "EXPIRED"
-                    ? summary.expired
-                    : summary.total,
-            tone:
-              option.badgeVariant === "success"
-                ? "success"
-                : option.badgeVariant === "warning"
-                  ? "warning"
-                  : option.badgeVariant === "destructive"
-                    ? "danger"
-                    : "default",
-            icon:
-              option.code === "ACTIVE"
-                ? CheckCircle2
-                : option.code === "LOCKED"
-                  ? Lock
-                  : option.code === "EXPIRED"
-                    ? Clock
-                    : Link2,
-          }))}
+      {effectiveTab === "list" ? (
+        <ListPageToolbar
+          actions={
+            canViewAuditLog ? (
+              <Tabs
+                aria-label="โหมดลิงก์เช็คชื่อ"
+                onChange={setActiveTab}
+                options={[
+                  { value: "list", label: "รายการ" },
+                  { value: "history", label: "ประวัติ" },
+                ]}
+                value={activeTab}
+              />
+            ) : undefined
+          }
+          icon={ClipboardCheck}
+          title="ลิงก์เช็คชื่อ"
+          description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
+          tableActions={
+            <div className="flex flex-wrap gap-2">
+              <RefreshButton onRefresh={() => tasksQuery.refetch()} />
+            </div>
+          }
+          search={{
+            value: search,
+            onChange: handleSearchChange,
+            placeholder: "ค้นหาชั้น โรงเรียน หรือผู้รับผิดชอบ",
+          }}
+          filters={
+            <>
+              <SchoolClassRoomFilter
+                area={schoolArea}
+                onGradeChange={handleGradeChange}
+                onRoomChange={handleRoomChange}
+                onSchoolChange={handleSchoolChange}
+                scope={scope}
+              />
+              <FilterSelect
+                ariaLabel="สถานะลิงก์เช็คชื่อ"
+                className="sm:w-[220px]"
+                onChange={handleStatusChange}
+                value={status}
+              >
+                <option value="ALL">ทั้งหมด</option>
+                {linkStateOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </>
+          }
         />
+      ) : (
+        <ListPageToolbar
+          actions={
+            <Tabs
+              aria-label="โหมดลิงก์เช็คชื่อ"
+              onChange={setActiveTab}
+              options={[
+                { value: "list", label: "รายการ" },
+                { value: "history", label: "ประวัติ" },
+              ]}
+              value={activeTab}
+            />
+          }
+          description="ดูประวัติการสร้าง ปิด และเปิดลิงก์เช็คชื่อย้อนหลังตามขอบเขตสิทธิ์"
+          filters={
+            <SchoolAreaSchoolFilter
+              area={schoolArea}
+              onSchoolChange={handleSchoolChange}
+              schoolId={scope.schoolId}
+              schoolLocked={scope.schoolLocked}
+            />
+          }
+          icon={ClipboardCheck}
+          title="ลิงก์เช็คชื่อ"
+        />
+      )}
+
+      {effectiveTab === "history" ? (
+        <AuditLogPanel
+          actionOptions={ATTENDANCE_LINK_AUDIT_ACTION_OPTIONS}
+          description="ดูประวัติการสร้าง ปิด และเปิดลิงก์เช็คชื่อย้อนหลังตามขอบเขตสิทธิ์"
+          district={schoolArea.district || undefined}
+          domain="tasks"
+          province={schoolArea.province || undefined}
+          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
+          subDistrict={schoolArea.subDistrict || undefined}
+          taskType="ATTENDANCE"
+          title="ประวัติลิงก์เช็คชื่อ"
+        />
+      ) : (
+        <div className="space-y-5">
+          <SummaryMetrics
+            items={[
+              { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
+              ...linkStateOptions,
+            ].map((option) => ({
+              label: option.label,
+              value:
+                option.code === "ACTIVE"
+                  ? summary.active
+                  : option.code === "LOCKED"
+                    ? summary.locked
+                    : option.code === "EXPIRED"
+                      ? summary.expired
+                      : summary.total,
+              tone:
+                option.badgeVariant === "success"
+                  ? "success"
+                  : option.badgeVariant === "warning"
+                    ? "warning"
+                    : option.badgeVariant === "destructive"
+                      ? "danger"
+                      : "default",
+              icon:
+                option.code === "ACTIVE"
+                  ? CheckCircle2
+                  : option.code === "LOCKED"
+                    ? Lock
+                    : option.code === "EXPIRED"
+                      ? Clock
+                      : Link2,
+            }))}
+          />
 
         {tasksQuery.isError || linkStateCatalog.isError ? (
           <ErrorState
@@ -362,7 +435,7 @@ export function AttendanceLinksDashboardPage() {
                       </div>
                     </DataTableCell>
                     <DataTableCell>
-                    <AttendanceLinkStateBadge catalog={linkStateCatalog.items} task={task} />
+                      <AttendanceLinkStateBadge catalog={linkStateCatalog.items} task={task} />
                     </DataTableCell>
                     <DataTableCell>
                       <LinkTimeSummary
@@ -415,7 +488,8 @@ export function AttendanceLinksDashboardPage() {
             ) : null}
           </>
         )}
-      </div>
+        </div>
+      )}
       {confirmDialog}
     </PageShell>
   );

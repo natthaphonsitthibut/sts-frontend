@@ -1,3 +1,5 @@
+export type StudentEnrollmentState = "current-active" | "all";
+
 export interface StudentListItem {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export interface StudentListQuery {
   grade?: string;
   room?: string;
   searchTerm?: string;
+  enrollmentState?: StudentEnrollmentState;
   page?: number;
   limit?: number;
 }

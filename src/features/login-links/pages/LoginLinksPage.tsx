@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Link2, Lock } from "lucide-react";
-import { useConfirm } from "../../../components/base";
+import { Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import {
   EmptyState,
   ErrorState,
@@ -15,21 +16,33 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { LoginLinkTable } from "../components/LoginLinkTable";
-import {
-  useLoginLinks,
-  useSetLinkLock,
-} from "../hooks/useLoginLinks";
-import {
-  isLoginLinkLocked,
-} from "../lib/login-links-presentation";
+import { useLoginLinks, useSetLinkLock } from "../hooks/useLoginLinks";
+import { isLoginLinkLocked } from "../lib/login-links-presentation";
 import type { LoginLink, LoginLinkListQuery } from "../types/login-links.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
+const LOGIN_LINK_TAB_ROUTES = {
+  manage: "/login-links",
+  history: "/login-links/history",
+} as const;
+
+const LOGIN_LINK_AUDIT_ACTION_OPTIONS = [
+  { value: "LINK_LOCK", label: "ปิดลิงก์" },
+  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
+] as const;
+
 export function LoginLinksPage() {
+  const { can } = usePermissions();
+  const [activeTab, setActiveTab] = useRouteTab(LOGIN_LINK_TAB_ROUTES, "manage");
+  const canViewAuditLog = can("audit-log");
+  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "manage";
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
     ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
@@ -128,113 +141,158 @@ export function LoginLinksPage() {
       <ListPageToolbar
         icon={Link2}
         title="ลิงก์เข้าสู่ระบบ"
-        description="สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
-        tableActions={
-          <div className="flex gap-2">
-            <RefreshButton onRefresh={refetch} />
-          </div>
+        description={
+          effectiveTab === "manage"
+            ? "สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
+            : "ดูประวัติการเปิดและปิดลิงก์ย้อนหลังตามขอบเขตสิทธิ์"
         }
-        search={{
-          value: searchQuery,
-          onChange: handleSearchChange,
-          placeholder: "ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ...",
-        }}
-        filters={
-          <>
-            <SchoolClassRoomFilter
-              area={schoolArea}
-              onGradeChange={handleGradeChange}
-              onRoomChange={handleRoomChange}
-              onSchoolChange={handleSchoolChange}
-              scope={scope}
+        actions={
+          canViewAuditLog ? (
+            <Tabs
+              aria-label="โหมดจัดการลิงก์เข้าสู่ระบบ"
+              onChange={setActiveTab}
+              options={[
+                { value: "manage", label: "จัดการลิงก์" },
+                { value: "history", label: "ประวัติ" },
+              ]}
+              value={activeTab}
             />
-            <FilterSelect
-              ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
-              className="sm:w-[220px]"
-              onChange={handleStatusChange}
-              value={status}
-            >
-              <option value="ALL">ทั้งหมด</option>
-              {linkStateOptions.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </FilterSelect>
-          </>
+          ) : undefined
+        }
+        tableActions={
+          effectiveTab === "manage" ? (
+            <div className="flex gap-2">
+              <RefreshButton onRefresh={refetch} />
+            </div>
+          ) : undefined
+        }
+        search={
+          effectiveTab === "manage"
+            ? {
+                value: searchQuery,
+                onChange: handleSearchChange,
+                placeholder: "ค้นหาชื่อ อีเมล ตำแหน่ง หรือสถานะ...",
+              }
+            : undefined
+        }
+        filters={
+          effectiveTab === "manage" ? (
+            <>
+              <SchoolClassRoomFilter
+                area={schoolArea}
+                onGradeChange={handleGradeChange}
+                onRoomChange={handleRoomChange}
+                onSchoolChange={handleSchoolChange}
+                scope={scope}
+              />
+              <FilterSelect
+                ariaLabel="สถานะลิงก์เข้าสู่ระบบ"
+                className="sm:w-[220px]"
+                onChange={handleStatusChange}
+                value={status}
+              >
+                <option value="ALL">ทั้งหมด</option>
+                {linkStateOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </>
+          ) : (
+            <SchoolAreaSchoolFilter
+              area={schoolArea}
+              onSchoolChange={handleSchoolChange}
+              schoolId={scope.schoolId}
+              schoolLocked={scope.schoolLocked}
+            />
+          )
         }
       />
 
-      <div className="space-y-5">
-        <SummaryMetrics
-          items={[
-            { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
-            ...linkStateOptions,
-          ].map((option) => ({
-            label: option.label,
-            value:
-              option.code === "ACTIVE"
-                ? summary.active
-                : option.code === "LOCKED"
-                  ? summary.locked
-                  : option.code === "EXPIRED"
-                    ? summary.expired
-                    : summary.total,
-            tone:
-              option.badgeVariant === "success"
-                ? "success"
-                : option.badgeVariant === "warning"
-                  ? "warning"
-                  : option.badgeVariant === "destructive"
-                    ? "danger"
-                    : "default",
-            icon:
-              option.code === "ACTIVE"
-                ? CheckCircle2
-                : option.code === "LOCKED"
-                  ? Lock
-                  : option.code === "EXPIRED"
-                    ? Clock
-                    : Link2,
-          }))}
-        />
+      {effectiveTab === "manage" ? (
+        <div className="space-y-5">
+          <SummaryMetrics
+            items={[
+              { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
+              ...linkStateOptions,
+            ].map((option) => ({
+              label: option.label,
+              value:
+                option.code === "ACTIVE"
+                  ? summary.active
+                  : option.code === "LOCKED"
+                    ? summary.locked
+                    : option.code === "EXPIRED"
+                      ? summary.expired
+                      : summary.total,
+              tone:
+                option.badgeVariant === "success"
+                  ? "success"
+                  : option.badgeVariant === "warning"
+                    ? "warning"
+                    : option.badgeVariant === "destructive"
+                      ? "danger"
+                      : "default",
+              icon:
+                option.code === "ACTIVE"
+                  ? CheckCircle2
+                  : option.code === "LOCKED"
+                    ? Lock
+                    : option.code === "EXPIRED"
+                      ? Clock
+                      : Link2,
+            }))}
+          />
 
-        {isError || linkStateCatalog.isError ? (
-          <ErrorState
-            title="ไม่สามารถโหลดลิงก์ได้"
-            description="เกิดข้อผิดพลาดระหว่างโหลดรายการลิงก์เข้าสู่ระบบ"
-            onRetry={() => {
-              refetch();
-              linkStateCatalog.refetch();
-            }}
-          />
-        ) : isLoading || linkStateCatalog.isLoading ? (
-          <SkeletonTable />
-        ) : links.length === 0 ? (
-          <EmptyState
-            icon={Link2}
-            title={hasActiveFilter ? "ไม่พบลิงก์ที่ค้นหา" : "ยังไม่มีลิงก์เข้าสู่ระบบ"}
-            description={
-              hasActiveFilter
-                ? "ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ"
-                : "กดปุ่ม “สร้างลิงก์” เพื่อสร้างลิงก์เข้าสู่ระบบใหม่"
-            }
-          />
-        ) : (
-          <>
-            <LoginLinkTable links={links} onToggleLock={handleToggleLock} />
-            <Pagination
-              onPageChange={setPage}
-              onRowsPerPageChange={handleRowsPerPageChange}
-              page={page}
-              rowsPerPage={rowsPerPage}
-              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-              totalCount={totalCount}
-              unitLabel="ลิงก์"
+          {isError || linkStateCatalog.isError ? (
+            <ErrorState
+              title="ไม่สามารถโหลดลิงก์ได้"
+              description="เกิดข้อผิดพลาดระหว่างโหลดรายการลิงก์เข้าสู่ระบบ"
+              onRetry={() => {
+                refetch();
+                linkStateCatalog.refetch();
+              }}
             />
-          </>
-        )}
-      </div>
+          ) : isLoading || linkStateCatalog.isLoading ? (
+            <SkeletonTable />
+          ) : links.length === 0 ? (
+            <EmptyState
+              icon={Link2}
+              title={hasActiveFilter ? "ไม่พบลิงก์ที่ค้นหา" : "ยังไม่มีลิงก์เข้าสู่ระบบ"}
+              description={
+                hasActiveFilter
+                  ? "ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ"
+                  : "กดปุ่ม “สร้างลิงก์” เพื่อสร้างลิงก์เข้าสู่ระบบใหม่"
+              }
+            />
+          ) : (
+            <>
+              <LoginLinkTable links={links} onToggleLock={handleToggleLock} />
+              <Pagination
+                onPageChange={setPage}
+                onRowsPerPageChange={handleRowsPerPageChange}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                totalCount={totalCount}
+                unitLabel="ลิงก์"
+              />
+            </>
+          )}
+        </div>
+      ) : (
+        <AuditLogPanel
+          actionOptions={LOGIN_LINK_AUDIT_ACTION_OPTIONS}
+          description="ดูประวัติการเปิดและปิดลิงก์เข้าสู่ระบบย้อนหลังตามขอบเขตสิทธิ์"
+          district={schoolArea.district || undefined}
+          domain="login_links"
+          province={schoolArea.province || undefined}
+          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
+          subDistrict={schoolArea.subDistrict || undefined}
+          title="ประวัติลิงก์เข้าสู่ระบบ"
+        />
+      )}
 
       {confirmDialog}
     </PageShell>

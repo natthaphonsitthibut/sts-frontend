@@ -13,6 +13,8 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { loginLinksService } from "../../login-links/api/login-links.service";
 import {
   formatDate,
@@ -27,12 +29,18 @@ import {
 export const ATTENDANCE_LINK_DETAIL_KEY = "attendance-link-detail";
 const ATTENDANCE_TASKS_KEY = "attendance-link-tasks";
 
+const ATTENDANCE_LINK_DETAIL_AUDIT_ACTION_OPTIONS = [
+  { value: "LINK_LOCK", label: "ปิดลิงก์" },
+  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
+] as const;
+
 /**
  * Detail page for one attendance link — who was checked and their status.
  * Loads admin-side by link id so it renders even when the link is closed or
  * expired, and lets the admin open/close it from here.
  */
 export function AttendanceLinkDetailPage() {
+  const { can } = usePermissions();
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE").items;
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const { linkId = "" } = useParams<{ linkId: string }>();
@@ -72,6 +80,7 @@ export function AttendanceLinkDetailPage() {
   const publicLink = toAbsoluteUrl(detail.magic_link ?? "");
   const statusMeta = findStatusCatalogItem(linkStateCatalog, detail.status);
   const canToggleLink = detail.status !== "EXPIRED";
+  const canViewAuditLog = can("audit-log");
 
   return (
     <PageShell>
@@ -141,6 +150,21 @@ export function AttendanceLinkDetailPage() {
           <h2 className="mb-4 text-lg font-bold text-slate-900">ลิงก์เช็คชื่อ</h2>
           <LinkShareActions link={publicLink} />
         </Card>
+
+        {canViewAuditLog ? (
+          <Card className="rounded-lg p-6">
+            <AuditLogPanel
+              actionOptions={ATTENDANCE_LINK_DETAIL_AUDIT_ACTION_OPTIONS}
+              description="ดูประวัติการปิดและเปิดลิงก์เช็คชื่อนี้ย้อนหลัง"
+              domain="tasks"
+              showReferenceColumn={false}
+              targetId={linkId}
+              targetType="task_link"
+              taskType="ATTENDANCE"
+              title="ประวัติลิงก์นี้"
+            />
+          </Card>
+        ) : null}
 
         <Card className="rounded-lg p-6">
           <h2 className="mb-4 text-lg font-bold text-slate-900">

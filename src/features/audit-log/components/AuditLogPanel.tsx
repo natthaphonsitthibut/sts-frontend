@@ -26,7 +26,11 @@ import {
   getAuditLogTargetLabel,
 } from "../lib/audit-log-presentation";
 import { useAuditLog } from "../hooks/useAuditLog";
-import type { AuditLogDomain, AuditLogEntry } from "../types/audit-log.types";
+import type {
+  AuditLogDomain,
+  AuditLogEntry,
+  AuditLogTaskType,
+} from "../types/audit-log.types";
 
 interface AuditLogActionOption {
   value: string;
@@ -41,6 +45,10 @@ interface AuditLogPanelProps {
   district?: string;
   subDistrict?: string;
   schoolId?: number;
+  taskType?: AuditLogTaskType;
+  targetType?: string;
+  targetId?: string;
+  caseId?: number;
   actionOptions?: readonly AuditLogActionOption[];
   showActionColumn?: boolean;
   showReferenceColumn?: boolean;
@@ -274,6 +282,7 @@ function AuditLogTable({
 
 export function AuditLogPanel({
   actionOptions = [],
+  caseId,
   className,
   description,
   district,
@@ -283,9 +292,12 @@ export function AuditLogPanel({
   showActionColumn = true,
   showReferenceColumn = true,
   subDistrict,
+  taskType,
+  targetId,
+  targetType,
   title,
 }: AuditLogPanelProps) {
-  const scopeKey = `${province || ""}|${district || ""}|${subDistrict || ""}|${schoolId || ""}`;
+  const scopeKey = `${province || ""}|${district || ""}|${subDistrict || ""}|${schoolId || ""}|${taskType || ""}|${targetType || ""}|${targetId || ""}|${caseId || ""}`;
   const [pageState, setPageState] = useState({ page: 1, scopeKey });
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
   const [searchTerm, setSearchTerm] = useState("");
@@ -302,6 +314,10 @@ export function AuditLogPanel({
       district,
       subDistrict,
       schoolId,
+      caseId,
+      taskType,
+      targetType,
+      targetId,
       action: action || undefined,
       searchTerm: debouncedSearchTerm || undefined,
       dateFrom: dateFrom || undefined,
@@ -311,6 +327,7 @@ export function AuditLogPanel({
     }),
     [
       action,
+      caseId,
       dateFrom,
       dateTo,
       debouncedSearchTerm,
@@ -321,6 +338,9 @@ export function AuditLogPanel({
       rowsPerPage,
       schoolId,
       subDistrict,
+      taskType,
+      targetId,
+      targetType,
     ],
   );
 

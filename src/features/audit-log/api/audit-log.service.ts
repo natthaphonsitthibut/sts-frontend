@@ -46,6 +46,20 @@ function buildAuditLogParams(query: AuditLogQuery): Record<string, string> {
   if (query.schoolId) {
     params.schoolId = String(query.schoolId);
   }
+  if (query.caseId) {
+    params.caseId = String(query.caseId);
+  }
+  if (query.taskType) {
+    params.taskType = query.taskType;
+  }
+  const targetType = query.targetType?.trim();
+  if (targetType) {
+    params.targetType = targetType;
+  }
+  const targetId = query.targetId?.trim();
+  if (targetId) {
+    params.targetId = targetId;
+  }
 
   return params;
 }

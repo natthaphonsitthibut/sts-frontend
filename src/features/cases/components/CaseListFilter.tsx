@@ -13,6 +13,7 @@ interface CaseListFilterProps {
   status: string;
   onStatusChange: (value: string) => void;
   schoolFilters?: ReactNode;
+  actions?: ReactNode;
   count: number;
   onRefresh: () => Promise<unknown> | unknown;
   statuses: readonly StatusCatalogItem[];
@@ -24,6 +25,7 @@ export function CaseListFilter({
   status,
   onStatusChange,
   schoolFilters,
+  actions,
   count,
   onRefresh,
   statuses,
@@ -33,6 +35,7 @@ export function CaseListFilter({
       icon={HeartHandshake}
       title="เคสช่วยเหลือนักเรียน"
       description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
+      actions={actions}
       tableActions={<RefreshButton onRefresh={onRefresh} />}
       search={{
         value: searchQuery,

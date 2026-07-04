@@ -131,6 +131,9 @@ function buildStudentListParams(
   if (searchTerm) {
     params.searchTerm = searchTerm;
   }
+  if (query.enrollmentState) {
+    params.enrollmentState = query.enrollmentState;
+  }
   if (typeof query.page === "number") {
     params.page = String(query.page);
   }
@@ -177,7 +180,7 @@ async function getStudents(
 async function getFilterOptions(
   query: Pick<
     StudentListQuery,
-    "schoolId" | "province" | "district" | "subDistrict" | "grade"
+    "schoolId" | "province" | "district" | "subDistrict" | "grade" | "enrollmentState"
   > = {},
 ): Promise<StudentFilterOptions> {
   const params: Record<string, string> = {};
@@ -199,6 +202,9 @@ async function getFilterOptions(
   }
   if (query.grade && query.grade !== "ALL") {
     params.grade = query.grade;
+  }
+  if (query.enrollmentState) {
+    params.enrollmentState = query.enrollmentState;
   }
 
   const response = await apiClient.get<DataEnvelope<StudentFilterOptions>>(

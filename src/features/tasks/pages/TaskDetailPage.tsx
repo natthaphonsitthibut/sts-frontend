@@ -13,6 +13,7 @@ import { LinkShareActions } from "../../../components/layout/link-share-actions"
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseReferralOutcomeDialog } from "../../cases/components/CaseReferralOutcomeDialog";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
@@ -37,6 +38,14 @@ import {
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+
+const CASE_DETAIL_AUDIT_ACTION_OPTIONS = [
+  { value: "CASE_REVIEW", label: "ตรวจสอบเคส" },
+  { value: "CASE_CLOSE", label: "ปิดเคส" },
+  { value: "CASE_FORWARD", label: "ส่งต่อเคส" },
+  { value: "CASE_REFERRAL_OUTCOME_UPDATE", label: "บันทึกผลการส่งต่อ" },
+  { value: "CASE_AUTO_CANCEL", label: "ยกเลิกเคสอัตโนมัติ" },
+] as const;
 
 function ReferralCard({
   canUpdate,
@@ -140,6 +149,7 @@ export function TaskDetailPage() {
   const canUpdateCase = Boolean(caseRecord) && can("review-cases");
   const canUpdateReferral =
     Boolean(caseRecord) && can("review-cases") && can("forward-case");
+  const canViewAuditLog = Boolean(caseRecord) && can("audit-log");
 
   function openReferralOutcome(referral: CaseReferralRecord): void {
     setSelectedReferral(referral);
@@ -312,6 +322,19 @@ export function TaskDetailPage() {
             })}
           </ol>
         </Card>
+
+        {canViewAuditLog && caseRecord ? (
+          <Card className="rounded-lg p-6">
+            <AuditLogPanel
+              actionOptions={CASE_DETAIL_AUDIT_ACTION_OPTIONS}
+              caseId={caseRecord.id}
+              description="ดูประวัติการตรวจสอบ ส่งต่อ ปิดเคส และผลตอบรับของเคสนี้"
+              domain="cases"
+              showReferenceColumn={false}
+              title="ประวัติเคสนี้"
+            />
+          </Card>
+        ) : null}
 
         {firstSubmission ? (
           <Card className="rounded-lg p-6">

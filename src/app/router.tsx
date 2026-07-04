@@ -30,6 +30,7 @@ import {
   ManageUserFormPage,
   ManageUsersPage,
   NotFoundPage,
+  NotificationsPage,
   ProfilePage,
   ReportPage,
   RouteSuspense,
@@ -88,7 +89,15 @@ export const router = createBrowserRouter([
         element: protectedElement(<ProfilePage />),
       },
       {
+        path: "notifications",
+        element: protectedElement(<NotificationsPage />),
+      },
+      {
         path: "students",
+        element: protectedElement(<StudentListPage />, "students"),
+      },
+      {
+        path: "students/history",
         element: protectedElement(<StudentListPage />, "students"),
       },
       {
@@ -128,7 +137,18 @@ export const router = createBrowserRouter([
         element: protectedElement(<CasesListPage />, "review-cases"),
       },
       {
+        path: "cases/history",
+        element: protectedElement(<CasesListPage />, "review-cases"),
+      },
+      {
         path: "attendance-dashboard",
+        element: protectedElement(
+          <AttendanceLinksDashboardPage />,
+          "attendance-dashboard",
+        ),
+      },
+      {
+        path: "attendance-dashboard/history",
         element: protectedElement(
           <AttendanceLinksDashboardPage />,
           "attendance-dashboard",
@@ -225,6 +245,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "login-links",
+        element: protectedElement(<LoginLinksPage />, "login-links"),
+      },
+      {
+        path: "login-links/history",
         element: protectedElement(<LoginLinksPage />, "login-links"),
       },
       {
