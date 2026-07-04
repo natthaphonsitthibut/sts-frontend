@@ -3,7 +3,6 @@ import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Skeleton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
-import { formatThaiRelativeTime } from "../../../lib/date-time";
 import {
   useMarkAllRead,
   useMarkAllSeen,
@@ -11,59 +10,8 @@ import {
   useNotifications,
 } from "../hooks/useNotifications";
 import type { NotificationItem } from "../types/notifications.types";
-
-const REF_ROUTES: Record<string, string> = {
-  case: "/cases",
-  task: "/attendance-dashboard",
-};
-
-function NotificationListItem({
-  notification,
-  onOpen,
-}: {
-  notification: NotificationItem;
-  onOpen: (notification: NotificationItem) => void;
-}) {
-  const isUnread = !notification.read_at;
-  return (
-    <li>
-      <button
-        className={cn(
-          "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
-          isUnread && "bg-primary-soft/60 hover:bg-primary-soft",
-        )}
-        onClick={() => onOpen(notification)}
-        type="button"
-      >
-        <span className="min-w-0 flex-1">
-          <span
-            className={cn(
-              "block truncate text-sm text-slate-800",
-              isUnread ? "font-semibold" : "font-medium",
-            )}
-          >
-            {notification.title}
-          </span>
-          {notification.body ? (
-            <span className="mt-0.5 block truncate text-xs text-slate-500">
-              {notification.body}
-            </span>
-          ) : null}
-          <span className={cn("mt-1 block text-xs", isUnread ? "text-primary" : "text-slate-400")}>
-            {formatThaiRelativeTime(notification.created_at)}
-          </span>
-        </span>
-        {isUnread ? (
-          <span
-            aria-label="ยังไม่อ่าน"
-            className="mt-1.5 size-2.5 shrink-0 rounded-full bg-primary"
-            role="status"
-          />
-        ) : null}
-      </button>
-    </li>
-  );
-}
+import { NotificationListItem } from "./NotificationListItem";
+import { getNotificationRoute } from "../lib/notification-navigation";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -115,7 +63,7 @@ export function NotificationBell() {
       markRead.mutate(notification.id);
     }
     setOpen(false);
-    const route = notification.ref_entity ? REF_ROUTES[notification.ref_entity] : undefined;
+    const route = getNotificationRoute(notification);
     if (route) {
       void navigate(route);
     }
@@ -198,6 +146,7 @@ export function NotificationBell() {
               <ul className="divide-y divide-slate-100">
                 {notifications.map((notification) => (
                   <NotificationListItem
+                    compact
                     key={notification.id}
                     notification={notification}
                     onOpen={handleOpenNotification}
@@ -205,6 +154,19 @@ export function NotificationBell() {
                 ))}
               </ul>
             )}
+          </div>
+          <div className="border-t border-slate-100 p-2">
+            <Button
+              fullWidth
+              onClick={() => {
+                setOpen(false);
+                void navigate("/notifications");
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              ดูการแจ้งเตือนทั้งหมด
+            </Button>
           </div>
         </div>
       ) : null}

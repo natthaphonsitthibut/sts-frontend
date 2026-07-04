@@ -21,6 +21,11 @@ export const ProfilePage = lazy(() =>
     default: module.ProfilePage,
   })),
 );
+export const NotificationsPage = lazy(() =>
+  import("../features/notifications/pages/NotificationsPage").then((module) => ({
+    default: module.NotificationsPage,
+  })),
+);
 export const AttendanceCheckInPage = lazy(() =>
   import("../features/attendance/pages/AttendanceCheckInPage").then((module) => ({
     default: module.AttendanceCheckInPage,

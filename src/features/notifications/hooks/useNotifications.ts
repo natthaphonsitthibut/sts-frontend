@@ -5,12 +5,20 @@ export const NOTIFICATIONS_QUERY_KEY = "notifications";
 
 const POLL_INTERVAL_MS = 30_000;
 
-export function useNotifications(options: { unreadOnly: boolean; limit?: number }) {
+export function useNotifications(options: {
+  unreadOnly: boolean;
+  page?: number;
+  limit?: number;
+}) {
   return useQuery({
-    queryKey: [NOTIFICATIONS_QUERY_KEY, { unread: options.unreadOnly }],
+    queryKey: [
+      NOTIFICATIONS_QUERY_KEY,
+      { unread: options.unreadOnly, page: options.page ?? 1, limit: options.limit ?? 10 },
+    ],
     queryFn: () =>
       notificationsService.getNotifications({
         unread: options.unreadOnly,
+        page: options.page,
         limit: options.limit ?? 10,
       }),
     refetchInterval: POLL_INTERVAL_MS,
