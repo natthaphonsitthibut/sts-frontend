@@ -16,6 +16,7 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
 import { StudentTable } from "../components/StudentTable";
 import { useStudentFilterOptions, useStudents } from "../hooks/useStudents";
@@ -197,6 +198,16 @@ export function StudentListPage() {
           title="รายชื่อนักเรียน"
         />
       )}
+
+      {effectiveTab === "list" ? (
+        <PiiExportPanel
+          district={schoolArea.district || undefined}
+          province={schoolArea.province || undefined}
+          schoolId={scope.schoolId || undefined}
+          subDistrict={schoolArea.subDistrict || undefined}
+          totalCount={totalCount}
+        />
+      ) : null}
 
       {effectiveTab === "history" ? (
         <AuditLogPanel

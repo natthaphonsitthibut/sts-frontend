@@ -155,3 +155,76 @@ export interface StudentAttendanceSummaryResponse {
   records: StudentAttendanceHistoryRecord[];
   stats: StudentAttendanceSummaryStats;
 }
+
+export type PiiExportStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "DOWNLOADED"
+  | "EXPIRED"
+  | "CANCELLED";
+
+export interface PiiExportScope {
+  global?: boolean;
+  provinces?: string[];
+  districts?: string[];
+  sub_districts?: string[];
+  school_ids?: Array<number | string>;
+  grade_levels?: Array<number | string>;
+  room_ids?: Array<number | string>;
+}
+
+export interface PiiExportRequest {
+  id: string;
+  requester_user_id: number;
+  requester_username: string | null;
+  requester_name: string | null;
+  approver_user_id: number | null;
+  approver_username: string | null;
+  approver_name: string | null;
+  status: PiiExportStatus;
+  scope_snapshot: PiiExportScope;
+  include_full_national_id: boolean;
+  reason_code: StudentPiiReasonCode;
+  reason_note: string | null;
+  row_estimate: number | null;
+  download_expires_at: string | null;
+  downloaded_at: string | null;
+  rejected_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  download_token?: string;
+}
+
+export interface PiiExportRequestListQuery {
+  status?: PiiExportStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreatePiiExportRequestPayload {
+  scope: PiiExportScope;
+  include_full_national_id?: boolean;
+  reason_code: StudentPiiReasonCode;
+  reason_note: string;
+}
+
+export interface RejectPiiExportRequestPayload {
+  id: string;
+  rejected_reason: string;
+}
+
+export interface PiiExportRequestListResult {
+  data: PiiExportRequest[];
+  meta: PaginationMeta;
+}
+
+export interface PiiExportRequestResponse {
+  success: boolean;
+  data: PiiExportRequest;
+}
+
+export interface PiiExportDownloadResult {
+  blob: Blob;
+  filename: string;
+}

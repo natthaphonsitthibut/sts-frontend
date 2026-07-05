@@ -12,6 +12,12 @@ import type {
   StudentListQuery,
   StudentListResult,
   StudentUpdatePayload,
+  CreatePiiExportRequestPayload,
+  PiiExportDownloadResult,
+  PiiExportRequestListQuery,
+  PiiExportRequestListResult,
+  PiiExportRequestResponse,
+  RejectPiiExportRequestPayload,
 } from "../types/students.types";
 
 interface DataEnvelope<T> {
@@ -79,6 +85,17 @@ interface StudentsService {
     studentId: string,
     payload: StudentPiiRevealRequest,
   ) => Promise<StudentPiiRevealResponse>;
+  listPiiExportRequests: (
+    query?: PiiExportRequestListQuery,
+  ) => Promise<PiiExportRequestListResult>;
+  createPiiExportRequest: (
+    payload: CreatePiiExportRequestPayload,
+  ) => Promise<PiiExportRequestResponse>;
+  approvePiiExportRequest: (id: string) => Promise<PiiExportRequestResponse>;
+  rejectPiiExportRequest: (
+    payload: RejectPiiExportRequestPayload,
+  ) => Promise<PiiExportRequestResponse>;
+  downloadPiiExportCsv: (token: string) => Promise<PiiExportDownloadResult>;
   updateStudent: (studentId: string, payload: StudentUpdatePayload) => Promise<StudentDetail>;
   getStudentCasesByName: (studentName: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
@@ -234,6 +251,75 @@ async function revealStudentPii(
   return response.data;
 }
 
+function buildPiiExportRequestParams(
+  query: PiiExportRequestListQuery = {},
+): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (query.status) {
+    params.status = query.status;
+  }
+  if (typeof query.page === "number") {
+    params.page = String(query.page);
+  }
+  if (typeof query.limit === "number") {
+    params.limit = String(query.limit);
+  }
+  return params;
+}
+
+async function listPiiExportRequests(
+  query: PiiExportRequestListQuery = {},
+): Promise<PiiExportRequestListResult> {
+  const response = await apiClient.get<PiiExportRequestListResult>(
+    "/students/pii-export-requests",
+    { params: buildPiiExportRequestParams(query) },
+  );
+  return response.data;
+}
+
+async function createPiiExportRequest(
+  payload: CreatePiiExportRequestPayload,
+): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    "/students/pii-export-requests",
+    payload,
+  );
+  return response.data;
+}
+
+async function approvePiiExportRequest(id: string): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    `/students/pii-export-requests/${id}/approve`,
+  );
+  return response.data;
+}
+
+async function rejectPiiExportRequest(
+  payload: RejectPiiExportRequestPayload,
+): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    `/students/pii-export-requests/${payload.id}/reject`,
+    { rejected_reason: payload.rejected_reason },
+  );
+  return response.data;
+}
+
+function getPiiExportFilename(contentDisposition: string | undefined): string {
+  const match = contentDisposition?.match(/filename="?([^"]+)"?/i);
+  return match?.[1] ?? "pii-export.csv";
+}
+
+async function downloadPiiExportCsv(token: string): Promise<PiiExportDownloadResult> {
+  const response = await apiClient.get<Blob>("/students/pii-export-download", {
+    params: { token },
+    responseType: "blob",
+  });
+  return {
+    blob: response.data,
+    filename: getPiiExportFilename(response.headers["content-disposition"]),
+  };
+}
+
 async function updateStudent(
   studentId: string,
   payload: StudentUpdatePayload,
@@ -297,6 +383,11 @@ export const studentsService: StudentsService = {
   getFilterOptions,
   getStudentById,
   revealStudentPii,
+  listPiiExportRequests,
+  createPiiExportRequest,
+  approvePiiExportRequest,
+  rejectPiiExportRequest,
+  downloadPiiExportCsv,
   updateStudent,
   getStudentCasesByName,
   getStudentAttendance,
