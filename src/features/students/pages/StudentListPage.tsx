@@ -94,6 +94,11 @@ export function StudentListPage() {
   });
 
   const totalCount = meta?.totalCount ?? 0;
+  const selectedGradeLevelId =
+    grade === "ALL"
+      ? null
+      : (scope.gradeLevels.find((level) => level.label === grade)?.id ?? null);
+  const selectedRoomId = room === "ALL" ? undefined : room;
 
   // Every filter/page-size change resets to page 1 (handlers below), so the page
   // can't exceed the server's range through normal UI; the Pagination control
@@ -112,6 +117,7 @@ export function StudentListPage() {
 
   function handleGradeChange(value: string): void {
     setGrade(value);
+    setRoom("ALL");
     setPage(1);
   }
 
@@ -202,7 +208,9 @@ export function StudentListPage() {
       {effectiveTab === "list" ? (
         <PiiExportPanel
           district={schoolArea.district || undefined}
+          gradeLevelId={selectedGradeLevelId}
           province={schoolArea.province || undefined}
+          roomId={selectedRoomId}
           schoolId={scope.schoolId || undefined}
           subDistrict={schoolArea.subDistrict || undefined}
           totalCount={totalCount}

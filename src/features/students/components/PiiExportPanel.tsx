@@ -57,7 +57,9 @@ import type {
 
 interface PiiExportPanelProps {
   district?: string;
+  gradeLevelId?: number | string | null;
   province?: string;
+  roomId?: string;
   schoolId?: string;
   subDistrict?: string;
   totalCount: number;
@@ -149,43 +151,55 @@ function buildPiiExportScope(
   actorScope: PiiExportScope | undefined,
 ): PiiExportScope | null {
   const schoolId = toNumericId(props.schoolId);
+  const gradeLevelId = toNumericId(
+    props.gradeLevelId === null ? undefined : String(props.gradeLevelId),
+  );
+  const roomId = props.roomId?.trim();
+  const withClassScope = (scope: PiiExportScope): PiiExportScope => ({
+    ...scope,
+    grade_levels: gradeLevelId
+      ? [gradeLevelId]
+      : (scope.grade_levels ?? actorScope?.grade_levels),
+    room_ids: roomId ? [roomId] : (scope.room_ids ?? actorScope?.room_ids),
+  });
+
   if (schoolId) {
-    return { school_ids: [schoolId] };
+    return withClassScope({ school_ids: [schoolId] });
   }
   if (props.subDistrict) {
-    return {
+    return withClassScope({
       provinces: props.province ? [props.province] : undefined,
       districts: props.district ? [props.district] : undefined,
       sub_districts: [props.subDistrict],
-    };
+    });
   }
   if (props.district) {
-    return {
+    return withClassScope({
       provinces: props.province ? [props.province] : undefined,
       districts: [props.district],
-    };
+    });
   }
   if (props.province) {
-    return { provinces: [props.province] };
+    return withClassScope({ provinces: [props.province] });
   }
   if (actorScope?.global) {
-    return { global: true };
+    return withClassScope({ global: true });
   }
   if (actorScope?.school_ids?.length) {
-    return { school_ids: actorScope.school_ids };
+    return withClassScope({ school_ids: actorScope.school_ids });
   }
   if (actorScope?.sub_districts?.length) {
-    return {
+    return withClassScope({
       provinces: actorScope.provinces,
       districts: actorScope.districts,
       sub_districts: actorScope.sub_districts,
-    };
+    });
   }
   if (actorScope?.districts?.length) {
-    return { provinces: actorScope.provinces, districts: actorScope.districts };
+    return withClassScope({ provinces: actorScope.provinces, districts: actorScope.districts });
   }
   if (actorScope?.provinces?.length) {
-    return { provinces: actorScope.provinces };
+    return withClassScope({ provinces: actorScope.provinces });
   }
   return null;
 }
