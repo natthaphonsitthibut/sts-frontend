@@ -387,7 +387,7 @@ export function AttendanceOperationsPage() {
   const reconciliationSectionRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
-  const canManageCalendar = hasPermission(user?.permissions ?? [], "settings");
+  const canManageCalendar = hasPermission(user?.permissions ?? [], "manage-attendance-calendar");
   const schoolArea = useSchoolAreaFilter();
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
