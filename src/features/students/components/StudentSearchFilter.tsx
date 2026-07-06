@@ -5,7 +5,12 @@ import {
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import type { StudentEnrollmentState } from "../types/students.types";
+import type { StudentStatusFilterValue } from "../types/students.types";
+
+export interface StudentStatusFilterOption {
+  value: StudentStatusFilterValue;
+  label: string;
+}
 
 interface StudentSearchFilterProps {
   searchQuery: string;
@@ -16,10 +21,13 @@ interface StudentSearchFilterProps {
   room: string;
   onRoomChange: (value: string) => void;
   roomOptions: string[];
-  enrollmentState: StudentEnrollmentState;
-  onEnrollmentStateChange: (value: StudentEnrollmentState) => void;
+  studentStatusCode: StudentStatusFilterValue;
+  onStudentStatusCodeChange: (value: StudentStatusFilterValue) => void;
+  studentStatusOptions: StudentStatusFilterOption[];
+  isStudentStatusLoading?: boolean;
   schoolFilters?: ReactNode;
   actions?: ReactNode;
+  exportAction?: ReactNode;
   count: number;
   onRefresh: () => Promise<unknown> | unknown;
 }
@@ -33,10 +41,13 @@ export function StudentSearchFilter({
   room,
   onRoomChange,
   roomOptions,
-  enrollmentState,
-  onEnrollmentStateChange,
+  studentStatusCode,
+  onStudentStatusCodeChange,
+  studentStatusOptions,
+  isStudentStatusLoading = false,
   schoolFilters,
   actions,
+  exportAction,
   count,
   onRefresh,
 }: StudentSearchFilterProps) {
@@ -46,7 +57,12 @@ export function StudentSearchFilter({
       title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       actions={actions}
-      tableActions={<RefreshButton onRefresh={onRefresh} />}
+      tableActions={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <RefreshButton onRefresh={onRefresh} />
+          {exportAction}
+        </div>
+      }
       search={{
         value: searchQuery,
         onChange: onSearchChange,
@@ -55,15 +71,6 @@ export function StudentSearchFilter({
       filters={
         <>
           {schoolFilters}
-
-          <FilterSelect
-            ariaLabel="กรองตามสถานะการเรียน"
-            onChange={(value) => onEnrollmentStateChange(value as StudentEnrollmentState)}
-            value={enrollmentState}
-          >
-            <option value="current-active">นักเรียนปัจจุบัน</option>
-            <option value="all">ทุกสถานะ</option>
-          </FilterSelect>
 
           <FilterSelect
             ariaLabel="กรองตามระดับชั้น"
@@ -87,6 +94,21 @@ export function StudentSearchFilter({
             {roomOptions.map((option) => (
               <option key={option} value={option}>
                 ห้อง {option}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            ariaLabel="กรองตามสถานะการเรียน"
+            onChange={(value) => onStudentStatusCodeChange(value as StudentStatusFilterValue)}
+            value={studentStatusCode}
+          >
+            {isStudentStatusLoading && studentStatusOptions.length === 0 ? (
+              <option value={studentStatusCode}>กำลังโหลดสถานะ...</option>
+            ) : null}
+            {studentStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </FilterSelect>

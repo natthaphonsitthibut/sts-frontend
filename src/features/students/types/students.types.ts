@@ -1,4 +1,5 @@
 export type StudentEnrollmentState = "current-active" | "all";
+export type StudentStatusFilterValue = "ALL" | string;
 
 export interface StudentListItem {
   id: string;
@@ -22,6 +23,7 @@ export interface StudentListQuery {
   grade?: string;
   room?: string;
   searchTerm?: string;
+  studentStatusCode?: StudentStatusFilterValue;
   enrollmentState?: StudentEnrollmentState;
   page?: number;
   limit?: number;
@@ -188,6 +190,7 @@ export interface PiiExportRequest {
   reason_code: StudentPiiReasonCode;
   reason_note: string | null;
   row_estimate: number | null;
+  selected_student_count?: number;
   download_expires_at: string | null;
   downloaded_at: string | null;
   rejected_reason: string | null;
@@ -205,6 +208,7 @@ export interface PiiExportRequestListQuery {
 export interface CreatePiiExportRequestPayload {
   scope: PiiExportScope;
   include_full_national_id?: boolean;
+  selected_student_uuids?: string[];
   reason_code: StudentPiiReasonCode;
   reason_note: string;
 }

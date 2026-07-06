@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Download,
   FileDown,
-  RefreshCw,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -38,6 +37,7 @@ import {
   DataTableCell,
   DataTableRow,
 } from "../../../components/layout/data-table";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
@@ -55,15 +55,29 @@ import type {
   PiiExportStatus,
 } from "../types/students.types";
 
+type ExportMode = "FILTER" | "SELECTED";
+
+interface SelectedExportStudent {
+  id: string;
+  name: string;
+  grade?: string;
+  room?: string;
+  school_name?: string;
+}
+
 interface PiiExportPanelProps {
   district?: string;
   gradeLevelId?: number | string | null;
+  onClearSelectedStudents?: () => void;
   province?: string;
   roomId?: string;
   schoolId?: string;
+  selectedStudents?: SelectedExportStudent[];
   subDistrict?: string;
   totalCount: number;
 }
+
+const EMPTY_SELECTED_STUDENTS: SelectedExportStudent[] = [];
 
 interface TokenState {
   requestId: string;
@@ -235,12 +249,24 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [rejectTarget, setRejectTarget] = useState<PiiExportRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [requestedExportMode, setExportMode] = useState<ExportMode>(() =>
+    props.selectedStudents?.length ? "SELECTED" : "FILTER",
+  );
 
   const actorScope = user?.data_scope as PiiExportScope | undefined;
   const exportScope = useMemo(() => buildPiiExportScope(props, actorScope), [props, actorScope]);
   const scopeReady = hasScopeValue(exportScope);
   const scopeLabel = scopeReady ? formatScopeLabel(exportScope) : "ยังไม่กำหนดขอบเขต";
   const isAdmin = user?.roles?.includes("ADMIN") ?? false;
+  const selectedStudents = props.selectedStudents ?? EMPTY_SELECTED_STUDENTS;
+  const selectedStudentIds = useMemo(
+    () => selectedStudents.map((student) => student.id),
+    [selectedStudents],
+  );
+  const selectedCount = selectedStudentIds.length;
+  const exportMode = selectedCount > 0 ? requestedExportMode : "FILTER";
+  const willExportSelected = exportMode === "SELECTED" && selectedCount > 0;
+  const exportCount = willExportSelected ? selectedCount : props.totalCount;
 
   const listQuery = usePiiExportRequests({ limit: 20 });
   const createMutation = useCreatePiiExportRequest();
@@ -267,6 +293,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
       const result = await createMutation.mutateAsync({
         scope: exportScope,
         include_full_national_id: values.include_full_national_id,
+        selected_student_uuids: willExportSelected ? selectedStudentIds : undefined,
         reason_code: values.reason_code,
         reason_note: values.reason_note.trim(),
       });
@@ -323,7 +350,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+    <div className="space-y-4">
       <Dialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && setRejectTarget(null)}>
         <DialogContent onClose={() => setRejectTarget(null)}>
           <DialogHeader>
@@ -358,25 +385,20 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileDown className="size-5 text-primary" aria-hidden="true" />
-            <h2 className="text-base font-bold text-slate-900">ส่งออกข้อมูลส่วนบุคคล</h2>
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileDown className="size-5 text-primary" aria-hidden="true" />
+              <h2 className="text-base font-bold text-slate-900">ส่งออกข้อมูลส่วนบุคคล</h2>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              ขอบเขต: {scopeLabel} · จำนวนที่จะส่งออก {exportCount.toLocaleString("th-TH")} คน
+            </p>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            ขอบเขต: {scopeLabel} · รายชื่อตามตัวกรองปัจจุบัน {props.totalCount.toLocaleString("th-TH")} คน
-          </p>
+          <RefreshButton label="รีเฟรชคำขอ" onRefresh={() => listQuery.refetch()} />
         </div>
-        <Button
-          icon={RefreshCw}
-          loadingIconMotion="refresh"
-          onClick={() => void listQuery.refetch()}
-          variant="outline"
-        >
-          รีเฟรชคำขอ
-        </Button>
-      </div>
+      </section>
 
       {serverMessage ? (
         <Alert variant="destructive">
@@ -405,127 +427,209 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         </Alert>
       ) : null}
 
-      <Form form={form} onSubmit={handleCreate}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.65fr)_auto] lg:items-start">
-          <FormItem>
-            <FormLabel htmlFor="pii-export-reason" required>
-              เหตุผล
-            </FormLabel>
-            <Combobox
-              id="pii-export-reason"
-              onChange={handleReasonChange}
-              options={PII_REASON_OPTIONS}
-              searchable={false}
-              value={reasonCode}
-            />
-            <FormMessage<PiiExportFormValues> name="reason_code" />
-          </FormItem>
-          <FormItem>
-            <FormLabel htmlFor="pii-export-note" required>
-              รายละเอียด
-            </FormLabel>
-            <Textarea
-              id="pii-export-note"
-              placeholder="ระบุวัตถุประสงค์และผู้ใช้ไฟล์"
-              rows={2}
-              {...registerField(form, "reason_note")}
-            />
-            <FormMessage<PiiExportFormValues> name="reason_note" />
-          </FormItem>
-          <div className="space-y-3 lg:min-w-52">
-            <Checkbox
-              checked={includeFullNationalId}
-              label="ขอเลขบัตรเต็ม"
-              onChange={(event) =>
-                form.setValue("include_full_national_id", event.target.checked, {
-                  shouldDirty: true,
-                })
-              }
-            />
-            <Button
-              disabled={!scopeReady}
-              fullWidth
-              icon={ShieldCheck}
-              isLoading={createMutation.isPending}
-              loadingText="กำลังส่งคำขอ"
-              type="submit"
-            >
-              ส่งคำขอ
-            </Button>
-          </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+        <div className="mb-4 grid gap-3 lg:grid-cols-2">
+          <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <span className="flex items-start gap-3">
+              <input
+                checked={exportMode === "FILTER"}
+                className="mt-1"
+                name="pii-export-mode"
+                onChange={() => setExportMode("FILTER")}
+                type="radio"
+              />
+              <span>
+                <span className="block font-bold text-slate-800">ส่งออกตามตัวกรอง</span>
+                <span className="text-slate-500">
+                  รวม {props.totalCount.toLocaleString("th-TH")} คนในขอบเขตและตัวกรองปัจจุบัน
+                </span>
+              </span>
+            </span>
+          </label>
+          <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <span className="flex items-start gap-3">
+              <input
+                checked={exportMode === "SELECTED"}
+                className="mt-1"
+                disabled={selectedCount === 0}
+                name="pii-export-mode"
+                onChange={() => setExportMode("SELECTED")}
+                type="radio"
+              />
+              <span>
+                <span className="block font-bold text-slate-800">ส่งออกเฉพาะที่เลือก</span>
+                <span className="text-slate-500">
+                  {selectedCount > 0
+                    ? `เลือกไว้ ${selectedCount.toLocaleString("th-TH")} คน`
+                    : "ติ๊กนักเรียนในหน้ารายชื่อก่อนเลือกโหมดนี้"}
+                </span>
+              </span>
+            </span>
+          </label>
         </div>
-      </Form>
 
-      {(includeFullNationalId || exportScope?.global) ? (
-        <Alert variant="warning">
-          <AlertTriangle className="mr-2 inline size-4" aria-hidden="true" />
-          คำขอนี้มีความเสี่ยงสูง ผู้อนุมัติจะเห็น flag เลขบัตรเต็ม/ขอบเขตกว้างก่อนอนุมัติ
-        </Alert>
-      ) : null}
+        {selectedCount > 0 ? (
+          <div className="mb-4 rounded-lg border border-slate-100 bg-white p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-bold text-slate-800">
+                รายชื่อที่เลือก ({selectedCount.toLocaleString("th-TH")} คน)
+              </div>
+              <Button onClick={props.onClearSelectedStudents} size="sm" variant="outline">
+                ล้างรายการ
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedStudents.slice(0, 10).map((student) => (
+                <Badge key={student.id} variant="secondary">
+                  {student.name} · {student.grade || "-"} / {student.room || "-"}
+                </Badge>
+              ))}
+              {selectedCount > 10 ? (
+                <Badge variant="secondary">+{selectedCount - 10} คน</Badge>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
-      <DataTable
-        headings={["เวลา", "ผู้ขอ", "สถานะ", "เหตุผล", "หมดอายุ/ดาวน์โหลด", ""]}
-        minWidthClassName="min-w-[960px]"
-        responsive={false}
-      >
-        {requests.length === 0 ? (
-          <DataTableRow>
-            <DataTableCell colSpan={6} className="text-center text-slate-500">
-              ยังไม่มีคำขอส่งออก
-            </DataTableCell>
-          </DataTableRow>
-        ) : (
-          requests.map((request) => (
-            <DataTableRow key={request.id}>
-              <DataTableCell>
-                <div className="font-medium text-slate-800">{formatThaiDateTime(request.created_at)}</div>
-                <div className="text-xs text-slate-400">{request.id.slice(0, 8)}</div>
-              </DataTableCell>
-              <DataTableCell>{requestActorLabel(request)}</DataTableCell>
-              <DataTableCell>
-                <Badge variant={STATUS_VARIANTS[request.status]}>{STATUS_LABELS[request.status]}</Badge>
-                {request.include_full_national_id ? (
-                  <div className="mt-1 text-xs font-medium text-warning-700">ขอเลขบัตรเต็ม</div>
-                ) : null}
-              </DataTableCell>
-              <DataTableCell>
-                <div>{PII_REASON_OPTIONS.find((option) => option.value === request.reason_code)?.label}</div>
-                <div className="line-clamp-1 text-xs text-slate-400">{request.reason_note}</div>
-              </DataTableCell>
-              <DataTableCell>
-                <div>{request.downloaded_at ? formatThaiDateTime(request.downloaded_at) : formatThaiTimeRemaining(request.download_expires_at)}</div>
-              </DataTableCell>
-              <DataTableCell className="text-right">
-                {request.status === "PENDING" && isAdmin && request.requester_user_id !== user?.id ? (
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      icon={CheckCircle2}
-                      isLoading={approveMutation.isPending}
-                      onClick={() => void handleApprove(request)}
-                      size="sm"
-                    >
-                      อนุมัติ
-                    </Button>
-                    <Button
-                      icon={XCircle}
-                      onClick={() => {
-                        setRejectReason("");
-                        setRejectTarget(request);
-                      }}
-                      size="sm"
-                      variant="outline"
-                    >
-                      ปฏิเสธ
-                    </Button>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400">-</span>
-                )}
+        <div className="mb-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+          <Checkbox
+            checked={includeFullNationalId}
+            label="ขอเลขบัตรเต็ม"
+            onChange={(event) =>
+              form.setValue("include_full_national_id", event.target.checked, {
+                shouldDirty: true,
+              })
+            }
+          />
+          <p className="mt-1 pl-8 text-xs font-medium text-slate-500">
+            ค่าเริ่มต้นจะปิดบังเลขบัตรประชาชน เลือกเฉพาะกรณีจำเป็นและมีเหตุผลรองรับ
+          </p>
+        </div>
+
+        <Form form={form} onSubmit={handleCreate}>
+          <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.6fr)_minmax(0,1fr)_auto] lg:items-start">
+            <FormItem>
+              <FormLabel htmlFor="pii-export-reason" required>
+                เหตุผล
+              </FormLabel>
+              <Combobox
+                id="pii-export-reason"
+                onChange={handleReasonChange}
+                options={PII_REASON_OPTIONS}
+                searchable={false}
+                value={reasonCode}
+              />
+              <FormMessage<PiiExportFormValues> name="reason_code" />
+            </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="pii-export-note" required>
+                รายละเอียด
+              </FormLabel>
+              <Textarea
+                id="pii-export-note"
+                placeholder="ระบุวัตถุประสงค์และผู้ใช้ไฟล์"
+                rows={2}
+                {...registerField(form, "reason_note")}
+              />
+              <FormMessage<PiiExportFormValues> name="reason_note" />
+            </FormItem>
+            <div className="lg:min-w-52 lg:pt-7">
+              <Button
+                disabled={!scopeReady || exportCount === 0}
+                fullWidth
+                icon={ShieldCheck}
+                isLoading={createMutation.isPending}
+                loadingText="กำลังส่งคำขอ"
+                type="submit"
+              >
+                ส่งคำขอ
+              </Button>
+            </div>
+          </div>
+        </Form>
+
+        {(includeFullNationalId || exportScope?.global) ? (
+          <Alert className="mt-4" variant="warning">
+            <AlertTriangle className="mr-2 inline size-4" aria-hidden="true" />
+            คำขอนี้มีความเสี่ยงสูง ผู้อนุมัติจะเห็น flag เลขบัตรเต็ม/ขอบเขตกว้างก่อนอนุมัติ
+          </Alert>
+        ) : null}
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-slate-900">คำขอส่งออกล่าสุด</h2>
+          <Badge variant="secondary">{requests.length.toLocaleString("th-TH")} รายการ</Badge>
+        </div>
+        <DataTable
+          headings={["เวลา", "ผู้ขอ", "สถานะ", "เหตุผล", "จำนวน", "หมดอายุ/ดาวน์โหลด", ""]}
+          minWidthClassName="min-w-[1040px]"
+          responsive={false}
+        >
+          {requests.length === 0 ? (
+            <DataTableRow>
+              <DataTableCell colSpan={7} className="text-center text-slate-500">
+                ยังไม่มีคำขอส่งออก
               </DataTableCell>
             </DataTableRow>
-          ))
-        )}
-      </DataTable>
-    </section>
+          ) : (
+            requests.map((request) => (
+              <DataTableRow key={request.id}>
+                <DataTableCell>
+                  <div className="font-medium text-slate-800">{formatThaiDateTime(request.created_at)}</div>
+                  <div className="text-xs text-slate-400">{request.id.slice(0, 8)}</div>
+                </DataTableCell>
+                <DataTableCell>{requestActorLabel(request)}</DataTableCell>
+                <DataTableCell>
+                  <Badge variant={STATUS_VARIANTS[request.status]}>{STATUS_LABELS[request.status]}</Badge>
+                  {request.include_full_national_id ? (
+                    <div className="mt-1 text-xs font-medium text-warning-700">ขอเลขบัตรเต็ม</div>
+                  ) : null}
+                </DataTableCell>
+                <DataTableCell>
+                  <div>{PII_REASON_OPTIONS.find((option) => option.value === request.reason_code)?.label}</div>
+                  <div className="line-clamp-1 text-xs text-slate-400">{request.reason_note}</div>
+                </DataTableCell>
+                <DataTableCell>
+                  {request.selected_student_count && request.selected_student_count > 0
+                    ? `${request.selected_student_count.toLocaleString("th-TH")} คนที่เลือก`
+                    : `${request.row_estimate?.toLocaleString("th-TH") ?? "-"} คน`}
+                </DataTableCell>
+                <DataTableCell>
+                  <div>{request.downloaded_at ? formatThaiDateTime(request.downloaded_at) : formatThaiTimeRemaining(request.download_expires_at)}</div>
+                </DataTableCell>
+                <DataTableCell className="text-right">
+                  {request.status === "PENDING" && isAdmin && request.requester_user_id !== user?.id ? (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        icon={CheckCircle2}
+                        isLoading={approveMutation.isPending}
+                        onClick={() => void handleApprove(request)}
+                        size="sm"
+                      >
+                        อนุมัติ
+                      </Button>
+                      <Button
+                        icon={XCircle}
+                        onClick={() => {
+                          setRejectReason("");
+                          setRejectTarget(request);
+                        }}
+                        size="sm"
+                        variant="outline"
+                      >
+                        ปฏิเสธ
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">-</span>
+                  )}
+                </DataTableCell>
+              </DataTableRow>
+            ))
+          )}
+        </DataTable>
+      </section>
+    </div>
   );
 }

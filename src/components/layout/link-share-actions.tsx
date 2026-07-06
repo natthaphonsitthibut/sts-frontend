@@ -28,14 +28,12 @@ export function LinkShareActions({ link, className, trailing }: LinkShareActions
       <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
         {link}
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-        <div className="flex justify-start">
-          <CopyButton label="คัดลอก" size="md" value={link} variant="outline" />
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CopyButton label="คัดลอก" size="md" value={link} variant="outline" />
         <a
           className={cn(
             buttonVariants({ variant: "default" }),
-            "justify-self-start border-line bg-line text-white hover:border-line-hover hover:bg-line-hover sm:justify-self-center",
+            "border-line bg-line text-white hover:border-line-hover hover:bg-line-hover",
           )}
           href={buildLineShareUrl(link)}
           rel="noreferrer"
@@ -44,18 +42,16 @@ export function LinkShareActions({ link, className, trailing }: LinkShareActions
           <MessageCircle className="size-4" aria-hidden="true" />
           แชร์ผ่าน LINE
         </a>
-        <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
-          {trailing}
-          <a
-            className={buttonVariants({ variant: "default" })}
-            href={link}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <ExternalLink className="size-4" aria-hidden="true" />
-            เปิดลิงก์
-          </a>
-        </div>
+        {trailing}
+        <a
+          className={buttonVariants({ variant: "default" })}
+          href={link}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <ExternalLink className="size-4" aria-hidden="true" />
+          เปิดลิงก์
+        </a>
       </div>
     </div>
   );

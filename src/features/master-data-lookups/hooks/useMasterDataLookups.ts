@@ -8,10 +8,14 @@ import type {
 
 export const MASTER_DATA_LOOKUPS_QUERY_KEY = "master-data-lookups";
 
-export function useMasterDataLookups(query: MasterDataLookupListQuery) {
+export function useMasterDataLookups(
+  query: MasterDataLookupListQuery,
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: [MASTER_DATA_LOOKUPS_QUERY_KEY, query],
     queryFn: () => masterDataLookupService.list(query),
+    enabled: options.enabled ?? true,
   });
 }
 

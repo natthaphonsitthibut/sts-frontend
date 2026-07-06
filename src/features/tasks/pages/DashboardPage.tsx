@@ -6,12 +6,13 @@ import {
   AlertCircle,
   CheckCircle2,
   LayoutDashboard,
+  Plus,
   Search,
   ShieldAlert,
   Siren,
   type LucideIcon,
 } from "lucide-react";
-import { Badge } from "../../../components/base";
+import { Badge, Button } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -20,6 +21,7 @@ import {
   TableCardList,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
@@ -36,6 +38,7 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
   RiskDashboardQuery,
@@ -78,7 +81,35 @@ const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   grade: "grade",
   room: "room",
   attendance: "attendance",
+  openCases: "openCases",
 };
+
+type RiskSortOptionValue = "default" | `${RiskDashboardSortBy}:asc` | `${RiskDashboardSortBy}:desc`;
+
+const RISK_SORT_OPTIONS: Array<{
+  value: RiskSortOptionValue;
+  label: string;
+  sort?: DataTableSortState;
+}> = [
+  { value: "default", label: "ค่าเริ่มต้น: ระดับเสี่ยง มาก → น้อย" },
+  { value: "risk:desc", label: "ระดับเสี่ยง มาก → น้อย", sort: { key: "risk", direction: "desc" } },
+  { value: "risk:asc", label: "ระดับเสี่ยง น้อย → มาก", sort: { key: "risk", direction: "asc" } },
+  { value: "name:asc", label: "ชื่อนักเรียน ก → ฮ", sort: { key: "name", direction: "asc" } },
+  { value: "name:desc", label: "ชื่อนักเรียน ฮ → ก", sort: { key: "name", direction: "desc" } },
+  { value: "school:asc", label: "โรงเรียน ก → ฮ", sort: { key: "school", direction: "asc" } },
+  { value: "grade:asc", label: "ชั้น น้อย → มาก", sort: { key: "grade", direction: "asc" } },
+  { value: "room:asc", label: "ห้อง น้อย → มาก", sort: { key: "room", direction: "asc" } },
+  { value: "attendance:asc", label: "การมาเรียน ต่ำ → สูง", sort: { key: "attendance", direction: "asc" } },
+  { value: "attendance:desc", label: "การมาเรียน สูง → ต่ำ", sort: { key: "attendance", direction: "desc" } },
+  { value: "openCases:desc", label: "เคสเปิด มาก → น้อย", sort: { key: "openCases", direction: "desc" } },
+  { value: "openCases:asc", label: "เคสเปิด น้อย → มาก", sort: { key: "openCases", direction: "asc" } },
+];
+
+function sortToValue(sort: DataTableSortState | undefined): RiskSortOptionValue {
+  if (!sort) return "default";
+  const sortBy = SORT_KEY_MAP[sort.key] ?? "risk";
+  return `${sortBy}:${sort.direction}`;
+}
 
 function formatNumber(value: number | null | undefined): string {
   return Number.isFinite(value) ? Number(value).toLocaleString() : "-";
@@ -88,15 +119,21 @@ function formatPercent(value: number | null): string {
   return value === null ? "-" : `${value.toFixed(1)}%`;
 }
 
-function criteriaText(thresholds?: RiskDashboardThresholds): string {
-  if (!thresholds) return "กำลังโหลดเกณฑ์";
+function criteriaItems(thresholds?: RiskDashboardThresholds): Array<{ label: string; value: string }> {
+  if (!thresholds) return [{ label: "สถานะ", value: "กำลังโหลดเกณฑ์" }];
   const watchPercent = Math.round(thresholds.watchProgressRatio * 100);
   return [
-    `ขาดติดกัน ต่ำ/กลาง/สูง ≥${thresholds.lowConsecutiveAbsentDays}/${thresholds.mediumConsecutiveAbsentDays}/${thresholds.highConsecutiveAbsentDays} วัน`,
-    `เฝ้าระวัง ≥${watchPercent}% ของเกณฑ์`,
-    `เวลาเรียนถ่วงน้ำหนัก ต่ำกว่า ${thresholds.lowAttendancePercent}/${thresholds.mediumAttendancePercent}/${thresholds.highAttendancePercent}%`,
-    `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน`,
-  ].join(" · ");
+    {
+      label: "ขาดติดกัน ต่ำ/กลาง/สูง",
+      value: `≥${thresholds.lowConsecutiveAbsentDays}/${thresholds.mediumConsecutiveAbsentDays}/${thresholds.highConsecutiveAbsentDays} วัน`,
+    },
+    { label: "เฝ้าระวัง", value: `≥${watchPercent}% ของเกณฑ์` },
+    {
+      label: "เวลาเรียนถ่วงน้ำหนัก",
+      value: `ต่ำกว่า ${thresholds.lowAttendancePercent}/${thresholds.mediumAttendancePercent}/${thresholds.highAttendancePercent}%`,
+    },
+    { label: "สายเทียบขาด", value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน` },
+  ];
 }
 
 function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
@@ -107,16 +144,64 @@ function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
 function StudentCell({ row }: { row: RiskDashboardRow }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-extrabold text-primary">
-        {row.studentName[0] || "?"}
-      </div>
+      <StudentAvatar name={row.studentName} />
       <div className="min-w-0">
         <div className="truncate font-bold text-slate-800">{row.studentName}</div>
-        <div className="text-xs font-semibold text-slate-500">
-          {row.schoolName || "-"} · {row.grade || "-"} · ห้อง {row.room || "-"}
-        </div>
       </div>
     </div>
+  );
+}
+
+function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
+  const navigate = useNavigate();
+
+  if (row.latestOpenTaskId) {
+    return (
+      <DetailLinkButton
+        className="w-[112px]"
+        onClick={(event) => event.stopPropagation()}
+        to={`/task-detail/${row.latestOpenTaskId}`}
+        variant="default"
+      >
+        ดูเคส
+      </DetailLinkButton>
+    );
+  }
+
+  if (row.latestOpenCaseId) {
+    return (
+      <Button
+        className="w-[112px]"
+        icon={Plus}
+        onClick={(event) => {
+          event.stopPropagation();
+          void navigate("/create/visit", {
+            state: {
+              prefill: {
+                existing_case_id: String(row.latestOpenCaseId),
+                student_id: row.studentId,
+                student_name: row.studentName,
+                student_school: row.schoolName,
+                reason_flagged: row.latestOpenCaseReason,
+              },
+            },
+          });
+        }}
+        size="sm"
+      >
+        สร้างลิงก์
+      </Button>
+    );
+  }
+
+  return (
+    <DetailLinkButton
+      className="w-[112px]"
+      onClick={(event) => event.stopPropagation()}
+      to={`/students/${row.studentId}`}
+    >
+      ดูโปรไฟล์
+    </DetailLinkButton>
   );
 }
 
@@ -126,11 +211,11 @@ export function DashboardPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState>({ key: "risk", direction: "desc" });
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
-  const sortBy = SORT_KEY_MAP[sort.key] ?? "risk";
+  const sortBy = sort ? SORT_KEY_MAP[sort.key] : undefined;
 
   const query = useMemo<RiskDashboardQuery>(
     () => ({
@@ -145,7 +230,7 @@ export function DashboardPage() {
       page,
       limit: rowsPerPage,
       sortBy,
-      sortDirection: sort.direction,
+      sortDirection: sort?.direction,
     }),
     [
       riskTier,
@@ -159,7 +244,7 @@ export function DashboardPage() {
       page,
       rowsPerPage,
       sortBy,
-      sort.direction,
+      sort?.direction,
     ],
   );
 
@@ -226,7 +311,13 @@ export function DashboardPage() {
   }
 
   function handleSortChange(nextSort: DataTableSortState | undefined): void {
-    setSort(nextSort ?? { key: "risk", direction: "desc" });
+    setSort(nextSort);
+    resetPage();
+  }
+
+  function handleMobileSortChange(value: string): void {
+    const nextSort = RISK_SORT_OPTIONS.find((option) => option.value === value)?.sort;
+    setSort(nextSort);
     resetPage();
   }
 
@@ -282,9 +373,23 @@ export function DashboardPage() {
           items={summaryItems}
         />
 
-        <div className="rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm font-semibold text-primary">
-          เกณฑ์ปัจจุบัน: {criteriaText(meta?.thresholds)}
-        </div>
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-slate-900">เกณฑ์ปัจจุบัน</h2>
+            <Badge variant="secondary">ใช้จัดระดับความเสี่ยง</Badge>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {criteriaItems(meta?.thresholds).map((item) => (
+              <div
+                key={item.label}
+                className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+              >
+                <div className="text-xs font-semibold text-slate-500">{item.label}</div>
+                <div className="mt-1 font-bold text-slate-800">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {riskQuery.isError ? (
           <ErrorState
@@ -303,17 +408,18 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
-              columnWidths={["w-[24%]", "w-[16%]", "w-[11%]", "w-[11%]", "w-[14%]", "w-[12%]", "w-[12%]"]}
+              columnWidths={["w-[21%]", "w-[14%]", "w-[8%]", "w-[8%]", "w-[14%]", "w-[9%]", "w-[10%]", "w-[16%]"]}
               headings={[
                 { label: "นักเรียน", sortKey: "name" },
                 { label: "โรงเรียน", sortKey: "school" },
                 { label: "ชั้น", sortKey: "grade" },
                 { label: "ห้อง", sortKey: "room" },
                 { label: "การมาเรียน", sortKey: "attendance" },
-                { label: "เคสเปิด" },
+                { label: "เคสเปิด", sortKey: "openCases" },
                 { label: "ระดับ", sortKey: "risk" },
+                "ดำเนินการ",
               ]}
-              minWidthClassName="min-w-[1080px]"
+              minWidthClassName="min-w-full"
               onSortChange={handleSortChange}
               sort={sort}
             >
@@ -351,17 +457,32 @@ export function DashboardPage() {
                   <DataTableCell>
                     <RiskBadge tier={row.riskTier} />
                   </DataTableCell>
+                  <DataTableCell className="text-right">
+                    <DashboardRowAction row={row} />
+                  </DataTableCell>
                 </DataTableRow>
               ))}
             </DataTable>
+
+            <div className="md:hidden">
+              <FilterSelect
+                ariaLabel="เรียงลำดับรายงานนักเรียน"
+                onChange={handleMobileSortChange}
+                value={sortToValue(sort)}
+              >
+                {RISK_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </div>
 
             <TableCardList>
               {rows.map((row) => (
                 <TableCard
                   key={row.studentId}
-                  interactive
                   className="flex flex-col gap-3 transition-colors hover:border-slate-300"
-                  onClick={() => openStudent(row.studentId)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <StudentCell row={row} />
@@ -390,6 +511,9 @@ export function DashboardPage() {
                         {formatNumber(row.absentDays)} / {formatNumber(row.lateCount)}
                       </div>
                     </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <DashboardRowAction row={row} />
                   </div>
                 </TableCard>
               ))}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { BookOpenText, CirclePlus, Database, Pencil } from "lucide-react";
 import { Badge, Button, FormErrorAlert } from "../../../components/base";
 import {
@@ -20,12 +21,17 @@ import {
 import { SettingsTabs } from "../../../components/layout/settings-tabs";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import { masterDataLookupService } from "../api/master-data-lookup.service";
 import { MasterDataLookupDialog } from "../components/MasterDataLookupDialog";
-import { useMasterDataLookups } from "../hooks/useMasterDataLookups";
+import {
+  MASTER_DATA_LOOKUPS_QUERY_KEY,
+  useMasterDataLookups,
+} from "../hooks/useMasterDataLookups";
 import {
   MASTER_DATA_LOOKUP_CONFIGS,
   getMasterDataLookupConfig,
   type MasterDataLookup,
+  type MasterDataLookupConfig,
   type MasterDataLookupTable,
 } from "../types/master-data-lookup.types";
 import {
@@ -33,6 +39,22 @@ import {
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+
+const ALL_LOOKUP_TABLES = "ALL";
+const ALL_LOOKUP_LIMIT = 50;
+
+type LookupTableFilter = typeof ALL_LOOKUP_TABLES | MasterDataLookupTable;
+type DisplayLookup = MasterDataLookup & {
+  sourceConfig: MasterDataLookupConfig;
+  sourceTable: MasterDataLookupTable;
+};
+
+const ALL_LOOKUP_CONFIG: MasterDataLookupConfig = {
+  table: "school_affiliations",
+  title: "ข้อมูลพื้นฐานทั้งหมด",
+  description: "ดูรายการข้อมูลพื้นฐานเพิ่มเติมทุกประเภทในตารางเดียว",
+  unitLabel: "รายการ",
+};
 
 function statusBadge(row: MasterDataLookup, catalog: readonly StatusCatalogItem[]) {
   const code = row.is_active === false ? "INACTIVE" : "ACTIVE";
@@ -46,28 +68,73 @@ function statusBadge(row: MasterDataLookup, catalog: readonly StatusCatalogItem[
 
 export function MasterDataLookupsPage() {
   const activityCatalog = useStatusCatalog("RECORD_ACTIVITY");
-  const [table, setTable] = useState<MasterDataLookupTable>("school_affiliations");
+  const [table, setTable] = useState<LookupTableFilter>(ALL_LOOKUP_TABLES);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<MasterDataLookup | null>(null);
   const debouncedSearch = useDebouncedValue(search);
-  const config = getMasterDataLookupConfig(table);
+  const isAllTables = table === ALL_LOOKUP_TABLES;
+  const activeTable: MasterDataLookupTable = isAllTables ? "school_affiliations" : table;
+  const config = isAllTables ? ALL_LOOKUP_CONFIG : getMasterDataLookupConfig(table);
   const categoryConfig = getMasterDataLookupConfig("absence_reason_categories");
   const query = useMasterDataLookups({
-    table,
+    table: activeTable,
     page,
     limit,
     searchTerm: debouncedSearch || undefined,
+  }, { enabled: !isAllTables });
+  const allQueries = useQueries({
+    queries: MASTER_DATA_LOOKUP_CONFIGS.map((item) => {
+      const allQuery = {
+        table: item.table,
+        page: 1,
+        limit: ALL_LOOKUP_LIMIT,
+        searchTerm: debouncedSearch || undefined,
+      };
+      return {
+        queryKey: [MASTER_DATA_LOOKUPS_QUERY_KEY, allQuery],
+        queryFn: () => masterDataLookupService.list(allQuery),
+        enabled: isAllTables,
+      };
+    }),
   });
   const categoryQuery = useMasterDataLookups({
     table: "absence_reason_categories",
     page: 1,
     limit: 50,
   });
-  const rows = query.data?.items ?? [];
-  const totalCount = query.data?.meta.totalCount ?? 0;
+  const allRows = useMemo<DisplayLookup[]>(() => {
+    return allQueries.flatMap((itemQuery, index) => {
+      const sourceConfig = MASTER_DATA_LOOKUP_CONFIGS[index];
+      return (itemQuery.data?.items ?? []).map((row) => ({
+        ...row,
+        sourceConfig,
+        sourceTable: sourceConfig.table,
+      }));
+    });
+  }, [allQueries]);
+  const tableRows = useMemo<DisplayLookup[]>(() => {
+    return (query.data?.items ?? []).map((row) => ({
+      ...row,
+      sourceConfig: config,
+      sourceTable: activeTable,
+    }));
+  }, [activeTable, config, query.data?.items]);
+  const rows = isAllTables
+    ? allRows.slice((page - 1) * limit, page * limit)
+    : tableRows;
+  const totalCount = isAllTables ? allRows.length : (query.data?.meta.totalCount ?? 0);
+  const isLoading = isAllTables
+    ? allQueries.some((itemQuery) => itemQuery.isLoading)
+    : query.isLoading;
+  const isError = isAllTables
+    ? allQueries.some((itemQuery) => itemQuery.isError)
+    : query.isError;
+  const error = isAllTables
+    ? allQueries.find((itemQuery) => itemQuery.error)?.error
+    : query.error;
   const categoryNameById = useMemo(() => {
     return new Map(
       (categoryQuery.data?.items ?? []).map((category) => [String(category.id), category.name]),
@@ -75,27 +142,52 @@ export function MasterDataLookupsPage() {
   }, [categoryQuery.data?.items]);
 
   function handleTableChange(nextTable: string): void {
-    setTable(nextTable as MasterDataLookupTable);
+    setTable(nextTable as LookupTableFilter);
     setPage(1);
     setSearch("");
     setSelected(null);
   }
 
   function openCreate(): void {
+    if (isAllTables) {
+      return;
+    }
     setSelected(null);
     setDialogOpen(true);
   }
 
-  function openEdit(row: MasterDataLookup): void {
+  function openEdit(row: DisplayLookup): void {
+    if (isAllTables) {
+      setTable(row.sourceTable);
+    }
     setSelected(row);
     setDialogOpen(true);
+  }
+
+  function refetchLookups(): void {
+    if (isAllTables) {
+      allQueries.forEach((itemQuery) => {
+        void itemQuery.refetch();
+      });
+      return;
+    }
+    void query.refetch();
   }
 
   return (
     <PageShell>
       <ListPageToolbar
         actions={<SettingsTabs />}
-        tableActions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มรายการ</Button>}
+        tableActions={
+          <Button
+            disabled={isAllTables}
+            icon={CirclePlus}
+            onClick={openCreate}
+            title={isAllTables ? "เลือกประเภทข้อมูลพื้นฐานก่อนเพิ่มรายการ" : undefined}
+          >
+            เพิ่มรายการ
+          </Button>
+        }
         description={config.description}
         icon={Database}
         title="ข้อมูลพื้นฐานเพิ่มเติม"
@@ -114,6 +206,7 @@ export function MasterDataLookupsPage() {
             onChange={handleTableChange}
             value={table}
           >
+            <option value={ALL_LOOKUP_TABLES}>ทั้งหมด</option>
             {MASTER_DATA_LOOKUP_CONFIGS.map((item) => (
               <option key={item.table} value={item.table}>{item.title}</option>
             ))}
@@ -121,30 +214,33 @@ export function MasterDataLookupsPage() {
         }
       />
 
-      <FormErrorAlert className="mb-4" error={query.error} fallback={`โหลด${config.title}ไม่สำเร็จ`} />
+      <FormErrorAlert className="mb-4" error={error} fallback={`โหลด${config.title}ไม่สำเร็จ`} />
 
-      {query.isError ? (
-        <ErrorState title={`ไม่สามารถโหลด${config.title}ได้`} onRetry={() => { void query.refetch(); }} />
-      ) : query.isLoading ? (
+      {isError ? (
+        <ErrorState title={`ไม่สามารถโหลด${config.title}ได้`} onRetry={refetchLookups} />
+      ) : isLoading ? (
         <SkeletonStack lines={5} />
       ) : rows.length === 0 ? (
         <EmptyState icon={BookOpenText} title={search ? "ไม่พบรายการที่ค้นหา" : `ยังไม่มี${config.title}`} />
       ) : (
         <div className="flex flex-col gap-3">
           <DataTable
-            headings={["รหัส", "ชื่อ", "รายละเอียด", "สถานะ", "จัดการ"]}
+            headings={["ประเภท", "รหัส", "ชื่อ", "รายละเอียด", "สถานะ", "จัดการ"]}
             minWidthClassName="min-w-[900px]"
           >
             {rows.map((row) => (
-              <DataTableRow key={row.id}>
+              <DataTableRow key={`${row.sourceTable}-${row.id}`}>
+                <DataTableCell>
+                  <Badge variant="secondary">{row.sourceConfig.title}</Badge>
+                </DataTableCell>
                 <DataTableCell className="font-mono font-bold">{row.code}</DataTableCell>
                 <DataTableCell className="font-bold text-slate-800">{row.name}</DataTableCell>
                 <DataTableCell>
                   <div className="space-y-1 text-sm text-slate-600">
-                    {config.hasLegalCategory && row.legal_category ? (
+                    {row.sourceConfig?.hasLegalCategory && row.legal_category ? (
                       <p>หมวดตามกฎหมาย: {row.legal_category}</p>
                     ) : null}
-                    {config.hasCategory && row.category_id ? (
+                    {row.sourceConfig?.hasCategory && row.category_id ? (
                       <p>{categoryConfig.unitLabel}: {categoryNameById.get(String(row.category_id)) ?? row.category_id}</p>
                     ) : null}
                     {row.note ? <p>{row.note}</p> : <p className="text-slate-400">ไม่มีหมายเหตุ</p>}
@@ -167,18 +263,21 @@ export function MasterDataLookupsPage() {
           </DataTable>
           <TableCardList>
             {rows.map((row) => (
-              <TableCard className="space-y-3" key={row.id}>
+              <TableCard className="space-y-3" key={`${row.sourceTable}-${row.id}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-slate-800">{row.name}</p>
                     <p className="text-sm text-slate-500">รหัส {row.code}</p>
+                    <Badge className="mt-2" variant="secondary">
+                      {row.sourceConfig.title}
+                    </Badge>
                   </div>
                   {statusBadge(row, activityCatalog.items)}
                 </div>
-                {config.hasLegalCategory && row.legal_category ? (
+                {row.sourceConfig?.hasLegalCategory && row.legal_category ? (
                   <p className="text-sm text-slate-600">หมวดตามกฎหมาย: {row.legal_category}</p>
                 ) : null}
-                {config.hasCategory && row.category_id ? (
+                {row.sourceConfig?.hasCategory && row.category_id ? (
                   <p className="text-sm text-slate-600">
                     {categoryConfig.unitLabel}: {categoryNameById.get(String(row.category_id)) ?? row.category_id}
                   </p>

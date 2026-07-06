@@ -77,7 +77,13 @@ interface StudentsService {
   getFilterOptions: (
     query?: Pick<
       StudentListQuery,
-      "schoolId" | "province" | "district" | "subDistrict" | "grade"
+      | "schoolId"
+      | "province"
+      | "district"
+      | "subDistrict"
+      | "grade"
+      | "studentStatusCode"
+      | "enrollmentState"
     >,
   ) => Promise<StudentFilterOptions>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
@@ -151,6 +157,9 @@ function buildStudentListParams(
   if (query.enrollmentState) {
     params.enrollmentState = query.enrollmentState;
   }
+  if (query.studentStatusCode && query.studentStatusCode !== "ALL") {
+    params.student_status_code = query.studentStatusCode;
+  }
   if (typeof query.page === "number") {
     params.page = String(query.page);
   }
@@ -197,7 +206,13 @@ async function getStudents(
 async function getFilterOptions(
   query: Pick<
     StudentListQuery,
-    "schoolId" | "province" | "district" | "subDistrict" | "grade" | "enrollmentState"
+    | "schoolId"
+    | "province"
+    | "district"
+    | "subDistrict"
+    | "grade"
+    | "studentStatusCode"
+    | "enrollmentState"
   > = {},
 ): Promise<StudentFilterOptions> {
   const params: Record<string, string> = {};
@@ -222,6 +237,9 @@ async function getFilterOptions(
   }
   if (query.enrollmentState) {
     params.enrollmentState = query.enrollmentState;
+  }
+  if (query.studentStatusCode && query.studentStatusCode !== "ALL") {
+    params.student_status_code = query.studentStatusCode;
   }
 
   const response = await apiClient.get<DataEnvelope<StudentFilterOptions>>(

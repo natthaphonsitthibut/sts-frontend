@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { UserRound } from "lucide-react";
+import { FileDown, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Tabs } from "../../../components/base";
+import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -16,15 +16,22 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { useStudentStatuses } from "../../student-statuses/hooks/useStudentStatuses";
 import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
 import { StudentTable } from "../components/StudentTable";
 import { useStudentFilterOptions, useStudents } from "../hooks/useStudents";
-import type { StudentEnrollmentState, StudentListQuery } from "../types/students.types";
+import type {
+  StudentEnrollmentState,
+  StudentListItem,
+  StudentListQuery,
+  StudentStatusFilterValue,
+} from "../types/students.types";
 
 const STUDENT_TAB_ROUTES = {
   list: "/students",
   history: "/students/history",
+  export: "/students/export",
 } as const;
 
 const STUDENT_AUDIT_ACTION_OPTIONS = [
@@ -35,25 +42,88 @@ const STUDENT_AUDIT_ACTION_OPTIONS = [
 
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 20;
+const ALL_STUDENT_STATUSES = "ALL";
 
 export function StudentListPage() {
   const navigate = useNavigate();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(STUDENT_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
-  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
+  const effectiveTab =
+    activeTab === "history" && canViewAuditLog
+      ? "history"
+      : activeTab === "export"
+        ? "export"
+        : "list";
+  const tabOptions = [
+    { value: "list", label: "รายชื่อ" },
+    { value: "export", label: "ส่งออกข้อมูล" },
+    ...(canViewAuditLog ? [{ value: "history", label: "ประวัติ" }] : []),
+  ];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [grade, setGrade] = useState("ALL");
   const [room, setRoom] = useState("ALL");
-  const [enrollmentState, setEnrollmentState] =
-    useState<StudentEnrollmentState>("current-active");
+  const [studentStatusCode, setStudentStatusCode] =
+    useState<StudentStatusFilterValue | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
+  const [selectedStudentsById, setSelectedStudentsById] = useState<Map<string, StudentListItem>>(
+    () => new Map(),
+  );
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
+  const studentStatusesQuery = useStudentStatuses({
+    page: 1,
+    limit: 50,
+    sortBy: "sortOrder",
+    sortDirection: "asc",
+  });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  const studentStatuses = useMemo(
+    () => studentStatusesQuery.data?.items ?? [],
+    [studentStatusesQuery.data],
+  );
+  const defaultActiveStatusCode = useMemo(
+    () =>
+      studentStatuses.find(
+        (status) =>
+          status.isEnabled && status.category === "ACTIVE" && status.isActiveForLogin,
+      )?.code ??
+      studentStatuses.find((status) => status.isEnabled && status.category === "ACTIVE")
+        ?.code,
+    [studentStatuses],
+  );
+  const effectiveStudentStatusCode: StudentStatusFilterValue =
+    studentStatusCode ?? (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
+  const hasResolvedStudentStatusSelection =
+    studentStatusCode !== undefined ||
+    defaultActiveStatusCode !== undefined ||
+    !studentStatusesQuery.isLoading;
+  const queryStudentStatusCode = hasResolvedStudentStatusSelection
+    ? effectiveStudentStatusCode
+    : undefined;
+  const selectedStudentStatus = studentStatuses.find(
+    (status) => String(status.code) === effectiveStudentStatusCode,
+  );
+  const shouldUseAllEnrollment =
+    hasResolvedStudentStatusSelection &&
+    (effectiveStudentStatusCode === ALL_STUDENT_STATUSES ||
+      selectedStudentStatus?.category !== "ACTIVE");
+  const enrollmentState: StudentEnrollmentState = shouldUseAllEnrollment
+    ? "all"
+    : "current-active";
+  const studentStatusFilterOptions = useMemo(
+    () => [
+      { value: ALL_STUDENT_STATUSES, label: "ทั้งหมด" },
+      ...studentStatuses.map((status) => ({
+        value: String(status.code),
+        label: status.labelTh,
+      })),
+    ],
+    [studentStatuses],
+  );
 
   // Server is the source of truth for filtering, sorting and the page slice.
   const query = useMemo<StudentListQuery>(
@@ -65,6 +135,7 @@ export function StudentListPage() {
       grade,
       room,
       enrollmentState,
+      studentStatusCode: queryStudentStatusCode,
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
@@ -77,6 +148,7 @@ export function StudentListPage() {
       grade,
       room,
       enrollmentState,
+      queryStudentStatusCode,
       debouncedSearch,
       page,
       rowsPerPage,
@@ -90,10 +162,19 @@ export function StudentListPage() {
     district: schoolArea.district || undefined,
     subDistrict: schoolArea.subDistrict || undefined,
     grade,
+    studentStatusCode: queryStudentStatusCode,
     enrollmentState,
   });
 
   const totalCount = meta?.totalCount ?? 0;
+  const selectedStudents = useMemo(
+    () => Array.from(selectedStudentsById.values()),
+    [selectedStudentsById],
+  );
+  const selectedStudentIds = useMemo(
+    () => new Set(selectedStudentsById.keys()),
+    [selectedStudentsById],
+  );
   const selectedGradeLevelId =
     grade === "ALL"
       ? null
@@ -106,6 +187,7 @@ export function StudentListPage() {
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
     setPage(1);
+    clearSelectedStudents();
   }
 
   function handleSchoolChange(value: string): void {
@@ -113,31 +195,66 @@ export function StudentListPage() {
     setGrade("ALL");
     setRoom("ALL");
     setPage(1);
+    clearSelectedStudents();
   }
 
   function handleGradeChange(value: string): void {
     setGrade(value);
     setRoom("ALL");
     setPage(1);
+    clearSelectedStudents();
   }
 
   function handleRoomChange(value: string): void {
     setRoom(value);
     setPage(1);
+    clearSelectedStudents();
   }
 
-  function handleEnrollmentStateChange(value: StudentEnrollmentState): void {
-    setEnrollmentState(value);
+  function handleStudentStatusCodeChange(value: StudentStatusFilterValue): void {
+    setStudentStatusCode(value);
     setPage(1);
+    clearSelectedStudents();
   }
 
   function handleRowsPerPageChange(value: number): void {
     setRowsPerPage(value);
     setPage(1);
+    clearSelectedStudents();
   }
 
   function openStudent(studentId: string): void {
     void navigate(`/students/${studentId}`);
+  }
+
+  function clearSelectedStudents(): void {
+    setSelectedStudentsById(new Map());
+  }
+
+  function handleSelectStudent(student: StudentListItem, selected: boolean): void {
+    setSelectedStudentsById((current) => {
+      const next = new Map(current);
+      if (selected) {
+        next.set(student.id, student);
+      } else {
+        next.delete(student.id);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAll(studentsToToggle: readonly StudentListItem[], selected: boolean): void {
+    setSelectedStudentsById((current) => {
+      const next = new Map(current);
+      for (const student of studentsToToggle) {
+        if (selected) {
+          next.set(student.id, student);
+        } else {
+          next.delete(student.id);
+        }
+      }
+      return next;
+    });
   }
 
   return (
@@ -145,27 +262,28 @@ export function StudentListPage() {
       {effectiveTab === "list" ? (
         <StudentSearchFilter
           actions={
-            canViewAuditLog ? (
-              <Tabs
-                aria-label="โหมดรายชื่อนักเรียน"
-                onChange={setActiveTab}
-                options={[
-                  { value: "list", label: "รายชื่อ" },
-                  { value: "history", label: "ประวัติ" },
-                ]}
-                value={activeTab}
-              />
-            ) : undefined
+            <Tabs
+              aria-label="โหมดรายชื่อนักเรียน"
+              onChange={setActiveTab}
+              options={tabOptions}
+              value={effectiveTab}
+            />
           }
           count={totalCount}
-          enrollmentState={enrollmentState}
+          exportAction={
+            <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
+              {selectedStudents.length > 0
+                ? `ส่งออกที่เลือก (${selectedStudents.length})`
+                : "ส่งออกตามตัวกรองนี้"}
+            </Button>
+          }
           grade={grade}
           gradeOptions={options.grades}
-          onEnrollmentStateChange={handleEnrollmentStateChange}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
           onRoomChange={handleRoomChange}
           onSearchChange={handleSearchChange}
+          onStudentStatusCodeChange={handleStudentStatusCodeChange}
           room={room}
           roomOptions={options.rooms}
           schoolFilters={
@@ -177,6 +295,9 @@ export function StudentListPage() {
             />
           }
           searchQuery={searchQuery}
+          studentStatusCode={effectiveStudentStatusCode}
+          studentStatusOptions={studentStatusFilterOptions}
+          isStudentStatusLoading={studentStatusesQuery.isLoading}
         />
       ) : (
         <ListPageToolbar
@@ -184,14 +305,15 @@ export function StudentListPage() {
             <Tabs
               aria-label="โหมดรายชื่อนักเรียน"
               onChange={setActiveTab}
-              options={[
-                { value: "list", label: "รายชื่อ" },
-                { value: "history", label: "ประวัติ" },
-              ]}
-              value={activeTab}
+              options={tabOptions}
+              value={effectiveTab}
             />
           }
-          description="ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
+          description={
+            effectiveTab === "export"
+              ? "ส่งคำขอ อนุมัติ และดาวน์โหลดข้อมูลส่วนบุคคลตามขอบเขตสิทธิ์"
+              : "ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
+          }
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}
@@ -201,59 +323,66 @@ export function StudentListPage() {
             />
           }
           icon={UserRound}
-          title="รายชื่อนักเรียน"
+          title={effectiveTab === "export" ? "ส่งออกข้อมูลส่วนบุคคล" : "รายชื่อนักเรียน"}
         />
       )}
 
-      {effectiveTab === "list" ? (
-        <PiiExportPanel
-          district={schoolArea.district || undefined}
-          gradeLevelId={selectedGradeLevelId}
-          province={schoolArea.province || undefined}
-          roomId={selectedRoomId}
-          schoolId={scope.schoolId || undefined}
-          subDistrict={schoolArea.subDistrict || undefined}
-          totalCount={totalCount}
-        />
-      ) : null}
+      <div className="space-y-5">
+        {effectiveTab === "export" ? (
+          <PiiExportPanel
+            district={schoolArea.district || undefined}
+            gradeLevelId={selectedGradeLevelId}
+            province={schoolArea.province || undefined}
+            roomId={selectedRoomId}
+            schoolId={scope.schoolId || undefined}
+            selectedStudents={selectedStudents}
+            onClearSelectedStudents={clearSelectedStudents}
+            subDistrict={schoolArea.subDistrict || undefined}
+            totalCount={totalCount}
+          />
+        ) : null}
 
-      {effectiveTab === "history" ? (
-        <AuditLogPanel
-          actionOptions={STUDENT_AUDIT_ACTION_OPTIONS}
-          description="ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
-          district={schoolArea.district || undefined}
-          domain="students"
-          province={schoolArea.province || undefined}
-          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
-          subDistrict={schoolArea.subDistrict || undefined}
-          title="ประวัติข้อมูลนักเรียน"
-        />
-      ) : isError ? (
-        <ErrorState
-          title="ไม่สามารถโหลดข้อมูลนักเรียนได้"
-          description="เกิดข้อผิดพลาดระหว่างโหลดรายชื่อนักเรียน"
-          onRetry={refetch}
-        />
-      ) : isLoading ? (
-        <SkeletonTable />
-      ) : students.length === 0 ? (
-        <EmptyState
-          icon={UserRound}
-          title="ไม่พบข้อมูลนักเรียน"
-          description="ลองปรับตัวกรอง หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
-        />
-      ) : (
-        <StudentTable
-          onPageChange={setPage}
-          onRowClick={openStudent}
-          onRowsPerPageChange={handleRowsPerPageChange}
-          page={page}
-          rows={students}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-          totalCount={totalCount}
-        />
-      )}
+        {effectiveTab === "history" ? (
+          <AuditLogPanel
+            actionOptions={STUDENT_AUDIT_ACTION_OPTIONS}
+            description="ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
+            district={schoolArea.district || undefined}
+            domain="students"
+            province={schoolArea.province || undefined}
+            schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
+            subDistrict={schoolArea.subDistrict || undefined}
+            title="ประวัติข้อมูลนักเรียน"
+          />
+        ) : isError ? (
+          <ErrorState
+            title="ไม่สามารถโหลดข้อมูลนักเรียนได้"
+            description="เกิดข้อผิดพลาดระหว่างโหลดรายชื่อนักเรียน"
+            onRetry={refetch}
+          />
+        ) : isLoading ? (
+          <SkeletonTable />
+        ) : students.length === 0 ? (
+          <EmptyState
+            icon={UserRound}
+            title="ไม่พบข้อมูลนักเรียน"
+            description="ลองปรับตัวกรอง หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
+          />
+        ) : (
+          <StudentTable
+            onPageChange={setPage}
+            onRowClick={openStudent}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectStudent}
+            page={page}
+            rows={students}
+            rowsPerPage={rowsPerPage}
+            rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+            selectedIds={selectedStudentIds}
+            totalCount={totalCount}
+          />
+        )}
+      </div>
     </PageShell>
   );
 }

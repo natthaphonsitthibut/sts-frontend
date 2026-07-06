@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   CheckCircle2,
@@ -70,13 +70,22 @@ function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<strin
   );
 }
 
+function getInitialSearchQuery(state: unknown): string {
+  if (!state || typeof state !== "object" || !("searchTerm" in state)) {
+    return "";
+  }
+  const searchTerm = (state as { searchTerm?: unknown }).searchTerm;
+  return typeof searchTerm === "string" ? searchTerm : "";
+}
+
 export function CasesListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(CASE_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
   const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => getInitialSearchQuery(location.state));
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);

@@ -2,7 +2,14 @@ import type { PaginationMeta } from "../../../lib/pagination";
 
 export type RiskDashboardTier = "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
 export type RiskDashboardTierFilter = "ALL" | RiskDashboardTier;
-export type RiskDashboardSortBy = "risk" | "name" | "school" | "grade" | "room" | "attendance";
+export type RiskDashboardSortBy =
+  | "risk"
+  | "name"
+  | "school"
+  | "grade"
+  | "room"
+  | "attendance"
+  | "openCases";
 export type RiskDashboardSortDirection = "asc" | "desc";
 
 export interface RiskDashboardRow {
@@ -21,6 +28,9 @@ export interface RiskDashboardRow {
   riskTier: RiskDashboardTier;
   riskScore: number;
   openCaseCount: number;
+  latestOpenCaseId: number | null;
+  latestOpenCaseReason: string | null;
+  latestOpenTaskId: string | null;
   latestCaseAt: string | null;
 }
 

@@ -370,7 +370,7 @@ interface SummaryMetricsProps {
   items: SummaryMetric[];
   /** Force an exact column count; otherwise cards auto-fit and fill the row. */
   columns?: keyof typeof summaryColumnClasses;
-  /** Center incomplete rows with fixed-width cards for status dashboards. */
+  /** Center incomplete rows while keeping the same 2/3-column card width. */
   centerRows?: boolean;
   className?: string;
 }
@@ -382,46 +382,50 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
     ? summaryColumnClasses[columns] ?? summaryColumnClasses[4]
     : "[grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]";
   const centeredCardClass =
-    items.length === 5
-      ? "w-full sm:w-[16.5rem] lg:w-[20rem]"
-      : "w-full sm:w-[16rem] lg:w-[16.5rem]";
+    "w-full flex-none sm:w-[calc((100%-0.875rem)/2)] lg:w-[calc((100%-1.75rem)/3)]";
   return (
-    <div
+    <section
       className={cn(
-        centerRows ? "flex flex-wrap justify-center gap-3.5" : "grid gap-3.5",
-        !centerRows && columnsClass,
+        "rounded-lg border border-slate-200 bg-white p-4 shadow-card",
         className,
       )}
     >
-      {items.map((item, index) => {
-        const tone = summaryToneClasses[item.tone ?? "default"];
-        const Icon = item.icon;
-        return (
-          <div
-            className={cn(
-              "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-100 px-4 py-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 transition-[border-color,box-shadow] hover:border-slate-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.09)]",
-              centerRows && centeredCardClass,
-              tone.surface,
-              tone.ring,
-            )}
-            key={index}
-          >
-            <span className={cn("absolute inset-x-0 top-0 h-1", tone.accent)} aria-hidden="true" />
-            {Icon ? (
-              <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", tone.iconBg)}>
-                <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
-              </div>
-            ) : null}
-            <div className="min-w-0">
-              <div className="truncate text-xs font-medium text-slate-500">{item.label}</div>
-              <div className={cn("text-2xl font-bold leading-tight tabular-nums", tone.value)}>
-                {item.value}
+      <div
+        className={cn(
+          centerRows ? "flex flex-wrap justify-center gap-3.5" : "grid gap-3.5",
+          !centerRows && columnsClass,
+        )}
+      >
+        {items.map((item, index) => {
+          const tone = summaryToneClasses[item.tone ?? "default"];
+          const Icon = item.icon;
+          return (
+            <div
+              className={cn(
+                "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-100 px-4 py-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 transition-[border-color,box-shadow] hover:border-slate-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.09)]",
+                centerRows && centeredCardClass,
+                tone.surface,
+                tone.ring,
+              )}
+              key={index}
+            >
+              <span className={cn("absolute inset-x-0 top-0 h-1", tone.accent)} aria-hidden="true" />
+              {Icon ? (
+                <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", tone.iconBg)}>
+                  <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
+                </div>
+              ) : null}
+              <div className="min-w-0">
+                <div className="truncate text-xs font-medium text-slate-500">{item.label}</div>
+                <div className={cn("text-2xl font-bold leading-tight tabular-nums", tone.value)}>
+                  {item.value}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

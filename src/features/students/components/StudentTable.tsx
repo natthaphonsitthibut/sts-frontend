@@ -7,12 +7,10 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import { Badge } from "../../../components/base";
+import { Badge, Checkbox } from "../../../components/base";
 import { Pagination } from "../../../components/layout/pagination";
-import {
-  formatStudentRoom,
-  getStudentAvatarGradient,
-} from "../lib/student-presentation";
+import { formatStudentRoom } from "../lib/student-presentation";
+import { StudentAvatar } from "./StudentAvatar";
 import type { StudentListItem } from "../types/students.types";
 
 interface StudentTableProps {
@@ -24,17 +22,9 @@ interface StudentTableProps {
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rowsPerPage: number) => void;
   onRowClick: (studentId: string) => void;
-}
-
-function StudentAvatar({ name }: { name: string }) {
-  return (
-    <div
-      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-      style={getStudentAvatarGradient(name)}
-    >
-      {name?.[0] || "?"}
-    </div>
-  );
+  selectedIds?: ReadonlySet<string>;
+  onSelectRow?: (student: StudentListItem, selected: boolean) => void;
+  onSelectAll?: (students: readonly StudentListItem[], selected: boolean) => void;
 }
 
 function StudentIdentity({ student }: { student: StudentListItem }) {
@@ -72,9 +62,13 @@ export function StudentTable({
   onPageChange,
   onRowsPerPageChange,
   onRowClick,
+  selectedIds,
+  onSelectRow,
+  onSelectAll,
 }: StudentTableProps) {
   const baseIndex = (page - 1) * rowsPerPage;
   const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const selectable = Boolean(selectedIds && onSelectRow && onSelectAll);
   const sortedRows = useMemo(() => {
     const indexedRows = rows.map((student, index) => ({ student, index }));
     if (!sort) return indexedRows;
@@ -89,11 +83,28 @@ export function StudentTable({
       return sort.direction === "asc" ? result : -result;
     });
   }, [rows, sort]);
+  const sortedStudents = sortedRows.map(({ student }) => student);
+  const allSelected =
+    selectable && sortedStudents.length > 0 && sortedStudents.every((student) => selectedIds?.has(student.id));
 
   return (
     <div className="flex flex-col gap-2">
       <DataTable
         headings={[
+          ...(selectable
+            ? [
+                {
+                  label: (
+                    <Checkbox
+                      aria-label="เลือกนักเรียนทั้งหมดในหน้านี้"
+                      checked={allSelected}
+                      onChange={(event) => onSelectAll?.(sortedStudents, event.currentTarget.checked)}
+                    />
+                  ),
+                  className: "w-[52px]",
+                },
+              ]
+            : []),
           { label: "ลำดับ", sortKey: "sequence" },
           { label: "ชื่อ - นามสกุล", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
@@ -111,6 +122,19 @@ export function StudentTable({
             className="cursor-pointer"
             onClick={() => onRowClick(student.id)}
           >
+            {selectable ? (
+              <DataTableCell>
+                <Checkbox
+                  aria-label={`เลือก ${student.name}`}
+                  checked={selectedIds?.has(student.id) ?? false}
+                  onChange={(event) => {
+                    event.stopPropagation();
+                    onSelectRow?.(student, event.currentTarget.checked);
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                />
+              </DataTableCell>
+            ) : null}
             <DataTableCell className="text-slate-400">
               {baseIndex + index + 1}
             </DataTableCell>
@@ -143,7 +167,17 @@ export function StudentTable({
             className="flex flex-col gap-3 transition-colors hover:border-slate-300"
             onClick={() => onRowClick(student.id)}
           >
-            <StudentIdentity student={student} />
+            <div className="flex items-start gap-3">
+              {selectable ? (
+                <Checkbox
+                  aria-label={`เลือก ${student.name}`}
+                  checked={selectedIds?.has(student.id) ?? false}
+                  onChange={(event) => onSelectRow?.(student, event.currentTarget.checked)}
+                  onClick={(event) => event.stopPropagation()}
+                />
+              ) : null}
+              <StudentIdentity student={student} />
+            </div>
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-500">
                 {student.school_name || "-"}

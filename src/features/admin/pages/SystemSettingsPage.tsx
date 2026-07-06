@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Settings } from "lucide-react";
+import { Badge } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -112,13 +113,24 @@ export function SystemSettingsPage() {
       ) : (
         <div className="space-y-6">
           {groupedSettings.map((group, groupIndex) => (
-            <section key={group.title ?? `no-group-${groupIndex}`}>
-              {group.title ? (
-                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-                  {group.title}
-                </h2>
-              ) : null}
-              <div className="grid gap-4 lg:grid-cols-2">
+            <section
+              className="rounded-lg border border-slate-200 bg-white p-4 shadow-card"
+              key={group.title ?? `no-group-${groupIndex}`}
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {group.title ?? "ทั่วไป"}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    ตั้งค่าที่อยู่ในกลุ่มเดียวกันเพื่อให้ตรวจสอบผลกระทบได้ง่าย
+                  </p>
+                </div>
+                <Badge variant="secondary">
+                  {group.items.length.toLocaleString("th-TH")} รายการ
+                </Badge>
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
                 {group.items.map((setting) => (
                   <SystemSettingCard
                     errorMessage={

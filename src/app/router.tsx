@@ -101,6 +101,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<StudentListPage />, "students"),
       },
       {
+        path: "students/export",
+        element: protectedElement(<StudentListPage />, "students"),
+      },
+      {
         path: "students/:id",
         element: protectedElement(<StudentDetailPage />, "students"),
       },

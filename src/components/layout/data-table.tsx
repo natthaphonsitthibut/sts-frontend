@@ -33,6 +33,8 @@ interface DataTableProps {
   headingRows?: DataTableHeadingInput[][];
   sort?: DataTableSortState;
   onSortChange?: (sort: DataTableSortState | undefined) => void;
+  /** When false, sortable headers toggle asc/desc without returning to unsorted. */
+  clearableSort?: boolean;
   /**
    * Per-column Tailwind width classes (e.g. `["w-[22%]", "w-[14%]"]`). When provided,
    * the table switches to a fixed layout so changing cell content (status badges,
@@ -69,6 +71,7 @@ function isHeadingConfig(heading: DataTableHeadingInput): heading is DataTableHe
 function getNextSortState(
   current: DataTableSortState | undefined,
   sortKey: string,
+  clearable: boolean,
 ): DataTableSortState | undefined {
   if (current?.key !== sortKey) {
     return { key: sortKey, direction: "asc" };
@@ -76,12 +79,13 @@ function getNextSortState(
   if (current.direction === "asc") {
     return { key: sortKey, direction: "desc" };
   }
-  return undefined;
+  return clearable ? undefined : { key: sortKey, direction: "asc" };
 }
 
 export function DataTable({
   children,
   className,
+  clearableSort = true,
   columnWidths,
   footer,
   headings,
@@ -162,7 +166,9 @@ export function DataTable({
                             "inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             isActiveSort && "text-primary",
                           )}
-                          onClick={() => onSortChange(getNextSortState(sort, sortKey))}
+                          onClick={() =>
+                            onSortChange(getNextSortState(sort, sortKey, clearableSort))
+                          }
                         >
                           <span>{config.label}</span>
                           <SortIcon className="size-3.5" aria-hidden="true" />
