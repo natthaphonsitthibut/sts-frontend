@@ -1,17 +1,29 @@
 import { useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
+  Activity,
   AlertCircle,
   CheckCircle2,
-  Clock,
-  ClipboardCheck,
-  HeartHandshake,
   LayoutDashboard,
-  ListChecks,
-  Meh,
+  Search,
+  ShieldAlert,
+  Siren,
+  type LucideIcon,
 } from "lucide-react";
+import { Badge } from "../../../components/base";
+import {
+  DataTable,
+  DataTableCell,
+  DataTableRow,
+  TableCard,
+  TableCardList,
+  type DataTableSortState,
+} from "../../../components/layout/data-table";
+import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
+  EmptyState,
   ErrorState,
   FilterSelect,
   ListPageToolbar,
@@ -19,45 +31,110 @@ import {
   SkeletonTable,
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
-import { Pagination } from "../../../components/layout/pagination";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
-import { usePermissions } from "../../auth/hooks/usePermissions";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
-import { casesService } from "../../cases/api/cases.service";
-import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
-import { CaseTable } from "../../cases/components/CaseTable";
-import type { CaseListQuery, CaseRecord } from "../../cases/types/cases.types";
-import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { riskDashboardService } from "../api/risk-dashboard.service";
+import type {
+  RiskDashboardQuery,
+  RiskDashboardRow,
+  RiskDashboardSortBy,
+  RiskDashboardTier,
+  RiskDashboardTierFilter,
+  RiskDashboardThresholds,
+} from "../types/risk-dashboard.types";
 
-const CASE_STATUS_SUMMARY_ICONS = {
-  OPEN: AlertCircle,
-  IN_PROGRESS: Clock,
-  PENDING_REVIEW: ClipboardCheck,
-  AWAITING_HELP: HeartHandshake,
-  RESOLVED: CheckCircle2,
-} as const;
+const RISK_TIER_PRESENTATION: Record<
+  RiskDashboardTier,
+  {
+    label: string;
+    badge: "default" | "secondary" | "destructive" | "success" | "warning";
+    tone: "default" | "success" | "warning" | "danger" | "info";
+    icon: LucideIcon;
+  }
+> = {
+  HIGH: { label: "เสี่ยงสูง", badge: "destructive", tone: "danger", icon: Siren },
+  MEDIUM: { label: "เสี่ยงกลาง", badge: "warning", tone: "warning", icon: ShieldAlert },
+  LOW: { label: "เสี่ยงต่ำ", badge: "default", tone: "info", icon: AlertCircle },
+  WATCH: { label: "เฝ้าระวัง", badge: "secondary", tone: "default", icon: Activity },
+  NORMAL: { label: "ปกติ", badge: "success", tone: "success", icon: CheckCircle2 },
+};
+
+const RISK_FILTER_OPTIONS: Array<{ value: RiskDashboardTierFilter; label: string }> = [
+  { value: "ALL", label: "ทุกระดับ" },
+  { value: "HIGH", label: "เสี่ยงสูง" },
+  { value: "MEDIUM", label: "เสี่ยงกลาง" },
+  { value: "LOW", label: "เสี่ยงต่ำ" },
+  { value: "WATCH", label: "เฝ้าระวัง" },
+  { value: "NORMAL", label: "ปกติ" },
+];
+
+const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
+  risk: "risk",
+  name: "name",
+  school: "school",
+  grade: "grade",
+  room: "room",
+  attendance: "attendance",
+};
+
+function formatNumber(value: number | null | undefined): string {
+  return Number.isFinite(value) ? Number(value).toLocaleString() : "-";
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? "-" : `${value.toFixed(1)}%`;
+}
+
+function criteriaText(thresholds?: RiskDashboardThresholds): string {
+  if (!thresholds) return "กำลังโหลดเกณฑ์";
+  const watchPercent = Math.round(thresholds.watchProgressRatio * 100);
+  return [
+    `ขาดติดกัน ต่ำ/กลาง/สูง ≥${thresholds.lowConsecutiveAbsentDays}/${thresholds.mediumConsecutiveAbsentDays}/${thresholds.highConsecutiveAbsentDays} วัน`,
+    `เฝ้าระวัง ≥${watchPercent}% ของเกณฑ์`,
+    `เวลาเรียนถ่วงน้ำหนัก ต่ำกว่า ${thresholds.lowAttendancePercent}/${thresholds.mediumAttendancePercent}/${thresholds.highAttendancePercent}%`,
+    `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน`,
+  ].join(" · ");
+}
+
+function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
+  const presentation = RISK_TIER_PRESENTATION[tier];
+  return <Badge variant={presentation.badge}>{presentation.label}</Badge>;
+}
+
+function StudentCell({ row }: { row: RiskDashboardRow }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-extrabold text-primary">
+        {row.studentName[0] || "?"}
+      </div>
+      <div className="min-w-0">
+        <div className="truncate font-bold text-slate-800">{row.studentName}</div>
+        <div className="text-xs font-semibold text-slate-500">
+          {row.schoolName || "-"} · {row.grade || "-"} · ห้อง {row.room || "-"}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
-  const [status, setStatus] = useState("ALL");
+  const [riskTier, setRiskTier] = useState<RiskDashboardTierFilter>("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [sort, setSort] = useState<DataTableSortState>({ key: "risk", direction: "desc" });
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
-
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
+  const sortBy = SORT_KEY_MAP[sort.key] ?? "risk";
 
-  const query = useMemo<CaseListQuery>(
+  const query = useMemo<RiskDashboardQuery>(
     () => ({
-      status,
+      riskTier,
       province: schoolArea.province || undefined,
       district: schoolArea.district || undefined,
       subDistrict: schoolArea.subDistrict || undefined,
@@ -67,9 +144,11 @@ export function DashboardPage() {
       searchTerm: debouncedSearch || undefined,
       page,
       limit: rowsPerPage,
+      sortBy,
+      sortDirection: sort.direction,
     }),
     [
-      status,
+      riskTier,
       schoolArea.province,
       schoolArea.district,
       schoolArea.subDistrict,
@@ -79,111 +158,85 @@ export function DashboardPage() {
       debouncedSearch,
       page,
       rowsPerPage,
+      sortBy,
+      sort.direction,
     ],
   );
 
-  const casesQuery = useQuery({
-    queryKey: ["task-dashboard-cases", query],
-    queryFn: () => casesService.getCases(query),
+  const riskQuery = useQuery({
+    queryKey: ["risk-dashboard", query],
+    queryFn: () => riskDashboardService.getRiskDashboard(query),
     placeholderData: keepPreviousData,
   });
 
-  // Summary cards use server-computed, scope-aware counts so they stay accurate
-  // independent of the current page/filter.
-  const statsQuery = useQuery({
-    queryKey: ["task-dashboard-stats"],
-    queryFn: casesService.getCaseStats,
+  const rows = riskQuery.data?.items ?? [];
+  const meta = riskQuery.data?.meta;
+  const totalCount = meta?.totalCount ?? 0;
+
+  const summaryItems = (Object.keys(RISK_TIER_PRESENTATION) as RiskDashboardTier[]).map((tier) => {
+    const presentation = RISK_TIER_PRESENTATION[tier];
+    return {
+      label: (
+        <button
+          className="rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          onClick={() => handleSummaryFilter(tier)}
+          type="button"
+        >
+          {presentation.label}
+        </button>
+      ),
+      value: meta?.summary?.[tier]?.toLocaleString() ?? 0,
+      tone: presentation.tone,
+      icon: presentation.icon,
+    };
   });
-  const workflowStatuses = useStatusCatalog("CASE_WORKFLOW");
-  const statuses = workflowStatuses.items;
 
-  const cases = casesQuery.data?.items ?? [];
-  const totalCount = casesQuery.data?.meta?.totalCount ?? 0;
-
-  const summaryItems = useMemo(() => {
-    const stats = statsQuery.data;
-    return [
-      {
-        label: "เด็กเสี่ยง",
-        value: stats?.atRiskStudents?.toLocaleString() ?? 0,
-        tone: "warning" as const,
-        icon: Meh,
-      },
-      {
-        label: "ทั้งหมด",
-        value: stats?.total ?? 0,
-        tone: "default" as const,
-        icon: ListChecks,
-      },
-      ...statuses.map((item) => ({
-        label: item.label,
-        value: stats?.statusCounts?.[item.code] ?? 0,
-        tone: item.summaryTone ?? undefined,
-        icon:
-          CASE_STATUS_SUMMARY_ICONS[item.code as keyof typeof CASE_STATUS_SUMMARY_ICONS] ??
-          ListChecks,
-      })),
-    ];
-  }, [statsQuery.data, statuses]);
-
-  function handleSearchChange(value: string): void {
-    setSearch(value);
+  function resetPage(): void {
     setPage(1);
   }
 
-  function handleStatusChange(value: string): void {
-    setStatus(value);
-    setPage(1);
+  function handleSearchChange(value: string): void {
+    setSearch(value);
+    resetPage();
+  }
+
+  function handleRiskChange(value: string): void {
+    setRiskTier(value as RiskDashboardTierFilter);
+    resetPage();
   }
 
   function handleSchoolChange(value: string): void {
     scope.setSchoolId(value);
-    setPage(1);
+    resetPage();
   }
 
   function handleGradeChange(value: string): void {
     scope.setGrade(value);
-    setPage(1);
+    resetPage();
   }
 
   function handleRoomChange(value: string): void {
     scope.setRoom(value);
-    setPage(1);
+    resetPage();
   }
 
   function handleRowsPerPageChange(value: number): void {
     setRowsPerPage(value);
-    setPage(1);
+    resetPage();
   }
 
-  function handleRefresh(): void {
-    void casesQuery.refetch();
-    void statsQuery.refetch();
-    workflowStatuses.refetch();
+  function handleSortChange(nextSort: DataTableSortState | undefined): void {
+    setSort(nextSort ?? { key: "risk", direction: "desc" });
+    resetPage();
   }
 
-  function handleUpdated(): void {
-    handleRefresh();
+  function handleSummaryFilter(tier: RiskDashboardTier): void {
+    setRiskTier(tier);
+    resetPage();
   }
 
-  function openUpdate(caseRecord: CaseRecord): void {
-    setSelectedCase(caseRecord);
-    setDialogOpen(true);
-  }
-
-  function openCreateLink(caseRecord: CaseRecord): void {
-    void navigate("/create/visit", {
-      state: {
-        prefill: {
-          existing_case_id: String(caseRecord.id),
-          student_id: caseRecord.student_id ?? null,
-          student_name: caseRecord.student_name,
-          student_school: caseRecord.student_school ?? null,
-          student_address: caseRecord.student_address ?? null,
-          reason_flagged: caseRecord.reason_flagged ?? caseRecord.reason ?? null,
-        },
-      },
-    });
+  function openStudent(studentId: string): void {
+    void navigate(`/students/${studentId}`);
   }
 
   return (
@@ -191,16 +244,12 @@ export function DashboardPage() {
       <ListPageToolbar
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
-        description="ติดตามสถานะเคสและลิงก์ภารกิจจากข้อมูล backend ปัจจุบัน"
-        tableActions={
-          <div className="flex gap-2">
-            <RefreshButton onRefresh={handleRefresh} />
-          </div>
-        }
+        description="ติดตามนักเรียนทุกคนในขอบเขตข้อมูล เรียงตามระดับความเสี่ยงจากการมาเรียน"
+        tableActions={<RefreshButton onRefresh={() => void riskQuery.refetch()} />}
         search={{
           value: search,
           onChange: handleSearchChange,
-          placeholder: "ค้นหาชื่อนักเรียน",
+          placeholder: "ค้นหาชื่อนักเรียนหรือรหัส",
         }}
         filters={
           <>
@@ -212,15 +261,14 @@ export function DashboardPage() {
               scope={scope}
             />
             <FilterSelect
-              ariaLabel="สถานะเคส"
-              className="sm:w-[220px]"
-              onChange={handleStatusChange}
-              value={status}
+              ariaLabel="ระดับความเสี่ยง"
+              className="sm:w-[180px]"
+              onChange={handleRiskChange}
+              value={riskTier}
             >
-              <option value="ALL">ทั้งหมด</option>
-              {statuses.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
+              {RISK_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </FilterSelect>
@@ -234,50 +282,131 @@ export function DashboardPage() {
           items={summaryItems}
         />
 
-        {casesQuery.isError || workflowStatuses.isError ? (
+        <div className="rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm font-semibold text-primary">
+          เกณฑ์ปัจจุบัน: {criteriaText(meta?.thresholds)}
+        </div>
+
+        {riskQuery.isError ? (
           <ErrorState
-            title="ไม่สามารถโหลดข้อมูลเคสได้"
+            title="ไม่สามารถโหลดรายงานนักเรียนได้"
             description="ตรวจสอบการเชื่อมต่อ backend แล้วลองอีกครั้ง"
-            onRetry={handleRefresh}
+            onRetry={() => void riskQuery.refetch()}
           />
-        ) : casesQuery.isLoading || workflowStatuses.isLoading ? (
+        ) : riskQuery.isLoading ? (
           <SkeletonTable />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title="ไม่พบข้อมูลนักเรียน"
+            description="ลองปรับตัวกรองหรือคำค้นหา"
+          />
         ) : (
-          <>
-            {cases.length === 0 ? (
-              <div className="rounded-lg border border-slate-200 bg-white py-12 text-center text-slate-500">
-                ไม่พบรายการตามตัวกรอง
-              </div>
-            ) : (
-              <CaseTable
-                canReviewCases={can("review-cases")}
-                onCreateLink={openCreateLink}
-                onUpdate={openUpdate}
-                rows={cases}
-              />
-            )}
-            {cases.length > 0 ? (
-              <Pagination
-                onPageChange={setPage}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-                totalCount={totalCount}
-                unitLabel="เคส"
-              />
-            ) : null}
-          </>
+          <div className="flex flex-col gap-2">
+            <DataTable
+              columnWidths={["w-[24%]", "w-[16%]", "w-[11%]", "w-[11%]", "w-[14%]", "w-[12%]", "w-[12%]"]}
+              headings={[
+                { label: "นักเรียน", sortKey: "name" },
+                { label: "โรงเรียน", sortKey: "school" },
+                { label: "ชั้น", sortKey: "grade" },
+                { label: "ห้อง", sortKey: "room" },
+                { label: "การมาเรียน", sortKey: "attendance" },
+                { label: "เคสเปิด" },
+                { label: "ระดับ", sortKey: "risk" },
+              ]}
+              minWidthClassName="min-w-[1080px]"
+              onSortChange={handleSortChange}
+              sort={sort}
+            >
+              {rows.map((row) => (
+                <DataTableRow
+                  key={row.studentId}
+                  className="cursor-pointer"
+                  onClick={() => openStudent(row.studentId)}
+                >
+                  <DataTableCell>
+                    <StudentCell row={row} />
+                  </DataTableCell>
+                  <DataTableCell className="font-semibold text-slate-600">
+                    {row.schoolName || "-"}
+                  </DataTableCell>
+                  <DataTableCell className="text-center font-bold text-slate-600">
+                    {row.grade || "-"}
+                  </DataTableCell>
+                  <DataTableCell className="text-center font-bold text-slate-600">
+                    {row.room || "-"}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <div className="space-y-1 text-sm">
+                      <div className="font-bold text-slate-800">
+                        {formatPercent(row.weightedAttendancePercent)}
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        ขาดติดกัน {row.consecutiveAbsentDays}/{meta?.thresholds.lowConsecutiveAbsentDays ?? "-"} · ขาด {formatNumber(row.absentDays)} · สาย {formatNumber(row.lateCount)}
+                      </div>
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell className="text-center font-bold text-slate-700">
+                    {formatNumber(row.openCaseCount)}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <RiskBadge tier={row.riskTier} />
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTable>
+
+            <TableCardList>
+              {rows.map((row) => (
+                <TableCard
+                  key={row.studentId}
+                  interactive
+                  className="flex flex-col gap-3 transition-colors hover:border-slate-300"
+                  onClick={() => openStudent(row.studentId)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <StudentCell row={row} />
+                    <RiskBadge tier={row.riskTier} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">การมาเรียน</div>
+                      <div className="font-bold text-slate-800">
+                        {formatPercent(row.weightedAttendancePercent)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">เคสเปิด</div>
+                      <div className="font-bold text-slate-800">{formatNumber(row.openCaseCount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">ขาดติดกัน</div>
+                      <div className="font-bold text-slate-800">
+                        {row.consecutiveAbsentDays}/{meta?.thresholds.lowConsecutiveAbsentDays ?? "-"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">ขาด/สาย</div>
+                      <div className="font-bold text-slate-800">
+                        {formatNumber(row.absentDays)} / {formatNumber(row.lateCount)}
+                      </div>
+                    </div>
+                  </div>
+                </TableCard>
+              ))}
+            </TableCardList>
+
+            <Pagination
+              onPageChange={setPage}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              totalCount={totalCount}
+              unitLabel="คน"
+            />
+          </div>
         )}
       </div>
-
-      <CaseStatusUpdateDialog
-        key={selectedCase?.id ?? "none"}
-        caseRecord={selectedCase}
-        onOpenChange={setDialogOpen}
-        onUpdated={handleUpdated}
-        open={dialogOpen}
-      />
     </PageShell>
   );
 }
