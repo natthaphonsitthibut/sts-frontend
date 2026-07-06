@@ -19,6 +19,7 @@ export interface SystemSetting {
   min?: number | null;
   max?: number | null;
   editable?: boolean;
+  group?: string | null;
 }
 
 export interface SettingsUpdatePayload {

@@ -45,6 +45,20 @@ export function SystemSettingsPage() {
     );
   }, [settings, searchQuery]);
 
+  const groupedSettings = useMemo(() => {
+    const groups: { title: string | null; items: typeof filteredSettings }[] = [];
+    for (const setting of filteredSettings) {
+      const title = setting.group ?? null;
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup && lastGroup.title === title) {
+        lastGroup.items.push(setting);
+      } else {
+        groups.push({ title, items: [setting] });
+      }
+    }
+    return groups;
+  }, [filteredSettings]);
+
   function handleSave(key: string, value: string): void {
     setSavingKey(key);
     setSaveError(null);
@@ -96,17 +110,30 @@ export function SystemSettingsPage() {
           description="ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filteredSettings.map((setting) => (
-            <SystemSettingCard
-              errorMessage={
-                saveError?.key === setting.setting_key ? saveError.message : null
-              }
-              isSaving={savingKey === setting.setting_key}
-              key={setting.setting_key}
-              onSave={handleSave}
-              setting={setting}
-            />
+        <div className="space-y-6">
+          {groupedSettings.map((group, groupIndex) => (
+            <section key={group.title ?? `no-group-${groupIndex}`}>
+              {group.title ? (
+                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+                  {group.title}
+                </h2>
+              ) : null}
+              <div className="grid gap-4 lg:grid-cols-2">
+                {group.items.map((setting) => (
+                  <SystemSettingCard
+                    errorMessage={
+                      saveError?.key === setting.setting_key
+                        ? saveError.message
+                        : null
+                    }
+                    isSaving={savingKey === setting.setting_key}
+                    key={setting.setting_key}
+                    onSave={handleSave}
+                    setting={setting}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
