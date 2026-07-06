@@ -85,6 +85,7 @@ const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
 };
 
 type RiskSortOptionValue = "default" | `${RiskDashboardSortBy}:asc` | `${RiskDashboardSortBy}:desc`;
+const DEFAULT_RISK_SORT: DataTableSortState = { key: "risk", direction: "desc" };
 
 const RISK_SORT_OPTIONS: Array<{
   value: RiskSortOptionValue;
@@ -211,7 +212,7 @@ export function DashboardPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [sort, setSort] = useState<DataTableSortState | undefined>(DEFAULT_RISK_SORT);
   const schoolArea = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
@@ -408,6 +409,7 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
+              clearableSort={false}
               columnWidths={["w-[21%]", "w-[14%]", "w-[8%]", "w-[8%]", "w-[14%]", "w-[9%]", "w-[10%]", "w-[16%]"]}
               headings={[
                 { label: "นักเรียน", sortKey: "name" },

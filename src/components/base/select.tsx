@@ -129,6 +129,7 @@ export function Select({
     <div className="relative" ref={containerRef}>
       <select
         aria-hidden="true"
+        aria-label={props["aria-label"]}
         className="sr-only"
         defaultValue={controlled ? undefined : defaultValue}
         disabled={disabled}
