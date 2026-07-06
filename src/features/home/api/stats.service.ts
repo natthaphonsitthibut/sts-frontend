@@ -17,7 +17,7 @@ function toNumber(value: unknown): number {
 function createEmptyOverviewStats(): OverviewStatsData {
   return {
     totalStudents: 0,
-    dropoutStudents: 0,
+    activeCases: 0,
     atRiskStudents: 0,
     helpStats: {
       waiting: 0,
@@ -38,7 +38,7 @@ async function getOverviewStats(): Promise<OverviewStatsData> {
 
   return {
     totalStudents: toNumber(payload.totalStudents),
-    dropoutStudents: toNumber(payload.dropoutStudents),
+    activeCases: toNumber(payload.activeCases),
     atRiskStudents: toNumber(payload.atRiskStudents),
     helpStats: {
       waiting: toNumber(payload.helpStats?.waiting),

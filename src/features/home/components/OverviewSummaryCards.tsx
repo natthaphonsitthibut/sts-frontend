@@ -1,4 +1,4 @@
-import { Footprints, Meh, Users } from "lucide-react";
+import { BriefcaseBusiness, Meh, Users } from "lucide-react";
 import { SummaryMetrics } from "../../../components/layout/page-primitives";
 import type { OverviewStatsData } from "../types/stats.types";
 
@@ -29,10 +29,10 @@ export function OverviewSummaryCards({
           icon: Meh,
         },
         {
-          label: "เด็กหลุด",
-          value: overviewData.dropoutStudents.toLocaleString(),
-          tone: "danger",
-          icon: Footprints,
+          label: "เคสกำลังติดตาม",
+          value: overviewData.activeCases.toLocaleString(),
+          tone: "warning",
+          icon: BriefcaseBusiness,
         },
       ]}
     />
