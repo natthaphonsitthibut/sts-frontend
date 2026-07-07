@@ -60,7 +60,7 @@ function statusBadge(row: MasterDataLookup, catalog: readonly StatusCatalogItem[
   const code = row.is_active === false ? "INACTIVE" : "ACTIVE";
   const item = findStatusCatalogItem(catalog, code);
   return (
-    <Badge variant={item?.badgeVariant ?? "secondary"}>
+    <Badge className="whitespace-nowrap" variant={item?.badgeVariant ?? "secondary"}>
       {item?.label ?? code}
     </Badge>
   );
@@ -150,7 +150,9 @@ export function MasterDataLookupsPage() {
 
   function openCreate(): void {
     if (isAllTables) {
-      return;
+      // "ทั้งหมด" has no single target table — default to the first real
+      // category (mirrors openEdit's own switch-to-source-table behavior).
+      setTable(MASTER_DATA_LOOKUP_CONFIGS[0].table);
     }
     setSelected(null);
     setDialogOpen(true);
@@ -179,12 +181,7 @@ export function MasterDataLookupsPage() {
       <ListPageToolbar
         actions={<SettingsTabs />}
         tableActions={
-          <Button
-            disabled={isAllTables}
-            icon={CirclePlus}
-            onClick={openCreate}
-            title={isAllTables ? "เลือกประเภทข้อมูลพื้นฐานก่อนเพิ่มรายการ" : undefined}
-          >
+          <Button icon={CirclePlus} onClick={openCreate}>
             เพิ่มรายการ
           </Button>
         }
@@ -231,7 +228,9 @@ export function MasterDataLookupsPage() {
             {rows.map((row) => (
               <DataTableRow key={`${row.sourceTable}-${row.id}`}>
                 <DataTableCell>
-                  <Badge variant="secondary">{row.sourceConfig.title}</Badge>
+                  <Badge className="whitespace-nowrap" variant="secondary">
+                    {row.sourceConfig.title}
+                  </Badge>
                 </DataTableCell>
                 <DataTableCell className="font-mono font-bold">{row.code}</DataTableCell>
                 <DataTableCell className="font-bold text-slate-800">{row.name}</DataTableCell>
@@ -268,7 +267,7 @@ export function MasterDataLookupsPage() {
                   <div>
                     <p className="font-bold text-slate-800">{row.name}</p>
                     <p className="text-sm text-slate-500">รหัส {row.code}</p>
-                    <Badge className="mt-2" variant="secondary">
+                    <Badge className="mt-2 whitespace-nowrap" variant="secondary">
                       {row.sourceConfig.title}
                     </Badge>
                   </div>
