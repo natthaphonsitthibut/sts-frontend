@@ -218,8 +218,7 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
   );
 }
 
-function ManageTimetableView() {
-  const [room, setRoom] = useState<RoomSelection | null>(null);
+function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   const [adding, setAdding] = useState(false);
   const slotsQuery = useTimetableSlots(room);
   const deleteSlot = useDeleteTimetableSlot();
@@ -241,10 +240,6 @@ function ManageTimetableView() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-        <RoomPicker onChange={setRoom} />
-      </div>
-
       {room ? (
         <>
           <div className="flex items-center justify-between">
@@ -311,9 +306,13 @@ function ManageTimetableView() {
   );
 }
 
-function MyScheduleView() {
-  const [mode, setMode] = useState<"mine" | "room">("mine");
-  const [room, setRoom] = useState<RoomSelection | null>(null);
+function MyScheduleView({
+  mode,
+  room,
+}: {
+  mode: "mine" | "room";
+  room: RoomSelection | null;
+}) {
   const mineQuery = useMySchedule({ mine: true });
   const roomQuery = useMySchedule(
     room
@@ -325,20 +324,6 @@ function MyScheduleView() {
 
   return (
     <div className="space-y-4">
-      <Tabs
-        aria-label="โหมดดูตาราง"
-        onChange={(next) => setMode(next as "mine" | "room")}
-        options={[
-          { value: "mine", label: "ตารางของฉัน" },
-          { value: "room", label: "เลือกห้องเรียน" },
-        ]}
-        value={mode}
-      />
-      {mode === "room" ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-          <RoomPicker onChange={setRoom} />
-        </div>
-      ) : null}
       {activeQuery.isError ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -358,6 +343,8 @@ function MyScheduleView() {
 export function TimetablePage() {
   const { can } = usePermissions();
   const isManager = can("manage-timetable");
+  const [mode, setMode] = useState<"mine" | "room">("mine");
+  const [room, setRoom] = useState<RoomSelection | null>(null);
 
   return (
     <PageShell>
@@ -369,8 +356,25 @@ export function TimetablePage() {
         }
         icon={CalendarClock}
         title="ตารางสอน"
-      />
-      {isManager ? <ManageTimetableView /> : <MyScheduleView />}
+      >
+        {isManager ? (
+          <RoomPicker onChange={setRoom} />
+        ) : (
+          <div className="space-y-3">
+            <Tabs
+              aria-label="โหมดดูตาราง"
+              onChange={(next) => setMode(next as "mine" | "room")}
+              options={[
+                { value: "mine", label: "ตารางของฉัน" },
+                { value: "room", label: "เลือกห้องเรียน" },
+              ]}
+              value={mode}
+            />
+            {mode === "room" ? <RoomPicker onChange={setRoom} /> : null}
+          </div>
+        )}
+      </PageToolbar>
+      {isManager ? <ManageTimetableView room={room} /> : <MyScheduleView mode={mode} room={room} />}
     </PageShell>
   );
 }
