@@ -14,6 +14,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   Combobox,
   Form,
   FormErrorAlert,
@@ -50,7 +51,7 @@ import {
   stripAddressPrefix,
 } from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
-import { useRoomSubjects } from "../../timetable/hooks/useTimetable";
+import { useRoomSubjects, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import {
@@ -65,6 +66,15 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
+const DAY_LABELS: Record<number, string> = {
+  1: "จันทร์",
+  2: "อังคาร",
+  3: "พุธ",
+  4: "พฤหัสบดี",
+  5: "ศุกร์",
+  6: "เสาร์",
+  7: "อาทิตย์",
+};
 
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
 const PATH_TO_TYPE: Record<string, TaskType> = {
@@ -116,6 +126,7 @@ const createTaskSchema = z
     address_longitude: z.number().min(-180).max(180).nullable(),
     reason_flagged: z.string().trim(),
     subject_id: z.string().trim(),
+    timetable_slot_ids: z.array(z.string()),
     expires_value: z
       .string()
       .trim()
@@ -229,6 +240,7 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     address_longitude: null,
     reason_flagged: "",
     subject_id: "",
+    timetable_slot_ids: [],
     expires_value: "7",
     expires_unit: "days",
   };
@@ -292,16 +304,30 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   });
   const roomSubjectsFilter =
     type === "ATTENDANCE" && scope.schoolId && scope.gradeLevelId && scope.room
-      ? { schoolId: Number(scope.schoolId), gradeLevelId: scope.gradeLevelId, roomNo: Number(scope.room) }
+      ? {
+          schoolId: Number(scope.schoolId),
+          gradeLevelId: scope.gradeLevelId,
+          roomNo: Number(scope.room),
+        }
       : null;
   const roomSubjectsQuery = useRoomSubjects(roomSubjectsFilter);
+  const timetableSlotsQuery = useTimetableSlots(roomSubjectsFilter);
   const subjectId = useWatch({ control: form.control, name: "subject_id" });
+  const selectedSlotIds = useWatch({ control: form.control, name: "timetable_slot_ids" });
   // A room change invalidates any previously picked subject_id from a
   // different room — clear it instead of silently submitting a stale id.
   useEffect(() => {
     form.setValue("subject_id", "");
+    form.setValue("timetable_slot_ids", []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomSubjectsFilter?.schoolId, roomSubjectsFilter?.gradeLevelId, roomSubjectsFilter?.roomNo]);
+  useEffect(() => {
+    form.setValue("timetable_slot_ids", []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId]);
+  const subjectSlots = (timetableSlotsQuery.data?.data ?? [])
+    .filter((slot) => String(slot.subject_id) === subjectId)
+    .sort((a, b) => a.day_of_week - b.day_of_week || a.period - b.period);
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -543,6 +569,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       Object.assign(payload, {
         subject: selectedSubject?.name_th ?? null,
         subject_id: values.subject_id ? Number(values.subject_id) : null,
+        timetable_slot_ids: values.timetable_slot_ids.map(Number),
         target_grade: scope.grade,
         target_room: scope.room,
         target_school_id: scope.schoolId ? Number(scope.schoolId) : null,
@@ -823,6 +850,47 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                     value={subjectId}
                   />
                   <FormMessage<CreateTaskFormValues> name="subject_id" />
+                </FormItem>
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>คาบ</FormLabel>
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    {!roomSubjectsFilter ? (
+                      <p className="text-sm text-slate-500">เลือกโรงเรียน ชั้น และห้องก่อน</p>
+                    ) : !subjectId ? (
+                      <p className="text-sm text-slate-500">เลือกวิชาก่อนเลือกคาบ</p>
+                    ) : subjectSlots.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        วิชานี้ยังไม่มีคาบในตารางสอน — เว้นว่างเพื่อสร้างลิงก์เช็คชื่อรายวัน
+                      </p>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {subjectSlots.map((slot) => {
+                          const value = String(slot.id);
+                          const checked = selectedSlotIds.includes(value);
+                          return (
+                            <Checkbox
+                              checked={checked}
+                              disabled={createTask.isPending}
+                              key={slot.id}
+                              label={`วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period}${slot.teacher_name ? ` · ${slot.teacher_name}` : ""}`}
+                              onChange={(event) => {
+                                const next = event.currentTarget.checked
+                                  ? [...selectedSlotIds, value]
+                                  : selectedSlotIds.filter((id) => id !== value);
+                                form.setValue("timetable_slot_ids", next, {
+                                  shouldDirty: true,
+                                  shouldValidate: form.formState.isSubmitted,
+                                });
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500">
+                    เว้นว่าง = เช็คชื่อรายวันปกติ / เลือกคาบ = เช็คชื่อเฉพาะคาบวิชานี้
+                  </p>
                 </FormItem>
               </div>
               <p
