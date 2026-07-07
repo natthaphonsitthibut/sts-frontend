@@ -348,6 +348,19 @@ export function ProfilePage() {
                 </div>
 
                 <FormItem>
+                  <FormLabel htmlFor="PersonID_Onec">เลขบัตรประชาชน</FormLabel>
+                  <Input
+                    autoComplete="off"
+                    id="PersonID_Onec"
+                    readOnly
+                    value={profileText(profileUser?.PersonID_Onec)}
+                  />
+                  <p className="text-xs text-slate-500">
+                    แก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข
+                  </p>
+                </FormItem>
+
+                <FormItem>
                   <FormLabel htmlFor="phone">เบอร์โทรศัพท์</FormLabel>
                   <Input
                     autoComplete="tel"
