@@ -31,6 +31,7 @@ export interface FieldFollowerListParams {
   province?: string;
   district?: string;
   subDistrict?: string;
+  searchTerm?: string;
   page: number;
   limit: number;
 }

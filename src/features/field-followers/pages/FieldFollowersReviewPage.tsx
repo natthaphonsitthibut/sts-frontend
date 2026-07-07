@@ -5,7 +5,7 @@ import {
   AlertDescription,
   Badge,
   Button,
-  Input,
+  Combobox,
   useConfirm,
 } from "../../../components/base";
 import {
@@ -15,10 +15,19 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import { FilterSelect, ListPageToolbar, PageShell } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  ErrorState,
+  FilterSelect,
+  ListPageToolbar,
+  PageShell,
+  SkeletonTable,
+} from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useFieldFollowers, useReviewFieldFollower } from "../hooks/useFieldFollowers";
 import {
   getAvailableFieldFollowerActions,
@@ -73,17 +82,18 @@ function FieldFollowerRowActions({ follower, isPending, onReview }: FieldFollowe
 
 export function FieldFollowersReviewPage() {
   const [status, setStatus] = useState<FieldFollowerStatus | "">("");
-  const [province, setProvince] = useState("");
-  const [district, setDistrict] = useState("");
-  const [subDistrict, setSubDistrict] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
+  const area = useSchoolAreaFilter();
 
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   const query = useFieldFollowers({
     status: status || undefined,
-    province: province.trim() || undefined,
-    district: district.trim() || undefined,
-    subDistrict: subDistrict.trim() || undefined,
+    province: area.province || undefined,
+    district: area.district || undefined,
+    subDistrict: area.subDistrict || undefined,
+    searchTerm: debouncedSearch || undefined,
     page,
     limit,
   });
@@ -108,10 +118,20 @@ export function FieldFollowersReviewPage() {
     setPage(1);
   }
 
+  function handleSearchChange(value: string): void {
+    setSearchQuery(value);
+    resetToFirstPage();
+  }
+
   return (
     <PageShell>
       <ListPageToolbar
         count={{ value: query.data?.meta.totalCount ?? 0 }}
+        search={{
+          onChange: handleSearchChange,
+          placeholder: "ค้นหาชื่อหรือเบอร์โทรศัพท์",
+          value: searchQuery,
+        }}
         filters={
           <>
             <FilterSelect
@@ -129,32 +149,43 @@ export function FieldFollowersReviewPage() {
                 </option>
               ))}
             </FilterSelect>
-            <Input
-              className="sm:w-[160px]"
-              onChange={(event) => {
-                setProvince(event.target.value);
+            <Combobox
+              onChange={(next) => {
+                area.setProvince(next);
                 resetToFirstPage();
               }}
-              placeholder="จังหวัด"
-              value={province}
+              options={[
+                { value: "", label: "ทุกจังหวัด" },
+                ...area.provinces.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาจังหวัด"
+              value={area.province}
             />
-            <Input
-              className="sm:w-[160px]"
-              onChange={(event) => {
-                setDistrict(event.target.value);
+            <Combobox
+              disabled={!area.province}
+              onChange={(next) => {
+                area.setDistrict(next);
                 resetToFirstPage();
               }}
-              placeholder="อำเภอ/เขต"
-              value={district}
+              options={[
+                { value: "", label: "ทุกอำเภอ/เขต" },
+                ...area.districts.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาอำเภอ/เขต"
+              value={area.district}
             />
-            <Input
-              className="sm:w-[160px]"
-              onChange={(event) => {
-                setSubDistrict(event.target.value);
+            <Combobox
+              disabled={!area.district}
+              onChange={(next) => {
+                area.setSubDistrict(next);
                 resetToFirstPage();
               }}
-              placeholder="ตำบล/แขวง"
-              value={subDistrict}
+              options={[
+                { value: "", label: "ทุกตำบล/แขวง" },
+                ...area.subDistricts.map((name) => ({ value: name, label: name })),
+              ]}
+              placeholder="ค้นหาตำบล/แขวง"
+              value={area.subDistrict}
             />
           </>
         }
@@ -162,13 +193,6 @@ export function FieldFollowersReviewPage() {
         title="ตรวจสอบใบสมัคร อสม./ผู้ติดตาม"
       />
 
-      {query.isError ? (
-        <Alert className="mb-4" variant="destructive">
-          <AlertDescription>
-            {getApiErrorMessage(query.error, "โหลดรายการผู้สมัครไม่สำเร็จ")}
-          </AlertDescription>
-        </Alert>
-      ) : null}
       {reviewMutation.isError ? (
         <Alert className="mb-4" variant="destructive">
           <AlertDescription>
@@ -177,17 +201,23 @@ export function FieldFollowersReviewPage() {
         </Alert>
       ) : null}
 
-      {query.isLoading ? (
-        <div className="py-10 text-center text-slate-500">กำลังโหลด...</div>
+      {query.isError ? (
+        <ErrorState
+          description="เกิดข้อผิดพลาดระหว่างโหลดรายการผู้สมัคร"
+          onRetry={query.refetch}
+          title="โหลดรายการผู้สมัครไม่สำเร็จ"
+        />
+      ) : query.isLoading ? (
+        <SkeletonTable />
+      ) : followers.length === 0 ? (
+        <EmptyState
+          description="ลองปรับตัวกรอง หรือค้นหาด้วยชื่อ/เบอร์โทรศัพท์อีกครั้ง"
+          icon={UserCheck}
+          title="ไม่พบรายการผู้สมัคร"
+        />
       ) : null}
 
-      {!query.isLoading && followers.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-slate-500 shadow-card">
-          ไม่พบรายการผู้สมัคร
-        </div>
-      ) : null}
-
-      {followers.length > 0 ? (
+      {!query.isError && !query.isLoading && followers.length > 0 ? (
         <>
           <DataTable
             headings={["ผู้สมัคร", "เบอร์โทรศัพท์", "พื้นที่", "สถานะ", "วันที่สมัคร", "จัดการ"]}

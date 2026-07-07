@@ -27,6 +27,7 @@ async function listFollowers(
       ...(params.province ? { province: params.province } : {}),
       ...(params.district ? { district: params.district } : {}),
       ...(params.subDistrict ? { subDistrict: params.subDistrict } : {}),
+      ...(params.searchTerm ? { searchTerm: params.searchTerm } : {}),
     },
   });
   return response.data;
