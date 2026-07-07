@@ -4,7 +4,6 @@ import {
   attendanceLookupService,
   type SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
-import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 
 const EMPTY_SCHOOLS: SchoolOption[] = [];
 const SCHOOL_LIMIT = 50;
@@ -19,15 +18,13 @@ function unique(values: Array<string | undefined>): string[] {
  * Province → district → sub-district → school cascade, server-driven.
  *
  * Geo options come from the bounded `/locations` catalog (not a nationwide
- * school dump), and the school list is fetched from the server narrowed by the
- * selected geo and enforced against the actor's data scope. A scoped actor
- * (school/area/own) loads immediately because the server already narrows their
- * result; a national/global actor must pick a province (or type a 2+ char
- * search) before we fetch, so no flow ever pulls the whole country's schools.
- * Selecting a level resets the levels below it.
+ * school dump). The school list always fetches from the server, narrowed by
+ * whichever geo levels and search term are set and enforced against the
+ * actor's data scope — the server already caps results at `SCHOOL_LIMIT` and
+ * returns nothing for an unscoped/own-only actor, so no flow ever pulls the
+ * whole country's schools. Selecting a level resets the levels below it.
  */
 export function useSchoolAreaFilter() {
-  const actorScope = useAuthSessionStore((state) => state.user?.data_scope);
   const [province, setProvinceState] = useState("");
   const [district, setDistrictState] = useState("");
   const [subDistrict, setSubDistrict] = useState("");
@@ -63,21 +60,11 @@ export function useSchoolAreaFilter() {
     [catalog, province, district],
   );
 
-  // A scoped actor is already narrowed server-side, so we can load their
-  // schools straight away. A national/global actor must narrow first (geo or
-  // search) so we never request a nationwide list.
-  const isScopedActor = Boolean(
-    actorScope?.school_ids?.length ||
-      actorScope?.provinces?.length ||
-      actorScope?.districts?.length ||
-      actorScope?.sub_districts?.length ||
-      actorScope?.own_only,
-  );
   const trimmedSearch = schoolSearch.trim();
-  const hasNarrowing = Boolean(
-    province || district || subDistrict || trimmedSearch.length >= 2,
-  );
-  const schoolsEnabled = isScopedActor || hasNarrowing;
+  // Always fetch: the server caps at SCHOOL_LIMIT and enforces the actor's
+  // data scope, so an unnarrowed query is already safe and just returns the
+  // first page of schools instead of an empty "pick a province" dead end.
+  const schoolsEnabled = true;
 
   const schoolsQuery = useQuery({
     queryKey: [
