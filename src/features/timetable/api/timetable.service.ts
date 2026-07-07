@@ -3,6 +3,7 @@ import type {
   CreateTimetableSlotPayload,
   RoomSubject,
   TimetableSlot,
+  TimetableTeacherCandidate,
   UpdateTimetableSlotPayload,
 } from "../types/timetable.types";
 
@@ -50,6 +51,17 @@ async function getSubjectsForRoom(
   return response.data;
 }
 
+async function listTeacherCandidates(filter: {
+  schoolId: number;
+  searchTerm?: string;
+}): Promise<{ success: true; data: TimetableTeacherCandidate[] }> {
+  const response = await apiClient.get<{ success: true; data: TimetableTeacherCandidate[] }>(
+    "/timetable/teachers",
+    { params: { schoolId: filter.schoolId, searchTerm: filter.searchTerm || undefined } },
+  );
+  return response.data;
+}
+
 async function createSlot(
   payload: CreateTimetableSlotPayload,
 ): Promise<{ success: true; data: TimetableSlot }> {
@@ -80,6 +92,7 @@ export const timetableService = {
   listSlots,
   getMySchedule,
   getSubjectsForRoom,
+  listTeacherCandidates,
   createSlot,
   updateSlot,
   deleteSlot,

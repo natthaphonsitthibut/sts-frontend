@@ -5,6 +5,7 @@ import type { CreateTimetableSlotPayload, UpdateTimetableSlotPayload } from "../
 const SLOTS_QUERY_KEY = "timetable-slots";
 const MY_SCHEDULE_QUERY_KEY = "my-schedule";
 const ROOM_SUBJECTS_QUERY_KEY = "room-subjects";
+const TIMETABLE_TEACHERS_QUERY_KEY = "timetable-teachers";
 
 interface RoomFilter {
   schoolId: number;
@@ -38,6 +39,14 @@ export function useRoomSubjects(filter: RoomFilter | null) {
   return useQuery({
     queryKey: [ROOM_SUBJECTS_QUERY_KEY, filter],
     queryFn: () => timetableService.getSubjectsForRoom(filter!),
+    enabled: Boolean(filter),
+  });
+}
+
+export function useTimetableTeachers(filter: { schoolId: number; searchTerm?: string } | null) {
+  return useQuery({
+    queryKey: [TIMETABLE_TEACHERS_QUERY_KEY, filter],
+    queryFn: () => timetableService.listTeacherCandidates(filter!),
     enabled: Boolean(filter),
   });
 }

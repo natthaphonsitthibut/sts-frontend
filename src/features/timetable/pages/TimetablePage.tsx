@@ -20,19 +20,12 @@ import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
   useMySchedule,
+  useTimetableTeachers,
   useTimetableSlots,
 } from "../hooks/useTimetable";
+import { DAY_LABELS, getPeriodTimeLabel } from "../lib/period-times";
 import type { TimetableSlot } from "../types/timetable.types";
 
-const DAY_LABELS: Record<number, string> = {
-  1: "จันทร์",
-  2: "อังคาร",
-  3: "พุธ",
-  4: "พฤหัสบดี",
-  5: "ศุกร์",
-  6: "เสาร์",
-  7: "อาทิตย์",
-};
 const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({ value, label }));
 const PERIOD_OPTIONS = Array.from({ length: 10 }, (_, i) => String(i + 1)).map((value) => ({
   value,
@@ -72,7 +65,12 @@ function ScheduleList({ slots }: { slots: TimetableSlot[] }) {
               >
                 <div className="flex items-center gap-3">
                   <Badge variant="secondary">คาบ {slot.period}</Badge>
-                  <span className="font-medium text-slate-800">{slot.subject_name_th}</span>
+                  <div>
+                    <div className="font-medium text-slate-800">{slot.subject_name_th}</div>
+                    <div className="text-xs text-slate-500">
+                      {getPeriodTimeLabel(slot.period)} · {slot.subject_code}
+                    </div>
+                  </div>
                 </div>
                 <span className="text-sm text-slate-500">{slot.teacher_name || "ไม่ระบุครูผู้สอน"}</span>
               </li>
@@ -88,12 +86,14 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [period, setPeriod] = useState("1");
   const [subjectId, setSubjectId] = useState("");
+  const [teacherUserId, setTeacherUserId] = useState("");
   const [newSubjectCode, setNewSubjectCode] = useState("");
   const [newSubjectName, setNewSubjectName] = useState("");
   const [addingSubject, setAddingSubject] = useState(false);
   const allSubjectsQuery = useSubjects({ isActive: true });
   const createSubject = useCreateSubject();
   const createSlot = useCreateTimetableSlot();
+  const teachersQuery = useTimetableTeachers({ schoolId: room.schoolId });
   const termsQuery = useQuery({
     queryKey: ["timetable-active-term", room.schoolId],
     queryFn: () => attendanceService.getTerms(room.schoolId),
@@ -103,6 +103,10 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
   const subjectOptions = (allSubjectsQuery.data?.data ?? []).map((subject) => ({
     value: String(subject.id),
     label: `${subject.name_th} (${subject.code})`,
+  }));
+  const teacherOptions = (teachersQuery.data?.data ?? []).map((teacher) => ({
+    value: String(teacher.id),
+    label: teacher.display_name,
   }));
 
   function handleCreateSubject(): void {
@@ -129,9 +133,10 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
         gradeLevelId: room.gradeLevelId,
         roomNo: room.roomNo,
         dayOfWeek: Number(dayOfWeek),
-        period: Number(period),
-        subjectId: Number(subjectId),
-      },
+            period: Number(period),
+            subjectId: Number(subjectId),
+            teacherUserId: teacherUserId ? Number(teacherUserId) : null,
+          },
       { onSuccess: onDone },
     );
   }
@@ -150,7 +155,7 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
           </AlertDescription>
         </Alert>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <Combobox onChange={setDayOfWeek} options={DAY_OPTIONS} searchable={false} value={dayOfWeek} />
         <Combobox onChange={setPeriod} options={PERIOD_OPTIONS} searchable={false} value={period} />
         <Combobox
@@ -158,6 +163,13 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
           options={[{ value: "", label: "เลือกวิชา" }, ...subjectOptions]}
           placeholder="ค้นหาวิชา"
           value={subjectId}
+        />
+        <Combobox
+          emptyText="ไม่พบผู้สอนในขอบเขตโรงเรียนนี้"
+          onChange={setTeacherUserId}
+          options={[{ value: "", label: "ยังไม่ระบุผู้สอน" }, ...teacherOptions]}
+          placeholder="เลือกผู้สอน"
+          value={teacherUserId}
         />
       </div>
 
@@ -280,7 +292,13 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                       >
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary">คาบ {slot.period}</Badge>
-                          <span className="font-medium text-slate-800">{slot.subject_name_th}</span>
+                          <div>
+                            <div className="font-medium text-slate-800">{slot.subject_name_th}</div>
+                            <div className="text-xs text-slate-500">
+                              {getPeriodTimeLabel(slot.period)} · {slot.subject_code} ·{" "}
+                              {slot.teacher_name || "ยังไม่ระบุผู้สอน"}
+                            </div>
+                          </div>
                         </div>
                         <Button
                           aria-label={`ลบคาบ ${slot.period} วัน${DAY_LABELS[day]}`}

@@ -44,6 +44,11 @@ export interface RoomSubject {
   name_th: string;
 }
 
+export interface TimetableTeacherCandidate {
+  id: number;
+  display_name: string;
+}
+
 export interface CreateTimetableSlotPayload {
   schoolTermId: number;
   schoolId: number;

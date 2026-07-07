@@ -13,6 +13,7 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
+import { getTodayIso } from "../../attendance/lib/attendance-presentation";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { loginLinksService } from "../../login-links/api/login-links.service";
@@ -46,7 +47,7 @@ export function AttendanceLinkDetailPage() {
   const { linkId = "" } = useParams<{ linkId: string }>();
   const location = useLocation();
   const stateDate = (location.state as { date?: string } | null)?.date;
-  const date = stateDate || new Date().toISOString().split("T")[0];
+  const date = stateDate || getTodayIso();
 
   const detailQuery = useQuery({
     queryKey: [ATTENDANCE_LINK_DETAIL_KEY, linkId, date],
@@ -181,19 +182,30 @@ export function AttendanceLinkDetailPage() {
                   String(record.status),
                   attendanceStatusCatalog,
                 );
+                const isSubjectRecord = record.session_kind === "SUBJECT";
                 return (
                   <li
                     className="flex items-center justify-between gap-3 py-2.5"
-                    key={record.student_id}
+                    key={`${record.student_id}-${record.timetable_slot_id ?? record.period ?? "daily"}`}
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium text-slate-800">
                         {record.student_name}
                       </div>
+                      {isSubjectRecord ? (
+                        <div className="mt-1 text-xs text-slate-500">
+                          รายวิชา: {record.subject_name_th || detail.subject || "-"}
+                          {record.subject_code ? ` (${record.subject_code})` : ""} · คาบ{" "}
+                          {record.period || "-"}
+                        </div>
+                      ) : null}
                     </div>
-                    <Badge variant={status?.badgeVariant ?? "secondary"}>
-                      {status?.shortLabel ?? status?.label ?? String(record.status)}
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {isSubjectRecord ? <Badge variant="secondary">รายวิชา</Badge> : null}
+                      <Badge variant={status?.badgeVariant ?? "secondary"}>
+                        {status?.shortLabel ?? status?.label ?? String(record.status)}
+                      </Badge>
+                    </div>
                   </li>
                 );
               })}

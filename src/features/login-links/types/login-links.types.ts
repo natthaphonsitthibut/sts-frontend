@@ -57,6 +57,11 @@ export interface AdminLinkRecord {
   student_id: string;
   student_name: string;
   status: number | string;
+  session_kind?: "DAILY" | "SUBJECT" | string | null;
+  period?: number | string | null;
+  timetable_slot_id?: number | string | null;
+  subject_name_th?: string | null;
+  subject_code?: string | null;
 }
 
 /** Admin-only link detail (works for closed/expired links), keyed by link id. */

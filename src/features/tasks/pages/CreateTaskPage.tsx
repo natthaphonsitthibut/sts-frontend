@@ -52,6 +52,11 @@ import {
 } from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
 import { useRoomSubjects, useTimetableSlots } from "../../timetable/hooks/useTimetable";
+import {
+  DAY_LABELS,
+  formatTimetableSlotLabel,
+  getPeriodTimeLabel,
+} from "../../timetable/lib/period-times";
 import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import {
@@ -66,16 +71,6 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
-const DAY_LABELS: Record<number, string> = {
-  1: "จันทร์",
-  2: "อังคาร",
-  3: "พุธ",
-  4: "พฤหัสบดี",
-  5: "ศุกร์",
-  6: "เสาร์",
-  7: "อาทิตย์",
-};
-
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
 const PATH_TO_TYPE: Record<string, TaskType> = {
   visit: "VISIT",
@@ -100,6 +95,45 @@ function isEmail(value: string): boolean {
   return z.string().email().safeParse(value).success;
 }
 
+function addDuration(date: Date, value: number, unit: string): Date {
+  const next = new Date(date);
+  if (unit === "hours") {
+    next.setHours(next.getHours() + value);
+  } else if (unit === "weeks") {
+    next.setDate(next.getDate() + value * 7);
+  } else {
+    next.setDate(next.getDate() + value);
+  }
+  return next;
+}
+
+function toSlotDayOfWeek(date: Date): number {
+  const jsDay = date.getUTCDay();
+  return jsDay === 0 ? 7 : jsDay;
+}
+
+function toBangkokDateOnly(date: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
+}
+
+function dateRangeIncludesDayOfWeek(start: Date, end: Date, dayOfWeek: number): boolean {
+  const cursor = toBangkokDateOnly(start);
+  const last = toBangkokDateOnly(end);
+  while (cursor.getTime() <= last.getTime()) {
+    if (toSlotDayOfWeek(cursor) === dayOfWeek) {
+      return true;
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return false;
+}
 
 const createTaskSchema = z
   .object({
@@ -296,6 +330,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     resolver: zodResolver(createTaskSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
+  const expiresValue = useWatch({ control: form.control, name: "expires_value" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
   const locationQuery = useQuery({
     queryKey: ["task-create-locations"],
@@ -328,6 +363,30 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const subjectSlots = (timetableSlotsQuery.data?.data ?? [])
     .filter((slot) => String(slot.subject_id) === subjectId)
     .sort((a, b) => a.day_of_week - b.day_of_week || a.period - b.period);
+  const selectedSlots = subjectSlots.filter((slot) => selectedSlotIds.includes(String(slot.id)));
+  const expiryWarning = (() => {
+    if (selectedSlots.length === 0) {
+      return null;
+    }
+    const numericValue = Number(expiresValue);
+    if (!Number.isInteger(numericValue) || numericValue < 1) {
+      return null;
+    }
+    const now = new Date();
+    const expiresAt = addDuration(now, numericValue, expiresUnit);
+    const outsideSlots = selectedSlots.filter(
+      (slot) => !dateRangeIncludesDayOfWeek(now, expiresAt, slot.day_of_week),
+    );
+    if (outsideSlots.length === 0) {
+      return null;
+    }
+    const labels = outsideSlots
+      .map((slot) => `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} คาบ ${slot.period}`)
+      .join(", ");
+    return `ลิงก์อายุ ${numericValue} ${
+      TASK_DURATION_UNIT_OPTIONS.find((option) => option.value === expiresUnit)?.label ?? expiresUnit
+    } อาจหมดอายุก่อนถึง ${labels}`;
+  })();
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -872,7 +931,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                               checked={checked}
                               disabled={createTask.isPending}
                               key={slot.id}
-                              label={`วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period}${slot.teacher_name ? ` · ${slot.teacher_name}` : ""}`}
+                              label={formatTimetableSlotLabel(slot)}
                               onChange={(event) => {
                                 const next = event.currentTarget.checked
                                   ? [...selectedSlotIds, value]
@@ -891,6 +950,19 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                   <p className="text-sm text-slate-500">
                     เว้นว่าง = เช็คชื่อรายวันปกติ / เลือกคาบ = เช็คชื่อเฉพาะคาบวิชานี้
                   </p>
+                  {expiryWarning ? (
+                    <Alert variant="warning">
+                      <AlertDescription>{expiryWarning}</AlertDescription>
+                    </Alert>
+                  ) : null}
+                  {selectedSlots.length > 0 ? (
+                    <p className="text-xs text-slate-500">
+                      เวลาคาบอ้างอิง:{" "}
+                      {selectedSlots
+                        .map((slot) => `คาบ ${slot.period} ${getPeriodTimeLabel(slot.period)}`)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                 </FormItem>
               </div>
               <p
