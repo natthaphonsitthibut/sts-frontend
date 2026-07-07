@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  Combobox,
   useConfirm,
 } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
@@ -31,6 +32,16 @@ import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types
 import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
+const DAY_LABELS: Record<number, string> = {
+  1: "จันทร์",
+  2: "อังคาร",
+  3: "พุธ",
+  4: "พฤหัสบดี",
+  5: "ศุกร์",
+  6: "เสาร์",
+  7: "อาทิตย์",
+};
+
 export function TaskGuestPage() {
   const attendanceStatusCatalog = usePublicAttendanceStatusCatalog();
   const { token = "" } = useParams<{ token: string }>();
@@ -40,6 +51,7 @@ export function TaskGuestPage() {
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
   const [selections, setSelections] = useState<Record<string, AttendanceTaskStatus>>({});
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
 
   const taskQuery = useQuery({
     queryKey: ["guest-task", token, sessionToken],
@@ -66,6 +78,7 @@ export function TaskGuestPage() {
           student_id: student.id,
           status: selections[student.id] || "P_PRESENT",
         })),
+        selectedSlotId,
         sessionToken || undefined,
       ),
     onSuccess: () => {
@@ -120,9 +133,13 @@ export function TaskGuestPage() {
 
   const task = taskQuery.data;
   const students = studentsQuery.data ?? [];
+  const timetableSlots = task.timetable_slots ?? [];
 
   async function handleSubmitAttendance(): Promise<void> {
     if (!students.length || submitAttendance.isPending) {
+      return;
+    }
+    if (timetableSlots.length > 0 && selectedSlotId === null) {
       return;
     }
 
@@ -208,7 +225,28 @@ export function TaskGuestPage() {
 
         {task.type === "ATTENDANCE" ? (
           <Card className="rounded-lg p-6">
-            <div className="mb-4">
+            <div className="mb-4 space-y-4">
+              {timetableSlots.length > 0 ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700" htmlFor="task-slot">
+                    คาบที่จะเช็คชื่อ
+                  </label>
+                  <Combobox
+                    id="task-slot"
+                    onChange={(value) => setSelectedSlotId(value ? Number(value) : null)}
+                    options={[
+                      { value: "", label: "เลือกคาบ" },
+                      ...timetableSlots.map((slot) => ({
+                        value: String(slot.id),
+                        label: `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period}${slot.teacher_name ? ` · ${slot.teacher_name}` : ""}`,
+                      })),
+                    ]}
+                    placeholder="เลือกคาบ"
+                    value={selectedSlotId === null ? "" : String(selectedSlotId)}
+                  />
+                  <p className="text-sm text-slate-500">ลิงก์นี้เช็คชื่อได้เฉพาะคาบที่ผู้สร้างลิงก์กำหนดไว้</p>
+                </div>
+              ) : null}
               <AttendanceCountBadges
                 catalog={attendanceStatusCatalog.data ?? []}
                 counts={counts}
@@ -230,6 +268,7 @@ export function TaskGuestPage() {
                 />
                 <Button
                   fullWidth
+                  disabled={timetableSlots.length > 0 && selectedSlotId === null}
                   icon={Save}
                   isLoading={submitAttendance.isPending}
                   loadingText="กำลังบันทึก"

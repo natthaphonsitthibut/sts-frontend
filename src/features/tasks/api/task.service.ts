@@ -96,11 +96,12 @@ async function verifyTaskOtp(
 async function submitTaskAttendance(
   token: string,
   records: Array<{ student_id: string; status: AttendanceTaskStatus }>,
+  timetableSlotId?: number | null,
   magicSessionToken?: string,
 ): Promise<TaskSubmitResponse> {
   const response = await apiClient.post<TaskSubmitResponse>(
     `/tasks/${encodeURIComponent(token)}/attendance`,
-    { records },
+    { records, timetable_slot_id: timetableSlotId ?? null },
     createMagicSessionConfig(magicSessionToken),
   );
   return response.data;

@@ -75,6 +75,14 @@ export interface TaskAccessTask {
   delegation_depth?: number;
   max_delegation_depth?: number;
   school_name?: string | null;
+  timetable_slots?: Array<{
+    id: number;
+    day_of_week: number;
+    period: number;
+    subject_id: number;
+    subject_name_th?: string | null;
+    teacher_name?: string | null;
+  }>;
 }
 
 export interface TaskGuestStudent {
