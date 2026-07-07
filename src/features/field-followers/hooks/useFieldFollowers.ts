@@ -33,3 +33,13 @@ export function useReviewFieldFollower() {
     },
   });
 }
+
+const FIELD_MONITOR_MAP_QUERY_KEY = "field-monitor-map";
+
+export function useFieldMonitorMap(studentUuids: string[]) {
+  return useQuery({
+    queryKey: [FIELD_MONITOR_MAP_QUERY_KEY, studentUuids],
+    queryFn: () => fieldFollowerService.getMap(studentUuids),
+    enabled: studentUuids.length > 0,
+  });
+}

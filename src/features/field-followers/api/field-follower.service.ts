@@ -6,6 +6,7 @@ import type {
   FieldFollowerReviewAction,
   FieldFollowerReviewResponse,
 } from "../types/field-follower.types";
+import type { FieldMonitorMapResponse } from "../types/field-monitor-map.types";
 
 async function apply(payload: CreateFollowerApplicationPayload): Promise<{ success: true }> {
   const response = await apiClient.post<{ success: true }>(
@@ -42,8 +43,16 @@ async function reviewFollower(
   return response.data;
 }
 
+async function getMap(studentUuids: string[]): Promise<FieldMonitorMapResponse> {
+  const response = await apiClient.get<FieldMonitorMapResponse>("/field-monitor/map", {
+    params: { studentUuids: studentUuids.join(",") },
+  });
+  return response.data;
+}
+
 export const fieldFollowerService = {
   apply,
   listFollowers,
   reviewFollower,
+  getMap,
 };

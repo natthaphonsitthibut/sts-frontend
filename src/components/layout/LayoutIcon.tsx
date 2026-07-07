@@ -9,6 +9,7 @@ import {
   HeartHandshake,
   Home,
   Link,
+  MapPin,
   Menu,
   Settings,
   Tag,
@@ -45,6 +46,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <Home className={className} aria-hidden="true" />;
     case "link":
       return <Link className={className} aria-hidden="true" />;
+    case "map-pin":
+      return <MapPin className={className} aria-hidden="true" />;
     case "menu":
       return <Menu className={className} aria-hidden="true" />;
     case "notifications":

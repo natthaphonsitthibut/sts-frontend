@@ -18,6 +18,7 @@ import {
   ExpiredPage,
   FieldFollowerApplicationPage,
   FieldFollowersReviewPage,
+  FieldMonitorMapPage,
   ForbiddenPage,
   ImportDataPage,
   ImportQuarantineDetailPage,
@@ -256,6 +257,10 @@ export const router = createBrowserRouter([
       {
         path: "field-followers",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-monitor-map",
+        element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
       },
       {
         path: "login-links/history",

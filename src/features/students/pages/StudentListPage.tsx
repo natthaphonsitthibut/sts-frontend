@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileDown, UserRound } from "lucide-react";
+import { FileDown, MapPin, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -21,6 +21,7 @@ import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
 import { StudentTable } from "../components/StudentTable";
 import { useStudentFilterOptions, useStudents } from "../hooks/useStudents";
+import { FIELD_MONITOR_MAP_MAX_STUDENTS } from "../../field-followers/types/field-monitor-map.types";
 import type {
   StudentEnrollmentState,
   StudentListItem,
@@ -271,11 +272,32 @@ export function StudentListPage() {
           }
           count={totalCount}
           exportAction={
-            <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
-              {selectedStudents.length > 0
-                ? `ส่งออกที่เลือก (${selectedStudents.length})`
-                : "ส่งออกตามตัวกรองนี้"}
-            </Button>
+            <>
+              {can("field-monitor") && selectedStudents.length > 0 ? (
+                <Button
+                  disabled={selectedStudents.length > FIELD_MONITOR_MAP_MAX_STUDENTS}
+                  icon={MapPin}
+                  onClick={() =>
+                    navigate(
+                      `/field-monitor-map?studentUuids=${selectedStudents.map((s) => s.id).join(",")}`,
+                    )
+                  }
+                  title={
+                    selectedStudents.length > FIELD_MONITOR_MAP_MAX_STUDENTS
+                      ? `ดูบนแผนที่ได้สูงสุด ${FIELD_MONITOR_MAP_MAX_STUDENTS} คน — เอาที่เลือกออกบางส่วนก่อน`
+                      : undefined
+                  }
+                  variant="outline"
+                >
+                  ดูบนแผนที่ ({selectedStudents.length})
+                </Button>
+              ) : null}
+              <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
+                {selectedStudents.length > 0
+                  ? `ส่งออกที่เลือก (${selectedStudents.length})`
+                  : "ส่งออกตามตัวกรองนี้"}
+              </Button>
+            </>
           }
           grade={grade}
           gradeOptions={options.grades}

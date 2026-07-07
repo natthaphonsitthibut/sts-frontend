@@ -27,6 +27,8 @@ export interface GoogleMapsApi {
       draggable?: boolean;
       title?: string;
     }) => GoogleMarkerInstance;
+    LatLngBounds: new () => GoogleLatLngBoundsInstance;
+    InfoWindow: new (options?: { content?: string }) => GoogleInfoWindowInstance;
     event: {
       clearInstanceListeners: (instance: object) => void;
     };
@@ -36,6 +38,7 @@ export interface GoogleMapsApi {
 export interface GoogleMapInstance {
   setCenter: (position: { lat: number; lng: number }) => void;
   setZoom: (zoom: number) => void;
+  fitBounds: (bounds: GoogleLatLngBoundsInstance) => void;
   addListener: (
     eventName: string,
     handler: (event: GoogleMapMouseEvent) => void,
@@ -51,6 +54,17 @@ export interface GoogleMarkerInstance {
     eventName: string,
     handler: (event: GoogleMapMouseEvent) => void,
   ) => { remove: () => void };
+}
+
+export interface GoogleLatLngBoundsInstance {
+  extend: (position: { lat: number; lng: number }) => void;
+  isEmpty: () => boolean;
+}
+
+export interface GoogleInfoWindowInstance {
+  open: (options: { map: GoogleMapInstance; anchor: GoogleMarkerInstance }) => void;
+  close: () => void;
+  setContent: (content: string) => void;
 }
 
 declare global {

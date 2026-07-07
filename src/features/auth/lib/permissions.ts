@@ -169,6 +169,13 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/field-followers",
   },
   {
+    id: "field-monitor-map",
+    label: "แผนที่เด็กเสี่ยง",
+    iconName: "map-pin",
+    permissionId: "field-monitor",
+    route: "/field-monitor-map",
+  },
+  {
     id: "settings",
     label: "ตั้งค่าระบบ",
     iconName: "settings",
