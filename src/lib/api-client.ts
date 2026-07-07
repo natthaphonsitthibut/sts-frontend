@@ -96,7 +96,8 @@ apiClient.interceptors.response.use(
       // hijack them into the admin login (which also wiped a real admin session).
       const onPublicLinkPage =
         window.location.pathname.startsWith("/login/magic/") ||
-        window.location.pathname.startsWith("/task/");
+        window.location.pathname.startsWith("/task/") ||
+        window.location.pathname.startsWith("/apply/");
 
       if (currentUser && !onLoginPage && !onPublicLinkPage) {
         isHandlingExpiredSession = true;

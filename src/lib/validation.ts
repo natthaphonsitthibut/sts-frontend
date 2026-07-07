@@ -24,6 +24,13 @@ export const optionalThaiPhone = z
     message: "เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก",
   });
 
+/** Phone: required, must be 9–10 digits. */
+export const requiredThaiPhone = z
+  .string()
+  .trim()
+  .min(1, "กรุณากรอกเบอร์โทรศัพท์")
+  .regex(THAI_PHONE, "เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก");
+
 /** Email: optional, but if filled must be a valid address. */
 export const optionalEmail = z
   .string()

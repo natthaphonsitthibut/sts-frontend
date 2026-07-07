@@ -12,6 +12,7 @@ import {
   Menu,
   Settings,
   Tag,
+  UserCheck,
   UserCircle,
   UserCog,
   UserPlus,
@@ -50,6 +51,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <Bell className={className} aria-hidden="true" />;
     case "settings":
       return <Settings className={className} aria-hidden="true" />;
+    case "user-check":
+      return <UserCheck className={className} aria-hidden="true" />;
     case "user-circle":
       return <UserCircle className={className} aria-hidden="true" />;
     case "user-graduate":

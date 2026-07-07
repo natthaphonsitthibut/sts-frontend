@@ -162,6 +162,13 @@ export const MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
+    id: "field-followers",
+    label: "ผู้สมัคร อสม./ผู้ติดตาม",
+    iconName: "user-check",
+    permissionId: "field-monitor",
+    route: "/field-followers",
+  },
+  {
     id: "settings",
     label: "ตั้งค่าระบบ",
     iconName: "settings",

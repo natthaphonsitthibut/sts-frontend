@@ -116,6 +116,16 @@ export const LoginLinksPage = lazy(() =>
     default: module.LoginLinksPage,
   })),
 );
+export const FieldFollowerApplicationPage = lazy(() =>
+  import("../features/field-followers/pages/FieldFollowerApplicationPage").then((module) => ({
+    default: module.FieldFollowerApplicationPage,
+  })),
+);
+export const FieldFollowersReviewPage = lazy(() =>
+  import("../features/field-followers/pages/FieldFollowersReviewPage").then((module) => ({
+    default: module.FieldFollowersReviewPage,
+  })),
+);
 
 export const LoginLinkDetailPage = lazy(() =>
   import("../features/login-links/pages/LoginLinkDetailPage").then((module) => ({

@@ -16,6 +16,8 @@ import {
   DashboardPage,
   DelegatePage,
   ExpiredPage,
+  FieldFollowerApplicationPage,
+  FieldFollowersReviewPage,
   ForbiddenPage,
   ImportDataPage,
   ImportQuarantineDetailPage,
@@ -252,6 +254,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<LoginLinksPage />, "login-links"),
       },
       {
+        path: "field-followers",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
         path: "login-links/history",
         element: protectedElement(<LoginLinksPage />, "login-links"),
       },
@@ -308,6 +314,10 @@ export const router = createBrowserRouter([
   {
     path: "/login/magic/:token",
     element: withSuspense(<MagicLoginPage />),
+  },
+  {
+    path: "/apply/field-follower",
+    element: withSuspense(<FieldFollowerApplicationPage />),
   },
   {
     path: "/admin-access",
