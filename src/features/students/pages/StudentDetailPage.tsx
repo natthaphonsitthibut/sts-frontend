@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleAlert, GraduationCap, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button, Card } from "../../../components/base";
@@ -15,7 +14,6 @@ import { formatThaiDate } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { geoService } from "../../tasks/api/geo.service";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
@@ -36,40 +34,13 @@ function toDisplay(value: unknown): string {
   return String(value);
 }
 
-function readCoordinate(student: StudentDetail, keys: string[]): number | null {
-  for (const key of keys) {
-    const value = student[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-    if (typeof value === "string" && value.trim()) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-  }
-  return null;
-}
-
 function AddressPanel({ student }: { student: StudentDetail }) {
   const address = typeof student.address === "string" ? student.address.trim() : "";
   const hasAddress = address.length > 0;
-  const storedLat = readCoordinate(student, ["address_latitude", "student_lat", "lat", "latitude"]);
-  const storedLng = readCoordinate(student, ["address_longitude", "student_lng", "lng", "longitude"]);
-  const hasStoredCoordinates = storedLat !== null && storedLng !== null;
-  const geocodeQuery = useQuery({
-    queryKey: ["students", "detail-address-geocode", address],
-    queryFn: () => geoService.geocodeProfileAddress(address),
-    enabled: hasAddress && !hasStoredCoordinates,
-    retry: false,
-    staleTime: 1000 * 60 * 10,
-  });
-  const fallbackLat = geocodeQuery.data?.lat ?? null;
-  const fallbackLng = geocodeQuery.data?.lng ?? null;
-  const lat = storedLat ?? fallbackLat;
-  const lng = storedLng ?? fallbackLng;
+  const lat = student.resolved_home_lat ?? null;
+  const lng = student.resolved_home_lng ?? null;
   const hasMapCoordinates = lat !== null && lng !== null;
+  const isApproximate = Boolean(student.is_approximate_home_location);
   const addressDetails = (
     <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
       <div>
@@ -104,21 +75,11 @@ function AddressPanel({ student }: { student: StudentDetail }) {
       <LocationMapPicker
         address={hasAddress ? address : undefined}
         details={addressDetails}
-        emptyDescription={
-          geocodeQuery.isFetching
-            ? "กำลังค้นหาพิกัดจากที่อยู่"
-            : "ยังไม่มีพิกัดบ้านจากข้อมูลนักเรียน ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง"
-        }
-        emptyTitle={
-          geocodeQuery.isFetching
-            ? "กำลังค้นหา"
-            : hasMapCoordinates
-              ? "มีพิกัด"
-              : "ยังไม่มีพิกัด"
-        }
+        emptyDescription="ยังไม่มีพิกัดบ้านจากข้อมูลนักเรียน ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง"
+        emptyTitle={hasMapCoordinates ? "มีพิกัด" : "ยังไม่มีพิกัด"}
         lat={lat}
         lng={lng}
-        markerLabel={hasStoredCoordinates ? "พิกัดที่ยืนยันแล้ว" : "พิกัดจากที่อยู่"}
+        markerLabel={isApproximate ? "พิกัดโดยประมาณ (ยังไม่ยืนยัน)" : "พิกัดที่ยืนยันแล้ว"}
         title="ที่อยู่และแผนที่"
       />
     </div>
