@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +50,7 @@ import {
   stripAddressPrefix,
 } from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
+import { useRoomSubjects } from "../../timetable/hooks/useTimetable";
 import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import {
@@ -114,7 +115,7 @@ const createTaskSchema = z
     address_latitude: z.number().min(-90).max(90).nullable(),
     address_longitude: z.number().min(-180).max(180).nullable(),
     reason_flagged: z.string().trim(),
-    subject: z.string().trim(),
+    subject_id: z.string().trim(),
     expires_value: z
       .string()
       .trim()
@@ -172,8 +173,8 @@ const createTaskSchema = z
         });
       }
     }
-    if (values.task_type === "ATTENDANCE" && !values.subject) {
-      ctx.addIssue({ code: "custom", path: ["subject"], message: "กรุณากรอกวิชา" });
+    if (values.task_type === "ATTENDANCE" && !values.subject_id) {
+      ctx.addIssue({ code: "custom", path: ["subject_id"], message: "กรุณาเลือกวิชา" });
     }
   });
 
@@ -227,7 +228,7 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     address_latitude: null,
     address_longitude: null,
     reason_flagged: "",
-    subject: "",
+    subject_id: "",
     expires_value: "7",
     expires_unit: "days",
   };
@@ -289,6 +290,18 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     queryFn: attendanceLookupService.getLocations,
     enabled: type === "VISIT",
   });
+  const roomSubjectsFilter =
+    type === "ATTENDANCE" && scope.schoolId && scope.gradeLevelId && scope.room
+      ? { schoolId: Number(scope.schoolId), gradeLevelId: scope.gradeLevelId, roomNo: Number(scope.room) }
+      : null;
+  const roomSubjectsQuery = useRoomSubjects(roomSubjectsFilter);
+  const subjectId = useWatch({ control: form.control, name: "subject_id" });
+  // A room change invalidates any previously picked subject_id from a
+  // different room — clear it instead of silently submitting a stale id.
+  useEffect(() => {
+    form.setValue("subject_id", "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomSubjectsFilter?.schoolId, roomSubjectsFilter?.gradeLevelId, roomSubjectsFilter?.roomNo]);
 
   const selectedRoleOption = (rolesQuery.data ?? []).find(
     (role) => role.name === selectedRole,
@@ -524,8 +537,12 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     }
 
     if (type === "ATTENDANCE") {
+      const selectedSubject = (roomSubjectsQuery.data?.data ?? []).find(
+        (subject) => String(subject.subject_id) === values.subject_id,
+      );
       Object.assign(payload, {
-        subject: values.subject,
+        subject: selectedSubject?.name_th ?? null,
+        subject_id: values.subject_id ? Number(values.subject_id) : null,
         target_grade: scope.grade,
         target_room: scope.room,
         target_school_id: scope.schoolId ? Number(scope.schoolId) : null,
@@ -778,11 +795,34 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                   />
                 </FormItem>
                 <FormItem>
-                  <FormLabel htmlFor="subject" required>
+                  <FormLabel htmlFor="subject_id" required>
                     วิชา
                   </FormLabel>
-                  <Input id="subject" {...registerField(form, "subject")} />
-                  <FormMessage<CreateTaskFormValues> name="subject" />
+                  <Combobox
+                    aria-invalid={form.formState.errors.subject_id ? true : undefined}
+                    disabled={!roomSubjectsFilter}
+                    emptyText={
+                      roomSubjectsFilter
+                        ? "ห้องนี้ยังไม่มีวิชาในตารางสอน — เพิ่มได้ที่หน้า “ตารางสอน”"
+                        : "เลือกโรงเรียน ชั้น และห้องก่อน"
+                    }
+                    id="subject_id"
+                    onChange={(next) =>
+                      form.setValue("subject_id", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    options={[
+                      { value: "", label: "เลือกวิชา" },
+                      ...(roomSubjectsQuery.data?.data ?? []).map((subject) => ({
+                        value: String(subject.subject_id),
+                        label: `${subject.name_th} (${subject.code})`,
+                      })),
+                    ]}
+                    placeholder="ค้นหาวิชา"
+                    value={subjectId}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="subject_id" />
                 </FormItem>
               </div>
               <p

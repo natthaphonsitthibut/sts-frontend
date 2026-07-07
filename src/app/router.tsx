@@ -47,6 +47,7 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TimetablePage,
   UserDetailPage,
   WorkSessionMonitorPage,
 } from "./lazy-pages";
@@ -169,6 +170,10 @@ export const router = createBrowserRouter([
       {
         path: "attendance-operations",
         element: protectedElement(<AttendanceOperationsPage />, "attendance-dashboard"),
+      },
+      {
+        path: "timetable",
+        element: protectedElement(<TimetablePage />),
       },
       {
         path: "import-data",

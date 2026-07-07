@@ -128,6 +128,13 @@ export const MENU_ITEMS: MenuItem[] = [
         permissionId: "attendance-dashboard",
         route: "/attendance-operations",
       },
+      {
+        id: "timetable",
+        label: "ตารางสอน",
+        iconName: "calendar",
+        permissionId: "home",
+        route: "/timetable",
+      },
     ],
   },
   {

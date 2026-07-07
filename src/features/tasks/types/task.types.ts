@@ -30,6 +30,7 @@ export interface TaskCreatePayload {
   target_grade?: string | null;
   target_room?: string | null;
   subject?: string | null;
+  subject_id?: number | null;
   target_school_id?: number | null;
   role?: string | null;
   permissions?: string[];

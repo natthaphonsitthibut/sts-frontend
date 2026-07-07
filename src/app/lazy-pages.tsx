@@ -136,6 +136,11 @@ export const WorkSessionMonitorPage = lazy(() =>
     default: module.WorkSessionMonitorPage,
   })),
 );
+export const TimetablePage = lazy(() =>
+  import("../features/timetable/pages/TimetablePage").then((module) => ({
+    default: module.TimetablePage,
+  })),
+);
 
 export const LoginLinkDetailPage = lazy(() =>
   import("../features/login-links/pages/LoginLinkDetailPage").then((module) => ({

@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   Bell,
+  Calendar,
   ChartNoAxesColumn,
   ClipboardCheck,
   Edit3,
@@ -31,6 +32,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
   switch (iconName) {
     case "activity":
       return <Activity className={className} aria-hidden="true" />;
+    case "calendar":
+      return <Calendar className={className} aria-hidden="true" />;
     case "chart-bar":
       return <BarChart3 className={className} aria-hidden="true" />;
     case "chart-line":
