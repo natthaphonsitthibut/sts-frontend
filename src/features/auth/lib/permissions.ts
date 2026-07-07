@@ -176,6 +176,13 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/field-monitor-map",
   },
   {
+    id: "work-session-monitor",
+    label: "ติดตามช่วงปฏิบัติงาน",
+    iconName: "activity",
+    permissionId: "field-monitor",
+    route: "/work-session-monitor",
+  },
+  {
     id: "settings",
     label: "ตั้งค่าระบบ",
     iconName: "settings",

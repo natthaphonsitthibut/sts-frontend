@@ -131,6 +131,11 @@ export const FieldMonitorMapPage = lazy(() =>
     default: module.FieldMonitorMapPage,
   })),
 );
+export const WorkSessionMonitorPage = lazy(() =>
+  import("../features/field-followers/pages/WorkSessionMonitorPage").then((module) => ({
+    default: module.WorkSessionMonitorPage,
+  })),
+);
 
 export const LoginLinkDetailPage = lazy(() =>
   import("../features/login-links/pages/LoginLinkDetailPage").then((module) => ({

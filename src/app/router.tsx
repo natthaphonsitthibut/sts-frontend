@@ -48,6 +48,7 @@ import {
   TaskDetailPage,
   TaskGuestPage,
   UserDetailPage,
+  WorkSessionMonitorPage,
 } from "./lazy-pages";
 
 function withSuspense(children: ReactNode): ReactNode {
@@ -261,6 +262,10 @@ export const router = createBrowserRouter([
       {
         path: "field-monitor-map",
         element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
+      },
+      {
+        path: "work-session-monitor",
+        element: protectedElement(<WorkSessionMonitorPage />, "field-monitor"),
       },
       {
         path: "login-links/history",

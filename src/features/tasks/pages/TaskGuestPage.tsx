@@ -5,12 +5,14 @@ import { ClipboardCheck, MapPin, Save } from "lucide-react";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   buttonVariants,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   useConfirm,
 } from "../../../components/base";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
@@ -19,6 +21,7 @@ import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { getAttendanceSaveConfirm } from "../../attendance/lib/attendance-save-confirm";
 import { taskService } from "../api/task.service";
+import { useWorkSession } from "../hooks/useWorkSession";
 import {
   getTaskTypeLabel,
 } from "../lib/task-presentation";
@@ -49,6 +52,12 @@ export function TaskGuestPage() {
     queryFn: () => taskService.getTaskStudents(token),
     enabled: taskQuery.data?.type === "ATTENDANCE" && !taskQuery.data?.auth_required,
   });
+  const [workSessionConsent, setWorkSessionConsent] = useState(false);
+  const workSession = useWorkSession(
+    token,
+    sessionToken || undefined,
+    taskQuery.data?.type === "VISIT" && !taskQuery.data?.auth_required,
+  );
   const submitAttendance = useMutation({
     mutationFn: (students: TaskGuestStudent[]) =>
       taskService.submitTaskAttendance(
@@ -123,6 +132,17 @@ export function TaskGuestPage() {
     }
 
     submitAttendance.mutate(students);
+  }
+
+  async function handleEndWorkSession(): Promise<void> {
+    const confirmed = await confirm({
+      title: "จบการปฏิบัติงาน",
+      description: "ระบบจะหยุดส่งตำแหน่งของคุณทันที",
+      confirmText: "จบการทำงาน",
+    });
+    if (confirmed) {
+      workSession.end.mutate(undefined);
+    }
   }
 
   // Identity gate — same centred card as the login link, so every magic link
@@ -220,6 +240,64 @@ export function TaskGuestPage() {
                 </Button>
               </div>
             )}
+          </Card>
+        ) : null}
+
+        {task.type === "VISIT" ? (
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="text-base">ช่วงปฏิบัติงานภาคสนาม</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {workSession.session ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success">กำลังปฏิบัติงาน</Badge>
+                    <span className="text-sm text-slate-500">
+                      ระบบส่งตำแหน่งอัตโนมัติทุก {workSession.session.ping_interval_seconds} วินาที
+                    </span>
+                  </div>
+                  {workSession.pingFailed || workSession.geolocationUnavailable ? (
+                    <Alert variant="warning">
+                      <AlertDescription>
+                        {workSession.geolocationUnavailable
+                          ? "เบราว์เซอร์นี้ไม่รองรับการส่งตำแหน่ง"
+                          : "ส่งตำแหน่งล่าสุดไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เข้าถึงตำแหน่งของเบราว์เซอร์"}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                  <Button
+                    isLoading={workSession.end.isPending}
+                    loadingText="กำลังจบงาน"
+                    onClick={() => void handleEndWorkSession()}
+                    variant="outline"
+                  >
+                    จบการทำงาน
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <Checkbox
+                      checked={workSessionConsent}
+                      onChange={(event) => setWorkSessionConsent(event.currentTarget.checked)}
+                    />
+                    <span>
+                      ยินยอมให้ระบบบันทึกตำแหน่งของฉันระหว่างช่วงปฏิบัติงานนี้เท่านั้น
+                      (หยุดบันทึกทันทีเมื่อจบงาน)
+                    </span>
+                  </label>
+                  <Button
+                    disabled={!workSessionConsent}
+                    isLoading={workSession.start.isPending}
+                    loadingText="กำลังเริ่ม"
+                    onClick={() => workSession.start.mutate()}
+                  >
+                    เริ่มปฏิบัติงาน
+                  </Button>
+                </>
+              )}
+            </CardContent>
           </Card>
         ) : null}
 

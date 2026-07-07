@@ -10,6 +10,9 @@ import type {
   TaskGuestStudent,
   TaskHistoryEntry,
   TaskSubmitResponse,
+  WorkSessionEndReason,
+  WorkSessionStartResponse,
+  WorkSessionStatusResponse,
 } from "../types/task.types";
 
 interface DataEnvelope<T> {
@@ -129,10 +132,64 @@ async function delegateTask(
   return response.data;
 }
 
+async function getWorkSessionStatus(
+  token: string,
+  magicSessionToken?: string,
+): Promise<WorkSessionStatusResponse> {
+  const response = await apiClient.get<WorkSessionStatusResponse>(
+    `/tasks/${encodeURIComponent(token)}/work-session`,
+    createMagicSessionConfig(magicSessionToken),
+  );
+  return response.data;
+}
+
+async function startWorkSession(
+  token: string,
+  magicSessionToken?: string,
+): Promise<WorkSessionStartResponse> {
+  const response = await apiClient.post<WorkSessionStartResponse>(
+    `/tasks/${encodeURIComponent(token)}/work-session/start`,
+    { consent: true },
+    createMagicSessionConfig(magicSessionToken),
+  );
+  return response.data;
+}
+
+async function endWorkSession(
+  token: string,
+  magicSessionToken?: string,
+  reason?: WorkSessionEndReason,
+): Promise<{ success: true }> {
+  const response = await apiClient.post<{ success: true }>(
+    `/tasks/${encodeURIComponent(token)}/work-session/end`,
+    reason ? { reason } : {},
+    createMagicSessionConfig(magicSessionToken),
+  );
+  return response.data;
+}
+
+async function sendWorkSessionPosition(
+  token: string,
+  lat: number,
+  lng: number,
+  magicSessionToken?: string,
+): Promise<{ success: true }> {
+  const response = await apiClient.post<{ success: true }>(
+    `/tasks/${encodeURIComponent(token)}/position`,
+    { lat, lng },
+    createMagicSessionConfig(magicSessionToken),
+  );
+  return response.data;
+}
+
 export const taskService = {
   createTask,
   delegateTask,
   getTask,
+  getWorkSessionStatus,
+  startWorkSession,
+  endWorkSession,
+  sendWorkSessionPosition,
   getTaskChain,
   getTaskHistory,
   getTaskStudents,
