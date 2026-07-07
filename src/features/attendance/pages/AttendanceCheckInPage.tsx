@@ -54,7 +54,7 @@ const DATE_INPUT_CLASS_NAME = "sm:w-[180px] text-slate-900 [color-scheme:light] 
 
 const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
-  { value: "history", label: "ประวัติการเช็คชื่อ" },
+  { value: "history", label: "ประวัติ" },
 ];
 
 function compareText(a: string | undefined, b: string | undefined): number {
