@@ -25,6 +25,8 @@ export interface StudentListQuery {
   searchTerm?: string;
   studentStatusCode?: StudentStatusFilterValue;
   enrollmentState?: StudentEnrollmentState;
+  /** `AT_RISK` = every tier except NORMAL; a specific tier narrows further. */
+  riskTier?: "AT_RISK" | "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
   page?: number;
   limit?: number;
 }
@@ -82,6 +84,11 @@ export interface StudentDetail extends Record<string, unknown> {
   PostalCode_Onec?: string | null;
   address_latitude?: number | null;
   address_longitude?: number | null;
+  /** Best-available home coordinate: a confirmed home-visit/profile pin when
+   * one exists, otherwise a geocoded approximate (see `is_approximate_home_location`). */
+  resolved_home_lat?: number | null;
+  resolved_home_lng?: number | null;
+  is_approximate_home_location?: boolean;
 }
 
 export interface StudentUpdatePayload {

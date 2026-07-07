@@ -7,6 +7,9 @@ export interface FieldMonitorMapPin {
   school_name: string | null;
   risk_tier: string;
   has_coordinates: boolean;
+  /** True when `lat`/`lng` came from the server-side geocode cache rather
+   * than a confirmed home-visit/profile pin. */
+  is_approximate: boolean;
   lat: number | null;
   lng: number | null;
 }

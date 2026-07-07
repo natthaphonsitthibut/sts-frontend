@@ -15,6 +15,9 @@ export interface RiskMapPin {
   lng: number;
   label: string;
   riskTierLabel: string;
+  /** Geocoded from the registered address, not a confirmed home-visit pin —
+   * rendered as a distinct amber dot instead of the default red marker. */
+  isApproximate?: boolean;
 }
 
 export interface RiskMapViewProps {
@@ -106,10 +109,27 @@ export function RiskMapView({
         const bounds = new google.maps.LatLngBounds();
         pins.forEach((pin) => {
           const position = { lat: pin.lat, lng: pin.lng };
-          const marker = new google.maps.Marker({ map, position, title: pin.label });
+          const marker = new google.maps.Marker({
+            map,
+            position,
+            title: pin.label,
+            icon: pin.isApproximate
+              ? {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: "#f59e0b",
+                  fillOpacity: 0.9,
+                  strokeColor: "#ffffff",
+                  strokeWeight: 2,
+                }
+              : undefined,
+          });
           marker.addListener("click", () => {
+            const note = pin.isApproximate
+              ? '<div style="font-size:11px;color:#b45309;margin-top:2px">พิกัดโดยประมาณจากที่อยู่ทะเบียน — ยังไม่ยืนยัน</div>'
+              : "";
             infoWindowRef.current?.setContent(
-              `<div style="font-weight:700;margin-bottom:2px">${escapeHtml(pin.label)}</div><div style="font-size:12px;color:#475569">${escapeHtml(pin.riskTierLabel)}</div>`,
+              `<div style="font-weight:700;margin-bottom:2px">${escapeHtml(pin.label)}</div><div style="font-size:12px;color:#475569">${escapeHtml(pin.riskTierLabel)}</div>${note}`,
             );
             infoWindowRef.current?.open({ map, anchor: marker });
           });

@@ -9,6 +9,15 @@ export interface GoogleMapMouseEvent {
   latLng?: GoogleLatLng | null;
 }
 
+export interface GoogleMarkerSymbol {
+  path: number;
+  scale: number;
+  fillColor: string;
+  fillOpacity: number;
+  strokeColor: string;
+  strokeWeight: number;
+}
+
 export interface GoogleMapsApi {
   maps: {
     Map: new (
@@ -26,9 +35,11 @@ export interface GoogleMapsApi {
       position: { lat: number; lng: number };
       draggable?: boolean;
       title?: string;
+      icon?: GoogleMarkerSymbol;
     }) => GoogleMarkerInstance;
     LatLngBounds: new () => GoogleLatLngBoundsInstance;
     InfoWindow: new (options?: { content?: string }) => GoogleInfoWindowInstance;
+    SymbolPath: { CIRCLE: number };
     event: {
       clearInstanceListeners: (instance: object) => void;
     };

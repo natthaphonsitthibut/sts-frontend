@@ -160,6 +160,9 @@ function buildStudentListParams(
   if (query.studentStatusCode && query.studentStatusCode !== "ALL") {
     params.student_status_code = query.studentStatusCode;
   }
+  if (query.riskTier) {
+    params.riskTier = query.riskTier;
+  }
   if (typeof query.page === "number") {
     params.page = String(query.page);
   }

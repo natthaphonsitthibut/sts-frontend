@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Map as MapIcon, X } from "lucide-react";
-import { Alert, AlertDescription, Badge, Button } from "../../../components/base";
+import { Alert, AlertDescription, Badge, IconButton } from "../../../components/base";
 import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { RiskChildPicker, type RiskChildOption } from "../components/RiskChildPicker";
 import { RiskMapView, type RiskMapPin } from "../components/RiskMapView";
 import { useFieldMonitorMap } from "../hooks/useFieldFollowers";
 import { FIELD_MONITOR_MAP_MAX_STUDENTS } from "../types/field-monitor-map.types";
+import { getRiskTierLabel } from "../../students/lib/student-presentation";
 
 const MAX_SELECTED = FIELD_MONITOR_MAP_MAX_STUDENTS;
-
-const RISK_TIER_LABELS: Record<string, string> = {
-  HIGH: "เสี่ยงสูง",
-  MEDIUM: "เสี่ยงกลาง",
-  LOW: "เสี่ยงต่ำ",
-  WATCH: "เฝ้าระวัง",
-  NORMAL: "ปกติ",
-};
 
 function parseInitialSelection(raw: string | null): string[] {
   if (!raw) return [];
@@ -93,19 +86,21 @@ export function FieldMonitorMapPage() {
     });
   }
 
-  const pins: RiskMapPin[] = (mapQuery.data?.data ?? [])
+  const mapPins = mapQuery.data?.data ?? [];
+
+  const pins: RiskMapPin[] = mapPins
     .filter((pin) => pin.has_coordinates && pin.lat !== null && pin.lng !== null)
     .map((pin) => ({
       id: pin.student_uuid,
       lat: pin.lat as number,
       lng: pin.lng as number,
       label: pin.student_name,
-      riskTierLabel: RISK_TIER_LABELS[pin.risk_tier] ?? pin.risk_tier,
+      riskTierLabel: getRiskTierLabel(pin.risk_tier),
+      isApproximate: pin.is_approximate,
     }));
 
-  const missingCoordinatesCount = (mapQuery.data?.data ?? []).filter(
-    (pin) => !pin.has_coordinates,
-  ).length;
+  const approximateCount = mapPins.filter((pin) => pin.is_approximate).length;
+  const stillMissingCount = mapPins.filter((pin) => !pin.has_coordinates).length;
 
   return (
     <PageShell>
@@ -115,49 +110,46 @@ export function FieldMonitorMapPage() {
         title="แผนที่เด็กเสี่ยง"
       />
 
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-900">เลือกเด็กเสี่ยง</h3>
-              <Badge variant={selectedIds.size >= MAX_SELECTED ? "warning" : "secondary"}>
-                {selectedIds.size}/{MAX_SELECTED}
-              </Badge>
-            </div>
-            <RiskChildPicker
-              maxSelected={MAX_SELECTED}
-              onToggle={handleToggle}
-              selectedIds={selectedIds}
-            />
+      <div className="space-y-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900">เลือกเด็กเสี่ยง</h3>
+            <Badge variant={selectedIds.size >= MAX_SELECTED ? "warning" : "secondary"}>
+              {selectedIds.size}/{MAX_SELECTED}
+            </Badge>
           </div>
+          <RiskChildPicker
+            maxSelected={MAX_SELECTED}
+            onToggle={handleToggle}
+            selectedIds={selectedIds}
+          />
+        </div>
 
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-extrabold text-slate-900">รายชื่อที่เลือก</h3>
           {displayList.length > 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h3 className="mb-3 text-sm font-extrabold text-slate-900">รายชื่อที่เลือก</h3>
-              <ul className="space-y-2">
-                {displayList.map((student) => (
-                  <li
-                    className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
-                    key={student.id}
-                  >
-                    <span className="min-w-0 truncate text-sm font-medium text-slate-800">
-                      {student.name}
-                    </span>
-                    <Button
-                      aria-label={`เอา ${student.name} ออก`}
-                      icon={X}
-                      onClick={() => handleRemove(student.id)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      เอาออก
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+            <ul className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
+              {displayList.map((student) => (
+                <li
+                  className="flex h-fit items-center gap-2 rounded-full bg-slate-50 py-1 pl-3 pr-1"
+                  key={student.id}
+                >
+                  <span className="max-w-[220px] truncate text-sm font-medium text-slate-800">
+                    {student.name}
+                  </span>
+                  <IconButton
+                    aria-label={`เอา ${student.name} ออก`}
+                    icon={X}
+                    onClick={() => handleRemove(student.id)}
+                    size="sm"
+                    variant="ghost"
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-500">ยังไม่ได้เลือกเด็กเสี่ยง</p>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -168,10 +160,18 @@ export function FieldMonitorMapPage() {
               </AlertDescription>
             </Alert>
           ) : null}
-          {missingCoordinatesCount > 0 ? (
+          {approximateCount > 0 ? (
             <Alert variant="warning">
               <AlertDescription>
-                {missingCoordinatesCount} คนที่เลือกยังไม่มีพิกัดบ้านในระบบ จึงไม่ขึ้นหมุด
+                {approximateCount} คนใช้พิกัดโดยประมาณจากที่อยู่ทะเบียน (หมุดสีเหลือง) —
+                ยังไม่ใช่พิกัดที่ยืนยันจากการเยี่ยมบ้านจริง
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {stillMissingCount > 0 ? (
+            <Alert variant="warning">
+              <AlertDescription>
+                {stillMissingCount} คนที่เลือกยังไม่มีพิกัดบ้านหรือที่อยู่ในระบบ จึงไม่ขึ้นหมุด
               </AlertDescription>
             </Alert>
           ) : null}
