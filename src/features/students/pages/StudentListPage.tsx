@@ -117,7 +117,7 @@ export function StudentListPage() {
     : "current-active";
   const studentStatusFilterOptions = useMemo(
     () => [
-      { value: ALL_STUDENT_STATUSES, label: "ทั้งหมด" },
+      { value: ALL_STUDENT_STATUSES, label: "รวมพ้นสภาพ" },
       ...studentStatuses.map((status) => ({
         value: String(status.code),
         label: status.labelTh,
