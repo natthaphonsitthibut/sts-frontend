@@ -134,6 +134,10 @@ function criteriaItems(thresholds?: RiskDashboardThresholds): Array<{ label: str
       value: `ต่ำกว่า ${thresholds.lowAttendancePercent}/${thresholds.mediumAttendancePercent}/${thresholds.highAttendancePercent}%`,
     },
     { label: "สายเทียบขาด", value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน` },
+    {
+      label: "สายรายวิชา",
+      value: `≥${thresholds.subjectLateWatchCount} ครั้งใน ${thresholds.subjectLateWindowDays} วัน = เฝ้าระวัง`,
+    },
   ];
 }
 
@@ -449,7 +453,12 @@ export function DashboardPage() {
                         {formatPercent(row.weightedAttendancePercent)}
                       </div>
                       <div className="text-xs font-semibold text-slate-500">
-                        ขาดติดกัน {row.consecutiveAbsentDays}/{meta?.thresholds.lowConsecutiveAbsentDays ?? "-"} · ขาด {formatNumber(row.absentDays)} · สาย {formatNumber(row.lateCount)}
+                        ขาดติดกัน {row.consecutiveAbsentDays}/
+                        {meta?.thresholds.lowConsecutiveAbsentDays ?? "-"} · ขาด{" "}
+                        {formatNumber(row.absentDays)} · สาย {formatNumber(row.lateCount)}
+                        {row.subjectLateCount > 0
+                          ? ` · สายรายวิชา ${formatNumber(row.subjectLateCount)}`
+                          : ""}
                       </div>
                     </div>
                   </DataTableCell>
@@ -511,6 +520,13 @@ export function DashboardPage() {
                       <div className="text-xs font-semibold text-slate-500">ขาด/สาย</div>
                       <div className="font-bold text-slate-800">
                         {formatNumber(row.absentDays)} / {formatNumber(row.lateCount)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">สายรายวิชา</div>
+                      <div className="font-bold text-slate-800">
+                        {formatNumber(row.subjectLateCount)}/
+                        {meta?.thresholds.subjectLateWatchCount ?? "-"}
                       </div>
                     </div>
                   </div>

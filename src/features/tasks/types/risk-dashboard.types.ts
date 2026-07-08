@@ -22,6 +22,7 @@ export interface RiskDashboardRow {
   consecutiveAbsentDays: number;
   absentDays: number;
   lateCount: number;
+  subjectLateCount: number;
   schoolDayCount: number;
   weightedAbsenceDays: number;
   weightedAttendancePercent: number | null;
@@ -43,6 +44,8 @@ export interface RiskDashboardThresholds {
   mediumAttendancePercent: number;
   highAttendancePercent: number;
   lateWeight: number;
+  subjectLateWindowDays: number;
+  subjectLateWatchCount: number;
 }
 
 export type RiskDashboardSummary = Record<RiskDashboardTier, number>;
