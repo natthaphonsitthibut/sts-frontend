@@ -16,6 +16,7 @@ import {
   Combobox,
   useConfirm,
 } from "../../../components/base";
+import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
@@ -23,12 +24,13 @@ import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { getAttendanceSaveConfirm } from "../../attendance/lib/attendance-save-confirm";
 import { taskService } from "../api/task.service";
 import { useWorkSession } from "../hooks/useWorkSession";
-import {
-  getTaskTypeLabel,
-} from "../lib/task-presentation";
+import { getTaskTypeLabel } from "../lib/task-presentation";
 import { AttendanceStudentTable } from "../../attendance/components/AttendanceStudentTable";
 import { VisitMapPreview } from "../components/VisitMapPreview";
-import type { AttendanceTaskStatus, TaskGuestStudent } from "../types/task.types";
+import type {
+  AttendanceTaskStatus,
+  TaskGuestStudent,
+} from "../types/task.types";
 import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
@@ -49,8 +51,12 @@ export function TaskGuestPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
-  const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
-  const [selections, setSelections] = useState<Record<string, AttendanceTaskStatus>>({});
+  const [sessionToken, setSessionToken] = useState(() =>
+    readMagicToken(token, "local"),
+  );
+  const [selections, setSelections] = useState<
+    Record<string, AttendanceTaskStatus>
+  >({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
 
   const taskQuery = useQuery({
@@ -62,7 +68,8 @@ export function TaskGuestPage() {
   const studentsQuery = useQuery({
     queryKey: ["guest-task-students", token],
     queryFn: () => taskService.getTaskStudents(token),
-    enabled: taskQuery.data?.type === "ATTENDANCE" && !taskQuery.data?.auth_required,
+    enabled:
+      taskQuery.data?.type === "ATTENDANCE" && !taskQuery.data?.auth_required,
   });
   const [workSessionConsent, setWorkSessionConsent] = useState(false);
   const workSession = useWorkSession(
@@ -87,8 +94,13 @@ export function TaskGuestPage() {
   });
 
   useEffect(() => {
-    const status = taskQuery.error as { response?: { status?: number; data?: { status?: string } } };
-    if (status?.response?.status === 410 || status?.response?.data?.status === "EXPIRED") {
+    const status = taskQuery.error as {
+      response?: { status?: number; data?: { status?: string } };
+    };
+    if (
+      status?.response?.status === 410 ||
+      status?.response?.data?.status === "EXPIRED"
+    ) {
       void navigate(`/task/${token}/expired`, { replace: true });
     }
   }, [navigate, taskQuery.error, token]);
@@ -109,25 +121,21 @@ export function TaskGuestPage() {
 
   if (taskQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 p-6">
-        <div className="mx-auto w-full max-w-[960px]">
-          <Card className="rounded-lg p-6">
-            <SkeletonStack lines={5} />
-          </Card>
-        </div>
-      </div>
+      <GuestPageShell>
+        <Card className="rounded-lg p-6">
+          <SkeletonStack lines={5} />
+        </Card>
+      </GuestPageShell>
     );
   }
 
   if (taskQuery.isError || !taskQuery.data) {
     return (
-      <div className="min-h-screen bg-slate-100 p-6">
-        <div className="mx-auto w-full max-w-[960px]">
-          <Alert variant="destructive">
-            <AlertDescription>ไม่สามารถโหลดภารกิจจากลิงก์นี้ได้</AlertDescription>
-          </Alert>
-        </div>
-      </div>
+      <GuestPageShell>
+        <Alert variant="destructive">
+          <AlertDescription>ไม่สามารถโหลดภารกิจจากลิงก์นี้ได้</AlertDescription>
+        </Alert>
+      </GuestPageShell>
     );
   }
 
@@ -167,7 +175,10 @@ export function TaskGuestPage() {
   // the real content (below) renders.
   if (task.auth_required) {
     return (
-      <MagicAuthCard title="ยืนยันตัวตน" subtitle={task.assigned_to_name || getTaskTypeLabel(task.type)}>
+      <MagicAuthCard
+        title="ยืนยันตัวตน"
+        subtitle={task.assigned_to_name || getTaskTypeLabel(task.type)}
+      >
         <OtpVerifyPanel
           onRequestOtp={() => taskService.requestTaskOtp(token)}
           onVerifyOtp={async (otp) => {
@@ -184,186 +195,202 @@ export function TaskGuestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="mx-auto w-full max-w-[960px] space-y-5">
+    <GuestPageShell contentClassName="space-y-5">
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {task.type === "VISIT" ? (
+              <MapPin className="size-5 text-primary" />
+            ) : (
+              <ClipboardCheck className="size-5 text-primary" />
+            )}
+            {getTaskTypeLabel(task.type)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm text-slate-500">
+            ผู้รับมอบหมาย: {task.assigned_to_name || "-"}
+          </div>
+          {task.type === "ATTENDANCE" ? (
+            <div className="font-bold text-slate-900">
+              {task.school_name || "-"} · {task.target_grade || "-"} /{" "}
+              {task.target_room || "-"}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="font-bold text-slate-900">
+                {task.student_name || "-"}
+              </div>
+              <div className="text-sm text-slate-600">
+                {task.student_address || "-"}
+              </div>
+              <div className="text-sm text-danger-700">
+                {task.reason_flagged || "-"}
+              </div>
+              <VisitMapPreview
+                address={task.student_address}
+                emptyDescription="ยังไม่มีพิกัดบ้านที่ยืนยันสำหรับภารกิจนี้"
+                lat={task.student_lat}
+                lng={task.student_lng}
+                markerLabel="บ้านนักเรียน"
+                title="แผนที่บ้านนักเรียน"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {task.type === "ATTENDANCE" ? (
+        <Card className="rounded-lg p-6">
+          <div className="mb-4 space-y-4">
+            {timetableSlots.length > 0 ? (
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-bold text-slate-700"
+                  htmlFor="task-slot"
+                >
+                  คาบที่จะเช็คชื่อ
+                </label>
+                <Combobox
+                  id="task-slot"
+                  onChange={(value) =>
+                    setSelectedSlotId(value ? Number(value) : null)
+                  }
+                  options={[
+                    { value: "", label: "เลือกคาบ" },
+                    ...timetableSlots.map((slot) => ({
+                      value: String(slot.id),
+                      label: `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period}${slot.teacher_name ? ` · ${slot.teacher_name}` : ""}`,
+                    })),
+                  ]}
+                  placeholder="เลือกคาบ"
+                  value={selectedSlotId === null ? "" : String(selectedSlotId)}
+                />
+                <p className="text-sm text-slate-500">
+                  ลิงก์นี้เช็คชื่อได้เฉพาะคาบที่ผู้สร้างลิงก์กำหนดไว้
+                </p>
+              </div>
+            ) : null}
+            <AttendanceCountBadges
+              catalog={attendanceStatusCatalog.data ?? []}
+              counts={counts}
+            />
+          </div>
+          {studentsQuery.isLoading ? (
+            <SkeletonStack lines={4} className="py-2" />
+          ) : (
+            <div className="space-y-3">
+              <AttendanceStudentTable
+                onStatusChange={(studentId, status) =>
+                  setSelections((current) => ({
+                    ...current,
+                    [studentId]: status as AttendanceTaskStatus,
+                  }))
+                }
+                selections={selections}
+                students={students}
+              />
+              <Button
+                fullWidth
+                disabled={timetableSlots.length > 0 && selectedSlotId === null}
+                icon={Save}
+                isLoading={submitAttendance.isPending}
+                loadingText="กำลังบันทึก"
+                onClick={() => void handleSubmitAttendance()}
+                size="lg"
+              >
+                บันทึกข้อมูล
+              </Button>
+            </div>
+          )}
+        </Card>
+      ) : null}
+
+      {task.type === "VISIT" ? (
         <Card className="rounded-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {task.type === "VISIT" ? (
-                <MapPin className="size-5 text-primary" />
-              ) : (
-                <ClipboardCheck className="size-5 text-primary" />
-              )}
-              {getTaskTypeLabel(task.type)}
-            </CardTitle>
+            <CardTitle className="text-base">ช่วงปฏิบัติงานภาคสนาม</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-sm text-slate-500">
-              ผู้รับมอบหมาย: {task.assigned_to_name || "-"}
-            </div>
-            {task.type === "ATTENDANCE" ? (
-              <div className="font-bold text-slate-900">
-                {task.school_name || "-"} · {task.target_grade || "-"} / {task.target_room || "-"}
-              </div>
+            {workSession.session ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Badge variant="success">กำลังปฏิบัติงาน</Badge>
+                  <span className="text-sm text-slate-500">
+                    ระบบส่งตำแหน่งอัตโนมัติทุก{" "}
+                    {workSession.session.ping_interval_seconds} วินาที
+                  </span>
+                </div>
+                {workSession.pingFailed ||
+                workSession.geolocationUnavailable ? (
+                  <Alert variant="warning">
+                    <AlertDescription>
+                      {workSession.geolocationUnavailable
+                        ? "เบราว์เซอร์นี้ไม่รองรับการส่งตำแหน่ง"
+                        : "ส่งตำแหน่งล่าสุดไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เข้าถึงตำแหน่งของเบราว์เซอร์"}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <Button
+                  isLoading={workSession.end.isPending}
+                  loadingText="กำลังจบงาน"
+                  onClick={() => void handleEndWorkSession()}
+                  variant="outline"
+                >
+                  จบการทำงาน
+                </Button>
+              </>
             ) : (
-              <div className="space-y-2">
-                <div className="font-bold text-slate-900">{task.student_name || "-"}</div>
-                <div className="text-sm text-slate-600">{task.student_address || "-"}</div>
-                <div className="text-sm text-danger-700">{task.reason_flagged || "-"}</div>
-                <VisitMapPreview
-                  address={task.student_address}
-                  emptyDescription="ยังไม่มีพิกัดบ้านที่ยืนยันสำหรับภารกิจนี้"
-                  lat={task.student_lat}
-                  lng={task.student_lng}
-                  markerLabel="บ้านนักเรียน"
-                  title="แผนที่บ้านนักเรียน"
-                />
-              </div>
+              <>
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <Checkbox
+                    checked={workSessionConsent}
+                    onChange={(event) =>
+                      setWorkSessionConsent(event.currentTarget.checked)
+                    }
+                  />
+                  <span>
+                    ยินยอมให้ระบบบันทึกตำแหน่งของฉันระหว่างช่วงปฏิบัติงานนี้เท่านั้น
+                    (หยุดบันทึกทันทีเมื่อจบงาน)
+                  </span>
+                </label>
+                <Button
+                  disabled={!workSessionConsent}
+                  isLoading={workSession.start.isPending}
+                  loadingText="กำลังเริ่ม"
+                  onClick={() => workSession.start.mutate()}
+                >
+                  เริ่มปฏิบัติงาน
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
+      ) : null}
 
-        {task.type === "ATTENDANCE" ? (
-          <Card className="rounded-lg p-6">
-            <div className="mb-4 space-y-4">
-              {timetableSlots.length > 0 ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700" htmlFor="task-slot">
-                    คาบที่จะเช็คชื่อ
-                  </label>
-                  <Combobox
-                    id="task-slot"
-                    onChange={(value) => setSelectedSlotId(value ? Number(value) : null)}
-                    options={[
-                      { value: "", label: "เลือกคาบ" },
-                      ...timetableSlots.map((slot) => ({
-                        value: String(slot.id),
-                        label: `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period}${slot.teacher_name ? ` · ${slot.teacher_name}` : ""}`,
-                      })),
-                    ]}
-                    placeholder="เลือกคาบ"
-                    value={selectedSlotId === null ? "" : String(selectedSlotId)}
-                  />
-                  <p className="text-sm text-slate-500">ลิงก์นี้เช็คชื่อได้เฉพาะคาบที่ผู้สร้างลิงก์กำหนดไว้</p>
-                </div>
-              ) : null}
-              <AttendanceCountBadges
-                catalog={attendanceStatusCatalog.data ?? []}
-                counts={counts}
-              />
-            </div>
-            {studentsQuery.isLoading ? (
-              <SkeletonStack lines={4} className="py-2" />
-            ) : (
-              <div className="space-y-3">
-                <AttendanceStudentTable
-                  onStatusChange={(studentId, status) =>
-                    setSelections((current) => ({
-                      ...current,
-                      [studentId]: status as AttendanceTaskStatus,
-                    }))
-                  }
-                  selections={selections}
-                  students={students}
-                />
-                <Button
-                  fullWidth
-                  disabled={timetableSlots.length > 0 && selectedSlotId === null}
-                  icon={Save}
-                  isLoading={submitAttendance.isPending}
-                  loadingText="กำลังบันทึก"
-                  onClick={() => void handleSubmitAttendance()}
-                  size="lg"
-                >
-                  บันทึกข้อมูล
-                </Button>
-              </div>
-            )}
-          </Card>
-        ) : null}
-
-        {task.type === "VISIT" ? (
-          <Card className="rounded-lg">
-            <CardHeader>
-              <CardTitle className="text-base">ช่วงปฏิบัติงานภาคสนาม</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {workSession.session ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="success">กำลังปฏิบัติงาน</Badge>
-                    <span className="text-sm text-slate-500">
-                      ระบบส่งตำแหน่งอัตโนมัติทุก {workSession.session.ping_interval_seconds} วินาที
-                    </span>
-                  </div>
-                  {workSession.pingFailed || workSession.geolocationUnavailable ? (
-                    <Alert variant="warning">
-                      <AlertDescription>
-                        {workSession.geolocationUnavailable
-                          ? "เบราว์เซอร์นี้ไม่รองรับการส่งตำแหน่ง"
-                          : "ส่งตำแหน่งล่าสุดไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เข้าถึงตำแหน่งของเบราว์เซอร์"}
-                      </AlertDescription>
-                    </Alert>
-                  ) : null}
-                  <Button
-                    isLoading={workSession.end.isPending}
-                    loadingText="กำลังจบงาน"
-                    onClick={() => void handleEndWorkSession()}
-                    variant="outline"
-                  >
-                    จบการทำงาน
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <label className="flex items-start gap-2 text-sm text-slate-700">
-                    <Checkbox
-                      checked={workSessionConsent}
-                      onChange={(event) => setWorkSessionConsent(event.currentTarget.checked)}
-                    />
-                    <span>
-                      ยินยอมให้ระบบบันทึกตำแหน่งของฉันระหว่างช่วงปฏิบัติงานนี้เท่านั้น
-                      (หยุดบันทึกทันทีเมื่อจบงาน)
-                    </span>
-                  </label>
-                  <Button
-                    disabled={!workSessionConsent}
-                    isLoading={workSession.start.isPending}
-                    loadingText="กำลังเริ่ม"
-                    onClick={() => workSession.start.mutate()}
-                  >
-                    เริ่มปฏิบัติงาน
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {task.type === "VISIT" ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+      {task.type === "VISIT" ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            className={buttonVariants({ fullWidth: true, size: "lg" })}
+            to={`/task/${token}/report`}
+          >
+            ลงพื้นที่และส่งรายงาน
+          </Link>
+          {task.can_delegate ? (
             <Link
-              className={buttonVariants({ fullWidth: true, size: "lg" })}
-              to={`/task/${token}/report`}
+              className={buttonVariants({
+                fullWidth: true,
+                size: "lg",
+                variant: "outline",
+              })}
+              to={`/task/${token}/delegate`}
             >
-              ลงพื้นที่และส่งรายงาน
+              มอบหมายให้ผู้อื่น
             </Link>
-            {task.can_delegate ? (
-              <Link
-                className={buttonVariants({
-                  fullWidth: true,
-                  size: "lg",
-                  variant: "outline",
-                })}
-                to={`/task/${token}/delegate`}
-              >
-                มอบหมายให้ผู้อื่น
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
-        {confirmDialog}
-      </div>
-    </div>
+          ) : null}
+        </div>
+      ) : null}
+      {confirmDialog}
+    </GuestPageShell>
   );
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Lock, SearchX } from "lucide-react";
 import { buttonVariants, Card, CardContent } from "../../../components/base";
+import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 
 type StatusTone = "success" | "warning" | "danger" | "neutral";
 
@@ -41,16 +42,20 @@ export function StatusPage({
   const Icon = toneIcon[tone];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <Card className="w-full max-w-[520px] rounded-lg">
+    <GuestPageShell centered maxWidthClassName="max-w-[520px]">
+      <Card className="rounded-lg">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <div className={`mb-4 rounded-full p-4 ${toneClass[tone]}`}>
             <Icon className="size-10" aria-hidden="true" />
           </div>
-          {code ? <div className="mb-2 text-sm font-bold text-slate-400">{code}</div> : null}
+          {code ? (
+            <div className="mb-2 text-sm font-bold text-slate-400">{code}</div>
+          ) : null}
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>
-          {note ? <div className="mt-4 text-sm text-slate-500">{note}</div> : null}
+          {note ? (
+            <div className="mt-4 text-sm text-slate-500">{note}</div>
+          ) : null}
           <Link
             className={buttonVariants({ className: "mt-6" })}
             to={primaryTo}
@@ -59,7 +64,7 @@ export function StatusPage({
           </Link>
         </CardContent>
       </Card>
-    </div>
+    </GuestPageShell>
   );
 }
 
