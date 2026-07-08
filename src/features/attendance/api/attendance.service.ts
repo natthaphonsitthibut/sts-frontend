@@ -64,11 +64,15 @@ interface AttendanceService {
     date: string;
     page?: number;
     limit?: number;
+    gradeLevelId?: number;
+    room?: number;
   }) => Promise<AttendanceReconciliationResponse>;
   getReconciliationAnomalies: (query: {
     termId: string;
     page?: number;
     limit?: number;
+    gradeLevelId?: number;
+    room?: number;
   }) => Promise<AttendanceSessionAnomaliesResponse>;
 }
 

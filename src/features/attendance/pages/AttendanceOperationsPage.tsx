@@ -54,7 +54,10 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { cn } from "../../../lib/utils";
 import { hasPermission } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { attendanceService } from "../api/attendance.service";
+import { AttendanceSessionDetailDialog } from "../components/AttendanceSessionDetailDialog";
+import { CalendarDayEditDialog } from "../components/CalendarDayEditDialog";
 import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
 import { SchoolTermDialog, type SchoolTermFormValues } from "../components/SchoolTermDialog";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
@@ -383,14 +386,14 @@ export function AttendanceOperationsPage() {
   const anomalyCatalog = useStatusCatalog("ATTENDANCE_ANOMALY");
   const queryClient = useQueryClient();
   const reconciliationDateInputRef = useRef<HTMLInputElement | null>(null);
-  const calendarSectionRef = useRef<HTMLDivElement | null>(null);
-  const reconciliationSectionRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "manage-attendance-calendar");
   const schoolArea = useSchoolAreaFilter();
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("");
+  const [roomFilter, setRoomFilter] = useState("");
   const [date, setDate] = useState(getTodayIso());
   const [calendarDate, setCalendarDate] = useState(getTodayIso());
   const [page, setPage] = useState(1);
@@ -406,6 +409,10 @@ export function AttendanceOperationsPage() {
     dayType: CalendarDayType;
     reason: string;
   } | null>(null);
+  const [calendarDialogRow, setCalendarDialogRow] =
+    useState<AttendanceSessionAnomalyItem | null>(null);
+  const [sessionDialogRow, setSessionDialogRow] =
+    useState<AttendanceSessionAnomalyItem | null>(null);
 
   const schoolId = scope.isSchoolLocked
     ? String(scope.lockedSchoolId ?? "")
@@ -414,6 +421,15 @@ export function AttendanceOperationsPage() {
     queryKey: ["attendance-terms", schoolId],
     queryFn: () => attendanceService.getTerms(schoolId),
     enabled: Boolean(schoolId),
+  });
+  const gradeLevelsQuery = useQuery({
+    queryKey: ["attendance-ops-grade-levels"],
+    queryFn: attendanceLookupService.getGradeLevels,
+  });
+  const roomsQuery = useQuery({
+    queryKey: ["attendance-ops-rooms", gradeFilter, schoolId],
+    queryFn: () => attendanceLookupService.getRooms(gradeFilter, schoolId),
+    enabled: Boolean(gradeFilter && schoolId),
   });
   const terms = termsQuery.data ?? [];
   const selectedTerm = terms.find((term) => term.id === termInput) ?? terms[0] ?? null;
@@ -451,14 +467,29 @@ export function AttendanceOperationsPage() {
     calendarEdit && calendarEdit.calendarDayId === selectedCalendarDay?.id
       ? calendarEdit.reason
       : selectedCalendarDay?.reason ?? "";
+  const gradeLevelIdFilter =
+    gradeFilter && gradeLevelsQuery.data
+      ? gradeLevelsQuery.data.find((level) => level.label === gradeFilter)?.id
+      : undefined;
+  const roomIdFilter = roomFilter ? Number(roomFilter) || undefined : undefined;
   const reconciliationQuery = useQuery({
-    queryKey: ["attendance-reconciliation", selectedTermId, date, page, rowsPerPage],
+    queryKey: [
+      "attendance-reconciliation",
+      selectedTermId,
+      date,
+      page,
+      rowsPerPage,
+      gradeLevelIdFilter,
+      roomIdFilter,
+    ],
     queryFn: () =>
       attendanceService.getReconciliation({
         termId: selectedTermId,
         date,
         page,
         limit: rowsPerPage,
+        gradeLevelId: gradeLevelIdFilter,
+        room: roomIdFilter,
       }),
     enabled: Boolean(
       selectedTermId &&
@@ -476,12 +507,16 @@ export function AttendanceOperationsPage() {
       selectedTermId,
       anomalyPage,
       anomalyRowsPerPage,
+      gradeLevelIdFilter,
+      roomIdFilter,
     ],
     queryFn: () =>
       attendanceService.getReconciliationAnomalies({
         termId: selectedTermId,
         page: anomalyPage,
         limit: anomalyRowsPerPage,
+        gradeLevelId: gradeLevelIdFilter,
+        room: roomIdFilter,
       }),
     enabled: Boolean(selectedTermId && !reconciliationTermInactive),
     placeholderData: keepPreviousData,
@@ -535,7 +570,21 @@ export function AttendanceOperationsPage() {
       ]);
     },
   });
-
+  const anomalyCalendarDayMutation = useMutation({
+    mutationFn: (input: { calendarDayId: string; dayType: CalendarDayType; reason: string }) =>
+      attendanceService.updateCalendarDay(input.calendarDayId, {
+        dayType: input.dayType,
+        reason: input.reason || undefined,
+      }),
+    onSuccess: async () => {
+      setCalendarDialogRow(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
+        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
+      ]);
+    },
+  });
   const summary = reconciliationQuery.data?.summary ?? {
     completed: 0,
     missing: 0,
@@ -604,6 +653,21 @@ export function AttendanceOperationsPage() {
   function handleSchoolChange(value: string): void {
     setSchoolInput(value);
     setTermInput("");
+    setGradeFilter("");
+    setRoomFilter("");
+    setPage(1);
+    setAnomalyPage(1);
+  }
+
+  function handleGradeFilterChange(value: string): void {
+    setGradeFilter(value);
+    setRoomFilter("");
+    setPage(1);
+    setAnomalyPage(1);
+  }
+
+  function handleRoomFilterChange(value: string): void {
+    setRoomFilter(value);
     setPage(1);
     setAnomalyPage(1);
   }
@@ -622,21 +686,6 @@ export function AttendanceOperationsPage() {
     } catch {
       input.click();
     }
-  }
-
-  function scrollIntoView(element: HTMLElement | null): void {
-    element?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function focusCalendarDate(value: string): void {
-    setCalendarDate(value);
-    setCalendarEdit(null);
-    scrollIntoView(calendarSectionRef.current);
-  }
-
-  function focusReconciliationDate(value: string): void {
-    handleDateChange(value);
-    scrollIntoView(reconciliationSectionRef.current);
   }
 
   return (
@@ -681,6 +730,36 @@ export function AttendanceOperationsPage() {
               placeholder="เลือกภาคเรียน"
               searchable={false}
               value={selectedTermId}
+            />
+          </ScopeField>
+          <ScopeField label="ชั้น">
+            <Combobox
+              disabled={!schoolId}
+              onChange={handleGradeFilterChange}
+              options={[
+                { value: "", label: "ทุกชั้น" },
+                ...(gradeLevelsQuery.data ?? []).map((grade) => ({
+                  value: grade.label,
+                  label: grade.label,
+                })),
+              ]}
+              placeholder="ค้นหาชั้น"
+              value={gradeFilter}
+            />
+          </ScopeField>
+          <ScopeField label="ห้อง">
+            <Combobox
+              disabled={!gradeFilter}
+              onChange={handleRoomFilterChange}
+              options={[
+                { value: "", label: gradeFilter ? "ทุกห้อง" : "เลือกชั้นก่อน" },
+                ...(roomsQuery.data ?? []).map((room) => ({
+                  value: room,
+                  label: `ห้อง ${room}`,
+                })),
+              ]}
+              placeholder="ค้นหาห้อง"
+              value={roomFilter}
             />
           </ScopeField>
         </ToolbarControls>
@@ -758,7 +837,7 @@ export function AttendanceOperationsPage() {
             </Card>
 
             {canManageCalendar ? (
-              <Card className="p-5" ref={calendarSectionRef}>
+              <Card className="p-5">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
@@ -892,7 +971,7 @@ export function AttendanceOperationsPage() {
             </Alert>
           ) : null}
 
-          <Card className="p-5" ref={reconciliationSectionRef}>
+          <Card className="p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
                 <h2 className="text-base font-bold text-slate-900">ตรวจความครบถ้วน</h2>
@@ -1164,6 +1243,7 @@ export function AttendanceOperationsPage() {
           ) : (
             <>
               <DataTable
+                columnWidths={["w-[9%]", "w-[11%]", "w-[13%]", "w-[10%]", "w-[8%]", "w-[24%]", "w-[25%]"]}
                 headings={[
                   { label: "วันที่", sortKey: "date" },
                   { label: "ชั้น / ห้อง", sortKey: "class" },
@@ -1173,6 +1253,7 @@ export function AttendanceOperationsPage() {
                   { label: "หมายเหตุ / แนวทางแก้" },
                   { label: "จัดการ" },
                 ]}
+                minWidthClassName="min-w-[980px]"
                 onSortChange={setAnomalySort}
                 sort={anomalySort}
               >
@@ -1184,7 +1265,9 @@ export function AttendanceOperationsPage() {
                         {formatThaiDate(row.date)}
                       </DataTableCell>
                       <DataTableCell className="font-bold">{row.grade} / {row.room}</DataTableCell>
-                      <DataTableCell><Badge variant={meta.variant}>{meta.label}</Badge></DataTableCell>
+                      <DataTableCell>
+                        <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
+                      </DataTableCell>
                       <DataTableCell>{row.recordedCount} / {row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.revision}</DataTableCell>
                       <DataTableCell className="text-slate-500">
@@ -1194,11 +1277,11 @@ export function AttendanceOperationsPage() {
                         </div>
                       </DataTableCell>
                       <DataTableCell>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-nowrap items-center gap-2">
                           {canManageCalendar ? (
                             <Button
                               icon={CalendarDays}
-                              onClick={() => focusCalendarDate(row.date)}
+                              onClick={() => setCalendarDialogRow(row)}
                               size="sm"
                               variant="outline"
                             >
@@ -1207,7 +1290,7 @@ export function AttendanceOperationsPage() {
                           ) : null}
                           <Button
                             icon={CheckCircle2}
-                            onClick={() => focusReconciliationDate(row.date)}
+                            onClick={() => setSessionDialogRow(row)}
                             size="sm"
                             variant="outline"
                           >
@@ -1234,7 +1317,7 @@ export function AttendanceOperationsPage() {
                               {row.grade} / {row.room}
                             </div>
                           </div>
-                          <Badge variant={meta.variant}>{meta.label}</Badge>
+                          <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
                           <span>บันทึกแล้ว {row.recordedCount} / {row.expectedRosterCount}</span>
@@ -1250,7 +1333,7 @@ export function AttendanceOperationsPage() {
                           {canManageCalendar ? (
                             <Button
                               icon={CalendarDays}
-                              onClick={() => focusCalendarDate(row.date)}
+                              onClick={() => setCalendarDialogRow(row)}
                               size="sm"
                               variant="outline"
                             >
@@ -1259,7 +1342,7 @@ export function AttendanceOperationsPage() {
                           ) : null}
                           <Button
                             icon={CheckCircle2}
-                            onClick={() => focusReconciliationDate(row.date)}
+                            onClick={() => setSessionDialogRow(row)}
                             size="sm"
                             variant="outline"
                           >
@@ -1297,6 +1380,33 @@ export function AttendanceOperationsPage() {
         onSubmit={async (values) => { await termMutation.mutateAsync(values); }}
         open={termDialogOpen}
         term={termDialogTerm}
+      />
+      <CalendarDayEditDialog
+        date={calendarDialogRow?.date ?? ""}
+        day={
+          calendarDialogRow
+            ? calendarQuery.data?.find((day) => day.date === calendarDialogRow.date) ?? null
+            : null
+        }
+        error={anomalyCalendarDayMutation.error}
+        isGenerating={generateMutation.isPending}
+        isPending={anomalyCalendarDayMutation.isPending}
+        onClose={() => setCalendarDialogRow(null)}
+        onGenerateCalendar={() => generateMutation.mutate()}
+        onSave={(input) => {
+          const day = calendarQuery.data?.find((item) => item.date === calendarDialogRow?.date);
+          if (!day) return;
+          anomalyCalendarDayMutation.mutate({ calendarDayId: day.id, ...input });
+        }}
+        open={Boolean(calendarDialogRow)}
+      />
+      <AttendanceSessionDetailDialog
+        date={sessionDialogRow?.date ?? ""}
+        grade={sessionDialogRow?.grade ?? ""}
+        onClose={() => setSessionDialogRow(null)}
+        open={Boolean(sessionDialogRow)}
+        room={String(sessionDialogRow?.room ?? "")}
+        schoolId={schoolId}
       />
     </PageShell>
   );
