@@ -10,7 +10,7 @@ import {
   Tabs,
   useConfirm,
 } from "../../../components/base";
-import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { EmptyState, PageShell, PageToolbar } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -47,9 +47,11 @@ function groupByDay(slots: TimetableSlot[]): Array<[number, TimetableSlot[]]> {
 function ScheduleList({ slots }: { slots: TimetableSlot[] }) {
   if (slots.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-slate-500 shadow-card">
-        ไม่มีตารางสอน
-      </div>
+      <EmptyState
+        description="ยังไม่มีการจัดคาบสอนสำหรับตารางนี้"
+        icon={CalendarClock}
+        title="ไม่มีตารางสอน"
+      />
     );
   }
   return (
@@ -259,7 +261,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
               ตารางสอน — {room.schoolName} ห้อง {room.roomNo}
             </h3>
             {!adding ? (
-              <Button icon={Plus} onClick={() => setAdding(true)} size="sm" variant="outline">
+              <Button icon={Plus} onClick={() => setAdding(true)} size="sm">
                 เพิ่มคาบสอน
               </Button>
             ) : null}
@@ -276,9 +278,11 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
           ) : null}
 
           {slots.length === 0 && !slotsQuery.isLoading ? (
-            <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-slate-500 shadow-card">
-              ห้องนี้ยังไม่มีตารางสอน
-            </div>
+            <EmptyState
+              description="กด “เพิ่มคาบสอน” ด้านบนเพื่อเริ่มจัดตารางของห้องนี้"
+              icon={CalendarClock}
+              title="ห้องนี้ยังไม่มีตารางสอน"
+            />
           ) : (
             <div className="space-y-4">
               {groupByDay(slots).map(([day, daySlots]) => (
