@@ -20,6 +20,8 @@ export interface FieldFollower {
   status: FieldFollowerStatus;
   trust_level: string;
   applied_via: string | null;
+  campaign_id: string | null;
+  campaign_name: string | null;
   reviewed_by_user_id: number | null;
   reviewed_at: string | null;
   created_at: string;
@@ -61,6 +63,8 @@ export interface CreateFollowerApplicationPayload {
   sub_district?: string;
   district?: string;
   province?: string;
+  /** Recruitment link this application was submitted through, if any. */
+  campaign_code?: string;
   /** Honeypot — real users never fill this; kept empty on submit. */
   website?: string;
 }

@@ -28,6 +28,7 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { FollowerRecruitmentCampaignsSection } from "../components/FollowerRecruitmentCampaignsSection";
 import { useFieldFollowers, useReviewFieldFollower } from "../hooks/useFieldFollowers";
 import {
   getAvailableFieldFollowerActions,
@@ -125,6 +126,8 @@ export function FieldFollowersReviewPage() {
 
   return (
     <PageShell>
+      <FollowerRecruitmentCampaignsSection />
+
       <ListPageToolbar
         count={{ value: query.data?.meta.totalCount ?? 0 }}
         search={{
@@ -232,7 +235,12 @@ export function FieldFollowersReviewPage() {
                     {getFieldFollowerFullName(follower)}
                   </DataTableCell>
                   <DataTableCell>{follower.phone}</DataTableCell>
-                  <DataTableCell>{getFieldFollowerAreaText(follower)}</DataTableCell>
+                  <DataTableCell>
+                    <div>{getFieldFollowerAreaText(follower)}</div>
+                    {follower.campaign_name ? (
+                      <div className="text-xs text-slate-400">ผ่านลิงก์ {follower.campaign_name}</div>
+                    ) : null}
+                  </DataTableCell>
                   <DataTableCell>
                     <Badge className="whitespace-nowrap text-[11px]" variant={statusMeta.variant}>
                       {statusMeta.label}
@@ -268,6 +276,9 @@ export function FieldFollowersReviewPage() {
                     </Badge>
                   </div>
                   <div className="text-sm text-slate-700">{getFieldFollowerAreaText(follower)}</div>
+                  {follower.campaign_name ? (
+                    <div className="text-xs text-slate-400">ผ่านลิงก์ {follower.campaign_name}</div>
+                  ) : null}
                   <div className="text-sm text-slate-500">
                     สมัครเมื่อ {formatThaiDateTime(follower.created_at)}
                   </div>

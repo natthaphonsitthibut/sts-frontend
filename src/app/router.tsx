@@ -331,7 +331,7 @@ export const router = createBrowserRouter([
     element: withSuspense(<MagicLoginPage />),
   },
   {
-    path: "/apply/field-follower",
+    path: "/apply/field-follower/:code",
     element: withSuspense(<FieldFollowerApplicationPage />),
   },
   {
