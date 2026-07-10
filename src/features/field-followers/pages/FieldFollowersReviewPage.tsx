@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { UserCheck } from "lucide-react";
 import {
-  Alert,
-  AlertDescription,
   Badge,
-  Button,
-  Combobox,
-  useConfirm,
+  Tabs,
 } from "../../../components/base";
 import {
   DataTable,
@@ -18,75 +14,67 @@ import {
 import {
   EmptyState,
   ErrorState,
-  FilterSelect,
   ListPageToolbar,
   PageShell,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { FieldFollowerReviewFilter } from "../components/FieldFollowerReviewFilter";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import { getApiErrorMessage } from "../../../lib/api-error";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { FollowerRecruitmentCampaignsSection } from "../components/FollowerRecruitmentCampaignsSection";
-import { useFieldFollowers, useReviewFieldFollower } from "../hooks/useFieldFollowers";
+import { useFieldFollowers } from "../hooks/useFieldFollowers";
 import {
-  getAvailableFieldFollowerActions,
   getFieldFollowerAreaText,
   getFieldFollowerFullName,
-  getFieldFollowerReviewActionLabel,
   getFieldFollowerStatusMeta,
 } from "../lib/field-follower-presentation";
 import {
-  FIELD_FOLLOWER_STATUSES,
-  type FieldFollower,
-  type FieldFollowerReviewAction,
   type FieldFollowerStatus,
 } from "../types/field-follower.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
-const STATUS_FILTER_LABELS: Record<FieldFollowerStatus, string> = {
-  APPLIED: "รอตรวจสอบ",
-  VERIFIED: "ยืนยันตัวตนแล้ว",
-  ACTIVE: "ใช้งานได้",
-  SUSPENDED: "ระงับ/ปฏิเสธ",
-};
+const FIELD_FOLLOWERS_TAB_ROUTES = {
+  links: "/field-followers",
+  history: "/field-followers/history",
+  review: "/field-followers/review",
+  reviewHistory: "/field-followers/review-history",
+} as const;
 
-interface FieldFollowerRowActionsProps {
-  follower: FieldFollower;
-  isPending: boolean;
-  onReview: (id: string, action: FieldFollowerReviewAction) => void;
-}
+const LINK_TAB_OPTIONS = [
+  { value: "links", label: "ลิงก์รับสมัคร" },
+  { value: "history", label: "ประวัติ" },
+];
 
-function FieldFollowerRowActions({ follower, isPending, onReview }: FieldFollowerRowActionsProps) {
-  const actions = getAvailableFieldFollowerActions(follower.status);
-  if (actions.length === 0) return null;
+const REVIEW_TAB_OPTIONS = [
+  { value: "review", label: "ตรวจสอบใบสมัคร" },
+  { value: "reviewHistory", label: "ประวัติ" },
+];
 
-  return (
-    <div className="flex flex-wrap justify-end gap-2">
-      {actions.map((action) => (
-        <Button
-          className="whitespace-nowrap"
-          disabled={isPending}
-          key={action}
-          onClick={() => onReview(follower.id, action)}
-          size="sm"
-          variant={action === "REJECT" || action === "SUSPEND" ? "destructive" : "outline"}
-        >
-          {getFieldFollowerReviewActionLabel(action)}
-        </Button>
-      ))}
-    </div>
-  );
-}
+const FOLLOWER_CAMPAIGN_AUDIT_ACTION_OPTIONS = [
+  { value: "FOLLOWER_CAMPAIGN_CREATE", label: "สร้างลิงก์รับสมัคร" },
+  { value: "FOLLOWER_CAMPAIGN_UPDATE", label: "แก้ไข/เปิด-ปิดลิงก์" },
+  { value: "FOLLOWER_CAMPAIGN_DELETE", label: "ลบลิงก์รับสมัคร" },
+] as const;
+
+const FIELD_FOLLOWER_REVIEW_AUDIT_ACTION_OPTIONS = [
+  { value: "FIELD_FOLLOWER_REVIEW", label: "ตรวจสอบใบสมัคร" },
+] as const;
 
 export function FieldFollowersReviewPage() {
+  const [activeTab, setActiveTab] = useRouteTab(FIELD_FOLLOWERS_TAB_ROUTES, "links");
   const [status, setStatus] = useState<FieldFollowerStatus | "">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
   const area = useSchoolAreaFilter();
+  const followerStatusCatalog = useStatusCatalog("FIELD_FOLLOWER_STATUS").items;
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   const query = useFieldFollowers({
@@ -98,22 +86,8 @@ export function FieldFollowersReviewPage() {
     page,
     limit,
   });
-  const reviewMutation = useReviewFieldFollower();
-  const { confirm, dialog } = useConfirm();
 
   const followers = query.data?.data ?? [];
-
-  async function handleReview(id: string, action: FieldFollowerReviewAction): Promise<void> {
-    const accepted = await confirm({
-      title: `${getFieldFollowerReviewActionLabel(action)}ผู้สมัคร`,
-      description: "การดำเนินการนี้จะถูกบันทึกในประวัติการตรวจสอบ",
-      confirmText: getFieldFollowerReviewActionLabel(action),
-      variant: action === "REJECT" || action === "SUSPEND" ? "destructive" : "default",
-    });
-    if (accepted) {
-      reviewMutation.mutate({ id, action });
-    }
-  }
 
   function resetToFirstPage(): void {
     setPage(1);
@@ -126,83 +100,89 @@ export function FieldFollowersReviewPage() {
 
   return (
     <PageShell>
-      <FollowerRecruitmentCampaignsSection />
-
-      <ListPageToolbar
-        count={{ value: query.data?.meta.totalCount ?? 0 }}
-        search={{
-          onChange: handleSearchChange,
-          placeholder: "ค้นหาชื่อหรือเบอร์โทรศัพท์",
-          value: searchQuery,
-        }}
-        filters={
-          <>
-            <FilterSelect
-              ariaLabel="กรองตามสถานะ"
-              onChange={(value) => {
-                setStatus(value as FieldFollowerStatus | "");
-                resetToFirstPage();
-              }}
-              value={status}
-            >
-              <option value="">ทุกสถานะ</option>
-              {FIELD_FOLLOWER_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {STATUS_FILTER_LABELS[value]}
-                </option>
-              ))}
-            </FilterSelect>
-            <Combobox
-              onChange={(next) => {
-                area.setProvince(next);
-                resetToFirstPage();
-              }}
-              options={[
-                { value: "", label: "ทุกจังหวัด" },
-                ...area.provinces.map((name) => ({ value: name, label: name })),
-              ]}
-              placeholder="ค้นหาจังหวัด"
-              value={area.province}
-            />
-            <Combobox
-              disabled={!area.province}
-              onChange={(next) => {
-                area.setDistrict(next);
-                resetToFirstPage();
-              }}
-              options={[
-                { value: "", label: "ทุกอำเภอ/เขต" },
-                ...area.districts.map((name) => ({ value: name, label: name })),
-              ]}
-              placeholder="ค้นหาอำเภอ/เขต"
-              value={area.district}
-            />
-            <Combobox
-              disabled={!area.district}
-              onChange={(next) => {
-                area.setSubDistrict(next);
-                resetToFirstPage();
-              }}
-              options={[
-                { value: "", label: "ทุกตำบล/แขวง" },
-                ...area.subDistricts.map((name) => ({ value: name, label: name })),
-              ]}
-              placeholder="ค้นหาตำบล/แขวง"
-              value={area.subDistrict}
-            />
-          </>
-        }
-        icon={UserCheck}
-        title="ตรวจสอบใบสมัคร อสม./ผู้ติดตาม"
-      />
-
-      {reviewMutation.isError ? (
-        <Alert className="mb-4" variant="destructive">
-          <AlertDescription>
-            {getApiErrorMessage(reviewMutation.error, "ดำเนินการรายการไม่สำเร็จ")}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      {activeTab === "links" ? (
+        <>
+          <FollowerRecruitmentCampaignsSection
+            actions={
+              <Tabs
+                aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
+                onChange={setActiveTab}
+                options={LINK_TAB_OPTIONS}
+                value={activeTab}
+              />
+            }
+          />
+        </>
+      ) : activeTab === "history" ? (
+        <>
+          <ListPageToolbar
+            actions={
+              <Tabs
+                aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
+                onChange={setActiveTab}
+                options={LINK_TAB_OPTIONS}
+                value={activeTab}
+              />
+            }
+            description="ดูประวัติการสร้าง แก้ไข เปิด-ปิด และลบลิงก์รับสมัครย้อนหลัง"
+            icon={UserCheck}
+            title="ลิงก์รับสมัคร"
+          />
+          <AuditLogPanel
+            actionOptions={FOLLOWER_CAMPAIGN_AUDIT_ACTION_OPTIONS}
+            description="ดูประวัติการสร้าง แก้ไข เปิด-ปิด และลบลิงก์รับสมัครย้อนหลัง"
+            domain="field_followers"
+            targetType="follower_recruitment_campaign"
+            title="ประวัติลิงก์รับสมัคร"
+          />
+        </>
+      ) : activeTab === "reviewHistory" ? (
+        <>
+          <ListPageToolbar
+            actions={
+              <Tabs
+                aria-label="โหมดตรวจสอบใบสมัคร"
+                onChange={setActiveTab}
+                options={REVIEW_TAB_OPTIONS}
+                value={activeTab}
+              />
+            }
+            description="ดูประวัติการอนุมัติ ปฏิเสธ ระงับ และเปิดใช้งานใบสมัครย้อนหลัง"
+            icon={UserCheck}
+            title="ตรวจสอบใบสมัคร"
+          />
+          <AuditLogPanel
+            actionOptions={FIELD_FOLLOWER_REVIEW_AUDIT_ACTION_OPTIONS}
+            description="ดูประวัติการตรวจสอบใบสมัครย้อนหลัง"
+            domain="field_followers"
+            fixedAction="FIELD_FOLLOWER_REVIEW"
+            targetType="field_follower"
+            title="ประวัติการตรวจสอบใบสมัคร"
+          />
+        </>
+      ) : (
+        <>
+          <FieldFollowerReviewFilter
+            actions={
+              <Tabs
+                aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
+                onChange={setActiveTab}
+                options={REVIEW_TAB_OPTIONS}
+                value={activeTab}
+              />
+            }
+            area={area}
+            onRefresh={query.refetch}
+            onSearchChange={handleSearchChange}
+            onStatusChange={(value) => {
+              setStatus(value as FieldFollowerStatus | "");
+              resetToFirstPage();
+            }}
+            resetToFirstPage={resetToFirstPage}
+            searchQuery={searchQuery}
+            status={status}
+            statusOptions={followerStatusCatalog}
+          />
 
       {query.isError ? (
         <ErrorState
@@ -228,7 +208,7 @@ export function FieldFollowersReviewPage() {
             responsiveBreakpoint="lg"
           >
             {followers.map((follower) => {
-              const statusMeta = getFieldFollowerStatusMeta(follower.status);
+              const statusMeta = getFieldFollowerStatusMeta(followerStatusCatalog, follower.status);
               return (
                 <DataTableRow key={follower.id}>
                   <DataTableCell className="font-bold text-slate-900">
@@ -248,10 +228,10 @@ export function FieldFollowersReviewPage() {
                   </DataTableCell>
                   <DataTableCell>{formatThaiDateTime(follower.created_at)}</DataTableCell>
                   <DataTableCell className="text-right">
-                    <FieldFollowerRowActions
-                      follower={follower}
-                      isPending={reviewMutation.isPending}
-                      onReview={(id, action) => void handleReview(id, action)}
+                    <DetailLinkButton
+                      aria-label="ดูรายละเอียด"
+                      className="min-w-[128px]"
+                      to={`/field-followers/${follower.id}`}
                     />
                   </DataTableCell>
                 </DataTableRow>
@@ -261,7 +241,7 @@ export function FieldFollowersReviewPage() {
 
           <TableCardList desktopBreakpoint="lg">
             {followers.map((follower) => {
-              const statusMeta = getFieldFollowerStatusMeta(follower.status);
+              const statusMeta = getFieldFollowerStatusMeta(followerStatusCatalog, follower.status);
               return (
                 <TableCard className="space-y-3" key={follower.id}>
                   <div className="flex items-start justify-between gap-3">
@@ -282,10 +262,10 @@ export function FieldFollowersReviewPage() {
                   <div className="text-sm text-slate-500">
                     สมัครเมื่อ {formatThaiDateTime(follower.created_at)}
                   </div>
-                  <FieldFollowerRowActions
-                    follower={follower}
-                    isPending={reviewMutation.isPending}
-                    onReview={(id, action) => void handleReview(id, action)}
+                  <DetailLinkButton
+                    aria-label="ดูรายละเอียด"
+                    className="self-end"
+                    to={`/field-followers/${follower.id}`}
                   />
                 </TableCard>
               );
@@ -306,7 +286,8 @@ export function FieldFollowersReviewPage() {
           totalCount={query.data.meta.totalCount}
         />
       ) : null}
-      {dialog}
+        </>
+      )}
     </PageShell>
   );
 }

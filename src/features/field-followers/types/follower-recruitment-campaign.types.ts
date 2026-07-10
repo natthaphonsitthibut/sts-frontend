@@ -7,6 +7,7 @@ export interface FollowerRecruitmentCampaign {
   public_code: string;
   data_scope: DataScope;
   is_active: boolean;
+  status: "ACTIVE" | "LOCKED" | "EXPIRED";
   is_open: boolean;
   opens_at: string | null;
   closes_at: string | null;

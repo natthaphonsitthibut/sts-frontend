@@ -3,13 +3,15 @@ import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 
 interface SchoolAreaSchoolFilterProps {
   area: ReturnType<typeof useSchoolAreaFilter>;
-  schoolId: string;
-  onSchoolChange: (value: string) => void;
+  schoolId?: string;
+  onSchoolChange?: (value: string) => void;
   selectedSchoolFallback?: { id: number | string; name: string | null | undefined };
   schoolLocked?: boolean;
   disabled?: boolean;
   schoolPlaceholder?: string;
   schoolEmptyText?: string;
+  schoolEmptyLabel?: string;
+  hideSchool?: boolean;
 }
 
 function toOptions(values: string[], emptyLabel: string): ComboboxOption[] {
@@ -24,17 +26,19 @@ export function SchoolAreaSchoolFilter({
   disabled,
   onSchoolChange,
   selectedSchoolFallback,
+  schoolEmptyLabel = "ทุกโรงเรียน",
   schoolEmptyText,
   schoolId,
   schoolLocked = false,
   schoolPlaceholder = "ค้นหาโรงเรียน",
+  hideSchool = false,
 }: SchoolAreaSchoolFilterProps) {
   function clearSchool(): void {
-    onSchoolChange("");
+    onSchoolChange?.("");
   }
 
   function selectSchool(nextSchoolId: string): void {
-    onSchoolChange(nextSchoolId);
+    onSchoolChange?.(nextSchoolId);
     const school = area.filteredSchools.find(
       (candidate) => String(candidate.id) === nextSchoolId,
     );
@@ -86,27 +90,29 @@ export function SchoolAreaSchoolFilter({
         placeholder="ค้นหาตำบล/แขวง"
         value={area.subDistrict}
       />
-      <Combobox
-        disabled={disabled || schoolLocked}
-        emptyText={
-          schoolEmptyText ??
-          (area.schoolsEnabled
-            ? "ไม่พบโรงเรียน"
-            : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง")
-        }
-        onChange={selectSchool}
-        onSearchChange={area.setSchoolSearch}
-        options={[
-          { value: "", label: "ทุกโรงเรียน" },
-          ...(selectedFallbackOption ? [selectedFallbackOption] : []),
-          ...area.filteredSchools.map((school) => ({
-            value: String(school.id),
-            label: school.name,
-          })),
-        ]}
-        placeholder={schoolPlaceholder}
-        value={schoolId}
-      />
+      {!hideSchool ? (
+        <Combobox
+          disabled={disabled || schoolLocked}
+          emptyText={
+            schoolEmptyText ??
+            (area.schoolsEnabled
+              ? "ไม่พบโรงเรียน"
+              : "พิมพ์ชื่อโรงเรียน หรือเลือกจังหวัด/อำเภอ/เขต/ตำบล/แขวง")
+          }
+          onChange={selectSchool}
+          onSearchChange={area.setSchoolSearch}
+          options={[
+            { value: "", label: schoolEmptyLabel },
+            ...(selectedFallbackOption ? [selectedFallbackOption] : []),
+            ...area.filteredSchools.map((school) => ({
+              value: String(school.id),
+              label: school.name,
+            })),
+          ]}
+          placeholder={schoolPlaceholder}
+          value={schoolId ?? ""}
+        />
+      ) : null}
     </>
   );
 }

@@ -50,6 +50,7 @@ interface AuditLogPanelProps {
   targetId?: string;
   caseId?: number;
   actionOptions?: readonly AuditLogActionOption[];
+  fixedAction?: string;
   showActionColumn?: boolean;
   showReferenceColumn?: boolean;
   className?: string;
@@ -90,7 +91,7 @@ function AuditLogFilters({
   return (
     <div
       className={cn(
-        "grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:items-end",
+        "grid gap-3 md:items-end",
         actionOptions.length > 0
           ? "md:grid-cols-[minmax(220px,1fr)_170px_150px_150px]"
           : "md:grid-cols-[minmax(220px,1fr)_150px_150px]",
@@ -287,6 +288,7 @@ export function AuditLogPanel({
   description,
   district,
   domain,
+  fixedAction,
   province,
   schoolId,
   showActionColumn = true,
@@ -305,6 +307,7 @@ export function AuditLogPanel({
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const debouncedSearchTerm = useDebouncedValue(searchTerm.trim(), 350);
+  const hasActiveFilter = Boolean(debouncedSearchTerm || action || dateFrom || dateTo);
   const page = pageState.scopeKey === scopeKey ? pageState.page : 1;
 
   const query = useMemo(
@@ -318,7 +321,7 @@ export function AuditLogPanel({
       taskType,
       targetType,
       targetId,
-      action: action || undefined,
+      action: fixedAction || action || undefined,
       searchTerm: debouncedSearchTerm || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -333,6 +336,7 @@ export function AuditLogPanel({
       debouncedSearchTerm,
       district,
       domain,
+      fixedAction,
       page,
       province,
       rowsPerPage,
@@ -354,27 +358,31 @@ export function AuditLogPanel({
 
   return (
     <section className={cn("space-y-4", className)}>
-      <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+      <div className="rounded-lg border border-slate-100 bg-white p-5 shadow-card">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-extrabold text-slate-900">{title}</h2>
+            {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+          </div>
+          <div className="shrink-0 text-sm font-semibold text-slate-500 md:text-right">
+            {auditLog.isFetching ? "กำลังอัปเดต" : `${totalCount.toLocaleString("en-US")} รายการ`}
+          </div>
         </div>
-        <div className="text-right text-sm font-semibold text-slate-500">
-          {auditLog.isFetching ? "กำลังอัปเดต" : `${totalCount.toLocaleString("en-US")} รายการ`}
+
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <AuditLogFilters
+            action={action}
+            actionOptions={fixedAction ? [] : actionOptions}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onActionChange={(value) => resetPageAnd(() => setAction(value))}
+            onDateFromChange={(value) => resetPageAnd(() => setDateFrom(value))}
+            onDateToChange={(value) => resetPageAnd(() => setDateTo(value))}
+            onSearchTermChange={(value) => resetPageAnd(() => setSearchTerm(value))}
+            searchTerm={searchTerm}
+          />
         </div>
       </div>
-
-      <AuditLogFilters
-        action={action}
-        actionOptions={actionOptions}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onActionChange={(value) => resetPageAnd(() => setAction(value))}
-        onDateFromChange={(value) => resetPageAnd(() => setDateFrom(value))}
-        onDateToChange={(value) => resetPageAnd(() => setDateTo(value))}
-        onSearchTermChange={(value) => resetPageAnd(() => setSearchTerm(value))}
-        searchTerm={searchTerm}
-      />
 
       {auditLog.isError ? (
         <ErrorState title="โหลดประวัติไม่สำเร็จ" onRetry={auditLog.refetch} />
@@ -383,7 +391,11 @@ export function AuditLogPanel({
           กำลังโหลดประวัติ
         </div>
       ) : auditLog.entries.length === 0 ? (
-        <EmptyState icon={Search} title="ยังไม่มีประวัติในขอบเขตนี้" />
+        <EmptyState
+          icon={Search}
+          title={hasActiveFilter ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการทำรายการ"}
+          description={hasActiveFilter ? "ลองปรับตัวกรองหรือคำค้นหาใหม่อีกครั้ง" : undefined}
+        />
       ) : (
         <AuditLogTable
           entries={auditLog.entries}
