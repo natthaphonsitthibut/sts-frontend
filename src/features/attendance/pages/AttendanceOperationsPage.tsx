@@ -46,7 +46,7 @@ import {
   PageToolbar,
   SkeletonTable,
   SummaryMetrics,
-  ToolbarControls,
+  ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDate } from "../../../lib/date-time";
@@ -254,10 +254,18 @@ function compareAnomalyRows(
   return 0;
 }
 
-function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
+function ScopeField({
+  children,
+  label,
+  labelHidden = false,
+}: {
+  children: React.ReactNode;
+  label: string;
+  labelHidden?: boolean;
+}) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label className={labelHidden ? "sr-only" : undefined}>{label}</Label>
       {children}
     </div>
   );
@@ -708,14 +716,14 @@ export function AttendanceOperationsPage() {
           ) : undefined
         }
       >
-        <ToolbarControls className="sm:grid sm:grid-cols-2 sm:items-end lg:grid-cols-3 xl:grid-cols-5">
+        <ToolbarFilterGrid>
           <SchoolAreaSchoolFilter
             area={schoolArea}
             onSchoolChange={handleSchoolChange}
             schoolId={schoolId}
             schoolLocked={scope.isSchoolLocked}
           />
-          <ScopeField label="ภาคเรียน">
+          <ScopeField label="ภาคเรียน" labelHidden>
             <Combobox
               disabled={!schoolId}
               onChange={(value) => {
@@ -732,7 +740,7 @@ export function AttendanceOperationsPage() {
               value={selectedTermId}
             />
           </ScopeField>
-          <ScopeField label="ชั้น">
+          <ScopeField label="ชั้น" labelHidden>
             <Combobox
               disabled={!schoolId}
               onChange={handleGradeFilterChange}
@@ -747,12 +755,12 @@ export function AttendanceOperationsPage() {
               value={gradeFilter}
             />
           </ScopeField>
-          <ScopeField label="ห้อง">
+          <ScopeField label="ห้อง" labelHidden>
             <Combobox
               disabled={!gradeFilter}
               onChange={handleRoomFilterChange}
               options={[
-                { value: "", label: gradeFilter ? "ทุกห้อง" : "เลือกชั้นก่อน" },
+                { value: "", label: "ทุกห้อง" },
                 ...(roomsQuery.data ?? []).map((room) => ({
                   value: room,
                   label: `ห้อง ${room}`,
@@ -762,7 +770,7 @@ export function AttendanceOperationsPage() {
               value={roomFilter}
             />
           </ScopeField>
-        </ToolbarControls>
+        </ToolbarFilterGrid>
       </PageToolbar>
 
       {!schoolId ? (

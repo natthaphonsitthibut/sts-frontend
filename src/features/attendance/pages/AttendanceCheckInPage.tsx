@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -14,6 +14,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Combobox,
   Input,
   Tabs,
   useConfirm,
@@ -30,7 +31,7 @@ import {
   PageShell,
   PageToolbar,
   SkeletonTable,
-  ToolbarControls,
+  ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
@@ -42,13 +43,16 @@ import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   getTodayIso,
-  useAttendanceCheckIn,
+  useAttendanceCheckInForSession,
   useAttendanceHistory,
 } from "../hooks/useAttendanceCheckIn";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
+import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
+import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
+import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
 
 const DATE_INPUT_CLASS_NAME = "sm:w-[180px] text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
@@ -56,6 +60,13 @@ const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
   { value: "history", label: "ประวัติ" },
 ];
+
+const CHECK_IN_MODE_OPTIONS = [
+  { value: "daily", label: "รายวัน" },
+  { value: "subject", label: "รายวิชา" },
+] satisfies Array<{ value: CheckInMode; label: string }>;
+
+type CheckInMode = "daily" | "subject";
 
 function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
@@ -73,6 +84,56 @@ function getHistorySortValue(
   return "";
 }
 
+function getIsoDayOfWeek(date = new Date()): number {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function timeToMinutes(value: string): number {
+  const [hours = "0", minutes = "0"] = value.split(":");
+  return Number(hours) * 60 + Number(minutes);
+}
+
+function findDefaultSlot(
+  slots: TimetableSlot[],
+  periodTimes: SchoolPeriodTime[],
+): TimetableSlot | null {
+  if (slots.length === 0) return null;
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const withTimes = slots
+    .map((slot) => {
+      const periodTime = periodTimes.find(
+        (row) => row.day_of_week === slot.day_of_week && row.period === slot.period,
+      );
+      return {
+        slot,
+        startsAt: periodTime ? timeToMinutes(periodTime.starts_at) : null,
+        endsAt: periodTime ? timeToMinutes(periodTime.ends_at) : null,
+      };
+    })
+    .sort((left, right) => {
+      const leftStart = left.startsAt ?? left.slot.period * 1000;
+      const rightStart = right.startsAt ?? right.slot.period * 1000;
+      return leftStart - rightStart;
+    });
+
+  const current = withTimes.find(
+    (row) =>
+      row.startsAt !== null &&
+      row.endsAt !== null &&
+      row.startsAt <= currentMinutes &&
+      currentMinutes <= row.endsAt,
+  );
+  if (current) return current.slot;
+
+  const next = withTimes.find(
+    (row) => row.startsAt !== null && row.startsAt > currentMinutes,
+  );
+  return (next ?? withTimes[0])?.slot ?? null;
+}
+
 export function AttendanceCheckInPage() {
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [tab, setTab] = useRouteTab(
@@ -84,7 +145,14 @@ export function AttendanceCheckInPage() {
   );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
-  const checkIn = useAttendanceCheckIn();
+  const [checkInMode, setCheckInMode] = useState<CheckInMode>("daily");
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const selectedSlotIdNumber =
+    checkInMode === "subject" && selectedSlotId ? Number(selectedSlotId) : null;
+  const checkIn = useAttendanceCheckInForSession({
+    enabled: checkInMode === "daily" || Boolean(selectedSlotIdNumber),
+    timetableSlotId: selectedSlotIdNumber,
+  });
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
   const [historySearch, setHistorySearch] = useState("");
@@ -123,6 +191,62 @@ export function AttendanceCheckInPage() {
     reopenState,
     schoolArea,
   } = checkIn;
+  const selectedGradeLevel = gradeLevels.find((level) => level.label === grade);
+  const selectedRoomNo = Number(room);
+  const timetableFilter =
+    schoolId && selectedGradeLevel && Number.isInteger(selectedRoomNo)
+      ? {
+          schoolId: Number(schoolId),
+          gradeLevelId: selectedGradeLevel.id,
+          roomNo: selectedRoomNo,
+        }
+      : null;
+  const slotsQuery = useTimetableSlots(timetableFilter);
+  const periodTimesQuery = usePeriodTimes(schoolId ? Number(schoolId) : null);
+  const todaySlots = useMemo(
+    () =>
+      (slotsQuery.data?.data ?? [])
+        .filter((slot) => slot.day_of_week === getIsoDayOfWeek())
+        .sort((left, right) => left.period - right.period),
+    [slotsQuery.data?.data],
+  );
+  const subjectSlotOptions = useMemo(
+    () => [
+      { value: "", label: todaySlots.length > 0 ? "เลือกคาบรายวิชา" : "ไม่พบคาบวันนี้" },
+      ...todaySlots.map((slot) => ({
+        value: String(slot.id),
+        label: `${slot.subject_name_th} · ${formatTimetableSlotLabel(
+          slot,
+          periodTimesQuery.data?.data ?? [],
+        )}`,
+      })),
+    ],
+    [periodTimesQuery.data?.data, todaySlots],
+  );
+
+  useEffect(() => {
+    let timeoutId: number | undefined;
+
+    if (checkInMode !== "subject") {
+      timeoutId = window.setTimeout(() => setSelectedSlotId(""), 0);
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
+    }
+
+    if (todaySlots.some((slot) => String(slot.id) === selectedSlotId)) {
+      return undefined;
+    }
+
+    const defaultSlot = findDefaultSlot(todaySlots, periodTimesQuery.data?.data ?? []);
+    timeoutId = window.setTimeout(
+      () => setSelectedSlotId(defaultSlot ? String(defaultSlot.id) : ""),
+      0,
+    );
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [checkInMode, periodTimesQuery.data?.data, selectedSlotId, todaySlots]);
 
   const newCases = saveState.data?.newCases ?? [];
   const filterScope = useMemo(
@@ -218,8 +342,8 @@ export function AttendanceCheckInPage() {
     <PageShell className="pb-6">
       <PageToolbar
         icon={ClipboardCheck}
-        title="เช็คชื่อ"
-        description="เลือกชั้นเรียนและบันทึกการเข้าเรียนของนักเรียน"
+        title="เช็คชื่อมาเรียน"
+        description="บันทึกการมาเรียนประจำวันของนักเรียนในแต่ละห้อง"
         actions={
           <Tabs
             aria-label="โหมดเช็คชื่อ"
@@ -229,9 +353,14 @@ export function AttendanceCheckInPage() {
           />
         }
       >
-        <ToolbarControls>
+        <ToolbarFilterGrid>
           <SchoolClassRoomFilter
             area={schoolArea}
+            emptyOptionLabels={{
+              grade: "เลือกชั้น",
+              room: "เลือกห้อง",
+              school: "เลือกโรงเรียน",
+            }}
             onGradeChange={setGrade}
             onRoomChange={setRoom}
             onSchoolChange={setSchoolId}
@@ -239,14 +368,31 @@ export function AttendanceCheckInPage() {
           />
 
           {tab === "today" ? (
-            <Input
-              aria-label="วันที่"
-              className={DATE_INPUT_CLASS_NAME}
-              type="date"
-              value={getTodayIso()}
-              readOnly
-              disabled
-            />
+            <>
+              <Input
+                aria-label="วันที่"
+                className={DATE_INPUT_CLASS_NAME}
+                type="date"
+                value={getTodayIso()}
+                readOnly
+                disabled
+              />
+              <Tabs
+                aria-label="รูปแบบเช็คชื่อ"
+                onChange={(value) => setCheckInMode(value as CheckInMode)}
+                options={CHECK_IN_MODE_OPTIONS}
+                value={checkInMode}
+              />
+              {checkInMode === "subject" ? (
+                <Combobox
+                  disabled={!timetableFilter || slotsQuery.isLoading || todaySlots.length === 0}
+                  onChange={setSelectedSlotId}
+                  options={subjectSlotOptions}
+                  placeholder="เลือกคาบรายวิชา"
+                  value={selectedSlotId}
+                />
+              ) : null}
+            </>
           ) : (
             <Input
               aria-label="เลือกวันที่"
@@ -256,7 +402,7 @@ export function AttendanceCheckInPage() {
               onChange={(event) => setHistoryDate(event.target.value)}
             />
           )}
-        </ToolbarControls>
+        </ToolbarFilterGrid>
       </PageToolbar>
 
       {tab === "today" ? (
@@ -348,8 +494,16 @@ export function AttendanceCheckInPage() {
             {!canLoadRoster ? (
               <EmptyState
                 icon={ClipboardList}
-                title="พร้อมเริ่มเช็คชื่อหรือยัง?"
-                description="กรุณาเลือกโรงเรียน ระดับชั้น และห้อง เพื่อแสดงรายชื่อนักเรียน"
+                title={
+                  checkInMode === "subject"
+                    ? "เลือกคาบรายวิชาก่อนเช็คชื่อ"
+                    : "พร้อมเริ่มเช็คชื่อหรือยัง?"
+                }
+                description={
+                  checkInMode === "subject"
+                    ? "กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันนี้"
+                    : "กรุณาเลือกโรงเรียน ระดับชั้น และห้อง เพื่อแสดงรายชื่อนักเรียน"
+                }
               />
             ) : isRosterError ? (
               <ErrorState

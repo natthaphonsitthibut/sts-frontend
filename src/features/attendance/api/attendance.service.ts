@@ -9,6 +9,7 @@ import type {
   AttendanceReconciliationResponse,
   AttendanceSaveRecord,
   AttendanceSaveResponse,
+  AttendanceSessionKind,
   AttendanceSessionAnomaliesResponse,
   AttendanceStudent,
   AttendanceStudentQuery,
@@ -29,19 +30,25 @@ interface DataEnvelope<T> {
 
 interface AttendanceService {
   getStudents: (query: AttendanceStudentQuery) => Promise<AttendanceStudent[]>;
-  getHistory: (date: string, schoolId?: string) => Promise<AttendanceHistoryRecord[]>;
+  getHistory: (
+    date: string,
+    schoolId?: string,
+    options?: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null },
+  ) => Promise<AttendanceHistoryRecord[]>;
   getTasks: () => Promise<AttendanceTask[]>;
   getAttendanceTasksPage: (
     query?: AttendanceTaskListQuery,
   ) => Promise<AttendanceTasksPageResponse>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
+    options?: { timetableSlotId?: number | null },
   ) => Promise<AttendanceSaveResponse>;
   getSessionContext: (query: {
     schoolId: string | number;
     grade: string;
     room: string | number;
     date: string;
+    timetableSlotId?: number | null;
   }) => Promise<AttendanceSessionContext>;
   reopenSession: (sessionId: string, reason: string) => Promise<AttendanceSessionContext["session"]>;
   getTerms: (schoolId: string | number) => Promise<SchoolTerm[]>;
@@ -189,10 +196,18 @@ async function getStudents(
 async function getHistory(
   date: string,
   schoolId?: string,
+  options: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null } = {},
 ): Promise<AttendanceHistoryRecord[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceHistoryRecord[]>>(
     "/attendance/history",
-    { params: { date, ...(schoolId ? { schoolId } : {}) } },
+    {
+      params: {
+        date,
+        ...(schoolId ? { schoolId } : {}),
+        ...(options.sessionKind ? { sessionKind: options.sessionKind } : {}),
+        ...(options.timetableSlotId ? { timetableSlotId: options.timetableSlotId } : {}),
+      },
+    },
   );
 
   return (response.data.data || []).map((record) => ({
@@ -272,10 +287,14 @@ async function getAttendanceTasksPage(
 
 async function saveAttendance(
   records: AttendanceSaveRecord[],
+  options: { timetableSlotId?: number | null } = {},
 ): Promise<AttendanceSaveResponse> {
   const response = await apiClient.post<AttendanceSaveResponse>(
     "/attendance",
-    { records },
+    {
+      records,
+      ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
+    },
   );
   return response.data;
 }
@@ -285,6 +304,7 @@ async function getSessionContext(query: {
   grade: string;
   room: string | number;
   date: string;
+  timetableSlotId?: number | null;
 }): Promise<AttendanceSessionContext> {
   const response = await apiClient.get<DataEnvelope<AttendanceSessionContext>>(
     "/attendance/session",

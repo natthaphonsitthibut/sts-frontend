@@ -27,6 +27,16 @@ const EMPTY_STUDENTS: Awaited<
  * we avoid setState-in-effect churn.
  */
 export function useAttendanceCheckIn() {
+  return useAttendanceCheckInForSession({});
+}
+
+export function useAttendanceCheckInForSession({
+  enabled = true,
+  timetableSlotId,
+}: {
+  enabled?: boolean;
+  timetableSlotId?: number | null;
+}) {
   const queryClient = useQueryClient();
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(
@@ -82,7 +92,7 @@ export function useAttendanceCheckIn() {
       ? roomInput
       : "";
 
-  const canLoadRoster = Boolean(schoolId && grade && room);
+  const canLoadRoster = Boolean(enabled && schoolId && grade && room);
   const studentsQuery = useQuery({
     queryKey: ["attendance-checkin-students", schoolId, grade, room],
     queryFn: () => attendanceService.getStudents({ schoolId, grade, room }),
@@ -90,30 +100,42 @@ export function useAttendanceCheckIn() {
   });
 
   const today = getTodayIso();
+  const sessionKind = timetableSlotId ? "SUBJECT" : "DAILY";
+  const sessionKey = timetableSlotId ?? "daily";
   const sessionQuery = useQuery({
-    queryKey: ["attendance-session", schoolId, grade, room, today],
+    queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
     queryFn: () =>
-      attendanceService.getSessionContext({ schoolId, grade, room, date: today }),
+      attendanceService.getSessionContext({
+        schoolId,
+        grade,
+        room,
+        date: today,
+        timetableSlotId,
+      }),
     enabled: canLoadRoster,
   });
   const existingAttendanceQuery = useQuery({
-    queryKey: ["attendance-checkin-history", today, schoolId],
-    queryFn: () => attendanceService.getHistory(today, schoolId),
+    queryKey: ["attendance-checkin-history", today, schoolId, sessionKind, sessionKey],
+    queryFn: () =>
+      attendanceService.getHistory(today, schoolId, {
+        sessionKind,
+        timetableSlotId,
+      }),
     enabled: canLoadRoster,
   });
 
   const saveMutation = useMutation({
     mutationFn: (records: AttendanceSaveRecord[]) =>
-      attendanceService.saveAttendance(records),
+      attendanceService.saveAttendance(records, { timetableSlotId }),
     onSuccess: async () => {
       setSelections({});
       setPreviousSelections(null);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["attendance-session", schoolId, grade, room, today],
+          queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["attendance-checkin-history", today, schoolId],
+          queryKey: ["attendance-checkin-history", today, schoolId, sessionKind, sessionKey],
         }),
       ]);
     },
@@ -128,7 +150,7 @@ export function useAttendanceCheckIn() {
       setSelections({});
       setPreviousSelections(null);
       await queryClient.invalidateQueries({
-        queryKey: ["attendance-session", schoolId, grade, room, today],
+        queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
       });
     },
   });
@@ -261,8 +283,8 @@ export function useAttendanceCheckIn() {
 /** History view (past check-ins for a chosen date, scoped to one school). */
 export function useAttendanceHistory(date: string, schoolId?: string) {
   const historyQuery = useQuery({
-    queryKey: ["attendance-checkin-history", date, schoolId ?? ""],
-    queryFn: () => attendanceService.getHistory(date, schoolId),
+    queryKey: ["attendance-checkin-history", date, schoolId ?? "", "DAILY", "daily"],
+    queryFn: () => attendanceService.getHistory(date, schoolId, { sessionKind: "DAILY" }),
     // Server requires a school to avoid a nationwide day dump — don't fetch
     // until one is selected.
     enabled: Boolean(schoolId),

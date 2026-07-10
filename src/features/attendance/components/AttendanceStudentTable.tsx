@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -256,7 +256,7 @@ export function AttendanceStudentTable({
     setUndoSnapshot(null);
   }
 
-  function renderStudentIdentity(student: AttendanceStudent) {
+  function renderStudentIdentity(student: AttendanceStudent, trailing?: ReactNode) {
     return (
       <div className="flex min-w-0 items-center gap-3">
         <div
@@ -265,10 +265,11 @@ export function AttendanceStudentTable({
         >
           {student.name?.[0] || "?"}
         </div>
-        <div className="min-w-0">
-          <div className="truncate font-bold text-slate-800">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="min-w-0 truncate font-bold text-slate-800">
             {student.name}
           </div>
+          {trailing}
         </div>
       </div>
     );
@@ -329,16 +330,18 @@ export function AttendanceStudentTable({
           <div className="flex w-6 shrink-0 justify-center text-sm font-semibold text-slate-400">
             {rosterNumber}
           </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            {renderStudentIdentity(student)}
-            {hasAbsenceRisk ? (
-              <Badge
-                className="w-fit"
-                variant={totalAbsent >= 2 ? "destructive" : "warning"}
-              >
-                ขาดสะสม {totalAbsent} วัน
-              </Badge>
-            ) : null}
+          <div className="min-w-0 flex-1">
+            {renderStudentIdentity(
+              student,
+              hasAbsenceRisk ? (
+                <Badge
+                  className="w-fit"
+                  variant={totalAbsent >= 2 ? "destructive" : "warning"}
+                >
+                  ขาดสะสม {totalAbsent} วัน
+                </Badge>
+              ) : null,
+            )}
           </div>
         </div>
 

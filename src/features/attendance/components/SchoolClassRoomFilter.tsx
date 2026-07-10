@@ -22,11 +22,17 @@ interface SchoolClassRoomFilterProps {
   onGradeChange: (value: string) => void;
   onRoomChange: (value: string) => void;
   disabled?: boolean;
+  emptyOptionLabels?: {
+    school?: string;
+    grade?: string;
+    room?: string;
+  };
 }
 
 export function SchoolClassRoomFilter({
   area,
   disabled,
+  emptyOptionLabels,
   onGradeChange,
   onRoomChange,
   onSchoolChange,
@@ -38,6 +44,7 @@ export function SchoolClassRoomFilter({
         area={area}
         disabled={disabled}
         onSchoolChange={onSchoolChange}
+        schoolEmptyLabel={emptyOptionLabels?.school}
         schoolId={scope.schoolId}
         schoolLocked={scope.schoolLocked}
       />
@@ -45,7 +52,7 @@ export function SchoolClassRoomFilter({
         disabled={disabled || !scope.schoolId || scope.gradeLocked}
         onChange={onGradeChange}
         options={[
-          { value: "", label: scope.schoolId ? "ทุกชั้น" : "เลือกโรงเรียนก่อน" },
+          { value: "", label: emptyOptionLabels?.grade ?? "ทุกชั้น" },
           ...scope.gradeLevels.map((grade) => ({
             value: grade.label,
             label: grade.label,
@@ -58,7 +65,7 @@ export function SchoolClassRoomFilter({
         disabled={disabled || !scope.grade || scope.roomLocked}
         onChange={onRoomChange}
         options={[
-          { value: "", label: scope.grade ? "ทุกห้อง" : "เลือกชั้นก่อน" },
+          { value: "", label: emptyOptionLabels?.room ?? "ทุกห้อง" },
           ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
         ]}
         placeholder="ค้นหาห้อง"
