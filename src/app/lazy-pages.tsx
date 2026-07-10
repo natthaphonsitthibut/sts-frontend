@@ -116,6 +116,11 @@ export const LoginLinksPage = lazy(() =>
     default: module.LoginLinksPage,
   })),
 );
+export const VisitLinksPage = lazy(() =>
+  import("../features/visit-links/pages/VisitLinksPage").then((module) => ({
+    default: module.VisitLinksPage,
+  })),
+);
 export const FieldFollowerApplicationPage = lazy(() =>
   import("../features/field-followers/pages/FieldFollowerApplicationPage").then((module) => ({
     default: module.FieldFollowerApplicationPage,

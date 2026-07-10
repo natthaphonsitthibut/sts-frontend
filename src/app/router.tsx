@@ -50,6 +50,7 @@ import {
   TaskGuestPage,
   TimetablePage,
   UserDetailPage,
+  VisitLinksPage,
   WorkSessionMonitorPage,
 } from "./lazy-pages";
 
@@ -149,6 +150,10 @@ export const router = createBrowserRouter([
       {
         path: "cases/history",
         element: protectedElement(<CasesListPage />, "review-cases"),
+      },
+      {
+        path: "visit-links",
+        element: protectedElement(<VisitLinksPage />, "review-cases"),
       },
       {
         path: "attendance-dashboard",
