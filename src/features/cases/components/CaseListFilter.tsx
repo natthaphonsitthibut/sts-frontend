@@ -14,7 +14,6 @@ interface CaseListFilterProps {
   onStatusChange: (value: string) => void;
   schoolFilters?: ReactNode;
   actions?: ReactNode;
-  count: number;
   onRefresh: () => Promise<unknown> | unknown;
   statuses: readonly StatusCatalogItem[];
 }
@@ -26,7 +25,6 @@ export function CaseListFilter({
   onStatusChange,
   schoolFilters,
   actions,
-  count,
   onRefresh,
   statuses,
 }: CaseListFilterProps) {
@@ -59,7 +57,6 @@ export function CaseListFilter({
           </FilterSelect>
         </>
       }
-      count={{ value: `${count} เคส` }}
     />
   );
 }

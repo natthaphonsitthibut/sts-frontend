@@ -28,7 +28,6 @@ interface StudentSearchFilterProps {
   schoolFilters?: ReactNode;
   actions?: ReactNode;
   exportAction?: ReactNode;
-  count: number;
   onRefresh: () => Promise<unknown> | unknown;
 }
 
@@ -48,7 +47,6 @@ export function StudentSearchFilter({
   schoolFilters,
   actions,
   exportAction,
-  count,
   onRefresh,
 }: StudentSearchFilterProps) {
   return (
@@ -114,7 +112,6 @@ export function StudentSearchFilter({
           </FilterSelect>
         </>
       }
-      count={{ value: `${count} คน`, icon: Users }}
     />
   );
 }

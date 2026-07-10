@@ -119,7 +119,6 @@ export function StudentStatusesPage() {
           },
           placeholder: "ค้นหารหัส ชื่อ หมวด หรือระบบต้นทาง...",
         }}
-        count={{ value: `${totalCount.toLocaleString("en-US")} รายการ` }}
       />
 
       <FormErrorAlert

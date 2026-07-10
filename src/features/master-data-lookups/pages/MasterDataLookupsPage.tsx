@@ -196,7 +196,6 @@ export function MasterDataLookupsPage() {
           },
           placeholder: "ค้นหารหัส ชื่อ หรือหมายเหตุ...",
         }}
-        count={{ value: `${totalCount.toLocaleString("en-US")} รายการ` }}
         filters={
           <FilterSelect
             ariaLabel="เลือกประเภทข้อมูลพื้นฐาน"

@@ -205,7 +205,6 @@ export function CasesListPage() {
               />
             ) : undefined
           }
-          count={totalCount}
           onRefresh={refetch}
           onSearchChange={handleSearchChange}
           onStatusChange={handleStatusChange}

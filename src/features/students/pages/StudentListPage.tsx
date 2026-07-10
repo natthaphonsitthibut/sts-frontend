@@ -270,7 +270,6 @@ export function StudentListPage() {
               value={effectiveTab}
             />
           }
-          count={totalCount}
           exportAction={
             <>
               {can("field-monitor") && selectedStudents.length > 0 ? (
