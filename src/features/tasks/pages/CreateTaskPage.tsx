@@ -257,9 +257,6 @@ const recruitmentCampaignSchema = z
 
 type RecruitmentCampaignFormValues = z.infer<typeof recruitmentCampaignSchema>;
 
-const DATE_INPUT_CLASS_NAME =
-  "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
-
 const VISIT_ADDRESS_NAMES: AddressFieldNames<CreateTaskFormValues> = {
   houseNo: "address_house_no",
   moo: "address_village_no",
@@ -1240,7 +1237,6 @@ function CreateRecruitmentCampaignForm() {
             <FormItem>
               <FormLabel htmlFor="campaign-opens-on">เปิดรับสมัครตั้งแต่</FormLabel>
               <Input
-                className={DATE_INPUT_CLASS_NAME}
                 id="campaign-opens-on"
                 type="date"
                 {...form.register("opensOn")}
@@ -1250,7 +1246,6 @@ function CreateRecruitmentCampaignForm() {
             <FormItem>
               <FormLabel htmlFor="campaign-closes-on">ปิดรับสมัครวันที่</FormLabel>
               <Input
-                className={DATE_INPUT_CLASS_NAME}
                 id="campaign-closes-on"
                 type="date"
                 {...form.register("closesOn")}

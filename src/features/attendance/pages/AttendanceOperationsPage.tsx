@@ -105,7 +105,6 @@ function getSummaryToneFromBadgeVariant(
   return "default";
 }
 
-const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 const CALENDAR_WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 const THAI_MONTH_FORMATTER = new Intl.DateTimeFormat("th-TH", {
   month: "long",
@@ -1015,7 +1014,7 @@ export function AttendanceOperationsPage() {
                   <Input
                     ref={reconciliationDateInputRef}
                     aria-label="วันที่ตรวจสอบ"
-                    className={cn("sr-only", DATE_INPUT_CLASS_NAME)}
+                    className="sr-only"
                     max={selectedTerm.endsOn ?? undefined}
                     min={selectedTerm.startsOn ?? undefined}
                     onChange={(event) => handleDateChange(event.target.value)}

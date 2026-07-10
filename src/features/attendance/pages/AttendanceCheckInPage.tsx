@@ -54,7 +54,6 @@ import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTime
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
 
-const DATE_INPUT_CLASS_NAME = "sm:w-[180px] text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
 const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
@@ -371,7 +370,7 @@ export function AttendanceCheckInPage() {
             <>
               <Input
                 aria-label="วันที่"
-                className={DATE_INPUT_CLASS_NAME}
+                className="sm:w-[180px]"
                 type="date"
                 value={getTodayIso()}
                 readOnly
@@ -396,7 +395,7 @@ export function AttendanceCheckInPage() {
           ) : (
             <Input
               aria-label="เลือกวันที่"
-              className={DATE_INPUT_CLASS_NAME}
+              className="sm:w-[180px]"
               type="date"
               value={historyDate}
               onChange={(event) => setHistoryDate(event.target.value)}

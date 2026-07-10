@@ -56,7 +56,6 @@ interface AuditLogPanelProps {
   className?: string;
 }
 
-const DATE_INPUT_CLASS_NAME = "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
 
 function getAuditLogSortValue(entry: AuditLogEntry, key: string): string {
   if (key === "time") return entry.createdAt;
@@ -131,7 +130,6 @@ function AuditLogFilters({
         <Label htmlFor="audit-date-from">จากวันที่</Label>
         <Input
           id="audit-date-from"
-          className={DATE_INPUT_CLASS_NAME}
           onChange={(event) => onDateFromChange(event.target.value)}
           type="date"
           value={dateFrom}
@@ -141,7 +139,6 @@ function AuditLogFilters({
         <Label htmlFor="audit-date-to">ถึงวันที่</Label>
         <Input
           id="audit-date-to"
-          className={DATE_INPUT_CLASS_NAME}
           onChange={(event) => onDateToChange(event.target.value)}
           type="date"
           value={dateTo}
