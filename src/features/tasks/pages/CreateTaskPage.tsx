@@ -187,6 +187,7 @@ const createTaskSchema = z
         "อายุลิงก์ต้องเป็นจำนวนเต็มมากกว่า 0",
       ),
     expires_unit: z.string().min(1),
+    opens_at: z.string().trim(),
   })
   .superRefine((values, ctx) => {
     // Every link type needs a contactable assignee email.
@@ -309,6 +310,7 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     timetable_slot_ids: [],
     expires_value: "7",
     expires_unit: "days",
+    opens_at: "",
   };
 }
 
@@ -612,6 +614,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       assigned_to_email: values.assigned_to_email || null,
       expires_value: Number(values.expires_value) || 1,
       expires_unit: values.expires_unit as TaskCreatePayload["expires_unit"],
+      opens_at: values.opens_at ? new Date(values.opens_at).toISOString() : null,
     };
 
     if (type === "VISIT") {
@@ -1088,6 +1091,15 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
               <FormMessage<CreateTaskFormValues> name="expires_unit" />
             </FormItem>
           </div>
+
+          <FormItem>
+            <FormLabel htmlFor="opens_at">เปิดใช้งานเมื่อ (ไม่บังคับ)</FormLabel>
+            <Input id="opens_at" type="datetime-local" {...registerField(form, "opens_at")} />
+            <p className="text-xs text-slate-500">
+              เว้นว่าง = เปิดใช้งานทันที · ตั้งเวลาไว้ = ลิงก์จะใช้ไม่ได้จนถึงเวลานั้น (สถานะ “รอเปิด”)
+            </p>
+            <FormMessage<CreateTaskFormValues> name="opens_at" />
+          </FormItem>
 
           <div className="flex justify-end">
             <Button

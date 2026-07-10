@@ -13,6 +13,8 @@ export interface TaskCreatePayload {
   assigned_to_phone?: string | null;
   expires_value: number;
   expires_unit: TaskDurationUnit;
+  /** ISO datetime the link becomes usable; omit/null = opens immediately. */
+  opens_at?: string | null;
   student_name?: string | null;
   student_first_name?: string | null;
   student_last_name?: string | null;
