@@ -14,6 +14,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Card,
   Combobox,
   Input,
   Tabs,
@@ -367,31 +368,14 @@ export function AttendanceCheckInPage() {
           />
 
           {tab === "today" ? (
-            <>
-              <Input
-                aria-label="วันที่"
-                className="sm:w-[180px]"
-                type="date"
-                value={getTodayIso()}
-                readOnly
-                disabled
-              />
-              <Tabs
-                aria-label="รูปแบบเช็คชื่อ"
-                onChange={(value) => setCheckInMode(value as CheckInMode)}
-                options={CHECK_IN_MODE_OPTIONS}
-                value={checkInMode}
-              />
-              {checkInMode === "subject" ? (
-                <Combobox
-                  disabled={!timetableFilter || slotsQuery.isLoading || todaySlots.length === 0}
-                  onChange={setSelectedSlotId}
-                  options={subjectSlotOptions}
-                  placeholder="เลือกคาบรายวิชา"
-                  value={selectedSlotId}
-                />
-              ) : null}
-            </>
+            <Input
+              aria-label="วันที่"
+              className="sm:w-[180px]"
+              type="date"
+              value={getTodayIso()}
+              readOnly
+              disabled
+            />
           ) : (
             <Input
               aria-label="เลือกวันที่"
@@ -403,6 +387,27 @@ export function AttendanceCheckInPage() {
           )}
         </ToolbarFilterGrid>
       </PageToolbar>
+
+      {tab === "today" ? (
+        <Card className="mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <Tabs
+            aria-label="รูปแบบเช็คชื่อ"
+            onChange={(value) => setCheckInMode(value as CheckInMode)}
+            options={CHECK_IN_MODE_OPTIONS}
+            value={checkInMode}
+          />
+          {checkInMode === "subject" ? (
+            <Combobox
+              className="w-full sm:w-[380px]"
+              disabled={!timetableFilter || slotsQuery.isLoading || todaySlots.length === 0}
+              onChange={setSelectedSlotId}
+              options={subjectSlotOptions}
+              placeholder="เลือกคาบรายวิชา"
+              value={selectedSlotId}
+            />
+          ) : null}
+        </Card>
+      ) : null}
 
       {tab === "today" ? (
         <>
