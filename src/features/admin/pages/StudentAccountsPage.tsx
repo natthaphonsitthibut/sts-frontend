@@ -70,7 +70,6 @@ const PREVIEW_PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 const STUDENT_ACCOUNT_TABS = [
   { value: "manage", label: "จัดการบัญชี" },
   { value: "generate", label: "สร้างบัญชี" },
-  { value: "batch", label: "งานชุดใหญ่" },
   { value: "history", label: "ประวัติ" },
 ];
 const STUDENT_ACCOUNT_STATUS_ICONS = {
@@ -504,6 +503,7 @@ export function StudentAccountsPage() {
     } as const,
     "manage",
   );
+  const selectedTab = activeTab === "batch" ? "generate" : activeTab;
   const [searchQuery, setSearchQuery] = useState("");
   const [accountStatus, setAccountStatus] = useState<"" | StudentAccountManagementStatus>("");
   const [managementPage, setManagementPage] = useState(1);
@@ -519,6 +519,7 @@ export function StudentAccountsPage() {
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [batchStartRequestKey, setBatchStartRequestKey] = useState(0);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   const managementQuery = useMemo(
     () =>
@@ -618,9 +619,13 @@ export function StudentAccountsPage() {
   const remainingAccountCount = previewMutation.isPending
     ? undefined
     : preview?.summary.withoutAccountCount;
+  const shouldUseBackgroundJob =
+    (preview?.summary.withoutAccountCount ?? 0) > MAX_BULK_LIMIT;
   const generateButtonLabel = generateMutation.isPending
     ? "กำลังสร้างบัญชี"
-    : generatedCredentials.length === 0
+    : shouldUseBackgroundJob
+      ? "สร้างทั้งหมดแบบเบื้องหลัง"
+      : generatedCredentials.length === 0
       ? "สร้างบัญชี"
       : previewMutation.isPending
         ? "กำลังตรวจรายการ"
@@ -792,6 +797,10 @@ export function StudentAccountsPage() {
   }
 
   function generateStudentAccounts(): void {
+    if (shouldUseBackgroundJob) {
+      setBatchStartRequestKey((current) => current + 1);
+      return;
+    }
     setGenerationProgress(12);
     generateMutation.mutate();
   }
@@ -862,13 +871,13 @@ export function StudentAccountsPage() {
         actions={
           <Tabs
             aria-label="โหมดบัญชีนักเรียน"
-            value={activeTab}
+            value={selectedTab}
             onChange={setActiveTab}
             options={STUDENT_ACCOUNT_TABS}
           />
         }
         search={
-          activeTab === "manage"
+          selectedTab === "manage"
             ? {
                 value: searchQuery,
                 onChange: (value) => {
@@ -979,7 +988,7 @@ export function StudentAccountsPage() {
                 value={scope.room}
               />
             </ScopeField>
-            {activeTab === "generate" ? (
+            {selectedTab === "generate" ? (
               <ScopeField label={`จำนวนคนต่อรอบ (${MIN_BULK_LIMIT}-${MAX_BULK_LIMIT})`}>
                 <Input
                   min={MIN_BULK_LIMIT}
@@ -989,14 +998,14 @@ export function StudentAccountsPage() {
                   value={limit}
                 />
               </ScopeField>
-            ) : activeTab === "manage" ? (
+            ) : selectedTab === "manage" ? (
               <ScopeField label="สถานะบัญชี">
                 <Combobox
                   onChange={(value) => {
                     setAccountStatus(value as "" | StudentAccountManagementStatus);
                     resetManagementList();
                   }}
-                    options={accountStatusOptions}
+                  options={accountStatusOptions}
                   searchable={false}
                   value={accountStatus}
                 />
@@ -1005,7 +1014,7 @@ export function StudentAccountsPage() {
           </>
         }
         tableActions={
-          activeTab === "manage" ? (
+          selectedTab === "manage" ? (
             <>
               {selectedAccountIds.size > 0 ? (
                 <Button
@@ -1038,7 +1047,7 @@ export function StudentAccountsPage() {
                 </span>
               </Button>
             </>
-          ) : activeTab === "generate" ? (
+          ) : selectedTab === "generate" ? (
             <>
               <Button
                 icon={Search}
@@ -1065,7 +1074,7 @@ export function StudentAccountsPage() {
         }
       />
 
-      {activeTab === "manage" ? (
+      {selectedTab === "manage" ? (
         <>
           <FormErrorAlert
             error={bulkReissueMutation.error}
@@ -1178,7 +1187,7 @@ export function StudentAccountsPage() {
             </div>
           ) : null}
         </>
-      ) : activeTab === "generate" ? (
+      ) : selectedTab === "generate" ? (
         <>
           {generateMutation.isPending ? (
             <div className="mb-5">
@@ -1194,6 +1203,16 @@ export function StudentAccountsPage() {
             />
           ) : preview ? (
             <div className="space-y-5">
+              {shouldUseBackgroundJob ? (
+                <Alert>
+                  <AlertTitle>รายการนี้เหมาะกับงานเบื้องหลัง</AlertTitle>
+                  <AlertDescription>
+                    มีนักเรียนที่ยังไม่มีบัญชี {preview.summary.withoutAccountCount} คน
+                    เกินขนาดสร้างทันที {MAX_BULK_LIMIT} คน ระบบจะใช้คิวงานด้านล่างแทน
+                    เพื่อให้ทำต่อได้และดาวน์โหลดรหัสภายหลัง
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <SummaryMetrics
                 items={[
                   {
@@ -1277,9 +1296,13 @@ export function StudentAccountsPage() {
               <CredentialTable credentials={generatedCredentials} />
             </div>
           ) : null}
+          <div className="mt-6">
+            <StudentAccountBatchPanel
+              filter={generateFilter}
+              startRequestKey={batchStartRequestKey}
+            />
+          </div>
         </>
-      ) : activeTab === "batch" ? (
-        <StudentAccountBatchPanel filter={generateFilter} />
       ) : can("audit-log") ? (
         <AuditLogPanel
           domain="student_accounts"

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Copy,
@@ -100,9 +100,18 @@ const DEFAULT_CREDENTIAL_LIMIT = 100;
 
 type CredentialMeta = StudentAccountBatchCredentialResponse["meta"];
 
-export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFilter }) {
+interface StudentAccountBatchPanelProps {
+  filter: StudentAccountFilter;
+  startRequestKey?: number;
+}
+
+export function StudentAccountBatchPanel({
+  filter,
+  startRequestKey = 0,
+}: StudentAccountBatchPanelProps) {
   const statusCatalog = useStatusCatalog("STUDENT_ACCOUNT_BATCH_JOB");
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const handledStartRequestKey = useRef(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<StudentAccountCredential[]>([]);
   const [credentialMeta, setCredentialMeta] = useState<CredentialMeta | null>(null);
@@ -138,7 +147,7 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
   const cancelMutation = useCancelStudentAccountBatch();
   const credentialsMutation = useDownloadStudentAccountBatchCredentials();
 
-  const handleEnqueue = async () => {
+  const handleEnqueue = useCallback(async () => {
     const ok = await confirm({
       title: "สร้างบัญชีนักเรียนทั้งหมดในขอบเขตนี้",
       description:
@@ -152,7 +161,15 @@ export function StudentAccountBatchPanel({ filter }: { filter: StudentAccountFil
     const result = await enqueueMutation.mutateAsync({ ...filter, onlyWithoutAccount: true });
     setSelectedJobId(result.data.id);
     resetCredentialState();
-  };
+  }, [confirm, enqueueMutation, filter]);
+
+  useEffect(() => {
+    if (startRequestKey <= 0 || startRequestKey === handledStartRequestKey.current) {
+      return;
+    }
+    handledStartRequestKey.current = startRequestKey;
+    void handleEnqueue();
+  }, [handleEnqueue, startRequestKey]);
 
   const handleResume = (id: string) => {
     resumeMutation.mutate(id);
