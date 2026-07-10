@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Clock,
@@ -376,6 +377,8 @@ export function AttendanceLinksDashboardPage() {
                     ? Lock
                     : option.code === "EXPIRED"
                       ? Clock
+                      : option.code === "SCHEDULED"
+                        ? CalendarClock
                       : Link2,
             }))}
           />
