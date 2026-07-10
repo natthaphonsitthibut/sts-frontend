@@ -17,6 +17,7 @@ import {
   DelegatePage,
   ExpiredPage,
   FieldFollowerApplicationPage,
+  FieldFollowerDetailPage,
   FieldFollowersReviewPage,
   FieldMonitorMapPage,
   ForbiddenPage,
@@ -263,6 +264,22 @@ export const router = createBrowserRouter([
       {
         path: "field-followers",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers/review",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers/history",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers/review-history",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers/:id",
+        element: protectedElement(<FieldFollowerDetailPage />, "field-monitor"),
       },
       {
         path: "field-monitor-map",

@@ -12,6 +12,9 @@ function collectMenuTitles(
     if (item.route) {
       acc[item.route] = item.label;
     }
+    for (const activeRoute of item.activeRoutes ?? []) {
+      acc[activeRoute] = item.label;
+    }
     if (item.children) {
       collectMenuTitles(item.children, acc);
     }
@@ -51,6 +54,10 @@ export function getPageTitle(pathname: string): string {
 
   const exactTitle = MENU_TITLES[pathname] || EXTRA_TITLES[pathname];
   if (exactTitle) return exactTitle;
+
+  if (/^\/field-followers\/[^/]+$/.test(pathname)) {
+    return "รายละเอียดใบสมัคร";
+  }
 
   const parentRoute = [...Object.keys(MENU_TITLES), ...Object.keys(EXTRA_TITLES)]
     .filter((route) => route !== "/" && pathname.startsWith(`${route}/`))

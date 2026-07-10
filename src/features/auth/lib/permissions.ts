@@ -20,6 +20,7 @@ export interface MenuItem {
   iconName?: string;
   permissionId?: string;
   route?: string;
+  activeRoutes?: string[];
   children?: MenuItem[];
 }
 
@@ -169,11 +170,28 @@ export const MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
-    id: "field-followers",
-    label: "ผู้สมัคร อสม./ผู้ติดตาม",
+    id: "recruitment-system",
+    label: "ระบบรับสมัคร",
     iconName: "user-check",
     permissionId: "field-monitor",
-    route: "/field-followers",
+    children: [
+      {
+        id: "field-followers",
+        label: "ลิงก์รับสมัคร",
+        iconName: "link",
+        permissionId: "field-monitor",
+        activeRoutes: ["/field-followers/history"],
+        route: "/field-followers",
+      },
+      {
+        id: "field-followers-review",
+        label: "ตรวจสอบใบสมัคร",
+        iconName: "user-check",
+        permissionId: "field-monitor",
+        activeRoutes: ["/field-followers/review-history"],
+        route: "/field-followers/review",
+      },
+    ],
   },
   {
     id: "field-monitor-map",

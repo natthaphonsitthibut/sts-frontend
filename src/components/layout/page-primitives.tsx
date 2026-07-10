@@ -205,6 +205,18 @@ export function ToolbarControls({ className, ...props }: ComponentProps<"div">) 
   );
 }
 
+export function ToolbarFilterGrid({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0 [&>*]:w-full [&>button]:!w-full [&>div>button]:!w-full [&>input]:!w-full [&>select]:!w-full",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export function TableActionBar({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
@@ -287,7 +299,7 @@ export function ListPageToolbar({
               {count ? <CountBadge icon={count.icon}>{count.value}</CountBadge> : null}
             </ToolbarControls>
           ) : null}
-          {filters ? <ToolbarControls>{filters}</ToolbarControls> : null}
+          {filters ? <ToolbarFilterGrid>{filters}</ToolbarFilterGrid> : null}
         </div>
       ) : null}
     </PageToolbar>

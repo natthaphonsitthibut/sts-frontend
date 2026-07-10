@@ -126,6 +126,11 @@ export const FieldFollowersReviewPage = lazy(() =>
     default: module.FieldFollowersReviewPage,
   })),
 );
+export const FieldFollowerDetailPage = lazy(() =>
+  import("../features/field-followers/pages/FieldFollowerDetailPage").then((module) => ({
+    default: module.FieldFollowerDetailPage,
+  })),
+);
 export const FieldMonitorMapPage = lazy(() =>
   import("../features/field-followers/pages/FieldMonitorMapPage").then((module) => ({
     default: module.FieldMonitorMapPage,

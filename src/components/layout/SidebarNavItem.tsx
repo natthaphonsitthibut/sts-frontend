@@ -24,6 +24,11 @@ function navLinkClassName(
   );
 }
 
+function isRouteActive(item: MenuItem, pathname: string): boolean {
+  const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean);
+  return routes.some((route) => route === pathname);
+}
+
 export function SidebarNavItem({
   collapsed = false,
   item,
@@ -31,11 +36,7 @@ export function SidebarNavItem({
 }: SidebarNavItemProps) {
   const location = useLocation();
   const hasActiveChild = Boolean(
-    item.children?.some(
-      (child) =>
-        child.route === location.pathname ||
-        (child.route !== "/" && location.pathname.startsWith(`${child.route}/`)),
-    ),
+    item.children?.some((child) => isRouteActive(child, location.pathname)),
   );
   const [open, setOpen] = useState(hasActiveChild);
   const expanded = open;
@@ -57,7 +58,7 @@ export function SidebarNavItem({
             "relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
             collapsed && "justify-center px-0",
             hasActiveChild
-              ? "bg-primary-soft font-semibold text-primary"
+              ? "bg-slate-50 font-semibold text-slate-700"
               : open
                 ? "bg-slate-50 text-slate-700"
               : "text-slate-600 hover:text-slate-900",
@@ -100,7 +101,13 @@ export function SidebarNavItem({
               {item.children.map((child) => (
                 <NavLink
                   aria-label={collapsed ? child.label : undefined}
-                  className={(state) => navLinkClassName(state, collapsed, true)}
+                  className={() =>
+                    navLinkClassName(
+                      { isActive: isRouteActive(child, location.pathname) },
+                      collapsed,
+                      true,
+                    )
+                  }
                   key={child.id}
                   onClick={onNavigate}
                   title={collapsed ? child.label : undefined}
