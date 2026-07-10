@@ -23,6 +23,8 @@ export interface ComboboxProps {
   searchable?: boolean;
   menuPlacement?: "bottom" | "top";
   "aria-invalid"?: boolean;
+  /** Width/spacing utilities for the root wrapper — e.g. widen the trigger to fit long labels. */
+  className?: string;
 }
 
 const MAX_VISIBLE = 50;
@@ -46,6 +48,7 @@ export function Combobox({
   searchable = true,
   menuPlacement = "bottom",
   "aria-invalid": ariaInvalid,
+  className,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -88,7 +91,7 @@ export function Combobox({
   }, [open]);
 
   return (
-    <div className={cn("relative", open && "z-50")} ref={containerRef}>
+    <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
       <Input
         aria-invalid={ariaInvalid}
         className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
