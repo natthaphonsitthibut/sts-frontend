@@ -95,6 +95,16 @@ function isAttendanceTask(task: AttendanceTask): boolean {
 function getTaskLinkState(
   task: AttendanceTask,
 ): Exclude<AttendanceTaskLinkStatus, "ALL"> {
+  // Prefer the server-computed state (it already accounts for opens_at/expiry);
+  // fall back to the local heuristic for legacy payloads without link_state.
+  if (
+    task.link_state === "ACTIVE" ||
+    task.link_state === "LOCKED" ||
+    task.link_state === "EXPIRED" ||
+    task.link_state === "SCHEDULED"
+  ) {
+    return task.link_state;
+  }
   if (task.active_link_locked) return "LOCKED";
   if (!task.active_link) return "EXPIRED";
   return "ACTIVE";
@@ -106,6 +116,7 @@ function buildTaskSummary(tasks: AttendanceTask[]) {
     active: tasks.filter((task) => getTaskLinkState(task) === "ACTIVE").length,
     locked: tasks.filter((task) => getTaskLinkState(task) === "LOCKED").length,
     expired: tasks.filter((task) => getTaskLinkState(task) === "EXPIRED").length,
+    scheduled: tasks.filter((task) => getTaskLinkState(task) === "SCHEDULED").length,
   };
 }
 

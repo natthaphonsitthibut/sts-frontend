@@ -192,7 +192,12 @@ export interface AttendanceTask {
   created_at: string;
 }
 
-export type AttendanceTaskLinkStatus = "ALL" | "ACTIVE" | "LOCKED" | "EXPIRED";
+export type AttendanceTaskLinkStatus =
+  | "ALL"
+  | "ACTIVE"
+  | "LOCKED"
+  | "EXPIRED"
+  | "SCHEDULED";
 
 export interface AttendanceTaskListQuery {
   page?: number;
@@ -212,6 +217,7 @@ export interface AttendanceTaskSummary {
   active: number;
   locked: number;
   expired: number;
+  scheduled: number;
 }
 
 export interface AttendanceTasksPageResponse {

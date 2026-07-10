@@ -63,6 +63,7 @@ const EMPTY_SUMMARY: AttendanceTaskSummary = {
   active: 0,
   locked: 0,
   expired: 0,
+  scheduled: 0,
 };
 
 const ATTENDANCE_LINK_TAB_ROUTES = {
@@ -83,7 +84,8 @@ function getLinkState(
   if (
     task.link_state === "ACTIVE" ||
     task.link_state === "LOCKED" ||
-    task.link_state === "EXPIRED"
+    task.link_state === "EXPIRED" ||
+    task.link_state === "SCHEDULED"
   ) {
     return task.link_state;
   }
@@ -137,7 +139,7 @@ export function AttendanceLinksDashboardPage() {
   const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
-    ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
+    ["SCHEDULED", "ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
   );
   const [status, setStatus] = useState<AttendanceTaskLinkStatus>("ALL");
   const [search, setSearch] = useState("");
@@ -343,6 +345,7 @@ export function AttendanceLinksDashboardPage() {
       ) : (
         <div className="space-y-5">
           <SummaryMetrics
+            centerRows
             items={[
               { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
               ...linkStateOptions,
@@ -355,7 +358,9 @@ export function AttendanceLinksDashboardPage() {
                     ? summary.locked
                     : option.code === "EXPIRED"
                       ? summary.expired
-                      : summary.total,
+                      : option.code === "SCHEDULED"
+                        ? summary.scheduled
+                        : summary.total,
               tone:
                 option.badgeVariant === "success"
                   ? "success"
