@@ -92,8 +92,8 @@ export function FieldMonitorMapPage() {
     .filter((pin) => pin.has_coordinates && pin.lat !== null && pin.lng !== null)
     .map((pin) => ({
       id: pin.student_uuid,
-      lat: pin.lat as number,
-      lng: pin.lng as number,
+      lat: Number(pin.lat),
+      lng: Number(pin.lng),
       label: pin.student_name,
       riskTierLabel: getRiskTierLabel(pin.risk_tier),
       isApproximate: pin.is_approximate,
