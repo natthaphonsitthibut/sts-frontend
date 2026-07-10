@@ -12,6 +12,8 @@ export interface LoginLink {
   created_at: string;
   first_used_at?: string | null;
   admin_locked?: boolean | number;
+  /** Server-computed lifecycle state (accounts for opens_at/expiry). */
+  link_state?: "ACTIVE" | "LOCKED" | "EXPIRED" | "SCHEDULED" | null;
   login_role?: string | null;
   login_role_label?: string | null;
   login_permissions?: string[];
@@ -23,6 +25,7 @@ export interface LoginLinkSummary {
   active: number;
   locked: number;
   expired: number;
+  scheduled: number;
 }
 
 export interface LoginLinkListQuery {

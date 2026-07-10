@@ -6,7 +6,7 @@ import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatal
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 type LoginLinkLockInput = Pick<LoginLink, "admin_locked">;
-type LoginLinkStateInput = Pick<LoginLink, "admin_locked" | "expires_at">;
+type LoginLinkStateInput = Pick<LoginLink, "admin_locked" | "expires_at" | "link_state">;
 type LoginLinkOutcomeInput = Pick<LoginLink, "admin_locked" | "first_used_at">;
 
 /** The login magic link is the task link with /task/ swapped for /login/magic/. */
@@ -35,7 +35,17 @@ interface LoginLinkStatusMeta {
 
 export function getLoginLinkState(
   link: LoginLinkStateInput,
-): "ACTIVE" | "LOCKED" | "EXPIRED" {
+): "ACTIVE" | "LOCKED" | "EXPIRED" | "SCHEDULED" {
+  // Prefer the server-computed state (it already accounts for opens_at/expiry);
+  // fall back to the local heuristic for payloads without link_state.
+  if (
+    link.link_state === "ACTIVE" ||
+    link.link_state === "LOCKED" ||
+    link.link_state === "EXPIRED" ||
+    link.link_state === "SCHEDULED"
+  ) {
+    return link.link_state;
+  }
   const expiresAt = new Date(link.expires_at);
   if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
     return "EXPIRED";

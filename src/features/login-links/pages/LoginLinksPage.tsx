@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Link2, Lock } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Link2, Lock } from "lucide-react";
 import { Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -45,7 +45,7 @@ export function LoginLinksPage() {
   const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "manage";
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
-    ["ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
+    ["SCHEDULED", "ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
   );
   const setLinkLock = useSetLinkLock();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -213,6 +213,7 @@ export function LoginLinksPage() {
       {effectiveTab === "manage" ? (
         <div className="space-y-5">
           <SummaryMetrics
+            centerRows
             items={[
               { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
               ...linkStateOptions,
@@ -225,7 +226,9 @@ export function LoginLinksPage() {
                     ? summary.locked
                     : option.code === "EXPIRED"
                       ? summary.expired
-                      : summary.total,
+                      : option.code === "SCHEDULED"
+                        ? summary.scheduled
+                        : summary.total,
               tone:
                 option.badgeVariant === "success"
                   ? "success"
@@ -241,7 +244,9 @@ export function LoginLinksPage() {
                     ? Lock
                     : option.code === "EXPIRED"
                       ? Clock
-                      : Link2,
+                      : option.code === "SCHEDULED"
+                        ? CalendarClock
+                        : Link2,
             }))}
           />
 

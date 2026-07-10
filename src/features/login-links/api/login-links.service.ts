@@ -85,6 +85,7 @@ async function getLoginLinks(
       active: summary?.active ?? 0,
       locked: summary?.locked ?? 0,
       expired: summary?.expired ?? 0,
+      scheduled: summary?.scheduled ?? 0,
     },
   };
 }
