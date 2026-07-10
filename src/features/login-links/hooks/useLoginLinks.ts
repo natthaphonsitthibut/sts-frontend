@@ -27,6 +27,7 @@ const EMPTY_SUMMARY: LoginLinkSummary = {
   active: 0,
   locked: 0,
   expired: 0,
+  scheduled: 0,
 };
 
 interface UseLoginLinksResult {
