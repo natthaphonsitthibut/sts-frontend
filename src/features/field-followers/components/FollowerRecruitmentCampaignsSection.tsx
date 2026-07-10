@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { CheckCircle2, Clock, Link2, Lock } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Link2, Lock } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -36,7 +36,7 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useStatusCatalog, findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { FollowerRecruitmentCampaign } from "../types/follower-recruitment-campaign.types";
 
-type CampaignStatusFilter = "ALL" | "ACTIVE" | "LOCKED" | "EXPIRED";
+type CampaignStatusFilter = "ALL" | "ACTIVE" | "LOCKED" | "EXPIRED" | "SCHEDULED";
 
 interface FollowerRecruitmentCampaignsSectionProps {
   actions?: ReactNode;
@@ -51,6 +51,7 @@ const STATUS_ICON_MAP: Record<string, typeof Link2> = {
   ACTIVE: CheckCircle2,
   LOCKED: Lock,
   EXPIRED: Clock,
+  SCHEDULED: CalendarClock,
 };
 
 function includesOrUnscoped(values: string[] | undefined, selected: string): boolean {
@@ -139,9 +140,10 @@ export function FollowerRecruitmentCampaignsSection({
       if (campaign.status === "ACTIVE") acc.active += 1;
       if (campaign.status === "LOCKED") acc.locked += 1;
       if (campaign.status === "EXPIRED") acc.expired += 1;
+      if (campaign.status === "SCHEDULED") acc.scheduled += 1;
       return acc;
     },
-    { active: 0, locked: 0, expired: 0, views: 0, submissions: 0 },
+    { active: 0, locked: 0, expired: 0, scheduled: 0, views: 0, submissions: 0 },
   );
   const isMutating = updateMutation.isPending || deleteMutation.isPending;
 
@@ -221,6 +223,7 @@ export function FollowerRecruitmentCampaignsSection({
       />
 
       <SummaryMetrics
+        centerRows
         items={[
           { code: "ALL", label: "ทั้งหมด", badgeVariant: "secondary" as const },
           ...stateCatalog.items,
@@ -233,7 +236,9 @@ export function FollowerRecruitmentCampaignsSection({
                 ? summary.locked
                 : option.code === "EXPIRED"
                   ? summary.expired
-                  : campaigns.length,
+                  : option.code === "SCHEDULED"
+                    ? summary.scheduled
+                    : campaigns.length,
           tone:
             option.badgeVariant === "success"
               ? "success"
