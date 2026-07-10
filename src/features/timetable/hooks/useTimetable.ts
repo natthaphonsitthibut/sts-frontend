@@ -1,11 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { timetableService } from "../api/timetable.service";
-import type { CreateTimetableSlotPayload, UpdateTimetableSlotPayload } from "../types/timetable.types";
+import type {
+  CreateTimetableSlotPayload,
+  GeneratePeriodTimesPayload,
+  OverridePeriodTimePayload,
+  UpdateTimetableSlotPayload,
+} from "../types/timetable.types";
 
 const SLOTS_QUERY_KEY = "timetable-slots";
 const MY_SCHEDULE_QUERY_KEY = "my-schedule";
 const ROOM_SUBJECTS_QUERY_KEY = "room-subjects";
 const TIMETABLE_TEACHERS_QUERY_KEY = "timetable-teachers";
+const PERIOD_TIMES_QUERY_KEY = "school-period-times";
 
 interface RoomFilter {
   schoolId: number;
@@ -78,6 +84,36 @@ export function useDeleteTimetableSlot() {
     mutationFn: (id: string) => timetableService.deleteSlot(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [SLOTS_QUERY_KEY] });
+    },
+  });
+}
+
+export function usePeriodTimes(schoolId: number | null) {
+  return useQuery({
+    queryKey: [PERIOD_TIMES_QUERY_KEY, schoolId],
+    queryFn: () => timetableService.listPeriodTimes(schoolId!),
+    enabled: schoolId !== null,
+  });
+}
+
+export function useGeneratePeriodTimes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: GeneratePeriodTimesPayload) =>
+      timetableService.generatePeriodTimes(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [PERIOD_TIMES_QUERY_KEY] });
+    },
+  });
+}
+
+export function useOverridePeriodTime() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: OverridePeriodTimePayload) =>
+      timetableService.overridePeriodTime(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [PERIOD_TIMES_QUERY_KEY] });
     },
   });
 }

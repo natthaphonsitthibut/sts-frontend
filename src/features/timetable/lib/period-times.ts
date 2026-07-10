@@ -1,15 +1,4 @@
-import type { TimetableSlot } from "../types/timetable.types";
-
-export const PERIOD_TIME_LABELS: Record<number, string> = {
-  1: "08:30-09:20",
-  2: "09:20-10:10",
-  3: "10:10-11:00",
-  4: "11:00-11:50",
-  5: "13:00-13:50",
-  6: "13:50-14:40",
-  7: "14:40-15:30",
-  8: "15:30-16:20",
-};
+import type { SchoolPeriodTime, TimetableSlot } from "../types/timetable.types";
 
 export const DAY_LABELS: Record<number, string> = {
   1: "จันทร์",
@@ -21,13 +10,40 @@ export const DAY_LABELS: Record<number, string> = {
   7: "อาทิตย์",
 };
 
-export function getPeriodTimeLabel(period: number): string {
-  return PERIOD_TIME_LABELS[period] ?? "ยังไม่กำหนดเวลา";
+/** Postgres TIME comes back as "HH:MM:SS" — trim to "HH:MM" for display. */
+function trimToHHMM(value: string): string {
+  return value.slice(0, 5);
+}
+
+export function findPeriodTime(
+  periodTimes: SchoolPeriodTime[],
+  dayOfWeek: number,
+  period: number,
+): SchoolPeriodTime | undefined {
+  return periodTimes.find((row) => row.day_of_week === dayOfWeek && row.period === period);
+}
+
+/**
+ * School-configured period time. Times now come from `GET
+ * /timetable/period-times` per school and day instead of being baked into the
+ * frontend build. Falls back to "ยังไม่กำหนดเวลา" until the school generates
+ * or sets its schedule.
+ */
+export function getPeriodTimeLabel(
+  periodTimes: SchoolPeriodTime[],
+  dayOfWeek: number,
+  period: number,
+): string {
+  const row = findPeriodTime(periodTimes, dayOfWeek, period);
+  if (!row) return "ยังไม่กำหนดเวลา";
+  return `${trimToHHMM(row.starts_at)}-${trimToHHMM(row.ends_at)}`;
 }
 
 export function formatTimetableSlotLabel(
   slot: Pick<TimetableSlot, "day_of_week" | "period" | "teacher_name">,
+  periodTimes: SchoolPeriodTime[],
 ): string {
   const teacher = slot.teacher_name ? ` · ${slot.teacher_name}` : "";
-  return `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period} (${getPeriodTimeLabel(slot.period)})${teacher}`;
+  const timeLabel = getPeriodTimeLabel(periodTimes, slot.day_of_week, slot.period);
+  return `วัน${DAY_LABELS[slot.day_of_week] ?? slot.day_of_week} · คาบ ${slot.period} (${timeLabel})${teacher}`;
 }

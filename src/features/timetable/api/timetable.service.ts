@@ -1,7 +1,10 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   CreateTimetableSlotPayload,
+  GeneratePeriodTimesPayload,
+  OverridePeriodTimePayload,
   RoomSubject,
+  SchoolPeriodTime,
   TimetableSlot,
   TimetableTeacherCandidate,
   UpdateTimetableSlotPayload,
@@ -88,6 +91,36 @@ async function deleteSlot(id: string): Promise<{ success: true }> {
   return response.data;
 }
 
+async function listPeriodTimes(
+  schoolId: number,
+): Promise<{ success: true; data: SchoolPeriodTime[] }> {
+  const response = await apiClient.get<{ success: true; data: SchoolPeriodTime[] }>(
+    "/timetable/period-times",
+    { params: { schoolId } },
+  );
+  return response.data;
+}
+
+async function generatePeriodTimes(
+  payload: GeneratePeriodTimesPayload,
+): Promise<{ success: true; data: SchoolPeriodTime[] }> {
+  const response = await apiClient.post<{ success: true; data: SchoolPeriodTime[] }>(
+    "/timetable/period-times/generate",
+    payload,
+  );
+  return response.data;
+}
+
+async function overridePeriodTime(
+  payload: OverridePeriodTimePayload,
+): Promise<{ success: true; data: SchoolPeriodTime[] }> {
+  const response = await apiClient.patch<{ success: true; data: SchoolPeriodTime[] }>(
+    "/timetable/period-times/override",
+    payload,
+  );
+  return response.data;
+}
+
 export const timetableService = {
   listSlots,
   getMySchedule,
@@ -96,4 +129,7 @@ export const timetableService = {
   createSlot,
   updateSlot,
   deleteSlot,
+  listPeriodTimes,
+  generatePeriodTimes,
+  overridePeriodTime,
 };

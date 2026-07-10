@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Clock3, Plus, SquarePen, Trash2 } from "lucide-react";
 import {
   Alert,
   AlertDescription,
-  Badge,
   Button,
   Combobox,
+  FormItem,
+  FormLabel,
+  IconButton,
+  Input,
   Tabs,
   useConfirm,
 } from "../../../components/base";
@@ -15,15 +18,20 @@ import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
+import { SchoolPeriodTimesDialog } from "../components/SchoolPeriodTimesDialog";
+import { TimetableGrid } from "../components/TimetableGrid";
 import { useCreateSubject, useSubjects } from "../hooks/useSubjects";
 import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
   useMySchedule,
+  usePeriodTimes,
+  useRoomSubjects,
   useTimetableTeachers,
   useTimetableSlots,
+  useUpdateTimetableSlot,
 } from "../hooks/useTimetable";
-import { DAY_LABELS, getPeriodTimeLabel } from "../lib/period-times";
+import { DAY_LABELS } from "../lib/period-times";
 import type { TimetableSlot } from "../types/timetable.types";
 
 const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({ value, label }));
@@ -32,84 +40,63 @@ const PERIOD_OPTIONS = Array.from({ length: 10 }, (_, i) => String(i + 1)).map((
   label: `คาบ ${value}`,
 }));
 
-function groupByDay(slots: TimetableSlot[]): Array<[number, TimetableSlot[]]> {
-  const map = new Map<number, TimetableSlot[]>();
-  for (const slot of slots) {
-    const list = map.get(slot.day_of_week) ?? [];
-    list.push(slot);
-    map.set(slot.day_of_week, list);
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([day, list]) => [day, list.sort((a, b) => a.period - b.period)]);
-}
-
-function ScheduleList({ slots }: { slots: TimetableSlot[] }) {
-  if (slots.length === 0) {
-    return (
-      <EmptyState
-        description="ยังไม่มีการจัดคาบสอนสำหรับตารางนี้"
-        icon={CalendarClock}
-        title="ไม่มีตารางสอน"
-      />
-    );
-  }
-  return (
-    <div className="space-y-4">
-      {groupByDay(slots).map(([day, daySlots]) => (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-card" key={day}>
-          <h3 className="mb-3 text-sm font-extrabold text-slate-900">วัน{DAY_LABELS[day]}</h3>
-          <ul className="space-y-2">
-            {daySlots.map((slot) => (
-              <li
-                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2"
-                key={slot.id}
-              >
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary">คาบ {slot.period}</Badge>
-                  <div>
-                    <div className="font-medium text-slate-800">{slot.subject_name_th}</div>
-                    <div className="text-xs text-slate-500">
-                      {getPeriodTimeLabel(slot.period)} · {slot.subject_code}
-                    </div>
-                  </div>
-                </div>
-                <span className="text-sm text-slate-500">{slot.teacher_name || "ไม่ระบุครูผู้สอน"}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+function AddSlotForm({
+  editingSlot,
+  onDone,
+  room,
+}: {
+  editingSlot?: TimetableSlot | null;
+  onDone: () => void;
+  room: RoomSelection;
+}) {
+  const [dayOfWeek, setDayOfWeek] = useState(String(editingSlot?.day_of_week ?? 1));
+  const [period, setPeriod] = useState(String(editingSlot?.period ?? 1));
+  const [subjectId, setSubjectId] = useState(
+    editingSlot ? String(editingSlot.subject_id) : "",
   );
-}
-
-function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void }) {
-  const [dayOfWeek, setDayOfWeek] = useState("1");
-  const [period, setPeriod] = useState("1");
-  const [subjectId, setSubjectId] = useState("");
-  const [teacherUserId, setTeacherUserId] = useState("");
+  const [teacherUserId, setTeacherUserId] = useState(
+    editingSlot?.teacher_user_id ? String(editingSlot.teacher_user_id) : "",
+  );
   const [newSubjectCode, setNewSubjectCode] = useState("");
   const [newSubjectName, setNewSubjectName] = useState("");
   const [addingSubject, setAddingSubject] = useState(false);
   const allSubjectsQuery = useSubjects({ isActive: true });
+  const roomSubjectsQuery = useRoomSubjects(room);
   const createSubject = useCreateSubject();
   const createSlot = useCreateTimetableSlot();
+  const updateSlot = useUpdateTimetableSlot();
   const teachersQuery = useTimetableTeachers({ schoolId: room.schoolId });
   const termsQuery = useQuery({
     queryKey: ["timetable-active-term", room.schoolId],
     queryFn: () => attendanceService.getTerms(room.schoolId),
+    enabled: !editingSlot,
   });
   const activeTerm = termsQuery.data?.find((term) => term.status === "ACTIVE");
 
-  const subjectOptions = (allSubjectsQuery.data?.data ?? []).map((subject) => ({
-    value: String(subject.id),
-    label: `${subject.name_th} (${subject.code})`,
-  }));
+  const subjectOptions = [
+    ...(allSubjectsQuery.data?.data ?? []).map((subject) => ({
+      value: String(subject.id),
+      label: `${subject.name_th} (${subject.code})`,
+    })),
+    ...(roomSubjectsQuery.data?.data ?? [])
+      .filter(
+        (subject) =>
+          !(allSubjectsQuery.data?.data ?? []).some((item) => item.id === subject.subject_id),
+      )
+      .map((subject) => ({
+        value: String(subject.subject_id),
+        label: `${subject.name_th} (${subject.code})`,
+      })),
+  ];
   const teacherOptions = (teachersQuery.data?.data ?? []).map((teacher) => ({
     value: String(teacher.id),
     label: teacher.display_name,
   }));
+  const disableSaveReason = !subjectId
+    ? "เลือกวิชาก่อนบันทึก"
+    : !editingSlot && !activeTerm
+      ? "ต้องมีเทอม ACTIVE ก่อนบันทึกคาบสอน"
+      : "";
 
   function handleCreateSubject(): void {
     if (!newSubjectCode.trim() || !newSubjectName.trim()) return;
@@ -127,7 +114,22 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
   }
 
   function handleSubmit(): void {
-    if (!activeTerm || !subjectId) return;
+    if (!subjectId) return;
+    if (editingSlot) {
+      updateSlot.mutate(
+        {
+          id: editingSlot.id,
+          payload: {
+            subjectId: Number(subjectId),
+            teacherUserId: teacherUserId ? Number(teacherUserId) : null,
+          },
+        },
+        { onSuccess: onDone },
+      );
+      return;
+    }
+
+    if (!activeTerm) return;
     createSlot.mutate(
       {
         schoolTermId: Number(activeTerm.id),
@@ -135,48 +137,85 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
         gradeLevelId: room.gradeLevelId,
         roomNo: room.roomNo,
         dayOfWeek: Number(dayOfWeek),
-            period: Number(period),
-            subjectId: Number(subjectId),
-            teacherUserId: teacherUserId ? Number(teacherUserId) : null,
-          },
+        period: Number(period),
+        subjectId: Number(subjectId),
+        teacherUserId: teacherUserId ? Number(teacherUserId) : null,
+      },
       { onSuccess: onDone },
     );
   }
 
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-      {!termsQuery.isLoading && !activeTerm ? (
+      {!editingSlot && !termsQuery.isLoading && !activeTerm ? (
         <Alert variant="warning">
           <AlertDescription>ยังไม่มีเทอมที่เปิดใช้งาน (ACTIVE) สำหรับโรงเรียนนี้</AlertDescription>
         </Alert>
       ) : null}
-      {createSlot.isError ? (
+      {createSlot.isError || updateSlot.isError ? (
         <Alert variant="destructive">
           <AlertDescription>
-            {getApiErrorMessage(createSlot.error, "เพิ่มคาบสอนไม่สำเร็จ")}
+            {getApiErrorMessage(
+              createSlot.error ?? updateSlot.error,
+              editingSlot ? "แก้ไขคาบสอนไม่สำเร็จ" : "เพิ่มคาบสอนไม่สำเร็จ",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-4">
-        <Combobox onChange={setDayOfWeek} options={DAY_OPTIONS} searchable={false} value={dayOfWeek} />
-        <Combobox onChange={setPeriod} options={PERIOD_OPTIONS} searchable={false} value={period} />
-        <Combobox
-          onChange={setSubjectId}
-          options={[{ value: "", label: "เลือกวิชา" }, ...subjectOptions]}
-          placeholder="ค้นหาวิชา"
-          value={subjectId}
-        />
-        <Combobox
-          emptyText="ไม่พบผู้สอนในขอบเขตโรงเรียนนี้"
-          onChange={setTeacherUserId}
-          options={[{ value: "", label: "ยังไม่ระบุผู้สอน" }, ...teacherOptions]}
-          placeholder="เลือกผู้สอน"
-          value={teacherUserId}
-        />
+        <FormItem>
+          <FormLabel htmlFor="slot-day" required>
+            วัน
+          </FormLabel>
+          <Combobox
+            disabled={Boolean(editingSlot)}
+            id="slot-day"
+            onChange={setDayOfWeek}
+            options={DAY_OPTIONS}
+            searchable={false}
+            value={dayOfWeek}
+          />
+        </FormItem>
+        <FormItem>
+          <FormLabel htmlFor="slot-period" required>
+            คาบ
+          </FormLabel>
+          <Combobox
+            disabled={Boolean(editingSlot)}
+            id="slot-period"
+            onChange={setPeriod}
+            options={PERIOD_OPTIONS}
+            searchable={false}
+            value={period}
+          />
+        </FormItem>
+        <FormItem>
+          <FormLabel htmlFor="slot-subject" required>
+            วิชา
+          </FormLabel>
+          <Combobox
+            id="slot-subject"
+            onChange={setSubjectId}
+            options={[{ value: "", label: "เลือกวิชา" }, ...subjectOptions]}
+            placeholder="ค้นหาวิชา"
+            value={subjectId}
+          />
+        </FormItem>
+        <FormItem>
+          <FormLabel htmlFor="slot-teacher">ผู้สอน</FormLabel>
+          <Combobox
+            emptyText="ไม่พบผู้สอนในขอบเขตโรงเรียนนี้"
+            id="slot-teacher"
+            onChange={setTeacherUserId}
+            options={[{ value: "", label: "ยังไม่ระบุผู้สอน" }, ...teacherOptions]}
+            placeholder="เลือกผู้สอน"
+            value={teacherUserId}
+          />
+        </FormItem>
       </div>
 
       {addingSubject ? (
-        <div className="grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-[160px_1fr_auto]">
+        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[160px_1fr_auto] items-end">
           {createSubject.isError ? (
             <Alert className="sm:col-span-3" variant="destructive">
               <AlertDescription>
@@ -184,26 +223,32 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
               </AlertDescription>
             </Alert>
           ) : null}
-          <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            onChange={(event) => setNewSubjectCode(event.target.value)}
-            placeholder="รหัสวิชา"
-            value={newSubjectCode}
-          />
-          <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            onChange={(event) => setNewSubjectName(event.target.value)}
-            placeholder="ชื่อวิชา"
-            value={newSubjectName}
-          />
-          <Button
-            isLoading={createSubject.isPending}
-            onClick={handleCreateSubject}
-            size="sm"
-            type="button"
-          >
-            เพิ่มวิชา
-          </Button>
+          <FormItem>
+            <FormLabel required>รหัสวิชา</FormLabel>
+            <Input
+              onChange={(event) => setNewSubjectCode(event.target.value)}
+              placeholder="เช่น TH101"
+              value={newSubjectCode}
+            />
+          </FormItem>
+          <FormItem>
+            <FormLabel required>ชื่อวิชา</FormLabel>
+            <Input
+              onChange={(event) => setNewSubjectName(event.target.value)}
+              placeholder="เช่น ภาษาไทย"
+              value={newSubjectName}
+            />
+          </FormItem>
+          <div className="pb-[2px]">
+            <Button
+              disabled={!newSubjectCode.trim() || !newSubjectName.trim()}
+              isLoading={createSubject.isPending}
+              onClick={handleCreateSubject}
+              type="button"
+            >
+              เพิ่มวิชา
+            </Button>
+          </div>
         </div>
       ) : (
         <button
@@ -220,21 +265,26 @@ function AddSlotForm({ room, onDone }: { room: RoomSelection; onDone: () => void
           ยกเลิก
         </Button>
         <Button
-          disabled={!activeTerm || !subjectId}
-          isLoading={createSlot.isPending}
+          disabled={(!editingSlot && !activeTerm) || !subjectId}
+          isLoading={createSlot.isPending || updateSlot.isPending}
           onClick={handleSubmit}
           type="button"
         >
-          บันทึก
+          {editingSlot ? "บันทึกการแก้ไข" : "บันทึก"}
         </Button>
       </div>
+      {disableSaveReason ? (
+        <p className="text-right text-sm font-medium text-slate-500">{disableSaveReason}</p>
+      ) : null}
     </div>
   );
 }
 
 function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   const [adding, setAdding] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const slotsQuery = useTimetableSlots(room);
+  const periodTimesQuery = usePeriodTimes(room?.schoolId ?? null);
   const deleteSlot = useDeleteTimetableSlot();
   const { confirm, dialog } = useConfirm();
 
@@ -251,77 +301,104 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   }
 
   const slots = slotsQuery.data?.data ?? [];
+  const isEditing = Boolean(editingSlot);
 
   return (
     <div className="space-y-4">
       {room ? (
-        <>
-          <div className="flex items-center justify-between">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card">
+          {/* Section header */}
+          <div className="flex items-center justify-between px-5 py-4">
             <h3 className="text-sm font-extrabold text-slate-900">
               ตารางสอน — {room.schoolName} ห้อง {room.roomNo}
             </h3>
-            {!adding ? (
+            {!adding && !isEditing ? (
               <Button icon={Plus} onClick={() => setAdding(true)} size="sm">
                 เพิ่มคาบสอน
               </Button>
             ) : null}
           </div>
 
-          {adding ? <AddSlotForm onDone={() => setAdding(false)} room={room} /> : null}
+          {/* Inline add / edit form */}
+          {adding ? (
+            <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <AddSlotForm onDone={() => setAdding(false)} room={room} />
+            </div>
+          ) : null}
+          {editingSlot ? (
+            <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <AddSlotForm
+                editingSlot={editingSlot}
+                key={editingSlot.id}
+                onDone={() => setEditingSlot(null)}
+                room={room}
+              />
+            </div>
+          ) : null}
 
+          {/* Content area */}
           {slotsQuery.isError ? (
-            <Alert variant="destructive">
-              <AlertDescription>
-                {getApiErrorMessage(slotsQuery.error, "โหลดตารางสอนไม่สำเร็จ")}
-              </AlertDescription>
-            </Alert>
+            <div className="border-t border-slate-200 px-5 py-4">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {getApiErrorMessage(slotsQuery.error, "โหลดตารางสอนไม่สำเร็จ")}
+                </AlertDescription>
+              </Alert>
+            </div>
           ) : null}
 
           {slots.length === 0 && !slotsQuery.isLoading ? (
-            <EmptyState
-              description="กด “เพิ่มคาบสอน” ด้านบนเพื่อเริ่มจัดตารางของห้องนี้"
-              icon={CalendarClock}
-              title="ห้องนี้ยังไม่มีตารางสอน"
-            />
+            <div className="border-t border-slate-200 px-5 py-4">
+              <EmptyState
+                description={`กด "เพิ่มคาบสอน" ด้านบนเพื่อเริ่มจัดตารางของห้องนี้`}
+                icon={CalendarClock}
+                title="ห้องนี้ยังไม่มีตารางสอน"
+              />
+            </div>
           ) : (
-            <div className="space-y-4">
-              {groupByDay(slots).map(([day, daySlots]) => (
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-card" key={day}>
-                  <h4 className="mb-3 text-sm font-extrabold text-slate-900">วัน{DAY_LABELS[day]}</h4>
-                  <ul className="space-y-2">
-                    {daySlots.map((slot) => (
-                      <li
-                        className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2"
-                        key={slot.id}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary">คาบ {slot.period}</Badge>
-                          <div>
-                            <div className="font-medium text-slate-800">{slot.subject_name_th}</div>
-                            <div className="text-xs text-slate-500">
-                              {getPeriodTimeLabel(slot.period)} · {slot.subject_code} ·{" "}
-                              {slot.teacher_name || "ยังไม่ระบุผู้สอน"}
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          aria-label={`ลบคาบ ${slot.period} วัน${DAY_LABELS[day]}`}
-                          disabled={deleteSlot.isPending}
-                          icon={Trash2}
-                          onClick={() => void handleDelete(slot)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          ลบ
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+            <div className="border-t border-slate-200">
+              <TimetableGrid
+                borderless
+                renderSlot={(slot) => (
+                  <div className="group/slot relative h-[4.5rem] overflow-hidden rounded-lg border border-slate-200 border-l-4 border-l-primary/60 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md">
+                    <div>
+                      <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
+                        {slot.subject_name_th}
+                      </div>
+                      <div className="mt-0.5 line-clamp-1 text-xs leading-4 text-slate-500">
+                        {slot.teacher_name || "ยังไม่ระบุผู้สอน"}
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-white/80 opacity-0 backdrop-blur-[2px] transition-opacity group-hover/slot:opacity-100">
+                      <IconButton
+                        aria-label={`แก้ไขคาบ ${slot.period} วัน${DAY_LABELS[slot.day_of_week]}`}
+                        className="text-primary"
+                        icon={SquarePen}
+                        onClick={() => {
+                          setAdding(false);
+                          setEditingSlot(slot);
+                        }}
+                        size="sm"
+                        variant="ghost"
+                      />
+                      <IconButton
+                        aria-label={`ลบคาบ ${slot.period} วัน${DAY_LABELS[slot.day_of_week]}`}
+                        className="text-danger disabled:opacity-40"
+                        disabled={deleteSlot.isPending}
+                        icon={Trash2}
+                        onClick={() => void handleDelete(slot)}
+                        size="sm"
+                        variant="ghost"
+                      />
+                    </div>
+                  </div>
+                )}
+                periodTimes={periodTimesQuery.data?.data ?? []}
+                slots={slots}
+              />
             </div>
           )}
-        </>
+        </div>
       ) : null}
       {dialog}
     </div>
@@ -343,6 +420,11 @@ function MyScheduleView({
   );
   const activeQuery = mode === "mine" ? mineQuery : roomQuery;
   const slots = activeQuery.data?.data ?? [];
+  // "mine" has no single selected room to read schoolId from — fall back to
+  // the first returned slot's school (a teacher's periods are, in practice,
+  // within one school).
+  const periodTimesSchoolId = mode === "room" ? (room?.schoolId ?? null) : (slots[0]?.school_id ?? null);
+  const periodTimesQuery = usePeriodTimes(periodTimesSchoolId);
 
   return (
     <div className="space-y-4">
@@ -356,7 +438,24 @@ function MyScheduleView({
       {activeQuery.isLoading ? (
         <div className="py-10 text-center text-slate-500">กำลังโหลด...</div>
       ) : (
-        <ScheduleList slots={slots} />
+        <TimetableGrid
+          renderSlot={
+            mode === "mine"
+              ? (slot) => (
+                  <div className="min-h-12 rounded-md border border-slate-200 border-l-4 border-l-primary/60 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                    <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
+                      {slot.subject_name_th}
+                    </div>
+                    <div className="mt-0.5 text-xs leading-4 text-slate-500">
+                      ห้อง {slot.room_no}
+                    </div>
+                  </div>
+                )
+              : undefined
+          }
+          periodTimes={periodTimesQuery.data?.data ?? []}
+          slots={slots}
+        />
       )}
     </div>
   );
@@ -367,10 +466,23 @@ export function TimetablePage() {
   const isManager = can("manage-timetable");
   const [mode, setMode] = useState<"mine" | "room">("mine");
   const [room, setRoom] = useState<RoomSelection | null>(null);
+  const [periodTimesDialogOpen, setPeriodTimesDialogOpen] = useState(false);
 
   return (
     <PageShell>
       <PageToolbar
+        actions={
+          isManager ? (
+            <Button
+              disabled={!room}
+              icon={Clock3}
+              onClick={() => setPeriodTimesDialogOpen(true)}
+              variant="outline"
+            >
+              ตั้งเวลาคาบ
+            </Button>
+          ) : undefined
+        }
         description={
           isManager
             ? "เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
@@ -397,6 +509,14 @@ export function TimetablePage() {
         )}
       </PageToolbar>
       {isManager ? <ManageTimetableView room={room} /> : <MyScheduleView mode={mode} room={room} />}
+      {room ? (
+        <SchoolPeriodTimesDialog
+          onClose={() => setPeriodTimesDialogOpen(false)}
+          open={periodTimesDialogOpen}
+          schoolId={room.schoolId}
+          schoolName={room.schoolName}
+        />
+      ) : null}
     </PageShell>
   );
 }

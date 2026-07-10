@@ -1,4 +1,5 @@
 import { Combobox } from "../../../components/base";
+import { ToolbarFilterGrid } from "../../../components/layout/page-primitives";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 
@@ -34,9 +35,9 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <ToolbarFilterGrid>
       {scope.schoolLocked ? null : (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <>
           <Combobox
             onChange={(next) => {
               area.setProvince(next);
@@ -75,55 +76,52 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
             placeholder="ค้นหาตำบล/แขวง"
             value={area.subDistrict}
           />
-        </div>
+        </>
       )}
-      <div className="grid gap-2 sm:grid-cols-3">
-        <Combobox
-          disabled={scope.schoolLocked}
-          emptyText={area.schoolsEnabled ? "ไม่พบโรงเรียน" : "พิมพ์ชื่อโรงเรียน หรือเลือกพื้นที่"}
-          onChange={(next) => {
-            scope.setSchoolId(next);
-            const school = area.schools.find((candidate) => String(candidate.id) === next);
-            area.setAreaFromSchool(school);
-            emit(next, scope.gradeLevelId, scope.room);
-          }}
-          onSearchChange={area.setSchoolSearch}
-          options={[
-            { value: "", label: "เลือกโรงเรียน" },
-            ...area.schools.map((school) => ({ value: String(school.id), label: school.name })),
-          ]}
-          placeholder="ค้นหาโรงเรียน"
-          value={scope.schoolId}
-        />
-        <Combobox
-          disabled={!scope.schoolId || scope.gradeLocked}
-          onChange={(next) => {
-            scope.setGrade(next);
-            const gradeLevelId =
-              scope.gradeLevels.find((level) => level.label === next)?.id ?? null;
-            emit(scope.schoolId, gradeLevelId, scope.room);
-          }}
-          options={[
-            { value: "", label: "เลือกชั้น" },
-            ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
-          ]}
-          placeholder="ค้นหาชั้น"
-          value={scope.grade}
-        />
-        <Combobox
-          disabled={!scope.grade || scope.roomLocked}
-          onChange={(next) => {
-            scope.setRoom(next);
-            emit(scope.schoolId, scope.gradeLevelId, next);
-          }}
-          options={[
-            { value: "", label: "เลือกห้อง" },
-            ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
-          ]}
-          placeholder="ค้นหาห้อง"
-          value={scope.room}
-        />
-      </div>
-    </div>
+      <Combobox
+        disabled={scope.schoolLocked}
+        emptyText={area.schoolsEnabled ? "ไม่พบโรงเรียน" : "พิมพ์ชื่อโรงเรียน หรือเลือกพื้นที่"}
+        onChange={(next) => {
+          scope.setSchoolId(next);
+          const school = area.schools.find((candidate) => String(candidate.id) === next);
+          area.setAreaFromSchool(school);
+          emit(next, scope.gradeLevelId, scope.room);
+        }}
+        onSearchChange={area.setSchoolSearch}
+        options={[
+          { value: "", label: "เลือกโรงเรียน" },
+          ...area.schools.map((school) => ({ value: String(school.id), label: school.name })),
+        ]}
+        placeholder="ค้นหาโรงเรียน"
+        value={scope.schoolId}
+      />
+      <Combobox
+        disabled={!scope.schoolId || scope.gradeLocked}
+        onChange={(next) => {
+          scope.setGrade(next);
+          const gradeLevelId = scope.gradeLevels.find((level) => level.label === next)?.id ?? null;
+          emit(scope.schoolId, gradeLevelId, scope.room);
+        }}
+        options={[
+          { value: "", label: "เลือกชั้น" },
+          ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
+        ]}
+        placeholder="ค้นหาชั้น"
+        value={scope.grade}
+      />
+      <Combobox
+        disabled={!scope.grade || scope.roomLocked}
+        onChange={(next) => {
+          scope.setRoom(next);
+          emit(scope.schoolId, scope.gradeLevelId, next);
+        }}
+        options={[
+          { value: "", label: "เลือกห้อง" },
+          ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+        ]}
+        placeholder="ค้นหาห้อง"
+        value={scope.room}
+      />
+    </ToolbarFilterGrid>
   );
 }

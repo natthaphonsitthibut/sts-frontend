@@ -64,3 +64,35 @@ export interface UpdateTimetableSlotPayload {
   subjectId?: number;
   teacherUserId?: number | null;
 }
+
+export type SchoolPeriodTimeSource = "GENERATED" | "MANUAL" | "BACKFILL";
+
+export interface SchoolPeriodTime {
+  id: string;
+  school_id: number;
+  day_of_week: number;
+  period: number;
+  starts_at: string;
+  ends_at: string;
+  source: SchoolPeriodTimeSource;
+}
+
+export interface GeneratePeriodTimesPayload {
+  schoolId: number;
+  daysOfWeek: number[];
+  periodsCount: number;
+  firstPeriodStartsAt: string;
+  periodLengthMinutes: number;
+  breakAfterPeriod?: number;
+  breakMinutes?: number;
+  lunchAfterPeriod?: number;
+  lunchMinutes?: number;
+}
+
+export interface OverridePeriodTimePayload {
+  schoolId: number;
+  dayOfWeek: number;
+  period: number;
+  startsAt: string;
+  endsAt: string;
+}
