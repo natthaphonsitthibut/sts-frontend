@@ -82,10 +82,24 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/students",
   },
   {
-    id: "review-cases",
-    label: "เคสช่วยเหลือ",
+    id: "case-system",
+    label: "งานเคส/ช่วยเหลือ",
     iconName: "heart-handshake",
-    route: "/cases",
+    children: [
+      {
+        id: "review-cases",
+        label: "เคสช่วยเหลือ",
+        iconName: "heart-handshake",
+        route: "/cases",
+      },
+      {
+        id: "visit-links",
+        label: "ลิงก์ลงพื้นที่",
+        iconName: "map-pin",
+        permissionId: "review-cases",
+        route: "/visit-links",
+      },
+    ],
   },
   {
     id: "student-self",
