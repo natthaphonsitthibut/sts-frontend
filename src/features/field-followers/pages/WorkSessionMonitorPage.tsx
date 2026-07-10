@@ -87,7 +87,6 @@ export function WorkSessionMonitorPage() {
             value={view}
           />
         }
-        count={{ value: view === "active" ? active.length : recentlyEnded.length }}
         description="ดูช่วงปฏิบัติงานภาคสนามที่กำลังทำงานอยู่ พร้อมตำแหน่งล่าสุด — อัปเดตอัตโนมัติทุก 20 วินาที"
         filters={
           <>

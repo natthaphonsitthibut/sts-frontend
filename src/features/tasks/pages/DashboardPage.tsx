@@ -130,8 +130,8 @@ function criteriaItems(thresholds?: RiskDashboardThresholds): Array<{ label: str
     },
     { label: "เฝ้าระวัง", value: `≥${watchPercent}% ของเกณฑ์` },
     {
-      label: "เวลาเรียนถ่วงน้ำหนัก",
-      value: `ต่ำกว่า ${thresholds.lowAttendancePercent}/${thresholds.mediumAttendancePercent}/${thresholds.highAttendancePercent}%`,
+      label: "เปอร์เซ็นต์เข้าเรียน",
+      value: `นับสายรวมด้วย: เสี่ยงต่ำ <${thresholds.lowAttendancePercent}% · กลาง <${thresholds.mediumAttendancePercent}% · สูง <${thresholds.highAttendancePercent}%`,
     },
     { label: "สายเทียบขาด", value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน` },
     {
@@ -413,7 +413,6 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
-              clearableSort={false}
               columnWidths={["w-[21%]", "w-[14%]", "w-[8%]", "w-[8%]", "w-[14%]", "w-[9%]", "w-[10%]", "w-[16%]"]}
               headings={[
                 { label: "นักเรียน", sortKey: "name" },

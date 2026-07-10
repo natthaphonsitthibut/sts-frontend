@@ -1,30 +1,26 @@
+import type { BadgeProps } from "../../../components/base";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 import type {
   FieldFollower,
   FieldFollowerReviewAction,
   FieldFollowerStatus,
 } from "../types/field-follower.types";
 
-export type FieldFollowerBadgeVariant =
-  | "default"
-  | "secondary"
-  | "destructive"
-  | "success"
-  | "warning";
-
 interface FieldFollowerStatusMeta {
   label: string;
-  variant: FieldFollowerBadgeVariant;
+  variant: BadgeProps["variant"];
 }
 
-const STATUS_META: Record<FieldFollowerStatus, FieldFollowerStatusMeta> = {
-  APPLIED: { label: "รอตรวจสอบ", variant: "warning" },
-  VERIFIED: { label: "ยืนยันตัวตนแล้ว", variant: "secondary" },
-  ACTIVE: { label: "ใช้งานได้", variant: "success" },
-  SUSPENDED: { label: "ระงับ/ปฏิเสธ", variant: "destructive" },
-};
-
-export function getFieldFollowerStatusMeta(status: FieldFollowerStatus): FieldFollowerStatusMeta {
-  return STATUS_META[status];
+export function getFieldFollowerStatusMeta(
+  catalog: readonly StatusCatalogItem[],
+  status: FieldFollowerStatus,
+): FieldFollowerStatusMeta {
+  const item = findStatusCatalogItem(catalog, status);
+  return {
+    label: item?.label ?? "ไม่ระบุสถานะ",
+    variant: item?.badgeVariant ?? "secondary",
+  };
 }
 
 const REVIEW_ACTION_LABELS: Record<FieldFollowerReviewAction, string> = {

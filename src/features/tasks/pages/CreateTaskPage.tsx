@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { FilePlus2, Link2, MapPin, Plus, UserRoundCheck } from "lucide-react";
+import { FilePlus2, Link2, MapPin, Plus, UserPlus, UserRoundCheck } from "lucide-react";
 import { z } from "zod";
 import {
   Alert,
@@ -24,6 +24,7 @@ import {
   Input,
   NumericInput,
   registerField,
+  Textarea,
 } from "../../../components/base";
 import {
   ChoiceCardButton,
@@ -36,6 +37,7 @@ import { taskService } from "../api/task.service";
 import { geoService } from "../api/geo.service";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { loginLinksService } from "../../login-links/api/login-links.service";
+import { useCreateFollowerRecruitmentCampaign } from "../../field-followers/hooks/useFollowerRecruitmentCampaigns";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
@@ -51,7 +53,7 @@ import {
   stripAddressPrefix,
 } from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
-import { useRoomSubjects, useTimetableSlots } from "../../timetable/hooks/useTimetable";
+import { usePeriodTimes, useRoomSubjects, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import {
   DAY_LABELS,
   formatTimetableSlotLabel,
@@ -71,17 +73,33 @@ import {
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
 const EMPTY_PERMISSIONS: string[] = [];
+type CreateLinkType = TaskType | "RECRUITMENT";
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
-const PATH_TO_TYPE: Record<string, TaskType> = {
+const PATH_TO_TYPE: Record<string, CreateLinkType> = {
   visit: "VISIT",
   attendance: "ATTENDANCE",
   login: "LOGIN",
+  recruitment: "RECRUITMENT",
 };
-const TYPE_TO_PATH: Record<TaskType, string> = {
+const TYPE_TO_PATH: Record<CreateLinkType, string> = {
   VISIT: "visit",
   ATTENDANCE: "attendance",
   LOGIN: "login",
+  RECRUITMENT: "recruitment",
 };
+
+const CREATE_LINK_TYPE_OPTIONS: Array<{
+  label: string;
+  value: CreateLinkType;
+  description: string;
+}> = [
+  ...TASK_TYPE_OPTIONS,
+  {
+    value: "RECRUITMENT",
+    label: "ลิงก์รับสมัคร",
+    description: "เปิดรับสมัคร อสม./ผู้ติดตามภาคสนาม",
+  },
+];
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
@@ -225,6 +243,23 @@ const createTaskSchema = z
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
 
+const recruitmentCampaignSchema = z
+  .object({
+    name: z.string().trim().min(1, "กรุณาระบุชื่อลิงก์รับสมัคร").max(200),
+    description: z.string().trim().max(1000).optional(),
+    opensOn: z.string(),
+    closesOn: z.string(),
+  })
+  .refine((value) => !value.opensOn || !value.closesOn || value.opensOn <= value.closesOn, {
+    message: "วันปิดรับสมัครต้องไม่ก่อนวันเปิดรับสมัคร",
+    path: ["closesOn"],
+  });
+
+type RecruitmentCampaignFormValues = z.infer<typeof recruitmentCampaignSchema>;
+
+const DATE_INPUT_CLASS_NAME =
+  "text-slate-900 [color-scheme:light] [-webkit-text-fill-color:#0f172a] [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-day-field]:text-slate-900 [&::-webkit-datetime-edit-month-field]:text-slate-900 [&::-webkit-datetime-edit-year-field]:text-slate-900";
+
 const VISIT_ADDRESS_NAMES: AddressFieldNames<CreateTaskFormValues> = {
   houseNo: "address_house_no",
   moo: "address_village_no",
@@ -347,6 +382,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       : null;
   const roomSubjectsQuery = useRoomSubjects(roomSubjectsFilter);
   const timetableSlotsQuery = useTimetableSlots(roomSubjectsFilter);
+  const periodTimesQuery = usePeriodTimes(roomSubjectsFilter?.schoolId ?? null);
+  const periodTimes = periodTimesQuery.data?.data ?? [];
   const subjectId = useWatch({ control: form.control, name: "subject_id" });
   const selectedSlotIds = useWatch({ control: form.control, name: "timetable_slot_ids" });
   // A room change invalidates any previously picked subject_id from a
@@ -931,7 +968,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                               checked={checked}
                               disabled={createTask.isPending}
                               key={slot.id}
-                              label={formatTimetableSlotLabel(slot)}
+                              label={formatTimetableSlotLabel(slot, periodTimes)}
                               onChange={(event) => {
                                 const next = event.currentTarget.checked
                                   ? [...selectedSlotIds, value]
@@ -959,7 +996,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                     <p className="text-xs text-slate-500">
                       เวลาคาบอ้างอิง:{" "}
                       {selectedSlots
-                        .map((slot) => `คาบ ${slot.period} ${getPeriodTimeLabel(slot.period)}`)
+                        .map(
+                          (slot) =>
+                            `คาบ ${slot.period} ${getPeriodTimeLabel(periodTimes, slot.day_of_week, slot.period)}`,
+                        )
                         .join(" · ")}
                     </p>
                   ) : null}
@@ -1068,12 +1108,179 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   );
 }
 
+function buildFollowerRecruitmentUrl(publicCode: string): string {
+  return `${window.location.origin}/apply/field-follower/${publicCode}`;
+}
+
+function CreateRecruitmentCampaignForm() {
+  const area = useSchoolAreaFilter();
+  const createCampaign = useCreateFollowerRecruitmentCampaign();
+  const form = useForm<RecruitmentCampaignFormValues>({
+    defaultValues: { name: "", description: "", opensOn: "", closesOn: "" },
+    resolver: zodResolver(recruitmentCampaignSchema),
+  });
+  const result = createCampaign.data?.data ?? null;
+
+  function startNewCampaign(): void {
+    createCampaign.reset();
+    form.reset({ name: "", description: "", opensOn: "", closesOn: "" });
+  }
+
+  function handleSubmit(values: RecruitmentCampaignFormValues): void {
+    const hasAreaScope = Boolean(area.province || area.district || area.subDistrict);
+    createCampaign.mutate({
+      name: values.name.trim(),
+      description: values.description?.trim() || undefined,
+      data_scope: hasAreaScope
+        ? {
+            provinces: area.province ? [area.province] : undefined,
+            districts: area.district ? [area.district] : undefined,
+            sub_districts: area.subDistrict ? [area.subDistrict] : undefined,
+          }
+        : undefined,
+      opens_at: values.opensOn || undefined,
+      closes_at: values.closesOn || undefined,
+    });
+  }
+
+  if (result) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>สร้างลิงก์รับสมัครสำเร็จ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="success">
+            <AlertTitle>ลิงก์รับสมัครพร้อมใช้งาน</AlertTitle>
+            <AlertDescription>
+              {result.name} · {result.is_open ? "เปิดรับสมัครแล้ว" : "ยังไม่อยู่ในช่วงรับสมัคร"}
+            </AlertDescription>
+          </Alert>
+          <LinkShareActions
+            link={buildFollowerRecruitmentUrl(result.public_code)}
+            trailing={
+              <Button icon={Plus} onClick={startNewCampaign}>
+                สร้างรายการใหม่
+              </Button>
+            }
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Form form={form} onSubmit={handleSubmit}>
+      <Card id="create-recruitment-link-detail">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <UserPlus className="size-5 text-primary" aria-hidden="true" />
+            รายละเอียดลิงก์รับสมัคร
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormErrorAlert
+            error={createCampaign.error}
+            fallback="สร้างลิงก์รับสมัครไม่สำเร็จ"
+          />
+
+          <FormItem>
+            <FormLabel htmlFor="campaign-name" required>
+              ชื่อลิงก์
+            </FormLabel>
+            <Input
+              id="campaign-name"
+              placeholder="เช่น รับสมัคร อสม. อำเภอเมือง รุ่น 1"
+              {...form.register("name")}
+            />
+            <FormMessage<RecruitmentCampaignFormValues> name="name" />
+          </FormItem>
+
+          <FormItem>
+            <FormLabel htmlFor="campaign-description">รายละเอียด (ถ้ามี)</FormLabel>
+            <Textarea id="campaign-description" rows={3} {...form.register("description")} />
+            <FormMessage<RecruitmentCampaignFormValues> name="description" />
+          </FormItem>
+
+          <div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Combobox
+                onChange={area.setProvince}
+                options={[
+                  { value: "", label: "ทุกจังหวัด" },
+                  ...area.provinces.map((name) => ({ value: name, label: name })),
+                ]}
+                placeholder="จังหวัด"
+                value={area.province}
+              />
+              <Combobox
+                disabled={!area.province}
+                onChange={area.setDistrict}
+                options={[
+                  { value: "", label: "ทุกอำเภอ/เขต" },
+                  ...area.districts.map((name) => ({ value: name, label: name })),
+                ]}
+                placeholder="อำเภอ/เขต"
+                value={area.district}
+              />
+              <Combobox
+                disabled={!area.district}
+                onChange={area.setSubDistrict}
+                options={[
+                  { value: "", label: "ทุกตำบล/แขวง" },
+                  ...area.subDistricts.map((name) => ({ value: name, label: name })),
+                ]}
+                placeholder="ตำบล/แขวง"
+                value={area.subDistrict}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormItem>
+              <FormLabel htmlFor="campaign-opens-on">เปิดรับสมัครตั้งแต่</FormLabel>
+              <Input
+                className={DATE_INPUT_CLASS_NAME}
+                id="campaign-opens-on"
+                type="date"
+                {...form.register("opensOn")}
+              />
+              <FormMessage<RecruitmentCampaignFormValues> name="opensOn" />
+            </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="campaign-closes-on">ปิดรับสมัครวันที่</FormLabel>
+              <Input
+                className={DATE_INPUT_CLASS_NAME}
+                id="campaign-closes-on"
+                type="date"
+                {...form.register("closesOn")}
+              />
+              <FormMessage<RecruitmentCampaignFormValues> name="closesOn" />
+            </FormItem>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              isLoading={createCampaign.isPending}
+              loadingText="กำลังสร้าง"
+              size="lg"
+              type="submit"
+            >
+              สร้างลิงก์
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </Form>
+  );
+}
+
 export function CreateTaskPage() {
   const { type: typeParam } = useParams<{ type: string }>();
   const navigate = useNavigate();
   const activeType = typeParam ? PATH_TO_TYPE[typeParam.toLowerCase()] : undefined;
 
-  function chooseType(next: TaskType): void {
+  function chooseType(next: CreateLinkType): void {
     // Clicking the already-selected type again deselects it (back to chooser).
     void navigate(activeType === next ? "/create" : `/create/${TYPE_TO_PATH[next]}`);
   }
@@ -1086,14 +1293,16 @@ export function CreateTaskPage() {
         description="เลือกประเภทและกรอกข้อมูลที่จำเป็น"
       />
       <div className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-3">
-          {TASK_TYPE_OPTIONS.map(({ value, label, description }) => {
+        <div className="grid gap-3 md:grid-cols-4">
+          {CREATE_LINK_TYPE_OPTIONS.map(({ value, label, description }) => {
             const Icon =
               value === "VISIT"
                 ? MapPin
                 : value === "ATTENDANCE"
                   ? UserRoundCheck
-                  : Link2;
+                  : value === "RECRUITMENT"
+                    ? UserPlus
+                    : Link2;
             return (
               <ChoiceCardButton
                 description={description}
@@ -1107,7 +1316,10 @@ export function CreateTaskPage() {
           })}
         </div>
 
-        {activeType ? <CreateTaskTypeForm key={activeType} type={activeType} /> : null}
+        {activeType && activeType !== "RECRUITMENT" ? (
+          <CreateTaskTypeForm key={activeType} type={activeType} />
+        ) : null}
+        {activeType === "RECRUITMENT" ? <CreateRecruitmentCampaignForm /> : null}
       </div>
     </PageShell>
   );

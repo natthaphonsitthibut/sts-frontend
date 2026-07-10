@@ -23,6 +23,14 @@ export function useFieldFollowers(params: FieldFollowerListParams) {
   });
 }
 
+export function useFieldFollower(id: string) {
+  return useQuery({
+    queryKey: [FIELD_FOLLOWERS_QUERY_KEY, "detail", id],
+    queryFn: () => fieldFollowerService.getFollower(id),
+    enabled: Boolean(id),
+  });
+}
+
 export function useReviewFieldFollower() {
   const queryClient = useQueryClient();
   return useMutation({

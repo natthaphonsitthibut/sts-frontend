@@ -1,6 +1,7 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   CreateFollowerApplicationPayload,
+  FieldFollower,
   FieldFollowerListParams,
   FieldFollowerListResponse,
   FieldFollowerReviewAction,
@@ -33,6 +34,13 @@ async function listFollowers(
   return response.data;
 }
 
+async function getFollower(id: string): Promise<FieldFollower> {
+  const response = await apiClient.get<{ success: true; data: FieldFollower }>(
+    `/field-followers/${encodeURIComponent(id)}`,
+  );
+  return response.data.data;
+}
+
 async function reviewFollower(
   id: string,
   action: FieldFollowerReviewAction,
@@ -53,6 +61,7 @@ async function getMap(studentUuids: string[]): Promise<FieldMonitorMapResponse> 
 
 export const fieldFollowerService = {
   apply,
+  getFollower,
   listFollowers,
   reviewFollower,
   getMap,
