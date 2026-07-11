@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -53,7 +53,6 @@ import type { StatusCatalogItem } from "../../status-catalog/types/status-catalo
 import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
-import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
 
 
 const TAB_OPTIONS = [
@@ -87,51 +86,6 @@ function getHistorySortValue(
 function getIsoDayOfWeek(date = new Date()): number {
   const day = date.getDay();
   return day === 0 ? 7 : day;
-}
-
-function timeToMinutes(value: string): number {
-  const [hours = "0", minutes = "0"] = value.split(":");
-  return Number(hours) * 60 + Number(minutes);
-}
-
-function findDefaultSlot(
-  slots: TimetableSlot[],
-  periodTimes: SchoolPeriodTime[],
-): TimetableSlot | null {
-  if (slots.length === 0) return null;
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const withTimes = slots
-    .map((slot) => {
-      const periodTime = periodTimes.find(
-        (row) => row.day_of_week === slot.day_of_week && row.period === slot.period,
-      );
-      return {
-        slot,
-        startsAt: periodTime ? timeToMinutes(periodTime.starts_at) : null,
-        endsAt: periodTime ? timeToMinutes(periodTime.ends_at) : null,
-      };
-    })
-    .sort((left, right) => {
-      const leftStart = left.startsAt ?? left.slot.period * 1000;
-      const rightStart = right.startsAt ?? right.slot.period * 1000;
-      return leftStart - rightStart;
-    });
-
-  const current = withTimes.find(
-    (row) =>
-      row.startsAt !== null &&
-      row.endsAt !== null &&
-      row.startsAt <= currentMinutes &&
-      currentMinutes <= row.endsAt,
-  );
-  if (current) return current.slot;
-
-  const next = withTimes.find(
-    (row) => row.startsAt !== null && row.startsAt > currentMinutes,
-  );
-  return (next ?? withTimes[0])?.slot ?? null;
 }
 
 export function AttendanceCheckInPage() {
@@ -224,30 +178,6 @@ export function AttendanceCheckInPage() {
     [periodTimesQuery.data?.data, todaySlots],
   );
 
-  useEffect(() => {
-    let timeoutId: number | undefined;
-
-    if (checkInMode !== "subject") {
-      timeoutId = window.setTimeout(() => setSelectedSlotId(""), 0);
-      return () => {
-        window.clearTimeout(timeoutId);
-      };
-    }
-
-    if (todaySlots.some((slot) => String(slot.id) === selectedSlotId)) {
-      return undefined;
-    }
-
-    const defaultSlot = findDefaultSlot(todaySlots, periodTimesQuery.data?.data ?? []);
-    timeoutId = window.setTimeout(
-      () => setSelectedSlotId(defaultSlot ? String(defaultSlot.id) : ""),
-      0,
-    );
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [checkInMode, periodTimesQuery.data?.data, selectedSlotId, todaySlots]);
-
   const newCases = saveState.data?.newCases ?? [];
   const filterScope = useMemo(
     () => ({
@@ -288,6 +218,29 @@ export function AttendanceCheckInPage() {
   async function handleReopen(reason: string): Promise<void> {
     await reopen(reason);
     setReopenDialogOpen(false);
+  }
+
+  function handleCheckInModeChange(value: string): void {
+    const nextMode = value as CheckInMode;
+    setCheckInMode(nextMode);
+    if (nextMode !== "subject") {
+      setSelectedSlotId("");
+    }
+  }
+
+  function handleSchoolChange(value: string): void {
+    setSelectedSlotId("");
+    setSchoolId(value);
+  }
+
+  function handleGradeChange(value: string): void {
+    setSelectedSlotId("");
+    setGrade(value);
+  }
+
+  function handleRoomChange(value: string): void {
+    setSelectedSlotId("");
+    setRoom(value);
   }
 
   // History uses the same school/grade/room scope as the today tab — filter the
@@ -361,9 +314,9 @@ export function AttendanceCheckInPage() {
               room: "เลือกห้อง",
               school: "เลือกโรงเรียน",
             }}
-            onGradeChange={setGrade}
-            onRoomChange={setRoom}
-            onSchoolChange={setSchoolId}
+            onGradeChange={handleGradeChange}
+            onRoomChange={handleRoomChange}
+            onSchoolChange={handleSchoolChange}
             scope={filterScope}
           />
 
@@ -392,7 +345,7 @@ export function AttendanceCheckInPage() {
         <Card className="mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
           <Tabs
             aria-label="รูปแบบเช็คชื่อ"
-            onChange={(value) => setCheckInMode(value as CheckInMode)}
+            onChange={handleCheckInModeChange}
             options={CHECK_IN_MODE_OPTIONS}
             value={checkInMode}
           />
