@@ -143,3 +143,10 @@ export function getTodayIso(reference: Date = new Date()): string {
   const day = String(reference.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+/** ISO weekday (1=Monday..7=Sunday) for a `YYYY-MM-DD` calendar date string. */
+export function getIsoDayOfWeekFromDateString(dateString: string): number {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const utcDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return utcDay === 0 ? 7 : utcDay;
+}

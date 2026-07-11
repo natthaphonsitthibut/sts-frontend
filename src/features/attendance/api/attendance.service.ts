@@ -41,7 +41,7 @@ interface AttendanceService {
   ) => Promise<AttendanceTasksPageResponse>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
-    options?: { timetableSlotId?: number | null },
+    options?: { timetableSlotId?: number | null; date?: string },
   ) => Promise<AttendanceSaveResponse>;
   getSessionContext: (query: {
     schoolId: string | number;
@@ -298,13 +298,14 @@ async function getAttendanceTasksPage(
 
 async function saveAttendance(
   records: AttendanceSaveRecord[],
-  options: { timetableSlotId?: number | null } = {},
+  options: { timetableSlotId?: number | null; date?: string } = {},
 ): Promise<AttendanceSaveResponse> {
   const response = await apiClient.post<AttendanceSaveResponse>(
     "/attendance",
     {
       records,
       ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
+      ...(options.date ? { date: options.date } : {}),
     },
   );
   return response.data;

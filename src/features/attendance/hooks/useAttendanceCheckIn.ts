@@ -33,9 +33,12 @@ export function useAttendanceCheckIn() {
 export function useAttendanceCheckInForSession({
   enabled = true,
   timetableSlotId,
+  date,
 }: {
   enabled?: boolean;
   timetableSlotId?: number | null;
+  /** Attendance date to check in for, `YYYY-MM-DD`; defaults to today. */
+  date?: string;
 }) {
   const queryClient = useQueryClient();
   const user = useAuthSessionStore((state) => state.user);
@@ -99,25 +102,25 @@ export function useAttendanceCheckInForSession({
     enabled: canLoadRoster,
   });
 
-  const today = getTodayIso();
+  const attendanceDate = date ?? getTodayIso();
   const sessionKind = timetableSlotId ? "SUBJECT" : "DAILY";
   const sessionKey = timetableSlotId ?? "daily";
   const sessionQuery = useQuery({
-    queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
+    queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
     queryFn: () =>
       attendanceService.getSessionContext({
         schoolId,
         grade,
         room,
-        date: today,
+        date: attendanceDate,
         timetableSlotId,
       }),
     enabled: canLoadRoster,
   });
   const existingAttendanceQuery = useQuery({
-    queryKey: ["attendance-checkin-history", today, schoolId, sessionKind, sessionKey],
+    queryKey: ["attendance-checkin-history", attendanceDate, schoolId, sessionKind, sessionKey],
     queryFn: () =>
-      attendanceService.getHistory(today, schoolId, {
+      attendanceService.getHistory(attendanceDate, schoolId, {
         sessionKind,
         timetableSlotId,
       }),
@@ -126,16 +129,22 @@ export function useAttendanceCheckInForSession({
 
   const saveMutation = useMutation({
     mutationFn: (records: AttendanceSaveRecord[]) =>
-      attendanceService.saveAttendance(records, { timetableSlotId }),
+      attendanceService.saveAttendance(records, { timetableSlotId, date: attendanceDate }),
     onSuccess: async () => {
       setSelections({});
       setPreviousSelections(null);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
+          queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["attendance-checkin-history", today, schoolId, sessionKind, sessionKey],
+          queryKey: [
+            "attendance-checkin-history",
+            attendanceDate,
+            schoolId,
+            sessionKind,
+            sessionKey,
+          ],
         }),
       ]);
     },
@@ -150,7 +159,7 @@ export function useAttendanceCheckInForSession({
       setSelections({});
       setPreviousSelections(null);
       await queryClient.invalidateQueries({
-        queryKey: ["attendance-session", schoolId, grade, room, today, sessionKey],
+        queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
       });
     },
   });

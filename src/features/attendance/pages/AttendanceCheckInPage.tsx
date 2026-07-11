@@ -37,7 +37,10 @@ import {
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
-import { getAttendanceStatusPresentation } from "../lib/attendance-presentation";
+import {
+  getAttendanceStatusPresentation,
+  getIsoDayOfWeekFromDateString,
+} from "../lib/attendance-presentation";
 import type { AttendanceHistoryRecord } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
@@ -82,11 +85,6 @@ function getHistorySortValue(
   if (key === "status") return getAttendanceStatusPresentation(record.status, catalog).label;
   if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
   return "";
-}
-
-function getIsoDayOfWeek(date = new Date()): number {
-  const day = date.getDay();
-  return day === 0 ? 7 : day;
 }
 
 function timeToMinutes(value: string): number {
@@ -147,11 +145,17 @@ export function AttendanceCheckInPage() {
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
   const [checkInMode, setCheckInMode] = useState<CheckInMode>("daily");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  // Defaults to today but stays editable — lets a teacher check in for an
+  // earlier date (e.g. catching up after the fact). Never a future date; the
+  // backend rejects that too.
+  const [checkInDate, setCheckInDate] = useState(getTodayIso());
+  const isCheckInDateToday = checkInDate === getTodayIso();
   const selectedSlotIdNumber =
     checkInMode === "subject" && selectedSlotId ? Number(selectedSlotId) : null;
   const checkIn = useAttendanceCheckInForSession({
     enabled: checkInMode === "daily" || Boolean(selectedSlotIdNumber),
     timetableSlotId: selectedSlotIdNumber,
+    date: checkInDate,
   });
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [historyDate, setHistoryDate] = useState(getTodayIso());
@@ -203,17 +207,19 @@ export function AttendanceCheckInPage() {
       : null;
   const slotsQuery = useTimetableSlots(timetableFilter);
   const periodTimesQuery = usePeriodTimes(schoolId ? Number(schoolId) : null);
-  const todaySlots = useMemo(
+  // Slots for whichever date is picked above (defaults to today, but a
+  // teacher can switch to an earlier date to catch up on check-in).
+  const slotsForDate = useMemo(
     () =>
       (slotsQuery.data?.data ?? [])
-        .filter((slot) => slot.day_of_week === getIsoDayOfWeek())
+        .filter((slot) => slot.day_of_week === getIsoDayOfWeekFromDateString(checkInDate))
         .sort((left, right) => left.period - right.period),
-    [slotsQuery.data?.data],
+    [slotsQuery.data?.data, checkInDate],
   );
   const subjectSlotOptions = useMemo(
     () => [
-      { value: "", label: todaySlots.length > 0 ? "เลือกคาบรายวิชา" : "ไม่พบคาบวันนี้" },
-      ...todaySlots.map((slot) => ({
+      { value: "", label: slotsForDate.length > 0 ? "เลือกคาบรายวิชา" : "ไม่พบคาบวันที่เลือก" },
+      ...slotsForDate.map((slot) => ({
         value: String(slot.id),
         label: `${slot.subject_name_th} · ${formatTimetableSlotLabel(
           slot,
@@ -221,19 +227,26 @@ export function AttendanceCheckInPage() {
         )}`,
       })),
     ],
-    [periodTimesQuery.data?.data, todaySlots],
+    [periodTimesQuery.data?.data, slotsForDate],
   );
 
-  // Default the subject-mode slot to "now" from the room's timetable on first
-  // entry, without locking it — reassign only while the current selection
-  // isn't one of today's slots (mode just switched, or school/grade/room
-  // changed underneath it). A user's own pick is always left alone since it's
-  // already in todaySlots. Adjusting state during render (not in an effect)
-  // per https://react.dev/learn/you-might-not-need-an-effect — React restarts
+  // Default the subject-mode slot to "now" from the room's timetable — only
+  // while viewing today, since "current time" has no meaning for a picked
+  // past date — without locking it: reassign only while the current
+  // selection isn't one of the picked date's slots (mode/date just switched,
+  // or school/grade/room changed underneath it). A user's own pick is always
+  // left alone since it's already in slotsForDate. Adjusting state during
+  // render (not in an effect) per
+  // https://react.dev/learn/you-might-not-need-an-effect — React restarts
   // this render with the new value before anything commits, so `checkIn`
   // below still sees the resolved slot on the same pass.
-  if (checkInMode === "subject" && !todaySlots.some((slot) => String(slot.id) === selectedSlotId)) {
-    const defaultSlot = findDefaultSlot(todaySlots, periodTimesQuery.data?.data ?? []);
+  if (
+    checkInMode === "subject" &&
+    !slotsForDate.some((slot) => String(slot.id) === selectedSlotId)
+  ) {
+    const defaultSlot = isCheckInDateToday
+      ? findDefaultSlot(slotsForDate, periodTimesQuery.data?.data ?? [])
+      : null;
     const defaultSlotId = defaultSlot ? String(defaultSlot.id) : "";
     if (defaultSlotId !== selectedSlotId) {
       setSelectedSlotId(defaultSlotId);
@@ -303,6 +316,11 @@ export function AttendanceCheckInPage() {
   function handleRoomChange(value: string): void {
     setSelectedSlotId("");
     setRoom(value);
+  }
+
+  function handleCheckInDateChange(value: string): void {
+    setSelectedSlotId("");
+    setCheckInDate(value);
   }
 
   // History uses the same school/grade/room scope as the today tab — filter the
@@ -384,12 +402,12 @@ export function AttendanceCheckInPage() {
 
           {tab === "today" ? (
             <Input
-              aria-label="วันที่"
+              aria-label="วันที่เช็คชื่อ"
               className="sm:w-[180px]"
               type="date"
-              value={getTodayIso()}
-              readOnly
-              disabled
+              max={getTodayIso()}
+              value={checkInDate}
+              onChange={(event) => handleCheckInDateChange(event.target.value || getTodayIso())}
             />
           ) : (
             <Input
@@ -414,7 +432,7 @@ export function AttendanceCheckInPage() {
           {checkInMode === "subject" ? (
             <Combobox
               className="w-full sm:w-[380px]"
-              disabled={!timetableFilter || slotsQuery.isLoading || todaySlots.length === 0}
+              disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
               onChange={setSelectedSlotId}
               options={subjectSlotOptions}
               placeholder="เลือกคาบรายวิชา"
@@ -520,7 +538,7 @@ export function AttendanceCheckInPage() {
                 }
                 description={
                   checkInMode === "subject"
-                    ? "กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันนี้"
+                    ? "กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันที่เลือก"
                     : "กรุณาเลือกโรงเรียน ระดับชั้น และห้อง เพื่อแสดงรายชื่อนักเรียน"
                 }
               />
