@@ -58,10 +58,10 @@ export function SidebarNavItem({
             "relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
             collapsed && "justify-center px-0",
             hasActiveChild
-              ? "bg-slate-50 font-semibold text-slate-700"
+              ? "bg-primary-soft font-semibold text-primary"
               : open
                 ? "bg-slate-50 text-slate-700"
-              : "text-slate-600 hover:text-slate-900",
+                : "text-slate-600 hover:text-slate-900",
           )}
         >
           <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
