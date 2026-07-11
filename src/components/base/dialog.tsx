@@ -11,7 +11,13 @@ export interface DialogProps extends ComponentProps<"div"> {
   open: boolean;
 }
 
-export function Dialog({ children, className, onOpenChange, open, ...props }: DialogProps) {
+export function Dialog({
+  children,
+  className,
+  onOpenChange,
+  open,
+  ...props
+}: DialogProps) {
   const regionRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -21,7 +27,8 @@ export function Dialog({ children, className, onOpenChange, open, ...props }: Di
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 
     const focusTimer = window.setTimeout(() => {
-      const focusable = regionRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusable =
+        regionRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
       (focusable ?? regionRef.current)?.focus();
     }, 0);
 
@@ -32,7 +39,8 @@ export function Dialog({ children, className, onOpenChange, open, ...props }: Di
       }
       if (event.key !== "Tab") return;
 
-      const focusable = regionRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusable =
+        regionRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
       if (!focusable || focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -59,7 +67,10 @@ export function Dialog({ children, className, onOpenChange, open, ...props }: Di
 
   return (
     <div
-      className={cn("fixed inset-0 z-50 flex items-center justify-center p-4", className)}
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center p-4",
+        className,
+      )}
       ref={regionRef}
       {...props}
     >
@@ -78,7 +89,12 @@ export interface DialogContentProps extends ComponentProps<"section"> {
   onClose?: () => void;
 }
 
-export function DialogContent({ children, className, onClose, ...props }: DialogContentProps) {
+export function DialogContent({
+  children,
+  className,
+  onClose,
+  ...props
+}: DialogContentProps) {
   return (
     <section
       aria-modal="true"
@@ -108,10 +124,18 @@ export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function DialogTitle({ className, ...props }: ComponentProps<"h2">) {
-  return <h2 className={cn("text-lg font-bold text-slate-900", className)} {...props} />;
+  return (
+    <h2
+      className={cn("text-lg font-bold text-slate-900", className)}
+      {...props}
+    />
+  );
 }
 
-export function DialogDescription({ className, ...props }: ComponentProps<"p">) {
+export function DialogDescription({
+  className,
+  ...props
+}: ComponentProps<"p">) {
   return <p className={cn("text-sm text-slate-500", className)} {...props} />;
 }
 
@@ -119,7 +143,11 @@ export interface DialogFooterProps extends ComponentProps<"div"> {
   align?: "left" | "right" | "between";
 }
 
-export function DialogFooter({ align = "right", className, ...props }: DialogFooterProps) {
+export function DialogFooter({
+  align = "right",
+  className,
+  ...props
+}: DialogFooterProps) {
   return (
     <div
       className={cn(
