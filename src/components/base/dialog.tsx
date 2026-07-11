@@ -20,6 +20,10 @@ export function Dialog({
 }: DialogProps) {
   const regionRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +38,7 @@ export function Dialog({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onOpenChange?.(false);
+        onOpenChangeRef.current?.(false);
         return;
       }
       if (event.key !== "Tab") return;
@@ -59,7 +63,7 @@ export function Dialog({
       window.clearTimeout(focusTimer);
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
   if (!open) {
     return null;
