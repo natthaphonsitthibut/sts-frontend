@@ -53,6 +53,7 @@ import type { StatusCatalogItem } from "../../status-catalog/types/status-catalo
 import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
+import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
 
 
 const TAB_OPTIONS = [
@@ -86,6 +87,51 @@ function getHistorySortValue(
 function getIsoDayOfWeek(date = new Date()): number {
   const day = date.getDay();
   return day === 0 ? 7 : day;
+}
+
+function timeToMinutes(value: string): number {
+  const [hours = "0", minutes = "0"] = value.split(":");
+  return Number(hours) * 60 + Number(minutes);
+}
+
+function findDefaultSlot(
+  slots: TimetableSlot[],
+  periodTimes: SchoolPeriodTime[],
+): TimetableSlot | null {
+  if (slots.length === 0) return null;
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const withTimes = slots
+    .map((slot) => {
+      const periodTime = periodTimes.find(
+        (row) => row.day_of_week === slot.day_of_week && row.period === slot.period,
+      );
+      return {
+        slot,
+        startsAt: periodTime ? timeToMinutes(periodTime.starts_at) : null,
+        endsAt: periodTime ? timeToMinutes(periodTime.ends_at) : null,
+      };
+    })
+    .sort((left, right) => {
+      const leftStart = left.startsAt ?? left.slot.period * 1000;
+      const rightStart = right.startsAt ?? right.slot.period * 1000;
+      return leftStart - rightStart;
+    });
+
+  const current = withTimes.find(
+    (row) =>
+      row.startsAt !== null &&
+      row.endsAt !== null &&
+      row.startsAt <= currentMinutes &&
+      currentMinutes <= row.endsAt,
+  );
+  if (current) return current.slot;
+
+  const next = withTimes.find(
+    (row) => row.startsAt !== null && row.startsAt > currentMinutes,
+  );
+  return (next ?? withTimes[0])?.slot ?? null;
 }
 
 export function AttendanceCheckInPage() {
@@ -177,6 +223,22 @@ export function AttendanceCheckInPage() {
     ],
     [periodTimesQuery.data?.data, todaySlots],
   );
+
+  // Default the subject-mode slot to "now" from the room's timetable on first
+  // entry, without locking it — reassign only while the current selection
+  // isn't one of today's slots (mode just switched, or school/grade/room
+  // changed underneath it). A user's own pick is always left alone since it's
+  // already in todaySlots. Adjusting state during render (not in an effect)
+  // per https://react.dev/learn/you-might-not-need-an-effect — React restarts
+  // this render with the new value before anything commits, so `checkIn`
+  // below still sees the resolved slot on the same pass.
+  if (checkInMode === "subject" && !todaySlots.some((slot) => String(slot.id) === selectedSlotId)) {
+    const defaultSlot = findDefaultSlot(todaySlots, periodTimesQuery.data?.data ?? []);
+    const defaultSlotId = defaultSlot ? String(defaultSlot.id) : "";
+    if (defaultSlotId !== selectedSlotId) {
+      setSelectedSlotId(defaultSlotId);
+    }
+  }
 
   const newCases = saveState.data?.newCases ?? [];
   const filterScope = useMemo(
