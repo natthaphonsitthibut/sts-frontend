@@ -32,25 +32,44 @@ import {
   useUpdateTimetableSlot,
 } from "../hooks/useTimetable";
 import { DAY_LABELS } from "../lib/period-times";
-import type { TimetableSlot } from "../types/timetable.types";
+import type { SchoolPeriodTime, TimetableSlot } from "../types/timetable.types";
 
 const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({ value, label }));
-const PERIOD_OPTIONS = Array.from({ length: 10 }, (_, i) => String(i + 1)).map((value) => ({
-  value,
-  label: `คาบ ${value}`,
-}));
+/** Fallback period count before the school has generated any bell schedule at all. */
+const DEFAULT_PERIOD_COUNT = 8;
+
+/** Period choices come from the school's actual bell schedule, not a hardcoded cap. */
+function getPeriodOptions(periodTimes: SchoolPeriodTime[]) {
+  const configured = Array.from(new Set(periodTimes.map((row) => row.period))).sort(
+    (a, b) => a - b,
+  );
+  const periods =
+    configured.length > 0
+      ? configured
+      : Array.from({ length: DEFAULT_PERIOD_COUNT }, (_, index) => index + 1);
+  return periods.map((value) => ({ value: String(value), label: `คาบ ${value}` }));
+}
 
 function AddSlotForm({
   editingSlot,
+  initialDayOfWeek,
+  initialPeriod,
   onDone,
+  periodTimes,
   room,
 }: {
   editingSlot?: TimetableSlot | null;
+  initialDayOfWeek?: number;
+  initialPeriod?: number;
   onDone: () => void;
+  periodTimes: SchoolPeriodTime[];
   room: RoomSelection;
 }) {
-  const [dayOfWeek, setDayOfWeek] = useState(String(editingSlot?.day_of_week ?? 1));
-  const [period, setPeriod] = useState(String(editingSlot?.period ?? 1));
+  const [dayOfWeek, setDayOfWeek] = useState(
+    String(editingSlot?.day_of_week ?? initialDayOfWeek ?? 1),
+  );
+  const [period, setPeriod] = useState(String(editingSlot?.period ?? initialPeriod ?? 1));
+  const periodOptions = getPeriodOptions(periodTimes);
   const [subjectId, setSubjectId] = useState(
     editingSlot ? String(editingSlot.subject_id) : "",
   );
@@ -184,7 +203,7 @@ function AddSlotForm({
             disabled={Boolean(editingSlot)}
             id="slot-period"
             onChange={setPeriod}
-            options={PERIOD_OPTIONS}
+            options={periodOptions}
             searchable={false}
             value={period}
           />
@@ -282,9 +301,13 @@ function AddSlotForm({
 
 function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   const [adding, setAdding] = useState(false);
+  const [addPrefill, setAddPrefill] = useState<{ dayOfWeek: number; period: number } | null>(
+    null,
+  );
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const slotsQuery = useTimetableSlots(room);
   const periodTimesQuery = usePeriodTimes(room?.schoolId ?? null);
+  const periodTimes = periodTimesQuery.data?.data ?? [];
   const deleteSlot = useDeleteTimetableSlot();
   const { confirm, dialog } = useConfirm();
 
@@ -300,6 +323,17 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
     }
   }
 
+  function handleAddAtCell(dayOfWeek: number, period: number): void {
+    setEditingSlot(null);
+    setAddPrefill({ dayOfWeek, period });
+    setAdding(true);
+  }
+
+  function handleAddDone(): void {
+    setAdding(false);
+    setAddPrefill(null);
+  }
+
   const slots = slotsQuery.data?.data ?? [];
   const isEditing = Boolean(editingSlot);
 
@@ -313,7 +347,14 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
               ตารางสอน — {room.schoolName} {room.gradeLevelLabel} ห้อง {room.roomNo}
             </h3>
             {!adding && !isEditing ? (
-              <Button icon={Plus} onClick={() => setAdding(true)} size="sm">
+              <Button
+                icon={Plus}
+                onClick={() => {
+                  setAddPrefill(null);
+                  setAdding(true);
+                }}
+                size="sm"
+              >
                 เพิ่มคาบสอน
               </Button>
             ) : null}
@@ -322,7 +363,14 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
           {/* Inline add / edit form */}
           {adding ? (
             <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
-              <AddSlotForm onDone={() => setAdding(false)} room={room} />
+              <AddSlotForm
+                initialDayOfWeek={addPrefill?.dayOfWeek}
+                initialPeriod={addPrefill?.period}
+                key={addPrefill ? `${addPrefill.dayOfWeek}-${addPrefill.period}` : "new"}
+                onDone={handleAddDone}
+                periodTimes={periodTimes}
+                room={room}
+              />
             </div>
           ) : null}
           {editingSlot ? (
@@ -331,6 +379,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                 editingSlot={editingSlot}
                 key={editingSlot.id}
                 onDone={() => setEditingSlot(null)}
+                periodTimes={periodTimes}
                 room={room}
               />
             </div>
@@ -347,7 +396,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
             </div>
           ) : null}
 
-          {slots.length === 0 && !slotsQuery.isLoading ? (
+          {slots.length === 0 && periodTimes.length === 0 && !slotsQuery.isLoading ? (
             <div className="border-t border-slate-200 px-5 py-4">
               <EmptyState
                 description={`กด "เพิ่มคาบสอน" ด้านบนเพื่อเริ่มจัดตารางของห้องนี้`}
@@ -393,7 +442,8 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                     </div>
                   </div>
                 )}
-                periodTimes={periodTimesQuery.data?.data ?? []}
+                onAddSlot={handleAddAtCell}
+                periodTimes={periodTimes}
                 slots={slots}
               />
             </div>

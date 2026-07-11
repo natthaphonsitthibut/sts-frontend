@@ -1,21 +1,47 @@
 import type { ReactNode } from "react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Plus } from "lucide-react";
 import { EmptyState } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
-import { DAY_LABELS, getPeriodTimeLabel } from "../lib/period-times";
+import { DAY_LABELS, getPeriodTimeLabel, hoursBetween } from "../lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../types/timetable.types";
 
 const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7];
 
-function getGridDays(slots: TimetableSlot[]): number[] {
+/**
+ * Day rows come from assigned slots alone, unless `includeConfiguredSchedule` is
+ * set (the manage view) — then a day the bell schedule already covers shows
+ * up too, even before any subject is assigned to it.
+ */
+function getGridDays(
+  slots: TimetableSlot[],
+  periodTimes: SchoolPeriodTime[],
+  includeConfiguredSchedule: boolean,
+): number[] {
   const days = new Set<number>();
   for (const slot of slots) days.add(slot.day_of_week);
+  if (includeConfiguredSchedule) {
+    for (const row of periodTimes) days.add(row.day_of_week);
+  }
   return WEEK_DAYS.filter((day) => days.has(day));
 }
 
-function getGridPeriods(slots: TimetableSlot[]): number[] {
+/**
+ * Period columns come from assigned slots alone, unless `includeConfiguredSchedule`
+ * is set — then a period the bell schedule already defines shows up too, even
+ * before any subject is assigned to it. Without this, a period added to
+ * `school_period_times` (e.g. going from 7 to 8 periods/day) never gets a
+ * column to assign a subject into, since one can't exist there yet.
+ */
+function getGridPeriods(
+  slots: TimetableSlot[],
+  periodTimes: SchoolPeriodTime[],
+  includeConfiguredSchedule: boolean,
+): number[] {
   const periods = new Set<number>();
   for (const slot of slots) periods.add(slot.period);
+  if (includeConfiguredSchedule) {
+    for (const row of periodTimes) periods.add(row.period);
+  }
   return Array.from(periods).sort((a, b) => a - b);
 }
 
@@ -31,6 +57,37 @@ function getRepresentativeDay(days: number[], periodTimes: SchoolPeriodTime[]): 
   return days.find((day) => periodTimes.some((row) => row.day_of_week === day)) ?? days[0] ?? 1;
 }
 
+/** Postgres TIME comes back as "HH:MM:SS" — trim to "HH:MM" for display. */
+function trimToHHMM(value: string): string {
+  return value.slice(0, 5);
+}
+
+/**
+ * Periods after which there's a real time gap on the representative day (a
+ * lunch break, a flag-ceremony break, etc.) — rendered as a spacer column
+ * showing just the break's time range, not "คาบ N", so it doesn't look like
+ * a period. Keyed by the period the gap follows.
+ */
+function getGapAfterPeriods(
+  periods: number[],
+  periodTimes: SchoolPeriodTime[],
+  representativeDay: number,
+): Map<number, { startsAt: string; endsAt: string }> {
+  const gaps = new Map<number, { startsAt: string; endsAt: string }>();
+  for (let i = 0; i < periods.length - 1; i += 1) {
+    const current = periodTimes.find(
+      (row) => row.day_of_week === representativeDay && row.period === periods[i],
+    );
+    const next = periodTimes.find(
+      (row) => row.day_of_week === representativeDay && row.period === periods[i + 1],
+    );
+    if (current && next && hoursBetween(current.ends_at, next.starts_at) > 0) {
+      gaps.set(periods[i], { startsAt: current.ends_at, endsAt: next.starts_at });
+    }
+  }
+  return gaps;
+}
+
 interface TimetableGridProps {
   slots: TimetableSlot[];
   periodTimes: SchoolPeriodTime[];
@@ -39,16 +96,27 @@ interface TimetableGridProps {
   emptyDescription?: string;
   /** When true, strips the outer card wrapper (border, rounded, shadow) — use when the grid is already inside a card container. */
   borderless?: boolean;
+  /**
+   * Manage-view only: when provided, an empty cell shows a "+" (hover-reveal,
+   * same feel as the edit/delete affordance on a filled cell) that calls back
+   * with the cell's day/period. Also switches day/period rows to include
+   * everything the bell schedule defines, not just already-assigned slots —
+   * a read-only personal schedule should stay compact instead of showing the
+   * whole school's configured grid, so this is opt-in.
+   */
+  onAddSlot?: (dayOfWeek: number, period: number) => void;
 }
 
 export function TimetableGrid({
   borderless = false,
   emptyDescription,
+  onAddSlot,
   periodTimes,
   renderSlot,
   slots,
 }: TimetableGridProps) {
-  if (slots.length === 0) {
+  const includeConfiguredSchedule = Boolean(onAddSlot);
+  if (slots.length === 0 && !(includeConfiguredSchedule && periodTimes.length > 0)) {
     return (
       <EmptyState
         description={emptyDescription ?? "ยังไม่มีการจัดคาบสอนสำหรับตารางนี้"}
@@ -58,9 +126,26 @@ export function TimetableGrid({
     );
   }
 
-  const days = getGridDays(slots);
-  const periods = getGridPeriods(slots);
+  const days = getGridDays(slots, periodTimes, includeConfiguredSchedule);
+  const periods = getGridPeriods(slots, periodTimes, includeConfiguredSchedule);
   const representativeDay = getRepresentativeDay(days, periodTimes);
+  // A period can end up in `periods` purely because a subject is still
+  // assigned there (via `slots`) even though the bell schedule was later
+  // shrunk past it — e.g. going from 8 periods/day back to 7 doesn't touch
+  // existing subject assignments in period 8. Flag that case distinctly so
+  // it doesn't read as "just hasn't been configured yet" (implying it's new)
+  // when it's actually orphaned data outside today's bell schedule that the
+  // admin should reassign or delete.
+  const periodsInBellSchedule = new Set(periodTimes.map((row) => row.period));
+  const gapAfterPeriods = getGapAfterPeriods(periods, periodTimes, representativeDay);
+  const columns = periods.flatMap((period) =>
+    gapAfterPeriods.has(period)
+      ? [
+          { kind: "period" as const, period },
+          { kind: "gap" as const, key: `gap-${period}`, afterPeriod: period },
+        ]
+      : [{ kind: "period" as const, period }],
+  );
   const slotsByDayAndPeriod = new Map<string, TimetableSlot[]>();
   for (const slot of slots) {
     const key = `${slot.day_of_week}-${slot.period}`;
@@ -79,12 +164,15 @@ export function TimetableGrid({
       <div className="overflow-x-auto">
         <table
           className="w-full border-collapse text-left text-xs sm:text-sm"
-          style={{ tableLayout: "fixed", minWidth: `${periods.length * 140 + 80}px` }}
+          style={{
+            tableLayout: "fixed",
+            minWidth: `${columns.length * 108 + 80}px`,
+          }}
         >
           <colgroup>
             <col style={{ width: "80px" }} />
-            {periods.map((period) => (
-              <col key={period} />
+            {columns.map((column) => (
+              <col key={column.kind === "gap" ? column.key : column.period} />
             ))}
           </colgroup>
           <thead>
@@ -92,17 +180,50 @@ export function TimetableGrid({
               <th className="bg-slate-50 px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">
                 วัน
               </th>
-              {periods.map((period) => (
-                <th
-                  className="px-2 py-3 align-top text-xs font-bold text-slate-600"
-                  key={period}
-                >
-                  <div>คาบ {period}</div>
-                  <div className="mt-0.5 font-normal text-slate-400">
-                    {getPeriodTimeLabel(periodTimes, representativeDay, period)}
-                  </div>
-                </th>
-              ))}
+              {columns.map((column) => {
+                if (column.kind === "gap") {
+                  const gap = gapAfterPeriods.get(column.afterPeriod);
+                  return (
+                    <th
+                      className="px-1 py-3 text-center align-top text-xs font-bold"
+                      key={column.key}
+                    >
+                      {gap ? (
+                        <>
+                          <div className="invisible" aria-hidden="true">
+                            .
+                          </div>
+                          <div className="mt-0.5 whitespace-nowrap text-[11px] font-normal leading-tight text-slate-400">
+                            {trimToHHMM(gap.startsAt)}–{trimToHHMM(gap.endsAt)}
+                          </div>
+                        </>
+                      ) : null}
+                    </th>
+                  );
+                }
+                const period = column.period;
+                const isOutsideBellSchedule = includeConfiguredSchedule
+                  ? !periodsInBellSchedule.has(period)
+                  : false;
+                return (
+                  <th
+                    className="px-2 py-3 align-top text-xs font-bold text-slate-600"
+                    key={period}
+                  >
+                    <div>คาบ {period}</div>
+                    <div
+                      className={cn(
+                        "mt-0.5 font-normal",
+                        isOutsideBellSchedule ? "text-warning-700" : "text-slate-400",
+                      )}
+                    >
+                      {isOutsideBellSchedule
+                        ? "นอกตารางเวลาปัจจุบัน"
+                        : getPeriodTimeLabel(periodTimes, representativeDay, period)}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -111,15 +232,41 @@ export function TimetableGrid({
                 <td className="whitespace-nowrap bg-white px-3 align-middle text-sm font-bold text-slate-800">
                   {DAY_LABELS[day]}
                 </td>
-                {periods.map((period) => {
+                {columns.map((column) => {
+                  if (column.kind === "gap") {
+                    return (
+                      <td
+                        aria-hidden="true"
+                        className="border-l border-slate-100 bg-slate-50 p-0"
+                        key={column.key}
+                      />
+                    );
+                  }
+                  const period = column.period;
                   const cellSlots = slotsByDayAndPeriod.get(`${day}-${period}`) ?? [];
                   return (
                     <td className="border-l border-slate-100 p-0" key={period}>
                       <div className="px-2 py-2" style={{ height: "88px", maxHeight: "88px", overflow: "hidden" }}>
                         {cellSlots.length === 0 ? (
-                          <div className="flex h-full items-center justify-center text-slate-300">
-                            —
-                          </div>
+                          onAddSlot ? (
+                            <button
+                              aria-label={`เพิ่มคาบสอน วัน${DAY_LABELS[day]} คาบ ${period}`}
+                              className="group/add relative flex h-full w-full items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-primary-soft hover:text-primary focus-visible:bg-primary-soft focus-visible:text-primary focus-visible:outline-none"
+                              onClick={() => onAddSlot(day, period)}
+                              type="button"
+                            >
+                              <span className="transition-opacity group-hover/add:opacity-0 group-focus-visible/add:opacity-0">
+                                —
+                              </span>
+                              <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/add:opacity-100 group-focus-visible/add:opacity-100">
+                                <Plus aria-hidden="true" className="size-5" />
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-slate-300">
+                              —
+                            </div>
+                          )
                         ) : (
                           <div className="space-y-1.5">
                             {cellSlots.map((slot) =>
