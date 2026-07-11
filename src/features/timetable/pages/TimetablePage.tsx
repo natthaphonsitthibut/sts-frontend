@@ -310,7 +310,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
           {/* Section header */}
           <div className="flex items-center justify-between px-5 py-4">
             <h3 className="text-sm font-extrabold text-slate-900">
-              ตารางสอน — {room.schoolName} ห้อง {room.roomNo}
+              ตารางสอน — {room.schoolName} {room.gradeLevelLabel} ห้อง {room.roomNo}
             </h3>
             {!adding && !isEditing ? (
               <Button icon={Plus} onClick={() => setAdding(true)} size="sm">

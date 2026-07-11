@@ -8,6 +8,7 @@ export interface RoomSelection {
   gradeLevelId: number;
   roomNo: number;
   schoolName: string;
+  gradeLevelLabel: string;
 }
 
 interface RoomPickerProps {
@@ -23,15 +24,26 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
   const area = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
 
-  function emit(nextSchoolId: string, nextGradeLevelId: number | null, nextRoom: string): void {
+  function emit(
+    nextSchoolId: string,
+    nextGradeLevelId: number | null,
+    nextGradeLevelLabel: string,
+    nextRoom: string,
+  ): void {
     const schoolId = Number(nextSchoolId);
     const roomNo = Number(nextRoom);
     const school = area.schools.find((candidate) => String(candidate.id) === nextSchoolId);
-    if (!schoolId || !nextGradeLevelId || !roomNo || !school) {
+    if (!schoolId || !nextGradeLevelId || !nextGradeLevelLabel || !roomNo || !school) {
       onChange(null);
       return;
     }
-    onChange({ schoolId, gradeLevelId: nextGradeLevelId, roomNo, schoolName: school.name });
+    onChange({
+      schoolId,
+      gradeLevelId: nextGradeLevelId,
+      gradeLevelLabel: nextGradeLevelLabel,
+      roomNo,
+      schoolName: school.name,
+    });
   }
 
   return (
@@ -85,7 +97,7 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
           scope.setSchoolId(next);
           const school = area.schools.find((candidate) => String(candidate.id) === next);
           area.setAreaFromSchool(school);
-          emit(next, scope.gradeLevelId, scope.room);
+          emit(next, scope.gradeLevelId, scope.grade, scope.room);
         }}
         onSearchChange={area.setSchoolSearch}
         options={[
@@ -100,7 +112,7 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
         onChange={(next) => {
           scope.setGrade(next);
           const gradeLevelId = scope.gradeLevels.find((level) => level.label === next)?.id ?? null;
-          emit(scope.schoolId, gradeLevelId, scope.room);
+          emit(scope.schoolId, gradeLevelId, next, scope.room);
         }}
         options={[
           { value: "", label: "เลือกชั้น" },
@@ -113,7 +125,7 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
         disabled={!scope.grade || scope.roomLocked}
         onChange={(next) => {
           scope.setRoom(next);
-          emit(scope.schoolId, scope.gradeLevelId, next);
+          emit(scope.schoolId, scope.gradeLevelId, scope.grade, next);
         }}
         options={[
           { value: "", label: "เลือกห้อง" },
