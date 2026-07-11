@@ -2,14 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Crosshair, LoaderCircle, MapPin } from "lucide-react";
 import { Badge } from "../../../components/base";
 import { appConfig } from "../../../config/env";
+import { normalizeCoordinate, type CoordinateValue } from "../../../lib/coordinates";
 import { cn } from "../../../lib/utils";
 import {
   loadGoogleMaps,
   type GoogleMapInstance,
   type GoogleMarkerInstance,
 } from "../lib/google-maps-loader";
-
-type CoordinateValue = number | string | null | undefined;
 
 export interface VisitMapPreviewProps {
   title: string;
@@ -31,19 +30,6 @@ type SmokeInspectableMapElement = HTMLDivElement & {
   __stsGoogleMap?: GoogleMapInstance;
   __stsGoogleMarker?: GoogleMarkerInstance | null;
 };
-
-function normalizeCoordinate(value: CoordinateValue): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
 
 function formatCoordinate(value: number): string {
   return value.toFixed(6);

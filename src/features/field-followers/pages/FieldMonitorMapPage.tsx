@@ -4,6 +4,7 @@ import { Map as MapIcon, X } from "lucide-react";
 import { Alert, AlertDescription, Badge, IconButton } from "../../../components/base";
 import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { normalizeCoordinates } from "../../../lib/coordinates";
 import { RiskChildPicker, type RiskChildOption } from "../components/RiskChildPicker";
 import { RiskMapView, type RiskMapPin } from "../components/RiskMapView";
 import { useFieldMonitorMap } from "../hooks/useFieldFollowers";
@@ -88,16 +89,21 @@ export function FieldMonitorMapPage() {
 
   const mapPins = mapQuery.data?.data ?? [];
 
-  const pins: RiskMapPin[] = mapPins
-    .filter((pin) => pin.has_coordinates && pin.lat !== null && pin.lng !== null)
-    .map((pin) => ({
-      id: pin.student_uuid,
-      lat: Number(pin.lat),
-      lng: Number(pin.lng),
-      label: pin.student_name,
-      riskTierLabel: getRiskTierLabel(pin.risk_tier),
-      isApproximate: pin.is_approximate,
-    }));
+  const pins: RiskMapPin[] = mapPins.flatMap<RiskMapPin>((pin) => {
+    const coordinates = pin.has_coordinates
+      ? normalizeCoordinates(pin.lat, pin.lng)
+      : null;
+    return coordinates
+      ? [{
+          id: pin.student_uuid,
+          lat: coordinates.lat,
+          lng: coordinates.lng,
+          label: pin.student_name,
+          riskTierLabel: getRiskTierLabel(pin.risk_tier),
+          isApproximate: pin.is_approximate,
+        }]
+      : [];
+  });
 
   const approximateCount = mapPins.filter((pin) => pin.is_approximate).length;
   const stillMissingCount = mapPins.filter((pin) => !pin.has_coordinates).length;

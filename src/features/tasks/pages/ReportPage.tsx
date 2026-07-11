@@ -28,6 +28,7 @@ import {
 } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
+import { normalizeCoordinates, type Coordinates } from "../../../lib/coordinates";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
 import { VisitMapPreview } from "../components/VisitMapPreview";
@@ -41,33 +42,9 @@ const reportSchema = z.object({
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
-type Coordinates = { lat: number; lng: number };
-type CoordinateValue = number | string | null | undefined;
 
 const HOME_CORRECTION_WARNING_DISTANCE_METERS = 150;
 const EARTH_RADIUS_METERS = 6_371_000;
-
-function normalizeCoordinate(value: CoordinateValue): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === "string") {
-    const parsed = Number(value.trim());
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function normalizeCoordinates(
-  lat: CoordinateValue,
-  lng: CoordinateValue,
-): Coordinates | null {
-  const parsedLat = normalizeCoordinate(lat);
-  const parsedLng = normalizeCoordinate(lng);
-  return parsedLat !== null && parsedLng !== null
-    ? { lat: parsedLat, lng: parsedLng }
-    : null;
-}
 
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
@@ -228,10 +205,9 @@ export function ReportPage() {
   }
 
   function handleUseVisitAsHome(): void {
-    const parsedLat = Number(lat);
-    const parsedLng = Number(lng);
-    if (Number.isFinite(parsedLat) && Number.isFinite(parsedLng)) {
-      updateHomeCorrection({ lat: parsedLat, lng: parsedLng });
+    const coordinates = normalizeCoordinates(lat, lng);
+    if (coordinates) {
+      updateHomeCorrection(coordinates);
     }
   }
 
