@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -17,16 +18,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  IconButton,
   Input,
   useConfirm,
 } from "../../../components/base";
+import { cn } from "../../../lib/utils";
 import { TimePicker } from "../../admin/components/TimePicker";
 import {
   useGeneratePeriodTimes,
   useOverridePeriodTime,
   usePeriodTimes,
 } from "../hooks/useTimetable";
-import { DAY_LABELS } from "../lib/period-times";
+import { addHoursToTime, DAY_LABELS, formatDurationHours, hoursBetween } from "../lib/period-times";
 import type { SchoolPeriodTime } from "../types/timetable.types";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 7] as const;
@@ -35,13 +38,36 @@ const EMPTY_PERIOD_TIMES: SchoolPeriodTime[] = [];
 const generateSchema = z
   .object({
     daysOfWeek: z.array(z.number()).min(1, "เลือกอย่างน้อย 1 วัน"),
-    periodsCount: z.number().int().min(1).max(20),
+    periodsCount: z
+      .number({ error: "กรุณาระบุจำนวนคาบ" })
+      .int("จำนวนคาบต้องเป็นจำนวนเต็ม")
+      .min(1, "ต้องมีอย่างน้อย 1 คาบ")
+      .max(20, "ได้สูงสุด 20 คาบ"),
     firstPeriodStartsAt: z.string().regex(/^\d{2}:\d{2}$/, "กรุณาระบุเวลา"),
-    periodLengthMinutes: z.number().int().min(1),
-    breakAfterPeriod: z.number().int().min(1).optional(),
-    breakMinutes: z.number().int().min(0).optional(),
-    lunchAfterPeriod: z.number().int().min(1).optional(),
-    lunchMinutes: z.number().int().min(0).optional(),
+    periodLengthMinutes: z
+      .number({ error: "กรุณาระบุความยาวคาบ" })
+      .int("ความยาวคาบต้องเป็นจำนวนเต็ม")
+      .min(1, "ความยาวคาบต้องมากกว่า 0 นาที"),
+    breakAfterPeriod: z
+      .number({ error: "กรุณาระบุคาบที่พัก" })
+      .int("คาบที่พักต้องเป็นจำนวนเต็ม")
+      .min(1, "คาบที่พักต้องมากกว่า 0")
+      .optional(),
+    breakMinutes: z
+      .number({ error: "กรุณาระบุจำนวนนาทีที่พัก" })
+      .int("จำนวนนาทีที่พักต้องเป็นจำนวนเต็ม")
+      .min(0, "จำนวนนาทีที่พักต้องไม่ติดลบ")
+      .optional(),
+    lunchAfterPeriod: z
+      .number({ error: "กรุณาระบุคาบที่พักเที่ยง" })
+      .int("คาบที่พักเที่ยงต้องเป็นจำนวนเต็ม")
+      .min(1, "คาบที่พักเที่ยงต้องมากกว่า 0")
+      .optional(),
+    lunchMinutes: z
+      .number({ error: "กรุณาระบุจำนวนนาทีพักเที่ยง" })
+      .int("จำนวนนาทีพักเที่ยงต้องเป็นจำนวนเต็ม")
+      .min(0, "จำนวนนาทีพักเที่ยงต้องไม่ติดลบ")
+      .optional(),
   })
   .refine((v) => v.periodsCount >= (v.breakAfterPeriod ?? 0), {
     message: "คาบที่พักต้องไม่เกินจำนวนคาบทั้งหมด",
@@ -70,7 +96,68 @@ function OverrideRow({
   const [editing, setEditing] = useState(false);
   const [startsAt, setStartsAt] = useState(row.starts_at.slice(0, 5));
   const [endsAt, setEndsAt] = useState(row.ends_at.slice(0, 5));
+  const [durationInput, setDurationInput] = useState(() =>
+    formatDurationHours(hoursBetween(row.starts_at.slice(0, 5), row.ends_at.slice(0, 5))),
+  );
   const override = useOverridePeriodTime();
+  const durationHours = Number(durationInput);
+  const isDurationInvalid = durationInput.trim() !== "" && !Number.isFinite(durationHours);
+  const isEndBeforeStart = endsAt <= startsAt;
+  const durationHint = isDurationInvalid
+    ? "จำนวนชั่วโมงไม่ถูกต้อง"
+    : isEndBeforeStart
+      ? "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม"
+      : "ทศนิยมของชั่วโมง เช่น 1.5 = 1 ชั่วโมง 30 นาที, 0.75 = 45 นาที (ไม่ใช่นาฬิกา 1.30)";
+  const [hintOpen, setHintOpen] = useState(false);
+  const hintRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!hintOpen) return;
+
+    function handlePointerDown(event: MouseEvent | TouchEvent): void {
+      if (hintRef.current && !hintRef.current.contains(event.target as Node)) {
+        setHintOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key === "Escape") setHintOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [hintOpen]);
+
+  // Start time is the anchor: nudging it keeps the period's length and
+  // shifts the end time to match, instead of leaving a stale end behind.
+  function handleStartChange(value: string): void {
+    setStartsAt(value);
+    if (Number.isFinite(durationHours)) {
+      setEndsAt(addHoursToTime(value, durationHours));
+    } else {
+      setDurationInput(formatDurationHours(hoursBetween(value, endsAt)));
+    }
+  }
+
+  // Entering a duration derives the end time from the current start.
+  function handleDurationChange(value: string): void {
+    setDurationInput(value);
+    const parsed = Number(value);
+    if (value.trim() !== "" && Number.isFinite(parsed)) {
+      setEndsAt(addHoursToTime(startsAt, parsed));
+    }
+  }
+
+  // Entering an end time derives the duration from the current start.
+  function handleEndChange(value: string): void {
+    setEndsAt(value);
+    setDurationInput(formatDurationHours(hoursBetween(startsAt, value)));
+  }
 
   function handleSave(): void {
     override.mutate(
@@ -89,20 +176,59 @@ function OverrideRow({
         <td className="px-3 py-2 align-middle text-sm text-slate-700">{DAY_LABELS[row.day_of_week]}</td>
       ) : null}
       <td className="w-20 px-3 py-2 align-middle text-sm text-slate-700">คาบ {row.period}</td>
-      <td className="w-[300px] px-3 py-2 align-middle">
+      <td className="w-[440px] px-3 py-2 align-middle">
         {editing ? (
-          <div className="grid w-[280px] grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-            <TimePicker
-              ariaLabel={`เวลาเริ่มคาบ ${row.period}`}
-              onChange={setStartsAt}
-              value={startsAt}
-            />
-            <span className="text-slate-400">–</span>
-            <TimePicker
-              ariaLabel={`เวลาสิ้นสุดคาบ ${row.period}`}
-              onChange={setEndsAt}
-              value={endsAt}
-            />
+          <div className="flex flex-nowrap items-center gap-2">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+              <TimePicker
+                ariaLabel={`เวลาเริ่มคาบ ${row.period}`}
+                onChange={handleStartChange}
+                value={startsAt}
+              />
+              <span className="text-slate-400">–</span>
+              <TimePicker
+                ariaLabel={`เวลาสิ้นสุดคาบ ${row.period}`}
+                onChange={handleEndChange}
+                value={endsAt}
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <Input
+                aria-label="จำนวนชั่วโมง"
+                className={cn(
+                  "h-9 w-24 text-sm",
+                  (isDurationInvalid || isEndBeforeStart) && "border-danger-500",
+                )}
+                min="0"
+                onChange={(event) => handleDurationChange(event.target.value)}
+                step="0.25"
+                type="number"
+                value={durationInput}
+              />
+              <span className="text-xs text-slate-500">ชม.</span>
+              <div className="relative" ref={hintRef}>
+                <IconButton
+                  aria-expanded={hintOpen}
+                  aria-label={durationHint}
+                  className={cn(
+                    "size-6",
+                    isDurationInvalid || isEndBeforeStart ? "text-danger-600" : "text-slate-400",
+                  )}
+                  icon={Info}
+                  onClick={() => setHintOpen((current) => !current)}
+                  size="sm"
+                  variant="ghost"
+                />
+                {hintOpen ? (
+                  <div
+                    className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-2.5 text-xs leading-relaxed text-slate-600 shadow-lg"
+                    role="tooltip"
+                  >
+                    {durationHint}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
         ) : (
           <span className="text-sm text-slate-700">
@@ -121,7 +247,12 @@ function OverrideRow({
             <Button onClick={() => setEditing(false)} size="sm" variant="outline">
               ยกเลิก
             </Button>
-            <Button isLoading={override.isPending} onClick={handleSave} size="sm">
+            <Button
+              disabled={isDurationInvalid || isEndBeforeStart}
+              isLoading={override.isPending}
+              onClick={handleSave}
+              size="sm"
+            >
               บันทึก
             </Button>
           </div>
@@ -206,7 +337,7 @@ export function SchoolPeriodTimesDialog({
         <DialogHeader>
           <DialogTitle>ตั้งเวลาคาบเรียน — {schoolName}</DialogTitle>
         </DialogHeader>
-        <DialogBody className="max-h-[70vh] space-y-6 overflow-y-auto">
+        <DialogBody className="max-h-[70vh] space-y-6 overflow-y-auto pb-2">
           <Form form={form} onSubmit={handleGenerate}>
             <div className="space-y-3 rounded-lg border border-slate-200 p-3">
               <h3 className="text-sm font-bold text-slate-900">สร้างตารางเวลาอัตโนมัติ</h3>
@@ -351,7 +482,7 @@ export function SchoolPeriodTimesDialog({
                       <th className="w-24 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
                         คาบ
                       </th>
-                      <th className="w-[320px] px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                      <th className="w-[440px] px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
                         เวลา
                       </th>
                       <th className="w-28 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
