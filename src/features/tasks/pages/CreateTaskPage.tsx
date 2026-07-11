@@ -970,7 +970,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                       { value: "", label: "เลือกวิชา" },
                       ...(roomSubjectsQuery.data?.data ?? []).map((subject) => ({
                         value: String(subject.subject_id),
-                        label: `${subject.name_th} (${subject.code})`,
+                        label: subject.name_th,
                       })),
                     ]}
                     placeholder="ค้นหาวิชา"

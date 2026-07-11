@@ -76,7 +76,7 @@ function AddSlotForm({
   const subjectOptions = [
     ...(allSubjectsQuery.data?.data ?? []).map((subject) => ({
       value: String(subject.id),
-      label: `${subject.name_th} (${subject.code})`,
+      label: subject.name_th,
     })),
     ...(roomSubjectsQuery.data?.data ?? [])
       .filter(
@@ -85,7 +85,7 @@ function AddSlotForm({
       )
       .map((subject) => ({
         value: String(subject.subject_id),
-        label: `${subject.name_th} (${subject.code})`,
+        label: subject.name_th,
       })),
   ];
   const teacherOptions = (teachersQuery.data?.data ?? []).map((teacher) => ({
