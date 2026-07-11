@@ -240,6 +240,27 @@ const createTaskSchema = z
     if (values.task_type === "ATTENDANCE" && !values.subject_id) {
       ctx.addIssue({ code: "custom", path: ["subject_id"], message: "กรุณาเลือกวิชา" });
     }
+    if (values.opens_at) {
+      const opensAt = new Date(values.opens_at);
+      if (Number.isNaN(opensAt.getTime())) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["opens_at"],
+          message: "รูปแบบเวลาเปิดใช้งานไม่ถูกต้อง",
+        });
+      }
+      const expiresValue = Number(values.expires_value);
+      if (Number.isInteger(expiresValue) && expiresValue >= 1) {
+        const expiresAt = addDuration(new Date(), expiresValue, values.expires_unit);
+        if (opensAt.getTime() >= expiresAt.getTime()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["opens_at"],
+            message: "เวลาเปิดใช้งานต้องอยู่ก่อนเวลาหมดอายุของลิงก์",
+          });
+        }
+      }
+    }
   });
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
