@@ -1,6 +1,8 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   CreateFollowerRecruitmentCampaignPayload,
+  FollowerCampaignAssignPreviewResponse,
+  FollowerCampaignTargetsResponse,
   FollowerRecruitmentCampaignListResponse,
   FollowerRecruitmentCampaignResponse,
   PublicCampaignInfo,
@@ -49,10 +51,42 @@ async function getPublicCampaign(code: string): Promise<PublicCampaignInfo> {
   return response.data;
 }
 
+async function listTargets(campaignId: string): Promise<FollowerCampaignTargetsResponse> {
+  const response = await apiClient.get<FollowerCampaignTargetsResponse>(
+    `/follower-recruitment-campaigns/${campaignId}/targets`,
+  );
+  return response.data;
+}
+
+async function addTargets(
+  campaignId: string,
+  caseIds: number[],
+): Promise<FollowerCampaignTargetsResponse> {
+  const response = await apiClient.post<FollowerCampaignTargetsResponse>(
+    `/follower-recruitment-campaigns/${campaignId}/targets`,
+    { case_ids: caseIds },
+  );
+  return response.data;
+}
+
+async function prepareAssignment(
+  targetId: string,
+  followerId: number,
+): Promise<FollowerCampaignAssignPreviewResponse> {
+  const response = await apiClient.post<FollowerCampaignAssignPreviewResponse>(
+    `/follower-recruitment-campaigns/targets/${targetId}/assign-preview`,
+    { follower_id: followerId },
+  );
+  return response.data;
+}
+
 export const followerRecruitmentCampaignService = {
   list,
   create,
   update,
   remove,
   getPublicCampaign,
+  listTargets,
+  addTargets,
+  prepareAssignment,
 };

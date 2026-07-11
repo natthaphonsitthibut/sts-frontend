@@ -49,3 +49,55 @@ export interface PublicCampaignInfo {
   name: string;
   is_open: boolean;
 }
+
+export interface FollowerCampaignTarget {
+  id: string;
+  campaign_id: string;
+  case_id: number;
+  status: "OPEN" | "ASSIGNED" | "COMPLETED" | "CANCELED";
+  assigned_follower_id: string | null;
+  assigned_task_link_id: string | null;
+  assigned_at: string | null;
+  assigned_by: number | null;
+  case: {
+    student_name: string | null;
+    student_id: string | null;
+    student_school: string | null;
+    student_address: string | null;
+    reason_flagged: string | null;
+  };
+  assigned_follower: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FollowerCampaignTargetsResponse {
+  success: true;
+  data: FollowerCampaignTarget[];
+  meta: { totalCount: number };
+}
+
+export interface FollowerCampaignAssignPreviewResponse {
+  success: true;
+  data: {
+    target: FollowerCampaignTarget;
+    prefill: {
+      task_type: "VISIT";
+      existing_case_id: number;
+      student_id: string | null;
+      student_name: string | null;
+      student_school: string | null;
+      student_address: string | null;
+      reason_flagged: string | null;
+      assigned_to_name: string;
+      assigned_to_phone: string | null;
+      assigned_to_email: string;
+      source_field_follower_id: string;
+      campaign_target_id: string;
+    };
+  };
+}

@@ -54,6 +54,7 @@ function DetailItem({
 }
 
 function reviewButtonLabel(action: FieldFollowerReviewAction): string {
+  if (action === "VERIFY") return "ยืนยันตัวตน";
   if (action === "APPROVE") return "อนุมัติใบสมัคร";
   if (action === "REJECT") return "ปฏิเสธใบสมัคร";
   return getFieldFollowerReviewActionLabel(action);
@@ -143,8 +144,29 @@ export function FieldFollowerDetailPage() {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <DetailItem label="เบอร์โทรศัพท์" value={follower.phone} />
+              <DetailItem label="อีเมล" value={follower.email} />
+              <DetailItem label="เพศ" value={follower.gender} />
               <DetailItem label="พื้นที่" value={getFieldFollowerAreaText(follower)} />
               <DetailItem label="ลิงก์รับสมัคร" value={follower.campaign_name} />
+              <DetailItem
+                label="วิธียืนยันตัวตน"
+                value={
+                  follower.verification_method === "THAID"
+                    ? "ThaID mock"
+                    : follower.verification_method === "ID_CARD_PHOTO"
+                      ? "รูปบัตร"
+                      : "รอดำเนินการ"
+                }
+              />
+              <DetailItem label="อ้างอิง ThaID" value={follower.thaid_person_ref} />
+              <DetailItem
+                label="วันที่ยืนยันตัวตน"
+                value={
+                  follower.verified_at
+                    ? formatThaiDateTime(follower.verified_at)
+                    : null
+                }
+              />
               <DetailItem
                 label="สถานะ"
                 value={
@@ -162,6 +184,19 @@ export function FieldFollowerDetailPage() {
               />
               <DetailItem label="รหัสใบสมัคร" value={follower.id} />
             </div>
+
+            {follower.id_card_photo_filename ? (
+              <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm">
+                <a
+                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                  href={`/uploads/field-follower-id-cards/${encodeURIComponent(follower.id_card_photo_filename)}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  เปิดรูปบัตรยืนยันตัวตน
+                </a>
+              </div>
+            ) : null}
 
             {actions.length > 0 ? (
               <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">

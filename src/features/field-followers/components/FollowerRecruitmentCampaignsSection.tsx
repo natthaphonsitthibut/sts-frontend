@@ -1,12 +1,14 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { CalendarClock, CheckCircle2, Clock, Link2, Lock } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Link2, Lock, UserCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
   Badge,
   Button,
   Combobox,
+  Input,
   useConfirm,
 } from "../../../components/base";
 import {
@@ -28,10 +30,14 @@ import {
 import { formatThaiDate } from "../../../lib/date-time";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import {
+  useAddFollowerCampaignTargets,
   useDeleteFollowerRecruitmentCampaign,
+  useFollowerCampaignTargets,
   useFollowerRecruitmentCampaigns,
+  usePrepareFollowerCampaignAssignment,
   useUpdateFollowerRecruitmentCampaign,
 } from "../hooks/useFollowerRecruitmentCampaigns";
+import { useFieldFollowers } from "../hooks/useFieldFollowers";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useStatusCatalog, findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { FollowerRecruitmentCampaign } from "../types/follower-recruitment-campaign.types";
@@ -121,8 +127,22 @@ export function FollowerRecruitmentCampaignsSection({
   actions,
 }: FollowerRecruitmentCampaignsSectionProps) {
   const [status, setStatus] = useState<CampaignStatusFilter>("ALL");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [caseIdsInput, setCaseIdsInput] = useState("");
+  const [assignFollowerIds, setAssignFollowerIds] = useState<Record<string, string>>({});
   const area = useSchoolAreaFilter();
+  const navigate = useNavigate();
   const query = useFollowerRecruitmentCampaigns();
+  const targetsQuery = useFollowerCampaignTargets(selectedCampaignId);
+  const applicantsQuery = useFieldFollowers({
+    campaignId: selectedCampaignId ?? undefined,
+    page: 1,
+    limit: 50,
+  }, {
+    enabled: Boolean(selectedCampaignId),
+  });
+  const addTargetsMutation = useAddFollowerCampaignTargets();
+  const prepareAssignment = usePrepareFollowerCampaignAssignment();
   const updateMutation = useUpdateFollowerRecruitmentCampaign();
   const deleteMutation = useDeleteFollowerRecruitmentCampaign();
   const { confirm, dialog } = useConfirm();
@@ -146,6 +166,7 @@ export function FollowerRecruitmentCampaignsSection({
     { active: 0, locked: 0, expired: 0, scheduled: 0, views: 0, submissions: 0 },
   );
   const isMutating = updateMutation.isPending || deleteMutation.isPending;
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
 
   function handleToggleActive(campaign: FollowerRecruitmentCampaign): void {
     updateMutation.mutate({
@@ -164,6 +185,36 @@ export function FollowerRecruitmentCampaignsSection({
     if (accepted) {
       deleteMutation.mutate(campaign.id);
     }
+  }
+
+  function handleAddTargets(): void {
+    if (!selectedCampaignId) return;
+    const caseIds = Array.from(
+      new Set(
+        caseIdsInput
+          .split(/[,\s]+/)
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0),
+      ),
+    );
+    if (caseIds.length === 0) return;
+    addTargetsMutation.mutate(
+      { campaignId: selectedCampaignId, caseIds },
+      { onSuccess: () => setCaseIdsInput("") },
+    );
+  }
+
+  function handleAssignPreview(targetId: string): void {
+    const followerId = Number(assignFollowerIds[targetId]);
+    if (!Number.isInteger(followerId) || followerId <= 0) return;
+    prepareAssignment.mutate(
+      { targetId, followerId },
+      {
+        onSuccess: (result) => {
+          void navigate("/create/visit", { state: { prefill: result.data.prefill } });
+        },
+      },
+    );
   }
 
   return (
@@ -315,12 +366,22 @@ export function FollowerRecruitmentCampaignsSection({
                   <DataTableCell>{campaign.submission_count}</DataTableCell>
                   <DataTableCell>{formatThaiDate(campaign.created_at)}</DataTableCell>
                   <DataTableCell className="text-right">
-                    <CampaignRowActions
-                      campaign={campaign}
-                      isMutating={isMutating}
-                      onDelete={(row) => void handleDelete(row)}
-                      onToggleActive={handleToggleActive}
-                    />
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => setSelectedCampaignId(campaign.id)}
+                        size="sm"
+                        variant={selectedCampaignId === campaign.id ? "default" : "outline"}
+                      >
+                        <UserCheck className="mr-1.5 size-3.5" />
+                        ดูผู้สมัคร
+                      </Button>
+                      <CampaignRowActions
+                        campaign={campaign}
+                        isMutating={isMutating}
+                        onDelete={(row) => void handleDelete(row)}
+                        onToggleActive={handleToggleActive}
+                      />
+                    </div>
                   </DataTableCell>
                 </DataTableRow>
               );
@@ -348,12 +409,171 @@ export function FollowerRecruitmentCampaignsSection({
                     onDelete={(row) => void handleDelete(row)}
                     onToggleActive={handleToggleActive}
                   />
+                  <Button
+                    onClick={() => setSelectedCampaignId(campaign.id)}
+                    size="sm"
+                    variant={selectedCampaignId === campaign.id ? "default" : "outline"}
+                  >
+                    ดูผู้สมัคร
+                  </Button>
                 </TableCard>
               );
             })}
           </TableCardList>
         </>
       )}
+
+      {selectedCampaign ? (
+        <section className="space-y-4 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">{selectedCampaign.name}</h3>
+              <p className="text-sm text-slate-500">ผู้สมัครและเคสที่ต้องเยี่ยมในลิงก์นี้</p>
+            </div>
+            <CopyLinkButton publicCode={selectedCampaign.public_code} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-3">
+              <div className="font-semibold text-slate-800">ผู้สมัคร</div>
+              {applicantsQuery.isLoading ? (
+                <SkeletonTable />
+              ) : applicantsQuery.isError ? (
+                <ErrorState
+                  description={getApiErrorMessage(
+                    applicantsQuery.error,
+                    "เกิดข้อผิดพลาดระหว่างโหลดผู้สมัครจากลิงก์นี้",
+                  )}
+                  onRetry={() => void applicantsQuery.refetch()}
+                  title="โหลดผู้สมัครไม่สำเร็จ"
+                />
+              ) : applicantsQuery.data?.data.length ? (
+                <div className="space-y-2">
+                  {applicantsQuery.data.data.map((follower) => (
+                    <div
+                      className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
+                      key={follower.id}
+                    >
+                      <div>
+                        <div className="font-semibold text-slate-900">
+                          {follower.first_name} {follower.last_name}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {follower.phone} · {follower.email ?? "ไม่มีอีเมล"} · {follower.status}
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => void navigate(`/field-followers/${follower.id}`)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        ดู detail
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  className="px-4 py-10"
+                  description="ผู้สมัครที่ส่งใบสมัครผ่านลิงก์นี้จะแสดงที่นี่"
+                  icon={UserCheck}
+                  title="ยังไม่มีผู้สมัครจากลิงก์นี้"
+                />
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="font-semibold text-slate-800">เคสที่ต้องเยี่ยม</div>
+              <div className="flex gap-2">
+                <Input
+                  onChange={(event) => setCaseIdsInput(event.target.value)}
+                  placeholder="case id เช่น 12, 13"
+                  value={caseIdsInput}
+                />
+                <Button
+                  disabled={addTargetsMutation.isPending}
+                  onClick={handleAddTargets}
+                  type="button"
+                >
+                  เพิ่มเคส
+                </Button>
+              </div>
+              {addTargetsMutation.isError || prepareAssignment.isError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    {getApiErrorMessage(
+                      addTargetsMutation.error ?? prepareAssignment.error,
+                      "ดำเนินการเคสในแคมเปญไม่สำเร็จ",
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {targetsQuery.isLoading ? (
+                <SkeletonTable />
+              ) : targetsQuery.isError ? (
+                <ErrorState
+                  description={getApiErrorMessage(
+                    targetsQuery.error,
+                    "เกิดข้อผิดพลาดระหว่างโหลดเคสในแคมเปญนี้",
+                  )}
+                  onRetry={() => void targetsQuery.refetch()}
+                  title="โหลดเคสไม่สำเร็จ"
+                />
+              ) : targetsQuery.data?.data.length ? (
+                <div className="space-y-2">
+                  {targetsQuery.data.data.map((target) => (
+                    <div className="space-y-2 rounded-md border border-slate-100 p-3" key={target.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-semibold text-slate-900">
+                            #{target.case_id} {target.case.student_name ?? "ไม่ระบุชื่อ"}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {target.case.reason_flagged ?? "ไม่ระบุเหตุผล"} · {target.status}
+                          </div>
+                        </div>
+                        {target.assigned_follower ? (
+                          <Badge variant="success">มอบหมายแล้ว</Badge>
+                        ) : (
+                          <Badge variant="secondary">OPEN</Badge>
+                        )}
+                      </div>
+                      {target.status === "OPEN" ? (
+                        <div className="flex gap-2">
+                          <Input
+                            onChange={(event) =>
+                              setAssignFollowerIds((current) => ({
+                                ...current,
+                                [target.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="follower id"
+                            value={assignFollowerIds[target.id] ?? ""}
+                          />
+                          <Button
+                            disabled={prepareAssignment.isPending}
+                            onClick={() => handleAssignPreview(target.id)}
+                            type="button"
+                          >
+                            มอบหมายงาน
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  className="px-4 py-10"
+                  description="เคสที่เพิ่มไว้สำหรับแคมเปญนี้จะแสดงที่นี่"
+                  icon={CalendarClock}
+                  title="ยังไม่มีเคสในแคมเปญนี้"
+                />
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {dialog}
     </section>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -22,20 +22,42 @@ import {
   Skeleton,
 } from "../../../components/base";
 import { requiredThaiPhone } from "../../../lib/validation";
-import { useApplyFieldFollower } from "../hooks/useFieldFollowers";
+import { useApplyFieldFollower, useUploadFollowerIdCardPhoto } from "../hooks/useFieldFollowers";
 import { usePublicFollowerRecruitmentCampaign } from "../hooks/useFollowerRecruitmentCampaigns";
 
-const applicationSchema = z.object({
-  first_name: z.string().trim().min(1, "กรุณากรอกชื่อ"),
-  last_name: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
-  phone: requiredThaiPhone,
-  province: z.string().trim(),
-  district: z.string().trim(),
-  sub_district: z.string().trim(),
-  // Honeypot — left blank by real users, never shown; a filled value silently
-  // no-ops the submit on the backend without giving the bot any signal.
-  website: z.string(),
-});
+const applicationSchema = z
+  .object({
+    first_name: z.string().trim().min(1, "กรุณากรอกชื่อ"),
+    last_name: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
+    phone: requiredThaiPhone,
+    email: z.string().trim().email("รูปแบบอีเมลไม่ถูกต้อง"),
+    gender: z.string().trim(),
+    verification_method: z.enum(["THAID", "ID_CARD_PHOTO"]),
+    thaid_person_ref: z.string().trim(),
+    id_card_photo_filename: z.string().trim(),
+    province: z.string().trim(),
+    district: z.string().trim(),
+    sub_district: z.string().trim(),
+    // Honeypot — left blank by real users, never shown; a filled value silently
+    // no-ops the submit on the backend without giving the bot any signal.
+    website: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.verification_method === "THAID" && !values.thaid_person_ref) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["thaid_person_ref"],
+        message: "กรุณายืนยันตัวตนด้วย ThaID mock",
+      });
+    }
+    if (values.verification_method === "ID_CARD_PHOTO" && !values.id_card_photo_filename) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["id_card_photo_filename"],
+        message: "กรุณาอัปโหลดรูปบัตร",
+      });
+    }
+  });
 
 type ApplicationFormValues = z.infer<typeof applicationSchema>;
 
@@ -58,6 +80,11 @@ export function FieldFollowerApplicationPage() {
       first_name: "",
       last_name: "",
       phone: "",
+      email: "",
+      gender: "",
+      verification_method: "THAID",
+      thaid_person_ref: "",
+      id_card_photo_filename: "",
       province: "",
       district: "",
       sub_district: "",
@@ -67,6 +94,9 @@ export function FieldFollowerApplicationPage() {
   });
 
   const apply = useApplyFieldFollower();
+  const uploadIdCard = useUploadFollowerIdCardPhoto();
+  const verificationMethod = useWatch({ control: form.control, name: "verification_method" });
+  const uploadedFilename = useWatch({ control: form.control, name: "id_card_photo_filename" });
 
   function onSubmit(values: ApplicationFormValues): void {
     apply.mutate(
@@ -74,6 +104,15 @@ export function FieldFollowerApplicationPage() {
         first_name: values.first_name.trim(),
         last_name: values.last_name.trim(),
         phone: values.phone.trim(),
+        email: values.email.trim(),
+        gender: values.gender.trim() || undefined,
+        verification_method: values.verification_method,
+        thaid_person_ref:
+          values.verification_method === "THAID" ? values.thaid_person_ref.trim() : undefined,
+        id_card_photo_filename:
+          values.verification_method === "ID_CARD_PHOTO"
+            ? values.id_card_photo_filename.trim()
+            : undefined,
         province: values.province.trim() || undefined,
         district: values.district.trim() || undefined,
         sub_district: values.sub_district.trim() || undefined,
@@ -183,6 +222,81 @@ export function FieldFollowerApplicationPage() {
               </FormItem>
 
               <FormItem>
+                <FormLabel htmlFor="follower-email" required>
+                  อีเมล
+                </FormLabel>
+                <Input id="follower-email" type="email" {...registerField(form, "email")} />
+                <FormMessage<ApplicationFormValues> name="email" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="follower-gender">เพศ</FormLabel>
+                <Input id="follower-gender" {...registerField(form, "gender")} />
+                <FormMessage<ApplicationFormValues> name="gender" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="follower-verification-method" required>
+                  วิธียืนยันตัวตน
+                </FormLabel>
+                <select
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                  id="follower-verification-method"
+                  {...registerField(form, "verification_method")}
+                >
+                  <option value="THAID">ThaID mock</option>
+                  <option value="ID_CARD_PHOTO">อัปโหลดรูปบัตร</option>
+                </select>
+                <FormMessage<ApplicationFormValues> name="verification_method" />
+              </FormItem>
+
+              {verificationMethod === "THAID" ? (
+                <FormItem>
+                  <FormLabel htmlFor="follower-thaid-ref" required>
+                    รหัสอ้างอิง ThaID mock
+                  </FormLabel>
+                  <Input
+                    id="follower-thaid-ref"
+                    placeholder="เช่น เลขอ้างอิงจาก mock ThaID"
+                    {...registerField(form, "thaid_person_ref")}
+                  />
+                  <FormMessage<ApplicationFormValues> name="thaid_person_ref" />
+                </FormItem>
+              ) : (
+                <FormItem>
+                  <FormLabel htmlFor="follower-id-card-photo" required>
+                    รูปบัตรยืนยันตัวตน
+                  </FormLabel>
+                  <Input
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    disabled={uploadIdCard.isPending}
+                    id="follower-id-card-photo"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      if (!file) return;
+                      uploadIdCard.mutate(file, {
+                        onSuccess: (result) => {
+                          form.setValue("id_card_photo_filename", result.data.filename, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        },
+                      });
+                    }}
+                    type="file"
+                  />
+                  <p className="min-h-5 text-sm text-slate-500">
+                    {uploadIdCard.isPending
+                      ? "กำลังอัปโหลด"
+                      : uploadedFilename
+                        ? "อัปโหลดแล้ว"
+                        : "ใช้เพื่อยืนยันตัวตนเท่านั้น"}
+                  </p>
+                  <FormMessage<ApplicationFormValues> name="id_card_photo_filename" />
+                </FormItem>
+              )}
+
+              <FormItem>
                 <FormLabel htmlFor="follower-province">จังหวัด</FormLabel>
                 <Input id="follower-province" {...registerField(form, "province")} />
                 <FormMessage<ApplicationFormValues> name="province" />
@@ -214,6 +328,7 @@ export function FieldFollowerApplicationPage() {
               </div>
 
               <Button
+                disabled={uploadIdCard.isPending}
                 isLoading={apply.isPending}
                 loadingText="กำลังส่งใบสมัคร"
                 type="submit"

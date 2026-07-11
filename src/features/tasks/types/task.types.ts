@@ -39,6 +39,8 @@ export interface TaskCreatePayload {
   permissions?: string[];
   data_scope?: DataScope;
   existing_case_id?: string | null;
+  source_field_follower_id?: string | number | null;
+  campaign_target_id?: string | number | null;
 }
 
 export interface TaskCreateResponse {

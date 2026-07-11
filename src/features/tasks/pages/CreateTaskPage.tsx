@@ -274,12 +274,17 @@ const VISIT_ADDRESS_NAMES: AddressFieldNames<CreateTaskFormValues> = {
 
 /** Pre-fill passed from the case dashboard's "สร้างลิงก์" action (a flagged student). */
 interface VisitPrefill {
-  existing_case_id?: string;
+  existing_case_id?: string | number;
   student_id?: string | null;
   student_name?: string | null;
   student_school?: string | null;
   student_address?: string | null;
   reason_flagged?: string | null;
+  assigned_to_name?: string | null;
+  assigned_to_phone?: string | null;
+  assigned_to_email?: string | null;
+  source_field_follower_id?: string | number | null;
+  campaign_target_id?: string | number | null;
 }
 
 function makeDefaults(type: TaskType): CreateTaskFormValues {
@@ -355,6 +360,8 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const form = useForm<CreateTaskFormValues>({
     defaultValues: {
       ...makeDefaults(type),
+      assigned_to_name: prefill?.assigned_to_name ?? "",
+      assigned_to_email: prefill?.assigned_to_email ?? "",
       student_name: prefill?.student_name ?? "",
       address_line: prefill?.student_address ?? "",
       student_school: prefill?.student_school ?? "",
@@ -612,6 +619,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       type,
       assigned_to_name: values.assigned_to_name,
       assigned_to_email: values.assigned_to_email || null,
+      assigned_to_phone: prefill?.assigned_to_phone ?? null,
       expires_value: Number(values.expires_value) || 1,
       expires_unit: values.expires_unit as TaskCreatePayload["expires_unit"],
       opens_at: values.opens_at ? new Date(values.opens_at).toISOString() : null,
@@ -654,7 +662,9 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         student_lat: values.address_latitude ?? null,
         student_lng: values.address_longitude ?? null,
         reason_flagged: values.reason_flagged || null,
-        existing_case_id: prefill?.existing_case_id ?? null,
+        existing_case_id: prefill?.existing_case_id ? String(prefill.existing_case_id) : null,
+        source_field_follower_id: prefill?.source_field_follower_id ?? null,
+        campaign_target_id: prefill?.campaign_target_id ?? null,
       });
     }
 

@@ -6,6 +6,7 @@ import type {
   FieldFollowerListResponse,
   FieldFollowerReviewAction,
   FieldFollowerReviewResponse,
+  FollowerIdCardUploadResponse,
 } from "../types/field-follower.types";
 import type { FieldMonitorMapResponse } from "../types/field-monitor-map.types";
 
@@ -13,6 +14,16 @@ async function apply(payload: CreateFollowerApplicationPayload): Promise<{ succe
   const response = await apiClient.post<{ success: true }>(
     "/public/follower-applications",
     payload,
+  );
+  return response.data;
+}
+
+async function uploadIdCardPhoto(file: File): Promise<FollowerIdCardUploadResponse> {
+  const formData = new FormData();
+  formData.append("photo", file);
+  const response = await apiClient.post<FollowerIdCardUploadResponse>(
+    "/public/follower-applications/id-card-photo",
+    formData,
   );
   return response.data;
 }
@@ -29,6 +40,7 @@ async function listFollowers(
       ...(params.district ? { district: params.district } : {}),
       ...(params.subDistrict ? { subDistrict: params.subDistrict } : {}),
       ...(params.searchTerm ? { searchTerm: params.searchTerm } : {}),
+      ...(params.campaignId ? { campaignId: params.campaignId } : {}),
     },
   });
   return response.data;
@@ -64,5 +76,6 @@ export const fieldFollowerService = {
   getFollower,
   listFollowers,
   reviewFollower,
+  uploadIdCardPhoto,
   getMap,
 };

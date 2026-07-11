@@ -15,10 +15,20 @@ export function useApplyFieldFollower() {
   });
 }
 
-export function useFieldFollowers(params: FieldFollowerListParams) {
+export function useUploadFollowerIdCardPhoto() {
+  return useMutation({
+    mutationFn: (file: File) => fieldFollowerService.uploadIdCardPhoto(file),
+  });
+}
+
+export function useFieldFollowers(
+  params: FieldFollowerListParams,
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: [FIELD_FOLLOWERS_QUERY_KEY, params],
     queryFn: () => fieldFollowerService.listFollowers(params),
+    enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

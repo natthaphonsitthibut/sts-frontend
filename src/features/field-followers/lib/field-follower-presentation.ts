@@ -24,6 +24,7 @@ export function getFieldFollowerStatusMeta(
 }
 
 const REVIEW_ACTION_LABELS: Record<FieldFollowerReviewAction, string> = {
+  VERIFY: "ยืนยันตัวตน",
   APPROVE: "อนุมัติ",
   REJECT: "ปฏิเสธ",
   SUSPEND: "ระงับการใช้งาน",
@@ -36,8 +37,8 @@ export function getFieldFollowerReviewActionLabel(action: FieldFollowerReviewAct
 
 /** Which review actions are legal from each status — must mirror REVIEW_TRANSITIONS in the backend service. */
 const AVAILABLE_ACTIONS: Record<FieldFollowerStatus, FieldFollowerReviewAction[]> = {
-  APPLIED: ["APPROVE", "REJECT"],
-  VERIFIED: ["SUSPEND"],
+  APPLIED: ["VERIFY", "REJECT"],
+  VERIFIED: ["APPROVE", "SUSPEND"],
   ACTIVE: ["SUSPEND"],
   SUSPENDED: ["REACTIVATE"],
 };
