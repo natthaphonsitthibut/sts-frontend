@@ -18,7 +18,6 @@ interface FieldFollowerReviewFilterProps {
   area: ReturnType<typeof useSchoolAreaFilter>;
   actions?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
-  resetToFirstPage: () => void;
 }
 
 export function FieldFollowerReviewFilter({

@@ -178,7 +178,6 @@ export function FieldFollowersReviewPage() {
               setStatus(value as FieldFollowerStatus | "");
               resetToFirstPage();
             }}
-            resetToFirstPage={resetToFirstPage}
             searchQuery={searchQuery}
             status={status}
             statusOptions={followerStatusCatalog}
