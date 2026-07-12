@@ -156,14 +156,14 @@ export const router = createBrowserRouter([
         element: protectedElement(<VisitLinksPage />, "review-cases"),
       },
       {
-        path: "attendance-dashboard",
+        path: "attendance-links",
         element: protectedElement(
           <AttendanceLinksDashboardPage />,
           "attendance-dashboard",
         ),
       },
       {
-        path: "attendance-dashboard/history",
+        path: "attendance-links/history",
         element: protectedElement(
           <AttendanceLinksDashboardPage />,
           "attendance-dashboard",

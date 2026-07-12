@@ -134,7 +134,7 @@ export const MENU_ITEMS: MenuItem[] = [
         id: "attendance-dashboard",
         label: "ลิงก์เช็คชื่อ",
         iconName: "chart-bar",
-        route: "/attendance-dashboard",
+        route: "/attendance-links",
       },
       {
         id: "attendance-operations",

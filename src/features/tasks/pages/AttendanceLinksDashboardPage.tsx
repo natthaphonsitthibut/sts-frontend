@@ -68,8 +68,8 @@ const EMPTY_SUMMARY: AttendanceTaskSummary = {
 };
 
 const ATTENDANCE_LINK_TAB_ROUTES = {
-  list: "/attendance-dashboard",
-  history: "/attendance-dashboard/history",
+  list: "/attendance-links",
+  history: "/attendance-links/history",
 } as const;
 
 const ATTENDANCE_LINK_AUDIT_ACTION_OPTIONS = [
