@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
-import type { MenuItem } from "../../features/auth/lib/permissions";
+import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
 import { LayoutIcon } from "./LayoutIcon";
 
 interface SidebarNavItemProps {
@@ -24,9 +24,56 @@ function navLinkClassName(
   );
 }
 
+function collectRoutes(items: MenuItem[]): string[] {
+  const routes: string[] = [];
+  for (const entry of items) {
+    if (entry.route) routes.push(entry.route);
+    if (entry.activeRoutes) routes.push(...entry.activeRoutes);
+    if (entry.children) routes.push(...collectRoutes(entry.children));
+  }
+  return routes;
+}
+
+// Computed once from the static menu — every registered route in the app,
+// used to resolve which item "owns" a given URL if two sibling routes ever
+// end up nesting (e.g. a future "/reports" and "/reports/summary" that are
+// separate pages, not a parent/sub-tab pair) — the longer, more specific
+// route wins instead of both lighting up at once. Prefer non-nested sibling
+// paths when adding new routes so this never has to arbitrate in practice.
+const ALL_MENU_ROUTES = collectRoutes(MENU_ITEMS);
+
+function routeMatchesPathname(route: string, pathname: string): boolean {
+  return route === pathname || (route !== "/" && pathname.startsWith(`${route}/`));
+}
+
+/**
+ * The most specific (longest) registered route that matches this pathname —
+ * either exactly or as a real sub-route. Sibling pages whose paths happen to
+ * nest (like the `/field-followers` example above) only ever resolve to one
+ * winner instead of both matching independently.
+ */
+function findBestMatchingRoute(pathname: string): string | null {
+  let best: string | null = null;
+  for (const route of ALL_MENU_ROUTES) {
+    if (!routeMatchesPathname(route, pathname)) continue;
+    if (best === null || route.length > best.length) {
+      best = route;
+    }
+  }
+  return best;
+}
+
+/**
+ * A nested menu item stays active on its own sub-routes too (e.g. a page
+ * with tabs like "/attendance-dashboard/history"), not just its exact path.
+ * Matching goes through `findBestMatchingRoute` so that when two menu
+ * routes nest inside each other, only the most specific one is active.
+ */
 function isRouteActive(item: MenuItem, pathname: string): boolean {
-  const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean);
-  return routes.some((route) => route === pathname);
+  const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean) as string[];
+  if (routes.length === 0) return false;
+  const bestMatch = findBestMatchingRoute(pathname);
+  return bestMatch !== null && routes.includes(bestMatch);
 }
 
 export function SidebarNavItem({

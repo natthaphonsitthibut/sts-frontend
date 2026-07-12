@@ -194,7 +194,6 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "ลิงก์รับสมัคร",
         iconName: "link",
         permissionId: "field-monitor",
-        activeRoutes: ["/field-followers/history"],
         route: "/field-followers",
       },
       {
@@ -202,8 +201,7 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "ตรวจสอบใบสมัคร",
         iconName: "user-check",
         permissionId: "field-monitor",
-        activeRoutes: ["/field-followers/review-history"],
-        route: "/field-followers/review",
+        route: "/field-followers-review",
       },
     ],
   },

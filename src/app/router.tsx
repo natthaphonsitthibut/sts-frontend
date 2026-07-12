@@ -271,7 +271,7 @@ export const router = createBrowserRouter([
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
-        path: "field-followers/review",
+        path: "field-followers-review",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
@@ -279,7 +279,7 @@ export const router = createBrowserRouter([
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
-        path: "field-followers/review-history",
+        path: "field-followers-review/history",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {

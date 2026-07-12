@@ -90,7 +90,7 @@ export function FieldFollowerDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton icon={ArrowLeft} to="/field-followers/review" variant="outline">
+          <NavButton icon={ArrowLeft} to="/field-followers-review" variant="outline">
             ย้อนกลับ
           </NavButton>
         }
