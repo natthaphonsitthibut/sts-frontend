@@ -308,6 +308,7 @@ export interface StudentAccountBatchJob {
   errorSummary: string | null;
   scope: {
     schoolId: number | null;
+    schoolName: string | null;
     province: string | null;
     district: string | null;
     subDistrict: string | null;

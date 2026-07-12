@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  Eye,
   Play,
   RefreshCw,
   Rocket,
@@ -75,7 +76,10 @@ function scopeLabel(scope: StudentAccountBatchJob["scope"]): string {
     scope.province,
     scope.district,
     scope.subDistrict,
-    scope.schoolId ? `รร. ${scope.schoolId}` : null,
+    // Fall back to the raw ID only if the school was deleted after the job
+    // ran (name lookup came back null) — never show the ID when a name
+    // is available, to stay consistent with how schools are shown elsewhere.
+    scope.schoolName ?? (scope.schoolId ? `รร. ${scope.schoolId}` : null),
     scope.grade,
     typeof scope.room === "number" ? `ห้อง ${scope.room}` : null,
   ].filter(Boolean);
@@ -222,23 +226,11 @@ export function StudentAccountBatchPanel({
     <div className="space-y-5">
       {confirmDialog}
       <Alert>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <AlertTitle>สร้างบัญชีจำนวนมากแบบเบื้องหลัง</AlertTitle>
-            <AlertDescription>
-              เหมาะกับการสร้างทั้งโรงเรียน/เขตทีเดียว งานทำต่อเนื่องแม้ปิดหน้านี้ ทำต่อได้ถ้าสะดุด
-              และดึงรหัสชั่วคราวไปพิมพ์แจกได้ภายหลัง
-            </AlertDescription>
-          </div>
-          <Button
-            icon={Rocket}
-            onClick={() => void handleEnqueue()}
-            disabled={enqueueMutation.isPending}
-            className="shrink-0"
-          >
-            {enqueueMutation.isPending ? "กำลังเริ่ม..." : "สร้างทั้งหมดในขอบเขตนี้"}
-          </Button>
-        </div>
+        <AlertTitle>งานสร้างบัญชีนักเรียนเบื้องหลัง</AlertTitle>
+        <AlertDescription>
+          กด “สร้างบัญชี” ด้านบนเพื่อเริ่มงาน — งานทำต่อเนื่องแม้ปิดหน้านี้ ทำต่อได้ถ้าสะดุด
+          และดึงรหัสชั่วคราวไปพิมพ์แจกได้ภายหลัง{enqueueMutation.isPending ? " กำลังเริ่มงาน…" : ""}
+        </AlertDescription>
       </Alert>
 
       <FormErrorAlert error={enqueueMutation.error} fallback="เริ่มงานสร้างบัญชีไม่สำเร็จ" />
@@ -261,7 +253,7 @@ export function StudentAccountBatchPanel({
         <EmptyState
           icon={Rocket}
           title="ยังไม่มีงานสร้างบัญชีแบบชุด"
-          description="เลือกขอบเขตด้านบนแล้วกด “สร้างทั้งหมดในขอบเขตนี้” เพื่อเริ่มงานแรก"
+          description="เลือกขอบเขตด้านบนแล้วกด “สร้างบัญชี” เพื่อเริ่มงานแรก"
         />
       ) : (
         <DataTable
@@ -298,8 +290,13 @@ export function StudentAccountBatchPanel({
                 </DataTableCell>
                 <DataTableCell>
                   <TableActionBar className="min-h-0 justify-end">
-                    <Button size="sm" variant="outline" onClick={() => handleSelectJob(job.id)}>
-                      รายละเอียด
+                    <Button
+                      icon={Eye}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSelectJob(job.id)}
+                    >
+                      ดูรายละเอียด
                     </Button>
                     {RESUMABLE_STATUSES.has(job.status) ? (
                       <Button
@@ -362,7 +359,7 @@ export function StudentAccountBatchPanel({
           />
 
           <SummaryMetrics
-            centerRows
+            columns={4}
             items={[
               { label: "ทั้งหมด", value: selectedJob.totalCandidates, tone: "default" },
               { label: "สร้างสำเร็จ", value: selectedJob.createdCount, tone: "success" },

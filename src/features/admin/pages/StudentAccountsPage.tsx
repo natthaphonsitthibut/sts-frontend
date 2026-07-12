@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX, X } from "lucide-react";
 import {
@@ -29,7 +29,6 @@ import {
   ErrorState,
   ListPageToolbar,
   PageShell,
-  ProgressBar,
   SummaryMetrics,
   TableActionBar,
 } from "../../../components/layout/page-primitives";
@@ -262,24 +261,6 @@ function downloadTextFile(filename: string, content: string, type: string): void
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-}
-
-function AccountGenerationProgress({
-  limit,
-  progress,
-}: {
-  limit: number;
-  progress: number;
-}) {
-  return (
-    <Alert className="border-primary/20 bg-white">
-      <AlertTitle>กำลังสร้างบัญชีนักเรียน</AlertTitle>
-      <ProgressBar className="mt-3" label="กำลังประมวลผล" value={progress} />
-      <AlertDescription>
-        กำลังสร้างสูงสุด {limit} คนในรอบนี้ ผลลัพธ์จะแสดงเมื่อเซิร์ฟเวอร์ทำงานเสร็จ
-      </AlertDescription>
-    </Alert>
-  );
 }
 
 function CandidateTable({
@@ -518,7 +499,6 @@ export function StudentAccountsPage() {
     scopeKey: string;
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
-  const [generationProgress, setGenerationProgress] = useState(0);
   const [batchStartRequestKey, setBatchStartRequestKey] = useState(0);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   const managementQuery = useMemo(
@@ -589,65 +569,9 @@ export function StudentAccountsPage() {
     mutationFn: (payload?: StudentAccountFilter) =>
       adminService.previewStudentAccounts(payload ?? previewFilter),
   });
-  const generateMutation = useMutation({
-    mutationFn: () => adminService.generateStudentAccounts(generateFilter),
-    onSuccess: (result) => {
-      setGenerationProgress(100);
-      setCredentialSession((current) => {
-        const currentCredentials =
-          current.scopeKey === accountScopeKey ? current.credentials : [];
-        const byUser = new Map(
-          currentCredentials.map((credential) => [credential.userId, credential]),
-        );
-        for (const credential of result.credentials) {
-          byUser.set(credential.userId, credential);
-        }
-        return {
-          scopeKey: accountScopeKey,
-          credentials: Array.from(byUser.values()),
-        };
-      });
-      previewMutation.mutate(previewFilter);
-    },
-    onError: () => {
-      setGenerationProgress(0);
-    },
-  });
   const preview = previewMutation.data;
   const generatedCredentials =
     credentialSession.scopeKey === accountScopeKey ? credentialSession.credentials : [];
-  const remainingAccountCount = previewMutation.isPending
-    ? undefined
-    : preview?.summary.withoutAccountCount;
-  const shouldUseBackgroundJob =
-    (preview?.summary.withoutAccountCount ?? 0) > MAX_BULK_LIMIT;
-  const generateButtonLabel = generateMutation.isPending
-    ? "กำลังสร้างบัญชี"
-    : shouldUseBackgroundJob
-      ? "สร้างทั้งหมดแบบเบื้องหลัง"
-      : generatedCredentials.length === 0
-      ? "สร้างบัญชี"
-      : previewMutation.isPending
-        ? "กำลังตรวจรายการ"
-        : remainingAccountCount === 0
-          ? "สร้างครบแล้ว"
-          : "สร้างชุดถัดไป";
-
-  useEffect(() => {
-    if (!generateMutation.isPending) return;
-
-    const intervalId = window.setInterval(() => {
-      setGenerationProgress((current) => {
-        const cap = 92;
-        const distance = cap - current;
-        if (distance <= 0) return current;
-        const step = Math.max(distance * 0.06, 0.15);
-        return Math.min(current + step, cap);
-      });
-    }, 120);
-
-    return () => window.clearInterval(intervalId);
-  }, [generateMutation.isPending]);
 
   function resetManagementList(): void {
     setManagementPage(1);
@@ -796,13 +720,12 @@ export function StudentAccountsPage() {
     });
   }
 
+  // Every generate click — regardless of scope size — starts the same
+  // background job (`StudentAccountBatchPanel` below), so there's exactly
+  // one way to create accounts instead of a small-batch/large-batch split
+  // the user has to guess between.
   function generateStudentAccounts(): void {
-    if (shouldUseBackgroundJob) {
-      setBatchStartRequestKey((current) => current + 1);
-      return;
-    }
-    setGenerationProgress(12);
-    generateMutation.mutate();
+    setBatchStartRequestKey((current) => current + 1);
   }
 
   async function copyCredentials(): Promise<void> {
@@ -1059,15 +982,12 @@ export function StudentAccountsPage() {
               </Button>
               <Button
                 disabled={
-                  !preview ||
-                  preview.summary.withoutAccountCount === 0 ||
-                  previewMutation.isPending ||
-                  generateMutation.isPending
+                  !preview || preview.summary.withoutAccountCount === 0 || previewMutation.isPending
                 }
                 icon={UserPlus}
                 onClick={generateStudentAccounts}
               >
-                {generateButtonLabel}
+                สร้างบัญชี
               </Button>
             </>
           ) : undefined
@@ -1189,12 +1109,6 @@ export function StudentAccountsPage() {
         </>
       ) : selectedTab === "generate" ? (
         <>
-          {generateMutation.isPending ? (
-            <div className="mb-5">
-              <AccountGenerationProgress limit={limit} progress={generationProgress} />
-            </div>
-          ) : null}
-
           {previewMutation.isError ? (
             <ErrorState
               title="ตรวจรายชื่อไม่สำเร็จ"
@@ -1203,16 +1117,6 @@ export function StudentAccountsPage() {
             />
           ) : preview ? (
             <div className="space-y-5">
-              {shouldUseBackgroundJob ? (
-                <Alert>
-                  <AlertTitle>รายการนี้เหมาะกับงานเบื้องหลัง</AlertTitle>
-                  <AlertDescription>
-                    มีนักเรียนที่ยังไม่มีบัญชี {preview.summary.withoutAccountCount} คน
-                    เกินขนาดสร้างทันที {MAX_BULK_LIMIT} คน ระบบจะใช้คิวงานด้านล่างแทน
-                    เพื่อให้ทำต่อได้และดาวน์โหลดรหัสภายหลัง
-                  </AlertDescription>
-                </Alert>
-              ) : null}
               <SummaryMetrics
                 items={[
                   {
@@ -1259,43 +1163,6 @@ export function StudentAccountsPage() {
             <EmptyState icon={KeyRound} title="เลือกขอบเขตแล้วดูตัวอย่าง" />
           )}
 
-          {generateMutation.isError ? (
-            <div className="mt-5">
-              <ErrorState
-                title="สร้างบัญชีไม่สำเร็จ"
-                description={getStudentAccountErrorMessage(generateMutation.error)}
-                onRetry={generateStudentAccounts}
-              />
-            </div>
-          ) : null}
-
-          {generatedCredentials.length > 0 ? (
-            <div className="mt-5 space-y-4">
-              <Alert variant="success">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <AlertTitle>สร้างบัญชีแล้ว {generatedCredentials.length} คน</AlertTitle>
-                    <AlertDescription>
-                      {previewMutation.isPending
-                        ? "กำลังตรวจรายการที่ยังไม่มีบัญชี"
-                        : remainingAccountCount && remainingAccountCount > 0
-                          ? `ยังเหลือ ${remainingAccountCount} คน กด “สร้างชุดถัดไป” เพื่อดำเนินการต่อ`
-                          : "สร้างบัญชีครบตามขอบเขตแล้ว คัดลอกหรือส่งออกผลลัพธ์ได้ทันที"}
-                    </AlertDescription>
-                  </div>
-                  <TableActionBar className="min-h-0 shrink-0">
-                    <Button icon={Copy} onClick={() => void copyCredentials()} variant="outline">
-                      คัดลอกตาราง
-                    </Button>
-                    <Button icon={Download} onClick={() => void exportCredentials()} variant="outline">
-                      ส่งออก CSV
-                    </Button>
-                  </TableActionBar>
-                </div>
-              </Alert>
-              <CredentialTable credentials={generatedCredentials} />
-            </div>
-          ) : null}
           <div className="mt-6">
             <StudentAccountBatchPanel
               filter={generateFilter}
