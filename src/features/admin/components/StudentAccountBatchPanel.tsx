@@ -17,8 +17,6 @@ import {
   Badge,
   Button,
   FormErrorAlert,
-  Label,
-  Select,
   useConfirm,
 } from "../../../components/base";
 import {
@@ -46,7 +44,6 @@ import {
   useStudentAccountBatches,
 } from "../hooks/useUsers";
 import type {
-  StudentAccountBatchCredentialResponse,
   StudentAccountBatchJob,
   StudentAccountBatchJobStatus,
   StudentAccountCredential,
@@ -101,10 +98,9 @@ function credentialsToRows(credentials: StudentAccountCredential[]): string[][] 
 
 const CREDENTIAL_HEADER = ["ชื่อ", "username", "รหัสชั่วคราว", "โรงเรียน", "ชั้น", "ห้อง"];
 
-const CREDENTIAL_LIMIT_OPTIONS = [50, 100, 200] as const;
-const DEFAULT_CREDENTIAL_LIMIT = 100;
-
-type CredentialMeta = StudentAccountBatchCredentialResponse["meta"];
+// Backend caps a single fetch at 200 rows — download loops this chunk size
+// across every page so one click always yields the full, merged credential list.
+const CREDENTIAL_FETCH_CHUNK_SIZE = 200;
 
 interface StudentAccountBatchPanelProps {
   filter: StudentAccountFilter;
@@ -120,9 +116,7 @@ export function StudentAccountBatchPanel({
   const handledStartRequestKey = useRef(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<StudentAccountCredential[]>([]);
-  const [credentialMeta, setCredentialMeta] = useState<CredentialMeta | null>(null);
-  const [credentialPage, setCredentialPage] = useState(1);
-  const [credentialLimit, setCredentialLimit] = useState<number>(DEFAULT_CREDENTIAL_LIMIT);
+  const [isDownloadingCredentials, setIsDownloadingCredentials] = useState(false);
 
   const listQuery = useStudentAccountBatches();
   const jobs = useMemo(() => listQuery.data?.data ?? [], [listQuery.data]);
@@ -131,14 +125,8 @@ export function StudentAccountBatchPanel({
     [jobs, selectedJobId],
   );
 
-  const credentialPageCount = selectedJob
-    ? Math.max(1, Math.ceil(selectedJob.createdCount / credentialLimit))
-    : 1;
-
   const resetCredentialState = () => {
     setCredentials([]);
-    setCredentialMeta(null);
-    setCredentialPage(1);
   };
 
   const handleSelectJob = (id: string) => {
@@ -194,13 +182,27 @@ export function StudentAccountBatchPanel({
   };
 
   const handleDownloadCredentials = async (id: string) => {
-    const result = await credentialsMutation.mutateAsync({
-      id,
-      page: credentialPage,
-      limit: credentialLimit,
-    });
-    setCredentials(result.credentials);
-    setCredentialMeta(result.meta);
+    setIsDownloadingCredentials(true);
+    try {
+      const first = await credentialsMutation.mutateAsync({
+        id,
+        page: 1,
+        limit: CREDENTIAL_FETCH_CHUNK_SIZE,
+      });
+      const allCredentials = [...first.credentials];
+      const totalPages = Math.max(1, Math.ceil(first.meta.total / CREDENTIAL_FETCH_CHUNK_SIZE));
+      for (let page = 2; page <= totalPages; page += 1) {
+        const next = await credentialsMutation.mutateAsync({
+          id,
+          page,
+          limit: CREDENTIAL_FETCH_CHUNK_SIZE,
+        });
+        allCredentials.push(...next.credentials);
+      }
+      setCredentials(allCredentials);
+    } finally {
+      setIsDownloadingCredentials(false);
+    }
   };
 
   const copyCredentials = async () => {
@@ -217,9 +219,7 @@ export function StudentAccountBatchPanel({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `student-credentials-${selectedJobId ?? "batch"}-p${
-      credentialMeta?.page ?? credentialPage
-    }.csv`;
+    anchor.download = `student-credentials-${selectedJobId ?? "batch"}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -376,46 +376,6 @@ export function StudentAccountBatchPanel({
             <span>เสร็จ: {formatThaiDateTime(selectedJob.finishedAt) || "-"}</span>
           </div>
 
-          {selectedJob.createdCount > 0 ? (
-            <div className="flex flex-wrap items-end gap-3">
-              <Label className="flex flex-col gap-1 font-medium">
-                <span>จำนวนต่อหน้า</span>
-                <Select
-                  value={String(credentialLimit)}
-                  onChange={(event) => {
-                    setCredentialLimit(Number(event.target.value));
-                    setCredentialPage(1);
-                  }}
-                  disabled={credentialsMutation.isPending}
-                  className="w-36"
-                >
-                  {CREDENTIAL_LIMIT_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option} บัญชี
-                    </option>
-                  ))}
-                </Select>
-              </Label>
-              <Label className="flex flex-col gap-1 font-medium">
-                <span>หน้าที่จะออกรหัส</span>
-                <Select
-                  value={String(credentialPage)}
-                  onChange={(event) => setCredentialPage(Number(event.target.value))}
-                  disabled={credentialsMutation.isPending}
-                  className="w-36"
-                >
-                  {Array.from({ length: credentialPageCount }, (_, index) => index + 1).map(
-                    (page) => (
-                      <option key={page} value={page}>
-                        หน้า {page} / {credentialPageCount}
-                      </option>
-                    ),
-                  )}
-                </Select>
-              </Label>
-            </div>
-          ) : null}
-
           <TableActionBar>
             {RESUMABLE_STATUSES.has(selectedJob.status) ? (
               <Button
@@ -440,11 +400,9 @@ export function StudentAccountBatchPanel({
             <Button
               icon={Download}
               onClick={() => void handleDownloadCredentials(selectedJob.id)}
-              disabled={credentialsMutation.isPending || selectedJob.createdCount === 0}
+              disabled={isDownloadingCredentials || selectedJob.createdCount === 0}
             >
-              {credentialsMutation.isPending
-                ? "กำลังออกรหัส..."
-                : `ดาวน์โหลดรหัสชั่วคราว (หน้า ${credentialPage})`}
+              {isDownloadingCredentials ? "กำลังออกรหัส..." : "ดาวน์โหลดรหัสชั่วคราว"}
             </Button>
           </TableActionBar>
 
@@ -453,20 +411,10 @@ export function StudentAccountBatchPanel({
               <Alert variant="success">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <AlertTitle>
-                      ออกรหัสชั่วคราว {credentials.length} บัญชี
-                      {credentialMeta
-                        ? ` (หน้า ${credentialMeta.page} · ${credentialMeta.limit} ต่อหน้า)`
-                        : ""}
-                    </AlertTitle>
+                    <AlertTitle>ออกรหัสชั่วคราวแล้ว {credentials.length} บัญชี (รวมทุกหน้า)</AlertTitle>
                     <AlertDescription>
                       รหัสแสดงครั้งเดียว ดาวน์โหลดซ้ำจะออกรหัสใหม่และยกเลิกใบเดิม
                     </AlertDescription>
-                    {credentialMeta ? (
-                      <p className="mt-1 text-xs text-slate-600">
-                        ดาวน์โหลดหน้า {credentialMeta.page} จากทั้งหมด {credentialMeta.total} บัญชี
-                      </p>
-                    ) : null}
                   </div>
                   <TableActionBar className="min-h-0 shrink-0">
                     <Button icon={Copy} variant="outline" onClick={() => void copyCredentials()}>
