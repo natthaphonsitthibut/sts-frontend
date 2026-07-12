@@ -4,9 +4,10 @@ import {
   Copy,
   Download,
   Eye,
+  ListChecks,
   Play,
-  RefreshCw,
   Rocket,
+  SkipForward,
   XCircle,
 } from "lucide-react";
 import {
@@ -35,6 +36,7 @@ import {
   TableActionBar,
 } from "../../../components/layout/page-primitives";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import {
   useCancelStudentAccountBatch,
@@ -343,14 +345,7 @@ export function StudentAccountBatchPanel({
                   selectedJob.status}
               </Badge>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={RefreshCw}
-              onClick={() => void listQuery.refetch()}
-            >
-              รีเฟรช
-            </Button>
+            <RefreshButton onRefresh={() => listQuery.refetch()} />
           </div>
 
           <ProgressBar
@@ -361,10 +356,10 @@ export function StudentAccountBatchPanel({
           <SummaryMetrics
             columns={4}
             items={[
-              { label: "ทั้งหมด", value: selectedJob.totalCandidates, tone: "default" },
-              { label: "สร้างสำเร็จ", value: selectedJob.createdCount, tone: "success" },
-              { label: "ข้าม", value: selectedJob.skippedCount, tone: "info" },
-              { label: "ล้มเหลว", value: selectedJob.failedCount, tone: "danger" },
+              { label: "ทั้งหมด", value: selectedJob.totalCandidates, tone: "default", icon: ListChecks },
+              { label: "สร้างสำเร็จ", value: selectedJob.createdCount, tone: "success", icon: CheckCircle2 },
+              { label: "ข้าม", value: selectedJob.skippedCount, tone: "info", icon: SkipForward },
+              { label: "ล้มเหลว", value: selectedJob.failedCount, tone: "danger", icon: XCircle },
             ]}
           />
 
