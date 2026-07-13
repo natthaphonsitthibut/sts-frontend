@@ -457,7 +457,7 @@ export function ProfilePage() {
               title="ที่อยู่ติดต่อ"
             />
 
-            <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button
                 disabled={updateProfile.isPending}
                 onClick={() => form.reset(toFormValues(profileQuery.data ?? user))}
