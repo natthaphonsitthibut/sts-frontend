@@ -134,6 +134,7 @@ export function PageToolbar({
             <div
               className={cn(
                 "rounded-b-lg bg-slate-50 px-4 py-3",
+                !children && "rounded-t-lg",
                 children && "border-t border-slate-200",
               )}
             >
