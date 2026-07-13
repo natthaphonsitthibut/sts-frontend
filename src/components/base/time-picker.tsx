@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown, Clock } from "lucide-react";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { Select } from "./select";
@@ -26,28 +27,7 @@ export function TimePicker({ ariaLabel, onChange, value }: TimePickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { hour, minute } = parseTime(value);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   return (
     <div className={cn("relative sm:flex-1", open && "z-50")} ref={containerRef}>

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown, LogOut, UserCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar } from "../base";
 import { authService } from "../../features/auth/api/auth.service";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 
 interface HeaderProfileMenuProps {
@@ -38,26 +39,12 @@ export function HeaderProfileMenu({
     });
   }
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent): void {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-
-    function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useDismissable(open, rootRef, (reason) => {
+    setOpen(false);
+    // Escape means the keyboard user is still "at" the trigger — put focus back
+    // there; an outside press moves focus wherever the user pressed instead.
+    if (reason === "escape") triggerRef.current?.focus();
+  });
 
   async function handleLogout(): Promise<void> {
     if (loggingOut) return;
@@ -108,7 +95,7 @@ export function HeaderProfileMenu({
           id="header-profile-menu"
           role="menu"
           aria-label="บัญชีผู้ใช้"
-          className="absolute right-0 top-full z-50 mt-2 w-48 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
+          className="absolute inset-x-0 top-full z-50 mt-2 max-sm:min-w-48 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
           onKeyDown={(event) => {
             if (event.key === "Tab") {
               setOpen(false);

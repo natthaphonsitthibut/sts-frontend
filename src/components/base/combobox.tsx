@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Input } from "./input";
 
@@ -63,32 +64,10 @@ export function Combobox({
     return matched.slice(0, MAX_VISIBLE);
   }, [options, effectiveTerm]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-        setQuery("");
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") {
-        setOpen(false);
-        setQuery("");
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => {
+    setOpen(false);
+    setQuery("");
+  });
 
   return (
     <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
@@ -123,7 +102,7 @@ export function Combobox({
         className={cn(
           "pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-primary transition-transform",
           open && "rotate-180",
-          disabled && "text-slate-400",
+          disabled && "text-slate-500",
         )}
         aria-hidden="true"
       />

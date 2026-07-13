@@ -1,7 +1,6 @@
 import {
   Children,
   isValidElement,
-  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -11,6 +10,7 @@ import {
   type Ref,
 } from "react";
 import { ChevronDown } from "lucide-react";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 
 export type SelectProps = ComponentPropsWithRef<"select">;
@@ -102,28 +102,7 @@ export function Select({
     } as unknown as ChangeEvent<HTMLSelectElement>);
   }
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   return (
     <div className="relative" ref={containerRef}>
@@ -166,7 +145,7 @@ export function Select({
         className={cn(
           "pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-primary transition-transform",
           open && "rotate-180",
-          disabled && "text-slate-400",
+          disabled && "text-slate-500",
         )}
         aria-hidden="true"
       />
@@ -179,7 +158,7 @@ export function Select({
             <li key={option.value} role="presentation">
               <button
                 className={cn(
-                  "block min-h-10 w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400",
+                  "block min-h-10 w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500",
                   option.value === selectedValue && "bg-slate-50 font-medium text-primary",
                 )}
                 disabled={option.disabled}

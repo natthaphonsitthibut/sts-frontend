@@ -1,5 +1,6 @@
 import { Info } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 
 export interface InfoTooltipProps {
@@ -29,25 +30,7 @@ export function InfoTooltip({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent): void {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   return (
     <div className={cn("relative inline-flex", className)} ref={containerRef}>
@@ -55,7 +38,7 @@ export function InfoTooltip({
         aria-expanded={open}
         aria-label={`ข้อมูลเพิ่มเติม: ${label}`}
         className={cn(
-          "flex size-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+          "flex size-6 items-center justify-center rounded-full text-slate-500 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
           triggerClassName,
         )}
         onClick={() => setOpen((current) => !current)}

@@ -1,5 +1,6 @@
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { IconButton } from "./icon-button";
@@ -117,27 +118,7 @@ export function DatePicker({
     return { year: base.year, month: base.month };
   });
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   function shiftMonth(delta: number): void {
     setView((current) => {
@@ -276,7 +257,7 @@ export function DatePicker({
             <div className="grid grid-cols-7 gap-1">
               {WEEKDAY_LABELS.map((label, index) => (
                 <div
-                  className="flex h-8 items-center justify-center text-xs font-semibold text-slate-400"
+                  className="flex h-8 items-center justify-center text-xs font-semibold text-slate-500"
                   key={index}
                 >
                   {label}

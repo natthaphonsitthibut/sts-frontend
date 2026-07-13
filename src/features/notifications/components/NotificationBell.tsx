@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Skeleton } from "../../../components/base";
+import { useDismissable } from "../../../hooks/useDismissable";
 import { cn } from "../../../lib/utils";
 import {
   useMarkAllRead,
@@ -28,25 +29,7 @@ export function NotificationBell() {
   const unreadCount = data?.unreadCount ?? 0;
   const notifications = data?.rows ?? [];
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(event: MouseEvent | TouchEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   function handleToggle(): void {
     const next = !open;
