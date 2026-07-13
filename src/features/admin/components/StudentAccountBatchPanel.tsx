@@ -42,6 +42,7 @@ import {
   useDownloadStudentAccountBatchCredentials,
   useEnqueueStudentAccountBatch,
   useResumeStudentAccountBatch,
+  useStudentAccountBatch,
   useStudentAccountBatches,
 } from "../hooks/useUsers";
 import type {
@@ -105,25 +106,28 @@ const CREDENTIAL_FETCH_CHUNK_SIZE = 200;
 
 interface StudentAccountBatchPanelProps {
   filter: StudentAccountFilter;
+  initialSelectedJobId?: string | null;
   startRequestKey?: number;
 }
 
 export function StudentAccountBatchPanel({
   filter,
+  initialSelectedJobId = null,
   startRequestKey = 0,
 }: StudentAccountBatchPanelProps) {
   const statusCatalog = useStatusCatalog("STUDENT_ACCOUNT_BATCH_JOB");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const handledStartRequestKey = useRef(0);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(initialSelectedJobId);
   const [credentials, setCredentials] = useState<StudentAccountCredential[]>([]);
   const [isDownloadingCredentials, setIsDownloadingCredentials] = useState(false);
 
   const listQuery = useStudentAccountBatches();
+  const detailQuery = useStudentAccountBatch(selectedJobId);
   const jobs = useMemo(() => listQuery.data?.data ?? [], [listQuery.data]);
   const selectedJob = useMemo(
-    () => jobs.find((job) => job.id === selectedJobId) ?? null,
-    [jobs, selectedJobId],
+    () => detailQuery.data?.data ?? jobs.find((job) => job.id === selectedJobId) ?? null,
+    [detailQuery.data, jobs, selectedJobId],
   );
 
   const resetCredentialState = () => {

@@ -55,6 +55,7 @@ interface AuditLogPanelProps {
   showActionColumn?: boolean;
   showReferenceColumn?: boolean;
   className?: string;
+  detailTo?: (entry: AuditLogEntry) => string;
 }
 
 
@@ -152,10 +153,12 @@ function AuditLogFilters({
 }
 
 function AuditLogTable({
+  detailTo,
   entries,
   showActionColumn,
   showReferenceColumn,
 }: {
+  detailTo: (entry: AuditLogEntry) => string;
   entries: AuditLogEntry[];
   showActionColumn: boolean;
   showReferenceColumn: boolean;
@@ -237,7 +240,7 @@ function AuditLogTable({
                 <DetailLinkButton
                   className="min-w-[140px]"
                   size="sm"
-                  to={`/audit-log/${entry.id}`}
+                  to={detailTo(entry)}
                 >
                   ดูรายละเอียด
                 </DetailLinkButton>
@@ -268,7 +271,7 @@ function AuditLogTable({
               <div className="flex justify-end">
                 <DetailLinkButton
                   size="sm"
-                  to={`/audit-log/${entry.id}`}
+                  to={detailTo(entry)}
                 >
                   ดูรายละเอียด
                 </DetailLinkButton>
@@ -286,6 +289,7 @@ export function AuditLogPanel({
   caseId,
   className,
   description,
+  detailTo = (entry) => `/audit-log/${entry.id}`,
   district,
   domain,
   fixedAction,
@@ -398,6 +402,7 @@ export function AuditLogPanel({
         />
       ) : (
         <AuditLogTable
+          detailTo={detailTo}
           entries={auditLog.entries}
           showActionColumn={showActionColumn}
           showReferenceColumn={showReferenceColumn}

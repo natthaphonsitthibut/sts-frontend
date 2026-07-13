@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX, X } from "lucide-react";
 import {
   Alert,
@@ -478,6 +479,7 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
 }
 
 export function StudentAccountsPage() {
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const scope = useScopeCascade({ lockToActorScope: true });
@@ -1195,6 +1197,7 @@ export function StudentAccountsPage() {
           <div className="mt-6">
             <StudentAccountBatchPanel
               filter={generateFilter}
+              initialSelectedJobId={searchParams.get("jobId")}
               startRequestKey={batchStartRequestKey}
             />
           </div>
@@ -1208,7 +1211,12 @@ export function StudentAccountsPage() {
           district={generateFilter.district}
           subDistrict={generateFilter.subDistrict}
           schoolId={generateFilter.schoolId}
-          showActionColumn={false}
+          detailTo={(entry) =>
+            entry.action === "STUDENT_ACCOUNT_BATCH_ENQUEUE" && entry.targetId
+              ? `/manage-student-accounts/generate?jobId=${encodeURIComponent(entry.targetId)}`
+              : `/audit-log/${entry.id}`
+          }
+          showActionColumn
           showReferenceColumn={false}
         />
       ) : (
