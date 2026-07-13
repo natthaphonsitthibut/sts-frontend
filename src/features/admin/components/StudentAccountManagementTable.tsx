@@ -172,7 +172,7 @@ function StudentIdentity({ row }: { row: StudentAccountManagementItem }) {
       </div>
       <div className="min-w-0">
         <div className="truncate font-bold text-slate-800">{row.studentName}</div>
-        <div className="truncate font-mono text-xs font-semibold text-slate-400">
+        <div className="truncate font-mono text-xs font-semibold text-slate-500">
           @{row.username}
         </div>
       </div>

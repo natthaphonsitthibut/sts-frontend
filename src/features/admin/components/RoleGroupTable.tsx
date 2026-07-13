@@ -92,7 +92,7 @@ export function RoleGroupTable({
                 </Badge>
               ) : null}
             </div>
-            <div className="mt-0.5 text-xs font-semibold text-slate-400">
+            <div className="mt-0.5 text-xs font-semibold text-slate-500">
               {role.name} · ลำดับ {role.rank}
             </div>
           </DataTableCell>

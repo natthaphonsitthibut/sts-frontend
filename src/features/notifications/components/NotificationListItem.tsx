@@ -53,7 +53,7 @@ export function NotificationListItem({
               {notification.body}
             </span>
           ) : null}
-          <span className={cn("mt-1 block text-xs", isUnread ? "text-primary" : "text-slate-400")}>
+          <span className={cn("mt-1 block text-xs", isUnread ? "text-primary" : "text-slate-500")}>
             {formatThaiRelativeTime(notification.created_at)}
           </span>
         </span>

@@ -162,7 +162,7 @@ export function SearchInput({
   return (
     <div className={cn("relative w-full sm:max-w-xs sm:flex-1", className)}>
       <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500"
         aria-hidden="true"
       />
       <Input

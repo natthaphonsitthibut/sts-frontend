@@ -33,7 +33,7 @@ export function MagicAuthCard({
             {subtitle ? (
               <p className="text-sm text-slate-500">{subtitle}</p>
             ) : null}
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
               เพื่อความปลอดภัยของข้อมูลนักเรียน ระบบต้องยืนยันตัวตนของคุณก่อนเข้าถึงลิงก์นี้
             </p>
           </div>

@@ -62,7 +62,7 @@ export function OtpInput({ value, onChange, length = 6, disabled, autoFocus }: O
           className={cn(
             "size-12 rounded-lg border border-slate-300 text-center text-xl font-bold text-slate-900",
             "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30",
-            "disabled:bg-slate-100 disabled:text-slate-400",
+            "disabled:bg-slate-100 disabled:text-slate-500",
           )}
           disabled={disabled}
           inputMode="numeric"

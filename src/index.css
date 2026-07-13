@@ -61,8 +61,6 @@
   /* Muted — subtle table tint + low-emphasis foreground */
   --color-muted: #f8fafc;
   --color-muted-foreground: #64748b;
-  /* Keep legacy text-slate-400 call sites readable until they migrate to the semantic token. */
-  --color-slate-400: #64748b;
 
   /* Accessible neutral used when generated avatar identity has no name seed. */
   --color-avatar-neutral: #64748b;

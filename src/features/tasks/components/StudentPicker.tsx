@@ -390,7 +390,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
                 }
                 type="button"
               >
-                <UserRound className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                <UserRound className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-slate-800">
                     {student.name}

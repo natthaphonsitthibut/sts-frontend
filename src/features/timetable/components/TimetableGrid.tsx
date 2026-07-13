@@ -193,7 +193,7 @@ export function TimetableGrid({
                           <div className="invisible" aria-hidden="true">
                             .
                           </div>
-                          <div className="mt-0.5 whitespace-nowrap text-xs font-normal leading-tight text-slate-400">
+                          <div className="mt-0.5 whitespace-nowrap text-xs font-normal leading-tight text-slate-500">
                             {trimToHHMM(gap.startsAt)}–{trimToHHMM(gap.endsAt)}
                           </div>
                         </>
@@ -214,7 +214,7 @@ export function TimetableGrid({
                     <div
                       className={cn(
                         "mt-0.5 font-normal",
-                        isOutsideBellSchedule ? "text-warning-700" : "text-slate-400",
+                        isOutsideBellSchedule ? "text-warning-700" : "text-slate-500",
                       )}
                     >
                       {isOutsideBellSchedule

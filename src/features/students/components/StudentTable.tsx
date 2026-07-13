@@ -135,7 +135,7 @@ export function StudentTable({
                 />
               </DataTableCell>
             ) : null}
-            <DataTableCell className="text-slate-400">
+            <DataTableCell className="text-slate-500">
               {baseIndex + index + 1}
             </DataTableCell>
             <DataTableCell>

@@ -245,7 +245,7 @@ export function MasterDataLookupsPage() {
                     {row.sourceConfig?.hasCategory && row.category_id ? (
                       <p>{categoryConfig.unitLabel}: {categoryNameById.get(String(row.category_id)) ?? row.category_id}</p>
                     ) : null}
-                    {row.note ? <p>{row.note}</p> : <p className="text-slate-400">ไม่มีหมายเหตุ</p>}
+                    {row.note ? <p>{row.note}</p> : <p className="text-slate-500">ไม่มีหมายเหตุ</p>}
                   </div>
                 </DataTableCell>
                 <DataTableCell>{statusBadge(row, activityCatalog.items)}</DataTableCell>

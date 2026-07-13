@@ -33,7 +33,7 @@ export function ImportDropZone({
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate font-bold text-slate-800">{file.name}</div>
-          <div className="text-xs text-slate-400">{formatBytes(file.size)}</div>
+          <div className="text-xs text-slate-500">{formatBytes(file.size)}</div>
         </div>
         <IconButton
           aria-label="เอาไฟล์ออก"
@@ -74,7 +74,7 @@ export function ImportDropZone({
       <div className="text-base font-bold text-slate-700">
         ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์
       </div>
-      <div className="text-sm text-slate-400">รองรับไฟล์ .xlsx, .csv</div>
+      <div className="text-sm text-slate-500">รองรับไฟล์ .xlsx, .csv</div>
       <input
         accept={ACCEPTED}
         className="hidden"

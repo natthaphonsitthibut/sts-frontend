@@ -17,7 +17,7 @@ export function LoginCard() {
         <h1 className="mb-2 text-2xl font-extrabold text-slate-900">
           เข้าสู่ระบบ STS
         </h1>
-        <div className="mx-auto max-w-xs text-sm font-medium leading-6 text-slate-400">
+        <div className="mx-auto max-w-xs text-sm font-medium leading-6 text-slate-500">
           <div>ระบบดูแลช่วยเหลือนักเรียนโครงการ</div>
           <div>Zero Dropout เพื่อเด็กไทยทุกคน</div>
         </div>

@@ -173,7 +173,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
                 <div className="truncate font-bold text-slate-800">
                   {getStudentLabel(link)}
                 </div>
-                <div className="truncate text-xs text-slate-400">
+                <div className="truncate text-xs text-slate-500">
                   {getClassLabel(link) || "-"}
                 </div>
               </div>

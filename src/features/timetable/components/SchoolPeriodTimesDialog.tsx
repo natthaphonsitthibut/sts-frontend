@@ -159,7 +159,7 @@ function OverrideRow({
                 onChange={handleStartChange}
                 value={startsAt}
               />
-              <span className="text-slate-400">–</span>
+              <span className="text-slate-500">–</span>
               <TimePicker
                 ariaLabel={`เวลาสิ้นสุดคาบ ${row.period}`}
                 onChange={handleEndChange}

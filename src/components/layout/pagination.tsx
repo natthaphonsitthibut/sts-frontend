@@ -196,7 +196,7 @@ export function Pagination({
                 key={`ellipsis-${index}`}
                 aria-hidden="true"
                 className={cn(
-                  "flex size-9 items-center justify-center font-bold text-slate-400",
+                  "flex size-9 items-center justify-center font-bold text-slate-500",
                   pageNumberWidthClass,
                 )}
               >
@@ -258,7 +258,7 @@ export function Pagination({
             value={goToPageValue}
           />
           <span
-            className="tabular-nums text-slate-400"
+            className="tabular-nums text-slate-500"
             style={{ minWidth: `${totalPagesLabelWidthCh}ch` }}
           >
             / {formatFullNumber(totalPages)}

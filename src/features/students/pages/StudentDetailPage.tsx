@@ -137,7 +137,7 @@ function RiskHistoryPanel({
                 className="flex items-start justify-between gap-4 py-4"
               >
                 <div className="min-w-0">
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-slate-500">
                     {formatThaiDate(studentCase.created_at)}
                   </div>
                   <div className="mt-1 text-sm font-bold text-slate-700">

@@ -162,7 +162,7 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
                 <div className="truncate font-bold text-slate-800">
                   {link.assigned_to_name || "-"}
                 </div>
-                <div className="truncate text-xs text-slate-400">
+                <div className="truncate text-xs text-slate-500">
                   {link.login_role_label || link.login_role || "-"}
                 </div>
               </div>

@@ -96,7 +96,7 @@ function permissionLabelClass(checked: boolean, inBaseline: boolean): string {
   if (!checked && inBaseline) {
     return "text-red-600 line-through";
   }
-  return "text-slate-400";
+  return "text-slate-500";
 }
 
 export function PermissionScopeEditor({

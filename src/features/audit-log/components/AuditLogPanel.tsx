@@ -97,7 +97,7 @@ function AuditLogFilters({
       <div className="space-y-1.5">
         <Label htmlFor="audit-search">ค้นหา</Label>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             id="audit-search"
             className="pl-9"

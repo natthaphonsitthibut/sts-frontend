@@ -79,8 +79,8 @@ export const ATTENDANCE_STATUS_STYLE: Record<
   NONE: {
     icon: HelpCircle,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass: "border-slate-300 bg-slate-100 text-slate-400",
-    displayClass: "bg-slate-100 text-slate-400",
+    activeClass: "border-slate-300 bg-slate-100 text-slate-500",
+    displayClass: "bg-slate-100 text-slate-500",
   },
 };
 

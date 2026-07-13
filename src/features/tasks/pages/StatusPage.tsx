@@ -49,7 +49,7 @@ export function StatusPage({
             <Icon className="size-10" aria-hidden="true" />
           </div>
           {code ? (
-            <div className="mb-2 text-sm font-bold text-slate-400">{code}</div>
+            <div className="mb-2 text-sm font-bold text-slate-500">{code}</div>
           ) : null}
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>

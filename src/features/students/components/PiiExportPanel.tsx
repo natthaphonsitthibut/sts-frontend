@@ -548,7 +548,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
               <DataTableRow key={request.id}>
                 <DataTableCell>
                   <div className="font-medium text-slate-800">{formatThaiDateTime(request.created_at)}</div>
-                  <div className="text-xs text-slate-400">{request.id.slice(0, 8)}</div>
+                  <div className="text-xs text-slate-500">{request.id.slice(0, 8)}</div>
                 </DataTableCell>
                 <DataTableCell>{requestActorLabel(request)}</DataTableCell>
                 <DataTableCell>
@@ -559,7 +559,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
                 </DataTableCell>
                 <DataTableCell>
                   <div>{PII_REASON_OPTIONS.find((option) => option.value === request.reason_code)?.label}</div>
-                  <div className="line-clamp-1 text-xs text-slate-400">{request.reason_note}</div>
+                  <div className="line-clamp-1 text-xs text-slate-500">{request.reason_note}</div>
                 </DataTableCell>
                 <DataTableCell>
                   {request.selected_student_count && request.selected_student_count > 0
@@ -593,7 +593,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
                       </Button>
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-400">-</span>
+                    <span className="text-xs text-slate-500">-</span>
                   )}
                 </DataTableCell>
               </DataTableRow>

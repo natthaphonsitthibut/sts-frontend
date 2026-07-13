@@ -79,7 +79,6 @@ const STUDENT_ACCOUNT_STATUS_ICONS = {
   TEMP_PASSWORD_EXPIRED: Clock,
   DISABLED: UserX,
 } as const;
-
 function ScopeField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>

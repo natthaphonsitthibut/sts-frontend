@@ -172,14 +172,14 @@ export function RiskMapView({
             ) : null}
             {pins.length === 0 && loadState === "ready" ? (
               <div className="absolute left-4 right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 shadow">
-                <MapPin className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                <MapPin className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
                 {emptyMessage}
               </div>
             ) : null}
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white px-6 text-center">
-            <Crosshair className="size-9 text-slate-400" aria-hidden="true" />
+            <Crosshair className="size-9 text-slate-500" aria-hidden="true" />
             <div className="text-sm font-bold text-slate-700">
               {appConfig.googleMapsBrowserKey ? "โหลดแผนที่ไม่สำเร็จ" : "ยังไม่ได้ตั้งค่า Google Maps"}
             </div>

@@ -50,11 +50,11 @@ export function LinkTimeSummary({
       >
         <div className="min-w-0 space-y-0.5">
           <div className="flex gap-1 font-medium tabular-nums text-slate-700">
-            <span className="w-8 shrink-0 font-semibold text-slate-400">{startLabel}</span>
+            <span className="w-8 shrink-0 font-semibold text-slate-500">{startLabel}</span>
             <span className="min-w-0 break-words">{rows[0].value}</span>
           </div>
           <div className="flex gap-1 font-medium tabular-nums text-slate-700">
-            <span className="w-8 shrink-0 font-semibold text-slate-400">หมด</span>
+            <span className="w-8 shrink-0 font-semibold text-slate-500">หมด</span>
             <span className="min-w-0 break-words">{rows[1].value}</span>
           </div>
         </div>
@@ -77,7 +77,7 @@ export function LinkTimeSummary({
     >
       {rows.map((row) => (
         <div className="contents" key={row.label}>
-          <dt className="font-semibold text-slate-400">{row.label}</dt>
+          <dt className="font-semibold text-slate-500">{row.label}</dt>
           <dd className="min-w-0 whitespace-normal break-words font-medium tabular-nums text-slate-600">
             {row.label === "อายุที่เหลือ" ? (
               <Badge

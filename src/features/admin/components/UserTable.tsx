@@ -64,7 +64,7 @@ function UserIdentity({ user }: { user: ManagedUser }) {
       </div>
       <div className="min-w-0">
         <div className="truncate font-bold text-slate-800">{displayName}</div>
-        <div className="truncate text-xs font-semibold text-slate-400">
+        <div className="truncate text-xs font-semibold text-slate-500">
           @{user.username}
         </div>
       </div>

@@ -395,7 +395,7 @@ export function TaskGuestPage() {
             ) : null}
           </div>
           {task.can_delegate ? (
-            <p className="text-center text-xs leading-relaxed text-slate-400">
+            <p className="text-center text-xs leading-relaxed text-slate-500">
               มอบหมายภารกิจนี้ให้ผู้อื่นดำเนินการแทน — คุณจะไม่ใช่ผู้รับผิดชอบหลักของภารกิจนี้อีกต่อไป
             </p>
           ) : null}

@@ -369,7 +369,7 @@ function CalendarMonthGrid({
                     dayType === "SCHOOL_DAY" && "bg-emerald-400",
                     dayType === "HOLIDAY" && "bg-sky-400",
                     dayType === "CANCELLED" && "bg-amber-400",
-                    !calendarDay && "bg-slate-400",
+                    !calendarDay && "bg-slate-500",
                   )}
                   aria-hidden="true"
                 />
@@ -382,7 +382,7 @@ function CalendarMonthGrid({
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-400" />วันเรียน</span>
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-400" />วันหยุด</span>
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-amber-400" />ยกเลิก</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-slate-400" />ยังไม่มีข้อมูล</span>
+        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-slate-500" />ยังไม่มีข้อมูล</span>
       </div>
     </div>
   );
@@ -1292,7 +1292,7 @@ export function AttendanceOperationsPage() {
                       <DataTableCell>{row.revision}</DataTableCell>
                       <DataTableCell className="text-slate-500">
                         <div>{row.calendarReason || "-"}</div>
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="mt-1 text-xs text-slate-500">
                           {ANOMALY_DESCRIPTIONS[row.anomalyType]}
                         </div>
                       </DataTableCell>
@@ -1345,7 +1345,7 @@ export function AttendanceOperationsPage() {
                         </div>
                         <div className="space-y-1 text-sm text-slate-500">
                           <div>{row.calendarReason || "-"}</div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-500">
                             {ANOMALY_DESCRIPTIONS[row.anomalyType]}
                           </div>
                         </div>

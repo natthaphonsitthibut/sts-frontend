@@ -280,7 +280,7 @@ export function RiskChildPicker({
                       }
                     />
                     <UserRound
-                      className="size-4 shrink-0 text-slate-400"
+                      className="size-4 shrink-0 text-slate-500"
                       aria-hidden="true"
                     />
                     <span className="min-w-0">

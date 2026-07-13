@@ -124,7 +124,7 @@ export function CaseTable({
               <div className="font-bold text-slate-800">
                 {caseRecord.student_name}
               </div>
-              <div className="mt-0.5 text-xs text-slate-400">
+              <div className="mt-0.5 text-xs text-slate-500">
                 {caseRecord.student_school || "-"}
               </div>
             </DataTableCell>
@@ -168,7 +168,7 @@ export function CaseTable({
                 <div className="font-bold text-slate-800">
                   {caseRecord.student_name}
                 </div>
-                <div className="mt-0.5 text-xs text-slate-400">
+                <div className="mt-0.5 text-xs text-slate-500">
                   {caseRecord.student_school || "-"}
                 </div>
               </div>

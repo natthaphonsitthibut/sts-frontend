@@ -278,7 +278,7 @@ export function AttendanceStudentTable({
   function renderAbsenceRisk(student: AttendanceStudent) {
     const totalAbsent = toCount(student.total_absent);
     if (totalAbsent <= 0) {
-      return <span className="text-slate-400">-</span>;
+      return <span className="text-slate-500">-</span>;
     }
     return (
       <Badge
@@ -327,7 +327,7 @@ export function AttendanceStudentTable({
         )}
       >
         <div className="flex items-center gap-4">
-          <div className="flex w-6 shrink-0 justify-center text-sm font-semibold text-slate-400">
+          <div className="flex w-6 shrink-0 justify-center text-sm font-semibold text-slate-500">
             {rosterNumber}
           </div>
           <div className="min-w-0 flex-1">
@@ -357,7 +357,7 @@ export function AttendanceStudentTable({
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
                 aria-hidden="true"
               />
               <Input
@@ -514,7 +514,7 @@ export function AttendanceStudentTable({
         >
           {sortedVisibleStudents.map(({ student, rosterNumber }) => (
             <DataTableRow key={student.id}>
-              <DataTableCell className="font-semibold text-slate-400">
+              <DataTableCell className="font-semibold text-slate-500">
                 {rosterNumber}
               </DataTableCell>
               <DataTableCell>{renderStudentIdentity(student)}</DataTableCell>

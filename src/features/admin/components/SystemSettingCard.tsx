@@ -87,7 +87,7 @@ export function SystemSettingCard({
         <div className="font-bold text-slate-800">
           {setting.description || setting.setting_key}
         </div>
-        <div className="mt-1 text-xs font-medium text-slate-400">
+        <div className="mt-1 text-xs font-medium text-slate-500">
           {setting.setting_key}
         </div>
       </div>
@@ -107,7 +107,7 @@ export function SystemSettingCard({
       ) : (
         <div className="mt-4 text-sm text-slate-500">
           {setting.setting_value}
-          <div className="mt-1 text-xs text-slate-400">
+          <div className="mt-1 text-xs text-slate-500">
             รายการนี้ไม่รองรับการแก้ไขผ่านหน้าจอ
           </div>
         </div>
