@@ -93,6 +93,15 @@ function timeToMinutes(value: string): number {
   return Number(hours) * 60 + Number(minutes);
 }
 
+// Sort key for a slot with no bell-schedule time: past every real
+// minute-of-day value (max 1439), so untimed slots order after timed ones
+// while still sorting among themselves by period number.
+const UNTIMED_SLOT_SORT_BASE = 10_000;
+
+function slotSortKey(row: { startsAt: number | null; slot: TimetableSlot }): number {
+  return row.startsAt ?? UNTIMED_SLOT_SORT_BASE + row.slot.period;
+}
+
 function findDefaultSlot(
   slots: TimetableSlot[],
   periodTimes: SchoolPeriodTime[],
@@ -112,11 +121,7 @@ function findDefaultSlot(
         endsAt: periodTime ? timeToMinutes(periodTime.ends_at) : null,
       };
     })
-    .sort((left, right) => {
-      const leftStart = left.startsAt ?? left.slot.period * 1000;
-      const rightStart = right.startsAt ?? right.slot.period * 1000;
-      return leftStart - rightStart;
-    });
+    .sort((left, right) => slotSortKey(left) - slotSortKey(right));
 
   const current = withTimes.find(
     (row) =>
@@ -602,7 +607,7 @@ export function AttendanceCheckInPage() {
               <div className="relative min-w-0 flex-1">
                 <Search
                   aria-hidden="true"
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
                 />
                 <Input
                   aria-label="ค้นหาประวัติเช็คชื่อ"
