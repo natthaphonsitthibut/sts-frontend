@@ -65,10 +65,7 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
         >
           <Avatar
             fallback={getInitials(displayName)}
-            className={cn(
-              "size-10 bg-primary-soft font-semibold text-primary transition-colors hover:bg-primary hover:text-white",
-              collapsed && "rounded-lg text-xs",
-            )}
+            className="size-10 bg-primary-soft font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
           />
           <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
             <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
@@ -79,10 +76,7 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
         <>
           <Avatar
             fallback={getInitials(displayName)}
-            className={cn(
-              "size-10 bg-primary-soft font-semibold text-primary",
-              collapsed && "rounded-lg text-xs",
-            )}
+            className="size-10 bg-primary-soft font-semibold text-primary"
           />
           <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
             <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
