@@ -205,6 +205,13 @@ export function StudentAccountBatchPanel({
         allCredentials.push(...next.credentials);
       }
       setCredentials(allCredentials);
+    } catch {
+      // Surfaced via credentialsMutation.error (FormErrorAlert above); swallow
+      // here so the void'd click handler doesn't raise an unhandled rejection.
+      // A mid-loop failure means earlier pages were already rotated server-side
+      // with nothing shown — show no partial sheet; re-clicking rotates and
+      // downloads the full set again.
+      setCredentials([]);
     } finally {
       setIsDownloadingCredentials(false);
     }
