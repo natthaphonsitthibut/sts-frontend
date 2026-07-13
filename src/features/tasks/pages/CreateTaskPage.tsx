@@ -33,6 +33,7 @@ import {
   PageShell,
   PageToolbar,
 } from "../../../components/layout/page-primitives";
+import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
@@ -176,8 +177,8 @@ const createTaskSchema = z
     address_district: z.string().trim(),
     address_sub_district: z.string().trim(),
     postal_code: z.string().trim(),
-    address_latitude: z.number().min(-90).max(90).nullable(),
-    address_longitude: z.number().min(-180).max(180).nullable(),
+    address_latitude: nullableLatitude,
+    address_longitude: nullableLongitude,
     reason_flagged: z.string().trim(),
     subject_id: z.string().trim(),
     timetable_slot_ids: z.array(z.string()),
@@ -812,7 +813,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                 ) : null}
                 isGeocoding={geocodeAddress.isPending}
                 names={VISIT_ADDRESS_NAMES}
-                onGeocode={(address) => geocodeAddress.mutate(address)}
+                onGeocode={async (address) => Boolean(await geocodeAddress.mutateAsync(address))}
                 showPlaceholders
                 title="ที่อยู่บ้านนักเรียน"
               />

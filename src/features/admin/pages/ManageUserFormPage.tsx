@@ -483,7 +483,7 @@ function UserForm({
               ) : null}
               isGeocoding={geocode.isPending}
               names={ADDRESS_NAMES}
-              onGeocode={(address) => geocode.mutate(address)}
+              onGeocode={async (address) => Boolean(await geocode.mutateAsync(address))}
               showPlaceholders={!isEdit}
               title="ที่อยู่ติดต่อ"
             />

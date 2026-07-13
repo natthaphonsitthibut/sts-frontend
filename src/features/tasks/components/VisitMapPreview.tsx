@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Crosshair, LoaderCircle, MapPin } from "lucide-react";
-import { Badge } from "../../../components/base";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Crosshair, LoaderCircle, MapPin, Search } from "lucide-react";
+import { Badge, Button, Input } from "../../../components/base";
 import { appConfig } from "../../../config/env";
 import { normalizeCoordinate, type CoordinateValue } from "../../../lib/coordinates";
 import { cn } from "../../../lib/utils";
@@ -22,6 +22,10 @@ export interface VisitMapPreviewProps {
   details?: ReactNode;
   editable?: boolean;
   onCoordinateChange?: (coordinates: { lat: number; lng: number }) => void;
+  onGeocode?: (address: string) => Promise<boolean>;
+  isGeocoding?: boolean;
+  geocodeError?: ReactNode;
+  coordinateFields?: ReactNode;
 }
 
 const THAILAND_CENTER = { lat: 13.7563, lng: 100.5018 };
@@ -47,14 +51,21 @@ export function VisitMapPreview({
   details,
   editable = false,
   onCoordinateChange,
+  onGeocode,
+  isGeocoding = false,
+  geocodeError,
+  coordinateFields,
 }: VisitMapPreviewProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
+  const searchInputId = useId();
   const mapRef = useRef<GoogleMapInstance | null>(null);
   const markerRef = useRef<GoogleMarkerInstance | null>(null);
   const onCoordinateChangeRef = useRef(onCoordinateChange);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">(
     appConfig.googleMapsBrowserKey ? "loading" : "error",
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
   const parsedLat = normalizeCoordinate(lat);
   const parsedLng = normalizeCoordinate(lng);
   const hasCoordinates = parsedLat !== null && parsedLng !== null;
@@ -179,6 +190,24 @@ export function VisitMapPreview({
 
   const showMap = appConfig.googleMapsBrowserKey && loadState !== "error";
 
+  async function geocode(searchAddress: string): Promise<void> {
+    const trimmed = searchAddress.trim();
+    if (trimmed.length < 3) {
+      setSearchError("กรุณากรอกที่อยู่หรือสถานที่อย่างน้อย 3 ตัวอักษร");
+      return;
+    }
+
+    setSearchError(null);
+    try {
+      const found = await onGeocode?.(trimmed);
+      if (found === false) {
+        setSearchError("ไม่พบตำแหน่งจากคำค้นนี้ กรุณาลองระบุพื้นที่ให้ละเอียดขึ้น");
+      }
+    } catch {
+      // The page-level mutation renders its existing API-safe error message.
+    }
+  }
+
   return (
     <div className={cn("rounded-lg border border-slate-200 bg-white p-4", className)}>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -204,6 +233,62 @@ export function VisitMapPreview({
 
       {details ? <div className="mb-3">{details}</div> : null}
 
+      {editable && onGeocode ? (
+        <div className="mb-3 space-y-2">
+          <div className="flex flex-col gap-2 lg:flex-row">
+            <div className="min-w-0 flex-1">
+              <label className="sr-only" htmlFor={searchInputId}>
+                ค้นหาที่อยู่หรือสถานที่บนแผนที่
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  autoComplete="off"
+                  id={searchInputId}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void geocode(searchQuery);
+                    }
+                  }}
+                  placeholder="ค้นหาที่อยู่หรือสถานที่"
+                  value={searchQuery}
+                />
+                <Button
+                  aria-label="ค้นหาตำแหน่งบนแผนที่"
+                  disabled={isGeocoding}
+                  icon={Search}
+                  isLoading={isGeocoding}
+                  loadingText="กำลังค้นหา"
+                  onClick={() => void geocode(searchQuery)}
+                  type="button"
+                >
+                  ค้นหา
+                </Button>
+              </div>
+            </div>
+            <Button
+              className="shrink-0"
+              disabled={!address?.trim() || isGeocoding}
+              onClick={() => void geocode(address ?? "")}
+              type="button"
+              variant="outline"
+            >
+              ใช้ที่อยู่ที่กรอกไว้
+            </Button>
+          </div>
+          <p className="text-xs font-medium text-slate-600">
+            ผลค้นหาเป็นตำแหน่งโดยประมาณ — ลากหมุดปรับให้ตรงจุดจริง
+          </p>
+          {searchError ? (
+            <p aria-live="polite" className="text-sm font-medium text-red-600">
+              {searchError}
+            </p>
+          ) : null}
+          {geocodeError}
+        </div>
+      ) : null}
+
       <div className="relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
         {showMap ? (
           <>
@@ -214,14 +299,15 @@ export function VisitMapPreview({
               </div>
             ) : null}
             {!hasCoordinates && loadState === "ready" ? (
-              <div className="absolute left-4 right-16 top-4 z-10 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 shadow">
-                {emptyDescription}
+              <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center gap-2 rounded-md bg-slate-900/85 px-3 py-2 text-xs font-semibold text-white">
+                <Crosshair className="size-4 shrink-0" aria-hidden="true" />
+                <span>{emptyDescription}</span>
               </div>
             ) : null}
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white px-6 text-center">
-            <Crosshair className="size-9 text-slate-400" aria-hidden="true" />
+            <Crosshair className="size-9 text-slate-500" aria-hidden="true" />
             <div className="text-sm font-bold text-slate-700">
               {appConfig.googleMapsBrowserKey ? "โหลดแผนที่ไม่สำเร็จ" : "ยังไม่ได้ตั้งค่า Google Maps"}
             </div>
@@ -234,7 +320,7 @@ export function VisitMapPreview({
         )}
       </div>
 
-      {hasCoordinates ? (
+      {coordinateFields ?? (hasCoordinates ? (
         <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <div className="text-xs font-bold text-slate-500">Latitude</div>
@@ -249,7 +335,7 @@ export function VisitMapPreview({
             </div>
           </div>
         </div>
-      ) : null}
+      ) : null)}
     </div>
   );
 }

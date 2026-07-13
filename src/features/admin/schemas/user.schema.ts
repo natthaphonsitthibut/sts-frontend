@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { optionalEmail, optionalThaiPhone, thaiNationalId } from "../../../lib/validation";
+import {
+  nullableLatitude,
+  nullableLongitude,
+  optionalEmail,
+  optionalThaiPhone,
+  thaiNationalId,
+} from "../../../lib/validation";
 
 export const userFormSchema = z.object({
   username: z.string().trim().min(1, "กรุณากรอกชื่อผู้ใช้งาน"),
@@ -28,8 +34,8 @@ export const userFormSchema = z.object({
     (value) => value === "" || /^\d{5}$/.test(value),
     "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
   ),
-  address_latitude: z.number().min(-90).max(90).nullable(),
-  address_longitude: z.number().min(-180).max(180).nullable(),
+  address_latitude: nullableLatitude,
+  address_longitude: nullableLongitude,
   role: z.string().trim().min(1, "กรุณาเลือกตำแหน่ง"),
   status: z.string().trim().min(1),
 });

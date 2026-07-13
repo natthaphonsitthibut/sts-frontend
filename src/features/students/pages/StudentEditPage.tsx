@@ -31,6 +31,7 @@ import { geoService } from "../../tasks/api/geo.service";
 import { useStudent } from "../hooks/useStudent";
 import { useUpdateStudent } from "../hooks/useUpdateStudent";
 import type { StudentUpdatePayload } from "../types/students.types";
+import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 
 const schema = z.object({
   FirstName_Onec: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
@@ -45,8 +46,8 @@ const schema = z.object({
   DistrictNameThai_Onec: z.string().trim().max(100),
   SubDistrictNameThai_Onec: z.string().trim().max(100),
   PostalCode_Onec: z.string().trim().refine((value) => value === "" || /^\d{5}$/.test(value), "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก"),
-  address_latitude: z.number().min(-90).max(90).nullable(),
-  address_longitude: z.number().min(-180).max(180).nullable(),
+  address_latitude: nullableLatitude,
+  address_longitude: nullableLongitude,
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -179,7 +180,7 @@ export function StudentEditPage() {
               ) : null}
               isGeocoding={geocode.isPending}
               names={ADDRESS_NAMES}
-              onGeocode={(address) => geocode.mutate(address)}
+              onGeocode={async (address) => Boolean(await geocode.mutateAsync(address))}
               title="ที่อยู่บ้านนักเรียน"
             />
             <div className="flex justify-end">

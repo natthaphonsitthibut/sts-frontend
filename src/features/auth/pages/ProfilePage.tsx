@@ -451,7 +451,9 @@ export function ProfilePage() {
               ) : null}
               isGeocoding={geocodeProfileAddress.isPending}
               names={ADDRESS_NAMES}
-              onGeocode={(address) => geocodeProfileAddress.mutate(address)}
+              onGeocode={async (address) =>
+                Boolean(await geocodeProfileAddress.mutateAsync(address))
+              }
               title="ที่อยู่ติดต่อ"
             />
 

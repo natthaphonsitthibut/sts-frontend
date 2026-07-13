@@ -1,5 +1,5 @@
-import { MapPin, Search } from "lucide-react";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { MapPin } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   useWatch,
@@ -9,7 +9,6 @@ import {
   type UseFormReturn,
 } from "react-hook-form";
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -64,8 +63,8 @@ export interface AddressFormSectionProps<T extends FieldValues> {
    * default; the user can still drag the pin or re-run the geocode button.
    */
   autoGeocode?: boolean;
-  /** When provided, renders a "find coordinates from address" button. */
-  onGeocode?: (address: string) => void;
+  /** Geocode through the page's existing backend-proxy mutation. */
+  onGeocode?: (address: string) => Promise<boolean>;
   isGeocoding?: boolean;
   /** Rendered above the map (e.g. a geocode failure alert). */
   geocodeError?: ReactNode;
@@ -164,6 +163,64 @@ export function AddressFormSection<T extends FieldValues>({
   ]);
 
   const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined;
+  const [editingCoordinate, setEditingCoordinate] = useState<"latitude" | "longitude" | null>(null);
+  const [latitudeInput, setLatitudeInput] = useState("");
+  const [longitudeInput, setLongitudeInput] = useState("");
+  const [lastLatitude, setLastLatitude] = useState<number | null>(null);
+  const [lastLongitude, setLastLongitude] = useState<number | null>(null);
+
+  const validLatitude =
+    typeof latitude === "number" && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
+      ? latitude
+      : null;
+  const validLongitude =
+    typeof longitude === "number" && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
+      ? longitude
+      : null;
+  const latitudeValue = typeof latitude === "number" ? latitude : null;
+  const longitudeValue = typeof longitude === "number" ? longitude : null;
+
+  if (editingCoordinate !== "latitude" && !Object.is(lastLatitude, latitudeValue)) {
+    setLastLatitude(latitudeValue);
+    setLatitudeInput(
+      validLatitude !== null
+        ? validLatitude.toFixed(6)
+        : Number.isFinite(latitudeValue)
+          ? String(latitudeValue)
+          : "",
+    );
+  }
+
+  if (editingCoordinate !== "longitude" && !Object.is(lastLongitude, longitudeValue)) {
+    setLastLongitude(longitudeValue);
+    setLongitudeInput(
+      validLongitude !== null
+        ? validLongitude.toFixed(6)
+        : Number.isFinite(longitudeValue)
+          ? String(longitudeValue)
+          : "",
+    );
+  }
+
+  function updateCoordinate(kind: "latitude" | "longitude", rawValue: string): void {
+    const name = kind === "latitude" ? names.latitude : names.longitude;
+    const setInput = kind === "latitude" ? setLatitudeInput : setLongitudeInput;
+    setInput(rawValue);
+
+    const trimmed = rawValue.trim();
+    const nextValue = trimmed === "" ? null : Number(trimmed);
+    const storedValue = Number.isFinite(nextValue) || nextValue === null ? nextValue : Number.NaN;
+    if (kind === "latitude") {
+      setLastLatitude(storedValue);
+    } else {
+      setLastLongitude(storedValue);
+    }
+    form.setValue(
+      name,
+      storedValue as PathValue<T, FieldPath<T>>,
+      { shouldDirty: true, shouldValidate: true },
+    );
+  }
 
   // Auto-pin: resolve the address to a point when the record has an address but
   // no saved coordinates yet, so the map is never blank on open (mirrors the
@@ -291,42 +348,66 @@ export function AddressFormSection<T extends FieldValues>({
         </FormItem>
 
         <div className="space-y-3 border-t border-slate-200 pt-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
             <div>
               <div className="text-sm font-bold text-slate-700">พิกัดที่อยู่</div>
               <div className="text-xs text-slate-500">
-                ใช้พิกัดที่บันทึกไว้ก่อน และค้นหาจากที่อยู่เมื่อยังไม่มีพิกัด
+                ค้นหา ปักหมุด หรือลงพิกัดโดยตรง แล้วตรวจตำแหน่งจริงก่อนบันทึก
               </div>
             </div>
-            {onGeocode ? (
-              <Button
-                disabled={!fullAddress || isGeocoding || disabled}
-                icon={Search}
-                isLoading={isGeocoding}
-                loadingText="กำลังค้นหา"
-                onClick={() => onGeocode(fullAddress)}
-                type="button"
-                variant="outline"
-              >
-                {hasCoordinates ? "ค้นหาพิกัดใหม่จากที่อยู่" : "ค้นหาพิกัดจากที่อยู่"}
-              </Button>
-            ) : null}
           </div>
-
-          {geocodeError}
 
           <LocationMapPicker
             address={fullAddress || undefined}
+            coordinateFields={
+              !disabled ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <FormItem>
+                    <FormLabel htmlFor={names.latitude}>Latitude</FormLabel>
+                    <Input
+                      aria-invalid={form.formState.errors[names.latitude] ? true : undefined}
+                      id={names.latitude}
+                      inputMode="decimal"
+                      name={names.latitude}
+                      onBlur={() => setEditingCoordinate(null)}
+                      onChange={(event) => updateCoordinate("latitude", event.target.value)}
+                      onFocus={() => setEditingCoordinate("latitude")}
+                      placeholder="เช่น 13.756300"
+                      value={latitudeInput}
+                    />
+                    <FormMessage<T> name={names.latitude} />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel htmlFor={names.longitude}>Longitude</FormLabel>
+                    <Input
+                      aria-invalid={form.formState.errors[names.longitude] ? true : undefined}
+                      id={names.longitude}
+                      inputMode="decimal"
+                      name={names.longitude}
+                      onBlur={() => setEditingCoordinate(null)}
+                      onChange={(event) => updateCoordinate("longitude", event.target.value)}
+                      onFocus={() => setEditingCoordinate("longitude")}
+                      placeholder="เช่น 100.501800"
+                      value={longitudeInput}
+                    />
+                    <FormMessage<T> name={names.longitude} />
+                  </FormItem>
+                </div>
+              ) : undefined
+            }
             editable={!disabled}
             emptyDescription="ค้นหาจากที่อยู่ หรือคลิกบนแผนที่เพื่อปักหมุด"
             emptyTitle="ยังไม่มีพิกัด"
-            lat={typeof latitude === "number" ? latitude : null}
-            lng={typeof longitude === "number" ? longitude : null}
+            geocodeError={geocodeError}
+            isGeocoding={isGeocoding}
+            lat={validLatitude}
+            lng={validLongitude}
             markerLabel="พิกัดที่อยู่"
             onCoordinateChange={(coordinates) => {
-              form.setValue(names.latitude, coordinates.lat as PathValue<T, FieldPath<T>>, { shouldDirty: true });
-              form.setValue(names.longitude, coordinates.lng as PathValue<T, FieldPath<T>>, { shouldDirty: true });
+              form.setValue(names.latitude, coordinates.lat as PathValue<T, FieldPath<T>>, { shouldDirty: true, shouldValidate: true });
+              form.setValue(names.longitude, coordinates.lng as PathValue<T, FieldPath<T>>, { shouldDirty: true, shouldValidate: true });
             }}
+            onGeocode={onGeocode}
             title="ตำแหน่งที่อยู่บนแผนที่"
           />
         </div>
