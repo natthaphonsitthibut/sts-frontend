@@ -43,8 +43,8 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 const FIELD_FOLLOWERS_TAB_ROUTES = {
   links: "/field-followers",
   history: "/field-followers/history",
-  review: "/field-followers-review",
-  reviewHistory: "/field-followers-review/history",
+  review: "/field-follower-applications",
+  reviewHistory: "/field-follower-applications/history",
 } as const;
 
 const LINK_TAB_OPTIONS = [

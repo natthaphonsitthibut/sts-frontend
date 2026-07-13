@@ -43,7 +43,7 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
       // Ignore — local session is cleared regardless below.
     }
     clearSession();
-    void navigate("/admin-access");
+    void navigate("/login");
   }
 
   return (

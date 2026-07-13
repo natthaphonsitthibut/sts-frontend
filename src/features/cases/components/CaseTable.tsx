@@ -56,7 +56,7 @@ function CaseAction({
   }
 
   return (
-    <DetailLinkButton className="min-w-[140px]" to={`/task-detail/${caseRecord.task_id}`}>
+    <DetailLinkButton className="min-w-[140px]" to={`/tasks/${caseRecord.task_id}`}>
       ดูรายละเอียด
     </DetailLinkButton>
   );

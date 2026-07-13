@@ -75,7 +75,7 @@ function LinkActions({ compact = false, link }: { compact?: boolean; link: Visit
   const locked = isVisitLinkLocked(link);
   const linkState = getVisitLinkState(link);
   const canToggleLink = linkState !== "EXPIRED";
-  const detailPath = `/task-detail/${link.task_id}`;
+  const detailPath = `/tasks/${link.task_id}`;
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">

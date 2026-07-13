@@ -7,7 +7,7 @@ export function getNotificationRoute(notification: NotificationItem): string | n
 
   if (notification.ref_entity === "task") {
     return notification.ref_id
-      ? `/task-detail/${encodeURIComponent(notification.ref_id)}`
+      ? `/tasks/${encodeURIComponent(notification.ref_id)}`
       : "/attendance-links";
   }
 

@@ -53,6 +53,10 @@ import {
   VisitLinksPage,
   WorkSessionMonitorPage,
 } from "./lazy-pages";
+import {
+  LegacyRouteRedirect,
+  LegacyTaskDetailRedirect,
+} from "./route-redirects";
 
 function withSuspense(children: ReactNode): ReactNode {
   return <RouteSuspense>{children}</RouteSuspense>;
@@ -80,8 +84,12 @@ export const router = createBrowserRouter([
         element: protectedElement(<MainPage />, "home"),
       },
       {
-        path: "dashboard",
+        path: "student-risk-report",
         element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
+        path: "dashboard",
+        element: <LegacyRouteRedirect to="/student-risk-report" />,
       },
       {
         path: "change-password",
@@ -275,7 +283,7 @@ export const router = createBrowserRouter([
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
-        path: "field-followers-review",
+        path: "field-follower-applications",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
@@ -283,8 +291,16 @@ export const router = createBrowserRouter([
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
-        path: "field-followers-review/history",
+        path: "field-follower-applications/history",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers-review",
+        element: <LegacyRouteRedirect to="/field-follower-applications" />,
+      },
+      {
+        path: "field-followers-review/history",
+        element: <LegacyRouteRedirect to="/field-follower-applications/history" />,
       },
       {
         path: "field-followers/:id",
@@ -323,8 +339,12 @@ export const router = createBrowserRouter([
         element: protectedElement(<MasterDataLookupsPage />, "settings"),
       },
       {
-        path: "task-detail/:taskId",
+        path: "tasks/:taskId",
         element: protectedElement(<TaskDetailPage />, "home"),
+      },
+      {
+        path: "task-detail/:taskId",
+        element: <LegacyTaskDetailRedirect />,
       },
     ],
   },
@@ -361,8 +381,12 @@ export const router = createBrowserRouter([
     element: withSuspense(<FieldFollowerApplicationPage />),
   },
   {
-    path: "/admin-access",
+    path: "/login",
     element: withSuspense(<AdminAccessPage />),
+  },
+  {
+    path: "/admin-access",
+    element: <LegacyRouteRedirect to="/login" />,
   },
   {
     path: "/forbidden",

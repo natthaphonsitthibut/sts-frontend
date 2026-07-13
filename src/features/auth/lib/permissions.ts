@@ -73,7 +73,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "dashboard",
     label: "รายงานนักเรียน",
     iconName: "chart-line",
-    route: "/dashboard",
+    route: "/student-risk-report",
   },
   {
     id: "students",
@@ -201,7 +201,7 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "ตรวจสอบใบสมัคร",
         iconName: "user-check",
         permissionId: "field-monitor",
-        route: "/field-followers-review",
+        route: "/field-follower-applications",
       },
     ],
   },

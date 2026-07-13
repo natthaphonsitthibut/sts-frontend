@@ -174,7 +174,7 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
     return (
       <DetailLinkButton
         className="w-[112px]"
-        to={`/task-detail/${row.latestOpenTaskId}`}
+        to={`/tasks/${row.latestOpenTaskId}`}
         variant="default"
       >
         ดูเคส

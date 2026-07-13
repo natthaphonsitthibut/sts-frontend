@@ -29,13 +29,13 @@ const EXTRA_TITLES: Record<string, string> = {
   "/cases": "เคสช่วยเหลือนักเรียน",
   "/profile": "โปรไฟล์ของฉัน",
   "/notifications": "การแจ้งเตือน",
-  "/admin-access": "เข้าสู่ระบบ",
+  "/login": "เข้าสู่ระบบ",
   "/audit-log": "รายละเอียดบันทึกการใช้งาน",
   "/forbidden": "ไม่มีสิทธิ์เข้าถึง",
 };
 
 export function getPageTitle(pathname: string): string {
-  if (pathname.startsWith("/task-detail/")) {
+  if (pathname.startsWith("/tasks/")) {
     return "รายละเอียดภารกิจ";
   }
 

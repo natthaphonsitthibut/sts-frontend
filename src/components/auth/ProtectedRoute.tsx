@@ -27,7 +27,7 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
       <Navigate
         replace
         state={{ from: location }}
-        to={`/admin-access?next=${encodeURIComponent(nextPath)}`}
+        to={`/login?next=${encodeURIComponent(nextPath)}`}
       />
     );
   }

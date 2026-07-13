@@ -55,7 +55,7 @@ export function HeaderProfileMenu({
       // The local session must still be cleared when the server is unavailable.
     }
     clearSession();
-    void navigate("/admin-access");
+    void navigate("/login");
   }
 
   return (
