@@ -240,33 +240,33 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
               <div>แถว</div>
               <div>
                 ชื่อ
-                <div className="font-normal text-slate-400">
+                <div className="font-normal text-slate-500">
                   {nameSource}
                 </div>
               </div>
               <div>
                 โรงเรียน
-                <div className="font-normal text-slate-400">
+                <div className="font-normal text-slate-500">
                   {preview.mapping.SchoolID_Onec ?? "ยังไม่จับคู่"}
                 </div>
               </div>
               <div>
                 ปี / เทอม
-                <div className="font-normal text-slate-400">
+                <div className="font-normal text-slate-500">
                   {preview.mapping.AcademicYear_Onec ?? "-"} /{" "}
                   {preview.mapping.Semester_Onec ?? "-"}
                 </div>
               </div>
               <div>
                 ชั้น / ห้อง
-                <div className="font-normal text-slate-400">
+                <div className="font-normal text-slate-500">
                   {preview.mapping.GradeLevelID_Onec ?? "-"} /{" "}
                   {preview.mapping.RoomID_Onec ?? "-"}
                 </div>
               </div>
               <div>
                 สถานะ
-                <div className="font-normal text-slate-400">
+                <div className="font-normal text-slate-500">
                   {preview.mapping.StudentStatusID_Onec ?? "ยังไม่จับคู่"}
                 </div>
               </div>
@@ -283,7 +283,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                   <div className="truncate font-semibold text-slate-800">
                     {row.firstName} {row.lastName}
                   </div>
-                  <div className="text-xs text-slate-400">{row.personIdMasked}</div>
+                  <div className="text-xs text-slate-500">{row.personIdMasked}</div>
                 </div>
                 <div className="text-slate-700">
                   <div className="font-medium">{row.schoolName}</div>
@@ -848,12 +848,6 @@ export function ImportDataPage() {
         </div>
       ) : (
         <AuditLogPanel
-          actionOptions={[
-            { value: "DATA_IMPORT", label: "นำเข้าข้อมูล" },
-            { value: "IMPORT_QUARANTINE_RESOLVED", label: "แก้ไขรายการรอตรวจสอบ" },
-            { value: "IMPORT_QUARANTINE_REJECTED", label: "ปฏิเสธรายการรอตรวจสอบ" },
-            { value: "IMPORT_QUARANTINE_EXPORT", label: "ดาวน์โหลดรายงาน" },
-          ]}
           domain="imports"
           description="ดูรายการนำเข้าข้อมูลย้อนหลังตามขอบเขตสิทธิ์ของบัญชี"
           showReferenceColumn={false}

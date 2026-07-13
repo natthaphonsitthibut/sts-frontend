@@ -55,3 +55,8 @@ export interface AuditLogResult {
   items: AuditLogEntry[];
   meta: PaginationMeta;
 }
+
+export interface AuditLogActionOption {
+  value: string;
+  label: string;
+}

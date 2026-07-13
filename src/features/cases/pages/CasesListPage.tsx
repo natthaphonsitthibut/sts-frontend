@@ -50,14 +50,6 @@ const CASE_TAB_ROUTES = {
   history: "/cases/history",
 } as const;
 
-const CASE_AUDIT_ACTION_OPTIONS = [
-  { value: "CASE_REVIEW", label: "ตรวจสอบเคส" },
-  { value: "CASE_CLOSE", label: "ปิดเคส" },
-  { value: "CASE_FORWARD", label: "ส่งต่อเคส" },
-  { value: "CASE_REFERRAL_OUTCOME_UPDATE", label: "บันทึกผลการส่งต่อ" },
-  { value: "CASE_AUTO_CANCEL", label: "ยกเลิกเคสอัตโนมัติ" },
-] as const;
-
 function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<string, number> {
   return cases.reduce<Record<string, number>>(
     (counts, caseRecord) => {
@@ -250,7 +242,6 @@ export function CasesListPage() {
 
       {effectiveTab === "history" ? (
         <AuditLogPanel
-          actionOptions={CASE_AUDIT_ACTION_OPTIONS}
           description="ดูประวัติการตรวจสอบ ส่งต่อ และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
           district={schoolArea.district || undefined}
           domain="cases"

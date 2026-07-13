@@ -31,11 +31,6 @@ import {
 export const ATTENDANCE_LINK_DETAIL_KEY = "attendance-link-detail";
 const ATTENDANCE_TASKS_KEY = "attendance-link-tasks";
 
-const ATTENDANCE_LINK_DETAIL_AUDIT_ACTION_OPTIONS = [
-  { value: "LINK_LOCK", label: "ปิดลิงก์" },
-  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
-] as const;
-
 /**
  * Detail page for one attendance link — who was checked and their status.
  * Loads admin-side by link id so it renders even when the link is closed or
@@ -156,7 +151,7 @@ export function AttendanceLinkDetailPage() {
         {canViewAuditLog ? (
           <Card className="rounded-lg p-6">
             <AuditLogPanel
-              actionOptions={ATTENDANCE_LINK_DETAIL_AUDIT_ACTION_OPTIONS}
+              actionValues={["LINK_LOCK", "LINK_UNLOCK"]}
               description="ดูประวัติการปิดและเปิดลิงก์เช็คชื่อนี้ย้อนหลัง"
               domain="tasks"
               showReferenceColumn={false}

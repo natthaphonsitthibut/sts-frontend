@@ -26,17 +26,13 @@ import {
   formatAuditLogDetails,
   getAuditLogTargetLabel,
 } from "../lib/audit-log-presentation";
-import { useAuditLog } from "../hooks/useAuditLog";
+import { useAuditLog, useAuditLogActions } from "../hooks/useAuditLog";
 import type {
+  AuditLogActionOption,
   AuditLogDomain,
   AuditLogEntry,
   AuditLogTaskType,
 } from "../types/audit-log.types";
-
-interface AuditLogActionOption {
-  value: string;
-  label: string;
-}
 
 interface AuditLogPanelProps {
   domain: AuditLogDomain;
@@ -50,7 +46,7 @@ interface AuditLogPanelProps {
   targetType?: string;
   targetId?: string;
   caseId?: number;
-  actionOptions?: readonly AuditLogActionOption[];
+  actionValues?: readonly string[];
   fixedAction?: string;
   showActionColumn?: boolean;
   showReferenceColumn?: boolean;
@@ -285,7 +281,7 @@ function AuditLogTable({
 }
 
 export function AuditLogPanel({
-  actionOptions = [],
+  actionValues,
   caseId,
   className,
   description,
@@ -353,6 +349,11 @@ export function AuditLogPanel({
   );
 
   const auditLog = useAuditLog(query);
+  const actionCatalog = useAuditLogActions({ domain, taskType }, !fixedAction);
+  const actionOptions = useMemo(() => {
+    const options = actionCatalog.data ?? [];
+    return actionValues ? options.filter((option) => actionValues.includes(option.value)) : options;
+  }, [actionCatalog.data, actionValues]);
   const totalCount = auditLog.meta?.totalCount ?? auditLog.entries.length;
 
   function resetPageAnd(run: () => void): void {
@@ -388,9 +389,15 @@ export function AuditLogPanel({
         </div>
       </div>
 
-      {auditLog.isError ? (
-        <ErrorState title="โหลดประวัติไม่สำเร็จ" onRetry={auditLog.refetch} />
-      ) : auditLog.isLoading ? (
+      {auditLog.isError || actionCatalog.isError ? (
+        <ErrorState
+          title="โหลดประวัติไม่สำเร็จ"
+          onRetry={() => {
+            auditLog.refetch();
+            void actionCatalog.refetch();
+          }}
+        />
+      ) : auditLog.isLoading || actionCatalog.isLoading ? (
         <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-500">
           กำลังโหลดประวัติ
         </div>

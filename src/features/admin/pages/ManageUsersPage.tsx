@@ -55,15 +55,6 @@ const USER_STATUS_ICONS = {
   DISABLED: UserX,
 } as const;
 
-const USER_AUDIT_ACTION_OPTIONS = [
-  { value: "USER_CREATE", label: "สร้างผู้ใช้งาน" },
-  { value: "USER_UPDATE", label: "แก้ไขผู้ใช้งาน" },
-  { value: "USER_DEACTIVATE", label: "ปิดใช้งานผู้ใช้งาน" },
-  { value: "USER_REACTIVATE", label: "เปิดใช้งานผู้ใช้งานอีกครั้ง" },
-  { value: "USER_TEMP_PASSWORD_REISSUE", label: "ออกรหัสชั่วคราวใหม่" },
-  { value: "USER_DELETE", label: "ปิดหรือลบผู้ใช้งาน" },
-] as const;
-
 function getFallbackUserStatusCounts(
   users: readonly ManagedUser[],
 ): StudentAccountStatusCounts {
@@ -421,7 +412,6 @@ export function ManageUsersPage() {
         </>
       ) : (
         <AuditLogPanel
-          actionOptions={USER_AUDIT_ACTION_OPTIONS}
           description="ดูรายการจัดการผู้ใช้งานย้อนหลังตามขอบเขตสิทธิ์และพื้นที่ที่เลือก"
           district={schoolArea.district || undefined}
           domain="users"

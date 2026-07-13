@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, CheckCircle2, Clock, Link2, Lock, MapPin } from "lucide-react";
+import { Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -14,14 +15,27 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { VisitLinkTable } from "../components/VisitLinkTable";
 import { useVisitLinks } from "../hooks/useVisitLinks";
 import type { VisitLinkListQuery } from "../types/visit-links.types";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+
+const VISIT_LINK_TAB_ROUTES = {
+  list: "/visit-links",
+  history: "/visit-links/history",
+} as const;
 
 export function VisitLinksPage() {
+  const { can } = usePermissions();
+  const [activeTab, setActiveTab] = useRouteTab(VISIT_LINK_TAB_ROUTES, "list");
+  const canViewAuditLog = can("audit-log");
+  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
     ["SCHEDULED", "ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
@@ -106,47 +120,99 @@ export function VisitLinksPage() {
 
   return (
     <PageShell>
-      <ListPageToolbar
-        icon={MapPin}
-        title="ลิงก์ลงพื้นที่"
-        description="ดูและจัดการลิงก์ภารกิจลงพื้นที่ตามขอบเขตเคสที่ได้รับสิทธิ์"
-        tableActions={
-          <div className="flex gap-2">
-            <RefreshButton onRefresh={refetch} />
-          </div>
-        }
-        search={{
-          value: searchQuery,
-          onChange: handleSearchChange,
-          placeholder: "ค้นหานักเรียน โรงเรียน ผู้รับมอบหมาย หรืออีเมล...",
-        }}
-        filters={
-          <>
-            <SchoolClassRoomFilter
-              area={schoolArea}
-              onGradeChange={handleGradeChange}
-              onRoomChange={handleRoomChange}
-              onSchoolChange={handleSchoolChange}
-              scope={scope}
+      {effectiveTab === "list" ? (
+        <ListPageToolbar
+          actions={
+            canViewAuditLog ? (
+              <Tabs
+                aria-label="โหมดลิงก์ลงพื้นที่"
+                onChange={setActiveTab}
+                options={[
+                  { value: "list", label: "รายการ" },
+                  { value: "history", label: "ประวัติ" },
+                ]}
+                value={activeTab}
+              />
+            ) : undefined
+          }
+          icon={MapPin}
+          title="ลิงก์ลงพื้นที่"
+          description="ดูและจัดการลิงก์ภารกิจลงพื้นที่ตามขอบเขตเคสที่ได้รับสิทธิ์"
+          tableActions={
+            <div className="flex gap-2">
+              <RefreshButton onRefresh={refetch} />
+            </div>
+          }
+          search={{
+            value: searchQuery,
+            onChange: handleSearchChange,
+            placeholder: "ค้นหานักเรียน โรงเรียน ผู้รับมอบหมาย หรืออีเมล...",
+          }}
+          filters={
+            <>
+              <SchoolClassRoomFilter
+                area={schoolArea}
+                onGradeChange={handleGradeChange}
+                onRoomChange={handleRoomChange}
+                onSchoolChange={handleSchoolChange}
+                scope={scope}
+              />
+              <FilterSelect
+                ariaLabel="สถานะลิงก์ลงพื้นที่"
+                className="sm:w-[220px]"
+                onChange={handleStatusChange}
+                value={status}
+              >
+                <option value="ALL">ทั้งหมด</option>
+                {linkStateOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </>
+          }
+        />
+      ) : (
+        <ListPageToolbar
+          actions={
+            <Tabs
+              aria-label="โหมดลิงก์ลงพื้นที่"
+              onChange={setActiveTab}
+              options={[
+                { value: "list", label: "รายการ" },
+                { value: "history", label: "ประวัติ" },
+              ]}
+              value={activeTab}
             />
-            <FilterSelect
-              ariaLabel="สถานะลิงก์ลงพื้นที่"
-              className="sm:w-[220px]"
-              onChange={handleStatusChange}
-              value={status}
-            >
-              <option value="ALL">ทั้งหมด</option>
-              {linkStateOptions.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </FilterSelect>
-          </>
-        }
-      />
+          }
+          description="ดูประวัติการสร้าง ปิด และเปิดลิงก์ลงพื้นที่ย้อนหลังตามขอบเขตสิทธิ์"
+          filters={
+            <SchoolAreaSchoolFilter
+              area={schoolArea}
+              onSchoolChange={handleSchoolChange}
+              schoolId={scope.schoolId}
+              schoolLocked={scope.schoolLocked}
+            />
+          }
+          icon={MapPin}
+          title="ลิงก์ลงพื้นที่"
+        />
+      )}
 
-      <div className="space-y-5">
+      {effectiveTab === "history" ? (
+        <AuditLogPanel
+          description="ดูประวัติการสร้าง ปิด และเปิดลิงก์ลงพื้นที่ย้อนหลังตามขอบเขตสิทธิ์"
+          district={schoolArea.district || undefined}
+          domain="tasks"
+          province={schoolArea.province || undefined}
+          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
+          subDistrict={schoolArea.subDistrict || undefined}
+          taskType="VISIT"
+          title="ประวัติลิงก์ลงพื้นที่"
+        />
+      ) : (
+        <div className="space-y-5">
         <SummaryMetrics
           centerRows
           items={[
@@ -229,7 +295,8 @@ export function VisitLinksPage() {
             />
           </>
         )}
-      </div>
+        </div>
+      )}
     </PageShell>
   );
 }

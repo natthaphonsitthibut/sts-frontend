@@ -57,16 +57,6 @@ const REVIEW_TAB_OPTIONS = [
   { value: "reviewHistory", label: "ประวัติ" },
 ];
 
-const FOLLOWER_CAMPAIGN_AUDIT_ACTION_OPTIONS = [
-  { value: "FOLLOWER_CAMPAIGN_CREATE", label: "สร้างลิงก์รับสมัคร" },
-  { value: "FOLLOWER_CAMPAIGN_UPDATE", label: "แก้ไข/เปิด-ปิดลิงก์" },
-  { value: "FOLLOWER_CAMPAIGN_DELETE", label: "ลบลิงก์รับสมัคร" },
-] as const;
-
-const FIELD_FOLLOWER_REVIEW_AUDIT_ACTION_OPTIONS = [
-  { value: "FIELD_FOLLOWER_REVIEW", label: "ตรวจสอบใบสมัคร" },
-] as const;
-
 export function FieldFollowersReviewPage() {
   const [activeTab, setActiveTab] = useRouteTab(FIELD_FOLLOWERS_TAB_ROUTES, "links");
   const [status, setStatus] = useState<FieldFollowerStatus | "">("");
@@ -129,7 +119,12 @@ export function FieldFollowersReviewPage() {
             title="ลิงก์รับสมัคร"
           />
           <AuditLogPanel
-            actionOptions={FOLLOWER_CAMPAIGN_AUDIT_ACTION_OPTIONS}
+            actionValues={[
+              "FOLLOWER_CAMPAIGN_CREATE",
+              "FOLLOWER_CAMPAIGN_UPDATE",
+              "FOLLOWER_CAMPAIGN_DELETE",
+              "FOLLOWER_CAMPAIGN_TARGETS_ADD",
+            ]}
             description="ดูประวัติการสร้าง แก้ไข เปิด-ปิด และลบลิงก์รับสมัครย้อนหลัง"
             domain="field_followers"
             targetType="follower_recruitment_campaign"
@@ -152,7 +147,6 @@ export function FieldFollowersReviewPage() {
             title="ตรวจสอบใบสมัคร"
           />
           <AuditLogPanel
-            actionOptions={FIELD_FOLLOWER_REVIEW_AUDIT_ACTION_OPTIONS}
             description="ดูประวัติการตรวจสอบใบสมัครย้อนหลัง"
             domain="field_followers"
             fixedAction="FIELD_FOLLOWER_REVIEW"
@@ -217,7 +211,7 @@ export function FieldFollowersReviewPage() {
                   <DataTableCell>
                     <div>{getFieldFollowerAreaText(follower)}</div>
                     {follower.campaign_name ? (
-                      <div className="text-xs text-slate-400">ผ่านลิงก์ {follower.campaign_name}</div>
+                      <div className="text-xs text-slate-500">ผ่านลิงก์ {follower.campaign_name}</div>
                     ) : null}
                   </DataTableCell>
                   <DataTableCell>
@@ -256,7 +250,7 @@ export function FieldFollowersReviewPage() {
                   </div>
                   <div className="text-sm text-slate-700">{getFieldFollowerAreaText(follower)}</div>
                   {follower.campaign_name ? (
-                    <div className="text-xs text-slate-400">ผ่านลิงก์ {follower.campaign_name}</div>
+                    <div className="text-xs text-slate-500">ผ่านลิงก์ {follower.campaign_name}</div>
                   ) : null}
                   <div className="text-sm text-slate-500">
                     สมัครเมื่อ {formatThaiDateTime(follower.created_at)}

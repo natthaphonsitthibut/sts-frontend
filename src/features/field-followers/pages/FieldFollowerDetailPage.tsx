@@ -34,10 +34,6 @@ import {
 } from "../lib/field-follower-presentation";
 import type { FieldFollowerReviewAction } from "../types/field-follower.types";
 
-const REVIEW_AUDIT_ACTION_OPTIONS = [
-  { value: "FIELD_FOLLOWER_REVIEW", label: "ตรวจสอบใบสมัคร" },
-] as const;
-
 function DetailItem({
   label,
   value,
@@ -217,7 +213,6 @@ export function FieldFollowerDetailPage() {
           </section>
 
           <AuditLogPanel
-            actionOptions={REVIEW_AUDIT_ACTION_OPTIONS}
             description="ดูประวัติการตรวจสอบใบสมัครนี้ย้อนหลัง"
             domain="field_followers"
             fixedAction="FIELD_FOLLOWER_REVIEW"

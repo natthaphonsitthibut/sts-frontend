@@ -1,6 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { auditLogService } from "../api/audit-log.service";
-import type { AuditLogEntry, AuditLogQuery } from "../types/audit-log.types";
+import type {
+  AuditLogDomain,
+  AuditLogEntry,
+  AuditLogQuery,
+  AuditLogTaskType,
+} from "../types/audit-log.types";
 import type { PaginationMeta } from "../../../lib/pagination";
 
 export const AUDIT_LOG_QUERY_KEY = "audit-log";
@@ -40,5 +45,17 @@ export function useAuditLogEntry(id: string) {
     queryKey: [AUDIT_LOG_QUERY_KEY, "detail", id],
     queryFn: () => auditLogService.getAuditLogEntry(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useAuditLogActions(
+  query: { domain: AuditLogDomain; taskType?: AuditLogTaskType },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [AUDIT_LOG_QUERY_KEY, "actions", query],
+    queryFn: () => auditLogService.getAuditLogActions(query),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }

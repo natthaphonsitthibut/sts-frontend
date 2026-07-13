@@ -35,12 +35,6 @@ const STUDENT_TAB_ROUTES = {
   export: "/students/export",
 } as const;
 
-const STUDENT_AUDIT_ACTION_OPTIONS = [
-  { value: "STUDENT_CREATE", label: "เพิ่มข้อมูลนักเรียน" },
-  { value: "STUDENT_UPDATE", label: "แก้ไขข้อมูลนักเรียน" },
-  { value: "STUDENT_DELETE", label: "ลบข้อมูลนักเรียน" },
-] as const;
-
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 20;
 const ALL_STUDENT_STATUSES = "ALL";
@@ -365,7 +359,6 @@ export function StudentListPage() {
 
         {effectiveTab === "history" ? (
           <AuditLogPanel
-            actionOptions={STUDENT_AUDIT_ACTION_OPTIONS}
             description="ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
             district={schoolArea.district || undefined}
             domain="students"

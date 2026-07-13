@@ -3,7 +3,14 @@ import {
   normalizePaginatedResponse,
   toPaginationParams,
 } from "../../../lib/pagination";
-import type { AuditLogQuery, AuditLogResult, AuditLogEntry } from "../types/audit-log.types";
+import type {
+  AuditLogActionOption,
+  AuditLogDomain,
+  AuditLogEntry,
+  AuditLogQuery,
+  AuditLogResult,
+  AuditLogTaskType,
+} from "../types/audit-log.types";
 
 interface DataEnvelope<T> {
   data: T;
@@ -82,7 +89,18 @@ async function getAuditLogEntry(id: string): Promise<AuditLogEntry> {
   return unwrapData(response.data);
 }
 
+async function getAuditLogActions(query: {
+  domain: AuditLogDomain;
+  taskType?: AuditLogTaskType;
+}): Promise<AuditLogActionOption[]> {
+  const response = await apiClient.get<
+    AuditLogActionOption[] | DataEnvelope<AuditLogActionOption[]>
+  >("/audit-log/actions", { params: query });
+  return unwrapData(response.data);
+}
+
 export const auditLogService = {
   getAuditLog,
+  getAuditLogActions,
   getAuditLogEntry,
 };

@@ -39,14 +39,6 @@ import {
 } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
-const CASE_DETAIL_AUDIT_ACTION_OPTIONS = [
-  { value: "CASE_REVIEW", label: "ตรวจสอบเคส" },
-  { value: "CASE_CLOSE", label: "ปิดเคส" },
-  { value: "CASE_FORWARD", label: "ส่งต่อเคส" },
-  { value: "CASE_REFERRAL_OUTCOME_UPDATE", label: "บันทึกผลการส่งต่อ" },
-  { value: "CASE_AUTO_CANCEL", label: "ยกเลิกเคสอัตโนมัติ" },
-] as const;
-
 function ReferralCard({
   canUpdate,
   onUpdate,
@@ -289,7 +281,7 @@ export function TaskDetailPage() {
                             {link.delegated_by_name || "ไม่ระบุผู้ส่ง"}
                           </span>
                           <ArrowRight
-                            className="size-4 shrink-0 text-slate-400"
+                            className="size-4 shrink-0 text-slate-500"
                             aria-hidden="true"
                           />
                           <span className="break-words">
@@ -326,7 +318,6 @@ export function TaskDetailPage() {
         {canViewAuditLog && caseRecord ? (
           <Card className="rounded-lg p-6">
             <AuditLogPanel
-              actionOptions={CASE_DETAIL_AUDIT_ACTION_OPTIONS}
               caseId={caseRecord.id}
               description="ดูประวัติการตรวจสอบ ส่งต่อ ปิดเคส และผลตอบรับของเคสนี้"
               domain="cases"

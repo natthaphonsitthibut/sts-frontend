@@ -33,11 +33,6 @@ const LOGIN_LINK_TAB_ROUTES = {
   history: "/login-links/history",
 } as const;
 
-const LOGIN_LINK_AUDIT_ACTION_OPTIONS = [
-  { value: "LINK_LOCK", label: "ปิดลิงก์" },
-  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
-] as const;
-
 export function LoginLinksPage() {
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(LOGIN_LINK_TAB_ROUTES, "manage");
@@ -297,13 +292,13 @@ export function LoginLinksPage() {
         </div>
       ) : (
         <AuditLogPanel
-          actionOptions={LOGIN_LINK_AUDIT_ACTION_OPTIONS}
           description="ดูประวัติการเปิดและปิดลิงก์เข้าสู่ระบบย้อนหลังตามขอบเขตสิทธิ์"
           district={schoolArea.district || undefined}
           domain="login_links"
           province={schoolArea.province || undefined}
           schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
           subDistrict={schoolArea.subDistrict || undefined}
+          taskType="LOGIN"
           title="ประวัติลิงก์เข้าสู่ระบบ"
         />
       )}

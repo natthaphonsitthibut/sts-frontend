@@ -74,13 +74,6 @@ const ATTENDANCE_LINK_TAB_ROUTES = {
   history: "/attendance-links/history",
 } as const;
 
-const ATTENDANCE_LINK_AUDIT_ACTION_OPTIONS = [
-  { value: "TASK_CREATE", label: "สร้างภารกิจหรือลิงก์" },
-  { value: "LINK_LOCK", label: "ปิดลิงก์" },
-  { value: "LINK_UNLOCK", label: "เปิดลิงก์อีกครั้ง" },
-  { value: "TASK_DELETE", label: "ลบภารกิจ" },
-] as const;
-
 function getLinkState(
   task: AttendanceTask,
 ): Exclude<AttendanceTaskLinkStatus, "ALL"> {
@@ -335,7 +328,6 @@ export function AttendanceLinksDashboardPage() {
 
       {effectiveTab === "history" ? (
         <AuditLogPanel
-          actionOptions={ATTENDANCE_LINK_AUDIT_ACTION_OPTIONS}
           description="ดูประวัติการสร้าง ปิด และเปิดลิงก์เช็คชื่อย้อนหลังตามขอบเขตสิทธิ์"
           district={schoolArea.district || undefined}
           domain="tasks"
