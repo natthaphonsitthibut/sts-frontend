@@ -1,8 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ShieldCheck, UserRound } from "lucide-react";
+import { CheckCircle2, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
   Alert,
@@ -41,6 +41,9 @@ import { describeDataScopeForDisplay } from "../lib/permissions";
 import { useAuthSessionStore } from "../store/auth-session.store";
 import type { AuthUser, UpdateProfilePayload } from "../types/auth.types";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { usePermissions } from "../hooks/usePermissions";
+import { NavButton } from "../../../components/layout/nav-button";
+import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
 
@@ -79,8 +82,8 @@ const profileSchema = z.object({
     .refine((value) => value === "" || /^[0-9]{5}$/.test(value), {
       message: "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
     }),
-  address_latitude: z.number().min(-90).max(90).nullable(),
-  address_longitude: z.number().min(-180).max(180).nullable(),
+  address_latitude: nullableLatitude,
+  address_longitude: nullableLongitude,
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -169,6 +172,7 @@ function ProfileDetailItem({ label, value }: { label: string; value: string }) {
 }
 
 export function ProfilePage() {
+  const { can } = usePermissions();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useRouteTab(
     {
@@ -352,11 +356,24 @@ export function ProfilePage() {
                   <Input
                     autoComplete="off"
                     id="PersonID_Onec"
+                    placeholder="ยังไม่ระบุ"
                     readOnly
-                    value={profileText(profileUser?.PersonID_Onec)}
+                    value={profileUser?.PersonID_Onec ?? ""}
                   />
                   <p className="text-xs text-slate-500">
-                    แก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข
+                    {can("manage-users-list") && profileUser?.id ? (
+                      <>
+                        แก้ไขได้ที่{" "}
+                        <Link
+                          className="font-semibold text-primary underline-offset-4 hover:underline"
+                          to={`/manage-users/${profileUser.id}/edit`}
+                        >
+                          หน้าจัดการผู้ใช้งาน
+                        </Link>
+                      </>
+                    ) : (
+                      "แก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข"
+                    )}
                   </p>
                 </FormItem>
 
@@ -402,6 +419,23 @@ export function ProfilePage() {
                   <FormMessage<ProfileFormValues> name="line_id" />
                 </FormItem>
 
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <KeyRound className="size-5 text-primary" aria-hidden="true" />
+                  ความปลอดภัยของบัญชี
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-500">
+                  เปลี่ยนรหัสผ่านเป็นประจำ และหลีกเลี่ยงการใช้รหัสผ่านซ้ำกับระบบอื่น
+                </p>
+                <NavButton className="shrink-0" icon={KeyRound} to="/change-password">
+                  เปลี่ยนรหัสผ่าน
+                </NavButton>
               </CardContent>
             </Card>
 

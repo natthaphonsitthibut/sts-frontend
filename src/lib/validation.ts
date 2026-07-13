@@ -39,6 +39,20 @@ export const optionalEmail = z
     message: "รูปแบบอีเมลไม่ถูกต้อง",
   });
 
+/** Optional map latitude with Thai messages for direct coordinate entry. */
+export const nullableLatitude = z
+  .number({ error: "ละติจูดต้องเป็นตัวเลข" })
+  .min(-90, "ละติจูดต้องอยู่ระหว่าง -90 ถึง 90")
+  .max(90, "ละติจูดต้องอยู่ระหว่าง -90 ถึง 90")
+  .nullable();
+
+/** Optional map longitude with Thai messages for direct coordinate entry. */
+export const nullableLongitude = z
+  .number({ error: "ลองจิจูดต้องเป็นตัวเลข" })
+  .min(-180, "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180")
+  .max(180, "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180")
+  .nullable();
+
 /** Strip anything that is not a digit — used to guard numeric inputs. */
 export function keepDigits(value: string): string {
   return value.replace(/\D/g, "");

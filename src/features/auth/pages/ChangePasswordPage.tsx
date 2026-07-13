@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { LockKeyhole } from "lucide-react";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import {
   registerField,
 } from "../../../components/base";
 import { PageShell } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { authService } from "../api/auth.service";
 import {
   getEffectivePermissions,
@@ -48,6 +49,7 @@ export function ChangePasswordPage() {
   const storageTarget = useAuthSessionStore((state) => state.storageTarget);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
   const saveSession = useAuthSessionStore((state) => state.saveSession);
+  const isForcedChange = user?.must_change_password === true;
 
   const form = useForm<ChangePasswordFormValues>({
     defaultValues: {
@@ -72,7 +74,9 @@ export function ChangePasswordPage() {
           updatedUser.roles || [],
           updatedUser.permissions || [],
         );
-        void navigate(getFirstAccessibleRoute(permissions), { replace: true });
+        void navigate(isForcedChange ? getFirstAccessibleRoute(permissions) : "/profile", {
+          replace: true,
+        });
       }
     },
     throwOnError: false,
@@ -97,20 +101,18 @@ export function ChangePasswordPage() {
         <CardContent>
           <Form form={form} onSubmit={handleSubmit}>
             <div className="space-y-4">
-              <div className="min-h-[74px]">
-                {changePassword.isError ? (
-                  <FormErrorAlert
-                    error={changePassword.error}
-                    fallback="เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง"
-                  />
-                ) : (
-                  <Alert variant="warning">
-                    <AlertDescription>
-                      ต้องเปลี่ยนรหัสผ่านก่อนใช้งานส่วนอื่นของระบบ
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
+              {changePassword.isError ? (
+                <FormErrorAlert
+                  error={changePassword.error}
+                  fallback="เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง"
+                />
+              ) : isForcedChange ? (
+                <Alert variant="warning">
+                  <AlertDescription>
+                    ต้องเปลี่ยนรหัสผ่านก่อนใช้งานส่วนอื่นของระบบ
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <FormItem>
                 <FormLabel htmlFor="currentPassword">รหัสผ่านเดิม</FormLabel>
@@ -144,14 +146,20 @@ export function ChangePasswordPage() {
                 <FormMessage<ChangePasswordFormValues> name="confirmPassword" />
               </FormItem>
 
-              <Button
-                fullWidth
-                isLoading={changePassword.isPending}
-                loadingText="กำลังเปลี่ยนรหัสผ่าน"
-                type="submit"
-              >
-                บันทึกรหัสผ่านใหม่
-              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                {!isForcedChange ? (
+                  <NavButton icon={ArrowLeft} to="/profile" variant="outline">
+                    กลับโปรไฟล์
+                  </NavButton>
+                ) : null}
+                <Button
+                  isLoading={changePassword.isPending}
+                  loadingText="กำลังเปลี่ยนรหัสผ่าน"
+                  type="submit"
+                >
+                  บันทึกรหัสผ่านใหม่
+                </Button>
+              </div>
             </div>
           </Form>
         </CardContent>
