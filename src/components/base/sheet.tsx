@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { IconButton } from "./icon-button";
@@ -9,6 +9,9 @@ export interface SheetProps extends ComponentProps<"div"> {
   position?: "left" | "right";
 }
 
+/** Must cover the `sheet-out-left`/`overlay-out` duration in index.css. */
+const SHEET_EXIT_DURATION_MS = 200;
+
 export function Sheet({
   children,
   className,
@@ -17,21 +20,48 @@ export function Sheet({
   position = "left",
   ...props
 }: SheetProps) {
-  if (!open) {
+  // Closing keeps the sheet mounted just long enough to play the exit
+  // animation — unmounting on `open` alone makes it vanish with no motion
+  // while opening slides in, which reads as broken. The flag must flip in
+  // the same render that sees `open` go false (adjust-state-during-render,
+  // same pattern as AttendanceCheckInPage) — an effect fires only after the
+  // null render already tore the DOM down, which would flash. With reduced
+  // motion the exit classes are inert, so unmount immediately instead of
+  // idling out the timeout.
+  const [closing, setClosing] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setClosing(true);
+    }
+  }
+  useEffect(() => {
+    if (open || !closing) return;
+    const timer = window.setTimeout(() => setClosing(false), SHEET_EXIT_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, closing]);
+
+  if (!open && !closing) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" {...props}>
+    <div aria-hidden={!open || undefined} className="fixed inset-0 z-50 lg:hidden" {...props}>
       <button
         aria-label="Close navigation"
-        className="absolute inset-0 bg-slate-950/40 animate-overlay-in"
+        className={cn(
+          "absolute inset-0 bg-slate-950/40",
+          open ? "animate-overlay-in" : "animate-overlay-out",
+        )}
         onClick={() => onOpenChange?.(false)}
+        tabIndex={open ? undefined : -1}
         type="button"
       />
       <aside
         className={cn(
-          "absolute top-0 h-full w-72 max-w-[85vw] bg-white shadow-xl animate-sheet-in-left",
+          "absolute top-0 h-full w-72 max-w-[85vw] bg-white shadow-xl",
+          open ? "animate-sheet-in-left" : "animate-sheet-out-left",
           position === "left" ? "left-0" : "right-0",
           className,
         )}

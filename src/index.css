@@ -131,8 +131,11 @@ textarea {
 }
 
 /*
- * Central motion layer — every enter animation in the app references these,
- * so timing/easing stays identical system-wide. Respects reduced-motion.
+ * Central motion layer — every enter/exit animation in the app references
+ * these, so timing/easing stays identical system-wide. Respects
+ * reduced-motion. Exit pairs (`*-out`) are driven by components that keep
+ * the element mounted for the animation's duration before unmounting
+ * (see Sheet's closing phase).
  */
 @keyframes overlay-in {
   from {
@@ -160,6 +163,24 @@ textarea {
   }
   to {
     transform: none;
+  }
+}
+
+@keyframes sheet-out-left {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -194,6 +215,12 @@ textarea {
   }
   .animate-sheet-in-left {
     animation: sheet-in-left 220ms ease-out;
+  }
+  .animate-sheet-out-left {
+    animation: sheet-out-left 200ms ease-in forwards;
+  }
+  .animate-overlay-out {
+    animation: overlay-out 200ms ease-in forwards;
   }
   .animate-banner-in {
     animation: banner-in 180ms ease-out;

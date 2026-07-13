@@ -34,16 +34,18 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-white">
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
-        <div
-          className={cn(
-            "mb-2 flex min-h-9 items-center gap-2 px-3",
-            collapsed && "justify-center px-0",
-          )}
-        >
+        {/* justify-center stays on in both states (a no-op while the flex-1
+            label fills the row) so the toggle button glides to the middle as
+            the label squeezes, instead of snapping when layout classes flip. */}
+        <div className="mb-2 flex min-h-9 items-center justify-center gap-2 px-3">
+          {/* Fades/squeezes with the width transition (same treatment as the
+              nav-item labels in SidebarNavItem) instead of snapping away;
+              `-ml-2` cancels the row's `gap-2` when fully collapsed. */}
           <div
             className={cn(
-              "flex-1 text-xs font-semibold text-slate-500",
-              collapsed && "sr-only",
+              "min-w-0 flex-1 truncate text-xs font-semibold text-slate-500",
+              "transition-[opacity,max-width,margin] duration-200 ease-out motion-reduce:transition-none",
+              collapsed ? "-ml-2 max-w-0 opacity-0" : "max-w-48 opacity-100",
             )}
           >
             เมนู
