@@ -79,8 +79,14 @@ export function PageToolbar({
   ...props
 }: PageToolbarProps) {
   const toneClasses = toolbarToneClasses[tone];
+  const hasAttachedSurface = Boolean(children || footerActions);
   return (
-    <div className="relative z-20 mb-6">
+    <div
+      className={cn(
+        "relative z-20",
+        hasAttachedSurface ? "mb-6" : "mb-4",
+      )}
+    >
       <section
         className={cn(
           "overflow-hidden",
@@ -123,7 +129,7 @@ export function PageToolbar({
           ) : null}
         </div>
       </section>
-      {children || footerActions ? (
+      {hasAttachedSurface ? (
         <div
           className={cn(
             "mt-4 overflow-visible rounded-lg border border-slate-200 bg-white",
