@@ -16,6 +16,8 @@ import {
   CardTitle,
   Checkbox,
   Combobox,
+  DatePicker,
+  DateTimePicker,
   Form,
   FormErrorAlert,
   FormItem,
@@ -394,6 +396,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const expiresValue = useWatch({ control: form.control, name: "expires_value" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
+  const opensAt = useWatch({ control: form.control, name: "opens_at" });
   const locationQuery = useQuery({
     queryKey: ["task-create-locations"],
     queryFn: attendanceLookupService.getLocations,
@@ -827,6 +830,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
 
           {type === "ATTENDANCE" ? (
             <div className="space-y-4">
+              <h4 className="text-sm font-extrabold text-slate-900">พื้นที่</h4>
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormItem>
                   <FormLabel>จังหวัด</FormLabel>
@@ -877,6 +881,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                   />
                 </FormItem>
               </div>
+              <h4 className="pt-1 text-sm font-extrabold text-slate-900">ห้องเรียนและวิชา</h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormItem>
                   <FormLabel required>โรงเรียน</FormLabel>
@@ -1125,7 +1130,12 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
 
           <FormItem>
             <FormLabel htmlFor="opens_at">เปิดใช้งานเมื่อ (ไม่บังคับ)</FormLabel>
-            <Input id="opens_at" type="datetime-local" {...registerField(form, "opens_at")} />
+            <DateTimePicker
+              ariaLabel="เปิดใช้งานเมื่อ"
+              id="opens_at"
+              onChange={(next) => form.setValue("opens_at", next, { shouldValidate: true })}
+              value={opensAt}
+            />
             <p className="text-xs text-slate-500">
               เว้นว่าง = เปิดใช้งานทันที · ตั้งเวลาไว้ = ลิงก์จะใช้ไม่ได้จนถึงเวลานั้น (สถานะ “รอเปิด”)
             </p>
@@ -1159,6 +1169,8 @@ function CreateRecruitmentCampaignForm() {
     defaultValues: { name: "", description: "", opensOn: "", closesOn: "" },
     resolver: zodResolver(recruitmentCampaignSchema),
   });
+  const opensOn = useWatch({ control: form.control, name: "opensOn" });
+  const closesOn = useWatch({ control: form.control, name: "closesOn" });
   const result = createCampaign.data?.data ?? null;
 
   function startNewCampaign(): void {
@@ -1279,19 +1291,23 @@ function CreateRecruitmentCampaignForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="campaign-opens-on">เปิดรับสมัครตั้งแต่</FormLabel>
-              <Input
+              <DatePicker
+                ariaLabel="เปิดรับสมัครตั้งแต่"
                 id="campaign-opens-on"
-                type="date"
-                {...form.register("opensOn")}
+                max={closesOn || undefined}
+                onChange={(next) => form.setValue("opensOn", next, { shouldValidate: true })}
+                value={opensOn}
               />
               <FormMessage<RecruitmentCampaignFormValues> name="opensOn" />
             </FormItem>
             <FormItem>
               <FormLabel htmlFor="campaign-closes-on">ปิดรับสมัครวันที่</FormLabel>
-              <Input
+              <DatePicker
+                ariaLabel="ปิดรับสมัครวันที่"
                 id="campaign-closes-on"
-                type="date"
-                {...form.register("closesOn")}
+                min={opensOn || undefined}
+                onChange={(next) => form.setValue("closesOn", next, { shouldValidate: true })}
+                value={closesOn}
               />
               <FormMessage<RecruitmentCampaignFormValues> name="closesOn" />
             </FormItem>

@@ -18,7 +18,7 @@ export function HelpStatusCard({
     <Card className={cn("flex flex-col justify-between gap-3 p-5", className)}>
       <div className="text-sm font-bold text-slate-900">{title}</div>
       <div className="flex items-end justify-between">
-        <div className="text-3xl font-bold text-slate-900">
+        <div className="text-2xl font-bold tabular-nums text-slate-900">
           {value.toLocaleString()}
         </div>
         <div className="pb-1 text-base font-bold text-slate-500">{unit}</div>

@@ -3,10 +3,12 @@ import {
   BarChart3,
   Bell,
   Calendar,
+  CalendarCheck,
   ChartNoAxesColumn,
   ClipboardCheck,
   Edit3,
   FileInput,
+  FolderHeart,
   GraduationCap,
   HeartHandshake,
   Home,
@@ -21,6 +23,7 @@ import {
   UserPlus,
   UserRound,
   Users,
+  UsersRound,
 } from "lucide-react";
 
 interface LayoutIconProps {
@@ -34,6 +37,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <Activity className={className} aria-hidden="true" />;
     case "calendar":
       return <Calendar className={className} aria-hidden="true" />;
+    case "calendar-check":
+      return <CalendarCheck className={className} aria-hidden="true" />;
     case "chart-bar":
       return <BarChart3 className={className} aria-hidden="true" />;
     case "chart-line":
@@ -44,6 +49,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <Edit3 className={className} aria-hidden="true" />;
     case "file-import":
       return <FileInput className={className} aria-hidden="true" />;
+    case "folder-heart":
+      return <FolderHeart className={className} aria-hidden="true" />;
     case "graduation":
       return <GraduationCap className={className} aria-hidden="true" />;
     case "heart-handshake":
@@ -74,6 +81,8 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <UserCog className={className} aria-hidden="true" />;
     case "users":
       return <Users className={className} aria-hidden="true" />;
+    case "users-round":
+      return <UsersRound className={className} aria-hidden="true" />;
     default:
       return <UserRound className={className} aria-hidden="true" />;
   }

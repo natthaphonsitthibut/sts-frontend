@@ -84,7 +84,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: "case-system",
     label: "งานเคส/ช่วยเหลือ",
-    iconName: "heart-handshake",
+    iconName: "folder-heart",
     children: [
       {
         id: "review-cases",
@@ -122,7 +122,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: "attendance-system",
     label: "ระบบเช็คชื่อ",
-    iconName: "clipboard-check",
+    iconName: "calendar-check",
     children: [
       {
         id: "attendance",
@@ -186,7 +186,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: "recruitment-system",
     label: "ระบบรับสมัคร",
-    iconName: "user-check",
+    iconName: "users-round",
     permissionId: "field-monitor",
     children: [
       {

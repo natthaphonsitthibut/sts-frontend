@@ -165,7 +165,7 @@ function AddSlotForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
       {!editingSlot && !termsQuery.isLoading && !activeTerm ? (
         <Alert variant="warning">
           <AlertDescription>ยังไม่มีเทอมที่เปิดใช้งาน (ACTIVE) สำหรับโรงเรียนนี้</AlertDescription>
@@ -340,7 +340,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   return (
     <div className="space-y-4">
       {room ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           {/* Section header */}
           <div className="flex items-center justify-between px-5 py-4">
             <h3 className="text-sm font-extrabold text-slate-900">
@@ -409,7 +409,11 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
               <TimetableGrid
                 borderless
                 renderSlot={(slot) => (
-                  <div className="group/slot relative h-[4.5rem] overflow-hidden rounded-lg border border-slate-200 border-l-4 border-l-primary/60 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md">
+                  <div className="group/slot relative h-[4.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2 transition-colors hover:border-slate-300">
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0 h-1 bg-primary/60"
+                    />
                     <div>
                       <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
                         {slot.subject_name_th}
@@ -449,7 +453,13 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
             </div>
           )}
         </div>
-      ) : null}
+      ) : (
+        <EmptyState
+          description="เลือกห้องเรียนด้านบนเพื่อดูหรือจัดตารางสอน"
+          icon={CalendarClock}
+          title="ยังไม่ได้เลือกห้องเรียน"
+        />
+      )}
       {dialog}
     </div>
   );
@@ -487,12 +497,32 @@ function MyScheduleView({
       ) : null}
       {activeQuery.isLoading ? (
         <div className="py-10 text-center text-slate-500">กำลังโหลด...</div>
+      ) : mode === "room" && !room ? (
+        <EmptyState
+          description="เลือกห้องเรียนด้านบนเพื่อดูตารางเรียนของห้องนั้น"
+          icon={CalendarClock}
+          title="ยังไม่ได้เลือกห้องเรียน"
+        />
+      ) : slots.length === 0 ? (
+        <EmptyState
+          description={
+            mode === "mine"
+              ? "ตารางสอนของคุณจะแสดงที่นี่เมื่อฝ่ายบริหารจัดตารางให้"
+              : "ห้องนี้ยังไม่มีตารางสอนในระบบ"
+          }
+          icon={CalendarClock}
+          title={mode === "mine" ? "คุณยังไม่มีตารางสอน" : "ห้องนี้ยังไม่มีตารางสอน"}
+        />
       ) : (
         <TimetableGrid
           renderSlot={
             mode === "mine"
               ? (slot) => (
-                  <div className="min-h-12 rounded-md border border-slate-200 border-l-4 border-l-primary/60 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                  <div className="relative min-h-12 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0 h-1 bg-primary/60"
+                    />
                     <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
                       {slot.subject_name_th}
                     </div>

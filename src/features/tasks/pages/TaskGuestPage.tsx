@@ -198,7 +198,7 @@ export function TaskGuestPage() {
     <GuestPageShell contentClassName="space-y-5">
       <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle as="h1" className="flex items-center gap-2">
             {task.type === "VISIT" ? (
               <MapPin className="size-5 text-primary" />
             ) : (
@@ -342,18 +342,22 @@ export function TaskGuestPage() {
               </>
             ) : (
               <>
-                <label className="flex items-start gap-2 text-sm text-slate-700">
-                  <Checkbox
-                    checked={workSessionConsent}
-                    onChange={(event) =>
-                      setWorkSessionConsent(event.currentTarget.checked)
-                    }
-                  />
-                  <span>
-                    ยินยอมให้ระบบบันทึกตำแหน่งของฉันระหว่างช่วงปฏิบัติงานนี้เท่านั้น
-                    (หยุดบันทึกทันทีเมื่อจบงาน)
-                  </span>
-                </label>
+                <Alert variant="warning">
+                  <AlertDescription>
+                    <label className="flex items-start gap-2 text-sm text-warning-700">
+                      <Checkbox
+                        checked={workSessionConsent}
+                        onChange={(event) =>
+                          setWorkSessionConsent(event.currentTarget.checked)
+                        }
+                      />
+                      <span>
+                        ยินยอมให้ระบบบันทึกตำแหน่งของฉันระหว่างช่วงปฏิบัติงานนี้เท่านั้น
+                        (หยุดบันทึกทันทีเมื่อจบงาน)
+                      </span>
+                    </label>
+                  </AlertDescription>
+                </Alert>
                 <Button
                   disabled={!workSessionConsent}
                   isLoading={workSession.start.isPending}
@@ -369,24 +373,31 @@ export function TaskGuestPage() {
       ) : null}
 
       {task.type === "VISIT" ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Link
-            className={buttonVariants({ fullWidth: true, size: "lg" })}
-            to={`/task/${token}/report`}
-          >
-            ลงพื้นที่และส่งรายงาน
-          </Link>
-          {task.can_delegate ? (
+        <div className="space-y-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Link
-              className={buttonVariants({
-                fullWidth: true,
-                size: "lg",
-                variant: "outline",
-              })}
-              to={`/task/${token}/delegate`}
+              className={buttonVariants({ fullWidth: true, size: "lg" })}
+              to={`/task/${token}/report`}
             >
-              มอบหมายให้ผู้อื่น
+              ลงพื้นที่และส่งรายงาน
             </Link>
+            {task.can_delegate ? (
+              <Link
+                className={buttonVariants({
+                  fullWidth: true,
+                  size: "lg",
+                  variant: "outline",
+                })}
+                to={`/task/${token}/delegate`}
+              >
+                มอบหมายให้ผู้อื่น
+              </Link>
+            ) : null}
+          </div>
+          {task.can_delegate ? (
+            <p className="text-center text-xs leading-relaxed text-slate-400">
+              มอบหมายภารกิจนี้ให้ผู้อื่นดำเนินการแทน — คุณจะไม่ใช่ผู้รับผิดชอบหลักของภารกิจนี้อีกต่อไป
+            </p>
           ) : null}
         </div>
       ) : null}

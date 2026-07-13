@@ -20,6 +20,7 @@ import {
   PasswordInput,
   registerField,
 } from "../../../components/base";
+import { PageShell } from "../../../components/layout/page-primitives";
 import { authService } from "../api/auth.service";
 import {
   getEffectivePermissions,
@@ -85,76 +86,76 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-full bg-slate-100 px-4 py-8">
-      <div className="mx-auto w-full max-w-[480px]">
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <LockKeyhole className="size-5 text-primary" aria-hidden="true" />
-              เปลี่ยนรหัสผ่าน
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form form={form} onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div className="min-h-[74px]">
-                  {changePassword.isError ? (
-                    <FormErrorAlert
-                      error={changePassword.error}
-                      fallback="เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง"
-                    />
-                  ) : (
-                    <Alert variant="warning">
-                      <AlertDescription>
-                        ต้องเปลี่ยนรหัสผ่านก่อนใช้งานส่วนอื่นของระบบ
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-
-                <FormItem>
-                  <FormLabel htmlFor="currentPassword">รหัสผ่านเดิม</FormLabel>
-                  <PasswordInput
-                    autoComplete="current-password"
-                    id="currentPassword"
-                    {...registerField(form, "currentPassword")}
+    <PageShell>
+      <Card className="mx-auto max-w-[480px] rounded-lg">
+        <CardHeader>
+          <CardTitle as="h1" className="flex items-center gap-2 text-xl">
+            <LockKeyhole className="size-5 text-primary" aria-hidden="true" />
+            เปลี่ยนรหัสผ่าน
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form form={form} onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div className="min-h-[74px]">
+                {changePassword.isError ? (
+                  <FormErrorAlert
+                    error={changePassword.error}
+                    fallback="เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองอีกครั้ง"
                   />
-                  <FormMessage<ChangePasswordFormValues> name="currentPassword" />
-                </FormItem>
-
-                <FormItem>
-                  <FormLabel htmlFor="newPassword">รหัสผ่านใหม่</FormLabel>
-                  <PasswordInput
-                    autoComplete="new-password"
-                    id="newPassword"
-                    {...registerField(form, "newPassword")}
-                  />
-                  <FormMessage<ChangePasswordFormValues> name="newPassword" />
-                </FormItem>
-
-                <FormItem>
-                  <FormLabel htmlFor="confirmPassword">ยืนยันรหัสผ่านใหม่</FormLabel>
-                  <PasswordInput
-                    autoComplete="new-password"
-                    id="confirmPassword"
-                    {...registerField(form, "confirmPassword")}
-                  />
-                  <FormMessage<ChangePasswordFormValues> name="confirmPassword" />
-                </FormItem>
-
-                <Button
-                  fullWidth
-                  isLoading={changePassword.isPending}
-                  loadingText="กำลังเปลี่ยนรหัสผ่าน"
-                  type="submit"
-                >
-                  บันทึกรหัสผ่านใหม่
-                </Button>
+                ) : (
+                  <Alert variant="warning">
+                    <AlertDescription>
+                      ต้องเปลี่ยนรหัสผ่านก่อนใช้งานส่วนอื่นของระบบ
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+
+              <FormItem>
+                <FormLabel htmlFor="currentPassword">รหัสผ่านเดิม</FormLabel>
+                <PasswordInput
+                  autoComplete="current-password"
+                  id="currentPassword"
+                  {...registerField(form, "currentPassword")}
+                />
+                <FormMessage<ChangePasswordFormValues> name="currentPassword" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="newPassword">รหัสผ่านใหม่</FormLabel>
+                <PasswordInput
+                  autoComplete="new-password"
+                  id="newPassword"
+                  {...registerField(form, "newPassword")}
+                />
+                <FormMessage<ChangePasswordFormValues> name="newPassword" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="confirmPassword">
+                  ยืนยันรหัสผ่านใหม่
+                </FormLabel>
+                <PasswordInput
+                  autoComplete="new-password"
+                  id="confirmPassword"
+                  {...registerField(form, "confirmPassword")}
+                />
+                <FormMessage<ChangePasswordFormValues> name="confirmPassword" />
+              </FormItem>
+
+              <Button
+                fullWidth
+                isLoading={changePassword.isPending}
+                loadingText="กำลังเปลี่ยนรหัสผ่าน"
+                type="submit"
+              >
+                บันทึกรหัสผ่านใหม่
+              </Button>
+            </div>
+          </Form>
+        </CardContent>
+      </Card>
+    </PageShell>
   );
 }

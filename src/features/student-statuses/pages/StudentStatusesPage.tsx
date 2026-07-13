@@ -136,7 +136,11 @@ export function StudentStatusesPage() {
       ) : query.isLoading || categoryCatalog.isLoading || flagCatalog.isLoading ? (
         <SkeletonStack lines={5} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={GraduationCap} title={search ? "ไม่พบสถานะที่ค้นหา" : "ยังไม่มีสถานะนักเรียน"} />
+        <EmptyState
+          description={search ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด" : "เพิ่มสถานะแรกเพื่อเริ่มจัดหมวดหมู่นักเรียน"}
+          icon={GraduationCap}
+          title={search ? "ไม่พบสถานะที่ค้นหา" : "ยังไม่มีสถานะนักเรียน"}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           <DataTable

@@ -137,7 +137,7 @@ export function LoginLinksPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1100px]">
+    <PageShell>
       <ListPageToolbar
         icon={Link2}
         title="ลิงก์เข้าสู่ระบบ"
@@ -247,6 +247,15 @@ export function LoginLinksPage() {
                       : option.code === "SCHEDULED"
                         ? CalendarClock
                         : Link2,
+              onSelect: () =>
+                handleStatusChange(
+                  status === option.code && option.code !== "ALL" ? "ALL" : option.code,
+                ),
+              selected: status === option.code,
+              selectionLabel:
+                option.code === "ALL"
+                  ? "แสดงลิงก์เข้าสู่ระบบทุกสถานะ"
+                  : `${status === option.code ? "ยกเลิกตัวกรอง" : "กรอง"}${option.label}`,
             }))}
           />
 

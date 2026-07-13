@@ -88,7 +88,11 @@ export function AttendanceSessionDetailDialog({
             ) : detail.isError ? (
               <ErrorState title="ไม่สามารถโหลดข้อมูลวันนี้ได้" />
             ) : detail.students.length === 0 ? (
-              <EmptyState icon={ClipboardList} title="ไม่พบรายชื่อนักเรียนในห้องนี้" />
+              <EmptyState
+                description="ห้องนี้ยังไม่มีรายชื่อนักเรียนในระบบ"
+                icon={ClipboardList}
+                title="ไม่พบรายชื่อนักเรียนในห้องนี้"
+              />
             ) : (
               <AttendanceStudentTable
                 disabled

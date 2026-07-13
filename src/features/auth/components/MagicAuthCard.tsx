@@ -21,7 +21,7 @@ export function MagicAuthCard({
   children,
 }: MagicAuthCardProps) {
   return (
-    <GuestPageShell centered maxWidthClassName="max-w-[460px]">
+    <GuestPageShell centered contentClassName="max-w-[460px]">
       <Card className="rounded-lg">
         <CardContent className="p-6">
           <div className="mb-5 text-center">
@@ -33,6 +33,9 @@ export function MagicAuthCard({
             {subtitle ? (
               <p className="text-sm text-slate-500">{subtitle}</p>
             ) : null}
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+              เพื่อความปลอดภัยของข้อมูลนักเรียน ระบบต้องยืนยันตัวตนของคุณก่อนเข้าถึงลิงก์นี้
+            </p>
           </div>
           {children}
         </CardContent>

@@ -30,6 +30,7 @@ import {
   EmptyState,
   ErrorState,
   ProgressBar,
+  SkeletonTable,
   SummaryMetrics,
   TableActionBar,
 } from "../../../components/layout/page-primitives";
@@ -250,7 +251,7 @@ export function StudentAccountBatchPanel({
           }}
         />
       ) : listQuery.isLoading || statusCatalog.isLoading ? (
-        <EmptyState icon={Rocket} title="กำลังโหลดรายการงาน" />
+        <SkeletonTable rows={3} />
       ) : jobs.length === 0 ? (
         <EmptyState
           icon={Rocket}
@@ -331,7 +332,7 @@ export function StudentAccountBatchPanel({
       )}
 
       {selectedJob ? (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-900">รายละเอียดงาน</span>
@@ -356,7 +357,7 @@ export function StudentAccountBatchPanel({
           <SummaryMetrics
             columns={4}
             items={[
-              { label: "ทั้งหมด", value: selectedJob.totalCandidates, tone: "default", icon: ListChecks },
+              { label: "ทั้งหมด", value: selectedJob.totalCandidates, tone: "default", icon: ListChecks, emphasis: true },
               { label: "สร้างสำเร็จ", value: selectedJob.createdCount, tone: "success", icon: CheckCircle2 },
               { label: "ข้าม", value: selectedJob.skippedCount, tone: "info", icon: SkipForward },
               { label: "ล้มเหลว", value: selectedJob.failedCount, tone: "danger", icon: XCircle },

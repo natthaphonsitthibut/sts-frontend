@@ -361,7 +361,7 @@ export function UserDetailPage() {
       />
 
       {query.isLoading ? (
-        <SkeletonStack className="rounded-lg border border-slate-100 bg-white p-5 shadow-card" lines={8} />
+        <SkeletonStack className="rounded-lg border border-slate-200 bg-white p-5" lines={8} />
       ) : query.isError ? (
         <ErrorState
           onRetry={() => {

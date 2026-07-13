@@ -322,7 +322,7 @@ export function AttendanceStudentTable({
       <div
         key={student.id}
         className={cn(
-          "flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between",
+          "flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between",
           isRollCall && "sm:flex-col sm:items-stretch",
         )}
       >

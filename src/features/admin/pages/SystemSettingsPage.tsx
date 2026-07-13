@@ -78,7 +78,7 @@ export function SystemSettingsPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1100px]">
+    <PageShell>
       <PageToolbar
         actions={<SettingsTabs />}
         icon={Settings}
@@ -103,7 +103,11 @@ export function SystemSettingsPage() {
       ) : isLoading ? (
         <SkeletonStack lines={5} />
       ) : settings.length === 0 ? (
-        <EmptyState icon={Settings} title="ไม่มีรายการตั้งค่า" />
+        <EmptyState
+          description="ยังไม่มีรายการตั้งค่าในระบบ"
+          icon={Settings}
+          title="ไม่มีรายการตั้งค่า"
+        />
       ) : filteredSettings.length === 0 ? (
         <EmptyState
           icon={Settings}
@@ -114,7 +118,7 @@ export function SystemSettingsPage() {
         <div className="space-y-6">
           {groupedSettings.map((group, groupIndex) => (
             <section
-              className="rounded-lg border border-slate-200 bg-white p-4 shadow-card"
+              className="rounded-lg border border-slate-200 bg-white p-4"
               key={group.title ?? `no-group-${groupIndex}`}
             >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

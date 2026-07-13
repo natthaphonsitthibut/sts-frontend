@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Activity,
   AlertCircle,
@@ -10,9 +10,11 @@ import {
   Search,
   ShieldAlert,
   Siren,
+  RotateCcw,
+  Users,
   type LucideIcon,
 } from "lucide-react";
-import { Badge, Button } from "../../../components/base";
+import { Badge, Button, InfoTooltip } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -93,7 +95,6 @@ const RISK_SORT_OPTIONS: Array<{
   sort?: DataTableSortState;
 }> = [
   { value: "default", label: "ค่าเริ่มต้น: ระดับเสี่ยง มาก → น้อย" },
-  { value: "risk:desc", label: "ระดับเสี่ยง มาก → น้อย", sort: { key: "risk", direction: "desc" } },
   { value: "risk:asc", label: "ระดับเสี่ยง น้อย → มาก", sort: { key: "risk", direction: "asc" } },
   { value: "name:asc", label: "ชื่อนักเรียน ก → ฮ", sort: { key: "name", direction: "asc" } },
   { value: "name:desc", label: "ชื่อนักเรียน ฮ → ก", sort: { key: "name", direction: "desc" } },
@@ -107,7 +108,9 @@ const RISK_SORT_OPTIONS: Array<{
 ];
 
 function sortToValue(sort: DataTableSortState | undefined): RiskSortOptionValue {
-  if (!sort) return "default";
+  if (!sort || (sort.key === DEFAULT_RISK_SORT.key && sort.direction === DEFAULT_RISK_SORT.direction)) {
+    return "default";
+  }
   const sortBy = SORT_KEY_MAP[sort.key] ?? "risk";
   return `${sortBy}:${sort.direction}`;
 }
@@ -148,12 +151,19 @@ function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
 
 function StudentCell({ row }: { row: RiskDashboardRow }) {
   return (
-    <div className="flex items-center gap-3">
+    <Link
+      aria-label={`ดูโปรไฟล์ ${row.studentName}`}
+      className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      onClick={(event) => event.stopPropagation()}
+      to={`/students/${row.studentId}`}
+    >
       <StudentAvatar name={row.studentName} />
       <div className="min-w-0">
-        <div className="truncate font-bold text-slate-800">{row.studentName}</div>
+        <div className="truncate font-bold text-slate-800">
+          {row.studentName}
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -164,7 +174,6 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
     return (
       <DetailLinkButton
         className="w-[112px]"
-        onClick={(event) => event.stopPropagation()}
         to={`/task-detail/${row.latestOpenTaskId}`}
         variant="default"
       >
@@ -178,8 +187,7 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
       <Button
         className="w-[112px]"
         icon={Plus}
-        onClick={(event) => {
-          event.stopPropagation();
+        onClick={() => {
           void navigate("/create/visit", {
             state: {
               prefill: {
@@ -202,7 +210,6 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
   return (
     <DetailLinkButton
       className="w-[112px]"
-      onClick={(event) => event.stopPropagation()}
       to={`/students/${row.studentId}`}
     >
       ดูโปรไฟล์
@@ -263,23 +270,52 @@ export function DashboardPage() {
   const meta = riskQuery.data?.meta;
   const totalCount = meta?.totalCount ?? 0;
 
-  const summaryItems = (Object.keys(RISK_TIER_PRESENTATION) as RiskDashboardTier[]).map((tier) => {
-    const presentation = RISK_TIER_PRESENTATION[tier];
-    return {
-      label: (
-        <button
-          className="rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          onClick={() => handleSummaryFilter(tier)}
-          type="button"
-        >
-          {presentation.label}
-        </button>
-      ),
-      value: meta?.summary?.[tier]?.toLocaleString() ?? 0,
-      tone: presentation.tone,
-      icon: presentation.icon,
-    };
-  });
+  const summaryOrder: RiskDashboardTier[] = ["HIGH", "MEDIUM", "WATCH", "LOW", "NORMAL"];
+  const summaryTotal = summaryOrder.reduce(
+    (total, tier) => total + (meta?.summary?.[tier] ?? 0),
+    0,
+  );
+  const summaryItems = [
+    {
+      label: "ทั้งหมด",
+      value: summaryTotal.toLocaleString(),
+      tone: "default" as const,
+      icon: Users,
+      emphasis: true,
+      onSelect: () => {
+        setRiskTier("ALL");
+        resetPage();
+      },
+      selected: riskTier === "ALL",
+      selectionLabel: "แสดงนักเรียนทุกระดับ",
+    },
+    ...summaryOrder.map((tier) => {
+      const presentation = RISK_TIER_PRESENTATION[tier];
+      return {
+        label: presentation.label,
+        value: meta?.summary?.[tier]?.toLocaleString() ?? 0,
+        tone: presentation.tone,
+        icon: presentation.icon,
+        onSelect: () => handleSummaryFilter(tier),
+        selected: riskTier === tier,
+        selectionLabel: `${riskTier === tier ? "ยกเลิกตัวกรอง" : "กรอง"}${presentation.label}`,
+      };
+    }),
+  ];
+
+  const activeFilterLabels = [
+    search.trim() ? `ค้นหา: ${search.trim()}` : "",
+    riskTier !== "ALL"
+      ? (RISK_FILTER_OPTIONS.find((option) => option.value === riskTier)?.label ?? "")
+      : "",
+    schoolArea.province,
+    schoolArea.district,
+    schoolArea.subDistrict,
+    !scope.schoolLocked && scope.schoolId ? "โรงเรียน" : "",
+    !scope.gradeLocked && scope.grade ? `ชั้น ${scope.grade}` : "",
+    !scope.roomLocked && scope.room ? `ห้อง ${scope.room}` : "",
+    sortToValue(sort) !== "default" ? "กำหนดการเรียงเอง" : "",
+  ].filter(Boolean);
 
   function resetPage(): void {
     setPage(1);
@@ -321,13 +357,25 @@ export function DashboardPage() {
   }
 
   function handleMobileSortChange(value: string): void {
-    const nextSort = RISK_SORT_OPTIONS.find((option) => option.value === value)?.sort;
+    const nextSort =
+      value === "default"
+        ? DEFAULT_RISK_SORT
+        : RISK_SORT_OPTIONS.find((option) => option.value === value)?.sort;
     setSort(nextSort);
     resetPage();
   }
 
   function handleSummaryFilter(tier: RiskDashboardTier): void {
-    setRiskTier(tier);
+    setRiskTier((current) => (current === tier ? "ALL" : tier));
+    resetPage();
+  }
+
+  function handleClearFilters(): void {
+    setSearch("");
+    setRiskTier("ALL");
+    setSort(DEFAULT_RISK_SORT);
+    schoolArea.setProvince("");
+    scope.reset();
     resetPage();
   }
 
@@ -340,7 +388,7 @@ export function DashboardPage() {
       <ListPageToolbar
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
-        description="ติดตามนักเรียนทุกคนในขอบเขตข้อมูล เรียงตามระดับความเสี่ยงจากการมาเรียน"
+        description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
         tableActions={<RefreshButton onRefresh={() => void riskQuery.refetch()} />}
         search={{
           value: search,
@@ -373,28 +421,40 @@ export function DashboardPage() {
       />
 
       <div className="space-y-5">
-        <SummaryMetrics
-          centerRows
-          items={summaryItems}
-        />
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-bold text-slate-900">เกณฑ์ปัจจุบัน</h2>
-            <Badge variant="secondary">ใช้จัดระดับความเสี่ยง</Badge>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {criteriaItems(meta?.thresholds).map((item) => (
-              <div
-                key={item.label}
-                className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-              >
-                <div className="text-xs font-semibold text-slate-500">{item.label}</div>
-                <div className="mt-1 font-bold text-slate-800">{item.value}</div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-end gap-1.5 text-xs font-semibold text-slate-600">
+            <span>เกณฑ์การจัดระดับ</span>
+            <InfoTooltip
+              align="end"
+              contentClassName="w-80 max-w-[calc(100vw-2rem)]"
+              label="เกณฑ์การจัดระดับความเสี่ยง"
+            >
+              <div className="space-y-2.5">
+                {criteriaItems(meta?.thresholds).map((item) => (
+                  <div key={item.label}>
+                    <div className="font-semibold text-slate-800">{item.label}</div>
+                    <div className="mt-0.5">{item.value}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </InfoTooltip>
           </div>
-        </section>
+          <SummaryMetrics centerRows items={summaryItems} />
+        </div>
+
+        {activeFilterLabels.length > 0 ? (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2 md:hidden">
+            <div className="min-w-0 text-xs font-semibold text-slate-700">
+              <span className="block">ใช้ตัวกรอง {activeFilterLabels.length} รายการ</span>
+              <span className="block truncate font-normal text-slate-600">
+                {activeFilterLabels.join(" · ")}
+              </span>
+            </div>
+            <Button icon={RotateCcw} onClick={handleClearFilters} size="sm" variant="ghost">
+              ล้างทั้งหมด
+            </Button>
+          </div>
+        ) : null}
 
         {riskQuery.isError ? (
           <ErrorState
@@ -432,6 +492,7 @@ export function DashboardPage() {
                 <DataTableRow
                   key={row.studentId}
                   className="cursor-pointer"
+                  data-student-navigation={row.studentId}
                   onClick={() => openStudent(row.studentId)}
                 >
                   <DataTableCell>
@@ -467,14 +528,18 @@ export function DashboardPage() {
                   <DataTableCell>
                     <RiskBadge tier={row.riskTier} />
                   </DataTableCell>
-                  <DataTableCell className="text-right">
+                  <DataTableCell
+                    className="text-right"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <DashboardRowAction row={row} />
                   </DataTableCell>
                 </DataTableRow>
               ))}
             </DataTable>
 
-            <div className="md:hidden">
+            <div className="space-y-1.5 md:hidden">
+              <div className="text-xs font-semibold text-slate-700">เรียงตาม</div>
               <FilterSelect
                 ariaLabel="เรียงลำดับรายงานนักเรียน"
                 onChange={handleMobileSortChange}
@@ -492,7 +557,9 @@ export function DashboardPage() {
               {rows.map((row) => (
                 <TableCard
                   key={row.studentId}
-                  className="flex flex-col gap-3 transition-colors hover:border-slate-300"
+                  className="flex cursor-pointer flex-col gap-3 transition-colors hover:border-slate-300"
+                  data-student-navigation={row.studentId}
+                  onClick={() => openStudent(row.studentId)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <StudentCell row={row} />
@@ -529,7 +596,10 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-end">
+                  <div
+                    className="flex justify-end"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <DashboardRowAction row={row} />
                   </div>
                 </TableCard>
@@ -547,6 +617,7 @@ export function DashboardPage() {
             />
           </div>
         )}
+
       </div>
     </PageShell>
   );

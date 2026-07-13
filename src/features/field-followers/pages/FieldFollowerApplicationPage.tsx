@@ -21,6 +21,7 @@ import {
   registerField,
   Skeleton,
 } from "../../../components/base";
+import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { requiredThaiPhone } from "../../../lib/validation";
 import { useApplyFieldFollower, useUploadFollowerIdCardPhoto } from "../hooks/useFieldFollowers";
 import { usePublicFollowerRecruitmentCampaign } from "../hooks/useFollowerRecruitmentCampaigns";
@@ -63,11 +64,9 @@ type ApplicationFormValues = z.infer<typeof applicationSchema>;
 
 function ApplicationCardShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="mx-auto w-full max-w-[560px]">
-        <Card className="rounded-lg">{children}</Card>
-      </div>
-    </div>
+    <GuestPageShell contentClassName="max-w-[560px]">
+      <Card className="rounded-lg">{children}</Card>
+    </GuestPageShell>
   );
 }
 
@@ -142,7 +141,7 @@ export function FieldFollowerApplicationPage() {
     return (
       <ApplicationCardShell>
         <CardHeader>
-          <CardTitle>ไม่พบลิงก์รับสมัคร</CardTitle>
+          <CardTitle as="h1">ไม่พบลิงก์รับสมัคร</CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
@@ -159,7 +158,7 @@ export function FieldFollowerApplicationPage() {
     return (
       <ApplicationCardShell>
         <CardHeader>
-          <CardTitle>{campaignQuery.data.name}</CardTitle>
+          <CardTitle as="h1">{campaignQuery.data.name}</CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="warning">
@@ -175,7 +174,7 @@ export function FieldFollowerApplicationPage() {
   return (
     <ApplicationCardShell>
       <CardHeader>
-        <CardTitle>สมัคร อสม./ผู้ติดตามภาคสนาม</CardTitle>
+        <CardTitle as="h1">สมัคร อสม./ผู้ติดตามภาคสนาม</CardTitle>
         <p className="text-sm text-slate-500">{campaignQuery.data.name}</p>
       </CardHeader>
       <CardContent className="space-y-4">

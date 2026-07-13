@@ -17,10 +17,10 @@ function navLinkClassName(
   nested = false,
 ): string {
   return cn(
-    "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
+    "flex min-h-10 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
     collapsed && "justify-center px-0",
     collapsed && nested && "mx-auto min-h-10 w-10",
-    isActive && "bg-primary-soft font-semibold text-primary",
+    isActive && "border-primary/30 bg-primary-soft font-semibold text-primary-dark",
   );
 }
 
@@ -100,12 +100,12 @@ export function SidebarNavItem({
           aria-expanded={expanded}
           aria-label={collapsed ? item.label : undefined}
           onClick={handleGroupToggle}
-          title={collapsed ? item.label : undefined}
+          title={collapsed ? `${item.label} — กดเพื่อเปิดหรือปิดเมนูย่อย` : undefined}
           className={cn(
-            "relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
+            "relative flex min-h-10 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
             collapsed && "justify-center px-0",
             hasActiveChild
-              ? "bg-primary-soft font-semibold text-primary"
+              ? "border-primary/30 bg-primary-soft font-semibold text-primary-dark"
               : open
                 ? "bg-slate-50 text-slate-700"
                 : "text-slate-600 hover:text-slate-900",

@@ -221,7 +221,7 @@ export function FieldFollowersReviewPage() {
                     ) : null}
                   </DataTableCell>
                   <DataTableCell>
-                    <Badge className="whitespace-nowrap text-[11px]" variant={statusMeta.variant}>
+                    <Badge className="whitespace-nowrap" variant={statusMeta.variant}>
                       {statusMeta.label}
                     </Badge>
                   </DataTableCell>
@@ -250,7 +250,7 @@ export function FieldFollowersReviewPage() {
                       </div>
                       <div className="text-sm text-slate-500">{follower.phone}</div>
                     </div>
-                    <Badge className="shrink-0 whitespace-nowrap text-[11px]" variant={statusMeta.variant}>
+                    <Badge className="shrink-0 whitespace-nowrap" variant={statusMeta.variant}>
                       {statusMeta.label}
                     </Badge>
                   </div>

@@ -180,7 +180,7 @@ export function StudentProfileHeader({
         ) : null}
         <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
           <div
-            className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-md"
+            className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
             style={getStudentAvatarGradient(fullName)}
           >
             {fullName.charAt(0).toUpperCase() || "?"}

@@ -1,8 +1,9 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardCheck } from "lucide-react";
 import { Badge, Card } from "../../../components/base";
 import {
+  EmptyState,
   ErrorState,
   PageShell,
   PageToolbar,
@@ -172,9 +173,12 @@ export function AttendanceLinkDetailPage() {
             รายชื่อที่เช็คชื่อ ({records.length})
           </h2>
           {records.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">
-              ยังไม่มีการเช็คชื่อสำหรับลิงก์นี้
-            </p>
+            <EmptyState
+              className="border-none py-6 shadow-none"
+              description="ประวัติการเช็คชื่อจะแสดงที่นี่หลังมีการใช้ลิงก์นี้"
+              icon={CalendarDays}
+              title="ยังไม่มีการเช็คชื่อสำหรับลิงก์นี้"
+            />
           ) : (
             <ul className="divide-y divide-slate-100">
               {records.map((record) => {

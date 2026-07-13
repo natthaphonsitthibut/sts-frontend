@@ -27,6 +27,7 @@ import type {
   StudentAccountGenerateResponse,
   StudentAccountListQuery,
   StudentAccountManagementItem,
+  StudentAccountManagementStatus,
   StudentAccountPaginationMeta,
   StudentAccountPreview,
   SystemSetting,
@@ -44,6 +45,7 @@ export interface UserListQuery extends PaginatedSearchQuery {
   gradeLevelId?: number | null;
   room?: string;
   excludeRole?: string;
+  accountStatus?: StudentAccountManagementStatus;
 }
 
 interface DataEnvelope<T> {
@@ -119,6 +121,9 @@ async function getUsers(
   }
   if (query.excludeRole?.trim()) {
     params.excludeRole = query.excludeRole.trim();
+  }
+  if (query.accountStatus) {
+    params.accountStatus = query.accountStatus;
   }
 
   const response = await apiClient.get("/users", { params });

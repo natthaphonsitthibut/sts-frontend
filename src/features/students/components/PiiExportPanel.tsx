@@ -40,6 +40,7 @@ import {
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
+import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { PII_REASON_OPTIONS, isPiiReasonCode } from "../pii.constants";
 import {
@@ -54,8 +55,6 @@ import type {
   PiiExportScope,
   PiiExportStatus,
 } from "../types/students.types";
-
-type ExportMode = "FILTER" | "SELECTED";
 
 interface SelectedExportStudent {
   id: string;
@@ -249,10 +248,6 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [rejectTarget, setRejectTarget] = useState<PiiExportRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [requestedExportMode, setExportMode] = useState<ExportMode>(() =>
-    props.selectedStudents?.length ? "SELECTED" : "FILTER",
-  );
-
   const actorScope = user?.data_scope as PiiExportScope | undefined;
   const exportScope = useMemo(() => buildPiiExportScope(props, actorScope), [props, actorScope]);
   const scopeReady = hasScopeValue(exportScope);
@@ -264,8 +259,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
     [selectedStudents],
   );
   const selectedCount = selectedStudentIds.length;
-  const exportMode = selectedCount > 0 ? requestedExportMode : "FILTER";
-  const willExportSelected = exportMode === "SELECTED" && selectedCount > 0;
+  const willExportSelected = selectedCount > 0;
   const exportCount = willExportSelected ? selectedCount : props.totalCount;
 
   const listQuery = usePiiExportRequests({ limit: 20 });
@@ -385,7 +379,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         </DialogContent>
       </Dialog>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -396,7 +390,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
               ขอบเขต: {scopeLabel} · จำนวนที่จะส่งออก {exportCount.toLocaleString("th-TH")} คน
             </p>
           </div>
-          <RefreshButton label="รีเฟรชคำขอ" onRefresh={() => listQuery.refetch()} />
+          <RefreshButton onRefresh={() => listQuery.refetch()} />
         </div>
       </section>
 
@@ -427,57 +421,34 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         </Alert>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-        <div className="mb-4 grid gap-3 lg:grid-cols-2">
-          <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <span className="flex items-start gap-3">
-              <input
-                checked={exportMode === "FILTER"}
-                className="mt-1"
-                name="pii-export-mode"
-                onChange={() => setExportMode("FILTER")}
-                type="radio"
-              />
-              <span>
-                <span className="block font-bold text-slate-800">ส่งออกตามตัวกรอง</span>
-                <span className="text-slate-500">
-                  รวม {props.totalCount.toLocaleString("th-TH")} คนในขอบเขตและตัวกรองปัจจุบัน
-                </span>
-              </span>
-            </span>
-          </label>
-          <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <span className="flex items-start gap-3">
-              <input
-                checked={exportMode === "SELECTED"}
-                className="mt-1"
-                disabled={selectedCount === 0}
-                name="pii-export-mode"
-                onChange={() => setExportMode("SELECTED")}
-                type="radio"
-              />
-              <span>
-                <span className="block font-bold text-slate-800">ส่งออกเฉพาะที่เลือก</span>
-                <span className="text-slate-500">
-                  {selectedCount > 0
-                    ? `เลือกไว้ ${selectedCount.toLocaleString("th-TH")} คน`
-                    : "ติ๊กนักเรียนในหน้ารายชื่อก่อนเลือกโหมดนี้"}
-                </span>
-              </span>
-            </span>
-          </label>
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <div
+          className={cn(
+            "mb-4 flex flex-col gap-3 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between",
+            willExportSelected
+              ? "border-primary/30 bg-primary-soft"
+              : "border-slate-200 bg-slate-100",
+          )}
+        >
+          <div>
+            <div className={cn("font-semibold", willExportSelected ? "text-primary-dark" : "text-slate-900")}>
+              {willExportSelected ? "ส่งออกเฉพาะนักเรียนที่เลือก" : "ส่งออกตามตัวกรองปัจจุบัน"}
+            </div>
+            <div className={willExportSelected ? "text-primary-dark/80" : "text-slate-600"}>
+              {willExportSelected
+                ? `เลือกไว้ ${selectedCount.toLocaleString("th-TH")} คน`
+                : `รวม ${props.totalCount.toLocaleString("th-TH")} คนในขอบเขตที่แสดงอยู่`}
+            </div>
+          </div>
+          {willExportSelected ? (
+            <Button onClick={props.onClearSelectedStudents} size="sm" variant="outline">
+              ล้างรายการที่เลือก
+            </Button>
+          ) : null}
         </div>
 
-        {selectedCount > 0 ? (
-          <div className="mb-4 rounded-lg border border-slate-100 bg-white p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm font-bold text-slate-800">
-                รายชื่อที่เลือก ({selectedCount.toLocaleString("th-TH")} คน)
-              </div>
-              <Button onClick={props.onClearSelectedStudents} size="sm" variant="outline">
-                ล้างรายการ
-              </Button>
-            </div>
+        {willExportSelected ? (
+          <div className="mb-4 rounded-lg bg-slate-100 p-3">
             <div className="flex flex-wrap gap-2">
               {selectedStudents.slice(0, 10).map((student) => (
                 <Badge key={student.id} variant="secondary">
@@ -556,7 +527,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-bold text-slate-900">คำขอส่งออกล่าสุด</h2>
           <Badge variant="secondary">{requests.length.toLocaleString("th-TH")} รายการ</Badge>

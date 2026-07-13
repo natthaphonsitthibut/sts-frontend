@@ -130,7 +130,7 @@ export function UserSaveReviewDialog({
             {data.isCustomized ? (
               <>
                 {data.addedPermissions.length > 0 ? (
-                  <div className="space-y-1 border-l-2 border-success-200 pl-3">
+                  <div className="space-y-1 rounded-lg border border-success-200 bg-success-100/40 p-3">
                     <div className="text-xs font-semibold text-success-700">
                       <span aria-hidden="true">+ </span>เพิ่มจากมาตรฐาน ({data.addedPermissions.length})
                     </div>
@@ -144,7 +144,7 @@ export function UserSaveReviewDialog({
                   </div>
                 ) : null}
                 {data.removedPermissions.length > 0 ? (
-                  <div className="space-y-1 border-l-2 border-danger-200 pl-3">
+                  <div className="space-y-1 rounded-lg border border-danger-200 bg-danger-100/40 p-3">
                     <div className="text-xs font-semibold text-danger-700">
                       <span aria-hidden="true">− </span>เอาออกจากมาตรฐาน ({data.removedPermissions.length})
                     </div>

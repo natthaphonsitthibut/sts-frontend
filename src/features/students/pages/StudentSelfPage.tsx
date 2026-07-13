@@ -1,4 +1,4 @@
-import { CircleAlert } from "lucide-react";
+import { CalendarDays, CircleAlert } from "lucide-react";
 import { Card } from "../../../components/base";
 import {
   EmptyState,
@@ -36,7 +36,7 @@ export function StudentSelfPage() {
 
   if (isLoading) {
     return (
-      <PageShell maxWidthClassName="max-w-[980px]">
+      <PageShell>
         <Card className="mb-5 p-6">
           <SkeletonStack lines={3} />
         </Card>
@@ -49,7 +49,7 @@ export function StudentSelfPage() {
 
   if (isError) {
     return (
-      <PageShell maxWidthClassName="max-w-[980px]">
+      <PageShell>
         <ErrorState
           title="โหลดข้อมูลนักเรียนไม่สำเร็จ"
           description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลของบัญชีนี้ กรุณาลองใหม่อีกครั้ง"
@@ -61,7 +61,7 @@ export function StudentSelfPage() {
 
   if (!student || !studentId) {
     return (
-      <PageShell maxWidthClassName="max-w-[980px]">
+      <PageShell>
         <EmptyState
           icon={CircleAlert}
           title="ไม่พบข้อมูลนักเรียน"
@@ -74,7 +74,7 @@ export function StudentSelfPage() {
   const stats = summary?.stats;
 
   return (
-    <PageShell maxWidthClassName="max-w-[980px]">
+    <PageShell>
       <div className="space-y-5">
         <StudentProfileHeader
           key={studentId}
@@ -94,9 +94,12 @@ export function StudentSelfPage() {
               onRetry={refetchSummary}
             />
           ) : !stats || stats.total === 0 ? (
-            <div className="py-8 text-center text-slate-500">
-              ยังไม่มีข้อมูลการเข้าเรียน
-            </div>
+            <EmptyState
+              className="mt-4 rounded-none border-none py-8 shadow-none"
+              description="ข้อมูลการเข้าเรียนจะแสดงที่นี่หลังมีการเช็คชื่อครั้งแรก"
+              icon={CalendarDays}
+              title="ยังไม่มีข้อมูลการเข้าเรียน"
+            />
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <AttendanceStat label="ทั้งหมด" value={stats.total} />

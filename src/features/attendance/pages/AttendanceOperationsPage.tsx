@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -14,7 +14,6 @@ import {
   Clock3,
   Pencil,
   Plus,
-  RefreshCw,
   Save,
   WandSparkles,
 } from "lucide-react";
@@ -26,6 +25,8 @@ import {
   Button,
   Card,
   Combobox,
+  DatePicker,
+  InfoTooltip,
   Input,
   Label,
   Select,
@@ -39,6 +40,7 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -392,7 +394,6 @@ export function AttendanceOperationsPage() {
   const calendarDayCatalog = useStatusCatalog("SCHOOL_CALENDAR_DAY");
   const anomalyCatalog = useStatusCatalog("ATTENDANCE_ANOMALY");
   const queryClient = useQueryClient();
-  const reconciliationDateInputRef = useRef<HTMLInputElement | null>(null);
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "manage-attendance-calendar");
@@ -685,16 +686,6 @@ export function AttendanceOperationsPage() {
     setCalendarEdit(null);
   }
 
-  function openReconciliationDatePicker(): void {
-    const input = reconciliationDateInputRef.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.click();
-    }
-  }
-
   return (
     <PageShell>
       <PageToolbar
@@ -773,13 +764,21 @@ export function AttendanceOperationsPage() {
       </PageToolbar>
 
       {!schoolId ? (
-        <EmptyState icon={CalendarDays} title="เลือกโรงเรียน" />
+        <EmptyState
+          description="เลือกโรงเรียนด้านบนเพื่อดูหรือตรวจสอบข้อมูลการเช็คชื่อ"
+          icon={CalendarDays}
+          title="เลือกโรงเรียน"
+        />
       ) : termsQuery.isError ? (
         <ErrorState title="ไม่สามารถโหลดภาคเรียนได้" onRetry={() => void termsQuery.refetch()} />
       ) : termsQuery.isLoading ? (
         <SkeletonTable rows={3} />
       ) : !selectedTerm ? (
-        <EmptyState icon={CalendarDays} title="ยังไม่มีภาคเรียน" />
+        <EmptyState
+          description="โรงเรียนนี้ยังไม่มีภาคเรียนในระบบ — เพิ่มได้ที่หน้าตั้งค่าภาคเรียน"
+          icon={CalendarDays}
+          title="ยังไม่มีภาคเรียน"
+        />
       ) : (
         <div className="space-y-5">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -867,14 +866,7 @@ export function AttendanceOperationsPage() {
                       </div>
                     </div>
                     {calendarQuery.isError ? (
-                      <Button
-                        icon={RefreshCw}
-                        onClick={() => void calendarQuery.refetch()}
-                        size="sm"
-                        variant="outline"
-                      >
-                        โหลดใหม่
-                      </Button>
+                      <RefreshButton onRefresh={() => calendarQuery.refetch()} />
                     ) : null}
                   </div>
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,0.48fr)] xl:items-start">
@@ -1010,27 +1002,13 @@ export function AttendanceOperationsPage() {
                 >
                   ย้อนกลับ
                 </Button>
-                <div className="relative">
-                  <Input
-                    ref={reconciliationDateInputRef}
-                    aria-label="วันที่ตรวจสอบ"
-                    className="sr-only"
-                    max={selectedTerm.endsOn ?? undefined}
-                    min={selectedTerm.startsOn ?? undefined}
-                    onChange={(event) => handleDateChange(event.target.value)}
-                    tabIndex={-1}
-                    type="date"
-                    value={date}
-                  />
-                  <Button
-                    aria-label="เลือกวันที่ตรวจสอบ"
-                    className="h-10 w-full justify-start px-3 text-left font-semibold tabular-nums text-slate-900"
-                    onClick={openReconciliationDatePicker}
-                    variant="outline"
-                  >
-                    {formatThaiDate(date)}
-                  </Button>
-                </div>
+                <DatePicker
+                  ariaLabel="วันที่ตรวจสอบ"
+                  max={selectedTerm.endsOn ?? undefined}
+                  min={selectedTerm.startsOn ?? undefined}
+                  onChange={handleDateChange}
+                  value={date}
+                />
                 <Button
                   disabled={isAfterMaxDate(date, selectedTerm.endsOn)}
                   icon={ChevronRight}
@@ -1095,9 +1073,17 @@ export function AttendanceOperationsPage() {
           />
 
           {reconciliationTermInactive ? (
-            <EmptyState icon={CalendarDays} title="เปิดใช้งานภาคเรียนก่อนตรวจสถานะ" />
+            <EmptyState
+              description="ไปที่หน้าตั้งค่าภาคเรียนเพื่อเปิดใช้งานก่อน จึงจะตรวจความครบถ้วนได้"
+              icon={CalendarDays}
+              title="เปิดใช้งานภาคเรียนก่อนตรวจสถานะ"
+            />
           ) : reconciliationDateOutOfRange || reconciliationCalendarMissing ? (
-            <EmptyState icon={CalendarDays} title="ยังไม่มีข้อมูลให้ตรวจสำหรับวันที่นี้" />
+            <EmptyState
+              description="ลองเลือกวันที่อยู่ในช่วงภาคเรียน หรือกำหนดปฏิทินวันเรียนก่อน"
+              icon={CalendarDays}
+              title="ยังไม่มีข้อมูลให้ตรวจสำหรับวันที่นี้"
+            />
           ) : waitingForReconciliationCalendar ? (
             <SkeletonTable />
           ) : reconciliationQuery.isError ? (
@@ -1112,7 +1098,11 @@ export function AttendanceOperationsPage() {
           ) : reconciliationQuery.isLoading ? (
             <SkeletonTable />
           ) : rows.length === 0 ? (
-            <EmptyState icon={CalendarDays} title="ไม่มีห้องเรียนที่ต้องเช็คในวันนี้" />
+            <EmptyState
+              description="วันนี้อาจเป็นวันหยุด หรือยังไม่มีห้องเรียนที่ต้องเช็คชื่อ"
+              icon={CalendarDays}
+              title="ไม่มีห้องเรียนที่ต้องเช็คในวันนี้"
+            />
           ) : (
             <>
               <DataTable
@@ -1233,7 +1223,11 @@ export function AttendanceOperationsPage() {
           />
 
           {reconciliationTermInactive ? (
-            <EmptyState icon={CalendarDays} title="เปิดใช้งานภาคเรียนก่อนตรวจรายการผิดปกติ" />
+            <EmptyState
+              description="ไปที่หน้าตั้งค่าภาคเรียนเพื่อเปิดใช้งานก่อน จึงจะตรวจรายการผิดปกติได้"
+              icon={CalendarDays}
+              title="เปิดใช้งานภาคเรียนก่อนตรวจรายการผิดปกติ"
+            />
           ) : anomalyQuery.isError ? (
             <ErrorState
               title="ไม่สามารถโหลดรายการผิดปกติได้"
@@ -1246,7 +1240,11 @@ export function AttendanceOperationsPage() {
           ) : anomalyQuery.isLoading ? (
             <SkeletonTable />
           ) : sortedAnomalyRows.length === 0 ? (
-            <EmptyState icon={CheckCircle2} title="ไม่พบรายการผิดปกติในภาคเรียนนี้" />
+            <EmptyState
+              description="ไม่พบความผิดปกติของข้อมูลการเช็คชื่อในภาคเรียนนี้"
+              icon={CheckCircle2}
+              title="ไม่พบรายการผิดปกติในภาคเรียนนี้"
+            />
           ) : (
             <>
               <DataTable
@@ -1254,7 +1252,22 @@ export function AttendanceOperationsPage() {
                 headings={[
                   { label: "วันที่", sortKey: "date" },
                   { label: "ชั้น / ห้อง", sortKey: "class" },
-                  { label: "ประเภท", sortKey: "type" },
+                  {
+                    label: (
+                      <span className="inline-flex items-center gap-1">
+                        ประเภท
+                        <InfoTooltip label="ประเภทความผิดปกติ">
+                          <ul className="list-disc space-y-1 pl-4">
+                            <li>เช็คชื่อในวันหยุด</li>
+                            <li>เช็คชื่อในวันที่ยกเลิกเรียน</li>
+                            <li>เช็คชื่อนอกช่วงภาคเรียน</li>
+                            <li>ไม่มีวันนั้นในปฏิทิน</li>
+                          </ul>
+                        </InfoTooltip>
+                      </span>
+                    ),
+                    sortKey: "type",
+                  },
                   { label: "บันทึกแล้ว", sortKey: "recorded" },
                   { label: "รอบบันทึก", sortKey: "revision" },
                   { label: "หมายเหตุ / แนวทางแก้" },

@@ -213,12 +213,11 @@ export function ReportPage() {
 
   return (
     <GuestPageShell
-      contentClassName="space-y-5"
-      maxWidthClassName="max-w-[760px]"
+      contentClassName="max-w-[760px] space-y-5"
     >
       <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle>รายงานการลงพื้นที่</CardTitle>
+          <CardTitle as="h1">รายงานการลงพื้นที่</CardTitle>
         </CardHeader>
         <CardContent>
           {taskQuery.isLoading ? (

@@ -15,7 +15,7 @@ export function AppLayout() {
           mobileOpen={mobileSidebarOpen}
           onMobileOpenChange={setMobileSidebarOpen}
         />
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-50">
           <Outlet />
         </main>
       </div>

@@ -16,7 +16,7 @@ export function ResolvedHelpCard({ resolved }: ResolvedHelpCardProps) {
           className="mb-3 size-12 text-slate-900 opacity-90"
           aria-hidden="true"
         />
-        <div className="text-3xl font-bold leading-none text-slate-900">
+        <div className="text-2xl font-bold leading-none tabular-nums text-slate-900">
           {resolved.toLocaleString()}
         </div>
       </div>

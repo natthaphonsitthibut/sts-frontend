@@ -42,7 +42,7 @@ export function StatusPage({
   const Icon = toneIcon[tone];
 
   return (
-    <GuestPageShell centered maxWidthClassName="max-w-[520px]">
+    <GuestPageShell centered contentClassName="max-w-[520px]">
       <Card className="rounded-lg">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <div className={`mb-4 rounded-full p-4 ${toneClass[tone]}`}>

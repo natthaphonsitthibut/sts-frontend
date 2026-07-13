@@ -2,6 +2,7 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Badge,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -128,19 +129,21 @@ function AuditLogFilters({
       ) : null}
       <div className="space-y-1.5">
         <Label htmlFor="audit-date-from">จากวันที่</Label>
-        <Input
+        <DatePicker
+          ariaLabel="จากวันที่"
           id="audit-date-from"
-          onChange={(event) => onDateFromChange(event.target.value)}
-          type="date"
+          max={dateTo || undefined}
+          onChange={onDateFromChange}
           value={dateFrom}
         />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="audit-date-to">ถึงวันที่</Label>
-        <Input
+        <DatePicker
+          ariaLabel="ถึงวันที่"
           id="audit-date-to"
-          onChange={(event) => onDateToChange(event.target.value)}
-          type="date"
+          min={dateFrom || undefined}
+          onChange={onDateToChange}
           value={dateTo}
         />
       </div>
@@ -355,7 +358,7 @@ export function AuditLogPanel({
 
   return (
     <section className={cn("space-y-4", className)}>
-      <div className="rounded-lg border border-slate-100 bg-white p-5 shadow-card">
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h2 className="text-xl font-extrabold text-slate-900">{title}</h2>

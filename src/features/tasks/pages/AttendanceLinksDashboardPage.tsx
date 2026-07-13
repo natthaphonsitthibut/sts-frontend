@@ -13,6 +13,7 @@ import {
   Link2,
   Lock,
   LockOpen,
+  Search,
 } from "lucide-react";
 import { Button, Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
@@ -24,6 +25,7 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { Pagination } from "../../../components/layout/pagination";
 import {
+  EmptyState,
   ErrorState,
   FilterSelect,
   ListPageToolbar,
@@ -378,8 +380,17 @@ export function AttendanceLinksDashboardPage() {
                     : option.code === "EXPIRED"
                       ? Clock
                       : option.code === "SCHEDULED"
-                        ? CalendarClock
+                      ? CalendarClock
                       : Link2,
+              onSelect: () =>
+                handleStatusChange(
+                  status === option.code && option.code !== "ALL" ? "ALL" : option.code,
+                ),
+              selected: status === option.code,
+              selectionLabel:
+                option.code === "ALL"
+                  ? "แสดงลิงก์เช็คชื่อทุกสถานะ"
+                  : `${status === option.code ? "ยกเลิกตัวกรอง" : "กรอง"}${option.label}`,
             }))}
           />
 
@@ -419,9 +430,12 @@ export function AttendanceLinksDashboardPage() {
               sort={sort}
               footer={
                 tasks.length === 0 ? (
-                  <div className="border-t border-slate-100 py-12 text-center text-slate-500">
-                    ไม่พบลิงก์เช็คชื่อตามตัวกรอง
-                  </div>
+                  <EmptyState
+                    className="rounded-none border-none shadow-none"
+                    description="ลองปรับตัวกรองหรือคำค้นหา"
+                    icon={Search}
+                    title="ไม่พบลิงก์เช็คชื่อตามตัวกรอง"
+                  />
                 ) : null
               }
             >

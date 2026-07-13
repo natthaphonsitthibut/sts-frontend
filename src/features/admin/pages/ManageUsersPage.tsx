@@ -18,6 +18,7 @@ import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   ListPageToolbar,
   PageShell,
   SkeletonTable,
@@ -43,6 +44,7 @@ import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   AccountDeactivationPayload,
   ManagedUser,
+  StudentAccountManagementStatus,
   StudentAccountStatusCounts,
 } from "../types/admin.types";
 
@@ -100,6 +102,8 @@ export function ManageUsersPage() {
   );
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [accountStatus, setAccountStatus] =
+    useState<"" | StudentAccountManagementStatus>("");
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [deactivationTarget, setDeactivationTarget] =
     useState<ManagedUser | null>(null);
@@ -117,6 +121,7 @@ export function ManageUsersPage() {
       gradeLevelId: scope.gradeLevelId,
       room: scope.room || undefined,
       excludeRole: "STUDENT",
+      accountStatus: accountStatus || undefined,
       page,
       limit: rowsPerPage,
     }),
@@ -128,6 +133,7 @@ export function ManageUsersPage() {
       scope.schoolId,
       scope.gradeLevelId,
       scope.room,
+      accountStatus,
       page,
       rowsPerPage,
     ],
@@ -153,6 +159,11 @@ export function ManageUsersPage() {
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleAccountStatusChange(value: string): void {
+    setAccountStatus(value as "" | StudentAccountManagementStatus);
     setPage(1);
   }
 
@@ -234,7 +245,7 @@ export function ManageUsersPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1100px]">
+    <PageShell>
       <ListPageToolbar
         icon={Users}
         actions={
@@ -270,13 +281,28 @@ export function ManageUsersPage() {
         }
         filters={
           activeTab === "manage" ? (
-            <SchoolClassRoomFilter
-              area={schoolArea}
-              onGradeChange={handleGradeChange}
-              onRoomChange={handleRoomChange}
-              onSchoolChange={handleSchoolChange}
-              scope={scope}
-            />
+            <>
+              <SchoolClassRoomFilter
+                area={schoolArea}
+                onGradeChange={handleGradeChange}
+                onRoomChange={handleRoomChange}
+                onSchoolChange={handleSchoolChange}
+                scope={scope}
+              />
+              <FilterSelect
+                ariaLabel="สถานะบัญชีผู้ใช้งาน"
+                className="sm:w-[220px]"
+                onChange={handleAccountStatusChange}
+                value={accountStatus}
+              >
+                <option value="">ทุกสถานะ</option>
+                {lifecycleCatalog.items.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </>
           ) : (
             <SchoolAreaSchoolFilter
               area={schoolArea}
@@ -316,10 +342,14 @@ export function ManageUsersPage() {
                 centerRows
                 items={[
                   {
-                    label: "ในขอบเขต",
+                    label: "ทั้งหมด",
                     value: lifecycleStatusTotal,
                     tone: "default",
                     icon: Users,
+                    emphasis: true,
+                    onSelect: () => handleAccountStatusChange(""),
+                    selected: accountStatus === "",
+                    selectionLabel: "แสดงผู้ใช้งานทุกสถานะ",
                   },
                   ...lifecycleCatalog.items.map((item) => ({
                     label: item.label,
@@ -328,11 +358,23 @@ export function ManageUsersPage() {
                     tone: item.summaryTone ?? "default",
                     icon:
                       USER_STATUS_ICONS[item.code as keyof typeof USER_STATUS_ICONS] ?? Users,
+                    onSelect: () =>
+                      handleAccountStatusChange(
+                        accountStatus === item.code ? "" : item.code,
+                      ),
+                    selected: accountStatus === item.code,
+                    selectionLabel: `${accountStatus === item.code ? "ยกเลิกตัวกรอง" : "กรอง"}${item.label}`,
                   })),
                 ]}
               />
               {users.length === 0 ? (
                 <EmptyState
+                  description={
+                    debouncedSearch
+                      ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
+                      : "เพิ่มผู้ใช้งานแรกเพื่อเริ่มต้น"
+                  }
+                  icon={Users}
                   title={
                     debouncedSearch
                       ? "ไม่พบผู้ใช้งานที่ค้นหา"

@@ -193,7 +193,7 @@ export function TimetableGrid({
                           <div className="invisible" aria-hidden="true">
                             .
                           </div>
-                          <div className="mt-0.5 whitespace-nowrap text-[11px] font-normal leading-tight text-slate-400">
+                          <div className="mt-0.5 whitespace-nowrap text-xs font-normal leading-tight text-slate-400">
                             {trimToHHMM(gap.startsAt)}–{trimToHHMM(gap.endsAt)}
                           </div>
                         </>
@@ -274,13 +274,14 @@ export function TimetableGrid({
                                 <div key={slot.id}>{renderSlot(slot)}</div>
                               ) : (
                                 <div
-                                  className={cn(
-                                    "overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2",
-                                    "border-l-4 border-l-primary/60 shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
-                                  )}
+                                  className="relative overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2"
                                   key={slot.id}
                                   style={{ height: "72px", maxHeight: "72px", overflow: "hidden" }}
                                 >
+                                  <span
+                                    aria-hidden="true"
+                                    className="absolute inset-x-0 top-0 h-1 bg-primary/60"
+                                  />
                                   <div className="line-clamp-2 break-words text-sm font-bold leading-5 text-slate-900">
                                     {slot.subject_name_th}
                                   </div>
@@ -304,4 +305,3 @@ export function TimetableGrid({
     </div>
   );
 }
-

@@ -11,6 +11,7 @@ import {
   CardTitle,
   Checkbox,
   Combobox,
+  InfoTooltip,
   Label,
   Skeleton,
 } from "../../../components/base";
@@ -338,7 +339,13 @@ export function PermissionScopeEditor({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">ขอบเขตข้อมูล</CardTitle>
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            ขอบเขตข้อมูล
+            <InfoTooltip label="ขอบเขตข้อมูล">
+              กำหนดว่าผู้ใช้คนนี้จะมองเห็นข้อมูลนักเรียนของพื้นที่/โรงเรียน/ชั้น/ห้องไหนบ้าง
+              — ยิ่งเลือกแคบเท่าไร ขอบเขตการเข้าถึงข้อมูลก็ยิ่งจำกัดเท่านั้น
+            </InfoTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {!hasRole ? (

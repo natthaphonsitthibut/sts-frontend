@@ -118,7 +118,7 @@ const AVATAR_COLOR_PAIRS = [
 
 export function getAttendanceAvatarGradient(name: string): CSSProperties {
   if (!name) {
-    return { background: "#ccc", color: "#fff" };
+    return { background: "var(--color-avatar-neutral)", color: "#fff" };
   }
 
   let hash = 0;

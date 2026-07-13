@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Lock, SquarePen, Trash2 } from "lucide-react";
+import { Lock, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -7,6 +7,7 @@ import {
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { EmptyState } from "../../../components/layout/page-primitives";
 import type { RoleDefinition } from "../types/admin.types";
 import {
   findStatusCatalogItem,
@@ -68,9 +69,12 @@ export function RoleGroupTable({
       sort={sort}
       footer={
         roleGroups.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">
-            ยังไม่มีกลุ่มสิทธิ์
-          </div>
+          <EmptyState
+            className="rounded-none border-none shadow-none"
+            description="สร้างกลุ่มสิทธิ์แรกเพื่อกำหนดขอบเขตการใช้งานของผู้ใช้"
+            icon={ShieldCheck}
+            title="ยังไม่มีกลุ่มสิทธิ์"
+          />
         ) : null
       }
     >

@@ -83,10 +83,10 @@ export function DelegatePage() {
   });
 
   return (
-    <GuestPageShell maxWidthClassName="max-w-[640px]">
+    <GuestPageShell contentClassName="max-w-[640px]">
       <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle>มอบหมายภารกิจให้ผู้อื่น</CardTitle>
+          <CardTitle as="h1">มอบหมายภารกิจให้ผู้อื่น</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {result ? (

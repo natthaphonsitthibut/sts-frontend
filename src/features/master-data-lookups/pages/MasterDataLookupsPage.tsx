@@ -217,7 +217,11 @@ export function MasterDataLookupsPage() {
       ) : isLoading ? (
         <SkeletonStack lines={5} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={BookOpenText} title={search ? "ไม่พบรายการที่ค้นหา" : `ยังไม่มี${config.title}`} />
+        <EmptyState
+          description={search ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด" : `เพิ่มรายการแรกเพื่อเริ่มต้น${config.title}`}
+          icon={BookOpenText}
+          title={search ? "ไม่พบรายการที่ค้นหา" : `ยังไม่มี${config.title}`}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           <DataTable

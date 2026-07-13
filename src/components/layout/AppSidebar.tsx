@@ -42,7 +42,7 @@ function SidebarContent({
         >
           <div
             className={cn(
-              "flex-1 text-xs font-bold uppercase tracking-wide text-slate-400",
+              "flex-1 text-xs font-semibold text-slate-500",
               collapsed && "sr-only",
             )}
           >

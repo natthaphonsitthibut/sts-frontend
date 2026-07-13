@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Eye, RefreshCw, SquarePen, UserCheck, X } from "lucide-react";
+import { CheckCircle2, Eye, RefreshCw, Search, SquarePen, UserCheck, X } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -18,6 +18,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { EmptyState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { cn } from "../../../lib/utils";
@@ -249,11 +250,11 @@ function ImportQuarantineTable({
             </DataTableCell>
             <DataTableCell>
               {item.status === "PENDING" ? (
-                <Badge className="whitespace-nowrap text-[11px]" variant={item.resolution.variant}>
+                <Badge className="whitespace-nowrap" variant={item.resolution.variant}>
                   {item.resolution.label}
                 </Badge>
               ) : (
-                <Badge className="whitespace-nowrap text-[11px]" variant={item.statusBadgeVariant}>
+                <Badge className="whitespace-nowrap" variant={item.statusBadgeVariant}>
                   {item.statusLabel}
                 </Badge>
               )}
@@ -287,7 +288,7 @@ function ImportQuarantineTable({
                 </div>
               </div>
               <Badge
-                className="shrink-0 whitespace-nowrap text-[11px]"
+                className="shrink-0 whitespace-nowrap"
                 variant={
                   item.status === "PENDING"
                     ? item.resolution.variant
@@ -741,11 +742,11 @@ export function ImportQuarantinePanel({
         </Alert>
       ) : null}
       {query.data?.items.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-slate-500">
-            ไม่พบรายการ
-          </CardContent>
-        </Card>
+        <EmptyState
+          description="ไม่มีรายการรอตรวจสอบในขณะนี้ ลองปรับตัวกรองหรือกลับมาดูภายหลัง"
+          icon={Search}
+          title="ไม่พบรายการ"
+        />
       ) : null}
       {items.length > 0 ? (
         <ImportQuarantineTable

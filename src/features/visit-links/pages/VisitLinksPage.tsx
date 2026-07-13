@@ -105,7 +105,7 @@ export function VisitLinksPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1100px]">
+    <PageShell>
       <ListPageToolbar
         icon={MapPin}
         title="ลิงก์ลงพื้นที่"
@@ -182,6 +182,15 @@ export function VisitLinksPage() {
                     : option.code === "SCHEDULED"
                       ? CalendarClock
                       : Link2,
+            onSelect: () =>
+              handleStatusChange(
+                status === option.code && option.code !== "ALL" ? "ALL" : option.code,
+              ),
+            selected: status === option.code,
+            selectionLabel:
+              option.code === "ALL"
+                ? "แสดงลิงก์ลงพื้นที่ทุกสถานะ"
+                : `${status === option.code ? "ยกเลิกตัวกรอง" : "กรอง"}${option.label}`,
           }))}
         />
 

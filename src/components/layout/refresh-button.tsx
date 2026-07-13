@@ -5,7 +5,6 @@ import { useRefreshSpin } from "../../hooks/useRefreshSpin";
 interface RefreshButtonProps {
   /** The refresh action (e.g. `() => query.refetch()`). */
   onRefresh: () => Promise<unknown> | unknown;
-  label?: string;
 }
 
 /**
@@ -14,18 +13,19 @@ interface RefreshButtonProps {
  * a fast refetch still reads as a real refresh. Use this instead of hand-rolling a
  * refresh `Button` on each page.
  */
-export function RefreshButton({ label = "รีเฟรช", onRefresh }: RefreshButtonProps) {
+export function RefreshButton({ onRefresh }: RefreshButtonProps) {
   const { isRefreshing, refresh } = useRefreshSpin();
   return (
     <Button
+      className="border-transparent bg-primary-soft text-primary-dark hover:border-transparent hover:bg-primary/15 hover:text-primary-dark"
       icon={RotateCw}
       isLoading={isRefreshing}
       loadingIconMotion="refresh"
-      loadingText={label}
+      loadingText="รีเฟรช"
       onClick={() => void refresh(onRefresh)}
       variant="secondary"
     >
-      {label}
+      รีเฟรช
     </Button>
   );
 }

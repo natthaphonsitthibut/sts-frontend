@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CircleAlert, GraduationCap, SquarePen } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleAlert, GraduationCap, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button, Card } from "../../../components/base";
 import {
@@ -205,9 +205,12 @@ function AttendancePanel({ studentId }: { studentId: string }) {
       ) : isError ? (
         <ErrorState title="โหลดประวัติการเข้าเรียนไม่สำเร็จ" onRetry={refetch} />
       ) : !stats || stats.total === 0 ? (
-        <div className="py-6 text-center text-slate-500">
-          ไม่มีข้อมูลการเข้าเรียน
-        </div>
+        <EmptyState
+          className="border-none py-6 shadow-none"
+          description="ข้อมูลการเข้าเรียนจะแสดงที่นี่หลังมีการเช็คชื่อครั้งแรก"
+          icon={CalendarDays}
+          title="ไม่มีข้อมูลการเข้าเรียน"
+        />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3">

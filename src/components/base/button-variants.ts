@@ -6,11 +6,12 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
-        secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200",
+        secondary:
+          "border border-slate-300 bg-slate-100 text-slate-800 hover:border-slate-400 hover:bg-slate-200",
         outline:
-          "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
+          "border border-slate-300 bg-white text-slate-800 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
         ghost:
-          "border border-slate-200 bg-slate-50 text-slate-700 shadow-sm hover:bg-slate-100 hover:text-slate-950",
+          "border border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200 hover:text-slate-950",
         destructive: "bg-danger text-white shadow-sm hover:bg-danger-700",
       },
       size: {

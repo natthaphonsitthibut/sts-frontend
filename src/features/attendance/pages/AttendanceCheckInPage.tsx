@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   Combobox,
+  DatePicker,
   Input,
   Tabs,
   useConfirm,
@@ -401,21 +402,19 @@ export function AttendanceCheckInPage() {
           />
 
           {tab === "today" ? (
-            <Input
-              aria-label="วันที่เช็คชื่อ"
+            <DatePicker
+              ariaLabel="วันที่เช็คชื่อ"
               className="sm:w-[180px]"
-              type="date"
               max={getTodayIso()}
               value={checkInDate}
-              onChange={(event) => handleCheckInDateChange(event.target.value || getTodayIso())}
+              onChange={(next) => handleCheckInDateChange(next || getTodayIso())}
             />
           ) : (
-            <Input
-              aria-label="เลือกวันที่"
+            <DatePicker
+              ariaLabel="เลือกวันที่"
               className="sm:w-[180px]"
-              type="date"
               value={historyDate}
-              onChange={(event) => setHistoryDate(event.target.value)}
+              onChange={setHistoryDate}
             />
           )}
         </ToolbarFilterGrid>

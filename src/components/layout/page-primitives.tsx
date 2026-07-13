@@ -4,27 +4,29 @@ import { Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle, Button, Input, Select, Skeleton } from "../base";
 import { cn } from "../../lib/utils";
 
-export const PAGE_MAX_WIDTH_CLASS = "max-w-[1100px]";
+export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
-interface PageShellProps extends ComponentProps<"div"> {
-  maxWidthClassName?: string;
-}
+type PageShellProps = ComponentProps<"div">;
 
 export function PageShell({
   children,
   className,
-  maxWidthClassName = PAGE_MAX_WIDTH_CLASS,
   ...props
 }: PageShellProps) {
   return (
     <div
       className={cn(
-        "min-h-full bg-gradient-to-b from-surface-app to-surface-soft p-6",
+        "min-h-[calc(100vh-4rem)] bg-slate-50 px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
         className,
       )}
       {...props}
     >
-      <div className={cn("mx-auto w-full", maxWidthClassName)}>{children}</div>
+      <div
+        className={cn("mx-auto w-full", PAGE_MAX_WIDTH_CLASS)}
+        data-page-container="authenticated"
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -50,7 +52,7 @@ const toolbarToneClasses: Record<
   }
 > = {
   default: {
-    surface: "border-slate-100 bg-white shadow-card",
+    surface: "bg-transparent",
     icon: "text-primary",
     iconSurface: "bg-surface-sky",
     title: "text-slate-800",
@@ -78,31 +80,39 @@ export function PageToolbar({
 }: PageToolbarProps) {
   const toneClasses = toolbarToneClasses[tone];
   return (
-    <div className="relative z-20 mb-5">
-      {/* Header band — same fixed height on every page (controls live below, so a
-          page with many filters never gets a taller header than one with none). */}
+    <div className="relative z-20 mb-6">
       <section
         className={cn(
-          "overflow-hidden rounded-lg border",
+          "overflow-hidden",
+          tone === "primary" && "rounded-lg border",
           toneClasses.surface,
-          footerActions && !children && "rounded-b-none",
           className,
         )}
         {...props}
       >
-        <div className="flex min-h-24 flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={cn(
+            "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+            tone === "primary" ? "min-h-20 p-5" : "py-1",
+          )}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {Icon ? (
-              <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", toneClasses.iconSurface)}>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                  toneClasses.iconSurface,
+                )}
+              >
                 <Icon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
               </div>
             ) : null}
             <div className="min-w-0">
-              <h1 className={cn("truncate text-xl font-bold leading-8", toneClasses.title)}>
+              <h1 className={cn("text-xl font-semibold leading-8", toneClasses.title)}>
                 {title}
               </h1>
               {description ? (
-                <p className={cn("mt-1 text-sm", toneClasses.description)}>{description}</p>
+                <p className={cn("mt-1 max-w-3xl text-sm leading-6", toneClasses.description)}>{description}</p>
               ) : null}
             </div>
           </div>
@@ -116,8 +126,7 @@ export function PageToolbar({
       {children || footerActions ? (
         <div
           className={cn(
-            "overflow-visible rounded-lg border border-slate-100 bg-white shadow-card",
-            children ? "mt-5" : "mt-0 rounded-t-none border-t-0",
+            "mt-4 overflow-visible rounded-lg border border-slate-200 bg-white",
           )}
         >
           {children ? <div className="p-4">{children}</div> : null}
@@ -229,29 +238,10 @@ export function TableActionBar({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-interface CountBadgeProps {
-  children: ReactNode;
-  icon?: LucideIcon;
-}
-
-export function CountBadge({ children, icon: Icon }: CountBadgeProps) {
-  return (
-    <div className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-primary/20 bg-surface-sky px-4 text-sm font-bold text-primary">
-      {Icon ? <Icon className="size-4" aria-hidden="true" /> : null}
-      <span>{children}</span>
-    </div>
-  );
-}
-
 interface ListToolbarSearch {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-}
-
-interface ListToolbarCount {
-  value: ReactNode;
-  icon?: LucideIcon;
 }
 
 interface ListPageToolbarProps
@@ -260,8 +250,6 @@ interface ListPageToolbarProps
   search?: ListToolbarSearch;
   /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
   filters?: ReactNode;
-  /** Optional result count — rendered last as a CountBadge. */
-  count?: ListToolbarCount;
   /** Commands acting on the list — rendered below filters and aligned right. */
   tableActions?: ReactNode;
 }
@@ -270,33 +258,29 @@ interface ListPageToolbarProps
  * Canonical list-page header: one shell every list page shares so search,
  * filters and count always render in the same order with identical markup.
  * Composes the existing primitives (PageToolbar → ToolbarControls →
- * SearchInput/CountBadge) — not a new layout, just the uniform arrangement.
+ * SearchInput) — not a new layout, just the uniform arrangement.
  * Inherits the full PageToolbar prop surface (title/description/icon/tone/
  * actions + section props), so it stays a superset, never a narrowing.
  */
 export function ListPageToolbar({
-  count,
   filters,
   search,
   tableActions,
   ...toolbarProps
 }: ListPageToolbarProps) {
-  const hasControls = Boolean(search || filters || count);
+  const hasControls = Boolean(search || filters);
   return (
     <PageToolbar {...toolbarProps} footerActions={tableActions}>
       {hasControls ? (
         <div className="flex flex-col gap-3">
-          {search || count ? (
+          {search ? (
             <ToolbarControls>
-              {search ? (
-                <SearchInput
-                  className="sm:max-w-md"
-                  onChange={search.onChange}
-                  placeholder={search.placeholder}
-                  value={search.value}
-                />
-              ) : null}
-              {count ? <CountBadge icon={count.icon}>{count.value}</CountBadge> : null}
+              <SearchInput
+                className="sm:max-w-md"
+                onChange={search.onChange}
+                placeholder={search.placeholder}
+                value={search.value}
+              />
             </ToolbarControls>
           ) : null}
           {filters ? <ToolbarFilterGrid>{filters}</ToolbarFilterGrid> : null}
@@ -311,52 +295,40 @@ type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
 const summaryToneClasses: Record<
   SummaryTone,
   {
-    accent: string;
     surface: string;
     iconBg: string;
     iconColor: string;
-    ring: string;
     value: string;
   }
 > = {
   default: {
-    accent: "bg-slate-300",
     surface: "bg-white",
     iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
-    ring: "ring-slate-200/80",
     value: "text-slate-900",
   },
   success: {
-    accent: "bg-success",
     surface: "bg-white",
     iconBg: "bg-success-100",
     iconColor: "text-success-700",
-    ring: "ring-success-200/80",
     value: "text-success-700",
   },
   warning: {
-    accent: "bg-warning",
     surface: "bg-white",
     iconBg: "bg-warning-100",
     iconColor: "text-warning-700",
-    ring: "ring-warning-200/80",
     value: "text-warning-700",
   },
   danger: {
-    accent: "bg-danger",
     surface: "bg-white",
     iconBg: "bg-danger-100",
     iconColor: "text-danger-700",
-    ring: "ring-danger-200/80",
     value: "text-danger-700",
   },
   info: {
-    accent: "bg-primary",
     surface: "bg-white",
     iconBg: "bg-primary-soft",
     iconColor: "text-primary",
-    ring: "ring-primary/20",
     value: "text-primary",
   },
 };
@@ -366,6 +338,12 @@ interface SummaryMetric {
   value: ReactNode;
   tone?: SummaryTone;
   icon?: LucideIcon;
+  /** The one headline number in the row (usually "ทั้งหมด") reads larger than its siblings. */
+  emphasis?: boolean;
+  /** Turns the whole metric into one accessible filter/action target. */
+  onSelect?: () => void;
+  selected?: boolean;
+  selectionLabel?: string;
 }
 
 /** Fixed-column layouts for callers that want an exact grid. */
@@ -398,7 +376,7 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
   return (
     <section
       className={cn(
-        "rounded-lg border border-slate-200 bg-white p-4 shadow-card",
+        "w-full",
         className,
       )}
     >
@@ -411,28 +389,56 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
         {items.map((item, index) => {
           const tone = summaryToneClasses[item.tone ?? "default"];
           const Icon = item.icon;
-          return (
-            <div
-              className={cn(
-                "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-100 px-4 py-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 transition-[border-color,box-shadow] hover:border-slate-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.09)]",
-                centerRows && centeredCardClass,
-                tone.surface,
-                tone.ring,
-              )}
-              key={index}
-            >
-              <span className={cn("absolute inset-x-0 top-0 h-1", tone.accent)} aria-hidden="true" />
+          const metricClassName = cn(
+            "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-200 px-4 py-3.5 text-left",
+            centerRows && centeredCardClass,
+            tone.surface,
+            item.onSelect &&
+              "transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            item.selected && "border-primary bg-primary-soft ring-1 ring-primary/20",
+          );
+          const content = (
+            <>
               {Icon ? (
-                <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", tone.iconBg)}>
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                    tone.iconBg,
+                  )}
+                >
                   <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
                 </div>
               ) : null}
               <div className="min-w-0">
                 <div className="truncate text-xs font-medium text-slate-500">{item.label}</div>
-                <div className={cn("text-2xl font-bold leading-tight tabular-nums", tone.value)}>
+                <div
+                  className={cn(
+                    "animate-value-in font-bold leading-tight tabular-nums",
+                    item.emphasis ? "text-2xl" : "text-xl",
+                    tone.value,
+                  )}
+                  key={String(item.value)}
+                >
                   {item.value}
                 </div>
               </div>
+            </>
+          );
+          return item.onSelect ? (
+            <button
+              aria-label={item.selectionLabel}
+              aria-pressed={item.selected}
+              className={metricClassName}
+              data-summary-label={typeof item.label === "string" ? item.label : undefined}
+              key={index}
+              onClick={item.onSelect}
+              type="button"
+            >
+              {content}
+            </button>
+          ) : (
+            <div className={metricClassName} key={index}>
+              {content}
             </div>
           );
         })}
@@ -460,7 +466,7 @@ export function ChoiceCardButton({
   return (
     <button
       className={cn(
-        "rounded-lg border bg-white p-5 text-left shadow-card transition-colors motion-reduce:transition-none",
+        "rounded-lg border bg-white p-5 text-left transition-colors motion-reduce:transition-none",
         selected
           ? "border-primary bg-surface-sky"
           : "border-slate-200 hover:border-primary hover:bg-muted",
@@ -469,7 +475,9 @@ export function ChoiceCardButton({
       type={type}
       {...props}
     >
-      <Icon className="mb-3 size-6 text-primary" aria-hidden="true" />
+      <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-primary-soft ring-1 ring-inset ring-black/[0.03]">
+        <Icon className="size-6 text-primary" aria-hidden="true" />
+      </div>
       <div className="font-bold text-slate-900">{title}</div>
       <div className="mt-1 text-sm text-slate-500">{description}</div>
     </button>
@@ -517,7 +525,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-/** Canonical empty placeholder — dashed surface card, centered. */
+/** Canonical empty placeholder with quiet border-first hierarchy. */
 export function EmptyState({
   action,
   className,
@@ -528,12 +536,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-lg border-2 border-dashed border-slate-200 bg-white px-8 py-16 text-center",
+        "rounded-lg border border-slate-200 bg-white px-8 py-12 text-center",
         className,
       )}
     >
       {Icon ? (
-        <Icon className="mx-auto mb-4 size-16 text-muted-foreground" aria-hidden="true" />
+        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-slate-50">
+          <Icon className="size-8 text-muted-foreground" aria-hidden="true" />
+        </div>
       ) : null}
       <h2 className="mb-2 text-lg font-bold text-slate-800">{title}</h2>
       {description ? (

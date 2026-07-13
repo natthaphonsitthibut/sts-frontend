@@ -174,7 +174,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       <SummaryMetrics
         columns={3}
         items={[
-          { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default" },
+          { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default", emphasis: true },
           { label: "เพิ่มใหม่", value: preview.rowsToInsert, tone: "success" },
           { label: "อัปเดตข้อมูลเดิม", value: preview.rowsToUpdate, tone: "default" },
           { label: "รอตรวจสอบ", value: preview.rowsToQuarantine ?? 0, tone: "warning" },
@@ -375,7 +375,6 @@ export function ImportDataPage() {
   );
   const quarantineLookups = useImportQuarantineLookups();
   const exportQuarantine = useExportImportQuarantine();
-  const quarantineTotalCount = quarantineQuery.data?.meta.totalCount ?? 0;
   const retryEligibleLabel =
     quarantineLookups.data?.resolutionStates.find((state) => state.code === "RETRY_ELIGIBLE")
       ?.label ?? "RETRY_ELIGIBLE";
@@ -518,15 +517,6 @@ export function ImportDataPage() {
                   resetQuarantineList();
                 },
                 placeholder: "ค้นหาชื่อนักเรียน หรือโรงเรียน...",
-              }
-            : undefined
-        }
-        count={
-          activeTab === "quarantine"
-            ? {
-                value: quarantineQuery.isFetching
-                  ? "กำลังอัปเดต"
-                  : `${quarantineTotalCount.toLocaleString("en-US")} รายการ`,
               }
             : undefined
         }
@@ -766,7 +756,7 @@ export function ImportDataPage() {
                         className="mt-3"
                         columns={5}
                         items={[
-                          { label: "ทั้งหมด", value: result.rowsProcessed, tone: "default" },
+                          { label: "ทั้งหมด", value: result.rowsProcessed, tone: "default", emphasis: true },
                           { label: "เพิ่มใหม่", value: result.rowsInserted, tone: "success" },
                           { label: "อัปเดต", value: result.rowsUpdated, tone: "default" },
                           { label: "ข้าม", value: result.rowsSkipped, tone: "warning" },

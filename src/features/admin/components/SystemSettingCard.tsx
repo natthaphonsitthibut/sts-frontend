@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Alert, Button, Card, Input, Select } from "../../../components/base";
+import { Alert, Button, Card, Input, Select, TimePicker } from "../../../components/base";
 import type { SystemSetting } from "../types/admin.types";
-import { TimePicker } from "./TimePicker";
 
 interface SystemSettingCardProps {
   setting: SystemSetting;

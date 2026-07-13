@@ -6,7 +6,7 @@ import { ThaIdLoginButton } from "./ThaIdLoginButton";
 
 export function LoginCard() {
   return (
-    <Card className="relative rounded-[40px] border-slate-200/80 px-10 pb-10 pt-16 shadow-[0_10px_60px_rgba(0,0,0,0.04)] max-sm:px-6 max-sm:pt-14">
+    <Card className="relative rounded-lg border-slate-200 px-10 pb-10 pt-16 shadow-card max-sm:px-6 max-sm:pt-14">
       {/* Floating mark is absolute so it overlaps the card edge without adding
           flow height — keeps the whole card short enough to fit small screens. */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2">

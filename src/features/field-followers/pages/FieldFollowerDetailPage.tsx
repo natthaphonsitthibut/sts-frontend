@@ -106,7 +106,7 @@ export function FieldFollowerDetailPage() {
           title="โหลดรายละเอียดใบสมัครไม่สำเร็จ"
         />
       ) : followerQuery.isLoading ? (
-        <div className="rounded-lg border border-slate-100 bg-white p-5 shadow-card">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
           <Skeleton className="h-6 w-56" />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Skeleton className="h-16" />
@@ -125,7 +125,7 @@ export function FieldFollowerDetailPage() {
             </Alert>
           ) : null}
 
-          <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-card">
+          <section className="rounded-lg border border-slate-200 bg-white p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-xl font-extrabold text-slate-900">
@@ -136,7 +136,7 @@ export function FieldFollowerDetailPage() {
                 </p>
               </div>
               {statusMeta ? (
-                <Badge className="w-fit whitespace-nowrap text-[11px]" variant={statusMeta.variant}>
+                <Badge className="w-fit whitespace-nowrap" variant={statusMeta.variant}>
                   {statusMeta.label}
                 </Badge>
               ) : null}

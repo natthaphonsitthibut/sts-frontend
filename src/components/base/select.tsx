@@ -151,7 +151,7 @@ export function Select({
         aria-invalid={props["aria-invalid"]}
         aria-label={props["aria-label"]}
         className={cn(
-          "flex h-10 min-h-10 w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-0 pr-10 text-left text-sm font-medium leading-5 text-slate-800 shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20",
+          "flex h-10 min-h-10 w-full items-center rounded-lg border border-slate-300 bg-white px-3 py-0 pr-10 text-left text-sm font-medium leading-5 text-slate-800 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20",
           className,
         )}
         disabled={disabled}

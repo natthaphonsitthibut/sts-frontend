@@ -280,12 +280,20 @@ export function CasesListPage() {
                 value: statusTotal,
                 tone: "default",
                 icon: ListChecks,
+                emphasis: true,
+                onSelect: () => handleStatusChange("ALL"),
+                selected: status === "ALL",
+                selectionLabel: "แสดงเคสทุกสถานะ",
               },
               ...statuses.map((item) => ({
                 label: item.label,
                 value: statusCounts[item.code] ?? 0,
                 tone: item.summaryTone ?? undefined,
                 icon: CASE_STATUS_ICONS[item.code as keyof typeof CASE_STATUS_ICONS] ?? ListChecks,
+                onSelect: () =>
+                  handleStatusChange(status === item.code ? "ALL" : item.code),
+                selected: status === item.code,
+                selectionLabel: `${status === item.code ? "ยกเลิกตัวกรอง" : "กรอง"}${item.label}`,
               })),
             ]}
           />

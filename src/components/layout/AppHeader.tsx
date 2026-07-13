@@ -1,20 +1,15 @@
-import { GraduationCap, Menu, Settings } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { Avatar, IconButton } from "../base";
-import { hasPermission, getEffectivePermissions } from "../../features/auth/lib/permissions";
+import { GraduationCap, Menu } from "lucide-react";
+import { IconButton } from "../base";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
-import { getPageTitle } from "./page-title";
+import { HeaderProfileMenu } from "./HeaderProfileMenu";
 
 interface AppHeaderProps {
   onMenuClick: () => void;
 }
 
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
-  const location = useLocation();
   const user = useAuthSessionStore((state) => state.user);
-  const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
-  const canOpenSettings = hasPermission(userPermissions, "settings");
   const canEditProfile = !user?.virtual_login;
 
   const displayName =
@@ -40,53 +35,21 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           variant="ghost"
         />
         {/* Brand (left) — aligned over the sidebar width on desktop. */}
-        <div className="flex shrink-0 items-center gap-3 lg:w-[228px]">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <GraduationCap className="size-7 shrink-0 text-white" aria-hidden="true" />
           <span className="truncate text-base font-semibold text-white">
             ระบบติดตามนักเรียน
           </span>
         </div>
-        <h1 className="min-w-0 flex-1 truncate text-lg font-bold leading-8 text-white">
-          {getPageTitle(location.pathname)}
-        </h1>
         <div className="flex items-center gap-3">
           {canEditProfile ? <NotificationBell /> : null}
-          {canOpenSettings ? (
-            <Link
-              aria-label="ตั้งค่าระบบ"
-              className="inline-flex size-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white shadow-sm transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
-              to="/settings"
-            >
-              <Settings className="size-5" aria-hidden="true" />
-            </Link>
-          ) : null}
-          {canEditProfile ? (
-            <div className="ml-1 hidden items-center border-l border-white/20 pl-3 sm:flex">
-              <Link
-                aria-label="โปรไฟล์ของฉัน"
-                className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
-                to="/profile"
-              >
-                <Avatar
-                  fallback={initials}
-                  className="size-9 bg-white font-semibold text-primary transition-transform hover:scale-105"
-                />
-                <span className="max-w-[140px] truncate text-sm font-semibold text-white">
-                  {displayName}
-                </span>
-              </Link>
-            </div>
-          ) : (
-            <div className="ml-1 hidden items-center gap-2 border-l border-white/20 pl-3 sm:flex">
-              <Avatar
-                fallback={initials}
-                className="size-9 bg-white font-semibold text-primary"
-              />
-              <span className="max-w-[140px] truncate text-sm font-semibold text-white">
-                {displayName}
-              </span>
-            </div>
-          )}
+          <div className="ml-1 border-l border-white/20 pl-2 sm:pl-3">
+            <HeaderProfileMenu
+              canEditProfile={canEditProfile}
+              displayName={displayName}
+              initials={initials}
+            />
+          </div>
         </div>
       </div>
     </header>

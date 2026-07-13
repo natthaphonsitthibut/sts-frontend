@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Save, TriangleAlert } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, Save, TriangleAlert } from "lucide-react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -65,7 +65,7 @@ export function AttendanceRecordPage() {
 
   if (isLoading) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <Card className="mb-6 p-6">
           <SkeletonStack lines={2} />
         </Card>
@@ -76,7 +76,7 @@ export function AttendanceRecordPage() {
 
   if (isError || notFound || !task) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <EmptyState
           icon={TriangleAlert}
           title="ไม่พบชั้นเรียนนี้"
@@ -98,7 +98,7 @@ export function AttendanceRecordPage() {
   const newCases = submitAttendance.data?.newCases ?? [];
 
   return (
-    <PageShell maxWidthClassName="max-w-[1000px]" className="pb-28">
+    <PageShell className="pb-28">
       <Card className="mb-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -152,7 +152,11 @@ export function AttendanceRecordPage() {
       </div>
 
       {students.length === 0 ? (
-        <EmptyState title="ไม่พบรายชื่อนักเรียนในชั้นเรียนนี้" />
+        <EmptyState
+          description="ชั้นเรียนนี้ยังไม่มีรายชื่อนักเรียนในระบบ"
+          icon={ClipboardList}
+          title="ไม่พบรายชื่อนักเรียนในชั้นเรียนนี้"
+        />
       ) : (
         <AttendanceStudentTable
           onStatusChange={handleStatusChange}
@@ -163,7 +167,7 @@ export function AttendanceRecordPage() {
 
       {students.length > 0 ? (
         <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur lg:left-[260px]">
-          <div className="mx-auto flex w-full max-w-[1000px] items-center justify-end">
+          <div className="mx-auto flex w-full max-w-[1180px] items-center justify-end">
             <Button
               icon={Save}
               isLoading={submitAttendance.isPending}

@@ -72,7 +72,7 @@ const AVATAR_COLOR_PAIRS = [
 
 export function getUserAvatarGradient(name: string): CSSProperties {
   if (!name) {
-    return { background: "#ccc", color: "#fff" };
+    return { background: "var(--color-avatar-neutral)", color: "#fff" };
   }
   let hash = 0;
   for (let index = 0; index < name.length; index += 1) {

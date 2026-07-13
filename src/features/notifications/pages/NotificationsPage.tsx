@@ -112,7 +112,7 @@ export function NotificationsPage() {
           title="ไม่สามารถโหลดการแจ้งเตือนได้"
         />
       ) : isLoading ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-card">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
           <SkeletonStack lines={6} />
         </div>
       ) : notifications.length === 0 ? (
@@ -129,7 +129,7 @@ export function NotificationsPage() {
         <div className="space-y-4">
           <section
             aria-label="รายการการแจ้งเตือน"
-            className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card"
+            className="overflow-hidden rounded-lg border border-slate-200 bg-white"
           >
             <ul className="divide-y divide-slate-100">
               {notifications.map((notification) => (

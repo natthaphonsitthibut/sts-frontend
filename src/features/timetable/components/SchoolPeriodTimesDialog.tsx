@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -18,12 +17,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  IconButton,
+  InfoTooltip,
   Input,
+  TimePicker,
   useConfirm,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
-import { TimePicker } from "../../admin/components/TimePicker";
 import {
   useGeneratePeriodTimes,
   useOverridePeriodTime,
@@ -108,31 +107,6 @@ function OverrideRow({
     : isEndBeforeStart
       ? "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม"
       : "ทศนิยมของชั่วโมง เช่น 1.5 = 1 ชั่วโมง 30 นาที, 0.75 = 45 นาที (ไม่ใช่นาฬิกา 1.30)";
-  const [hintOpen, setHintOpen] = useState(false);
-  const hintRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!hintOpen) return;
-
-    function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (hintRef.current && !hintRef.current.contains(event.target as Node)) {
-        setHintOpen(false);
-      }
-    }
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") setHintOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [hintOpen]);
-
   // Start time is the anchor: nudging it keeps the period's length and
   // shifts the end time to match, instead of leaving a stale end behind.
   function handleStartChange(value: string): void {
@@ -206,28 +180,16 @@ function OverrideRow({
                 value={durationInput}
               />
               <span className="text-xs text-slate-500">ชม.</span>
-              <div className="relative" ref={hintRef}>
-                <IconButton
-                  aria-expanded={hintOpen}
-                  aria-label={durationHint}
-                  className={cn(
-                    "size-6",
-                    isDurationInvalid || isEndBeforeStart ? "text-danger-600" : "text-slate-400",
-                  )}
-                  icon={Info}
-                  onClick={() => setHintOpen((current) => !current)}
-                  size="sm"
-                  variant="ghost"
-                />
-                {hintOpen ? (
-                  <div
-                    className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-2.5 text-xs leading-relaxed text-slate-600 shadow-lg"
-                    role="tooltip"
-                  >
-                    {durationHint}
-                  </div>
-                ) : null}
-              </div>
+              <InfoTooltip
+                align="end"
+                label={durationHint}
+                triggerClassName={cn(
+                  (isDurationInvalid || isEndBeforeStart) &&
+                    "text-danger-600 hover:text-danger-700",
+                )}
+              >
+                {durationHint}
+              </InfoTooltip>
             </div>
           </div>
         ) : (
@@ -237,7 +199,7 @@ function OverrideRow({
         )}
       </td>
       <td className="w-28 px-3 py-2 align-middle">
-        <Badge className="whitespace-nowrap text-[11px]" variant={sourceVariant}>
+        <Badge className="whitespace-nowrap text-xs" variant={sourceVariant}>
           {sourceLabel}
         </Badge>
       </td>
@@ -306,6 +268,10 @@ export function SchoolPeriodTimesDialog({
     resolver: zodResolver(generateSchema),
   });
   const selectedDays = useWatch({ control: form.control, name: "daysOfWeek" }) ?? [];
+  const firstPeriodStartsAt = useWatch({
+    control: form.control,
+    name: "firstPeriodStartsAt",
+  });
   const effectiveCurrentDay =
     selectedCurrentDay && currentDays.includes(selectedCurrentDay)
       ? selectedCurrentDay
@@ -350,7 +316,7 @@ export function SchoolPeriodTimesDialog({
                   <TimePicker
                     ariaLabel="เวลาเริ่มคาบ 1"
                     onChange={(val) => form.setValue("firstPeriodStartsAt", val, { shouldValidate: true })}
-                    value={form.watch("firstPeriodStartsAt")}
+                    value={firstPeriodStartsAt}
                   />
                   <FormMessage<GenerateFormValues> name="firstPeriodStartsAt" />
                 </FormItem>

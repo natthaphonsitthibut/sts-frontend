@@ -143,11 +143,11 @@ export function Pagination({
   }
 
   const navButtonClass =
-    "flex size-9 items-center justify-center rounded-full bg-white font-bold text-slate-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
+    "flex size-9 items-center justify-center rounded-md bg-white font-semibold text-slate-600 transition-colors hover:bg-primary-soft hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="mt-2 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-      <div className="w-full text-right font-mono text-sm font-bold tabular-nums text-slate-900">
+    <div className="mt-3 flex flex-col gap-3 border-t border-slate-200 pt-4">
+      <div className="w-full text-right text-sm font-bold tabular-nums text-slate-900">
         แสดง {formatFullNumber(start)}-{formatFullNumber(end)} จาก{" "}
         {formatFullNumber(totalCount)} {unitLabel}
       </div>
@@ -157,7 +157,7 @@ export function Pagination({
           <span>ต่อหน้า</span>
           <Select
             aria-label="จำนวนรายการต่อหน้า"
-            className="h-10 w-[124px] rounded-full border-slate-200 bg-white py-0 pl-4 pr-9 font-bold leading-none shadow-none"
+            className="h-10 w-[124px] rounded-lg bg-white py-0 pl-4 pr-9 font-semibold leading-none"
             onChange={(event) =>
               onRowsPerPageChange(Number(event.target.value))
             }
@@ -171,7 +171,7 @@ export function Pagination({
           </Select>
         </label>
 
-        <div className="flex items-center gap-1 rounded-full bg-white p-1 ring-1 ring-slate-200">
+        <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
           <button
             aria-label="หน้าแรก"
             className={navButtonClass}
@@ -208,11 +208,11 @@ export function Pagination({
                 aria-current={item === page ? "page" : undefined}
                 aria-label={`หน้า ${formatFullNumber(item)}`}
                 className={cn(
-                  "flex size-9 items-center justify-center rounded-full font-mono text-sm font-bold tabular-nums transition-colors",
+                  "flex size-9 items-center justify-center rounded-md text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   pageNumberWidthClass,
                   item === page
-                    ? "bg-primary text-white shadow-lg shadow-primary/25"
-                    : "text-slate-600 hover:bg-white hover:shadow-sm",
+                    ? "bg-primary text-white"
+                    : "text-slate-600 hover:bg-white hover:text-primary-dark",
                 )}
                 onClick={() => onPageChange(item)}
                 title={`หน้า ${formatFullNumber(item)}`}
@@ -246,7 +246,7 @@ export function Pagination({
           <span>ไปหน้า</span>
           <NumericInput
             aria-label="ไปยังหน้าที่"
-            className="h-9 rounded-full text-center font-mono font-bold tabular-nums"
+            className="h-9 text-center font-bold tabular-nums"
             max={totalPages}
             min={1}
             onBlur={submitGoToPage}
@@ -258,7 +258,7 @@ export function Pagination({
             value={goToPageValue}
           />
           <span
-            className="font-mono tabular-nums text-slate-400"
+            className="tabular-nums text-slate-400"
             style={{ minWidth: `${totalPagesLabelWidthCh}ch` }}
           >
             / {formatFullNumber(totalPages)}

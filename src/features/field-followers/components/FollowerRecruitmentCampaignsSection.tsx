@@ -299,6 +299,17 @@ export function FollowerRecruitmentCampaignsSection({
                   ? "danger"
                   : "default",
           icon: STATUS_ICON_MAP[option.code] ?? Link2,
+          onSelect: () =>
+            setStatus(
+              status === option.code && option.code !== "ALL"
+                ? "ALL"
+                : (option.code as CampaignStatusFilter),
+            ),
+          selected: status === option.code,
+          selectionLabel:
+            option.code === "ALL"
+              ? "แสดงลิงก์รับสมัครทุกสถานะ"
+              : `${status === option.code ? "ยกเลิกตัวกรอง" : "กรอง"}${option.label}`,
         }))}
       />
 
@@ -358,7 +369,7 @@ export function FollowerRecruitmentCampaignsSection({
                     {campaign.name}
                   </DataTableCell>
                   <DataTableCell>
-                    <Badge className="whitespace-nowrap text-[11px]" variant={catalogItem?.badgeVariant ?? "secondary"}>
+                    <Badge className="whitespace-nowrap" variant={catalogItem?.badgeVariant ?? "secondary"}>
                       {catalogItem?.label ?? campaign.status}
                     </Badge>
                   </DataTableCell>
@@ -395,7 +406,7 @@ export function FollowerRecruitmentCampaignsSection({
                 <TableCard className="space-y-3" key={campaign.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-bold text-slate-900">{campaign.name}</div>
-                    <Badge className="shrink-0 whitespace-nowrap text-[11px]" variant={catalogItem?.badgeVariant ?? "secondary"}>
+                    <Badge className="shrink-0 whitespace-nowrap" variant={catalogItem?.badgeVariant ?? "secondary"}>
                       {catalogItem?.label ?? campaign.status}
                     </Badge>
                   </div>
@@ -424,7 +435,7 @@ export function FollowerRecruitmentCampaignsSection({
       )}
 
       {selectedCampaign ? (
-        <section className="space-y-4 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
+        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-base font-bold text-slate-900">{selectedCampaign.name}</h3>

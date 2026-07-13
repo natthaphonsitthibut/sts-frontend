@@ -426,7 +426,7 @@ export function ProfilePage() {
                 disabled={updateProfile.isPending}
                 onClick={() => form.reset(toFormValues(profileQuery.data ?? user))}
                 type="button"
-                variant="secondary"
+                variant="outline"
               >
                 ยกเลิกการแก้ไข
               </Button>

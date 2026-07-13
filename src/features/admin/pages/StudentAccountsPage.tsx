@@ -29,6 +29,7 @@ import {
   ErrorState,
   ListPageToolbar,
   PageShell,
+  SkeletonTable,
   SummaryMetrics,
   TableActionBar,
 } from "../../../components/layout/page-primitives";
@@ -291,7 +292,13 @@ function CandidateTable({
   }, [candidates, sort]);
 
   if (candidates.length === 0) {
-    return <EmptyState icon={UserPlus} title="ไม่มีนักเรียนที่ต้องสร้างบัญชี" />;
+    return (
+      <EmptyState
+        description="นักเรียนในขอบเขตนี้มีบัญชีผู้ใช้ครบแล้วทุกคน"
+        icon={UserPlus}
+        title="ไม่มีนักเรียนที่ต้องสร้างบัญชี"
+      />
+    );
   }
 
   return (
@@ -1018,17 +1025,24 @@ export function StudentAccountsPage() {
               }}
             />
           ) : accountsLoading || lifecycleCatalog.isLoading ? (
-            <EmptyState icon={KeyRound} title="กำลังโหลดบัญชีนักเรียน" />
+            <SkeletonTable rows={3} />
           ) : (
             <div className="space-y-4">
               <SummaryMetrics
                 centerRows
                 items={[
                   {
-                    label: "ในขอบเขต",
+                    label: "ทั้งหมด",
                     value: accountStatusTotal,
                     tone: "default",
                     icon: Users,
+                    emphasis: true,
+                    onSelect: () => {
+                      setAccountStatus("");
+                      resetManagementList();
+                    },
+                    selected: accountStatus === "",
+                    selectionLabel: "แสดงบัญชีนักเรียนทุกสถานะ",
                   },
                   ...lifecycleCatalog.items.map((item) => ({
                     label: item.label,
@@ -1039,6 +1053,16 @@ export function StudentAccountsPage() {
                       STUDENT_ACCOUNT_STATUS_ICONS[
                         item.code as keyof typeof STUDENT_ACCOUNT_STATUS_ICONS
                       ] ?? Users,
+                    onSelect: () => {
+                      setAccountStatus((current) =>
+                        current === item.code
+                          ? ""
+                          : (item.code as StudentAccountManagementStatus),
+                      );
+                      resetManagementList();
+                    },
+                    selected: accountStatus === item.code,
+                    selectionLabel: `${accountStatus === item.code ? "ยกเลิกตัวกรอง" : "กรอง"}${item.label}`,
                   })),
                 ]}
               />
@@ -1124,6 +1148,7 @@ export function StudentAccountsPage() {
                     value: preview.summary.totalCount,
                     tone: "info",
                     icon: Users,
+                    emphasis: true,
                   },
                   {
                     label: "พร้อมสร้าง",
@@ -1160,7 +1185,11 @@ export function StudentAccountsPage() {
               />
             </div>
           ) : (
-            <EmptyState icon={KeyRound} title="เลือกขอบเขตแล้วดูตัวอย่าง" />
+            <EmptyState
+              description="เลือกโรงเรียน ชั้น และห้องด้านบน เพื่อดูตัวอย่างบัญชีที่จะสร้าง"
+              icon={KeyRound}
+              title="เลือกขอบเขตแล้วดูตัวอย่าง"
+            />
           )}
 
           <div className="mt-6">

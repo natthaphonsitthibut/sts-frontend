@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
   Button,
+  DatePicker,
   Dialog,
   DialogBody,
   DialogContent,
@@ -67,6 +68,8 @@ export function SchoolTermDialog({
     resolver: zodResolver(termSchema),
     defaultValues: getDefaults(term),
   });
+  const startsOn = useWatch({ control: form.control, name: "startsOn" });
+  const endsOn = useWatch({ control: form.control, name: "endsOn" });
 
   useEffect(() => {
     if (open) form.reset(getDefaults(term));
@@ -109,19 +112,23 @@ export function SchoolTermDialog({
             </FormItem>
             <FormItem>
               <FormLabel htmlFor="term-start" required>วันเริ่ม</FormLabel>
-              <Input
+              <DatePicker
+                ariaLabel="วันเริ่ม"
                 id="term-start"
-                type="date"
-                {...form.register("startsOn")}
+                max={endsOn || undefined}
+                onChange={(next) => form.setValue("startsOn", next, { shouldValidate: true })}
+                value={startsOn}
               />
               <FormMessage<SchoolTermFormValues> name="startsOn" />
             </FormItem>
             <FormItem>
               <FormLabel htmlFor="term-end" required>วันสิ้นสุด</FormLabel>
-              <Input
+              <DatePicker
+                ariaLabel="วันสิ้นสุด"
                 id="term-end"
-                type="date"
-                {...form.register("endsOn")}
+                min={startsOn || undefined}
+                onChange={(next) => form.setValue("endsOn", next, { shouldValidate: true })}
+                value={endsOn}
               />
               <FormMessage<SchoolTermFormValues> name="endsOn" />
             </FormItem>

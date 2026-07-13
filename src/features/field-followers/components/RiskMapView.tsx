@@ -126,7 +126,7 @@ export function RiskMapView({
           });
           marker.addListener("click", () => {
             const note = pin.isApproximate
-              ? '<div style="font-size:11px;color:#b45309;margin-top:2px">พิกัดโดยประมาณจากที่อยู่ทะเบียน — ยังไม่ยืนยัน</div>'
+              ? '<div style="font-size:12px;color:var(--color-warning-700);margin-top:2px">พิกัดโดยประมาณจากที่อยู่ทะเบียน — ยังไม่ยืนยัน</div>'
               : "";
             infoWindowRef.current?.setContent(
               `<div style="font-weight:700;margin-bottom:2px">${escapeHtml(pin.label)}</div><div style="font-size:12px;color:#475569">${escapeHtml(pin.riskTierLabel)}</div>${note}`,

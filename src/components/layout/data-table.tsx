@@ -101,7 +101,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card",
+        "overflow-hidden rounded-lg border border-slate-200 bg-white",
         responsive &&
           (responsiveBreakpoint === "lg" ? "hidden lg:block" : "hidden md:block"),
         className,
@@ -153,7 +153,7 @@ export function DataTable({
                           : undefined
                       }
                       className={cn(
-                        "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
+                        "px-4 py-3 text-xs font-semibold text-slate-600",
                         !headingRows && columnWidths?.[index],
                         config.className,
                       )}
@@ -209,7 +209,7 @@ export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
   // is the same height regardless of 1-line vs 2-line cell content.
   return (
     <td
-      className={cn("h-[68px] px-4 align-middle text-sm text-slate-600", className)}
+      className={cn("h-[60px] px-4 align-middle text-sm text-slate-600", className)}
       {...props}
     />
   );
@@ -245,7 +245,7 @@ interface TableCardProps extends ComponentProps<"div"> {
 /** A single mobile card mirroring one table row. */
 export function TableCard({ className, interactive, ...props }: TableCardProps) {
   const classes = cn(
-    "rounded-lg border border-slate-200 bg-white p-5 shadow-card",
+    "rounded-lg border border-slate-200 bg-white p-4",
     className,
   );
   if (interactive) {

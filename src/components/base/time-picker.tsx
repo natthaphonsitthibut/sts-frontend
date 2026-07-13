@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Clock } from "lucide-react";
-import { Button, Select } from "../../../components/base";
-import { cn } from "../../../lib/utils";
+import { cn } from "../../lib/utils";
+import { Button } from "./button";
+import { Select } from "./select";
 
-interface TimePickerProps {
+export interface TimePickerProps {
   ariaLabel: string;
   value: string;
   onChange: (value: string) => void;

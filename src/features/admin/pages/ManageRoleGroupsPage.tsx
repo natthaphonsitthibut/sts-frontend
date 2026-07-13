@@ -69,7 +69,7 @@ export function ManageRoleGroupsPage() {
   }
 
   return (
-    <PageShell maxWidthClassName="max-w-[1100px]">
+    <PageShell>
       <ListPageToolbar
         icon={ShieldCheck}
         tableActions={
