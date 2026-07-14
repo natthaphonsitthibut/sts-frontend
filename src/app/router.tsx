@@ -16,6 +16,7 @@ import {
   DataExportsPage,
   DashboardPage,
   DelegatePage,
+  ExecutiveReportingPage,
   ExpiredPage,
   FieldFollowerApplicationPage,
   FieldFollowerDetailPage,
@@ -39,6 +40,7 @@ import {
   ProfilePage,
   ReportPage,
   RouteSuspense,
+  SchoolStructurePage,
   StudentDetailPage,
   StudentEditPage,
   StudentAccountsPage,
@@ -49,6 +51,8 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TeacherAccessGrantsPage,
+  TeacherAccessGuestPage,
   TimetablePage,
   UserDetailPage,
   VisitLinksPage,
@@ -63,7 +67,7 @@ function withSuspense(children: ReactNode): ReactNode {
   return <RouteSuspense>{children}</RouteSuspense>;
 }
 
-function protectedElement(children: ReactNode, permission?: string): ReactNode {
+function protectedElement(children: ReactNode, permission?: string | string[]): ReactNode {
   return (
     <ProtectedRoute permission={permission}>
       {withSuspense(children)}
@@ -91,6 +95,10 @@ export const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <LegacyRouteRedirect to="/student-risk-report" />,
+      },
+      {
+        path: "executive-reporting",
+        element: protectedElement(<ExecutiveReportingPage />, "executive-report"),
       },
       {
         path: "change-password",
@@ -195,8 +203,16 @@ export const router = createBrowserRouter([
         element: protectedElement(<TimetablePage />),
       },
       {
+        path: "school-structure",
+        element: protectedElement(<SchoolStructurePage />, "manage-school-structure"),
+      },
+      {
+        path: "teacher-access-grants",
+        element: protectedElement(<TeacherAccessGrantsPage />, "manage-teacher-access"),
+      },
+      {
         path: "import-data",
-        element: protectedElement(<ImportDataPage />, "import-data"),
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
       },
       {
         path: "data-exports",
@@ -204,15 +220,15 @@ export const router = createBrowserRouter([
       },
       {
         path: "import-data/quarantine",
-        element: protectedElement(<ImportDataPage />, "import-data"),
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
       },
       {
         path: "import-data/history",
-        element: protectedElement(<ImportDataPage />, "import-data"),
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
       },
       {
         path: "import-data/quarantine/:id",
-        element: protectedElement(<ImportQuarantineDetailPage />, "import-data"),
+        element: protectedElement(<ImportQuarantineDetailPage />, ["import-data", "import-school-roster"]),
       },
       {
         path: "manage-users",
@@ -352,6 +368,10 @@ export const router = createBrowserRouter([
         element: <LegacyTaskDetailRedirect />,
       },
     ],
+  },
+  {
+    path: "/teacher-access",
+    element: withSuspense(<TeacherAccessGuestPage />),
   },
   {
     path: "/task/:token",

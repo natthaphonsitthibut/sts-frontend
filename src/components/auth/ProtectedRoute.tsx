@@ -8,7 +8,7 @@ import { useAuthSessionStore } from "../../features/auth/store/auth-session.stor
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  permission?: string;
+  permission?: string | string[];
 }
 
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
@@ -42,7 +42,10 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
       session.user?.permissions || [],
     );
 
-    if (!hasPermission(userPermissions, permission)) {
+    const allowed = Array.isArray(permission)
+      ? permission.some((permissionId) => hasPermission(userPermissions, permissionId))
+      : hasPermission(userPermissions, permission);
+    if (!allowed) {
       return <Navigate replace to="/forbidden" />;
     }
   }

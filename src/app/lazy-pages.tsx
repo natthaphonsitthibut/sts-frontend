@@ -101,6 +101,13 @@ export const DataExportsPage = lazy(() =>
     default: module.DataExportsPage,
   })),
 );
+export const ExecutiveReportingPage = lazy(() =>
+  import("../features/executive-reporting/pages/ExecutiveReportingPage").then(
+    (module) => ({
+      default: module.ExecutiveReportingPage,
+    }),
+  ),
+);
 export const MainPage = lazy(() =>
   import("../features/home/pages/MainPage").then((module) => ({
     default: module.MainPage,
@@ -154,6 +161,21 @@ export const WorkSessionMonitorPage = lazy(() =>
 export const TimetablePage = lazy(() =>
   import("../features/timetable/pages/TimetablePage").then((module) => ({
     default: module.TimetablePage,
+  })),
+);
+export const SchoolStructurePage = lazy(() =>
+  import("../features/school-structure/pages/SchoolStructurePage").then((module) => ({
+    default: module.SchoolStructurePage,
+  })),
+);
+export const TeacherAccessGrantsPage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherAccessGrantsPage").then((module) => ({
+    default: module.TeacherAccessGrantsPage,
+  })),
+);
+export const TeacherAccessGuestPage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherAccessGuestPage").then((module) => ({
+    default: module.TeacherAccessGuestPage,
   })),
 );
 
