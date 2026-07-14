@@ -55,16 +55,18 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
+  const onTeacherAccessGuestPage =
+    typeof window !== "undefined" && window.location.pathname === "/teacher-access";
 
   // Guest / student flows still authenticate with signed tokens via headers; the
   // admin session is carried entirely by the httpOnly cookie (no client-supplied
   // user id / scope, which the backend no longer trusts).
-  if (currentUser?.virtual_login && currentUser.magic_link_token) {
+  if (!onTeacherAccessGuestPage && currentUser?.virtual_login && currentUser.magic_link_token) {
     config.headers["x-magic-link-token"] = currentUser.magic_link_token;
     if (currentUser.magic_session_token) {
       config.headers["x-magic-session"] = currentUser.magic_session_token;
     }
-  } else if (currentUser?.virtual_login && currentUser.virtual_auth_token) {
+  } else if (!onTeacherAccessGuestPage && currentUser?.virtual_login && currentUser.virtual_auth_token) {
     config.headers["x-virtual-auth"] = currentUser.virtual_auth_token;
   }
 
@@ -99,6 +101,7 @@ apiClient.interceptors.response.use(
       const onPublicLinkPage =
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
+        window.location.pathname === "/teacher-access" ||
         window.location.pathname.startsWith("/apply/");
 
       if (currentUser && !onLoginPage && !onPublicLinkPage) {

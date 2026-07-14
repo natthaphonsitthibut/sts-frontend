@@ -14,6 +14,22 @@ const thaiTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   timeZone: THAI_TIME_ZONE,
 });
 
+const thaiDateKeyFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: THAI_TIME_ZONE,
+});
+
+/** Calendar date (`YYYY-MM-DD`) in the application's canonical Thailand timezone. */
+export function getThaiDateKey(value: Date = new Date()): string {
+  const parts = thaiDateKeyFormatter.formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
 export function formatThaiDateTime(value?: string | Date | null): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
