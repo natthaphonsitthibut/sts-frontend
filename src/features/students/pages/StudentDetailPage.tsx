@@ -14,6 +14,7 @@ import { formatThaiDate } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { StudentObservationManagementPanel } from "../../student-observations/components/StudentObservationManagementPanel";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
@@ -329,6 +330,19 @@ export function StudentDetailPage() {
       />
 
       <AddressPanel student={student} />
+
+      {can("manage-student-observations") ? (
+        <StudentObservationManagementPanel
+          studentTermId={studentId}
+          visitPrefill={{
+            studentId,
+            studentName: fullName,
+            studentSchool: student.school_name ?? null,
+            studentAddress: student.address ?? null,
+            schoolId: student.school_id ?? student.SchoolID_Onec ?? null,
+          }}
+        />
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <RiskHistoryPanel
