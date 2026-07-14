@@ -16,6 +16,7 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { useStudentStatuses } from "../../student-statuses/hooks/useStudentStatuses";
 import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
@@ -185,6 +186,17 @@ export function StudentListPage() {
       ? null
       : (scope.gradeLevels.find((level) => level.label === grade)?.id ?? null);
   const selectedRoomId = room === "ALL" ? undefined : room;
+  const filteredRosterExportUrl = buildDataExportContextUrl(
+    "student_roster_basic",
+    {
+      province: schoolArea.province,
+      district: schoolArea.district,
+      subDistrict: schoolArea.subDistrict,
+      schoolId: scope.schoolId,
+      grade: grade === "ALL" ? undefined : grade,
+      room: room === "ALL" ? undefined : room,
+    },
+  );
 
   // Every filter/page-size change resets to page 1 (handlers below), so the page
   // can't exceed the server's range through normal UI; the Pagination control
@@ -295,11 +307,20 @@ export function StudentListPage() {
                   ดูบนแผนที่ ({selectedStudents.length})
                 </Button>
               ) : null}
-              <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
-                {selectedStudents.length > 0
-                  ? `ส่งออกที่เลือก (${selectedStudents.length})`
-                  : "ส่งออกตามตัวกรองนี้"}
-              </Button>
+              {selectedStudents.length > 0 ? (
+                <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
+                  ส่งออกที่เลือก ({selectedStudents.length})
+                </Button>
+              ) : null}
+              {can("export-data") ? (
+                <Button
+                  icon={FileDown}
+                  onClick={() => navigate(filteredRosterExportUrl)}
+                  variant="outline"
+                >
+                  ส่งออกตามตัวกรองนี้
+                </Button>
+              ) : null}
             </>
           }
           grade={grade}

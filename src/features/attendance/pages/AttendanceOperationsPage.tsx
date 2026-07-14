@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  FileDown,
   Pencil,
   Plus,
   Save,
@@ -56,7 +57,9 @@ import { formatThaiDate } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { cn } from "../../../lib/utils";
 import { hasPermission } from "../../auth/lib/permissions";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { attendanceService } from "../api/attendance.service";
 import { AttendanceSessionDetailDialog } from "../components/AttendanceSessionDetailDialog";
@@ -390,7 +393,9 @@ function CalendarMonthGrid({
 }
 
 export function AttendanceOperationsPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { can } = usePermissions();
   const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("date") ?? "")
     ? (searchParams.get("date") as string)
     : getTodayIso();
@@ -434,6 +439,16 @@ export function AttendanceOperationsPage() {
   const schoolId = scope.isSchoolLocked
     ? String(scope.lockedSchoolId ?? "")
     : schoolInput;
+  const filteredAttendanceExportUrl = buildDataExportContextUrl("attendance_summary", {
+    province: schoolArea.province,
+    district: schoolArea.district,
+    subDistrict: schoolArea.subDistrict,
+    schoolId,
+    grade: gradeFilter,
+    room: roomFilter,
+    dateFrom: date,
+    dateTo: date,
+  });
   const termsQuery = useQuery({
     queryKey: ["attendance-terms", schoolId],
     queryFn: () => attendanceService.getTerms(schoolId),
@@ -702,16 +717,29 @@ export function AttendanceOperationsPage() {
         title="ตรวจสถานะเช็คชื่อรายวัน"
         description="ดูว่าห้องไหนเช็คชื่อครบ ยังไม่เช็ค หรือเช็คไม่ครบในวันที่เลือก"
         footerActions={
-          canManageCalendar && schoolId ? (
-            <Button
-              icon={Plus}
-              onClick={() => {
-                setTermDialogTerm(null);
-                setTermDialogOpen(true);
-              }}
-            >
-              เพิ่มภาคเรียน
-            </Button>
+          can("export-data") || (canManageCalendar && schoolId) ? (
+            <>
+              {can("export-data") ? (
+                <Button
+                  icon={FileDown}
+                  onClick={() => navigate(filteredAttendanceExportUrl)}
+                  variant="outline"
+                >
+                  ส่งออกตามตัวกรองนี้
+                </Button>
+              ) : null}
+              {canManageCalendar && schoolId ? (
+                <Button
+                  icon={Plus}
+                  onClick={() => {
+                    setTermDialogTerm(null);
+                    setTermDialogOpen(true);
+                  }}
+                >
+                  เพิ่มภาคเรียน
+                </Button>
+              ) : null}
+            </>
           ) : undefined
         }
       >
