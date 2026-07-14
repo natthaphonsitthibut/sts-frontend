@@ -1,31 +1,54 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { importService } from "../api/import.service";
 import type {
-  ImportPreviewResult,
+  AnyImportPreviewResult,
   ImportQuarantineFilterParams,
   ImportQuarantineEditableValues,
   ImportQuarantineListParams,
   ImportResult,
+  ImportTarget,
+  SchoolRosterImportContext,
 } from "../types/import.types";
 
 interface SubmitImportVariables {
   file: File;
+  target: ImportTarget;
   mapping?: Record<string, string>;
   onProgress?: (percent: number) => void;
-  schools?: Array<{ id: number; name: string }>;
+  importContext?: SchoolRosterImportContext;
 }
 
 export function useSubmitImport() {
   return useMutation<ImportResult, Error, SubmitImportVariables>({
-    mutationFn: ({ file, mapping, onProgress, schools }) =>
-      importService.submitImport({ file, mapping, onProgress, schools }),
+    mutationFn: ({ file, target, mapping, onProgress, importContext }) =>
+      importService.submitImport({
+        file,
+        target,
+        mapping,
+        onProgress,
+        importContext,
+      }),
   });
 }
 
 export function usePreviewImport() {
-  return useMutation<ImportPreviewResult, Error, SubmitImportVariables>({
-    mutationFn: ({ file, mapping, onProgress }) =>
-      importService.previewImport({ file, mapping, onProgress }),
+  return useMutation<AnyImportPreviewResult, Error, SubmitImportVariables>({
+    mutationFn: ({ file, target, mapping, onProgress, importContext }) =>
+      importService.previewImport({
+        file,
+        target,
+        mapping,
+        onProgress,
+        importContext,
+      }),
+  });
+}
+
+export function useImportCatalog() {
+  return useQuery({
+    queryKey: ["imports", "catalog"],
+    queryFn: () => importService.getCatalog(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -102,7 +125,9 @@ export function useRetryReadyImportQuarantine() {
     mutationFn: (filters: ImportQuarantineFilterParams) =>
       importService.retryReadyQuarantine(filters),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["imports", "quarantine"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["imports", "quarantine"],
+      });
     },
   });
 }
@@ -130,10 +155,17 @@ export function useResolveImportQuarantine() {
 export function useFixImportQuarantineValues() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, values }: { id: string; values: ImportQuarantineEditableValues }) =>
-      importService.fixQuarantineValues(id, values),
+    mutationFn: ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: ImportQuarantineEditableValues;
+    }) => importService.fixQuarantineValues(id, values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["imports", "quarantine"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["imports", "quarantine"],
+      });
     },
   });
 }
@@ -141,7 +173,9 @@ export function useFixImportQuarantineValues() {
 export function useExportImportQuarantine() {
   return useMutation({
     mutationFn: (
-      params: ImportQuarantineFilterParams & { status: "PENDING" | "RESOLVED" | "REJECTED" },
+      params: ImportQuarantineFilterParams & {
+        status: "PENDING" | "RESOLVED" | "REJECTED";
+      },
     ) => importService.exportQuarantine(params),
   });
 }

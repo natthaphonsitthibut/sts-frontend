@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import {
   Alert,
@@ -10,7 +11,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,
   Select,
   Tabs,
   useConfirm,
@@ -35,48 +35,46 @@ import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
   useExportImportQuarantine,
   useImportQuarantine,
+  useImportCatalog,
   useImportQuarantineLookups,
   usePreviewImport,
   useSubmitImport,
 } from "../hooks/useSubmitImport";
 import {
+  type AnyImportPreviewResult,
+  type CatalogImportPreviewResult,
+  type ImportCatalogField,
   type ImportPreviewResult,
+  type ImportTarget,
   type QuarantinePageSize,
   type QuarantineStatus,
-  STUDENT_TERM_IMPORT_LABEL,
 } from "../types/import.types";
 
-const IMPORT_MAPPING_FIELDS = [
-  { column: "PersonID_Onec", label: "เลขประจำตัว/เลขบัตร", required: true },
-  { column: "FullName_Onec", label: "ชื่อ-นามสกุล (คอลัมน์เดียว)", required: false },
-  { column: "FirstName_Onec", label: "ชื่อ", required: false },
-  { column: "LastName_Onec", label: "นามสกุล", required: false },
-  { column: "AcademicYear_Onec", label: "ปีการศึกษา", required: true },
-  { column: "Semester_Onec", label: "เทอม", required: true },
-  { column: "SchoolID_Onec", label: "รหัสโรงเรียน", required: true },
-  { column: "GradeLevelID_Onec", label: "ชั้นเรียน", required: false },
-  { column: "RoomID_Onec", label: "ห้อง", required: false },
-  { column: "VillageNumber_Onec", label: "หมู่", required: false },
-  { column: "Street_Onec", label: "ถนน", required: false },
-  { column: "Soi_Onec", label: "ซอย", required: false },
-  { column: "Trok_Onec", label: "ตรอก", required: false },
-] as const;
+function isStudentPreview(
+  preview: AnyImportPreviewResult,
+): preview is ImportPreviewResult {
+  return preview.target === "student_term";
+}
 
 function effectiveMapping(
   localMapping: Record<string, string>,
-  preview?: ImportPreviewResult,
+  preview?: AnyImportPreviewResult,
 ): Record<string, string> {
-  return Object.keys(localMapping).length > 0 ? localMapping : (preview?.mapping ?? {});
+  return Object.keys(localMapping).length > 0
+    ? localMapping
+    : (preview?.mapping ?? {});
 }
 
 function ImportMappingPanel({
   mapping,
   onMappingChange,
   preview,
+  fields,
 }: {
   mapping: Record<string, string>;
   onMappingChange: (column: string, header: string) => void;
-  preview: ImportPreviewResult;
+  preview: AnyImportPreviewResult;
+  fields: ImportCatalogField[];
 }) {
   const currentMapping = effectiveMapping(mapping, preview);
 
@@ -86,38 +84,52 @@ function ImportMappingPanel({
         <div>
           <div className="font-bold text-slate-900">จับคู่คอลัมน์</div>
           <div className="mt-1 text-sm text-slate-500">
-            ระบบรองรับหัวคอลัมน์มาตรฐาน ชื่อทั่วไป หรือ ID และรองรับชื่อ-นามสกุลทั้งแบบรวมและแยกคอลัมน์
+            ระบบรองรับหัวคอลัมน์มาตรฐาน ชื่อทั่วไป หรือ ID
+            และรองรับชื่อ-นามสกุลทั้งแบบรวมและแยกคอลัมน์
           </div>
         </div>
-        <Badge variant="secondary">{preview.headers.length} คอลัมน์ในไฟล์</Badge>
+        <Badge variant="secondary">
+          {preview.headers.length} คอลัมน์ในไฟล์
+        </Badge>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {IMPORT_MAPPING_FIELDS.map((field) => {
-          const sourceHeader = currentMapping[field.column];
-          const samples = preview.mappedColumnSamples[field.column] ?? [];
-          const sampleIsStale = sourceHeader !== preview.mapping[field.column];
+        {fields.map((field) => {
+          const sourceHeader = currentMapping[field.key];
+          const studentPreview = isStudentPreview(preview)
+            ? preview
+            : undefined;
+          const samples = studentPreview?.mappedColumnSamples[field.key] ?? [];
+          const sampleIsStale = sourceHeader !== preview.mapping[field.key];
           const usedByAnotherField = new Set(
             Object.entries(currentMapping)
-              .filter(([column]) => column !== field.column)
+              .filter(([column]) => column !== field.key)
               .map(([, header]) => header),
           );
           return (
             <label
               className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-3"
-              key={field.column}
+              key={field.key}
             >
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <span>{field.label}</span>
-                {field.required ? <Badge variant="warning">บังคับ</Badge> : null}
+                {field.required ? (
+                  <Badge variant="warning">บังคับ</Badge>
+                ) : null}
               </div>
               <Select
-                value={currentMapping[field.column] ?? ""}
-                onChange={(event) => onMappingChange(field.column, event.target.value)}
+                value={currentMapping[field.key] ?? ""}
+                onChange={(event) =>
+                  onMappingChange(field.key, event.target.value)
+                }
               >
                 <option value="">ไม่ใช้คอลัมน์นี้</option>
                 {preview.headers.map((header) => (
-                  <option disabled={usedByAnotherField.has(header)} key={header} value={header}>
+                  <option
+                    disabled={usedByAnotherField.has(header)}
+                    key={header}
+                    value={header}
+                  >
                     {header}
                   </option>
                 ))}
@@ -127,7 +139,9 @@ function ImportMappingPanel({
                   <>
                     <div>
                       ค่าจากคอลัมน์{" "}
-                      <span className="font-semibold text-slate-700">“{sourceHeader}”</span>
+                      <span className="font-semibold text-slate-700">
+                        “{sourceHeader}”
+                      </span>
                     </div>
                     <div>
                       ตัวอย่าง:{" "}
@@ -135,7 +149,7 @@ function ImportMappingPanel({
                         ? "กดตรวจสอบไฟล์อีกครั้งเพื่ออัปเดตตัวอย่าง"
                         : samples.length > 0
                           ? samples.join(" · ")
-                          : field.column === "PersonID_Onec"
+                          : field.key === "PersonID_Onec"
                             ? "ไม่พบค่าที่เป็นเลขประจำตัวในแถวตัวอย่าง"
                             : "ไม่มีค่าในแถวตัวอย่าง"}
                     </div>
@@ -164,7 +178,9 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-bold text-slate-900">ผลตรวจสอบไฟล์</div>
-          <div className="mt-1 text-sm text-slate-500">{preview.targetLabel}</div>
+          <div className="mt-1 text-sm text-slate-500">
+            {preview.targetLabel}
+          </div>
         </div>
         <Badge variant={preview.canImport ? "success" : "warning"}>
           {preview.canImport ? "พร้อมนำเข้า" : "ต้องตรวจสอบ"}
@@ -174,17 +190,50 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       <SummaryMetrics
         columns={3}
         items={[
-          { label: "ทั้งหมด", value: preview.rowsProcessed, tone: "default", emphasis: true },
+          {
+            label: "ทั้งหมด",
+            value: preview.rowsProcessed,
+            tone: "default",
+            emphasis: true,
+          },
           { label: "เพิ่มใหม่", value: preview.rowsToInsert, tone: "success" },
-          { label: "อัปเดตข้อมูลเดิม", value: preview.rowsToUpdate, tone: "default" },
-          { label: "รอตรวจสอบ", value: preview.rowsToQuarantine ?? 0, tone: "warning" },
+          {
+            label: "อัปเดตข้อมูลเดิม",
+            value: preview.rowsToUpdate,
+            tone: "default",
+          },
+          {
+            label: "รอตรวจสอบ",
+            value: preview.rowsToQuarantine ?? 0,
+            tone: "warning",
+          },
           { label: "ข้าม", value: preview.rowsSkipped, tone: "warning" },
           { label: "ซ้ำในไฟล์", value: preview.duplicateRows, tone: "warning" },
-          { label: "ไม่มีรหัส", value: preview.missingPersonIdRows, tone: "danger" },
-          { label: "ข้อมูลภาคเรียนไม่ครบ", value: preview.missingNaturalKeyRows, tone: "danger" },
-          { label: "ไม่พบโรงเรียน", value: preview.missingSchoolRows ?? 0, tone: "danger" },
-          { label: "ชั้นไม่ถูกต้อง", value: preview.gradeIssueRows ?? 0, tone: "danger" },
-          { label: "ห้องไม่ถูกต้อง", value: preview.roomIssueRows ?? 0, tone: "danger" },
+          {
+            label: "ไม่มีรหัส",
+            value: preview.missingPersonIdRows,
+            tone: "danger",
+          },
+          {
+            label: "ข้อมูลภาคเรียนไม่ครบ",
+            value: preview.missingNaturalKeyRows,
+            tone: "danger",
+          },
+          {
+            label: "ไม่พบโรงเรียน",
+            value: preview.missingSchoolRows ?? 0,
+            tone: "danger",
+          },
+          {
+            label: "ชั้นไม่ถูกต้อง",
+            value: preview.gradeIssueRows ?? 0,
+            tone: "danger",
+          },
+          {
+            label: "ห้องไม่ถูกต้อง",
+            value: preview.roomIssueRows ?? 0,
+            tone: "danger",
+          },
           {
             label: "มีภาคเรียนในโรงเรียนอื่น",
             value: preview.differentSchoolRows ?? 0,
@@ -196,8 +245,9 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       <Alert>
         <AlertTitle>กติกาการอัปเดต</AlertTitle>
         <AlertDescription>
-          ค่าว่างจากไฟล์จะไม่ทับข้อมูลเดิม และระบบจะไม่เปลี่ยนบุคคล ปี เทอม หรือโรงเรียนของ enrollment เดิม
-          หากโรงเรียนต่างกัน ระบบจะสร้าง snapshot ใหม่
+          ค่าว่างจากไฟล์จะไม่ทับข้อมูลเดิม และระบบจะไม่เปลี่ยนบุคคล ปี เทอม
+          หรือโรงเรียนของ enrollment เดิม หากโรงเรียนต่างกัน ระบบจะสร้าง
+          snapshot ใหม่
         </AlertDescription>
       </Alert>
 
@@ -210,14 +260,16 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
         </Alert>
       ) : null}
 
-      {preview.missingRecommendedColumns.length > 0 || preview.unmappedHeaders.length > 0 ? (
+      {preview.missingRecommendedColumns.length > 0 ||
+      preview.unmappedHeaders.length > 0 ? (
         <Alert variant="warning">
           <AlertTitle>มีข้อมูลที่ควรตรวจสอบ</AlertTitle>
           <AlertDescription>
             {preview.missingRecommendedColumns.length > 0
               ? `คอลัมน์แนะนำที่ยังไม่พบ: ${preview.missingRecommendedColumns.join(", ")}`
               : null}
-            {preview.missingRecommendedColumns.length > 0 && preview.unmappedHeaders.length > 0
+            {preview.missingRecommendedColumns.length > 0 &&
+            preview.unmappedHeaders.length > 0
               ? " · "
               : null}
             {preview.unmappedHeaders.length > 0
@@ -230,9 +282,12 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
       {preview.sampleRows.length > 0 ? (
         <div>
           <div className="mb-2">
-            <div className="font-semibold text-slate-800">ตัวอย่างข้อมูลจากไฟล์</div>
+            <div className="font-semibold text-slate-800">
+              ตัวอย่างข้อมูลจากไฟล์
+            </div>
             <div className="text-sm text-slate-500">
-              ชื่อใต้หัวตารางคือคอลัมน์ต้นทางที่ระบบจับคู่ ค่าโรงเรียน ชั้น และสถานะจะแสดงชื่อที่ระบบค้นพบควบคู่กับรหัสจากไฟล์
+              ชื่อใต้หัวตารางคือคอลัมน์ต้นทางที่ระบบจับคู่ ค่าโรงเรียน ชั้น
+              และสถานะจะแสดงชื่อที่ระบบค้นพบควบคู่กับรหัสจากไฟล์
             </div>
           </div>
           <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -240,9 +295,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
               <div>แถว</div>
               <div>
                 ชื่อ
-                <div className="font-normal text-slate-500">
-                  {nameSource}
-                </div>
+                <div className="font-normal text-slate-500">{nameSource}</div>
               </div>
               <div>
                 โรงเรียน
@@ -278,30 +331,44 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                 className="grid min-w-[1120px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] border-t border-slate-100 px-3 py-2 text-sm"
                 key={row.rowNumber}
               >
-                <div className="font-medium text-slate-500">{row.rowNumber}</div>
+                <div className="font-medium text-slate-500">
+                  {row.rowNumber}
+                </div>
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-slate-800">
                     {row.firstName} {row.lastName}
                   </div>
-                  <div className="text-xs text-slate-500">{row.personIdMasked}</div>
+                  <div className="text-xs text-slate-500">
+                    {row.personIdMasked}
+                  </div>
                 </div>
                 <div className="text-slate-700">
                   <div className="font-medium">{row.schoolName}</div>
-                  <div className="text-xs text-slate-500">รหัสจากไฟล์: {row.schoolId}</div>
+                  <div className="text-xs text-slate-500">
+                    รหัสจากไฟล์: {row.schoolId}
+                  </div>
                 </div>
                 <div className="text-slate-700">
                   ปี {row.academicYear} · เทอม {row.semester}
                 </div>
                 <div className="text-slate-700">
-                  <div>{row.gradeLabel} · ห้อง {row.roomId}</div>
-                  <div className="text-xs text-slate-500">รหัสชั้นจากไฟล์: {row.gradeLevelId}</div>
+                  <div>
+                    {row.gradeLabel} · ห้อง {row.roomId}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    รหัสชั้นจากไฟล์: {row.gradeLevelId}
+                  </div>
                 </div>
                 <div className="text-slate-700">
                   <div>{row.studentStatusLabel}</div>
-                  <div className="text-xs text-slate-500">รหัสจากไฟล์: {row.studentStatusCode}</div>
+                  <div className="text-xs text-slate-500">
+                    รหัสจากไฟล์: {row.studentStatusCode}
+                  </div>
                 </div>
                 <div>
-                  <Badge variant={row.action === "insert" ? "success" : "warning"}>
+                  <Badge
+                    variant={row.action === "insert" ? "success" : "warning"}
+                  >
                     {row.action === "insert"
                       ? "เพิ่มใหม่"
                       : row.action === "update"
@@ -323,11 +390,124 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
   );
 }
 
+function CatalogImportPreviewPanel({
+  preview,
+  fields,
+}: {
+  preview: CatalogImportPreviewResult;
+  fields: ImportCatalogField[];
+}) {
+  return (
+    <div className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-bold text-slate-900">ผลตรวจสอบไฟล์</div>
+          <div className="mt-1 text-sm text-slate-500">
+            {preview.targetLabel}
+          </div>
+        </div>
+        <Badge variant={preview.canImport ? "success" : "warning"}>
+          {preview.canImport ? "พร้อมนำเข้า" : "ต้องตรวจสอบ"}
+        </Badge>
+      </div>
+      <SummaryMetrics
+        columns={4}
+        items={[
+          {
+            label: "ทั้งหมด",
+            value: preview.rowsProcessed,
+            tone: "default",
+            emphasis: true,
+          },
+          { label: "เพิ่มใหม่", value: preview.rowsToInsert, tone: "success" },
+          {
+            label: "รอตรวจสอบ",
+            value: preview.rowsToQuarantine,
+            tone: "warning",
+          },
+          {
+            label: "ข้ามรายการเดิม",
+            value: preview.rowsSkipped,
+            tone: "default",
+          },
+        ]}
+      />
+      {preview.sampleRows.length > 0 ? (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-bold text-slate-600">
+              <tr>
+                <th className="px-3 py-2">แถว</th>
+                {fields.map((field) => (
+                  <th className="px-3 py-2" key={field.key}>
+                    {field.label}
+                  </th>
+                ))}
+                <th className="px-3 py-2">ผลตรวจ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.sampleRows.map((row) => (
+                <tr className="border-t border-slate-100" key={row.rowNumber}>
+                  <td className="px-3 py-2 font-medium text-slate-500">
+                    {row.rowNumber}
+                  </td>
+                  {fields.map((field) => (
+                    <td
+                      className="max-w-64 truncate px-3 py-2 text-slate-700"
+                      key={field.key}
+                    >
+                      {row.values[field.key] || "-"}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2">
+                    <Badge
+                      variant={
+                        row.action === "insert"
+                          ? "success"
+                          : row.action === "quarantine"
+                            ? "warning"
+                            : "secondary"
+                      }
+                    >
+                      {row.action === "insert"
+                        ? "เพิ่มใหม่"
+                        : row.action === "quarantine"
+                          ? "รอตรวจสอบ"
+                          : "ข้าม"}
+                    </Badge>
+                    {row.issues.length > 0 ? (
+                      <div className="mt-1 max-w-72 text-xs text-slate-500">
+                        {row.issues.join(", ")}
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ImportDataPage() {
+  const [searchParams] = useSearchParams();
+  const positiveSearchParam = (key: string): number | undefined => {
+    const value = Number(searchParams.get(key));
+    return Number.isInteger(value) && value > 0 ? value : undefined;
+  };
+  const importContext = {
+    schoolId: positiveSearchParam("schoolId"),
+    schoolTermId: positiveSearchParam("schoolTermId"),
+    classroomId: positiveSearchParam("classroomId"),
+  };
   const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
+  const importCatalog = useImportCatalog();
   const [activeTab, setActiveTab] = useRouteTab(
     {
       import: "/import-data",
@@ -337,11 +517,24 @@ export function ImportDataPage() {
     "import",
   );
   const [file, setFile] = useState<File | null>(null);
+  const [requestedTarget, setRequestedTarget] =
+    useState<ImportTarget>("student_term");
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mappingDirty, setMappingDirty] = useState(false);
   const [progress, setProgress] = useState(0);
   const [previewProgress, setPreviewProgress] = useState(0);
-  const [schoolNames, setSchoolNames] = useState<Record<number, string>>({});
+  const allowedTargets = (importCatalog.data?.targets ?? [])
+    .filter((target) => target.allowed)
+    .sort((left, right) => left.dependencyOrder - right.dependencyOrder);
+  const selectedTargetDefinition =
+    allowedTargets.find((target) => target.target === requestedTarget) ??
+    allowedTargets[0];
+  const selectedTarget = selectedTargetDefinition?.target ?? requestedTarget;
+  const missingContextLabels = (
+    selectedTargetDefinition?.canonicalContext ?? []
+  )
+    .filter((requirement) => !importContext[requirement.key])
+    .map((requirement) => requirement.label);
 
   const [quarantinePage, setQuarantinePage] = useState(1);
   const [quarantineRowsPerPage, setQuarantineRowsPerPage] =
@@ -376,8 +569,9 @@ export function ImportDataPage() {
   const quarantineLookups = useImportQuarantineLookups();
   const exportQuarantine = useExportImportQuarantine();
   const retryEligibleLabel =
-    quarantineLookups.data?.resolutionStates.find((state) => state.code === "RETRY_ELIGIBLE")
-      ?.label ?? "RETRY_ELIGIBLE";
+    quarantineLookups.data?.resolutionStates.find(
+      (state) => state.code === "RETRY_ELIGIBLE",
+    )?.label ?? "RETRY_ELIGIBLE";
 
   function resetQuarantineList(): void {
     setQuarantinePage(1);
@@ -417,22 +611,21 @@ export function ImportDataPage() {
   }
 
   async function handlePreview(): Promise<void> {
-    if (!file) {
+    if (!file || !selectedTargetDefinition || missingContextLabels.length > 0) {
       return;
     }
     setPreviewProgress(0);
     submitImport.reset();
     const nextPreview = await previewImport.mutateAsync({
       file,
+      target: selectedTarget,
       mapping,
       onProgress: setPreviewProgress,
+      importContext,
     });
     if (Object.keys(mapping).length === 0) {
       setMapping(nextPreview.mapping);
     }
-    setSchoolNames(
-      Object.fromEntries((nextPreview.missingSchools ?? []).map((school) => [school.id, ""])),
-    );
     setMappingDirty(false);
   }
 
@@ -451,21 +644,29 @@ export function ImportDataPage() {
 
   async function handleSubmit(): Promise<void> {
     const preview = previewImport.data;
-    const schools = (preview?.missingSchools ?? []).map((school) => ({
-      id: school.id,
-      name: schoolNames[school.id]?.trim() ?? "",
-    }));
-    if (!file || !preview?.canImport || mappingDirty || schools.some((school) => !school.name)) {
+    if (
+      !file ||
+      !preview?.canImport ||
+      mappingDirty ||
+      missingContextLabels.length > 0 ||
+      (isStudentPreview(preview) && (preview.missingSchools?.length ?? 0) > 0)
+    ) {
       return;
     }
     const confirmed = await confirm({
       title: "ยืนยันการนำเข้าข้อมูล",
       description: (
         <span>
-          ระบบจะเพิ่มใหม่ {preview.rowsToInsert.toLocaleString("en-US")} แถว อัปเดตข้อมูลเดิม{" "}
-          {preview.rowsToUpdate.toLocaleString("en-US")} แถว ส่งรอตรวจสอบ{" "}
+          ระบบจะเพิ่มใหม่ {preview.rowsToInsert.toLocaleString("en-US")} แถว
+          อัปเดตข้อมูลเดิม{" "}
+          {(isStudentPreview(preview)
+            ? preview.rowsToUpdate
+            : 0
+          ).toLocaleString("en-US")}{" "}
+          แถว ส่งรอตรวจสอบ{" "}
           {(preview.rowsToQuarantine ?? 0).toLocaleString("en-US")} แถว และข้าม{" "}
-          {preview.rowsSkipped.toLocaleString("en-US")} แถว หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
+          {preview.rowsSkipped.toLocaleString("en-US")} แถว
+          หลังยืนยันแล้วจะเริ่มบันทึกข้อมูลเข้าระบบ
         </span>
       ),
       confirmText: "นำเข้าข้อมูล",
@@ -474,15 +675,22 @@ export function ImportDataPage() {
       return;
     }
     setProgress(0);
-    submitImport.mutate({ file, mapping, schools, onProgress: setProgress });
+    submitImport.mutate({
+      file,
+      target: selectedTarget,
+      mapping,
+      onProgress: setProgress,
+      importContext,
+    });
   }
 
   const result = submitImport.data;
   const preview = previewImport.data;
   const isBusy = previewImport.isPending || submitImport.isPending;
-  const hasUnresolvedSchools = (preview?.missingSchools ?? []).some(
-    (school) => !schoolNames[school.id]?.trim(),
-  );
+  const hasMissingSchools =
+    preview && isStudentPreview(preview)
+      ? (preview.missingSchools?.length ?? 0) > 0
+      : false;
 
   return (
     <PageShell>
@@ -494,7 +702,9 @@ export function ImportDataPage() {
             options={[
               { value: "import", label: "นำเข้าข้อมูล" },
               { value: "quarantine", label: "รอตรวจสอบ" },
-              ...(can("audit-log") ? [{ value: "history", label: "ประวัติ" }] : []),
+              ...(can("audit-log")
+                ? [{ value: "history", label: "ประวัติ" }]
+                : []),
             ]}
             value={activeTab}
           />
@@ -503,7 +713,7 @@ export function ImportDataPage() {
         title="นำเข้าข้อมูล"
         description={
           activeTab === "import"
-            ? "อัปโหลดไฟล์ Excel / CSV เพื่อนำเข้าข้อมูลนักเรียน"
+            ? "อัปโหลดไฟล์ Excel / CSV ตามลำดับข้อมูลหลักของโรงเรียน"
             : activeTab === "quarantine"
               ? "แก้ไขรายการที่ต้องตรวจสอบก่อนเข้าสู่ข้อมูลนักเรียน"
               : "ดูรายการนำเข้าข้อมูลย้อนหลังตามขอบเขตสิทธิ์ของบัญชี"
@@ -581,6 +791,18 @@ export function ImportDataPage() {
           ) : undefined
         }
       />
+      {activeTab === "import" && selectedTargetDefinition ? (
+        <Alert className="mb-5">
+          <AlertTitle>ใช้บริบทข้อมูลหลักจากหน้าโครงสร้างโรงเรียน</AlertTitle>
+          <AlertDescription>
+            ระบบจะตรวจสอบ{" "}
+            {selectedTargetDefinition.canonicalContext
+              .map((item) => item.label)
+              .join(" / ")}{" "}
+            จากฝั่งเซิร์ฟเวอร์ และจะไม่ใช้ขอบเขตจากไฟล์แทนบริบทนี้
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {activeTab === "import" ? (
         <div>
@@ -590,14 +812,14 @@ export function ImportDataPage() {
                 <CardTitle>รายละเอียดการนำเข้า</CardTitle>
                 <Badge
                   variant={
-                    preview?.canImport && !mappingDirty && !hasUnresolvedSchools
+                    preview?.canImport && !mappingDirty && !hasMissingSchools
                       ? "success"
                       : file
                         ? "warning"
                         : "secondary"
                   }
                 >
-                  {preview?.canImport && !mappingDirty && !hasUnresolvedSchools
+                  {preview?.canImport && !mappingDirty && !hasMissingSchools
                     ? "พร้อมนำเข้า"
                     : mappingDirty
                       ? "ต้องตรวจสอบใหม่"
@@ -608,14 +830,71 @@ export function ImportDataPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {importCatalog.isError ? (
+                <Alert className="mb-4" variant="destructive">
+                  <AlertTitle>โหลดรายการประเภทข้อมูลไม่สำเร็จ</AlertTitle>
+                  <AlertDescription>
+                    {getApiErrorMessage(
+                      importCatalog.error,
+                      "กรุณาลองโหลดหน้าอีกครั้ง",
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {missingContextLabels.length > 0 ? (
+                <Alert className="mb-4" variant="warning">
+                  <AlertTitle>ยังขาดบริบทข้อมูลหลัก</AlertTitle>
+                  <AlertDescription>
+                    กรุณาเปิดหน้านี้จากโครงสร้างโรงเรียนโดยเลือก{" "}
+                    {missingContextLabels.join(" / ")} ก่อนนำเข้า
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-sm font-medium text-slate-500">
+                  <label
+                    className="text-sm font-medium text-slate-500"
+                    htmlFor="import-target"
+                  >
                     ประเภทข้อมูล
-                  </div>
-                  <div className="mt-1 font-bold text-slate-900">
-                    {STUDENT_TERM_IMPORT_LABEL}
-                  </div>
+                  </label>
+                  <Select
+                    className="mt-1"
+                    disabled={
+                      importCatalog.isPending ||
+                      allowedTargets.length === 0 ||
+                      isBusy
+                    }
+                    id="import-target"
+                    onChange={(event) => {
+                      setRequestedTarget(event.target.value as ImportTarget);
+                      setFile(null);
+                      setMapping({});
+                      setMappingDirty(false);
+                      previewImport.reset();
+                      submitImport.reset();
+                    }}
+                    value={selectedTarget}
+                  >
+                    {allowedTargets.map((target) => (
+                      <option key={target.target} value={target.target}>
+                        {target.dependencyOrder}. {target.label}
+                      </option>
+                    ))}
+                  </Select>
+                  {selectedTargetDefinition?.dependsOn.length ? (
+                    <div className="mt-1 text-xs text-slate-500">
+                      ต้องนำเข้าก่อน:{" "}
+                      {selectedTargetDefinition.dependsOn
+                        .map(
+                          (dependency) =>
+                            importCatalog.data?.targets.find(
+                              (item) => item.target === dependency,
+                            )?.label ?? dependency,
+                        )
+                        .join(" → ")}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="text-sm font-medium text-slate-500">
@@ -629,7 +908,8 @@ export function ImportDataPage() {
 
               <Alert className="mt-4">
                 <AlertDescription>
-                  ระบบจะตรวจสอบไฟล์ก่อนนำเข้าจริง รองรับหัวคอลัมน์มาตรฐานและชื่อทั่วไป
+                  ระบบจะตรวจสอบไฟล์ก่อนนำเข้าจริง
+                  รองรับหัวคอลัมน์มาตรฐานและชื่อทั่วไป
                   หากจับคู่ไม่ตรงสามารถเลือกคอลัมน์ใหม่แล้วตรวจสอบอีกครั้ง
                 </AlertDescription>
               </Alert>
@@ -681,6 +961,11 @@ export function ImportDataPage() {
               {preview ? (
                 <>
                   <ImportMappingPanel
+                    fields={
+                      selectedTargetDefinition?.fields.filter(
+                        (field) => field.source === "file",
+                      ) ?? []
+                    }
                     mapping={mapping}
                     onMappingChange={handleMappingChange}
                     preview={preview}
@@ -689,45 +974,45 @@ export function ImportDataPage() {
                     <Alert className="mt-4" variant="warning">
                       <AlertTitle>ต้องตรวจสอบไฟล์อีกครั้ง</AlertTitle>
                       <AlertDescription>
-                        คุณเปลี่ยนการจับคู่คอลัมน์แล้ว กรุณากดตรวจสอบไฟล์อีกครั้งก่อนนำเข้า
+                        คุณเปลี่ยนการจับคู่คอลัมน์แล้ว
+                        กรุณากดตรวจสอบไฟล์อีกครั้งก่อนนำเข้า
                       </AlertDescription>
                     </Alert>
                   ) : null}
-                  {(preview.missingSchools ?? []).length > 0 ? (
+                  {isStudentPreview(preview) &&
+                  (preview.missingSchools ?? []).length > 0 ? (
                     <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
                       <div>
-                        <div className="font-bold text-amber-950">เพิ่มข้อมูลโรงเรียนที่ยังไม่พบ</div>
+                        <div className="font-bold text-amber-950">
+                          พบโรงเรียนที่ยังไม่มีในข้อมูลหลัก
+                        </div>
                         <div className="mt-1 text-sm text-amber-800">
-                          กรอกชื่อให้ครบทุกรหัสก่อนนำเข้า ระบบจะสร้างเฉพาะโรงเรียนที่ยังไม่มีในข้อมูลหลัก
+                          การนำเข้านักเรียนจะไม่สร้างโรงเรียนให้อัตโนมัติ
+                          กรุณาให้ผู้ดูแลเพิ่มโรงเรียนผ่านขั้นตอน onboarding
+                          ก่อน แล้วตรวจสอบไฟล์อีกครั้ง
                         </div>
                       </div>
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="flex flex-wrap gap-2">
                         {(preview.missingSchools ?? []).map((school) => (
-                          <label
-                            className="space-y-1.5"
-                            htmlFor={`missing-school-${school.id}`}
-                            key={school.id}
-                          >
-                            <span className="text-sm font-semibold text-amber-950">
-                              รหัสโรงเรียน {school.id}
-                            </span>
-                            <Input
-                              id={`missing-school-${school.id}`}
-                              onChange={(event) =>
-                                setSchoolNames((current) => ({
-                                  ...current,
-                                  [school.id]: event.target.value,
-                                }))
-                              }
-                              placeholder="ชื่อโรงเรียน"
-                              value={schoolNames[school.id] ?? ""}
-                            />
-                          </label>
+                          <Badge key={school.id} variant="warning">
+                            รหัสโรงเรียน {school.id}
+                          </Badge>
                         ))}
                       </div>
                     </div>
                   ) : null}
-                  <ImportPreviewPanel preview={preview} />
+                  {isStudentPreview(preview) ? (
+                    <ImportPreviewPanel preview={preview} />
+                  ) : (
+                    <CatalogImportPreviewPanel
+                      fields={
+                        selectedTargetDefinition?.fields.filter(
+                          (field) => field.source === "file",
+                        ) ?? []
+                      }
+                      preview={preview}
+                    />
+                  )}
                 </>
               ) : null}
 
@@ -756,10 +1041,27 @@ export function ImportDataPage() {
                         className="mt-3"
                         columns={5}
                         items={[
-                          { label: "ทั้งหมด", value: result.rowsProcessed, tone: "default", emphasis: true },
-                          { label: "เพิ่มใหม่", value: result.rowsInserted, tone: "success" },
-                          { label: "อัปเดต", value: result.rowsUpdated, tone: "default" },
-                          { label: "ข้าม", value: result.rowsSkipped, tone: "warning" },
+                          {
+                            label: "ทั้งหมด",
+                            value: result.rowsProcessed,
+                            tone: "default",
+                            emphasis: true,
+                          },
+                          {
+                            label: "เพิ่มใหม่",
+                            value: result.rowsInserted,
+                            tone: "success",
+                          },
+                          {
+                            label: "อัปเดต",
+                            value: result.rowsUpdated,
+                            tone: "default",
+                          },
+                          {
+                            label: "ข้าม",
+                            value: result.rowsSkipped,
+                            tone: "warning",
+                          },
                           {
                             label: "รอตรวจสอบ",
                             value: result.rowsQuarantined ?? 0,
@@ -774,7 +1076,12 @@ export function ImportDataPage() {
 
               <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button
-                  disabled={!file || isBusy}
+                  disabled={
+                    !file ||
+                    isBusy ||
+                    !selectedTargetDefinition ||
+                    missingContextLabels.length > 0
+                  }
                   icon={FileSpreadsheet}
                   isLoading={previewImport.isPending}
                   loadingText="กำลังตรวจสอบ"
@@ -789,7 +1096,9 @@ export function ImportDataPage() {
                     !file ||
                     !preview?.canImport ||
                     mappingDirty ||
-                    hasUnresolvedSchools ||
+                    hasMissingSchools ||
+                    missingContextLabels.length > 0 ||
+                    !selectedTargetDefinition ||
                     previewImport.isPending
                   }
                   icon={Upload}

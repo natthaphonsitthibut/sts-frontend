@@ -1,6 +1,7 @@
 import { apiClient } from "../../../lib/api-client";
 import {
-  type ImportPreviewResult,
+  type AnyImportPreviewResult,
+  type ImportCatalogResponse,
   type ImportQuarantineCandidateResponse,
   type ImportQuarantineFilterParams,
   type ImportQuarantineEditableValues,
@@ -10,35 +11,55 @@ import {
   type ImportQuarantineResponse,
   type ImportQuarantineRetryResult,
   type ImportQuarantineRetrySummary,
-  STUDENT_TERM_IMPORT_TARGET,
+  type ImportTarget,
   type ImportResult,
+  type SchoolRosterImportContext,
+  type TeacherImportPreviewResult,
+  type TeacherImportResult,
 } from "../types/import.types";
 
 interface SubmitImportParams {
   file: File;
+  target: ImportTarget;
   /**
    * Column → field mapping. The interactive mapping UI is deferred, so this
    * defaults to empty; the backend response is surfaced as-is for feedback.
    */
   mapping?: Record<string, string>;
   onProgress?: (percent: number) => void;
-  schools?: Array<{ id: number; name: string }>;
+  importContext?: SchoolRosterImportContext;
+}
+
+function appendImportContext(
+  formData: FormData,
+  context?: SchoolRosterImportContext,
+): void {
+  if (!context) return;
+  if (context.schoolId) formData.append("schoolId", String(context.schoolId));
+  if (context.schoolTermId)
+    formData.append("schoolTermId", String(context.schoolTermId));
+  if (context.classroomId)
+    formData.append("classroomId", String(context.classroomId));
+}
+
+async function getCatalog(): Promise<ImportCatalogResponse> {
+  const response =
+    await apiClient.get<ImportCatalogResponse>("/imports/catalog");
+  return response.data;
 }
 
 async function submitImport({
   file,
+  target,
   mapping = {},
   onProgress,
-  schools = [],
+  importContext,
 }: SubmitImportParams): Promise<ImportResult> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("target", STUDENT_TERM_IMPORT_TARGET);
+  formData.append("target", target);
   formData.append("mapping", JSON.stringify(mapping));
-  if (schools.length > 0) {
-    formData.append("schools", JSON.stringify(schools));
-  }
-
+  appendImportContext(formData, importContext);
   const response = await apiClient.post<ImportResult>(
     "/imports/bulk",
     formData,
@@ -55,15 +76,18 @@ async function submitImport({
 
 async function previewImport({
   file,
+  target,
   mapping = {},
   onProgress,
-}: SubmitImportParams): Promise<ImportPreviewResult> {
+  importContext,
+}: SubmitImportParams): Promise<AnyImportPreviewResult> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("target", STUDENT_TERM_IMPORT_TARGET);
+  formData.append("target", target);
   formData.append("mapping", JSON.stringify(mapping));
+  appendImportContext(formData, importContext);
 
-  const response = await apiClient.post<ImportPreviewResult>(
+  const response = await apiClient.post<AnyImportPreviewResult>(
     "/imports/preview",
     formData,
     {
@@ -73,6 +97,34 @@ async function previewImport({
         }
       },
     },
+  );
+  return response.data;
+}
+
+async function previewTeacherImport(
+  file: File,
+  schoolId: number,
+): Promise<TeacherImportPreviewResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("schoolId", String(schoolId));
+  const response = await apiClient.post<TeacherImportPreviewResult>(
+    "/imports/teachers/preview",
+    formData,
+  );
+  return response.data;
+}
+
+async function submitTeacherImport(
+  file: File,
+  schoolId: number,
+): Promise<TeacherImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("schoolId", String(schoolId));
+  const response = await apiClient.post<TeacherImportResult>(
+    "/imports/teachers/bulk",
+    formData,
   );
   return response.data;
 }
@@ -175,7 +227,9 @@ async function fixQuarantineValues(
 }
 
 async function exportQuarantine(
-  params: ImportQuarantineFilterParams & { status: "PENDING" | "RESOLVED" | "REJECTED" },
+  params: ImportQuarantineFilterParams & {
+    status: "PENDING" | "RESOLVED" | "REJECTED";
+  },
 ): Promise<Blob> {
   const response = await apiClient.get<Blob>("/imports/quarantine-export", {
     params: { status: params.status, ...quarantineFilterParams(params) },
@@ -185,8 +239,11 @@ async function exportQuarantine(
 }
 
 export const importService = {
+  getCatalog,
   previewImport,
   submitImport,
+  previewTeacherImport,
+  submitTeacherImport,
   getQuarantine,
   getQuarantineLookups,
   listQuarantine,

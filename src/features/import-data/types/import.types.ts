@@ -1,14 +1,109 @@
-export const STUDENT_TERM_IMPORT_TARGET = "student_term";
-export const STUDENT_TERM_IMPORT_LABEL = "ข้อมูลนักเรียนในระบบ (รายภาคเรียน)";
+export type ImportTarget =
+  | "school_teacher_membership"
+  | "school_classroom"
+  | "classroom_teacher_assignment"
+  | "student_term";
 
+export interface SchoolRosterImportContext {
+  schoolId?: number;
+  schoolTermId?: number;
+  classroomId?: number;
+}
+
+export interface ImportCatalogField {
+  key: string;
+  label: string;
+  required: boolean;
+  aliases: string[];
+  referenceSource: string | null;
+  valueType: "string" | "integer" | "date" | "enum";
+  allowedValues?: string[];
+  source: "file" | "canonicalContext";
+}
+
+export interface ImportCatalogContextRequirement {
+  key: "schoolId" | "schoolTermId" | "classroomId";
+  label: string;
+  referenceSource: "schools" | "school_terms" | "school_classrooms";
+}
+
+export interface ImportCatalogTarget {
+  target: ImportTarget;
+  version: string;
+  label: string;
+  capability: "import-data" | "import-school-roster";
+  allowed: boolean;
+  dependencyOrder: number;
+  dependsOn: ImportTarget[];
+  canonicalContext: ImportCatalogContextRequirement[];
+  fields: ImportCatalogField[];
+}
+
+export interface ImportCatalogResponse {
+  version: string;
+  targets: ImportCatalogTarget[];
+}
+
+export interface TeacherImportPreviewResult {
+  target: "school_teacher_membership";
+  rowsProcessed: number;
+  rowsReady: number;
+  rowsSkipped: number;
+  rowsToQuarantine: number;
+  sampleRows: Array<{
+    rowNumber: number;
+    username: string;
+    displayName: string;
+    action: "insert" | "skip" | "quarantine";
+    issue: string | null;
+  }>;
+}
+
+export interface TeacherImportResult {
+  success: true;
+  batchId: string;
+  rowsProcessed: number;
+  rowsInserted: number;
+  rowsSkipped: number;
+  rowsQuarantined: number;
+}
 export interface ImportResult {
   success: boolean;
+  target?: ImportTarget;
+  batchId?: string;
   rowsProcessed: number;
   rowsInserted: number;
   rowsUpdated: number;
   rowsSkipped: number;
   rowsQuarantined?: number;
 }
+
+export interface CatalogImportPreviewRow {
+  rowNumber: number;
+  action: "insert" | "skip" | "quarantine";
+  values: Record<string, string>;
+  issues: string[];
+}
+
+export interface CatalogImportPreviewResult {
+  target: Exclude<ImportTarget, "student_term">;
+  targetLabel: string;
+  canImport: boolean;
+  headers: string[];
+  mapping: Record<string, string>;
+  rowsProcessed: number;
+  rowsReady: number;
+  rowsSkipped: number;
+  rowsToInsert: number;
+  rowsToQuarantine: number;
+  missingRequiredColumns: string[];
+  unmappedHeaders: string[];
+  sampleRows: CatalogImportPreviewRow[];
+}
+
+export type AnyImportPreviewResult =
+  | ImportPreviewResult
+  | CatalogImportPreviewResult;
 
 export interface ImportPreviewRow {
   rowNumber: number;
@@ -98,8 +193,17 @@ export interface ImportQuarantineItem {
     newValue: string;
   }>;
   resolution: {
-    state: "ACTION_REQUIRED" | "DECISION_REQUIRED" | "RETRY_ELIGIBLE" | "BLOCKED";
-    action: "EDIT_FIELDS" | "SELECT_CANDIDATE" | "RETRY" | "OPEN_REVIEW" | "NONE";
+    state:
+      | "ACTION_REQUIRED"
+      | "DECISION_REQUIRED"
+      | "RETRY_ELIGIBLE"
+      | "BLOCKED";
+    action:
+      | "EDIT_FIELDS"
+      | "SELECT_CANDIDATE"
+      | "RETRY"
+      | "OPEN_REVIEW"
+      | "NONE";
     code: string;
     label: string;
     message: string;
@@ -109,7 +213,12 @@ export interface ImportQuarantineItem {
   editableValues: Record<string, string>;
 }
 
-export type BadgeVariant = "default" | "secondary" | "destructive" | "success" | "warning";
+export type BadgeVariant =
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "success"
+  | "warning";
 
 export interface ImportQuarantineResponse {
   items: ImportQuarantineItem[];
