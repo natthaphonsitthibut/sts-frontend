@@ -5,6 +5,7 @@ import {
   Activity,
   AlertCircle,
   CheckCircle2,
+  FileDown,
   LayoutDashboard,
   Plus,
   Search,
@@ -40,6 +41,8 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
@@ -219,6 +222,7 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [searchParams] = useSearchParams();
   const initialRiskTier = searchParams.get("riskTier");
   const [riskTier, setRiskTier] = useState<RiskDashboardTierFilter>(() =>
@@ -243,6 +247,15 @@ export function DashboardPage() {
   });
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const sortBy = sort ? SORT_KEY_MAP[sort.key] : undefined;
+  const filteredRiskExportUrl = buildDataExportContextUrl("student_risk", {
+    province: schoolArea.province,
+    district: schoolArea.district,
+    subDistrict: schoolArea.subDistrict,
+    schoolId: scope.schoolId,
+    grade: scope.grade,
+    room: scope.room,
+    riskTier: riskTier === "ALL" ? undefined : riskTier,
+  });
 
   const query = useMemo<RiskDashboardQuery>(
     () => ({
@@ -404,7 +417,20 @@ export function DashboardPage() {
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
         description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
-        tableActions={<RefreshButton onRefresh={() => void riskQuery.refetch()} />}
+        tableActions={
+          <>
+            {can("export-data") ? (
+              <Button
+                icon={FileDown}
+                onClick={() => navigate(filteredRiskExportUrl)}
+                variant="outline"
+              >
+                ส่งออกตามตัวกรองนี้
+              </Button>
+            ) : null}
+            <RefreshButton onRefresh={() => void riskQuery.refetch()} />
+          </>
+        }
         search={{
           value: search,
           onChange: handleSearchChange,

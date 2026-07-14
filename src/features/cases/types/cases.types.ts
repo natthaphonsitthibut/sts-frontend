@@ -4,7 +4,7 @@ export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
   | "IN_PROGRESS"
-  | "AWAITING_HELP"
+  | "REPORTED_UP"
   | "RESOLVED";
 
 export type CaseStatus = KnownCaseStatus | (string & {});
@@ -18,21 +18,15 @@ export type CaseBadgeVariant =
 
 export type CaseSummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
-export type CaseReviewAction = "ASSIST" | "FORWARD" | "CLOSE";
+export type CaseReviewAction = "ASSIST" | "CLOSE";
+export type CaseWorkflowAction = CaseReviewAction | "REPORT_UP";
 export type CaseResolutionOutcome =
   | "RETURNED_TO_SCHOOL"
   | "TRANSFERRED_SCHOOL"
   | "ILLNESS"
   | "WORKING"
   | "UNREACHABLE"
-  | "REFERRED_EXTERNAL"
   | "OTHER";
-export type CaseReferralOutcomeStatus =
-  | "ACKNOWLEDGED"
-  | "ACCEPTED"
-  | "DECLINED"
-  | "RETURNED";
-
 export interface CaseRecord {
   id: number;
   student_id?: string | null;
@@ -79,7 +73,7 @@ export interface CaseStats {
   atRiskStudents?: number;
   open: number;
   inProgress: number;
-  awaitingHelp: number;
+  reportedUp: number;
   resolved: number;
   today: number;
   pendingReview: number;
@@ -99,49 +93,32 @@ export interface CaseReviewRecord {
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note?: string | null;
-  agency_id?: number | null;
-  referral_note?: string | null;
   resolution_outcome?: CaseResolutionOutcome | null;
 }
 
-export interface ReferralAgency {
-  id: number;
-  name: string;
-  agency_type: string;
-  province?: string | null;
-  district?: string | null;
-  sub_district?: string | null;
-  phone?: string | null;
-  contact_person?: string | null;
-  address?: string | null;
+export interface CaseReportUpPayload {
+  reason: string;
+  summary: string;
 }
 
-export interface CaseReferralRecord {
+export interface CaseReportUpRecord {
   id: string;
   case_id: number;
-  agency_id?: number | null;
-  agency_name_snapshot: string;
-  agency_type_snapshot: string;
-  referred_by?: number | null;
-  referred_by_label?: string | null;
-  referred_at: string;
-  referral_note?: string | null;
-  status: string;
-  outcome?: string | null;
-  responded_at?: string | null;
-  phone?: string | null;
-  contact_person?: string | null;
-  address?: string | null;
+  school_id: number | null;
+  reported_by: number | null;
+  reported_by_label: string | null;
+  report_reason: string | null;
+  report_summary: string | null;
+  school_name_snapshot: string | null;
+  province_snapshot: string | null;
+  district_snapshot: string | null;
+  sub_district_snapshot: string | null;
+  reported_at: string;
 }
 
-export interface CaseReferralOutcomePayload {
-  status: CaseReferralOutcomeStatus;
-  outcome?: string | null;
-}
-
-export interface CaseReferralOutcomeResponse {
-  success?: boolean;
-  data?: CaseReferralRecord | null;
+export interface CaseReportUpResponse {
+  success: boolean;
+  data: CaseReportUpRecord;
 }
 
 export interface CaseReviewResponse {
@@ -149,5 +126,4 @@ export interface CaseReviewResponse {
   message?: string;
   case?: Record<string, unknown> | null;
   review?: CaseReviewRecord | null;
-  referral?: CaseReferralRecord | null;
 }

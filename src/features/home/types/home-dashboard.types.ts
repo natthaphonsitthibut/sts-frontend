@@ -73,7 +73,7 @@ export interface HomeDashboardRiskDistribution {
 export interface HomeDashboardCasePipeline {
   OPEN: number;
   IN_PROGRESS: number;
-  AWAITING_HELP: number;
+  REPORTED_UP: number;
   PENDING_REVIEW: number;
   RESOLVED: number;
 }

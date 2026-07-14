@@ -8,18 +8,12 @@ import type {
   CaseListQuery,
   CasePaginationMeta,
   CaseRecord,
-  CaseReferralOutcomePayload,
-  CaseReferralOutcomeResponse,
+  CaseReportUpPayload,
+  CaseReportUpResponse,
   CaseReviewPayload,
   CaseReviewResponse,
-  CaseReferralRecord,
   CaseStats,
-  ReferralAgency,
 } from "../types/cases.types";
-
-interface DataEnvelope<T> {
-  data?: T;
-}
 
 interface CasesService {
   getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }>;
@@ -33,20 +27,7 @@ interface CasesService {
     caseId: number,
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
-  updateCaseReferralOutcome: (
-    caseId: number,
-    referralId: string,
-    payload: CaseReferralOutcomePayload,
-  ) => Promise<CaseReferralOutcomeResponse>;
-  getReferralAgencies: (caseId: number) => Promise<ReferralAgency[]>;
-  getCaseReferrals: (caseId: number) => Promise<CaseReferralRecord[]>;
-}
-
-function unwrapData<T>(data: T | DataEnvelope<T>): T {
-  if (data && typeof data === "object" && "data" in data) {
-    return (data as DataEnvelope<T>).data as T;
-  }
-  return data as T;
+  reportUpCase: (caseId: number, payload: CaseReportUpPayload) => Promise<CaseReportUpResponse>;
 }
 
 async function getCases(
@@ -100,37 +81,20 @@ async function reviewCase(
   return response.data;
 }
 
-async function updateCaseReferralOutcome(
+async function reportUpCase(
   caseId: number,
-  referralId: string,
-  payload: CaseReferralOutcomePayload,
-): Promise<CaseReferralOutcomeResponse> {
-  const response = await apiClient.patch<CaseReferralOutcomeResponse>(
-    `/cases/${caseId}/referrals/${referralId}`,
+  payload: CaseReportUpPayload,
+): Promise<CaseReportUpResponse> {
+  const response = await apiClient.post<CaseReportUpResponse>(
+    `/cases/${caseId}/report-up`,
     payload,
   );
   return response.data;
-}
-
-async function getReferralAgencies(caseId: number): Promise<ReferralAgency[]> {
-  const response = await apiClient.get<ReferralAgency[] | DataEnvelope<ReferralAgency[]>>(
-    `/cases/${caseId}/referral-agencies`,
-  );
-  return unwrapData(response.data) || [];
-}
-
-async function getCaseReferrals(caseId: number): Promise<CaseReferralRecord[]> {
-  const response = await apiClient.get<CaseReferralRecord[] | DataEnvelope<CaseReferralRecord[]>>(
-    `/cases/${caseId}/referrals`,
-  );
-  return unwrapData(response.data) || [];
 }
 
 export const casesService: CasesService = {
   getCases,
   getCaseStats,
   reviewCase,
-  updateCaseReferralOutcome,
-  getReferralAgencies,
-  getCaseReferrals,
+  reportUpCase,
 };

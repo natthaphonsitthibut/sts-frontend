@@ -309,6 +309,8 @@ interface VisitPrefill {
   assigned_to_email?: string | null;
   source_field_follower_id?: string | number | null;
   campaign_target_id?: string | number | null;
+  follow_up_request_id?: string | null;
+  target_school_id?: string | number | null;
 }
 
 function makeDefaults(type: TaskType): CreateTaskFormValues {
@@ -372,7 +374,10 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
           firstName: null,
           lastName: null,
           school: prefill.student_school ?? "",
-          schoolId: null,
+          schoolId:
+            prefill.target_school_id === null || prefill.target_school_id === undefined
+              ? null
+              : String(prefill.target_school_id),
         }
       : null,
   );
@@ -688,6 +693,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         student_lng: values.address_longitude ?? null,
         reason_flagged: values.reason_flagged || null,
         existing_case_id: prefill?.existing_case_id ? String(prefill.existing_case_id) : null,
+        follow_up_request_id: prefill?.follow_up_request_id ?? null,
         source_field_follower_id: prefill?.source_field_follower_id ?? null,
         campaign_target_id: prefill?.campaign_target_id ?? null,
       });

@@ -12,8 +12,9 @@ interface UpdateCaseVariables {
 }
 
 /**
- * Updates a case's status by submitting a review action (ASSIST / FORWARD /
- * CLOSE) plus an optional note. The resulting status is resolved server-side.
+ * Updates a case through the school review actions (ASSIST / CLOSE). Reporting
+ * upward is a separate explicit endpoint and hook so report-up semantics cannot
+ * leak back into the review DTO.
  */
 export function useUpdateCase() {
   const queryClient = useQueryClient();

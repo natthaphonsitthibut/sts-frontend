@@ -1,17 +1,17 @@
 import type {
-  CaseReviewAction,
+  CaseWorkflowAction,
   CaseResolutionOutcome,
 } from "../types/cases.types";
 import { formatThaiDateTime } from "../../../lib/date-time";
 
 interface ReviewActionOption {
-  value: CaseReviewAction;
+  value: CaseWorkflowAction;
   label: string;
 }
 
 export const CASE_REVIEW_ACTIONS: ReviewActionOption[] = [
   { value: "ASSIST", label: "ให้ความช่วยเหลือ" },
-  { value: "FORWARD", label: "ส่งต่อหน่วยงาน/ผู้เกี่ยวข้อง" },
+  { value: "REPORT_UP", label: "รายงานขึ้นส่วนกลาง" },
   { value: "CLOSE", label: "ปิดเคส" },
 ];
 
@@ -26,16 +26,15 @@ export const CASE_RESOLUTION_OUTCOMES: ResolutionOutcomeOption[] = [
   { value: "ILLNESS", label: "เจ็บป่วย/รักษาตัว" },
   { value: "WORKING", label: "ทำงานหรือมีภาระครอบครัว" },
   { value: "UNREACHABLE", label: "ติดต่อไม่ได้" },
-  { value: "REFERRED_EXTERNAL", label: "ส่งต่อหน่วยงานภายนอก" },
   { value: "OTHER", label: "อื่น ๆ" },
 ];
 
-export function getCaseReviewActionPermission(action: CaseReviewAction): string {
+export function getCaseReviewActionPermission(action: CaseWorkflowAction): string {
   if (action === "CLOSE") {
     return "close-case";
   }
-  if (action === "FORWARD") {
-    return "forward-case";
+  if (action === "REPORT_UP") {
+    return "report-up-cases";
   }
   return "review-cases";
 }

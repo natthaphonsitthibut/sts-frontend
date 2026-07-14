@@ -1,5 +1,5 @@
 import type { DataScope } from "../../auth/lib/permissions";
-import type { CaseReferralRecord } from "../../cases/types/cases.types";
+import type { CaseReportUpRecord } from "../../cases/types/cases.types";
 
 export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
@@ -39,6 +39,7 @@ export interface TaskCreatePayload {
   permissions?: string[];
   data_scope?: DataScope;
   existing_case_id?: string | null;
+  follow_up_request_id?: string | null;
   source_field_follower_id?: string | number | null;
   campaign_target_id?: string | number | null;
 }
@@ -48,6 +49,8 @@ export interface TaskCreateResponse {
   magic_link: string;
   qr_code_data?: string | null;
   expires_at: string;
+  follow_up_request_id?: string | null;
+  reused?: boolean;
 }
 
 export interface TaskAccessTask {
@@ -163,7 +166,7 @@ export interface TaskChainResponse {
   result_summary?: string | null;
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;
-  referrals?: CaseReferralRecord[];
+  reportUps?: CaseReportUpRecord[];
 }
 
 export type WorkSessionEndReason = "MANUAL" | "SUBMITTED";

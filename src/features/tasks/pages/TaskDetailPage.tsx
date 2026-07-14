@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ClipboardList, SquarePen } from "lucide-react";
-import { Badge, Button, Card } from "../../../components/base";
+import { ArrowLeft, ArrowRight, ClipboardList } from "lucide-react";
+import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -15,15 +15,10 @@ import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { CaseReferralOutcomeDialog } from "../../cases/components/CaseReferralOutcomeDialog";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
-import {
-  canUpdateReferralOutcome,
-  getAgencyTypeLabel,
-} from "../../cases/lib/case-referral-presentation";
-import type { CaseReferralRecord, CaseRecord } from "../../cases/types/cases.types";
+import type { CaseRecord, CaseReportUpRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -37,68 +32,32 @@ import {
   findStatusCatalogItem,
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
-import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
-
-function ReferralCard({
-  canUpdate,
-  onUpdate,
-  referral,
-  statusCatalog,
-}: {
-  canUpdate: boolean;
-  onUpdate: (referral: CaseReferralRecord) => void;
-  referral: CaseReferralRecord;
-  statusCatalog: readonly StatusCatalogItem[];
-}) {
-  const referralStatus = findStatusCatalogItem(statusCatalog, referral.status);
+function ReportUpCard({ reportUp }: { reportUp: CaseReportUpRecord }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="font-bold text-slate-900">
-            {referral.agency_name_snapshot}
-          </div>
+          <div className="font-bold text-slate-900">รายงานขึ้นส่วนกลาง</div>
           <div className="text-sm text-slate-500">
-            {getAgencyTypeLabel(referral.agency_type_snapshot)}
-            {referral.contact_person ? ` · ${referral.contact_person}` : ""}
+            {reportUp.school_name_snapshot || "ไม่ระบุโรงเรียน"}
+            {reportUp.province_snapshot ? ` · ${reportUp.province_snapshot}` : ""}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={referralStatus?.badgeVariant ?? "secondary"}>
-            {referralStatus?.label ?? referral.status}
-          </Badge>
-          {canUpdate ? (
-            <Button
-              icon={SquarePen}
-              onClick={() => onUpdate(referral)}
-              size="sm"
-              variant="outline"
-            >
-              บันทึกผลตอบรับ
-            </Button>
-          ) : null}
-        </div>
+        <Badge variant="destructive">รายงานแล้ว</Badge>
       </div>
       <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-        <div>ส่งโดย {referral.referred_by_label || "-"}</div>
-        <div>ส่งเมื่อ {formatDateTime(referral.referred_at)}</div>
-        <div>{referral.phone || "-"}</div>
-        <div>{referral.address || "-"}</div>
+        <div>รายงานโดย {reportUp.reported_by_label || "-"}</div>
+        <div>รายงานเมื่อ {formatDateTime(reportUp.reported_at)}</div>
       </div>
-      {referral.referral_note ? (
+      {reportUp.report_reason ? (
         <div className="mt-3 text-sm font-medium text-slate-700">
-          {referral.referral_note}
+          {reportUp.report_reason}
         </div>
       ) : null}
-      {referral.outcome ? (
+      {reportUp.report_summary ? (
         <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-          <div className="font-semibold text-slate-900">ผลตอบรับ</div>
-          <div>{referral.outcome}</div>
-          {referral.responded_at ? (
-            <div className="mt-1 text-xs text-slate-500">
-              อัปเดตเมื่อ {formatDateTime(referral.responded_at)}
-            </div>
-          ) : null}
+          <div className="font-semibold text-slate-900">สรุปสำหรับส่วนกลาง</div>
+          <div>{reportUp.report_summary}</div>
         </div>
       ) : null}
     </div>
@@ -110,12 +69,9 @@ export function TaskDetailPage() {
   const taskStatusCatalog = useStatusCatalog("TASK_WORKFLOW").items;
   const linkDisplayCatalog = useStatusCatalog("TASK_LINK_STATE").items;
   const linkStatusCatalog = useStatusCatalog("TASK_LINK_STATUS").items;
-  const referralStatusCatalog = useStatusCatalog("CASE_REFERRAL").items;
   const { taskId } = useParams<{ taskId: string }>();
   const { can } = usePermissions();
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
-  const [selectedReferral, setSelectedReferral] = useState<CaseReferralRecord | null>(null);
-  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const taskQuery = useQuery({
     queryKey: ["task-chain", taskId],
     queryFn: () => taskService.getTaskChain(taskId || ""),
@@ -139,14 +95,7 @@ export function TaskDetailPage() {
     };
   }, [taskData]);
   const canUpdateCase = Boolean(caseRecord) && can("review-cases");
-  const canUpdateReferral =
-    Boolean(caseRecord) && can("review-cases") && can("forward-case");
   const canViewAuditLog = Boolean(caseRecord) && can("audit-log");
-
-  function openReferralOutcome(referral: CaseReferralRecord): void {
-    setSelectedReferral(referral);
-    setReferralDialogOpen(true);
-  }
 
   if (taskQuery.isLoading) {
     return (
@@ -171,7 +120,7 @@ export function TaskDetailPage() {
 
   const task = taskQuery.data;
   const firstSubmission = task.chain.find((link) => link.submission)?.submission;
-  const referrals = task.referrals ?? [];
+  const reportUps = task.reportUps ?? [];
   // Only the current active link in the chain can be opened/closed by an admin.
   const activeLink = task.chain.find(
     (link) =>
@@ -319,7 +268,7 @@ export function TaskDetailPage() {
           <Card className="rounded-lg p-6">
             <AuditLogPanel
               caseId={caseRecord.id}
-              description="ดูประวัติการตรวจสอบ ส่งต่อ ปิดเคส และผลตอบรับของเคสนี้"
+              description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสของรายการนี้"
               domain="cases"
               showReferenceColumn={false}
               title="ประวัติเคสนี้"
@@ -364,20 +313,12 @@ export function TaskDetailPage() {
           </Card>
         ) : null}
 
-        {referrals.length > 0 ? (
+        {reportUps.length > 0 ? (
           <Card className="rounded-lg p-6">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">ประวัติการส่งต่อ</h2>
+            <h2 className="mb-4 text-lg font-bold text-slate-900">ประวัติรายงานขึ้นส่วนกลาง</h2>
             <div className="space-y-3">
-              {referrals.map((referral) => (
-                <ReferralCard
-                  canUpdate={
-                    canUpdateReferral && canUpdateReferralOutcome(referral.status)
-                  }
-                  key={referral.id}
-                  onUpdate={openReferralOutcome}
-                  referral={referral}
-                  statusCatalog={referralStatusCatalog}
-                />
+              {reportUps.map((reportUp) => (
+                <ReportUpCard key={reportUp.id} reportUp={reportUp} />
               ))}
             </div>
           </Card>
@@ -389,14 +330,6 @@ export function TaskDetailPage() {
         onOpenChange={setCaseDialogOpen}
         onUpdated={() => void taskQuery.refetch()}
         open={caseDialogOpen}
-      />
-      <CaseReferralOutcomeDialog
-        caseId={caseRecord?.id ?? null}
-        key={`${selectedReferral?.id ?? "none"}-${referralDialogOpen ? "open" : "closed"}`}
-        onOpenChange={setReferralDialogOpen}
-        onUpdated={() => void taskQuery.refetch()}
-        open={referralDialogOpen}
-        referral={selectedReferral}
       />
     </PageShell>
   );

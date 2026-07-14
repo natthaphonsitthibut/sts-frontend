@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Dialog,
@@ -15,7 +14,7 @@ import {
   Textarea,
 } from "../../../components/base";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { casesService } from "../api/cases.service";
+import { useReportUpCase } from "../hooks/useReportUpCase";
 import { useUpdateCase } from "../hooks/useUpdateCase";
 import {
   CASE_REVIEW_ACTIONS,
@@ -25,7 +24,7 @@ import {
 import type {
   CaseRecord,
   CaseResolutionOutcome,
-  CaseReviewAction,
+  CaseWorkflowAction,
 } from "../types/cases.types";
 
 interface CaseStatusUpdateDialogProps {
@@ -43,9 +42,10 @@ export function CaseStatusUpdateDialog({
 }: CaseStatusUpdateDialogProps) {
   const { can } = usePermissions();
   const updateCase = useUpdateCase();
-  const [action, setAction] = useState<CaseReviewAction>("ASSIST");
+  const reportUpCase = useReportUpCase();
+  const [action, setAction] = useState<CaseWorkflowAction>("ASSIST");
   const [note, setNote] = useState("");
-  const [agencyId, setAgencyId] = useState("");
+  const [reportSummary, setReportSummary] = useState("");
   const [resolutionOutcome, setResolutionOutcome] = useState("");
 
   const allowedActions = useMemo(
@@ -60,17 +60,7 @@ export function CaseStatusUpdateDialog({
   const selectedAction = allowedActions.some((option) => option.value === action)
     ? action
     : (allowedActions[0]?.value ?? "ASSIST");
-  const agencyQuery = useQuery({
-    queryKey: ["case-referral-agencies", caseRecord?.id],
-    queryFn: () => casesService.getReferralAgencies(caseRecord?.id ?? 0),
-    enabled: open && selectedAction === "FORWARD" && Boolean(caseRecord?.id),
-  });
-  const selectedAgencyId = agencyQuery.data?.some(
-    (agency) => String(agency.id) === agencyId,
-  )
-    ? agencyId
-    : "";
-  const requiresAgency = selectedAction === "FORWARD";
+  const requiresReportUp = selectedAction === "REPORT_UP";
   const requiresResolutionOutcome = selectedAction === "CLOSE";
   const selectedResolutionOutcome = CASE_RESOLUTION_OUTCOMES.some(
     (option) => option.value === resolutionOutcome,
@@ -80,11 +70,26 @@ export function CaseStatusUpdateDialog({
   const submitDisabled =
     !caseRecord ||
     allowedActions.length === 0 ||
-    (requiresAgency && !selectedAgencyId) ||
+    (requiresReportUp && (!note.trim() || !reportSummary.trim())) ||
     (requiresResolutionOutcome && !selectedResolutionOutcome);
 
   function handleSubmit(): void {
     if (submitDisabled) {
+      return;
+    }
+    if (selectedAction === "REPORT_UP") {
+      reportUpCase.mutate(
+        {
+          caseId: caseRecord.id,
+          payload: { reason: note.trim(), summary: reportSummary.trim() },
+        },
+        {
+          onSuccess: () => {
+            onUpdated?.();
+            onOpenChange(false);
+          },
+        },
+      );
       return;
     }
     updateCase.mutate(
@@ -93,8 +98,6 @@ export function CaseStatusUpdateDialog({
         payload: {
           review_action: selectedAction,
           review_note: note.trim() || null,
-          agency_id: requiresAgency ? Number(selectedAgencyId) : null,
-          referral_note: requiresAgency ? note.trim() || null : null,
           resolution_outcome: requiresResolutionOutcome
             ? selectedResolutionOutcome || null
             : null,
@@ -127,7 +130,7 @@ export function CaseStatusUpdateDialog({
         <DialogBody>
           <div className="space-y-4">
             <FormErrorAlert
-              error={updateCase.error}
+              error={updateCase.error ?? reportUpCase.error}
               fallback="ไม่สามารถอัปเดตเคสได้ กรุณาลองอีกครั้ง"
             />
 
@@ -135,7 +138,7 @@ export function CaseStatusUpdateDialog({
               <Label htmlFor="case-action">การดำเนินการ</Label>
               <Combobox
                 id="case-action"
-                onChange={(next) => setAction(next as CaseReviewAction)}
+                onChange={(next) => setAction(next as CaseWorkflowAction)}
                 options={allowedActions.map((option) => ({
                   value: option.value,
                   label: option.label,
@@ -148,34 +151,6 @@ export function CaseStatusUpdateDialog({
               <p className="text-sm font-medium text-danger-700">
                 บัญชีนี้ไม่มีสิทธิ์เปลี่ยนสถานะเคส
               </p>
-            ) : null}
-
-            {requiresAgency ? (
-              <div className="space-y-2">
-                <Label htmlFor="case-referral-agency">หน่วยงานปลายทาง</Label>
-                <Combobox
-                  disabled={agencyQuery.isLoading}
-                  id="case-referral-agency"
-                  onChange={setAgencyId}
-                  options={[
-                    { value: "", label: "เลือกหน่วยงาน" },
-                    ...(agencyQuery.data ?? []).map((agency) => ({
-                      value: String(agency.id),
-                      label: `${agency.name} · ${agency.agency_type}`,
-                    })),
-                  ]}
-                  placeholder="ค้นหาหน่วยงาน"
-                  value={selectedAgencyId}
-                />
-                {agencyQuery.isLoading ? (
-                  <p className="text-sm text-slate-500">กำลังโหลดหน่วยงาน...</p>
-                ) : null}
-                {!agencyQuery.isLoading && (agencyQuery.data ?? []).length === 0 ? (
-                  <p className="text-sm font-medium text-warning-700">
-                    ไม่พบหน่วยงานที่ตรงกับพื้นที่ของเคสนี้
-                  </p>
-                ) : null}
-              </div>
             ) : null}
 
             {requiresResolutionOutcome ? (
@@ -195,14 +170,37 @@ export function CaseStatusUpdateDialog({
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="case-note">บันทึกเพิ่มเติม</Label>
+              <Label htmlFor="case-note">
+                {requiresReportUp ? "เหตุผลที่ต้องรายงานขึ้นส่วนกลาง" : "บันทึกเพิ่มเติม"}
+              </Label>
               <Textarea
                 id="case-note"
+                maxLength={requiresReportUp ? 500 : undefined}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="ระบุรายละเอียดการช่วยเหลือ / เหตุผล (ถ้ามี)"
+                placeholder={
+                  requiresReportUp
+                    ? "ระบุสิ่งที่โรงเรียนดำเนินการแล้วและเหตุผลที่ยังต้องการการสนับสนุน"
+                    : "ระบุรายละเอียดการช่วยเหลือ / เหตุผล (ถ้ามี)"
+                }
                 value={note}
               />
             </div>
+
+            {requiresReportUp ? (
+              <div className="space-y-2">
+                <Label htmlFor="case-report-summary">สรุปสำหรับส่วนกลาง</Label>
+                <Textarea
+                  id="case-report-summary"
+                  maxLength={2000}
+                  onChange={(event) => setReportSummary(event.target.value)}
+                  placeholder="สรุปสถานการณ์โดยไม่ใส่ข้อมูลเกินความจำเป็น"
+                  value={reportSummary}
+                />
+                <p className="text-xs text-slate-500">
+                  การรายงานจะเปลี่ยนสถานะเป็น “รายงานขึ้นส่วนกลางแล้ว” เพื่อให้ผู้บริหารเห็นในภาพรวม
+                </p>
+              </div>
+            ) : null}
           </div>
         </DialogBody>
 
@@ -216,7 +214,7 @@ export function CaseStatusUpdateDialog({
           </Button>
           <Button
             disabled={submitDisabled}
-            isLoading={updateCase.isPending}
+            isLoading={updateCase.isPending || reportUpCase.isPending}
             loadingText="กำลังบันทึก"
             onClick={handleSubmit}
             type="button"

@@ -65,7 +65,7 @@ const RISK_LABELS: Record<keyof HomeDashboardRiskDistribution, string> = {
 const CASE_LABELS: Record<keyof HomeDashboardCasePipeline, string> = {
   OPEN: "เปิดใหม่",
   IN_PROGRESS: "กำลังติดตาม",
-  AWAITING_HELP: "รอช่วยเหลือ",
+  REPORTED_UP: "รายงานขึ้นส่วนกลางแล้ว",
   PENDING_REVIEW: "รอตรวจผล",
   RESOLVED: "ปิดแล้ว",
 };

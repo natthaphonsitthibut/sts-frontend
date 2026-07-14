@@ -5,10 +5,11 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
+  FileDown,
   HeartHandshake,
   ListChecks,
 } from "lucide-react";
-import { Tabs } from "../../../components/base";
+import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -27,6 +28,7 @@ import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter"
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
@@ -41,7 +43,7 @@ const CASE_STATUS_ICONS = {
   OPEN: AlertCircle,
   PENDING_REVIEW: ClipboardCheck,
   IN_PROGRESS: Clock,
-  AWAITING_HELP: HeartHandshake,
+  REPORTED_UP: HeartHandshake,
   RESOLVED: CheckCircle2,
 } as const;
 
@@ -97,6 +99,13 @@ export function CasesListPage() {
   });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  const filteredCasesExportUrl = buildDataExportContextUrl("case_summary", {
+    province: schoolArea.province,
+    district: schoolArea.district,
+    subDistrict: schoolArea.subDistrict,
+    schoolId: scope.schoolId,
+    status: status === "ALL" ? undefined : status,
+  });
 
   const query = useMemo<CaseListQuery>(
     () => ({
@@ -195,16 +204,29 @@ export function CasesListPage() {
       {effectiveTab === "list" ? (
         <CaseListFilter
           actions={
-            canViewAuditLog ? (
-              <Tabs
-                aria-label="โหมดเคสช่วยเหลือ"
-                onChange={setActiveTab}
-                options={[
-                  { value: "list", label: "รายการ" },
-                  { value: "history", label: "ประวัติ" },
-                ]}
-                value={activeTab}
-              />
+            canViewAuditLog || can("export-data") ? (
+              <>
+                {canViewAuditLog ? (
+                  <Tabs
+                    aria-label="โหมดเคสช่วยเหลือ"
+                    onChange={setActiveTab}
+                    options={[
+                      { value: "list", label: "รายการ" },
+                      { value: "history", label: "ประวัติ" },
+                    ]}
+                    value={activeTab}
+                  />
+                ) : null}
+                {can("export-data") ? (
+                  <Button
+                    icon={FileDown}
+                    onClick={() => navigate(filteredCasesExportUrl)}
+                    variant="outline"
+                  >
+                    ส่งออกตามตัวกรองนี้
+                  </Button>
+                ) : null}
+              </>
             ) : undefined
           }
           onRefresh={refetch}
@@ -236,7 +258,7 @@ export function CasesListPage() {
               value={activeTab}
             />
           }
-          description="ดูประวัติการตรวจสอบ ส่งต่อ และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}
@@ -252,7 +274,7 @@ export function CasesListPage() {
 
       {effectiveTab === "history" ? (
         <AuditLogPanel
-          description="ดูประวัติการตรวจสอบ ส่งต่อ และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
           district={schoolArea.district || undefined}
           domain="cases"
           province={schoolArea.province || undefined}

@@ -47,7 +47,10 @@ function CaseAction({
     );
   }
 
-  if (canReviewCases && caseRecord.status === "PENDING_REVIEW") {
+  if (
+    canReviewCases &&
+    (caseRecord.status === "PENDING_REVIEW" || caseRecord.status === "IN_PROGRESS")
+  ) {
     return (
       <CaseReviewActionButton onClick={() => onUpdate(caseRecord)}>
         ดำเนินการ
