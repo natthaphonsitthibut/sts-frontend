@@ -19,6 +19,9 @@ interface UseScopeCascadeOptions {
    * driven). Off by default so the check-in page keeps its behaviour.
    */
   lockToActorScope?: boolean;
+  initialSchoolId?: string;
+  initialGrade?: string;
+  initialRoom?: string;
 }
 
 function singleId(values: Array<string | number> | undefined): string {
@@ -45,9 +48,9 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
   });
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
 
-  const [schoolIdState, setSchoolIdState] = useState("");
-  const [gradeState, setGradeState] = useState("");
-  const [roomInput, setRoomInput] = useState("");
+  const [schoolIdState, setSchoolIdState] = useState(options.initialSchoolId ?? "");
+  const [gradeState, setGradeState] = useState(options.initialGrade ?? "");
+  const [roomInput, setRoomInput] = useState(options.initialRoom ?? "");
 
   // The locked school comes straight from the actor's own scope.
   const lockedSchoolId = lock ? singleId(actorScope?.school_ids) : "";

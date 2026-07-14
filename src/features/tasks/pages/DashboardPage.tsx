@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Activity,
   AlertCircle,
@@ -219,13 +219,28 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const [riskTier, setRiskTier] = useState<RiskDashboardTierFilter>("ALL");
+  const [searchParams] = useSearchParams();
+  const initialRiskTier = searchParams.get("riskTier");
+  const [riskTier, setRiskTier] = useState<RiskDashboardTierFilter>(() =>
+    RISK_FILTER_OPTIONS.some((option) => option.value === initialRiskTier)
+      ? (initialRiskTier as RiskDashboardTierFilter)
+      : "ALL",
+  );
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<DataTableSortState | undefined>(DEFAULT_RISK_SORT);
-  const schoolArea = useSchoolAreaFilter();
-  const scope = useScopeCascade({ lockToActorScope: true });
+  const schoolArea = useSchoolAreaFilter({
+    province: searchParams.get("province") || undefined,
+    district: searchParams.get("district") || undefined,
+    subDistrict: searchParams.get("subDistrict") || undefined,
+  });
+  const scope = useScopeCascade({
+    lockToActorScope: true,
+    initialSchoolId: searchParams.get("schoolId") || undefined,
+    initialGrade: searchParams.get("grade") || undefined,
+    initialRoom: searchParams.get("room") || undefined,
+  });
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const sortBy = sort ? SORT_KEY_MAP[sort.key] : undefined;
 

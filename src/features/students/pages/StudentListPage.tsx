@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FileDown, MapPin, UserRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
@@ -41,6 +41,7 @@ const ALL_STUDENT_STATUSES = "ALL";
 
 export function StudentListPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(STUDENT_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
@@ -57,8 +58,8 @@ export function StudentListPage() {
   ];
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [grade, setGrade] = useState("ALL");
-  const [room, setRoom] = useState("ALL");
+  const [grade, setGrade] = useState(() => searchParams.get("grade") || "ALL");
+  const [room, setRoom] = useState(() => searchParams.get("room") || "ALL");
   const [studentStatusCode, setStudentStatusCode] =
     useState<StudentStatusFilterValue | undefined>(undefined);
   const [page, setPage] = useState(1);
@@ -66,8 +67,17 @@ export function StudentListPage() {
   const [selectedStudentsById, setSelectedStudentsById] = useState<Map<string, StudentListItem>>(
     () => new Map(),
   );
-  const schoolArea = useSchoolAreaFilter();
-  const scope = useScopeCascade({ lockToActorScope: true });
+  const schoolArea = useSchoolAreaFilter({
+    province: searchParams.get("province") || undefined,
+    district: searchParams.get("district") || undefined,
+    subDistrict: searchParams.get("subDistrict") || undefined,
+  });
+  const scope = useScopeCascade({
+    lockToActorScope: true,
+    initialSchoolId: searchParams.get("schoolId") || undefined,
+    initialGrade: searchParams.get("grade") || undefined,
+    initialRoom: searchParams.get("room") || undefined,
+  });
   const studentStatusesQuery = useStudentStatuses({
     page: 1,
     limit: 50,

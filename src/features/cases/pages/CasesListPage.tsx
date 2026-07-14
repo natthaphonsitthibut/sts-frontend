@@ -73,18 +73,28 @@ function getInitialSearchQuery(state: unknown): string {
 export function CasesListPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const initialQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(CASE_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
   const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
   const [searchQuery, setSearchQuery] = useState(() => getInitialSearchQuery(location.state));
-  const [status, setStatus] = useState("ALL");
+  const [status, setStatus] = useState(() => initialQuery.get("status") || "ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const schoolArea = useSchoolAreaFilter();
-  const scope = useScopeCascade({ lockToActorScope: true });
+  const schoolArea = useSchoolAreaFilter({
+    province: initialQuery.get("province") || undefined,
+    district: initialQuery.get("district") || undefined,
+    subDistrict: initialQuery.get("subDistrict") || undefined,
+  });
+  const scope = useScopeCascade({
+    lockToActorScope: true,
+    initialSchoolId: initialQuery.get("schoolId") || undefined,
+    initialGrade: initialQuery.get("grade") || undefined,
+    initialRoom: initialQuery.get("room") || undefined,
+  });
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
 

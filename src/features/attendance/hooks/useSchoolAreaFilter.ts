@@ -24,10 +24,14 @@ function unique(values: Array<string | undefined>): string[] {
  * returns nothing for an unscoped/own-only actor, so no flow ever pulls the
  * whole country's schools. Selecting a level resets the levels below it.
  */
-export function useSchoolAreaFilter() {
-  const [province, setProvinceState] = useState("");
-  const [district, setDistrictState] = useState("");
-  const [subDistrict, setSubDistrict] = useState("");
+export function useSchoolAreaFilter(initial: {
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+} = {}) {
+  const [province, setProvinceState] = useState(initial.province ?? "");
+  const [district, setDistrictState] = useState(initial.district ?? "");
+  const [subDistrict, setSubDistrict] = useState(initial.subDistrict ?? "");
   const [schoolSearch, setSchoolSearch] = useState("");
 
   const locationsQuery = useQuery({

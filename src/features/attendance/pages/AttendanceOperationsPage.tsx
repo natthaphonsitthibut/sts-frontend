@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -389,6 +390,10 @@ function CalendarMonthGrid({
 }
 
 export function AttendanceOperationsPage() {
+  const [searchParams] = useSearchParams();
+  const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("date") ?? "")
+    ? (searchParams.get("date") as string)
+    : getTodayIso();
   const reconciliationStatusCatalog = useStatusCatalog("ATTENDANCE_RECONCILIATION");
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const calendarDayCatalog = useStatusCatalog("SCHOOL_CALENDAR_DAY");
@@ -397,13 +402,17 @@ export function AttendanceOperationsPage() {
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
   const canManageCalendar = hasPermission(user?.permissions ?? [], "manage-attendance-calendar");
-  const schoolArea = useSchoolAreaFilter();
-  const [schoolInput, setSchoolInput] = useState("");
+  const schoolArea = useSchoolAreaFilter({
+    province: searchParams.get("province") || undefined,
+    district: searchParams.get("district") || undefined,
+    subDistrict: searchParams.get("subDistrict") || undefined,
+  });
+  const [schoolInput, setSchoolInput] = useState(() => searchParams.get("schoolId") || "");
   const [termInput, setTermInput] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("");
-  const [roomFilter, setRoomFilter] = useState("");
-  const [date, setDate] = useState(getTodayIso());
-  const [calendarDate, setCalendarDate] = useState(getTodayIso());
+  const [gradeFilter, setGradeFilter] = useState(() => searchParams.get("grade") || "");
+  const [roomFilter, setRoomFilter] = useState(() => searchParams.get("room") || "");
+  const [date, setDate] = useState(initialDate);
+  const [calendarDate, setCalendarDate] = useState(initialDate);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
   const [anomalyPage, setAnomalyPage] = useState(1);
