@@ -26,6 +26,12 @@ export interface MenuItem {
 
 export const GRANT_EXEMPT_PERMISSION_IDS = ["student-self"] as const;
 
+const AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS = [
+  "home",
+  "executive-report",
+  "export-data",
+] as const;
+
 export const ROLE_RANKS: Record<string, number> = {
   STUDENT: 1,
   TEACHER: 2,
@@ -76,6 +82,12 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/student-risk-report",
   },
   {
+    id: "executive-report",
+    label: "รายงานภาพรวมผู้บริหาร",
+    iconName: "chart-bar",
+    route: "/executive-reporting",
+  },
+  {
     id: "students",
     label: "รายชื่อนักเรียน",
     iconName: "user-graduate",
@@ -118,6 +130,18 @@ export const MENU_ITEMS: MenuItem[] = [
     label: "จัดการข้อมูล",
     iconName: "file-spreadsheet",
     children: [
+      {
+        id: "manage-school-structure",
+        label: "โครงสร้างโรงเรียน",
+        iconName: "graduation",
+        route: "/school-structure",
+      },
+      {
+        id: "manage-teacher-access",
+        label: "ลิงก์เข้าใช้งานครู",
+        iconName: "link",
+        route: "/teacher-access-grants",
+      },
       {
         id: "import-data",
         label: "นำเข้าข้อมูล",
@@ -244,6 +268,22 @@ export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
+  const isAggregateOnlyExecutive =
+    roles.includes("EXECUTIVE") &&
+    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
+  if (isAggregateOnlyExecutive) {
+    const hasWildcard = customPermissions.some(
+      (permission) => permission === "*" || permission === "ALL",
+    );
+    return hasWildcard
+      ? [...AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS]
+      : customPermissions.filter((permission) =>
+          AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS.includes(
+            permission as (typeof AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS)[number],
+          ),
+        );
+  }
+
   const roleDefaults = roles.some((role) => role === "ADMIN" || role === "DIRECTOR")
     ? ["edit-students", "export-data"]
     : [];
