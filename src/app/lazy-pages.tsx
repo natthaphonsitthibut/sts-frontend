@@ -96,6 +96,11 @@ export const CasesListPage = lazy(() =>
     default: module.CasesListPage,
   })),
 );
+export const DataExportsPage = lazy(() =>
+  import("../features/data-exports/pages/DataExportsPage").then((module) => ({
+    default: module.DataExportsPage,
+  })),
+);
 export const MainPage = lazy(() =>
   import("../features/home/pages/MainPage").then((module) => ({
     default: module.MainPage,

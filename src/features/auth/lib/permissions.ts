@@ -114,10 +114,23 @@ export const MENU_ITEMS: MenuItem[] = [
     route: "/create",
   },
   {
-    id: "import-data",
-    label: "นำเข้าข้อมูล",
-    iconName: "file-import",
-    route: "/import-data",
+    id: "data-management",
+    label: "จัดการข้อมูล",
+    iconName: "file-spreadsheet",
+    children: [
+      {
+        id: "import-data",
+        label: "นำเข้าข้อมูล",
+        iconName: "file-import",
+        route: "/import-data",
+      },
+      {
+        id: "export-data",
+        label: "ส่งออกข้อมูล",
+        iconName: "download",
+        route: "/data-exports",
+      },
+    ],
   },
   {
     id: "attendance-system",
@@ -232,7 +245,7 @@ export function getEffectivePermissions(
   customPermissions: string[] = [],
 ): string[] {
   const roleDefaults = roles.some((role) => role === "ADMIN" || role === "DIRECTOR")
-    ? ["edit-students"]
+    ? ["edit-students", "export-data"]
     : [];
   return Array.from(new Set([...customPermissions, ...roleDefaults]));
 }

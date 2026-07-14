@@ -13,6 +13,7 @@ import {
   CasesListPage,
   ChangePasswordPage,
   CreateTaskPage,
+  DataExportsPage,
   DashboardPage,
   DelegatePage,
   ExpiredPage,
@@ -196,6 +197,10 @@ export const router = createBrowserRouter([
       {
         path: "import-data",
         element: protectedElement(<ImportDataPage />, "import-data"),
+      },
+      {
+        path: "data-exports",
+        element: protectedElement(<DataExportsPage />, "export-data"),
       },
       {
         path: "import-data/quarantine",

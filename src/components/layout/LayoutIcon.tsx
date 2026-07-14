@@ -7,7 +7,9 @@ import {
   ChartNoAxesColumn,
   ClipboardCheck,
   Edit3,
+  Download,
   FileInput,
+  FileSpreadsheet,
   FolderHeart,
   GraduationCap,
   HeartHandshake,
@@ -47,6 +49,10 @@ export function LayoutIcon({ className, iconName }: LayoutIconProps) {
       return <ClipboardCheck className={className} aria-hidden="true" />;
     case "edit":
       return <Edit3 className={className} aria-hidden="true" />;
+    case "download":
+      return <Download className={className} aria-hidden="true" />;
+    case "file-spreadsheet":
+      return <FileSpreadsheet className={className} aria-hidden="true" />;
     case "file-import":
       return <FileInput className={className} aria-hidden="true" />;
     case "folder-heart":
