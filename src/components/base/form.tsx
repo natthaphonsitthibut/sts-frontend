@@ -14,12 +14,20 @@ export interface FormProps<TFieldValues extends FieldValues> {
   children: ReactNode;
   form: UseFormReturn<TFieldValues>;
   onSubmit: (values: TFieldValues) => void | Promise<void>;
+  /**
+   * Called after a failed validation pass, in addition to the shared
+   * scroll-to-first-error behaviour. Pages whose fields can be unmounted at
+   * submit time (tabbed forms) use this to surface errors the scroll cannot
+   * reach — an invisible field silently swallows the submit otherwise.
+   */
+  onInvalid?: (errors: FieldErrors<TFieldValues>) => void;
 }
 
 export function Form<TFieldValues extends FieldValues>({
   children,
   form,
   onSubmit,
+  onInvalid,
 }: FormProps<TFieldValues>) {
   // On a failed submit, scroll to and focus the first invalid field so the user
   // is taken straight to what is missing instead of scrolling to find it. Shared
@@ -38,7 +46,13 @@ export function Form<TFieldValues extends FieldValues>({
 
   return (
     <FormProvider {...form}>
-      <form noValidate onSubmit={form.handleSubmit(onSubmit, scrollToFirstError)}>
+      <form
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          scrollToFirstError(errors);
+          onInvalid?.(errors);
+        })}
+      >
         {children}
       </form>
     </FormProvider>

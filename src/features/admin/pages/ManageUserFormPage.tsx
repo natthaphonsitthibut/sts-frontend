@@ -2,9 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { ArrowLeft, UserCog } from "lucide-react";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
   Combobox,
@@ -157,6 +160,31 @@ function resolveBaseline(
   return [];
 }
 
+/** Thai labels for the submit-blocked summary — keep in step with the form's FormLabel texts. */
+const FIELD_LABELS: Partial<Record<keyof UserFormValues, string>> = {
+  username: "ชื่อผู้ใช้งาน",
+  password: "รหัสผ่าน",
+  FirstName: "ชื่อ",
+  LastName: "นามสกุล",
+  PersonID_Onec: "เลขบัตรประชาชน",
+  phone: "เบอร์โทรศัพท์",
+  email: "อีเมล",
+  line_id: "LINE ID",
+  address_postal_code: "รหัสไปรษณีย์",
+  address_latitude: "พิกัดที่อยู่",
+  address_longitude: "พิกัดที่อยู่",
+  role: "ตำแหน่ง",
+  status: "สถานะ",
+};
+
+interface BlockedError {
+  field: string;
+  label: string;
+  message: string;
+  /** Field ไม่ได้ render อยู่บนแท็บปัจจุบัน — คนกดจะไม่เห็น error ที่ตัว field */
+  hidden: boolean;
+}
+
 function toDefaults(user: ManagedUser | null): UserFormValues {
   if (!user) {
     return EMPTY_USER_FORM;
@@ -224,6 +252,7 @@ function UserForm({
     queryFn: attendanceLookupService.getLocations,
   });
   const geocode = useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: geoService.geocodeProfileAddress,
     onSuccess: (result) => {
       if (!result) return;
@@ -269,12 +298,26 @@ function UserForm({
   const isCustomized = !sameSet(permissions, baseline);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null);
+  const [blockedErrors, setBlockedErrors] = useState<BlockedError[]>([]);
   const [scopeLabels, setScopeLabels] = useState<ScopeSelectionLabels | null>(null);
   const handleScopeLabelsChange = useCallback(
     (labels: ScopeSelectionLabels) => setScopeLabels(labels),
     [],
   );
-  const { labelOf } = usePermissionCatalog();
+  const { catalog: permissionCatalog, labelOf } = usePermissionCatalog();
+  // Permission ids the backend no longer recognises (renamed/retired) still sit
+  // on older accounts; submitting them makes the backend reject the whole save
+  // ("สิทธิ์ไม่ถูกต้อง: …"), so they must be stripped from the payload. Only
+  // sanitize once the catalog actually loaded — an empty catalog on fetch
+  // failure must not wipe the account's permissions.
+  const validPermissionIds = useMemo(
+    () => new Set([...permissionCatalog.map((item) => item.id), "*", "ALL"]),
+    [permissionCatalog],
+  );
+  const legacyPermissions =
+    permissionCatalog.length > 0
+      ? permissions.filter((permission) => !validPermissionIds.has(permission))
+      : [];
 
   // A flexible role with no area selected = nationwide access. Highlighted in
   // the review dialog before saving (there is no longer a dedicated checkbox).
@@ -302,13 +345,55 @@ function UserForm({
   // Step 1: validate scope, then open the review dialog for a final recheck.
   function handleSubmit(values: UserFormValues): void {
     if (scopeError) {
-      document
-        .getElementById("user-permission-scope")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const scopeSection = document.getElementById("user-permission-scope");
+      scopeSection?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setBlockedErrors([
+        {
+          field: "data_scope",
+          label: "ขอบเขตข้อมูล",
+          message: scopeError,
+          hidden: !scopeSection,
+        },
+      ]);
       return;
     }
+    setBlockedErrors([]);
     setPendingValues(values);
     setReviewOpen(true);
+  }
+
+  // Validation failed — the shared scroll-to-first-error can't reach fields on
+  // a tab that isn't rendered, so surface every error next to the submit
+  // button. Without this, saving from the permissions tab while a profile
+  // field is invalid does nothing visible at all.
+  function handleInvalid(errors: FieldErrors<UserFormValues>): void {
+    setBlockedErrors(
+      Object.entries(errors).map(([field, error]) => ({
+        field,
+        label: FIELD_LABELS[field as keyof UserFormValues] ?? field,
+        message:
+          typeof error?.message === "string" && error.message
+            ? error.message
+            : "ข้อมูลไม่ถูกต้อง",
+        hidden: !document.querySelector(`[name="${field}"]`),
+      })),
+    );
+  }
+
+  // Jump to the tab that actually renders the invalid fields, then take the
+  // user to the first one (route change keeps this component instance, so no
+  // form state is lost).
+  function goFixOnInfoTab(): void {
+    const firstHidden = blockedErrors.find((item) => item.hidden);
+    void navigate(`/manage-users/${user?.id}/edit`);
+    window.setTimeout(() => {
+      if (!firstHidden) return;
+      const field = document.querySelector(`[name="${firstHidden.field}"]`);
+      if (field instanceof HTMLElement) {
+        field.scrollIntoView({ behavior: "smooth", block: "center" });
+        field.focus({ preventScroll: true });
+      }
+    }, 150);
   }
 
   // Step 2: user confirmed in the review dialog — build the payload and save.
@@ -331,7 +416,12 @@ function UserForm({
       PersonID_Onec: values.PersonID_Onec.trim(),
       role,
       roles: [role],
-      permissions: isCustomized ? permissions : [],
+      permissions: isCustomized
+        ? permissions.filter(
+            (permission) =>
+              permissionCatalog.length === 0 || validPermissionIds.has(permission),
+          )
+        : [],
       status: values.status,
       data_scope: dataScope,
       line_id: values.line_id.trim(),
@@ -363,7 +453,16 @@ function UserForm({
           }
           goBack();
         },
-        onError: () => setReviewOpen(false),
+        onError: () => {
+          setReviewOpen(false);
+          // The error alert sits at the top of the form; the user is at the
+          // bottom (submit row) when the dialog closes — bring it into view.
+          requestAnimationFrame(() => {
+            document
+              .getElementById("user-save-error")
+              ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          });
+        },
       },
     );
   }
@@ -383,20 +482,30 @@ function UserForm({
         isNationwide: isNationwideScope,
         isCustomized,
         permissions,
-        addedPermissions: permissions.filter((permission) => !baseline.includes(permission)),
-        removedPermissions: baseline.filter((permission) => !permissions.includes(permission)),
+        addedPermissions: permissions.filter(
+          (permission) =>
+            !baseline.includes(permission) && !legacyPermissions.includes(permission),
+        ),
+        // Retired ids surface under "เอาออก" so the cleanup is visible in the
+        // review step instead of silently disappearing from the account.
+        removedPermissions: [
+          ...baseline.filter((permission) => !permissions.includes(permission)),
+          ...legacyPermissions,
+        ],
       }
     : null;
 
   return (
     <>
-      <Form form={form} onSubmit={handleSubmit}>
+      <Form form={form} onInvalid={handleInvalid} onSubmit={handleSubmit}>
         <Card className="p-6">
-          <FormErrorAlert
-            className="mb-4"
-            error={saveUser.error}
-            fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
-          />
+          <div id="user-save-error">
+            <FormErrorAlert
+              className="mb-4"
+              error={saveUser.error}
+              fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+            />
+          </div>
 
           {activeTab !== "permissions" ? (
           <>
@@ -560,6 +669,37 @@ function UserForm({
               showErrors={form.formState.isSubmitted}
             />
           </div>
+          ) : null}
+
+          {blockedErrors.length > 0 ? (
+            <Alert className="mt-6" variant="destructive">
+              <AlertTitle>ยังบันทึกไม่ได้ — มีข้อมูลไม่ผ่านการตรวจสอบ</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc space-y-1 pl-5">
+                  {blockedErrors.map((item) => (
+                    <li key={item.field}>
+                      {item.label}: {item.message}
+                      {item.hidden && activeTab === "permissions"
+                        ? " (อยู่ในแท็บข้อมูล)"
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+              {isEdit &&
+              activeTab === "permissions" &&
+              blockedErrors.some((item) => item.hidden) ? (
+                <Button
+                  className="mt-3"
+                  onClick={goFixOnInfoTab}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  ไปแก้ในแท็บข้อมูล
+                </Button>
+              ) : null}
+            </Alert>
           ) : null}
 
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
