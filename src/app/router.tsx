@@ -51,7 +51,6 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
-  TeacherAccessGrantsPage,
   TeacherAccessGuestPage,
   TimetablePage,
   UserDetailPage,
@@ -208,7 +207,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "teacher-access-grants",
-        element: protectedElement(<TeacherAccessGrantsPage />, "manage-teacher-access"),
+        element: <LegacyRouteRedirect to="/login-links/teacher" />,
       },
       {
         path: "import-data",
@@ -216,6 +215,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "data-exports",
+        element: protectedElement(<DataExportsPage />, "export-data"),
+      },
+      {
+        path: "data-exports/history",
         element: protectedElement(<DataExportsPage />, "export-data"),
       },
       {
@@ -297,7 +300,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "login-links",
-        element: protectedElement(<LoginLinksPage />, "login-links"),
+        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
       },
       {
         path: "field-followers",
@@ -337,7 +340,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "login-links/history",
-        element: protectedElement(<LoginLinksPage />, "login-links"),
+        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
+      },
+      {
+        path: "login-links/teacher",
+        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
       },
       {
         path: "login-links/:id",

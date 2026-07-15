@@ -1,28 +1,8 @@
-import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
+import { PAGE_IDENTITIES } from "./page-identity";
 
-/**
- * Topbar title is derived from the sidebar MENU_ITEMS so the header title always
- * matches the menu label — no hand-maintained duplicate map that can drift.
- */
-function collectMenuTitles(
-  items: MenuItem[],
-  acc: Record<string, string>,
-): void {
-  for (const item of items) {
-    if (item.route) {
-      acc[item.route] = item.label;
-    }
-    for (const activeRoute of item.activeRoutes ?? []) {
-      acc[activeRoute] = item.label;
-    }
-    if (item.children) {
-      collectMenuTitles(item.children, acc);
-    }
-  }
-}
-
-const MENU_TITLES: Record<string, string> = {};
-collectMenuTitles(MENU_ITEMS, MENU_TITLES);
+const MENU_TITLES = Object.fromEntries(
+  Object.entries(PAGE_IDENTITIES).map(([route, identity]) => [route, identity.title]),
+);
 
 /** Routes not present in the sidebar menu still need a header title. */
 const EXTRA_TITLES: Record<string, string> = {

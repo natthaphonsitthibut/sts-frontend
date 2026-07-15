@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { CalendarClock, CheckCircle2, Clock, Link2, Lock } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import { Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -27,13 +29,51 @@ import { useLoginLinks, useSetLinkLock } from "../hooks/useLoginLinks";
 import { isLoginLinkLocked } from "../lib/login-links-presentation";
 import type { LoginLink, LoginLinkListQuery } from "../types/login-links.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import { TeacherAccessGrantsPage } from "../../teacher-access/pages/TeacherAccessGrantsPage";
 
 const LOGIN_LINK_TAB_ROUTES = {
   manage: "/login-links",
   history: "/login-links/history",
 } as const;
 
+const ACCESS_LINK_TAB_ROUTES = {
+  account: "/login-links",
+  teacher: "/login-links/teacher",
+} as const;
+
 export function LoginLinksPage() {
+  const { can } = usePermissions();
+  const [accessTab, setAccessTab] = useRouteTab(ACCESS_LINK_TAB_ROUTES, "account");
+  const canManageAccountLinks = can("login-links");
+  const canManageTeacherLinks = can("manage-teacher-access");
+  const accessTabs = (
+    <Tabs
+      aria-label="ประเภทลิงก์เข้าใช้งาน"
+      onChange={setAccessTab}
+      options={[
+        ...(canManageAccountLinks ? [{ value: "account", label: "บัญชีผู้ใช้" }] : []),
+        ...(canManageTeacherLinks ? [{ value: "teacher", label: "ครูตามห้องเรียน" }] : []),
+      ]}
+      value={accessTab}
+    />
+  );
+
+  if (accessTab === "teacher") {
+    return canManageTeacherLinks ? (
+      <TeacherAccessGrantsPage navigationTabs={accessTabs} />
+    ) : (
+      <Navigate replace to="/login-links" />
+    );
+  }
+
+  if (!canManageAccountLinks && canManageTeacherLinks) {
+    return <Navigate replace to="/login-links/teacher" />;
+  }
+
+  return <LoginLinksAccountPage navigationTabs={accessTabs} />;
+}
+
+function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }) {
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(LOGIN_LINK_TAB_ROUTES, "manage");
   const canViewAuditLog = can("audit-log");
@@ -142,17 +182,20 @@ export function LoginLinksPage() {
             : "ดูประวัติการเปิดและปิดลิงก์ย้อนหลังตามขอบเขตสิทธิ์"
         }
         actions={
-          canViewAuditLog ? (
-            <Tabs
-              aria-label="โหมดจัดการลิงก์เข้าสู่ระบบ"
-              onChange={setActiveTab}
-              options={[
-                { value: "manage", label: "จัดการลิงก์" },
-                { value: "history", label: "ประวัติ" },
-              ]}
-              value={activeTab}
-            />
-          ) : undefined
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {navigationTabs}
+            {canViewAuditLog ? (
+              <Tabs
+                aria-label="โหมดจัดการลิงก์เข้าสู่ระบบ"
+                onChange={setActiveTab}
+                options={[
+                  { value: "manage", label: "จัดการลิงก์" },
+                  { value: "history", label: "ประวัติ" },
+                ]}
+                value={activeTab}
+              />
+            ) : null}
+          </div>
         }
         tableActions={
           effectiveTab === "manage" ? (

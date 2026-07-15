@@ -1,3 +1,5 @@
+import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+
 export interface DataScope {
   global?: boolean;
   provinces?: string[];
@@ -18,7 +20,7 @@ export interface MenuItem {
   id: string;
   label: string;
   iconName?: string;
-  permissionId?: string;
+  permissionId?: string | string[];
   route?: string;
   activeRoutes?: string[];
   children?: MenuItem[];
@@ -73,86 +75,51 @@ export function describeDataScopeForDisplay(
   return parts.length > 0 ? parts.join(" · ") : "ยังไม่กำหนดขอบเขต";
 }
 
+const pageMenuItem = (
+  id: string,
+  route: keyof typeof PAGE_IDENTITIES,
+  permissionId?: string | string[],
+): MenuItem => ({
+  id,
+  label: PAGE_IDENTITIES[route].title,
+  iconName: PAGE_IDENTITIES[route].iconName,
+  permissionId,
+  route,
+});
+
 export const MENU_ITEMS: MenuItem[] = [
-  { id: "home", label: "หน้าหลัก", iconName: "home", route: "/" },
-  {
-    id: "dashboard",
-    label: "รายงานนักเรียน",
-    iconName: "chart-line",
-    route: "/student-risk-report",
-  },
-  {
-    id: "executive-report",
-    label: "รายงานภาพรวมผู้บริหาร",
-    iconName: "chart-bar",
-    route: "/executive-reporting",
-  },
-  {
-    id: "students",
-    label: "รายชื่อนักเรียน",
-    iconName: "user-graduate",
-    route: "/students",
-  },
+  pageMenuItem("home", "/"),
+  pageMenuItem("dashboard", "/student-risk-report"),
+  pageMenuItem("executive-report", "/executive-reporting"),
+  pageMenuItem("students", "/students"),
   {
     id: "case-system",
     label: "งานเคส/ช่วยเหลือ",
     iconName: "folder-heart",
     children: [
       {
-        id: "review-cases",
-        label: "เคสช่วยเหลือ",
-        iconName: "heart-handshake",
-        route: "/cases",
+        ...pageMenuItem("review-cases", "/cases"),
       },
       {
-        id: "visit-links",
-        label: "ลิงก์ลงพื้นที่",
-        iconName: "map-pin",
-        permissionId: "review-cases",
-        route: "/visit-links",
+        ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
       },
     ],
   },
-  {
-    id: "student-self",
-    label: "ข้อมูลตัวเอง",
-    iconName: "user-circle",
-    route: "/my-attendance",
-  },
-  {
-    id: "create",
-    label: "สร้างลิงก์",
-    iconName: "link",
-    route: "/create",
-  },
+  pageMenuItem("student-self", "/my-attendance"),
+  pageMenuItem("create", "/create"),
   {
     id: "data-management",
     label: "จัดการข้อมูล",
     iconName: "file-spreadsheet",
     children: [
       {
-        id: "manage-school-structure",
-        label: "โครงสร้างโรงเรียน",
-        iconName: "graduation",
-        route: "/school-structure",
+        ...pageMenuItem("manage-school-structure", "/school-structure"),
       },
       {
-        id: "manage-teacher-access",
-        label: "ลิงก์เข้าใช้งานครู",
-        iconName: "link",
-        route: "/teacher-access-grants",
+        ...pageMenuItem("import-data", "/import-data"),
       },
       {
-        id: "import-data",
-        label: "นำเข้าข้อมูล",
-        iconName: "file-import",
-        route: "/import-data",
-      },
-      {
-        id: "export-data",
-        label: "ส่งออกข้อมูล",
-        iconName: "download",
-        route: "/data-exports",
+        ...pageMenuItem("export-data", "/data-exports"),
       },
     ],
   },
@@ -162,30 +129,16 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "calendar-check",
     children: [
       {
-        id: "attendance",
-        label: "เช็คชื่อ",
-        iconName: "edit",
-        route: "/attendance",
+        ...pageMenuItem("attendance", "/attendance"),
       },
       {
-        id: "attendance-dashboard",
-        label: "ลิงก์เช็คชื่อ",
-        iconName: "chart-bar",
-        route: "/attendance-links",
+        ...pageMenuItem("attendance-dashboard", "/attendance-links"),
       },
       {
-        id: "attendance-operations",
-        label: "ความครบถ้วน",
-        iconName: "clipboard-check",
-        permissionId: "attendance-dashboard",
-        route: "/attendance-operations",
+        ...pageMenuItem("attendance-operations", "/attendance-operations", "attendance-dashboard"),
       },
       {
-        id: "timetable",
-        label: "ตารางสอน",
-        iconName: "calendar",
-        permissionId: "home",
-        route: "/timetable",
+        ...pageMenuItem("timetable", "/timetable", "home"),
       },
     ],
   },
@@ -195,28 +148,16 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "users-cog",
     children: [
       {
-        id: "manage-users-list",
-        label: "จัดการรายชื่อผู้ใช้งาน",
-        iconName: "users",
-        route: "/manage-users",
+        ...pageMenuItem("manage-users-list", "/manage-users"),
       },
       {
-        id: "manage-student-accounts",
-        label: "บัญชีนักเรียน",
-        iconName: "user-plus",
-        route: "/manage-student-accounts",
+        ...pageMenuItem("manage-student-accounts", "/manage-student-accounts"),
       },
       {
-        id: "manage-role-groups",
-        label: "จัดการกลุ่มผู้ใช้งาน",
-        iconName: "user-tag",
-        route: "/manage-role-groups",
+        ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
       },
       {
-        id: "login-links",
-        label: "ลิงก์เข้าสู่ระบบ",
-        iconName: "link",
-        route: "/login-links",
+        ...pageMenuItem("login-links", "/login-links", ["login-links", "manage-teacher-access"]),
       },
     ],
   },
@@ -227,41 +168,16 @@ export const MENU_ITEMS: MenuItem[] = [
     permissionId: "field-monitor",
     children: [
       {
-        id: "field-followers",
-        label: "ลิงก์รับสมัคร",
-        iconName: "link",
-        permissionId: "field-monitor",
-        route: "/field-followers",
+        ...pageMenuItem("field-followers", "/field-followers", "field-monitor"),
       },
       {
-        id: "field-followers-review",
-        label: "ตรวจสอบใบสมัคร",
-        iconName: "user-check",
-        permissionId: "field-monitor",
-        route: "/field-follower-applications",
+        ...pageMenuItem("field-followers-review", "/field-follower-applications", "field-monitor"),
       },
     ],
   },
-  {
-    id: "field-monitor-map",
-    label: "แผนที่เด็กเสี่ยง",
-    iconName: "map-pin",
-    permissionId: "field-monitor",
-    route: "/field-monitor-map",
-  },
-  {
-    id: "work-session-monitor",
-    label: "ติดตามช่วงปฏิบัติงาน",
-    iconName: "activity",
-    permissionId: "field-monitor",
-    route: "/work-session-monitor",
-  },
-  {
-    id: "settings",
-    label: "ตั้งค่าระบบ",
-    iconName: "settings",
-    route: "/settings",
-  },
+  pageMenuItem("field-monitor-map", "/field-monitor-map", "field-monitor"),
+  pageMenuItem("work-session-monitor", "/work-session-monitor", "field-monitor"),
+  pageMenuItem("settings", "/settings"),
 ];
 
 export function getEffectivePermissions(
@@ -306,18 +222,23 @@ export function filterMenuItems(
   menuItems: MenuItem[],
   userPermissions: string[],
 ): MenuItem[] {
+  const canAccessItem = (item: MenuItem): boolean => {
+    const requiredPermissions = item.permissionId ?? item.id;
+    return Array.isArray(requiredPermissions)
+      ? requiredPermissions.some((permissionId) => hasPermission(userPermissions, permissionId))
+      : hasPermission(userPermissions, requiredPermissions);
+  };
+
   return menuItems
     .map((item) => {
       if (item.children) {
-        const filteredChildren = item.children.filter((child) =>
-          hasPermission(userPermissions, child.permissionId ?? child.id),
-        );
+        const filteredChildren = item.children.filter(canAccessItem);
         return filteredChildren.length > 0
           ? { ...item, children: filteredChildren }
           : null;
       }
 
-      return hasPermission(userPermissions, item.permissionId ?? item.id) ? item : null;
+      return canAccessItem(item) ? item : null;
     })
     .filter((item): item is MenuItem => item !== null);
 }

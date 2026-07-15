@@ -9,6 +9,7 @@ import {
   Share2,
   ShieldOff,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -24,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  Combobox,
   Dialog,
   DialogBody,
   DialogContent,
@@ -49,8 +51,12 @@ import {
   ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { attendanceService } from "../../attendance/api/attendance.service";
-import { useSchoolTeachers, useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { useSchoolTeachers } from "../../school-structure/hooks/useSchoolStructure";
 import {
   useIssueTeacherAccessGrant,
   useRevokeTeacherAccessGrant,
@@ -114,7 +120,7 @@ function assignmentLabel(assignment: {
   return assignment.subjectName ? `${room} · ${assignment.subjectName}` : room;
 }
 
-export function TeacherAccessGrantsPage() {
+export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: ReactNode }) {
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
   const [statusInput, setStatusInput] = useState("");
@@ -130,9 +136,13 @@ export function TeacherAccessGrantsPage() {
   const [revokeReason, setRevokeReason] = useState("");
   const { confirm, dialog: confirmDialog } = useConfirm();
 
-  const schoolsQuery = useScopedSchools();
-  const schools = schoolsQuery.data ?? [];
-  const selectedSchoolId = Number(schoolInput || schools[0]?.id || 0) || undefined;
+  const schoolArea = useSchoolAreaFilter();
+  const actorSchoolIds = useAuthSessionStore(
+    (state) => state.user?.data_scope?.school_ids,
+  );
+  const scopedSchoolId = actorSchoolIds?.length === 1 ? String(actorSchoolIds[0]) : "";
+  const effectiveSchoolInput = schoolInput || scopedSchoolId;
+  const selectedSchoolId = Number(effectiveSchoolInput) || undefined;
   const termsQuery = useQuery({
     queryKey: ["teacher-access", "terms", selectedSchoolId],
     queryFn: () => attendanceService.getTerms(selectedSchoolId!),
@@ -186,6 +196,12 @@ export function TeacherAccessGrantsPage() {
       assignment.allowedActions.some((capability) => selectedCapabilities.includes(capability))),
     [assignmentOptions, selectedCapabilities],
   );
+
+  function selectSchool(value: string): void {
+    setSchoolInput(value);
+    setTermInput("");
+    setPage(1);
+  }
 
   function closeIssueDialog(): void {
     setIssueOpen(false);
@@ -267,16 +283,16 @@ export function TeacherAccessGrantsPage() {
     }
   }
 
-  if (schoolsQuery.isLoading) {
+  if (schoolArea.isLoading) {
     return <PageShell><SkeletonStack lines={6} /></PageShell>;
   }
-  if (schoolsQuery.isError) {
+  if (schoolArea.isError) {
     return (
       <PageShell>
         <ErrorState
           title="โหลดโรงเรียนไม่สำเร็จ"
           description="ไม่สามารถโหลดโรงเรียนในขอบเขตของคุณได้"
-          onRetry={() => void schoolsQuery.refetch()}
+          onRetry={() => void schoolArea.refetch()}
         />
       </PageShell>
     );
@@ -298,70 +314,67 @@ export function TeacherAccessGrantsPage() {
     <PageShell>
       <PageToolbar
         icon={KeyRound}
-        title="ลิงก์เข้าใช้งานครู"
+        title="ลิงก์เข้าใช้งาน"
         description="ออกลิงก์ตามภาคเรียน ห้อง และความสามารถที่ครูได้รับมอบหมาย"
+        footerActions={<RefreshButton onRefresh={() => Promise.all([schoolArea.refetch(), termsQuery.refetch(), teachersQuery.refetch(), grantsQuery.refetch()])} />}
         actions={
-          <Button
-            icon={Plus}
-            disabled={
-              !selectedSchoolId ||
-              !selectedTermId ||
-              selectedTerm?.status !== "ACTIVE" ||
-              !selectedTerm.endsOn ||
-              activeTeachers.length === 0
-            }
-            onClick={() => setIssueOpen(true)}
-          >
-            ออกลิงก์ใหม่
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {navigationTabs}
+            <Button
+              icon={Plus}
+              disabled={
+                !selectedSchoolId ||
+                !selectedTermId ||
+                selectedTerm?.status !== "ACTIVE" ||
+                !selectedTerm.endsOn ||
+                activeTeachers.length === 0
+              }
+              onClick={() => setIssueOpen(true)}
+            >
+              ออกลิงก์ใหม่
+            </Button>
+          </div>
         }
       >
-        <ToolbarFilterGrid className="lg:grid-cols-3">
-          <div>
-            <Label htmlFor="teacher-access-school">โรงเรียน</Label>
-            <Select
-              id="teacher-access-school"
-              value={String(selectedSchoolId ?? "")}
-              onChange={(event) => {
-                setSchoolInput(event.target.value);
-                setTermInput("");
-                setPage(1);
-              }}
-            >
-              {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="teacher-access-term">ภาคเรียน</Label>
-            <Select
-              id="teacher-access-term"
-              value={String(selectedTermId ?? "")}
-              onChange={(event) => {
-                setTermInput(event.target.value);
-                setPage(1);
-              }}
-              disabled={termsQuery.isLoading || terms.length === 0}
-            >
-              {terms.map((term) => (
-                <option key={term.id} value={term.id}>
-                  ปี {term.academicYear} ภาค {term.semester} · {TERM_STATUS_LABELS[term.status]}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="teacher-access-status">สถานะ</Label>
-            <Select
-              id="teacher-access-status"
-              value={statusInput}
-              onChange={(event) => { setStatusInput(event.target.value); setPage(1); }}
-            >
-              <option value="">ทุกสถานะ</option>
-              {Object.entries(STATUS_META).map(([value, item]) => (
-                <option key={value} value={value}>{item.label}</option>
-              ))}
-            </Select>
-          </div>
+        <ToolbarFilterGrid>
+          <SchoolAreaSchoolFilter
+            area={schoolArea}
+            onSchoolChange={selectSchool}
+            schoolEmptyLabel="เลือกโรงเรียน"
+            schoolId={effectiveSchoolInput}
+          />
+          <Combobox
+            ariaLabel="ภาคเรียน"
+            disabled={!selectedSchoolId || termsQuery.isLoading}
+            onChange={(value) => {
+              setTermInput(value);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "เลือกภาคเรียน" },
+              ...terms.map((term) => ({
+                value: String(term.id),
+                label: `ปี ${term.academicYear} ภาค ${term.semester} · ${TERM_STATUS_LABELS[term.status]}`,
+              })),
+            ]}
+            placeholder="เลือกภาคเรียน"
+            searchable={false}
+            value={String(selectedTermId ?? "")}
+          />
+          <Combobox
+            ariaLabel="สถานะ"
+            onChange={(value) => {
+              setStatusInput(value);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "ทุกสถานะ" },
+              ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label })),
+            ]}
+            placeholder="ทุกสถานะ"
+            searchable={false}
+            value={statusInput}
+          />
         </ToolbarFilterGrid>
       </PageToolbar>
 
