@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { ArrowRight, Download, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  FileSpreadsheet,
+  ShieldCheck,
+} from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -9,14 +14,26 @@ import {
   Button,
   Card,
   CardContent,
+  Combobox,
+  DatePicker,
   Input,
   Label,
-  Select,
+  Tabs,
   Textarea,
 } from "../../../components/base";
 import { buttonVariants } from "../../../components/base";
-import { PageShell, PageToolbar, SkeletonStack } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  PageShell,
+  PageToolbar,
+  SkeletonStack,
+} from "../../../components/layout/page-primitives";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { cn } from "../../../lib/utils";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import {
   useCreateDataExportJob,
   useDataExportCatalog,
@@ -55,6 +72,111 @@ const sensitivityTone: Record<DataExportSensitivityClass, string> = {
   PRIVILEGED: "bg-purple-50 text-purple-700",
 };
 
+const AREA_SCOPE_KEYS = [
+  "province",
+  "district",
+  "subDistrict",
+  "schoolId",
+] as const;
+const CLASSROOM_SCOPE_KEYS = ["grade", "room"] as const;
+
+function ExportScopeFilters({
+  definitions,
+  filters,
+  idPrefix,
+  onUpdateFilter,
+}: {
+  definitions: DataExportFilterDefinition[];
+  filters: Record<string, string>;
+  idPrefix: string;
+  onUpdateFilter: (
+    definition: DataExportFilterDefinition,
+    value: string,
+  ) => void;
+}) {
+  const definitionsByKey = new Map(
+    definitions.map((definition) => [definition.key, definition]),
+  );
+  const area = useSchoolAreaFilter({
+    province: filters.province,
+    district: filters.district,
+    subDistrict: filters.subDistrict,
+  });
+  const scope = useScopeCascade({
+    initialSchoolId: filters.schoolId,
+    initialGrade: filters.grade,
+    initialRoom: filters.room,
+  });
+  const update = (key: string, value: string) => {
+    const definition = definitionsByKey.get(key);
+    if (definition) onUpdateFilter(definition, value);
+  };
+  const has = (key: string) => definitionsByKey.has(key);
+
+  return (
+    <>
+      <SchoolAreaSchoolFilter
+        area={area}
+        onDistrictChange={(value) => update("district", value)}
+        onProvinceChange={(value) => update("province", value)}
+        onSchoolChange={(value) => {
+          scope.setSchoolId(value);
+          update("schoolId", value);
+          update("grade", "");
+          update("room", "");
+        }}
+        onSubDistrictChange={(value) => update("subDistrict", value)}
+        schoolEmptyLabel="ทุกโรงเรียน"
+        schoolId={scope.schoolId}
+        schoolInputId={`${idPrefix}-schoolId`}
+      />
+      {has("grade") ? (
+        <Combobox
+          ariaLabel="ระดับชั้น"
+          disabled={!scope.schoolId}
+          id={`${idPrefix}-grade`}
+          onChange={(value) => {
+            scope.setGrade(value);
+            update("grade", value);
+            update("room", "");
+          }}
+          options={[
+            { value: "", label: "ทุกชั้น" },
+            ...scope.gradeLevels.map((grade) => ({
+              value: grade.label,
+              label: grade.label,
+            })),
+          ]}
+          placeholder="ทุกชั้น"
+          searchable={false}
+          value={scope.grade}
+        />
+      ) : null}
+      {has("room") ? (
+        <Combobox
+          ariaLabel="ห้อง"
+          disabled={!scope.grade}
+          id={`${idPrefix}-room`}
+          onChange={(value) => {
+            scope.setRoom(value);
+            update("room", value);
+          }}
+          options={[
+            { value: "", label: "ทุกห้อง" },
+            ...scope.rooms.map((room) => ({
+              value: room,
+              label: `ห้อง ${room}`,
+            })),
+          ]}
+          placeholder="ทุกห้อง"
+          searchable={false}
+          value={scope.room}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function DatasetCard({
   creatingCode,
   initialFilters,
@@ -64,7 +186,10 @@ function DatasetCard({
   creatingCode: string | null;
   initialFilters: Record<string, string>;
   item: DataExportCatalogItem;
-  onCreateJob: (item: DataExportCatalogItem, values: DataExportFormValues) => void;
+  onCreateJob: (
+    item: DataExportCatalogItem,
+    values: DataExportFormValues,
+  ) => void;
 }) {
   const isExistingWorkflow = item.deliveryMode === "EXISTING_WORKFLOW";
   const requiresPurpose = item.purposePolicy === "REQUIRED_CODE_AND_NOTE";
@@ -75,8 +200,24 @@ function DatasetCard({
   const [purposeNote, setPurposeNote] = useState("");
   const purposeComplete =
     !requiresPurpose || Boolean(purposeCode.trim() && purposeNote.trim());
+  const usesAreaScope = AREA_SCOPE_KEYS.every((key) =>
+    item.filterDefinitions.some((definition) => definition.key === key),
+  );
+  const inlineDefinitions = item.filterDefinitions.filter(
+    (definition) =>
+      !usesAreaScope ||
+      (!AREA_SCOPE_KEYS.includes(
+        definition.key as (typeof AREA_SCOPE_KEYS)[number],
+      ) &&
+        !CLASSROOM_SCOPE_KEYS.includes(
+          definition.key as (typeof CLASSROOM_SCOPE_KEYS)[number],
+        )),
+  );
 
-  const updateFilter = (definition: DataExportFilterDefinition, value: string) => {
+  const updateFilter = (
+    definition: DataExportFilterDefinition,
+    value: string,
+  ) => {
     setFilters((current) => {
       const next = { ...current, [definition.key]: value };
       if (!value) {
@@ -85,7 +226,11 @@ function DatasetCard({
         while (clearedAnother) {
           clearedAnother = false;
           for (const child of item.filterDefinitions) {
-            if (child.dependsOn && clearedKeys.has(child.dependsOn) && child.key in next) {
+            if (
+              child.dependsOn &&
+              clearedKeys.has(child.dependsOn) &&
+              child.key in next
+            ) {
               delete next[child.key];
               clearedKeys.add(child.key);
               clearedAnother = true;
@@ -105,10 +250,19 @@ function DatasetCard({
       <CardContent className="flex h-full flex-col gap-4 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-slate-900">{item.label}</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">{item.description}</p>
+            <h2 className="text-base font-semibold text-slate-900">
+              {item.label}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              {item.description}
+            </p>
           </div>
-          <Badge className={sensitivityTone[item.sensitivityClass]}>
+          <Badge
+            className={cn(
+              "shrink-0 whitespace-nowrap",
+              sensitivityTone[item.sensitivityClass],
+            )}
+          >
             {sensitivityLabels[item.sensitivityClass]}
           </Badge>
         </div>
@@ -120,7 +274,11 @@ function DatasetCard({
           </div>
           <div>
             <dt className="font-medium text-slate-800">การจัดส่ง</dt>
-            <dd>{isExistingWorkflow ? "Workflow เดิม" : "Queued job"}</dd>
+            <dd>
+              {isExistingWorkflow
+                ? "ดาวน์โหลดจากหน้าเดิมของระบบ"
+                : "จัดเตรียมไฟล์ให้ดาวน์โหลด"}
+            </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="font-medium text-slate-800">ชุดข้อมูล</dt>
@@ -136,46 +294,65 @@ function DatasetCard({
 
         {!isExistingWorkflow && item.filterDefinitions.length > 0 ? (
           <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
-            {item.filterDefinitions.map((definition) => {
+            {usesAreaScope ? (
+              <ExportScopeFilters
+                definitions={item.filterDefinitions}
+                filters={filters}
+                idPrefix={`export-${item.code}`}
+                onUpdateFilter={updateFilter}
+              />
+            ) : null}
+            {inlineDefinitions.map((definition) => {
               const inputId = `export-${item.code}-${definition.key}`;
               const dependencyMissing = Boolean(
                 definition.dependsOn && !filters[definition.dependsOn],
               );
               return (
                 <div key={definition.key}>
-                  <Label htmlFor={inputId}>{definition.label}</Label>
                   {definition.control === "SELECT" ? (
-                    <Select
-                      id={inputId}
+                    <Combobox
+                      ariaLabel={definition.label}
                       value={filters[definition.key] ?? ""}
                       disabled={dependencyMissing}
-                      onChange={(event) => updateFilter(definition, event.target.value)}
-                    >
-                      <option value="">ทั้งหมด</option>
-                      {definition.options?.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(value) => updateFilter(definition, value)}
+                      options={[
+                        { value: "", label: `ทุก${definition.label}` },
+                        ...(definition.options ?? []),
+                      ]}
+                      placeholder={`ทุก${definition.label}`}
+                    />
+                  ) : definition.control === "DATE" ? (
+                    <DatePicker
+                      ariaLabel={definition.label}
+                      disabled={dependencyMissing}
+                      id={inputId}
+                      onChange={(value) => updateFilter(definition, value)}
+                      placeholder={definition.label}
+                      value={filters[definition.key] ?? ""}
+                    />
                   ) : (
                     <Input
+                      aria-label={definition.label}
                       id={inputId}
                       type={
-                        definition.control === "DATE"
-                          ? "date"
-                          : definition.control === "INTEGER"
-                            ? "number"
-                            : "text"
+                        definition.control === "INTEGER" ? "number" : "text"
                       }
                       min={definition.control === "INTEGER" ? 1 : undefined}
-                      max={definition.control === "INTEGER" ? 2_147_483_647 : undefined}
+                      max={
+                        definition.control === "INTEGER"
+                          ? 2_147_483_647
+                          : undefined
+                      }
                       step={definition.control === "INTEGER" ? 1 : undefined}
-                      maxLength={definition.control === "TEXT" ? 100 : undefined}
-                      placeholder={definition.placeholder}
+                      maxLength={
+                        definition.control === "TEXT" ? 100 : undefined
+                      }
+                      placeholder={definition.placeholder ?? definition.label}
                       value={filters[definition.key] ?? ""}
                       disabled={dependencyMissing}
-                      onChange={(event) => updateFilter(definition, event.target.value)}
+                      onChange={(event) =>
+                        updateFilter(definition, event.target.value)
+                      }
                     />
                   )}
                 </div>
@@ -185,27 +362,34 @@ function DatasetCard({
         ) : null}
 
         {requiresPurpose ? (
-          <div className="grid gap-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">
+          <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div>
-              <Label htmlFor={`export-${item.code}-purpose-code`}>รหัสวัตถุประสงค์</Label>
+              <Label htmlFor={`export-${item.code}-purpose-code`}>
+                รหัสวัตถุประสงค์
+              </Label>
               <Input
                 id={`export-${item.code}-purpose-code`}
                 required
                 maxLength={64}
                 value={purposeCode}
                 onChange={(event) => setPurposeCode(event.target.value)}
-                placeholder="เช่น CASE_REVIEW"
+                placeholder="ระบุรหัสวัตถุประสงค์"
               />
+              <p className="mt-1 text-xs text-slate-500">
+                ใช้รหัสที่หน่วยงานกำหนดเพื่อบันทึกเหตุผลการส่งออก
+              </p>
             </div>
             <div>
-              <Label htmlFor={`export-${item.code}-purpose-note`}>รายละเอียดการใช้งาน</Label>
+              <Label htmlFor={`export-${item.code}-purpose-note`}>
+                รายละเอียดการใช้งาน
+              </Label>
               <Textarea
                 id={`export-${item.code}-purpose-note`}
                 required
                 maxLength={500}
                 value={purposeNote}
                 onChange={(event) => setPurposeNote(event.target.value)}
-                placeholder="ระบุเหตุผลและขอบเขตการนำข้อมูลไปใช้"
+                placeholder="ระบุเหตุผลและการนำข้อมูลไปใช้"
               />
             </div>
           </div>
@@ -214,11 +398,14 @@ function DatasetCard({
         <div className="mt-auto flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-500">
             <ShieldCheck className="size-4" aria-hidden="true" />
-            ตรวจสิทธิ์และ scope ฝั่ง backend
+            ระบบตรวจสิทธิ์และขอบเขตข้อมูลก่อนส่งออก
           </span>
           {isExistingWorkflow && item.workflowPath ? (
-            <Link className={cn(buttonVariants({ size: "sm" }))} to={item.workflowPath}>
-              เปิด workflow
+            <Link
+              className={cn(buttonVariants({ size: "sm" }))}
+              to={item.workflowPath}
+            >
+              ไปหน้าส่งออกเดิม
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           ) : (
@@ -227,7 +414,9 @@ function DatasetCard({
               disabled={!purposeComplete}
               isLoading={creatingCode === item.code}
               loadingText="กำลังสร้างงาน"
-              onClick={() => onCreateJob(item, { filters, purposeCode, purposeNote })}
+              onClick={() =>
+                onCreateJob(item, { filters, purposeCode, purposeNote })
+              }
             >
               สร้างงานส่งออก
             </Button>
@@ -251,63 +440,92 @@ function statusLabel(status: DataExportJob["status"]) {
 }
 
 function JobHistory({
+  catalog,
   downloadingId,
   jobs,
   onDownload,
 }: {
+  catalog: DataExportCatalogItem[];
   downloadingId: string | null;
   jobs: DataExportJob[];
   onDownload: (job: DataExportJob) => void;
 }) {
-  if (jobs.length === 0) {
-    return null;
-  }
-
   return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+    <section className="rounded-lg border border-slate-200 bg-white p-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-900">งานส่งออกล่าสุด</h2>
+        <h2 className="text-base font-semibold text-slate-900">
+          ประวัติการส่งออก
+        </h2>
         <p className="text-sm text-slate-600">
           ติดตามสถานะไฟล์ที่กำลังจัดเตรียมและดาวน์โหลดเมื่อพร้อม
         </p>
       </div>
-      <div className="mt-4 divide-y divide-slate-100">
-        {jobs.map((job) => (
-          <div
-            key={job.id}
-            className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-mono text-xs text-slate-500">{job.id}</p>
-                <Badge className="bg-slate-100 text-slate-700">{statusLabel(job.status)}</Badge>
-              </div>
-              <p className="mt-1 text-sm text-slate-700">
-                {job.datasetCode} · {job.exportedRowCount ?? 0} แถว
-                {job.failureSummary ? ` · ${job.failureSummary}` : ""}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={job.status !== "COMPLETED"}
-              isLoading={downloadingId === job.id}
-              loadingText="กำลังดาวน์โหลด"
-              onClick={() => onDownload(job)}
+      {jobs.length === 0 ? (
+        <EmptyState
+          className="mt-4"
+          description="สร้างงานส่งออกแล้วสถานะจะปรากฏในหน้านี้"
+          icon={FileSpreadsheet}
+          title="ยังไม่มีประวัติการส่งออก"
+        />
+      ) : (
+        <div className="mt-4 divide-y divide-slate-100">
+          {jobs.map((job) => (
+            <div
+              key={job.id}
+              className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              ดาวน์โหลด CSV
-            </Button>
-          </div>
-        ))}
-      </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-mono text-xs text-slate-500">
+                    ...{job.id.slice(-8)}
+                  </p>
+                  <Badge className="shrink-0 whitespace-nowrap bg-slate-100 text-slate-700">
+                    {statusLabel(job.status)}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-slate-700">
+                  {catalog.find((item) => item.code === job.datasetCode)
+                    ?.label ?? "ชุดข้อมูลที่ส่งออก"}{" "}
+                  · {job.exportedRowCount ?? 0} แถว
+                  {job.failureSummary ? ` · ${job.failureSummary}` : ""}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={job.status !== "COMPLETED"}
+                isLoading={downloadingId === job.id}
+                loadingText="กำลังดาวน์โหลด"
+                onClick={() => onDownload(job)}
+              >
+                ดาวน์โหลด CSV
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
 export function DataExportsPage() {
   const [searchParams] = useSearchParams();
-  const { data: catalog = [], isLoading, isError, refetch, isFetching } = useDataExportCatalog();
-  const { data: jobs = [], isError: isJobsError, refetch: refetchJobs } = useDataExportJobs();
+  const [activeTab, setActiveTab] = useRouteTab(
+    { export: "/data-exports", history: "/data-exports/history" },
+    "export",
+  );
+  const {
+    data: catalog = [],
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+  } = useDataExportCatalog();
+  const {
+    data: jobs = [],
+    isError: isJobsError,
+    refetch: refetchJobs,
+  } = useDataExportJobs();
   const createJob = useCreateDataExportJob();
   const downloadJob = useDownloadDataExportJob();
   const creatingCode = createJob.variables?.datasetCode ?? null;
@@ -318,22 +536,37 @@ export function DataExportsPage() {
     ? JSON.stringify(exportContext.filters)
     : "none";
 
-  const handleCreateJob = (item: DataExportCatalogItem, values: DataExportFormValues) => {
+  const handleCreateJob = (
+    item: DataExportCatalogItem,
+    values: DataExportFormValues,
+  ) => {
     const bundle = item.fieldBundles[0];
     if (!bundle) return;
     const filters = Object.fromEntries(
       item.filterDefinitions.flatMap((definition) => {
         const value = values.filters[definition.key]?.trim();
         if (!value) return [];
-        return [[definition.key, definition.control === "INTEGER" ? Number(value) : value]];
+        return [
+          [
+            definition.key,
+            definition.valueType === "INTEGER" ||
+            definition.control === "INTEGER"
+              ? Number(value)
+              : value,
+          ],
+        ];
       }),
     );
     createJob.mutate({
       datasetCode: item.code,
       fieldBundleCode: bundle.code,
       filters,
-      ...(values.purposeCode.trim() ? { purposeCode: values.purposeCode.trim() } : {}),
-      ...(values.purposeNote.trim() ? { purposeNote: values.purposeNote.trim() } : {}),
+      ...(values.purposeCode.trim()
+        ? { purposeCode: values.purposeCode.trim() }
+        : {}),
+      ...(values.purposeNote.trim()
+        ? { purposeNote: values.purposeNote.trim() }
+        : {}),
     });
   };
 
@@ -353,56 +586,99 @@ export function DataExportsPage() {
   return (
     <PageShell>
       <PageToolbar
+        actions={
+          <Tabs
+            aria-label="โหมดส่งออกข้อมูล"
+            onChange={setActiveTab}
+            options={[
+              { value: "export", label: "ส่งออกข้อมูล" },
+              { value: "history", label: "ประวัติ" },
+            ]}
+            value={activeTab}
+          />
+        }
+        footerActions={
+          <RefreshButton
+            onRefresh={() => Promise.all([refetch(), refetchJobs()])}
+          />
+        }
         icon={Download}
-        title="ส่งออกข้อมูล"
-        description="เลือกชุดข้อมูลที่ได้รับอนุญาตและติดตามไฟล์ส่งออกของคุณ"
+        title={activeTab === "history" ? "ประวัติการส่งออก" : "ส่งออกข้อมูล"}
+        description={
+          activeTab === "history"
+            ? "ดูสถานะและดาวน์โหลดไฟล์ส่งออกย้อนหลัง"
+            : "เลือกชุดข้อมูลที่ได้รับอนุญาตเพื่อสร้างไฟล์ส่งออก"
+        }
       />
 
       {isLoading ? <SkeletonStack lines={6} /> : null}
 
-      {!isLoading && !isError && exportContext ? (
+      {activeTab === "export" && !isLoading && !isError && exportContext ? (
         <Alert className="mb-4" variant="success">
           <AlertTitle>นำตัวกรองจากหน้าต้นทางมาแล้ว</AlertTitle>
           <AlertDescription>
-            เลือกชุดข้อมูล {catalog.find((item) => item.code === exportContext.datasetCode)?.label}
-            และเติมเฉพาะตัวกรองที่ catalog รองรับ กรุณาตรวจสอบก่อนสร้างงาน
+            เลือกชุดข้อมูล{" "}
+            {
+              catalog.find((item) => item.code === exportContext.datasetCode)
+                ?.label
+            }
+            และเติมเฉพาะตัวกรองที่ระบบรองรับ กรุณาตรวจสอบก่อนสร้างงาน
           </AlertDescription>
         </Alert>
       ) : null}
 
-      {!isLoading && !isError && requestedDatasetCode && !exportContext ? (
+      {activeTab === "export" &&
+      !isLoading &&
+      !isError &&
+      requestedDatasetCode &&
+      !exportContext ? (
         <Alert className="mb-4" variant="warning">
           <AlertTitle>ไม่สามารถนำบริบทการส่งออกมาใช้ได้</AlertTitle>
           <AlertDescription>
-            ชุดข้อมูลนี้อาจไม่อยู่ใน catalog ที่บัญชีปัจจุบันใช้ได้ หรือตัวกรองไม่ตรงกับข้อกำหนด
+            ชุดข้อมูลนี้อาจไม่พร้อมใช้งานสำหรับบัญชีปัจจุบัน
+            หรือตัวกรองไม่ตรงกับข้อกำหนด
           </AlertDescription>
         </Alert>
       ) : null}
 
       {isError ? (
         <Alert variant="destructive" className="mb-4">
-          <AlertTitle>โหลด catalog ไม่สำเร็จ</AlertTitle>
+          <AlertTitle>ไม่สามารถเปิดหน้าส่งออกข้อมูลได้</AlertTitle>
           <AlertDescription>
-            ไม่สามารถโหลดรายการส่งออกที่บัญชีนี้ใช้งานได้ กรุณาลองใหม่
+            ลองกดรีเฟรชอีกครั้งเพื่อตรวจสอบรายการชุดข้อมูลและประวัติงาน
           </AlertDescription>
-          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+          <Button
+            className="mt-3"
+            size="sm"
+            variant="outline"
+            onClick={() => void Promise.all([refetch(), refetchJobs()])}
+          >
             โหลดใหม่
           </Button>
         </Alert>
       ) : null}
 
-      {createJob.isError ? (
+      {activeTab === "export" && createJob.isError ? (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>สร้างงานส่งออกไม่สำเร็จ</AlertTitle>
-          <AlertDescription>ระบบยังไม่สามารถรับงานนี้ได้ กรุณาลองใหม่ภายหลัง</AlertDescription>
+          <AlertDescription>
+            ระบบยังไม่สามารถรับงานนี้ได้ กรุณาลองใหม่ภายหลัง
+          </AlertDescription>
         </Alert>
       ) : null}
 
-      {isJobsError ? (
+      {isJobsError && !isError ? (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>โหลดประวัติงานส่งออกไม่สำเร็จ</AlertTitle>
-          <AlertDescription>รายการชุดข้อมูลยังใช้งานได้ แต่สถานะงานล่าสุดอาจไม่ครบ</AlertDescription>
-          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetchJobs()}>
+          <AlertDescription>
+            ลองกดรีเฟรชอีกครั้งเพื่อดูสถานะการส่งออกล่าสุด
+          </AlertDescription>
+          <Button
+            className="mt-3"
+            size="sm"
+            variant="outline"
+            onClick={() => void refetchJobs()}
+          >
             โหลดประวัติใหม่
           </Button>
         </Alert>
@@ -411,25 +687,24 @@ export function DataExportsPage() {
       {downloadJob.isError ? (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>ดาวน์โหลดไฟล์ไม่สำเร็จ</AlertTitle>
-          <AlertDescription>ไฟล์อาจหมดอายุหรือสิทธิ์ถูกเปลี่ยน กรุณาสร้างงานใหม่หากจำเป็น</AlertDescription>
+          <AlertDescription>
+            ไฟล์อาจหมดอายุหรือสิทธิ์ถูกเปลี่ยน กรุณาสร้างงานใหม่หากจำเป็น
+          </AlertDescription>
         </Alert>
       ) : null}
 
-      {!isLoading && !isError && catalog.length === 0 ? (
-        <Card className="border-dashed border-slate-300 bg-white">
-          <CardContent className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <FileSpreadsheet className="size-10 text-slate-400" aria-hidden="true" />
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">ยังไม่มี dataset ที่ส่งออกได้</h2>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-slate-600">
-                บัญชีนี้ยังไม่มีชุดข้อมูลที่ได้รับอนุญาตให้ส่งออก
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {activeTab === "export" &&
+      !isLoading &&
+      !isError &&
+      catalog.length === 0 ? (
+        <EmptyState
+          description="บัญชีนี้ยังไม่มีชุดข้อมูลที่ได้รับอนุญาตให้ส่งออก"
+          icon={FileSpreadsheet}
+          title="ยังไม่มีชุดข้อมูลที่ส่งออกได้"
+        />
       ) : null}
 
-      {catalog.length > 0 ? (
+      {activeTab === "export" && catalog.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-2" aria-busy={isFetching}>
           {catalog.map((item) => (
             <DatasetCard
@@ -447,7 +722,14 @@ export function DataExportsPage() {
         </div>
       ) : null}
 
-      <JobHistory jobs={jobs} downloadingId={downloadingId} onDownload={handleDownload} />
+      {activeTab === "history" ? (
+        <JobHistory
+          catalog={catalog}
+          jobs={jobs}
+          downloadingId={downloadingId}
+          onDownload={handleDownload}
+        />
+      ) : null}
     </PageShell>
   );
 }

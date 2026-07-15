@@ -20,6 +20,7 @@ interface SubmitImportVariables {
 
 export function useSubmitImport() {
   return useMutation<ImportResult, Error, SubmitImportVariables>({
+    meta: { successMessage: "นำเข้าข้อมูลแล้ว" },
     mutationFn: ({ file, target, mapping, onProgress, importContext }) =>
       importService.submitImport({
         file,
@@ -33,6 +34,7 @@ export function useSubmitImport() {
 
 export function usePreviewImport() {
   return useMutation<AnyImportPreviewResult, Error, SubmitImportVariables>({
+    meta: { suppressSuccessToast: true },
     mutationFn: ({ file, target, mapping, onProgress, importContext }) =>
       importService.previewImport({
         file,

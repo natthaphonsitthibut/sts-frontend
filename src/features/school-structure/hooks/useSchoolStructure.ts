@@ -73,6 +73,7 @@ export function useTeacherRosterImport() {
   const preview = useMutation({
     mutationFn: ({ file, schoolId }: { file: File; schoolId: number }) =>
       importService.previewTeacherImport(file, schoolId),
+    meta: { suppressSuccessToast: true },
   });
   const submit = useMutation({
     mutationFn: ({ file, schoolId }: { file: File; schoolId: number }) =>

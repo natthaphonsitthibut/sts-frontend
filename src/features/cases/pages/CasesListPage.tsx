@@ -179,6 +179,14 @@ export function CasesListPage() {
     setPage(1);
   }
 
+  function handleClearFilters(): void {
+    setSearchQuery("");
+    setStatus("ALL");
+    schoolArea.setProvince("");
+    scope.reset();
+    setPage(1);
+  }
+
   function openUpdate(caseRecord: CaseRecord): void {
     setSelectedCase(caseRecord);
     setDialogOpen(true);
@@ -204,32 +212,31 @@ export function CasesListPage() {
       {effectiveTab === "list" ? (
         <CaseListFilter
           actions={
-            canViewAuditLog || can("export-data") ? (
-              <>
-                {canViewAuditLog ? (
-                  <Tabs
-                    aria-label="โหมดเคสช่วยเหลือ"
-                    onChange={setActiveTab}
-                    options={[
-                      { value: "list", label: "รายการ" },
-                      { value: "history", label: "ประวัติ" },
-                    ]}
-                    value={activeTab}
-                  />
-                ) : null}
-                {can("export-data") ? (
-                  <Button
-                    icon={FileDown}
-                    onClick={() => navigate(filteredCasesExportUrl)}
-                    variant="outline"
-                  >
-                    ส่งออกตามตัวกรองนี้
-                  </Button>
-                ) : null}
-              </>
+            canViewAuditLog ? (
+              <Tabs
+                aria-label="โหมดเคสช่วยเหลือ"
+                onChange={setActiveTab}
+                options={[
+                  { value: "list", label: "รายการ" },
+                  { value: "history", label: "ประวัติ" },
+                ]}
+                value={activeTab}
+              />
+            ) : undefined
+          }
+          exportAction={
+            can("export-data") ? (
+              <Button
+                icon={FileDown}
+                onClick={() => navigate(filteredCasesExportUrl)}
+                variant="outline"
+              >
+                ส่งออกตามตัวกรองนี้
+              </Button>
             ) : undefined
           }
           onRefresh={refetch}
+          onClearFilters={handleClearFilters}
           onSearchChange={handleSearchChange}
           onStatusChange={handleStatusChange}
           searchQuery={searchQuery}

@@ -218,7 +218,7 @@ function ImportQuarantineTable({
           { label: "สาเหตุ", sortKey: "reason", ariaLabel: "เรียงตามสาเหตุ" },
           { label: "ปี/เทอม", sortKey: "term", ariaLabel: "เรียงตามปีและเทอม" },
           { label: "สถานะ", sortKey: "status", ariaLabel: "เรียงตามสถานะ" },
-          { label: "จัดการ", className: "text-right" },
+          { label: "", className: "text-right" },
         ]}
         minWidthClassName="min-w-full"
         onSortChange={onSortChange}

@@ -28,6 +28,7 @@ export function useDataExportJobs() {
 export function useCreateDataExportJob() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: "สร้างงานส่งออกแล้ว" },
     mutationFn: createDataExportJob,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["data-exports", "jobs"] });
@@ -37,6 +38,7 @@ export function useCreateDataExportJob() {
 
 export function useDownloadDataExportJob() {
   return useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: downloadDataExportJob,
   });
 }

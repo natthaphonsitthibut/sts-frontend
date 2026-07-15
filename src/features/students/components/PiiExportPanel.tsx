@@ -408,7 +408,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         <Alert variant="warning">
           <AlertTitle>ลิงก์ดาวน์โหลดแสดงครั้งเดียว</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>ดาวน์โหลดทันทีหลังอนุมัติ หากปิดหน้านี้ต้องให้ backend ออก token ใหม่</span>
+            <span>ดาวน์โหลดทันทีหลังอนุมัติ หากปิดหน้านี้ต้องสร้างลิงก์ดาวน์โหลดใหม่</span>
             <Button
               icon={Download}
               isLoading={downloadMutation.isPending}

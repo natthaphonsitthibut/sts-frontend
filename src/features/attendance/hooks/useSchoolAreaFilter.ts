@@ -136,5 +136,6 @@ export function useSchoolAreaFilter(initial: {
     isLoading:
       locationsQuery.isLoading || (schoolsEnabled && schoolsQuery.isLoading),
     isError: locationsQuery.isError || schoolsQuery.isError,
+    refetch: () => Promise.all([locationsQuery.refetch(), schoolsQuery.refetch()]),
   };
 }

@@ -18,6 +18,7 @@ export interface ComboboxProps {
   disabled?: boolean;
   id?: string;
   name?: string;
+  ariaLabel?: string;
   /** Optional hook for server-side narrowing while the user types. */
   onSearchChange?: (value: string) => void;
   /** When false, behaves as a plain dropdown (no typing) but keeps the styled panel. */
@@ -45,6 +46,7 @@ export function Combobox({
   disabled,
   id,
   name,
+  ariaLabel,
   onSearchChange,
   searchable = true,
   menuPlacement = "bottom",
@@ -72,6 +74,7 @@ export function Combobox({
   return (
     <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
       <Input
+        aria-label={ariaLabel}
         aria-invalid={ariaInvalid}
         className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
         disabled={disabled}

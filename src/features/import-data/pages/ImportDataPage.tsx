@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import {
@@ -11,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Combobox,
   Select,
   Tabs,
   useConfirm,
@@ -21,15 +23,22 @@ import {
   PageShell,
   ProgressBar,
   SummaryMetrics,
+  ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
+import { attendanceService } from "../../attendance/api/attendance.service";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import {
+  useSchoolClassrooms,
+  useScopedSchools,
+} from "../../school-structure/hooks/useSchoolStructure";
 import { ImportDropZone } from "../components/ImportDropZone";
 import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
@@ -498,16 +507,59 @@ export function ImportDataPage() {
     const value = Number(searchParams.get(key));
     return Number.isInteger(value) && value > 0 ? value : undefined;
   };
-  const importContext = {
-    schoolId: positiveSearchParam("schoolId"),
-    schoolTermId: positiveSearchParam("schoolTermId"),
-    classroomId: positiveSearchParam("classroomId"),
-  };
+  const [importSchoolId, setImportSchoolId] = useState(() =>
+    String(positiveSearchParam("schoolId") ?? ""),
+  );
+  const [importSchoolTermId, setImportSchoolTermId] = useState(() =>
+    String(positiveSearchParam("schoolTermId") ?? ""),
+  );
+  const [importClassroomId, setImportClassroomId] = useState(() =>
+    String(positiveSearchParam("classroomId") ?? ""),
+  );
+  const [importGrade, setImportGrade] = useState("");
   const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
   const importCatalog = useImportCatalog();
+  const importArea = useSchoolAreaFilter();
+  const scopedSchoolsQuery = useScopedSchools();
+  const importSchool = Number(importSchoolId) || undefined;
+  const importTermsQuery = useQuery({
+    queryKey: ["import-data", "terms", importSchool],
+    queryFn: () => attendanceService.getTerms(importSchool!),
+    enabled: Boolean(importSchool),
+  });
+  const importClassroomsQuery = useSchoolClassrooms(
+    importSchool,
+    Number(importSchoolTermId) || undefined,
+  );
+  const importGrades = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (importClassroomsQuery.data ?? []).map(
+            (classroom) => classroom.gradeLabel,
+          ),
+        ),
+      ).sort((left, right) => left.localeCompare(right, "th")),
+    [importClassroomsQuery.data],
+  );
+  const effectiveImportGrade =
+    importGrade ||
+    (importClassroomsQuery.data ?? []).find(
+      (classroom) => classroom.id === importClassroomId,
+    )?.gradeLabel ||
+    "";
+  const importClassrooms = useMemo(
+    () =>
+      (importClassroomsQuery.data ?? []).filter(
+        (classroom) =>
+          !effectiveImportGrade ||
+          classroom.gradeLabel === effectiveImportGrade,
+      ),
+    [effectiveImportGrade, importClassroomsQuery.data],
+  );
   const [activeTab, setActiveTab] = useRouteTab(
     {
       import: "/import-data",
@@ -530,11 +582,65 @@ export function ImportDataPage() {
     allowedTargets.find((target) => target.target === requestedTarget) ??
     allowedTargets[0];
   const selectedTarget = selectedTargetDefinition?.target ?? requestedTarget;
+  const requiresSchoolContext =
+    selectedTargetDefinition?.canonicalContext.some(
+      (requirement) => requirement.key === "schoolId",
+    ) ?? false;
+  const requiresTermContext =
+    selectedTargetDefinition?.canonicalContext.some(
+      (requirement) => requirement.key === "schoolTermId",
+    ) ?? false;
+  const requiresClassroomContext =
+    selectedTargetDefinition?.canonicalContext.some(
+      (requirement) => requirement.key === "classroomId",
+    ) ?? false;
+  const importContext = {
+    schoolId: importSchool,
+    schoolTermId: Number(importSchoolTermId) || undefined,
+    classroomId: Number(importClassroomId) || undefined,
+  };
   const missingContextLabels = (
     selectedTargetDefinition?.canonicalContext ?? []
   )
     .filter((requirement) => !importContext[requirement.key])
     .map((requirement) => requirement.label);
+  const selectedImportSchool = scopedSchoolsQuery.data?.find(
+    (school) => String(school.id) === importSchoolId,
+  );
+
+  function resetImportPreview(): void {
+    setFile(null);
+    setMapping({});
+    setMappingDirty(false);
+    previewImport.reset();
+    submitImport.reset();
+  }
+
+  function selectImportSchool(value: string): void {
+    setImportSchoolId(value);
+    setImportSchoolTermId("");
+    setImportGrade("");
+    setImportClassroomId("");
+    resetImportPreview();
+  }
+
+  function selectImportTerm(value: string): void {
+    setImportSchoolTermId(value);
+    setImportGrade("");
+    setImportClassroomId("");
+    resetImportPreview();
+  }
+
+  function selectImportClassroom(value: string): void {
+    setImportClassroomId(value);
+    resetImportPreview();
+  }
+
+  function selectImportGrade(value: string): void {
+    setImportGrade(value);
+    setImportClassroomId("");
+    resetImportPreview();
+  }
 
   const [quarantinePage, setQuarantinePage] = useState(1);
   const [quarantineRowsPerPage, setQuarantineRowsPerPage] =
@@ -780,28 +886,97 @@ export function ImportDataPage() {
         }
         tableActions={
           activeTab === "quarantine" ? (
-            <Button
-              icon={Download}
-              isLoading={exportQuarantine.isPending}
-              onClick={() => void downloadQuarantineReport()}
-              variant="outline"
-            >
-              ดาวน์โหลดรายงาน
-            </Button>
+            <>
+              <RefreshButton onRefresh={() => quarantineQuery.refetch()} />
+              <Button
+                icon={Download}
+                isLoading={exportQuarantine.isPending}
+                onClick={() => void downloadQuarantineReport()}
+                variant="outline"
+              >
+                ดาวน์โหลดรายงาน
+              </Button>
+            </>
           ) : undefined
         }
       />
       {activeTab === "import" && selectedTargetDefinition ? (
-        <Alert className="mb-5">
-          <AlertTitle>ใช้บริบทข้อมูลหลักจากหน้าโครงสร้างโรงเรียน</AlertTitle>
-          <AlertDescription>
-            ระบบจะตรวจสอบ{" "}
-            {selectedTargetDefinition.canonicalContext
-              .map((item) => item.label)
-              .join(" / ")}{" "}
-            จากฝั่งเซิร์ฟเวอร์ และจะไม่ใช้ขอบเขตจากไฟล์แทนบริบทนี้
-          </AlertDescription>
-        </Alert>
+        <Card className="mb-5">
+          <CardHeader>
+            <CardTitle>เลือกปลายทางสำหรับข้อมูลนำเข้า</CardTitle>
+            <p className="mt-1 text-sm text-slate-600">
+              เลือกโรงเรียน ภาคเรียน ชั้น และห้องเรียนปลายทางก่อนอัปโหลดไฟล์
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ToolbarFilterGrid>
+              {requiresSchoolContext ? (
+                <SchoolAreaSchoolFilter
+                  area={importArea}
+                  onSchoolChange={selectImportSchool}
+                  schoolEmptyLabel="เลือกโรงเรียน"
+                  schoolId={importSchoolId}
+                  selectedSchoolFallback={selectedImportSchool}
+                />
+              ) : null}
+              {requiresTermContext ? (
+                <Combobox
+                  ariaLabel="เลือกภาคเรียน"
+                  disabled={!importSchool || importTermsQuery.isLoading}
+                  onChange={selectImportTerm}
+                  options={[
+                    { value: "", label: "เลือกภาคเรียน" },
+                    ...(importTermsQuery.data ?? []).map((term) => ({
+                      value: String(term.id),
+                      label: `ปี ${term.academicYear} / ภาค ${term.semester}`,
+                    })),
+                  ]}
+                  placeholder="เลือกภาคเรียน"
+                  searchable={false}
+                  value={importSchoolTermId}
+                />
+              ) : null}
+              {requiresClassroomContext ? (
+                <Combobox
+                  ariaLabel="เลือกชั้น"
+                  disabled={
+                    !importSchoolTermId || importClassroomsQuery.isLoading
+                  }
+                  onChange={selectImportGrade}
+                  options={[
+                    { value: "", label: "เลือกชั้น" },
+                    ...importGrades.map((grade) => ({
+                      value: grade,
+                      label: grade,
+                    })),
+                  ]}
+                  placeholder="เลือกชั้น"
+                  searchable={false}
+                  value={effectiveImportGrade}
+                />
+              ) : null}
+              {requiresClassroomContext ? (
+                <Combobox
+                  ariaLabel="เลือกห้องเรียน"
+                  disabled={
+                    !effectiveImportGrade || importClassroomsQuery.isLoading
+                  }
+                  onChange={selectImportClassroom}
+                  options={[
+                    { value: "", label: "เลือกห้องเรียน" },
+                    ...importClassrooms.map((classroom) => ({
+                      value: classroom.id,
+                      label: classroom.roomCode,
+                    })),
+                  ]}
+                  placeholder="เลือกห้องเรียน"
+                  searchable={false}
+                  value={importClassroomId}
+                />
+              ) : null}
+            </ToolbarFilterGrid>
+          </CardContent>
+        </Card>
       ) : null}
 
       {activeTab === "import" ? (
@@ -843,10 +1018,10 @@ export function ImportDataPage() {
               ) : null}
               {missingContextLabels.length > 0 ? (
                 <Alert className="mb-4" variant="warning">
-                  <AlertTitle>ยังขาดบริบทข้อมูลหลัก</AlertTitle>
+                  <AlertTitle>เลือกปลายทางให้ครบก่อนนำเข้า</AlertTitle>
                   <AlertDescription>
-                    กรุณาเปิดหน้านี้จากโครงสร้างโรงเรียนโดยเลือก{" "}
-                    {missingContextLabels.join(" / ")} ก่อนนำเข้า
+                    กรุณาเลือก {missingContextLabels.join(" / ")}{" "}
+                    ด้านบนก่อนอัปโหลดไฟล์
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -878,7 +1053,7 @@ export function ImportDataPage() {
                   >
                     {allowedTargets.map((target) => (
                       <option key={target.target} value={target.target}>
-                        {target.dependencyOrder}. {target.label}
+                        {target.label}
                       </option>
                     ))}
                   </Select>
