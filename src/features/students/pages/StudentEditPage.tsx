@@ -95,6 +95,7 @@ export function StudentEditPage() {
     queryFn: attendanceLookupService.getLocations,
   });
   const geocode = useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: geoService.geocodeProfileAddress,
     onSuccess: (result) => {
       if (!result) return;

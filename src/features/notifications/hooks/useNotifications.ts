@@ -37,6 +37,7 @@ export function useMarkAllSeen() {
   return useMutation({
     mutationFn: notificationsService.markAllSeen,
     onSuccess: invalidate,
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -45,6 +46,7 @@ export function useMarkRead() {
   return useMutation({
     mutationFn: notificationsService.markRead,
     onSuccess: invalidate,
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -53,5 +55,6 @@ export function useMarkAllRead() {
   return useMutation({
     mutationFn: notificationsService.markAllRead,
     onSuccess: invalidate,
+    meta: { suppressSuccessToast: true },
   });
 }

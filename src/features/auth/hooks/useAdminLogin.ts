@@ -28,6 +28,7 @@ export function useAdminLogin() {
     },
     throwOnError: false,
     meta: {
+      suppressSuccessToast: true,
       getErrorMessage: (error: unknown) =>
         getAuthErrorMessage(error, "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"),
     },

@@ -50,6 +50,7 @@ export function useRejectPiiExportRequest() {
 export function useDownloadPiiExportCsv() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: (token: string) => studentsService.downloadPiiExportCsv(token),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [PII_EXPORT_REQUESTS_QUERY_KEY] });

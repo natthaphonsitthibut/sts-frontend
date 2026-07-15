@@ -44,6 +44,7 @@ export function useWorkSession(token: string, sessionToken?: string, enabled = t
       taskService.sendWorkSessionPosition(token, coords.lat, coords.lng, sessionToken),
     onError: () => setPingFailed(true),
     onSuccess: () => setPingFailed(false),
+    meta: { suppressSuccessToast: true },
   });
 
   useEffect(() => {
