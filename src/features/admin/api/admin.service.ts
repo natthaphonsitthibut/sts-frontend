@@ -13,6 +13,7 @@ import type {
   DeactivateStudentAccountResponse,
   ManagedUser,
   ManagedUserDetail,
+  UserNationalIdRevealResponse,
   CreateUserResponse,
   RoleDefinition,
   ReissueStudentPasswordResponse,
@@ -138,7 +139,10 @@ async function getUser(id: number): Promise<ManagedUser> {
   const response = await apiClient.get<ManagedUser | DataEnvelope<ManagedUser>>(
     `/users/${id}`,
   );
-  const user = "data" in response.data && response.data.data ? response.data.data : response.data;
+  const user =
+    "data" in response.data && response.data.data
+      ? response.data.data
+      : response.data;
   return normalizeManagedUser(user as ManagedUser);
 }
 
@@ -146,7 +150,10 @@ async function getUserDetail(id: number): Promise<ManagedUserDetail> {
   const response = await apiClient.get<
     ManagedUserDetail | DataEnvelope<ManagedUserDetail>
   >(`/users/${id}/detail`);
-  const user = "data" in response.data && response.data.data ? response.data.data : response.data;
+  const user =
+    "data" in response.data && response.data.data
+      ? response.data.data
+      : response.data;
   return normalizeManagedUser(user as ManagedUser) as ManagedUserDetail;
 }
 
@@ -156,6 +163,17 @@ async function revealUserAddress(
 ): Promise<UserAddressDetail> {
   const response = await apiClient.post<UserAddressDetail>(
     `/users/${id}/address-reveal`,
+    payload,
+  );
+  return response.data;
+}
+
+async function revealUserNationalId(
+  id: number,
+  payload: UserAddressRevealPayload,
+): Promise<UserNationalIdRevealResponse> {
+  const response = await apiClient.post<UserNationalIdRevealResponse>(
+    `/users/${id}/national-id-reveal`,
     payload,
   );
   return response.data;
@@ -205,14 +223,20 @@ function toStudentAccountParams(
   return params;
 }
 
-async function getStudentAccounts(
-  query: StudentAccountListQuery = {},
-): Promise<PaginatedResult<StudentAccountManagementItem> & { meta: StudentAccountPaginationMeta }> {
+async function getStudentAccounts(query: StudentAccountListQuery = {}): Promise<
+  PaginatedResult<StudentAccountManagementItem> & {
+    meta: StudentAccountPaginationMeta;
+  }
+> {
   const response = await apiClient.get("/users/student-accounts", {
     params: toStudentAccountParams(query),
   });
-  return normalizePaginatedResponse<StudentAccountManagementItem>(response.data, query) as
-    PaginatedResult<StudentAccountManagementItem> & { meta: StudentAccountPaginationMeta };
+  return normalizePaginatedResponse<StudentAccountManagementItem>(
+    response.data,
+    query,
+  ) as PaginatedResult<StudentAccountManagementItem> & {
+    meta: StudentAccountPaginationMeta;
+  };
 }
 
 async function bulkReissueStudentTemporaryPasswords(
@@ -236,7 +260,9 @@ async function deactivateStudentAccount(
   return response.data;
 }
 
-async function reactivateStudentAccount(id: number): Promise<AccountReactivateResponse> {
+async function reactivateStudentAccount(
+  id: number,
+): Promise<AccountReactivateResponse> {
   const response = await apiClient.post<AccountReactivateResponse>(
     `/users/student-accounts/${id}/reactivate`,
   );
@@ -250,7 +276,9 @@ async function getRolesCatalog(): Promise<RoleDefinition[]> {
   return normalizeArrayResponse(response.data);
 }
 
-async function createUser(payload: UserSavePayload): Promise<CreateUserResponse> {
+async function createUser(
+  payload: UserSavePayload,
+): Promise<CreateUserResponse> {
   const response = await apiClient.post<CreateUserResponse>("/users", payload);
   return response.data;
 }
@@ -274,7 +302,9 @@ async function deactivateAccount(
   return response.data;
 }
 
-async function reactivateAccount(id: number): Promise<AccountReactivateResponse> {
+async function reactivateAccount(
+  id: number,
+): Promise<AccountReactivateResponse> {
   const response = await apiClient.post<AccountReactivateResponse>(
     `/users/${id}/reactivate`,
   );
@@ -397,9 +427,7 @@ async function updateRoleGroup(
 }
 
 async function deleteRoleGroup(roleName: string): Promise<void> {
-  await apiClient.delete(
-    `/users/role-groups/${encodeURIComponent(roleName)}`,
-  );
+  await apiClient.delete(`/users/role-groups/${encodeURIComponent(roleName)}`);
 }
 
 export const adminService = {
@@ -409,6 +437,7 @@ export const adminService = {
   getUser,
   getUserDetail,
   revealUserAddress,
+  revealUserNationalId,
   getStudentAccounts,
   reissueTemporaryPassword,
   bulkReissueStudentTemporaryPasswords,

@@ -35,6 +35,10 @@ export function NavButton({ isLoading, to, ...props }: NavButtonProps) {
       } else {
         navigate(to);
       }
+      // A numeric history navigation can legitimately be a no-op (for example,
+      // a directly opened detail page). Do not leave the button spinning when
+      // the current route therefore stays mounted.
+      requestAnimationFrame(() => setNavigating(false));
     }, SPIN_BEFORE_NAV_MS);
   }
 

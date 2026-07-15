@@ -71,7 +71,7 @@ export interface ManagedUser {
   student_uuid?: string | null;
 }
 
-export interface ManagedUserDetail extends Omit<ManagedUser, "PersonID_Onec"> {
+export interface ManagedUserDetail extends ManagedUser {
   has_profile_location?: boolean;
   data_scope_labels?: {
     schools?: Array<{ id: number; name: string | null }>;
@@ -95,6 +95,10 @@ export interface UserAddressDetail {
 export interface UserAddressRevealPayload {
   reason_code: string;
   reason_note?: string;
+}
+
+export interface UserNationalIdRevealResponse {
+  PersonID_Onec: string | null;
 }
 
 export interface UserSavePayload {
@@ -149,7 +153,10 @@ export type StudentAccountManagementStatus =
   | "TEMP_PASSWORD_EXPIRED"
   | "DISABLED";
 
-export type StudentAccountStatusCounts = Record<StudentAccountManagementStatus, number>;
+export type StudentAccountStatusCounts = Record<
+  StudentAccountManagementStatus,
+  number
+>;
 
 export interface UserPaginationMeta extends PaginationMeta {
   lifecycleStatusCounts?: StudentAccountStatusCounts;

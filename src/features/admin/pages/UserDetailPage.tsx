@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Eye, GraduationCap, MapPin, SquarePen, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  GraduationCap,
+  MapPin,
+  SquarePen,
+  UserRound,
+} from "lucide-react";
 import { useParams } from "react-router-dom";
 import {
   Badge,
@@ -28,6 +35,7 @@ import { PermissionBadgeList } from "../../auth/components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { geoService } from "../../tasks/api/geo.service";
 import { UserAddressRevealDialog } from "../components/UserAddressRevealDialog";
+import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDialog";
 import {
   getAccountLifecycleStatusMeta,
   getManagedUserLifecycleStatus,
@@ -37,7 +45,10 @@ import {
   getUserRoleText,
 } from "../lib/admin-presentation";
 import { useUserDetail } from "../hooks/useUsers";
-import type { ManagedUserDetail, UserAddressDetail } from "../types/admin.types";
+import type {
+  ManagedUserDetail,
+  UserAddressDetail,
+} from "../types/admin.types";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 
@@ -55,14 +66,19 @@ function text(value: string | number | boolean | null | undefined): string {
 }
 
 function describeScope(user: ManagedUserDetail): string {
-  return describeDataScopeForDisplay(user.data_scope, user.data_scope_labels?.schools);
+  return describeDataScopeForDisplay(
+    user.data_scope,
+    user.data_scope_labels?.schools,
+  );
 }
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
       <div className="text-xs font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-slate-800">
+        {value}
+      </div>
     </div>
   );
 }
@@ -86,7 +102,9 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
             {getUserInitial(user)}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-2xl font-bold text-slate-900">{displayName}</div>
+            <div className="truncate text-2xl font-bold text-slate-900">
+              {displayName}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <span>@{user.username}</span>
               <span aria-hidden="true">•</span>
@@ -94,7 +112,10 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
             </div>
           </div>
         </div>
-        <Badge className="w-fit whitespace-nowrap" variant={lifecycle.badgeVariant}>
+        <Badge
+          className="w-fit whitespace-nowrap"
+          variant={lifecycle.badgeVariant}
+        >
           {lifecycle.label}
         </Badge>
       </CardContent>
@@ -102,17 +123,38 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
   );
 }
 
-function ReadOnlyProfileField({ label, value }: { label: string; value: string }) {
+function ReadOnlyProfileField({
+  action,
+  label,
+  value,
+}: {
+  action?: ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <FormItem>
       <FormLabel>{label}</FormLabel>
-      <Input readOnly value={value === "-" ? "" : value} />
+      <div className="flex items-center gap-2">
+        <Input
+          className="min-w-0 flex-1"
+          readOnly
+          value={value === "-" ? "" : value}
+        />
+        {action}
+      </div>
       <div className="min-h-5" aria-hidden="true" />
     </FormItem>
   );
 }
 
-function UserAddressPanel({ hasProfileLocation, userId }: { hasProfileLocation: boolean; userId: number }) {
+function UserAddressPanel({
+  hasProfileLocation,
+  userId,
+}: {
+  hasProfileLocation: boolean;
+  userId: number;
+}) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [address, setAddress] = useState<UserAddressDetail | null>(null);
   const fullAddress = address
@@ -126,12 +168,16 @@ function UserAddressPanel({ hasProfileLocation, userId }: { hasProfileLocation: 
         address.address_district,
         address.address_province,
         address.address_postal_code,
-      ].filter(Boolean).join(" ")
+      ]
+        .filter(Boolean)
+        .join(" ")
     : "";
   const geocode = useQuery({
     queryKey: ["admin-user-address-geocode", userId, fullAddress],
     queryFn: () => geoService.geocodeProfileAddress(fullAddress),
-    enabled: Boolean(address && fullAddress && address.address_latitude === null),
+    enabled: Boolean(
+      address && fullAddress && address.address_latitude === null,
+    ),
     retry: false,
     staleTime: 10 * 60 * 1000,
   });
@@ -150,30 +196,61 @@ function UserAddressPanel({ hasProfileLocation, userId }: { hasProfileLocation: 
           {address ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <ReadOnlyProfileField label="บ้านเลขที่" value={text(address.address_line)} />
-                <ReadOnlyProfileField label="หมู่" value={text(address.address_village_no)} />
-                <ReadOnlyProfileField label="ตรอก" value={text(address.address_trok)} />
-                <ReadOnlyProfileField label="ซอย" value={text(address.address_soi)} />
-                <ReadOnlyProfileField label="ถนน" value={text(address.address_street)} />
+                <ReadOnlyProfileField
+                  label="บ้านเลขที่"
+                  value={text(address.address_line)}
+                />
+                <ReadOnlyProfileField
+                  label="หมู่"
+                  value={text(address.address_village_no)}
+                />
+                <ReadOnlyProfileField
+                  label="ตรอก"
+                  value={text(address.address_trok)}
+                />
+                <ReadOnlyProfileField
+                  label="ซอย"
+                  value={text(address.address_soi)}
+                />
+                <ReadOnlyProfileField
+                  label="ถนน"
+                  value={text(address.address_street)}
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <ReadOnlyProfileField label="จังหวัด" value={text(address.address_province)} />
-                <ReadOnlyProfileField label="อำเภอ/เขต" value={text(address.address_district)} />
-                <ReadOnlyProfileField label="ตำบล/แขวง" value={text(address.address_sub_district)} />
+                <ReadOnlyProfileField
+                  label="จังหวัด"
+                  value={text(address.address_province)}
+                />
+                <ReadOnlyProfileField
+                  label="อำเภอ/เขต"
+                  value={text(address.address_district)}
+                />
+                <ReadOnlyProfileField
+                  label="ตำบล/แขวง"
+                  value={text(address.address_sub_district)}
+                />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ReadOnlyProfileField label="รหัสไปรษณีย์" value={text(address.address_postal_code)} />
+                <ReadOnlyProfileField
+                  label="รหัสไปรษณีย์"
+                  value={text(address.address_postal_code)}
+                />
               </div>
             </>
           ) : hasProfileLocation ? (
             <div className="flex justify-end">
-              <Button icon={Eye} onClick={() => setDialogOpen(true)}>แสดงที่อยู่และหมุด</Button>
+              <Button icon={Eye} onClick={() => setDialogOpen(true)}>
+                แสดงที่อยู่และหมุด
+              </Button>
             </div>
           ) : null}
 
           <div className="space-y-3 border-t border-slate-200 pt-4">
             <div>
-              <div className="text-sm font-bold text-slate-700">พิกัดที่อยู่ติดต่อ</div>
+              <div className="text-sm font-bold text-slate-700">
+                พิกัดที่อยู่ติดต่อ
+              </div>
               <div className="text-xs text-slate-500">
                 {hasProfileLocation
                   ? "ใช้พิกัดที่บันทึกไว้ก่อน และค้นหาจากที่อยู่เมื่อยังไม่มีพิกัด"
@@ -182,13 +259,19 @@ function UserAddressPanel({ hasProfileLocation, userId }: { hasProfileLocation: 
             </div>
             <LocationMapPicker
               address={fullAddress || undefined}
-              emptyDescription={hasProfileLocation
-                ? "ระบุเหตุผลเพื่อแสดงที่อยู่และหมุดของผู้ใช้งาน"
-                : "ผู้ใช้งานยังไม่ได้บันทึกที่อยู่หรือพิกัด"}
+              emptyDescription={
+                hasProfileLocation
+                  ? "ระบุเหตุผลเพื่อแสดงที่อยู่และหมุดของผู้ใช้งาน"
+                  : "ผู้ใช้งานยังไม่ได้บันทึกที่อยู่หรือพิกัด"
+              }
               emptyTitle={hasProfileLocation ? "ยังไม่เปิดดู" : "ยังไม่มีพิกัด"}
               lat={lat}
               lng={lng}
-              markerLabel={address?.address_latitude != null ? "พิกัดที่บันทึกไว้" : "พิกัดจากที่อยู่"}
+              markerLabel={
+                address?.address_latitude != null
+                  ? "พิกัดที่บันทึกไว้"
+                  : "พิกัดจากที่อยู่"
+              }
               title="ตำแหน่งที่อยู่บนแผนที่"
             />
           </div>
@@ -224,6 +307,11 @@ function DetailSection({
 }
 
 function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
+  const [nationalId, setNationalId] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [nationalIdDialogOpen, setNationalIdDialogOpen] = useState(false);
+  const displayedNationalId = nationalId ?? user.PersonID_Onec ?? "-";
   return (
     <Card className="rounded-lg">
       <CardHeader>
@@ -237,11 +325,37 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
           <ReadOnlyProfileField label="ชื่อ" value={text(user.FirstName)} />
           <ReadOnlyProfileField label="นามสกุล" value={text(user.LastName)} />
         </div>
+        <ReadOnlyProfileField
+          action={
+            <Button
+              className="shrink-0"
+              icon={Eye}
+              onClick={() => setNationalIdDialogOpen(true)}
+              type="button"
+              variant="outline"
+            >
+              แสดงเลขบัตร
+            </Button>
+          }
+          label="เลขบัตรประชาชน"
+          value={text(displayedNationalId)}
+        />
         <ReadOnlyProfileField label="เบอร์โทรศัพท์" value={text(user.phone)} />
         <ReadOnlyProfileField label="อีเมล" value={text(user.email)} />
-        <ReadOnlyProfileField label="หน่วยงาน/สังกัด" value={text(user.affiliation)} />
+        <ReadOnlyProfileField
+          label="หน่วยงาน/สังกัด"
+          value={text(user.affiliation)}
+        />
         <ReadOnlyProfileField label="LINE ID" value={text(user.line_id)} />
       </CardContent>
+      {user.id ? (
+        <UserNationalIdRevealDialog
+          onOpenChange={setNationalIdDialogOpen}
+          onRevealed={setNationalId}
+          open={nationalIdDialogOpen}
+          userId={user.id}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -276,15 +390,29 @@ function UserDetailContent({
             <DetailItem label="ชื่อผู้ใช้" value={text(user.username)} />
             <DetailItem label="ตำแหน่ง" value={getUserRoleText(user)} />
             <DetailItem label="สถานะ" value={text(user.status)} />
-            <DetailItem label="ต้องเปลี่ยนรหัส" value={text(user.must_change_password)} />
-            <DetailItem label="สร้างเมื่อ" value={formatThaiDateTime(user.created_at)} />
-            <DetailItem label="ปิดใช้งานเมื่อ" value={formatThaiDateTime(user.deactivated_at)} />
+            <DetailItem
+              label="ต้องเปลี่ยนรหัส"
+              value={text(user.must_change_password)}
+            />
+            <DetailItem
+              label="สร้างเมื่อ"
+              value={formatThaiDateTime(user.created_at)}
+            />
+            <DetailItem
+              label="ปิดใช้งานเมื่อ"
+              value={formatThaiDateTime(user.deactivated_at)}
+            />
           </DetailSection>
           <DetailSection title="สิทธิ์และขอบเขตข้อมูล">
             <DetailItem label="ขอบเขตข้อมูล" value={describeScope(user)} />
-            <DetailItem label="จำนวนสิทธิ์" value={`${permissions.length} รายการ`} />
+            <DetailItem
+              label="จำนวนสิทธิ์"
+              value={`${permissions.length} รายการ`}
+            />
             <div className="sm:col-span-2">
-              <div className="mb-2 text-xs font-semibold text-slate-500">สิทธิ์การใช้งาน</div>
+              <div className="mb-2 text-xs font-semibold text-slate-500">
+                สิทธิ์การใช้งาน
+              </div>
               <div className="flex flex-wrap gap-2">
                 <PermissionBadgeList permissions={permissions} />
               </div>
@@ -297,12 +425,17 @@ function UserDetailContent({
         <Card>
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-bold text-slate-800">บัญชีนักเรียน</div>
+              <div className="text-sm font-bold text-slate-800">
+                บัญชีนักเรียน
+              </div>
               <div className="mt-1 text-sm text-slate-500">
                 โปรไฟล์นักเรียน canonical อยู่ที่หน้า Student Detail
               </div>
             </div>
-            <NavButton icon={GraduationCap} to={`/students/${user.student_uuid}`}>
+            <NavButton
+              icon={GraduationCap}
+              to={`/students/${user.student_uuid}`}
+            >
               เปิดข้อมูลนักเรียน
             </NavButton>
           </CardContent>
@@ -327,7 +460,10 @@ export function UserDetailPage() {
   if (userId === null) {
     return (
       <PageShell>
-        <ErrorState title="ไม่พบผู้ใช้งาน" description="รหัสผู้ใช้งานไม่ถูกต้อง" />
+        <ErrorState
+          title="ไม่พบผู้ใช้งาน"
+          description="รหัสผู้ใช้งานไม่ถูกต้อง"
+        />
       </PageShell>
     );
   }
@@ -361,7 +497,10 @@ export function UserDetailPage() {
       />
 
       {query.isLoading ? (
-        <SkeletonStack className="rounded-lg border border-slate-200 bg-white p-5" lines={8} />
+        <SkeletonStack
+          className="rounded-lg border border-slate-200 bg-white p-5"
+          lines={8}
+        />
       ) : query.isError ? (
         <ErrorState
           onRetry={() => {
@@ -371,7 +510,10 @@ export function UserDetailPage() {
       ) : query.data ? (
         <UserDetailContent activeTab={activeTab} user={query.data} />
       ) : (
-        <ErrorState title="ไม่พบผู้ใช้งาน" description="ไม่มีข้อมูลผู้ใช้งานนี้ในระบบ" />
+        <ErrorState
+          title="ไม่พบผู้ใช้งาน"
+          description="ไม่มีข้อมูลผู้ใช้งานนี้ในระบบ"
+        />
       )}
     </PageShell>
   );
