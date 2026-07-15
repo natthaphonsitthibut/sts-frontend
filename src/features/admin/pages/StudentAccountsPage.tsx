@@ -24,6 +24,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
   EmptyState,
@@ -576,6 +577,7 @@ export function StudentAccountsPage() {
   const previewMutation = useMutation({
     mutationFn: (payload?: StudentAccountFilter) =>
       adminService.previewStudentAccounts(payload ?? previewFilter),
+    meta: { suppressSuccessToast: true },
   });
   const preview = previewMutation.data;
   const generatedCredentials =
@@ -947,6 +949,7 @@ export function StudentAccountsPage() {
         tableActions={
           selectedTab === "manage" ? (
             <>
+              <RefreshButton onRefresh={refetchAccounts} />
               {selectedAccountIds.size > 0 ? (
                 <Button
                   className="shrink-0"
@@ -1219,9 +1222,10 @@ export function StudentAccountsPage() {
           showReferenceColumn={false}
         />
       ) : (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
-          บัญชีของคุณไม่มีสิทธิ์ดูบันทึกการใช้งาน (audit log)
-        </div>
+        <EmptyState
+          description="บัญชีของคุณไม่มีสิทธิ์ดูบันทึกการใช้งาน"
+          title="ไม่สามารถดูประวัติได้"
+        />
       )}
       {confirmDialog}
       <AccountDeactivationDialog

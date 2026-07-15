@@ -389,7 +389,7 @@ export function AttendanceLinksDashboardPage() {
         {tasksQuery.isError || linkStateCatalog.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดข้อมูลลิงก์เช็คชื่อได้"
-            description="ตรวจสอบสิทธิ์หรือการเชื่อมต่อ backend แล้วลองอีกครั้ง"
+            description="ตรวจสอบสิทธิ์ของคุณแล้วลองใหม่อีกครั้ง"
             onRetry={() => {
               void tasksQuery.refetch();
               linkStateCatalog.refetch();
@@ -406,7 +406,7 @@ export function AttendanceLinksDashboardPage() {
                 { label: "ผู้รับลิงก์", sortKey: "assignee" },
                 { label: "สถานะ", sortKey: "status" },
                 { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
-                "จัดการ",
+                "",
               ]}
               columnWidths={[
                 "w-[10%]",

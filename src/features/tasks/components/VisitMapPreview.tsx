@@ -313,7 +313,7 @@ export function VisitMapPreview({
             </div>
             <div className="max-w-sm text-xs font-medium text-slate-500">
               {appConfig.googleMapsBrowserKey
-                ? "ตรวจสอบโดเมนที่อนุญาตและสถานะ Maps JavaScript API"
+                ? "ตรวจสอบการตั้งค่าแผนที่และสิทธิ์การใช้งาน"
                 : "ตั้งค่า VITE_GOOGLE_MAPS_BROWSER_KEY เพื่อเปิดแผนที่จริงในระบบ"}
             </div>
           </div>

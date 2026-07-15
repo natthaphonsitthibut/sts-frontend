@@ -15,6 +15,7 @@ import {
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { EmptyState } from "../../../components/layout/page-primitives";
 import {
   ATTENDANCE_RECORD_STATUSES,
   getAttendanceStatusPresentation,
@@ -493,9 +494,7 @@ export function AttendanceStudentTable({
       ) : null}
 
       {visibleStudents.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500">
-          ไม่พบนักเรียนที่ตรงกับคำค้นหา
-        </div>
+        <EmptyState title="ไม่พบนักเรียนที่ตรงกับคำค้นหา" />
       ) : null}
 
       {(viewMode === "list" || !onBulkStatusChange) && visibleStudents.length > 0 ? (

@@ -123,7 +123,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
           { label: "ผู้รับมอบหมาย", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เปิด" /> },
-          "จัดการ",
+          "",
         ]}
         columnWidths={[
           "w-[24%]",

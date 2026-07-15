@@ -716,30 +716,28 @@ export function AttendanceOperationsPage() {
         icon={CalendarDays}
         title="ตรวจสถานะเช็คชื่อรายวัน"
         description="ดูว่าห้องไหนเช็คชื่อครบ ยังไม่เช็ค หรือเช็คไม่ครบในวันที่เลือก"
+        actions={
+          canManageCalendar && schoolId ? (
+            <Button
+              icon={Plus}
+              onClick={() => {
+                setTermDialogTerm(null);
+                setTermDialogOpen(true);
+              }}
+            >
+              เพิ่มภาคเรียน
+            </Button>
+          ) : undefined
+        }
         footerActions={
-          can("export-data") || (canManageCalendar && schoolId) ? (
-            <>
-              {can("export-data") ? (
-                <Button
-                  icon={FileDown}
-                  onClick={() => navigate(filteredAttendanceExportUrl)}
-                  variant="outline"
-                >
-                  ส่งออกตามตัวกรองนี้
-                </Button>
-              ) : null}
-              {canManageCalendar && schoolId ? (
-                <Button
-                  icon={Plus}
-                  onClick={() => {
-                    setTermDialogTerm(null);
-                    setTermDialogOpen(true);
-                  }}
-                >
-                  เพิ่มภาคเรียน
-                </Button>
-              ) : null}
-            </>
+          can("export-data") ? (
+            <Button
+              icon={FileDown}
+              onClick={() => navigate(filteredAttendanceExportUrl)}
+              variant="outline"
+            >
+              ส่งออกตามตัวกรองนี้
+            </Button>
           ) : undefined
         }
       >
@@ -747,6 +745,7 @@ export function AttendanceOperationsPage() {
           <SchoolAreaSchoolFilter
             area={schoolArea}
             onSchoolChange={handleSchoolChange}
+            schoolEmptyLabel="เลือกโรงเรียน"
             schoolId={schoolId}
             schoolLocked={scope.isSchoolLocked}
           />
@@ -1308,7 +1307,7 @@ export function AttendanceOperationsPage() {
                   { label: "บันทึกแล้ว", sortKey: "recorded" },
                   { label: "รอบบันทึก", sortKey: "revision" },
                   { label: "หมายเหตุ / แนวทางแก้" },
-                  { label: "จัดการ" },
+                  { label: "" },
                 ]}
                 minWidthClassName="min-w-[980px]"
                 onSortChange={setAnomalySort}

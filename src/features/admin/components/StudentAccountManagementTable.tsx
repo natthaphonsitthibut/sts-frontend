@@ -11,6 +11,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import { EmptyState } from "../../../components/layout/page-primitives";
 import type { StudentAccountManagementItem } from "../types/admin.types";
 import {
   getAccountLifecycleStatusMeta,
@@ -329,9 +330,7 @@ export function StudentAccountManagementTable({
 
       <TableCardList>
         {sortedRows.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-            ยังไม่มีบัญชีนักเรียน
-          </div>
+          <EmptyState className="px-4 py-8" title="ยังไม่มีบัญชีนักเรียน" />
         ) : null}
         {sortedRows.map((row) => {
           const checked = hasId(selectedIds, row.userId);

@@ -5,18 +5,24 @@ import {
   BarChart3,
   BriefcaseBusiness,
   CalendarCheck,
-  Clock3,
-  RefreshCw,
+  ClipboardCheck,
+  Clock,
   ShieldAlert,
+  Siren,
   Users,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, Select } from "../../../components/base";
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, Combobox, Select, buttonVariants } from "../../../components/base";
+import { ChartLegend, EmptyChart, PairedBarChart, StackedBarTrend } from "../../../components/charts/chart-primitives";
 import {
   ErrorState,
   PageShell,
   PageToolbar,
   SkeletonCards,
+  ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { RefreshButton } from "../../../components/layout/refresh-button";
+import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -41,9 +47,9 @@ const PERIOD_OPTIONS: Array<{ value: HomeDashboardPeriod; label: string }> = [
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
-  watchStudents: ShieldAlert,
-  activeCases: BriefcaseBusiness,
-  pendingReview: Clock3,
+  watchStudents: Siren,
+  activeCases: Clock,
+  pendingReview: ClipboardCheck,
 };
 
 const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
@@ -104,35 +110,33 @@ function destination(path: string, query?: Record<string, string | number>): str
   return `${path}${buildQuery(query)}`;
 }
 
-function FilterSelect({
-  label,
+function FilterCombobox({
+  allLabel,
+  ariaLabel,
   options,
   value,
   onChange,
   disabled,
 }: {
-  label: string;
+  allLabel: string;
+  ariaLabel: string;
   options: HomeDashboardOption[];
   value?: string | number;
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
   return (
-    <label className="min-w-0 space-y-1 text-sm">
-      <span className="font-medium text-slate-700">{label}</span>
-      <Select
-        value={value === undefined ? "" : String(value)}
-        onChange={(event) => onChange(event.currentTarget.value)}
-        disabled={disabled}
-      >
-        <option value="">ทั้งหมด</option>
-        {options.map((option) => (
-          <option key={String(option.value)} value={String(option.value)}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
-    </label>
+    <Combobox
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onChange={onChange}
+      options={[
+        { value: "", label: allLabel },
+        ...options.map((option) => ({ value: String(option.value), label: option.label })),
+      ]}
+      placeholder={allLabel}
+      value={value === undefined ? "" : String(value)}
+    />
   );
 }
 
@@ -180,8 +184,6 @@ function useDashboardFilters() {
 function DashboardFilterBar({
   filters,
   options,
-  isFetching,
-  onReset,
   onUpdate,
 }: {
   filters: HomeDashboardFilters;
@@ -193,8 +195,6 @@ function DashboardFilterBar({
     grades: HomeDashboardOption[];
     rooms: HomeDashboardOption[];
   };
-  isFetching: boolean;
-  onReset: () => void;
   onUpdate: (next: Partial<HomeDashboardFilters>) => void;
 }) {
   const safeOptions = options ?? {
@@ -206,74 +206,67 @@ function DashboardFilterBar({
     rooms: [],
   };
   return (
-    <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
-      <label className="space-y-1 text-sm">
-        <span className="font-medium text-slate-700">ช่วงแนวโน้ม</span>
-        <Select
-          value={filters.period}
-          onChange={(event) =>
-            onUpdate({ period: event.currentTarget.value as HomeDashboardPeriod })
-          }
-        >
-          {PERIOD_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </label>
-      <FilterSelect
-        label="จังหวัด"
+    <ToolbarFilterGrid>
+      <Select
+        aria-label="ช่วงแนวโน้ม"
+        value={filters.period}
+        onChange={(event) =>
+          onUpdate({ period: event.currentTarget.value as HomeDashboardPeriod })
+        }
+      >
+        {PERIOD_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      <FilterCombobox
+        allLabel="ทุกจังหวัด"
+        ariaLabel="จังหวัด"
         options={safeOptions.provinces}
         value={filters.province}
         onChange={(value) => onUpdate({ province: value || undefined })}
       />
-      <FilterSelect
-        label="อำเภอ"
+      <FilterCombobox
+        allLabel="ทุกอำเภอ/เขต"
+        ariaLabel="อำเภอ/เขต"
         options={safeOptions.districts}
         value={filters.district}
         onChange={(value) => onUpdate({ district: value || undefined })}
         disabled={!filters.province}
       />
-      <FilterSelect
-        label="ตำบล"
+      <FilterCombobox
+        allLabel="ทุกตำบล/แขวง"
+        ariaLabel="ตำบล/แขวง"
         options={safeOptions.subDistricts}
         value={filters.subDistrict}
         onChange={(value) => onUpdate({ subDistrict: value || undefined })}
         disabled={!filters.district}
       />
-      <FilterSelect
-        label="โรงเรียน"
+      <FilterCombobox
+        allLabel="ทุกโรงเรียน"
+        ariaLabel="โรงเรียน"
         options={safeOptions.schools}
         value={filters.schoolId}
         onChange={(value) => onUpdate({ schoolId: value ? Number(value) : undefined })}
       />
-      <FilterSelect
-        label="ชั้น"
+      <FilterCombobox
+        allLabel="ทุกชั้น"
+        ariaLabel="ชั้น"
         options={safeOptions.grades}
         value={filters.grade}
         onChange={(value) => onUpdate({ grade: value || undefined })}
+        disabled={!filters.schoolId}
       />
-      <div className="grid grid-cols-[1fr_auto] gap-2">
-        <FilterSelect
-          label="ห้อง"
-          options={safeOptions.rooms}
-          value={filters.room}
-          onChange={(value) => onUpdate({ room: value || undefined })}
-          disabled={!filters.grade}
-        />
-        <Button
-          className="mt-6"
-          icon={RefreshCw}
-          loadingIconMotion="refresh"
-          isLoading={isFetching}
-          onClick={onReset}
-          variant="outline"
-        >
-          รีเซ็ต
-        </Button>
-      </div>
-    </div>
+      <FilterCombobox
+        allLabel="ทุกห้อง"
+        ariaLabel="ห้อง"
+        options={safeOptions.rooms}
+        value={filters.room}
+        onChange={(value) => onUpdate({ room: value || undefined })}
+        disabled={!filters.grade}
+      />
+    </ToolbarFilterGrid>
   );
 }
 
@@ -281,7 +274,8 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
-        const Icon = METRIC_ICONS[metric.key] ?? BarChart3;
+        const pageIdentity = getPageIdentity(metric.targetPath);
+        const Icon = METRIC_ICONS[metric.key] ?? pageIdentity?.icon ?? BarChart3;
         return (
           <Link
             key={metric.key}
@@ -301,7 +295,9 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
                 {metric.value.toLocaleString("th-TH")}
               </span>
             </div>
-            <div className="text-sm font-medium text-slate-700">{metric.label}</div>
+            <div className="text-sm font-medium text-slate-700">
+              {metric.label}
+            </div>
           </Link>
         );
       })}
@@ -361,38 +357,28 @@ function AttentionQueue({ items }: { items: Array<{
 }
 
 function AttendanceTrendChart({ points }: { points: HomeDashboardTrendPoint[] }) {
-  const maxTotal = Math.max(1, ...points.map((point) => point.total));
+  const hasData = points.some((point) => point.total > 0);
   return (
     <Card className="p-5">
       <h2 className="text-lg font-semibold text-slate-900">แนวโน้มการมาเรียน</h2>
-      <p className="mb-4 text-sm text-slate-500">รายวันจาก attendance DAILY ในขอบเขตเดียวกัน</p>
-      {points.length === 0 ? (
+      <p className="mb-4 text-sm text-slate-500">จำนวนมา สาย และขาด รายวันตามขอบเขตที่เลือก</p>
+      {!hasData ? (
         <EmptyChart />
       ) : (
         <>
-          <div className="flex h-48 items-end gap-2" aria-hidden="true">
-            {points.map((point) => (
-              <div key={point.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div className="flex h-40 w-full max-w-10 flex-col justify-end overflow-hidden rounded-md bg-slate-100">
-                  <div
-                    className="bg-danger-200"
-                    style={{ height: `${(point.absent / maxTotal) * 100}%` }}
-                  />
-                  <div
-                    className="bg-warning-200"
-                    style={{ height: `${(point.late / maxTotal) * 100}%` }}
-                  />
-                  <div
-                    className="bg-success-300"
-                    style={{ height: `${(point.present / maxTotal) * 100}%` }}
-                  />
-                </div>
-                <span className="max-w-12 truncate text-xs text-slate-500">
-                  {point.label.slice(5)}
-                </span>
-              </div>
-            ))}
-          </div>
+          <ChartLegend items={[
+            { className: "bg-success-300", label: "มา" },
+            { className: "bg-warning-200", label: "สาย" },
+            { className: "bg-danger-200", label: "ขาด" },
+          ]} />
+          <StackedBarTrend
+            points={points.map((point) => ({
+              key: point.key,
+              label: point.label.slice(5),
+              values: [point.present, point.late, point.absent],
+            }))}
+            segmentClasses={["bg-success-300", "bg-warning-200", "bg-danger-200"]}
+          />
           <ChartTable
             headers={["วัน", "มา", "สาย", "ขาด", "อัตรามา"]}
             rows={points.slice(-7).map((point) => [
@@ -422,7 +408,7 @@ function RiskDistributionChart({ summary }: { summary: HomeDashboardRiskDistribu
   return (
     <Card className="p-5">
       <h2 className="text-lg font-semibold text-slate-900">การกระจายระดับความเสี่ยง</h2>
-      <p className="mb-4 text-sm text-slate-500">อิง `student_risk_profiles` ล่าสุด</p>
+      <p className="mb-4 text-sm text-slate-500">สรุปจากการประเมินความเสี่ยงล่าสุด</p>
       {total === 0 ? (
         <EmptyChart />
       ) : (
@@ -462,7 +448,7 @@ function CaseCharts({
     ? (Object.entries(pipeline) as Array<[keyof HomeDashboardCasePipeline, number]>)
     : [];
   const maxPipeline = Math.max(1, ...pipelineEntries.map(([, value]) => value));
-  const maxMovement = Math.max(1, ...(movement ?? []).map((point) => point.opened + point.resolved));
+  const hasMovementData = movement?.some((point) => point.opened > 0 || point.resolved > 0) ?? false;
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       {pipeline ? (
@@ -491,23 +477,21 @@ function CaseCharts({
       {movement ? (
         <Card className="p-5">
           <h2 className="text-lg font-semibold text-slate-900">เคสเปิดใหม่เทียบปิดแล้ว</h2>
-          {movement.length === 0 ? (
+          {!hasMovementData ? (
             <EmptyChart />
           ) : (
-            <div className="mt-4 flex h-44 items-end gap-3" aria-hidden="true">
-              {movement.map((point) => (
-                <div key={point.key} className="flex flex-1 items-end justify-center gap-1">
-                  <div
-                    className="w-3 rounded-t bg-primary"
-                    style={{ height: `${(point.opened / maxMovement) * 100}%` }}
-                  />
-                  <div
-                    className="w-3 rounded-t bg-success-500"
-                    style={{ height: `${(point.resolved / maxMovement) * 100}%` }}
-                  />
-                </div>
-              ))}
-            </div>
+            <>
+              <ChartLegend items={[
+                { className: "bg-primary", label: "เปิดใหม่" },
+                { className: "bg-success-500", label: "ปิดแล้ว" },
+              ]} />
+              <PairedBarChart points={movement.map((point) => ({
+                key: point.key,
+                label: point.label,
+                primary: point.opened,
+                secondary: point.resolved,
+              }))} />
+            </>
           )}
           <ChartTable
             headers={["สัปดาห์", "เปิดใหม่", "ปิดแล้ว"]}
@@ -548,14 +532,6 @@ function ChartTable({ headers, rows }: { headers: string[]; rows: string[][] }) 
   );
 }
 
-function EmptyChart() {
-  return (
-    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-      ยังไม่มีข้อมูลพอสำหรับแสดงแนวโน้มในช่วงนี้
-    </div>
-  );
-}
-
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
   const { can } = usePermissions();
@@ -566,7 +542,6 @@ export function MainPage() {
     filterOptions,
     isLoading,
     isTrendsLoading,
-    isFetching,
     isError,
     isTrendsError,
     isFilterOptionsError,
@@ -592,23 +567,14 @@ export function MainPage() {
         icon={Activity}
         title="ศูนย์สั่งการวันนี้"
         description={`${displayName} · ${roleLabel} · ${affiliation}`}
-        actions={
-          <Button
-            icon={RefreshCw}
-            isLoading={isFetching}
-            loadingIconMotion="refresh"
-            onClick={refetch}
-            variant="outline"
-          >
-            รีเฟรช
-          </Button>
-        }
+        footerActions={<>
+          <RefreshButton onRefresh={refetch} />
+          <ClearFiltersButton onClear={reset} />
+        </>}
       >
         <DashboardFilterBar
           filters={filters}
           options={filterOptions?.options}
-          isFetching={isFetching}
-          onReset={reset}
           onUpdate={updateFilter}
         />
       </PageToolbar>
@@ -710,7 +676,7 @@ function LinkButton({
   return (
     <Link
       to={to}
-      className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-primary/50 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className={buttonVariants({ variant: "outline" })}
     >
       <Icon className="size-4" aria-hidden="true" />
       {children}

@@ -240,6 +240,17 @@ export function StudentListPage() {
     clearSelectedStudents();
   }
 
+  function handleClearFilters(): void {
+    setSearchQuery("");
+    setGrade("ALL");
+    setRoom("ALL");
+    setStudentStatusCode(undefined);
+    schoolArea.setProvince("");
+    scope.reset();
+    setPage(1);
+    clearSelectedStudents();
+  }
+
   function openStudent(studentId: string): void {
     void navigate(`/students/${studentId}`);
   }
@@ -327,6 +338,7 @@ export function StudentListPage() {
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
+          onClearFilters={handleClearFilters}
           onRoomChange={handleRoomChange}
           onSearchChange={handleSearchChange}
           onStudentStatusCodeChange={handleStudentStatusCodeChange}

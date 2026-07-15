@@ -10,6 +10,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -179,12 +180,8 @@ export function MasterDataLookupsPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<SettingsTabs />}
-        tableActions={
-          <Button icon={CirclePlus} onClick={openCreate}>
-            เพิ่มรายการ
-          </Button>
-        }
+        actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มรายการ</Button></>}
+        tableActions={<RefreshButton onRefresh={refetchLookups} />}
         description={config.description}
         icon={Database}
         title="ข้อมูลพื้นฐานเพิ่มเติม"
@@ -225,7 +222,7 @@ export function MasterDataLookupsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           <DataTable
-            headings={["ประเภท", "รหัส", "ชื่อ", "รายละเอียด", "สถานะ", "จัดการ"]}
+            headings={["ประเภท", "รหัส", "ชื่อ", "รายละเอียด", "สถานะ", ""]}
             minWidthClassName="min-w-[900px]"
           >
             {rows.map((row) => (

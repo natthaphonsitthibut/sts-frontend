@@ -5,6 +5,7 @@ import {
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import type { StudentStatusFilterValue } from "../types/students.types";
 
 export interface StudentStatusFilterOption {
@@ -29,6 +30,7 @@ interface StudentSearchFilterProps {
   actions?: ReactNode;
   exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  onClearFilters: () => void;
 }
 
 export function StudentSearchFilter({
@@ -48,6 +50,7 @@ export function StudentSearchFilter({
   actions,
   exportAction,
   onRefresh,
+  onClearFilters,
 }: StudentSearchFilterProps) {
   return (
     <ListPageToolbar
@@ -58,6 +61,7 @@ export function StudentSearchFilter({
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <RefreshButton onRefresh={onRefresh} />
+          <ClearFiltersButton onClear={onClearFilters} />
           {exportAction}
         </div>
       }
@@ -75,7 +79,7 @@ export function StudentSearchFilter({
             onChange={onGradeChange}
             value={grade}
           >
-            <option value="ALL">ทุกระดับชั้น</option>
+            <option value="ALL">ทุกชั้น</option>
             {gradeOptions.map((option) => (
               <option key={option} value={option}>
                 {option}

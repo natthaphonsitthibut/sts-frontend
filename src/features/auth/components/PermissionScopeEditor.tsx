@@ -512,7 +512,7 @@ export function PermissionScopeEditor({
                         })
                       }
                       options={[
-                        { value: "", label: "ทุกระดับชั้น" },
+                        { value: "", label: "ทุกชั้น" },
                         ...gradeLevels.map((grade) => ({
                           value: String(grade.id),
                           label: grade.label,

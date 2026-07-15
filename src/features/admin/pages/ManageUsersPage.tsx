@@ -27,9 +27,9 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
 import { UserTable } from "../components/UserTable";
@@ -77,7 +77,6 @@ function getFallbackUserStatusCounts(
 
 export function ManageUsersPage() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
   const deactivateAccount = useDeactivateAccount();
   const reactivateAccount = useReactivateAccount();
   const reissuePassword = useReissueTemporaryPassword();
@@ -239,26 +238,8 @@ export function ManageUsersPage() {
     <PageShell>
       <ListPageToolbar
         icon={Users}
-        actions={
-          can("audit-log") ? (
-            <Tabs
-              aria-label="โหมดจัดการผู้ใช้งาน"
-              onChange={setActiveTab}
-              options={[
-                { value: "manage", label: "จัดการผู้ใช้งาน" },
-                { value: "history", label: "ประวัติ" },
-              ]}
-              value={activeTab}
-            />
-          ) : undefined
-        }
-        tableActions={
-          activeTab === "manage" ? (
-            <NavButton icon={UserPlus} to="/manage-users/new">
-              เพิ่มผู้ใช้งาน
-            </NavButton>
-          ) : undefined
-        }
+        actions={<><Tabs aria-label="โหมดจัดการผู้ใช้งาน" onChange={setActiveTab} options={[{ value: "manage", label: "จัดการผู้ใช้งาน" }, { value: "history", label: "ประวัติ" }]} value={activeTab} /><NavButton icon={UserPlus} to="/manage-users/new">เพิ่มผู้ใช้งาน</NavButton></>}
+        tableActions={<RefreshButton onRefresh={refetch} />}
         title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         search={

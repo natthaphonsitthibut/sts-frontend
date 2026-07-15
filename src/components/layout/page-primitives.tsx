@@ -1,8 +1,10 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Search } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle, Button, Input, Select, Skeleton } from "../base";
 import { cn } from "../../lib/utils";
+import { getPageIdentity } from "./page-identity";
 
 export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
@@ -36,7 +38,7 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   description?: ReactNode;
   footerActions?: ReactNode;
   icon?: LucideIcon;
-  title: ReactNode;
+  title?: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
   tone?: "default" | "primary";
 }
@@ -78,6 +80,10 @@ export function PageToolbar({
   tone = "default",
   ...props
 }: PageToolbarProps) {
+  const { pathname } = useLocation();
+  const pageIdentity = getPageIdentity(pathname);
+  const ToolbarIcon = pageIdentity?.icon ?? Icon;
+  const toolbarTitle = pageIdentity?.title ?? title;
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
   return (
@@ -103,19 +109,19 @@ export function PageToolbar({
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            {Icon ? (
+            {ToolbarIcon ? (
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-lg",
                   toneClasses.iconSurface,
                 )}
               >
-                <Icon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
+                <ToolbarIcon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
               </div>
             ) : null}
             <div className="min-w-0">
               <h1 className={cn("text-xl font-semibold leading-8", toneClasses.title)}>
-                {title}
+                {toolbarTitle}
               </h1>
               {description ? (
                 <p className={cn("mt-1 max-w-3xl text-sm leading-6", toneClasses.description)}>{description}</p>
@@ -185,6 +191,7 @@ export function SearchInput({
 interface FilterSelectProps {
   ariaLabel: string;
   children: ReactNode;
+  disabled?: boolean;
   onChange: (value: string) => void;
   value: string;
   className?: string;
@@ -194,6 +201,7 @@ export function FilterSelect({
   ariaLabel,
   children,
   className,
+  disabled = false,
   onChange,
   value,
 }: FilterSelectProps) {
@@ -201,6 +209,7 @@ export function FilterSelect({
     <Select
       aria-label={ariaLabel}
       className={cn("sm:w-[180px]", className)}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       value={value}
     >

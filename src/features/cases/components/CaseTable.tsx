@@ -107,7 +107,7 @@ export function CaseTable({
           { label: "ผู้รับลิงก์", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
-          "ดำเนินการ",
+          "",
         ]}
         columnWidths={[
           "w-[16%]",

@@ -196,7 +196,7 @@ export function FieldFollowersReviewPage() {
       {!query.isError && !query.isLoading && followers.length > 0 ? (
         <>
           <DataTable
-            headings={["ผู้สมัคร", "เบอร์โทรศัพท์", "พื้นที่", "สถานะ", "วันที่สมัคร", "จัดการ"]}
+            headings={["ผู้สมัคร", "เบอร์โทรศัพท์", "พื้นที่", "สถานะ", "วันที่สมัคร", ""]}
             minWidthClassName="min-w-full"
             responsiveBreakpoint="lg"
           >

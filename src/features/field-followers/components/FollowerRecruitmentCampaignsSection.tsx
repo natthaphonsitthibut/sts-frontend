@@ -19,6 +19,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import {
   EmptyState,
   ErrorState,
@@ -29,6 +30,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { formatThaiDate } from "../../../lib/date-time";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   useAddFollowerCampaignTargets,
   useDeleteFollowerRecruitmentCampaign,
@@ -127,6 +129,7 @@ export function FollowerRecruitmentCampaignsSection({
   actions,
 }: FollowerRecruitmentCampaignsSectionProps) {
   const [status, setStatus] = useState<CampaignStatusFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [caseIdsInput, setCaseIdsInput] = useState("");
   const [assignFollowerIds, setAssignFollowerIds] = useState<Record<string, string>>({});
@@ -147,12 +150,21 @@ export function FollowerRecruitmentCampaignsSection({
   const deleteMutation = useDeleteFollowerRecruitmentCampaign();
   const { confirm, dialog } = useConfirm();
   const stateCatalog = useStatusCatalog("RECRUITMENT_CAMPAIGN_STATE");
+  const debouncedSearch = useDebouncedValue(searchQuery.trim().toLowerCase(), 350);
 
   const campaigns = query.data?.data ?? [];
   const filteredCampaigns = campaigns.filter((campaign) =>
     (status === "ALL" ? true : campaign.status === status) &&
-    campaignMatchesArea(campaign, area),
+    campaignMatchesArea(campaign, area) &&
+    (!debouncedSearch ||
+      campaign.name.toLowerCase().includes(debouncedSearch) ||
+      campaign.description?.toLowerCase().includes(debouncedSearch)),
   );
+
+  function clearFilters(): void {
+    setStatus("ALL");
+    area.setProvince("");
+  }
   const summary = campaigns.reduce(
     (acc, campaign) => {
       acc.views += campaign.view_count;
@@ -269,7 +281,17 @@ export function FollowerRecruitmentCampaignsSection({
         }
         icon={Link2}
         actions={actions}
-        tableActions={<RefreshButton onRefresh={() => query.refetch()} />}
+        search={{
+          value: searchQuery,
+          onChange: setSearchQuery,
+          placeholder: "ค้นหาชื่อลิงก์หรือแคมเปญ...",
+        }}
+        tableActions={
+          <>
+            <RefreshButton onRefresh={() => query.refetch()} />
+            <ClearFiltersButton onClear={clearFilters} />
+          </>
+        }
         title="ลิงก์รับสมัคร"
       />
 
@@ -327,7 +349,7 @@ export function FollowerRecruitmentCampaignsSection({
       {query.isError || stateCatalog.isError ? (
         <ErrorState
           title="ไม่สามารถโหลดข้อมูลลิงก์รับสมัครได้"
-          description="ตรวจสอบสิทธิ์หรือการเชื่อมต่อ backend แล้วลองอีกครั้ง"
+          description="ตรวจสอบสิทธิ์ของคุณแล้วลองใหม่อีกครั้ง"
           onRetry={() => {
             void query.refetch();
             stateCatalog.refetch();
@@ -356,7 +378,7 @@ export function FollowerRecruitmentCampaignsSection({
               { label: "เข้าชม", className: "whitespace-nowrap" },
               { label: "สมัครแล้ว", className: "whitespace-nowrap" },
               { label: "สร้างเมื่อ", className: "whitespace-nowrap" },
-              "จัดการ",
+              "",
             ]}
             minWidthClassName="min-w-full"
             responsiveBreakpoint="lg"

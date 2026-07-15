@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -172,6 +173,7 @@ function ProfileDetailItem({ label, value }: { label: string; value: string }) {
 }
 
 export function ProfilePage() {
+  const [isNationalIdVisible, setNationalIdVisible] = useState(false);
   const { can } = usePermissions();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useRouteTab(
@@ -223,6 +225,7 @@ export function ProfilePage() {
     throwOnError: false,
   });
   const geocodeProfileAddress = useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: geoService.geocodeProfileAddress,
     onSuccess: (result) => {
       if (!result) {
@@ -353,13 +356,29 @@ export function ProfilePage() {
 
                 <FormItem>
                   <FormLabel htmlFor="PersonID_Onec">เลขบัตรประชาชน</FormLabel>
-                  <Input
-                    autoComplete="off"
-                    id="PersonID_Onec"
-                    placeholder="ยังไม่ระบุ"
-                    readOnly
-                    value={profileUser?.PersonID_Onec ?? ""}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      autoComplete="off"
+                      className="min-w-0 flex-1"
+                      id="PersonID_Onec"
+                      placeholder="ยังไม่ระบุ"
+                      readOnly
+                      value={
+                        isNationalIdVisible
+                          ? profileUser?.PersonID_Onec ?? ""
+                          : (profileUser?.PersonID_Onec ?? "").replace(/.(?=.{4})/g, "*")
+                      }
+                    />
+                    <Button
+                      aria-label={isNationalIdVisible ? "ซ่อนเลขบัตรประชาชน" : "แสดงเลขบัตรประชาชน"}
+                      icon={isNationalIdVisible ? EyeOff : Eye}
+                      onClick={() => setNationalIdVisible((visible) => !visible)}
+                      type="button"
+                      variant="outline"
+                    >
+                      {isNationalIdVisible ? "ซ่อนเลขบัตร" : "แสดงเลขบัตร"}
+                    </Button>
+                  </div>
                   <p className="text-xs text-slate-500">
                     {can("manage-users-list") && profileUser?.id ? (
                       <>

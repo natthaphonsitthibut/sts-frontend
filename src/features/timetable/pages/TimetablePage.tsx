@@ -14,6 +14,7 @@ import {
   useConfirm,
 } from "../../../components/base";
 import { EmptyState, PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -346,18 +347,23 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
             <h3 className="text-sm font-extrabold text-slate-900">
               ตารางสอน — {room.schoolName} {room.gradeLevelLabel} ห้อง {room.roomNo}
             </h3>
-            {!adding && !isEditing ? (
-              <Button
-                icon={Plus}
-                onClick={() => {
-                  setAddPrefill(null);
-                  setAdding(true);
-                }}
-                size="sm"
-              >
-                เพิ่มคาบสอน
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-2">
+              <RefreshButton
+                onRefresh={() => Promise.all([slotsQuery.refetch(), periodTimesQuery.refetch()])}
+              />
+              {!adding && !isEditing ? (
+                <Button
+                  icon={Plus}
+                  onClick={() => {
+                    setAddPrefill(null);
+                    setAdding(true);
+                  }}
+                  size="sm"
+                >
+                  เพิ่มคาบสอน
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {/* Inline add / edit form */}

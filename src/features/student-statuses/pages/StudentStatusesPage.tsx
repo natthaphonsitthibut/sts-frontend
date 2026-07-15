@@ -10,6 +10,7 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -106,8 +107,8 @@ export function StudentStatusesPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<SettingsTabs />}
-        tableActions={<Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button>}
+        actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button></>}
+        tableActions={<RefreshButton onRefresh={() => query.refetch()} />}
         description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยน login หรือสร้าง Case ช่วยเหลืออัตโนมัติ"
         icon={GraduationCap}
         title="ข้อมูลพื้นฐานสถานะนักเรียน"
@@ -150,7 +151,7 @@ export function StudentStatusesPage() {
               { label: "หมวด", sortKey: "category" },
               "นโยบาย",
               "ใช้งานอยู่",
-              "จัดการ",
+              "",
             ]}
             minWidthClassName="min-w-[980px]"
             onSortChange={(next) => {

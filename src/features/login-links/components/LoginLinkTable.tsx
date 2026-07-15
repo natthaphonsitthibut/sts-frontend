@@ -109,7 +109,7 @@ export function LoginLinkTable({ links, onToggleLock }: LoginLinkTableProps) {
           { label: "ตำแหน่ง", sortKey: "role" },
           { label: "สถานะ", sortKey: "status" },
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
-          "จัดการ",
+          "",
         ]}
         columnWidths={[
           "w-[24%]",

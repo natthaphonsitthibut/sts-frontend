@@ -10,6 +10,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
@@ -72,11 +73,12 @@ export function ManageRoleGroupsPage() {
     <PageShell>
       <ListPageToolbar
         icon={ShieldCheck}
-        tableActions={
+        actions={
           <NavButton icon={Plus} to="/manage-role-groups/new">
             เพิ่มกลุ่มสิทธิ์
           </NavButton>
         }
+        tableActions={<RefreshButton onRefresh={refetch} />}
         title="จัดการกลุ่มผู้ใช้งาน"
         description="กำหนดกลุ่มสิทธิ์และแมปสิทธิ์การใช้งานของแต่ละตำแหน่ง"
         search={{

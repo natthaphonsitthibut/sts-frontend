@@ -10,6 +10,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { NotificationListItem } from "../components/NotificationListItem";
 import {
@@ -101,6 +102,7 @@ export function NotificationsPage() {
           </div>
         }
         description="รายการเหตุการณ์สำคัญตามขอบเขตข้อมูลและสิทธิ์ของบัญชีนี้"
+        footerActions={<RefreshButton onRefresh={refetch} />}
         icon={Bell}
         title="การแจ้งเตือน"
       />

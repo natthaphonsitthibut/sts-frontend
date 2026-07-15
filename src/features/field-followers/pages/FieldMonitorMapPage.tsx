@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Map as MapIcon, X } from "lucide-react";
 import { Alert, AlertDescription, Badge, IconButton } from "../../../components/base";
 import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { normalizeCoordinates } from "../../../lib/coordinates";
 import { RiskChildPicker, type RiskChildOption } from "../components/RiskChildPicker";
@@ -112,6 +113,7 @@ export function FieldMonitorMapPage() {
     <PageShell>
       <PageToolbar
         description="เลือกเด็กเสี่ยงเองทีละคน/ชุด (สูงสุด 50 คน) เพื่อดูตำแหน่งบ้านบนแผนที่ — ไม่มีโหมดแสดงทั้งหมด"
+        footerActions={<RefreshButton onRefresh={() => mapQuery.refetch()} />}
         icon={MapIcon}
         title="แผนที่เด็กเสี่ยง"
       />

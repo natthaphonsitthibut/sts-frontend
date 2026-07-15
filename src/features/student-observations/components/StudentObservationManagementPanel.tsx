@@ -24,7 +24,7 @@ import {
   Select,
   Textarea,
 } from "../../../components/base";
-import { SkeletonStack } from "../../../components/layout/page-primitives";
+import { EmptyState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import {
@@ -453,9 +453,7 @@ function FollowUpReviewCard({
             </Button>
           </Alert>
         ) : (followUpsQuery.data?.data.length ?? 0) === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">
-            ยังไม่มีคำขอติดตามจากครู
-          </p>
+          <EmptyState className="px-5 py-8" title="ยังไม่มีคำขอติดตามจากครู" />
         ) : (
           <ul className="space-y-3">
             {followUpsQuery.data?.data.map((request) => (
