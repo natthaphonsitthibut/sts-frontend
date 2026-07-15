@@ -2,18 +2,12 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Activity,
-  AlertCircle,
-  CheckCircle2,
   FileDown,
   LayoutDashboard,
   Plus,
   Search,
-  ShieldAlert,
-  Siren,
   RotateCcw,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 import { Badge, Button, InfoTooltip } from "../../../components/base";
 import {
@@ -27,6 +21,7 @@ import {
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import {
   EmptyState,
   ErrorState,
@@ -44,6 +39,11 @@ import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
+import {
+  RISK_TIER_ORDER,
+  RISK_TIER_PRESENTATION,
+} from "../../students/lib/risk-tier-presentation";
+import { RISK_TIER_LABELS } from "../../students/lib/student-presentation";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
   RiskDashboardQuery,
@@ -54,29 +54,15 @@ import type {
   RiskDashboardThresholds,
 } from "../types/risk-dashboard.types";
 
-const RISK_TIER_PRESENTATION: Record<
-  RiskDashboardTier,
-  {
-    label: string;
-    badge: "default" | "secondary" | "destructive" | "success" | "warning";
-    tone: "default" | "success" | "warning" | "danger" | "info";
-    icon: LucideIcon;
-  }
-> = {
-  HIGH: { label: "เสี่ยงสูง", badge: "destructive", tone: "danger", icon: Siren },
-  MEDIUM: { label: "เสี่ยงกลาง", badge: "warning", tone: "warning", icon: ShieldAlert },
-  LOW: { label: "เสี่ยงต่ำ", badge: "default", tone: "info", icon: AlertCircle },
-  WATCH: { label: "เฝ้าระวัง", badge: "secondary", tone: "default", icon: Activity },
-  NORMAL: { label: "ปกติ", badge: "success", tone: "success", icon: CheckCircle2 },
-};
-
-const RISK_FILTER_OPTIONS: Array<{ value: RiskDashboardTierFilter; label: string }> = [
+const RISK_FILTER_OPTIONS: Array<{
+  value: RiskDashboardTierFilter;
+  label: string;
+}> = [
   { value: "ALL", label: "ทุกระดับ" },
-  { value: "HIGH", label: "เสี่ยงสูง" },
-  { value: "MEDIUM", label: "เสี่ยงกลาง" },
-  { value: "LOW", label: "เสี่ยงต่ำ" },
-  { value: "WATCH", label: "เฝ้าระวัง" },
-  { value: "NORMAL", label: "ปกติ" },
+  ...RISK_TIER_ORDER.map((value) => ({
+    value,
+    label: RISK_TIER_LABELS[value],
+  })),
 ];
 
 const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
@@ -89,8 +75,14 @@ const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   openCases: "openCases",
 };
 
-type RiskSortOptionValue = "default" | `${RiskDashboardSortBy}:asc` | `${RiskDashboardSortBy}:desc`;
-const DEFAULT_RISK_SORT: DataTableSortState = { key: "risk", direction: "desc" };
+type RiskSortOptionValue =
+  | "default"
+  | `${RiskDashboardSortBy}:asc`
+  | `${RiskDashboardSortBy}:desc`;
+const DEFAULT_RISK_SORT: DataTableSortState = {
+  key: "risk",
+  direction: "desc",
+};
 
 const RISK_SORT_OPTIONS: Array<{
   value: RiskSortOptionValue;
@@ -98,20 +90,66 @@ const RISK_SORT_OPTIONS: Array<{
   sort?: DataTableSortState;
 }> = [
   { value: "default", label: "ค่าเริ่มต้น: ระดับเสี่ยง มาก → น้อย" },
-  { value: "risk:asc", label: "ระดับเสี่ยง น้อย → มาก", sort: { key: "risk", direction: "asc" } },
-  { value: "name:asc", label: "ชื่อนักเรียน ก → ฮ", sort: { key: "name", direction: "asc" } },
-  { value: "name:desc", label: "ชื่อนักเรียน ฮ → ก", sort: { key: "name", direction: "desc" } },
-  { value: "school:asc", label: "โรงเรียน ก → ฮ", sort: { key: "school", direction: "asc" } },
-  { value: "grade:asc", label: "ชั้น น้อย → มาก", sort: { key: "grade", direction: "asc" } },
-  { value: "room:asc", label: "ห้อง น้อย → มาก", sort: { key: "room", direction: "asc" } },
-  { value: "attendance:asc", label: "การมาเรียน ต่ำ → สูง", sort: { key: "attendance", direction: "asc" } },
-  { value: "attendance:desc", label: "การมาเรียน สูง → ต่ำ", sort: { key: "attendance", direction: "desc" } },
-  { value: "openCases:desc", label: "เคสเปิด มาก → น้อย", sort: { key: "openCases", direction: "desc" } },
-  { value: "openCases:asc", label: "เคสเปิด น้อย → มาก", sort: { key: "openCases", direction: "asc" } },
+  {
+    value: "risk:asc",
+    label: "ระดับเสี่ยง น้อย → มาก",
+    sort: { key: "risk", direction: "asc" },
+  },
+  {
+    value: "name:asc",
+    label: "ชื่อนักเรียน ก → ฮ",
+    sort: { key: "name", direction: "asc" },
+  },
+  {
+    value: "name:desc",
+    label: "ชื่อนักเรียน ฮ → ก",
+    sort: { key: "name", direction: "desc" },
+  },
+  {
+    value: "school:asc",
+    label: "โรงเรียน ก → ฮ",
+    sort: { key: "school", direction: "asc" },
+  },
+  {
+    value: "grade:asc",
+    label: "ชั้น น้อย → มาก",
+    sort: { key: "grade", direction: "asc" },
+  },
+  {
+    value: "room:asc",
+    label: "ห้อง น้อย → มาก",
+    sort: { key: "room", direction: "asc" },
+  },
+  {
+    value: "attendance:asc",
+    label: "การมาเรียน ต่ำ → สูง",
+    sort: { key: "attendance", direction: "asc" },
+  },
+  {
+    value: "attendance:desc",
+    label: "การมาเรียน สูง → ต่ำ",
+    sort: { key: "attendance", direction: "desc" },
+  },
+  {
+    value: "openCases:desc",
+    label: "เคสเปิด มาก → น้อย",
+    sort: { key: "openCases", direction: "desc" },
+  },
+  {
+    value: "openCases:asc",
+    label: "เคสเปิด น้อย → มาก",
+    sort: { key: "openCases", direction: "asc" },
+  },
 ];
 
-function sortToValue(sort: DataTableSortState | undefined): RiskSortOptionValue {
-  if (!sort || (sort.key === DEFAULT_RISK_SORT.key && sort.direction === DEFAULT_RISK_SORT.direction)) {
+function sortToValue(
+  sort: DataTableSortState | undefined,
+): RiskSortOptionValue {
+  if (
+    !sort ||
+    (sort.key === DEFAULT_RISK_SORT.key &&
+      sort.direction === DEFAULT_RISK_SORT.direction)
+  ) {
     return "default";
   }
   const sortBy = SORT_KEY_MAP[sort.key] ?? "risk";
@@ -126,7 +164,9 @@ function formatPercent(value: number | null): string {
   return value === null ? "-" : `${value.toFixed(1)}%`;
 }
 
-function criteriaItems(thresholds?: RiskDashboardThresholds): Array<{ label: string; value: string }> {
+function criteriaItems(
+  thresholds?: RiskDashboardThresholds,
+): Array<{ label: string; value: string }> {
   if (!thresholds) return [{ label: "สถานะ", value: "กำลังโหลดเกณฑ์" }];
   const watchPercent = Math.round(thresholds.watchProgressRatio * 100);
   return [
@@ -139,7 +179,10 @@ function criteriaItems(thresholds?: RiskDashboardThresholds): Array<{ label: str
       label: "เปอร์เซ็นต์เข้าเรียน",
       value: `นับสายรวมด้วย: เสี่ยงต่ำ <${thresholds.lowAttendancePercent}% · กลาง <${thresholds.mediumAttendancePercent}% · สูง <${thresholds.highAttendancePercent}%`,
     },
-    { label: "สายเทียบขาด", value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน` },
+    {
+      label: "สายเทียบขาด",
+      value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน`,
+    },
     {
       label: "สายรายวิชา",
       value: `≥${thresholds.subjectLateWatchCount} ครั้งใน ${thresholds.subjectLateWindowDays} วัน = เฝ้าระวัง`,
@@ -211,10 +254,7 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
   }
 
   return (
-    <DetailLinkButton
-      className="w-[112px]"
-      to={`/students/${row.studentId}`}
-    >
+    <DetailLinkButton className="w-[112px]" to={`/students/${row.studentId}`}>
       ดูโปรไฟล์
     </DetailLinkButton>
   );
@@ -233,7 +273,9 @@ export function DashboardPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>(DEFAULT_RISK_SORT);
+  const [sort, setSort] = useState<DataTableSortState | undefined>(
+    DEFAULT_RISK_SORT,
+  );
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
@@ -298,7 +340,7 @@ export function DashboardPage() {
   const meta = riskQuery.data?.meta;
   const totalCount = meta?.totalCount ?? 0;
 
-  const summaryOrder: RiskDashboardTier[] = ["HIGH", "MEDIUM", "WATCH", "LOW", "NORMAL"];
+  const summaryOrder: readonly RiskDashboardTier[] = RISK_TIER_ORDER;
   const summaryTotal = summaryOrder.reduce(
     (total, tier) => total + (meta?.summary?.[tier] ?? 0),
     0,
@@ -334,7 +376,8 @@ export function DashboardPage() {
   const activeFilterLabels = [
     search.trim() ? `ค้นหา: ${search.trim()}` : "",
     riskTier !== "ALL"
-      ? (RISK_FILTER_OPTIONS.find((option) => option.value === riskTier)?.label ?? "")
+      ? (RISK_FILTER_OPTIONS.find((option) => option.value === riskTier)
+          ?.label ?? "")
       : "",
     schoolArea.province,
     schoolArea.district,
@@ -419,6 +462,8 @@ export function DashboardPage() {
         description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
         tableActions={
           <>
+            <RefreshButton onRefresh={() => void riskQuery.refetch()} />
+            <ClearFiltersButton onClear={handleClearFilters} />
             {can("export-data") ? (
               <Button
                 icon={FileDown}
@@ -428,7 +473,6 @@ export function DashboardPage() {
                 ส่งออกตามตัวกรองนี้
               </Button>
             ) : null}
-            <RefreshButton onRefresh={() => void riskQuery.refetch()} />
           </>
         }
         search={{
@@ -473,7 +517,9 @@ export function DashboardPage() {
               <div className="space-y-2.5">
                 {criteriaItems(meta?.thresholds).map((item) => (
                   <div key={item.label}>
-                    <div className="font-semibold text-slate-800">{item.label}</div>
+                    <div className="font-semibold text-slate-800">
+                      {item.label}
+                    </div>
                     <div className="mt-0.5">{item.value}</div>
                   </div>
                 ))}
@@ -486,12 +532,19 @@ export function DashboardPage() {
         {activeFilterLabels.length > 0 ? (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2 md:hidden">
             <div className="min-w-0 text-xs font-semibold text-slate-700">
-              <span className="block">ใช้ตัวกรอง {activeFilterLabels.length} รายการ</span>
+              <span className="block">
+                ใช้ตัวกรอง {activeFilterLabels.length} รายการ
+              </span>
               <span className="block truncate font-normal text-slate-600">
                 {activeFilterLabels.join(" · ")}
               </span>
             </div>
-            <Button icon={RotateCcw} onClick={handleClearFilters} size="sm" variant="ghost">
+            <Button
+              icon={RotateCcw}
+              onClick={handleClearFilters}
+              size="sm"
+              variant="ghost"
+            >
               ล้างทั้งหมด
             </Button>
           </div>
@@ -500,7 +553,7 @@ export function DashboardPage() {
         {riskQuery.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดรายงานนักเรียนได้"
-            description="ตรวจสอบการเชื่อมต่อ backend แล้วลองอีกครั้ง"
+            description="กรุณาลองใหม่อีกครั้ง"
             onRetry={() => void riskQuery.refetch()}
           />
         ) : riskQuery.isLoading ? (
@@ -514,7 +567,16 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
-              columnWidths={["w-[21%]", "w-[14%]", "w-[8%]", "w-[8%]", "w-[14%]", "w-[9%]", "w-[10%]", "w-[16%]"]}
+              columnWidths={[
+                "w-[21%]",
+                "w-[14%]",
+                "w-[8%]",
+                "w-[8%]",
+                "w-[14%]",
+                "w-[9%]",
+                "w-[10%]",
+                "w-[16%]",
+              ]}
               headings={[
                 { label: "นักเรียน", sortKey: "name" },
                 { label: "โรงเรียน", sortKey: "school" },
@@ -523,7 +585,7 @@ export function DashboardPage() {
                 { label: "การมาเรียน", sortKey: "attendance" },
                 { label: "เคสเปิด", sortKey: "openCases" },
                 { label: "ระดับ", sortKey: "risk" },
-                "ดำเนินการ",
+                "",
               ]}
               minWidthClassName="min-w-full"
               onSortChange={handleSortChange}
@@ -556,7 +618,8 @@ export function DashboardPage() {
                       <div className="text-xs font-semibold text-slate-500">
                         ขาดติดกัน {row.consecutiveAbsentDays}/
                         {meta?.thresholds.lowConsecutiveAbsentDays ?? "-"} · ขาด{" "}
-                        {formatNumber(row.absentDays)} · สาย {formatNumber(row.lateCount)}
+                        {formatNumber(row.absentDays)} · สาย{" "}
+                        {formatNumber(row.lateCount)}
                         {row.subjectLateCount > 0
                           ? ` · สายรายวิชา ${formatNumber(row.subjectLateCount)}`
                           : ""}
@@ -580,7 +643,9 @@ export function DashboardPage() {
             </DataTable>
 
             <div className="space-y-1.5 md:hidden">
-              <div className="text-xs font-semibold text-slate-700">เรียงตาม</div>
+              <div className="text-xs font-semibold text-slate-700">
+                เรียงตาม
+              </div>
               <FilterSelect
                 ariaLabel="เรียงลำดับรายงานนักเรียน"
                 onChange={handleMobileSortChange}
@@ -608,29 +673,43 @@ export function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">การมาเรียน</div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        การมาเรียน
+                      </div>
                       <div className="font-bold text-slate-800">
                         {formatPercent(row.weightedAttendancePercent)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">เคสเปิด</div>
-                      <div className="font-bold text-slate-800">{formatNumber(row.openCaseCount)}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-slate-500">ขาดติดกัน</div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        เคสเปิด
+                      </div>
                       <div className="font-bold text-slate-800">
-                        {row.consecutiveAbsentDays}/{meta?.thresholds.lowConsecutiveAbsentDays ?? "-"}
+                        {formatNumber(row.openCaseCount)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">ขาด/สาย</div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        ขาดติดกัน
+                      </div>
                       <div className="font-bold text-slate-800">
-                        {formatNumber(row.absentDays)} / {formatNumber(row.lateCount)}
+                        {row.consecutiveAbsentDays}/
+                        {meta?.thresholds.lowConsecutiveAbsentDays ?? "-"}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">สายรายวิชา</div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        ขาด/สาย
+                      </div>
+                      <div className="font-bold text-slate-800">
+                        {formatNumber(row.absentDays)} /{" "}
+                        {formatNumber(row.lateCount)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        สายรายวิชา
+                      </div>
                       <div className="font-bold text-slate-800">
                         {formatNumber(row.subjectLateCount)}/
                         {meta?.thresholds.subjectLateWatchCount ?? "-"}
@@ -658,7 +737,6 @@ export function DashboardPage() {
             />
           </div>
         )}
-
       </div>
     </PageShell>
   );
