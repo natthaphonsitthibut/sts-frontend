@@ -1,19 +1,21 @@
-import { BarChart3, RefreshCw, ShieldCheck } from "lucide-react";
+import { BarChart3, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
-  Card,
 } from "../../../components/base";
 import {
+  EmptyState,
   ErrorState,
   PageShell,
   PageToolbar,
   SkeletonCards,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ExecutiveAreaTable } from "../components/ExecutiveAreaTable";
 import { ExecutiveReportingFilters } from "../components/ExecutiveReportingFilters";
 import { ExecutiveReportingSummary } from "../components/ExecutiveReportingSummary";
@@ -84,19 +86,16 @@ export function ExecutiveReportingPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
-          <Button
-            disabled={invalidPeriod}
-            icon={RefreshCw}
-            isLoading={overviewQuery.isFetching}
-            loadingIconMotion="refresh"
-            onClick={() => void overviewQuery.refetch()}
-            variant="outline"
-          >
-            รีเฟรช
-          </Button>
-        }
         description="ติดตามนักเรียน ความเสี่ยง และสถานะเคสแบบข้อมูลรวมตามขอบเขตที่ได้รับอนุญาต"
+        footerActions={
+          <>
+            <RefreshButton
+              disabled={invalidPeriod}
+              onRefresh={() => overviewQuery.refetch()}
+            />
+            <ClearFiltersButton onClear={resetFilters} />
+          </>
+        }
         icon={BarChart3}
         title="รายงานภาพรวมผู้บริหาร"
       >
@@ -113,7 +112,6 @@ export function ExecutiveReportingPage() {
           onFromDateChange={setFromDate}
           onGroupByChange={setGroupBy}
           onProvinceChange={handleProvinceChange}
-          onReset={resetFilters}
           onSchoolChange={setSchoolId}
           onToDateChange={setToDate}
           province={province}
@@ -145,10 +143,9 @@ export function ExecutiveReportingPage() {
 
       {areaOptions.isError ? (
         <Alert className="mb-4" variant="warning">
-          <AlertTitle>โหลดตัวเลือกพื้นที่ไม่ครบ</AlertTitle>
+          <AlertTitle>ไม่สามารถโหลดรายการสำหรับตัวกรองได้</AlertTitle>
           <AlertDescription>
-            รายงานยังใช้งานได้ แต่ตัวเลือกจังหวัด อำเภอ
-            หรือโรงเรียนบางส่วนอาจไม่ครบ
+            ลองกดรีเฟรชอีกครั้งก่อนเลือกจังหวัด อำเภอ หรือโรงเรียน
           </AlertDescription>
           <Button
             className="mt-3"
@@ -173,22 +170,11 @@ export function ExecutiveReportingPage() {
           title="โหลดรายงานไม่สำเร็จ"
         />
       ) : overview && overview.areas.length === 0 ? (
-        <Card className="border-dashed border-slate-300 p-8 text-center">
-          <h2 className="font-semibold text-slate-900">
-            ยังไม่มีข้อมูลรวมในขอบเขตนี้
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            ลองขยายพื้นที่หรือช่วงเวลา โดยระบบจะยังคงตรวจสิทธิ์ตามบัญชีปัจจุบัน
-          </p>
-          <Button
-            className="mt-4"
-            onClick={resetFilters}
-            size="sm"
-            variant="outline"
-          >
-            ล้างตัวกรอง
-          </Button>
-        </Card>
+        <EmptyState
+          action={<Button onClick={resetFilters} size="sm" variant="outline">ล้างตัวกรอง</Button>}
+          description="ลองขยายพื้นที่หรือช่วงเวลา"
+          title="ยังไม่มีข้อมูลรวมในขอบเขตนี้"
+        />
       ) : overview ? (
         <div aria-busy={overviewQuery.isFetching} className="space-y-5">
           <ExecutiveReportingSummary
