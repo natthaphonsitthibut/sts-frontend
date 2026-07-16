@@ -16,7 +16,6 @@ import {
   DataExportsPage,
   DashboardPage,
   DelegatePage,
-  ExecutiveReportingPage,
   ExpiredPage,
   FieldFollowerApplicationPage,
   FieldFollowerDetailPage,
@@ -55,7 +54,6 @@ import {
   TimetablePage,
   UserDetailPage,
   VisitLinksPage,
-  WorkSessionMonitorPage,
 } from "./lazy-pages";
 import {
   LegacyRouteRedirect,
@@ -94,10 +92,6 @@ export const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <LegacyRouteRedirect to="/student-risk-report" />,
-      },
-      {
-        path: "executive-reporting",
-        element: protectedElement(<ExecutiveReportingPage />, "executive-report"),
       },
       {
         path: "change-password",
@@ -333,10 +327,6 @@ export const router = createBrowserRouter([
       {
         path: "field-monitor-map",
         element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
-      },
-      {
-        path: "work-session-monitor",
-        element: protectedElement(<WorkSessionMonitorPage />, "field-monitor"),
       },
       {
         path: "login-links/history",

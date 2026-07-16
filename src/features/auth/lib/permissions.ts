@@ -28,11 +28,7 @@ export interface MenuItem {
 
 export const GRANT_EXEMPT_PERMISSION_IDS = ["student-self"] as const;
 
-const AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS = [
-  "home",
-  "executive-report",
-  "export-data",
-] as const;
+const EXECUTIVE_ALLOWED_PERMISSIONS = ["home"] as const;
 
 export const ROLE_RANKS: Record<string, number> = {
   STUDENT: 1,
@@ -90,7 +86,6 @@ const pageMenuItem = (
 export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("home", "/"),
   pageMenuItem("dashboard", "/student-risk-report"),
-  pageMenuItem("executive-report", "/executive-reporting"),
   pageMenuItem("students", "/students"),
   {
     id: "case-system",
@@ -176,7 +171,6 @@ export const MENU_ITEMS: MenuItem[] = [
     ],
   },
   pageMenuItem("field-monitor-map", "/field-monitor-map", "field-monitor"),
-  pageMenuItem("work-session-monitor", "/work-session-monitor", "field-monitor"),
   pageMenuItem("settings", "/settings"),
 ];
 
@@ -184,18 +178,18 @@ export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
-  const isAggregateOnlyExecutive =
+  const isRestrictedExecutive =
     roles.includes("EXECUTIVE") &&
     !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
-  if (isAggregateOnlyExecutive) {
+  if (isRestrictedExecutive) {
     const hasWildcard = customPermissions.some(
       (permission) => permission === "*" || permission === "ALL",
     );
     return hasWildcard
-      ? [...AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS]
+      ? [...EXECUTIVE_ALLOWED_PERMISSIONS]
       : customPermissions.filter((permission) =>
-          AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS.includes(
-            permission as (typeof AGGREGATE_ONLY_EXECUTIVE_PERMISSIONS)[number],
+          EXECUTIVE_ALLOWED_PERMISSIONS.includes(
+            permission as (typeof EXECUTIVE_ALLOWED_PERMISSIONS)[number],
           ),
         );
   }

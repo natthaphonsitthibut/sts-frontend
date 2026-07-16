@@ -168,21 +168,3 @@ export interface TaskChainResponse {
   reviews?: Array<Record<string, unknown>>;
   reportUps?: CaseReportUpRecord[];
 }
-
-export type WorkSessionEndReason = "MANUAL" | "SUBMITTED";
-
-export interface WorkSessionInfo {
-  id: string;
-  started_at: string;
-  ping_interval_seconds: number;
-}
-
-export interface WorkSessionStatusResponse {
-  success: true;
-  session: WorkSessionInfo | null;
-}
-
-export interface WorkSessionStartResponse {
-  success: true;
-  session: WorkSessionInfo;
-}

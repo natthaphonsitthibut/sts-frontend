@@ -32,7 +32,6 @@ import { normalizeCoordinates, type Coordinates } from "../../../lib/coordinates
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
 import { VisitMapPreview } from "../components/VisitMapPreview";
-import { useWorkSession } from "../hooks/useWorkSession";
 import { VISIT_CAUSE_CATEGORY_OPTIONS } from "../lib/task-options";
 
 const reportSchema = z.object({
@@ -101,7 +100,6 @@ export function ReportPage() {
     queryFn: () => taskService.getTask(token, sessionToken),
     enabled: Boolean(token),
   });
-  const workSession = useWorkSession(token, sessionToken, Boolean(token));
   const currentHomeCoordinates = normalizeCoordinates(
     taskQuery.data?.student_lat,
     taskQuery.data?.student_lng,
@@ -135,14 +133,7 @@ export function ReportPage() {
       photos.slice(0, 5).forEach((photo) => formData.append("photos", photo));
       return taskService.submitTaskReport(token, formData, sessionToken);
     },
-    onSuccess: () => {
-      // Best-effort — the report is already saved either way; a missed
-      // auto-end just falls back to the 30-minute timeout cron.
-      if (workSession.session) {
-        workSession.end.mutate("SUBMITTED");
-      }
-      void navigate(`/task/${token}/success`, { replace: true });
-    },
+    onSuccess: () => void navigate(`/task/${token}/success`, { replace: true }),
     throwOnError: false,
   });
 

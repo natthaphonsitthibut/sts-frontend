@@ -101,13 +101,6 @@ export const DataExportsPage = lazy(() =>
     default: module.DataExportsPage,
   })),
 );
-export const ExecutiveReportingPage = lazy(() =>
-  import("../features/executive-reporting/pages/ExecutiveReportingPage").then(
-    (module) => ({
-      default: module.ExecutiveReportingPage,
-    }),
-  ),
-);
 export const MainPage = lazy(() =>
   import("../features/home/pages/MainPage").then((module) => ({
     default: module.MainPage,
@@ -151,11 +144,6 @@ export const FieldFollowerDetailPage = lazy(() =>
 export const FieldMonitorMapPage = lazy(() =>
   import("../features/field-followers/pages/FieldMonitorMapPage").then((module) => ({
     default: module.FieldMonitorMapPage,
-  })),
-);
-export const WorkSessionMonitorPage = lazy(() =>
-  import("../features/field-followers/pages/WorkSessionMonitorPage").then((module) => ({
-    default: module.WorkSessionMonitorPage,
   })),
 );
 export const TimetablePage = lazy(() =>

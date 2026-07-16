@@ -3,7 +3,6 @@ import {
   AccountCircleIcon,
   AddLinkIcon,
   AssignmentTurnedInIcon,
-  BarChartIcon,
   CalendarTodayIcon,
   EditIcon,
   EqualizerIcon,
@@ -23,7 +22,6 @@ import {
   SendIcon,
   SettingsIcon,
   TableChartIcon,
-  TimelineIcon,
   UploadFileIcon,
   VolunteerActivismIcon,
   VpnKeyIcon,
@@ -31,10 +29,8 @@ import {
 
 /* ชุด filled (Material) ทั้ง map — ให้เมนู/หัวเพจ style เดียวกับ brand icon */
 export const PAGE_ICONS = {
-  activity: TimelineIcon,
   calendar: CalendarTodayIcon,
   "calendar-check": EventAvailableIcon,
-  "chart-bar": BarChartIcon,
   "chart-line": EqualizerIcon,
   "clipboard-check": AssignmentTurnedInIcon,
   download: FileDownloadIcon,
@@ -87,7 +83,6 @@ export const PAGE_IDENTITIES = {
   "/cases": createIdentity("เคสช่วยเหลือ", "heart-handshake"),
   "/create": createIdentity("สร้างลิงก์", "link-plus"),
   "/data-exports": createIdentity("ส่งออกข้อมูล", "download"),
-  "/executive-reporting": createIdentity("รายงานภาพรวมผู้บริหาร", "chart-bar"),
   "/field-follower-applications": createIdentity("ตรวจสอบใบสมัคร", "user-check"),
   "/field-followers": createIdentity("ลิงก์รับสมัคร", "send"),
   "/field-monitor-map": createIdentity("แผนที่เด็กเสี่ยง", "map-pin"),
@@ -105,7 +100,6 @@ export const PAGE_IDENTITIES = {
   "/teacher-access-grants": createIdentity("ลิงก์เข้าใช้งานครู", "key-round"),
   "/timetable": createIdentity("ตารางสอน", "calendar"),
   "/visit-links": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
-  "/work-session-monitor": createIdentity("ติดตามช่วงปฏิบัติงาน", "activity"),
 } as const satisfies Record<string, PageIdentity>;
 
 export function getPageIdentity(pathname: string): PageIdentity | undefined {
