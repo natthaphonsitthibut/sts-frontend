@@ -31,6 +31,7 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   AddressFormSection,
   type AddressFieldNames,
@@ -294,7 +295,12 @@ function UserForm({
     });
   }
 
-  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
+  const teacherSchoolError =
+    selectedRole === "TEACHER" && !(dataScope.school_ids?.length)
+      ? "บัญชีครูต้องเลือกโรงเรียนสังกัดอย่างน้อย 1 แห่ง"
+      : null;
+  const scopeError = teacherSchoolError
+    ?? getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
   const isCustomized = !sameSet(permissions, baseline);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null);
@@ -453,8 +459,21 @@ function UserForm({
           }
           goBack();
         },
-        onError: () => {
+        onError: (error) => {
           setReviewOpen(false);
+          const message = getApiErrorMessage(
+            error,
+            "บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล",
+          );
+          if (message.startsWith("ชื่อผู้ใช้งานนี้ถูกใช้แล้ว")) {
+            form.setError("username", { type: "server", message });
+            requestAnimationFrame(() => {
+              const usernameField = document.getElementById("username");
+              usernameField?.scrollIntoView({ behavior: "smooth", block: "center" });
+              usernameField?.focus({ preventScroll: true });
+            });
+            return;
+          }
           // The error alert sits at the top of the form; the user is at the
           // bottom (submit row) when the dialog closes — bring it into view.
           requestAnimationFrame(() => {
@@ -654,6 +673,12 @@ function UserForm({
 
           {activeTab !== "info" ? (
           <div className="mt-4" id="user-permission-scope">
+            {selectedRole === "TEACHER" ? (
+              <Alert className="mb-4" variant={teacherSchoolError && form.formState.isSubmitted ? "destructive" : "default"}>
+                <AlertTitle>โรงเรียนสังกัดของครู</AlertTitle>
+                <AlertDescription>เมื่อบันทึก ระบบจะเชื่อมบัญชีครูกับโรงเรียนที่เลือกให้อัตโนมัติ และใช้รายชื่อนี้ในตารางสอนกับโครงสร้างโรงเรียน</AlertDescription>
+              </Alert>
+            ) : null}
             <PermissionScopeEditor
               baselinePermissions={baseline}
               dataScope={dataScope}

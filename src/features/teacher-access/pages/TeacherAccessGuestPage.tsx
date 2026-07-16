@@ -30,6 +30,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
 import { getThaiDateKey } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { TeacherObservationPanel } from "../../student-observations/components/TeacherObservationPanel";
 import {
   teacherAccessGuestQueryKey,
@@ -60,7 +61,7 @@ function studentName(student: TeacherAccessRosterStudent): string {
 }
 
 function assignmentLabel(assignment: TeacherAccessAssignment): string {
-  const room = `${assignment.gradeLabel} / ${assignment.roomName || assignment.roomCode}`;
+  const room = `${assignment.gradeLabel} / ${assignment.roomName || formatRoomLabel(assignment.roomCode)}`;
   return assignment.subjectName ? `${room} · ${assignment.subjectName}` : room;
 }
 

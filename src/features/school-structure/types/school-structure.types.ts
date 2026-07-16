@@ -1,5 +1,12 @@
 export type StructureStatus = "ACTIVE" | "INACTIVE";
 
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+}
+
 export interface ScopedSchool {
   id: number;
   name: string;
@@ -23,6 +30,24 @@ export interface SchoolClassroom {
   studentCount: number;
 }
 
+export interface SchoolClassroomOption {
+  id: string;
+  gradeLevelId: number;
+  gradeLabel: string;
+  roomCode: string;
+  roomName: string | null;
+}
+
+export interface PaginatedSchoolClassrooms {
+  data: SchoolClassroom[];
+  meta: PaginationMeta;
+  summary: {
+    classroomCount: number;
+    teacherCount: number;
+    studentCount: number;
+  };
+}
+
 export interface SchoolTeacherMembership {
   id: string;
   schoolId: number;
@@ -32,6 +57,12 @@ export interface SchoolTeacherMembership {
   membershipStatus: StructureStatus;
   startedOn: string;
   endedOn: string | null;
+}
+
+export interface PaginatedSchoolTeachers {
+  data: SchoolTeacherMembership[];
+  meta: PaginationMeta;
+  summary: { activeCount: number };
 }
 
 export interface ClassroomTeacherAssignment {
@@ -56,6 +87,21 @@ export interface ClassroomRosterStudent {
   lastName: string | null;
   studentStatusCode: number | null;
   studentStatusLabel: string | null;
+  studentStatusBadgeVariant:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "success"
+    | "warning"
+    | null;
+  classroomId: string;
+  gradeLabel: string;
+  roomCode: string;
+}
+
+export interface PaginatedClassroomRoster {
+  data: ClassroomRosterStudent[];
+  meta: PaginationMeta;
 }
 
 export interface CreateClassroomInput {

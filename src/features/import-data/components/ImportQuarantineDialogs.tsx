@@ -22,6 +22,7 @@ import {
   registerField,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import {
@@ -314,10 +315,10 @@ function ImportQuarantineFixDialogContent({
   // Known rooms are only suggestions — a new room number typed by the user is
   // valid too (backend only requires a positive integer).
   if (/^[1-9]\d*$/.test(typedRoom) && !roomComboOptions.some((option) => option.value === typedRoom)) {
-    roomComboOptions.unshift({ value: typedRoom, label: `ใช้ห้อง "${typedRoom}"` });
+    roomComboOptions.unshift({ value: typedRoom, label: `ใช้ ${formatRoomLabel(typedRoom)}` });
   }
   if (roomValue && !roomComboOptions.some((option) => option.value === roomValue)) {
-    roomComboOptions.unshift({ value: roomValue, label: `ห้อง ${roomValue}` });
+    roomComboOptions.unshift({ value: roomValue, label: formatRoomLabel(roomValue) });
   }
 
   const issueFor = (field: FixField): string | undefined =>

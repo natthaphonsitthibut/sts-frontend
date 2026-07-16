@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserRound, X } from "lucide-react";
 import { Button, Combobox, Input } from "../../../components/base";
+import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
 import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -350,7 +351,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           onChange={(next) => scope.setRoom(next)}
           options={[
             { value: "", label: "ทุกห้อง" },
-            ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+            ...scope.rooms.map(toRoomOption),
           ]}
           placeholder="ค้นหาห้อง"
           value={scope.room}
@@ -396,7 +397,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
                     {student.name}
                   </span>
                   <span className="block truncate text-xs text-slate-500">
-                    {student.school_name ?? "-"} · {student.grade}/{student.room}
+                    {student.school_name ?? "-"} · {student.grade} / {formatRoomLabel(student.room)}
                   </span>
                 </span>
               </button>

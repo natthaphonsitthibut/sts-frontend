@@ -15,7 +15,9 @@ import {
 } from "../../../components/base";
 import { EmptyState, PageShell, PageToolbar } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
@@ -115,7 +117,7 @@ function AddSlotForm({
   const disableSaveReason = !subjectId
     ? "เลือกวิชาก่อนบันทึก"
     : !editingSlot && !activeTerm
-      ? "ต้องมีเทอม ACTIVE ก่อนบันทึกคาบสอน"
+      ? "ต้องมีภาคเรียนที่เปิดใช้งานก่อนบันทึกคาบสอน"
       : "";
 
   function handleCreateSubject(): void {
@@ -169,7 +171,7 @@ function AddSlotForm({
     <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
       {!editingSlot && !termsQuery.isLoading && !activeTerm ? (
         <Alert variant="warning">
-          <AlertDescription>ยังไม่มีเทอมที่เปิดใช้งาน (ACTIVE) สำหรับโรงเรียนนี้</AlertDescription>
+          <AlertDescription>โรงเรียนนี้ยังไม่มีภาคเรียนที่เปิดใช้งาน</AlertDescription>
         </Alert>
       ) : null}
       {createSlot.isError || updateSlot.isError ? (
@@ -345,11 +347,12 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
           {/* Section header */}
           <div className="flex items-center justify-between px-5 py-4">
             <h3 className="text-sm font-extrabold text-slate-900">
-              ตารางสอน — {room.schoolName} {room.gradeLevelLabel} ห้อง {room.roomNo}
+              ตารางสอน — {room.schoolName} {room.gradeLevelLabel} {formatRoomLabel(room.roomNo)}
             </h3>
             <div className="flex items-center gap-2">
               <RefreshButton
                 onRefresh={() => Promise.all([slotsQuery.refetch(), periodTimesQuery.refetch()])}
+                updatedAt={Math.max(slotsQuery.dataUpdatedAt, periodTimesQuery.dataUpdatedAt)}
               />
               {!adding && !isEditing ? (
                 <Button
@@ -533,7 +536,7 @@ function MyScheduleView({
                       {slot.subject_name_th}
                     </div>
                     <div className="mt-0.5 text-xs leading-4 text-slate-500">
-                      ห้อง {slot.room_no}
+                      {formatRoomLabel(slot.room_no)}
                     </div>
                   </div>
                 )
@@ -552,6 +555,7 @@ export function TimetablePage() {
   const isManager = can("manage-timetable");
   const [mode, setMode] = useState<"mine" | "room">("mine");
   const [room, setRoom] = useState<RoomSelection | null>(null);
+  const [roomPickerKey, setRoomPickerKey] = useState(0);
   const [periodTimesDialogOpen, setPeriodTimesDialogOpen] = useState(false);
 
   return (
@@ -576,9 +580,19 @@ export function TimetablePage() {
         }
         icon={CalendarClock}
         title="ตารางสอน"
+        footerActions={
+          isManager || mode === "room" ? (
+            <ClearFiltersButton
+              onClear={() => {
+                setRoom(null);
+                setRoomPickerKey((current) => current + 1);
+              }}
+            />
+          ) : undefined
+        }
       >
         {isManager ? (
-          <RoomPicker onChange={setRoom} />
+          <RoomPicker key={roomPickerKey} onChange={setRoom} />
         ) : (
           <div className="space-y-3">
             <Tabs
@@ -590,7 +604,7 @@ export function TimetablePage() {
               ]}
               value={mode}
             />
-            {mode === "room" ? <RoomPicker onChange={setRoom} /> : null}
+            {mode === "room" ? <RoomPicker key={roomPickerKey} onChange={setRoom} /> : null}
           </div>
         )}
       </PageToolbar>

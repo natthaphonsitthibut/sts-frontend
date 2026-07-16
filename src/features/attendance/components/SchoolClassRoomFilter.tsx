@@ -1,4 +1,5 @@
 import { Combobox } from "../../../components/base";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
 import { SchoolAreaSchoolFilter } from "./SchoolAreaSchoolFilter";
@@ -66,7 +67,7 @@ export function SchoolClassRoomFilter({
         onChange={onRoomChange}
         options={[
           { value: "", label: emptyOptionLabels?.room ?? "ทุกห้อง" },
-          ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+          ...scope.rooms.map(toRoomOption),
         ]}
         placeholder="ค้นหาห้อง"
         value={scope.room}

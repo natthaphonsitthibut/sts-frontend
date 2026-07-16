@@ -19,6 +19,11 @@ import {
   Input,
   Select,
 } from "../../../components/base";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import {
+  getSchoolTermStatusLabel,
+  SCHOOL_TERM_STATUSES,
+} from "../lib/attendance-presentation";
 import type { SchoolTerm, SchoolTermStatus } from "../types/attendance.types";
 
 const termSchema = z
@@ -64,6 +69,7 @@ export function SchoolTermDialog({
   open,
   term,
 }: SchoolTermDialogProps) {
+  const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const form = useForm<SchoolTermFormValues>({
     resolver: zodResolver(termSchema),
     defaultValues: getDefaults(term),
@@ -135,9 +141,11 @@ export function SchoolTermDialog({
             <FormItem className="sm:col-span-2">
               <FormLabel htmlFor="term-status" required>สถานะ</FormLabel>
               <Select id="term-status" {...form.register("status")}>
-                <option value="DRAFT">ฉบับร่าง</option>
-                <option value="ACTIVE">เปิดใช้งาน</option>
-                <option value="CLOSED">ปิดภาคเรียน</option>
+                {SCHOOL_TERM_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {getSchoolTermStatusLabel(status, termStatusCatalog.items)}
+                  </option>
+                ))}
               </Select>
               <FormMessage<SchoolTermFormValues> name="status" />
             </FormItem>

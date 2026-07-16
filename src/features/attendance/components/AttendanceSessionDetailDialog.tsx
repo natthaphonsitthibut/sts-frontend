@@ -13,6 +13,7 @@ import {
 import type { BadgeProps } from "../../../components/base";
 import { EmptyState, ErrorState, SkeletonTable } from "../../../components/layout/page-primitives";
 import { formatThaiDate } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useAttendanceSessionDetail } from "../hooks/useAttendanceSessionDetail";
 import { AttendanceStudentTable } from "./AttendanceStudentTable";
 import { AttendanceReopenDialog } from "./AttendanceReopenDialog";
@@ -60,7 +61,7 @@ export function AttendanceSessionDetailDialog({
         <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto" onClose={onClose}>
           <DialogHeader>
             <DialogTitle>ตรวจวันที่ {formatThaiDate(date)}</DialogTitle>
-            <DialogDescription>{grade} / ห้อง {room}</DialogDescription>
+            <DialogDescription>{grade} / {formatRoomLabel(room)}</DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-4">
             {detail.session ? (

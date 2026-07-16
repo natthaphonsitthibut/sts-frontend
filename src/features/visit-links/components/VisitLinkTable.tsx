@@ -20,6 +20,7 @@ import {
   isVisitLinkLocked,
 } from "../lib/visit-links-presentation";
 import type { VisitLink } from "../types/visit-links.types";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
@@ -51,7 +52,7 @@ function getStudentLabel(link: VisitLink): string {
 }
 
 function getClassLabel(link: VisitLink): string {
-  const classLabel = [link.grade_label, link.room ? `ห้อง ${link.room}` : null]
+  const classLabel = [link.grade_label, link.room ? formatRoomLabel(link.room) : null]
     .filter(Boolean)
     .join(" · ");
   return [link.school_name || link.student_school, classLabel].filter(Boolean).join(" · ");

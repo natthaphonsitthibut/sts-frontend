@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 
 const AVATAR_COLOR_PAIRS = [
   ["#6366f1", "#8b5cf6"],
@@ -33,10 +34,7 @@ export function getStudentAvatarGradient(name: string): CSSProperties {
 }
 
 export function formatStudentRoom(room: string | null | undefined): string {
-  if (!room || room === "0") {
-    return "-";
-  }
-  return `ห้อง ${room}`;
+  return formatRoomLabel(room);
 }
 
 /**

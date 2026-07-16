@@ -8,6 +8,7 @@ import {
   IconButton,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../api/students.service";
 import {
   PII_FIELDS,
@@ -207,7 +208,7 @@ export function StudentProfileHeader({
                   <div>
                     ชั้นเรียน:{" "}
                     <span className="font-medium text-slate-800">
-                      {toDisplay(student.grade)} ห้อง {toDisplay(student.room)}
+                      {toDisplay(student.grade)} {formatRoomLabel(student.room)}
                     </span>
                   </div>
                 </div>

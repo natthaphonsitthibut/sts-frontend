@@ -2,6 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schoolStructureService } from "../api/school-structure.service";
 import { importService } from "../../import-data/api/import.service";
 import type { CreateClassroomInput } from "../types/school-structure.types";
+import type {
+  ClassroomRosterListParams,
+  SchoolClassroomListParams,
+  SchoolTeacherListParams,
+} from "../api/school-structure.service";
 
 const KEY = "school-structure";
 
@@ -12,11 +17,23 @@ export function useScopedSchools() {
   });
 }
 
-export function useSchoolClassrooms(schoolId?: number, termId?: number) {
+export function useSchoolClassrooms(params: SchoolClassroomListParams | null) {
   return useQuery({
-    queryKey: [KEY, "classrooms", schoolId, termId],
-    queryFn: () => schoolStructureService.listClassrooms(schoolId!, termId),
-    enabled: Boolean(schoolId),
+    queryKey: [KEY, "classrooms", params],
+    queryFn: () => schoolStructureService.listClassrooms(params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useSchoolClassroomOptions(params: {
+  schoolId: number;
+  termId?: number;
+  gradeLevelId?: number;
+} | null) {
+  return useQuery({
+    queryKey: [KEY, "classroom-options", params],
+    queryFn: () => schoolStructureService.listClassroomOptions(params!),
+    enabled: Boolean(params),
   });
 }
 
@@ -28,19 +45,19 @@ export function useCreateSchoolClassroom() {
   });
 }
 
-export function useSchoolTeachers(schoolId?: number) {
+export function useSchoolTeachers(params: SchoolTeacherListParams | null) {
   return useQuery({
-    queryKey: [KEY, "teachers", schoolId],
-    queryFn: () => schoolStructureService.listTeachers(schoolId!),
-    enabled: Boolean(schoolId),
+    queryKey: [KEY, "teachers", params],
+    queryFn: () => schoolStructureService.listTeachers(params!),
+    enabled: Boolean(params),
   });
 }
 
-export function useCreateSchoolTeacher() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: schoolStructureService.createTeacherMembership,
-    onSuccess: async () => client.invalidateQueries({ queryKey: [KEY, "teachers"] }),
+export function useSchoolTeacherOptions(schoolId?: number) {
+  return useQuery({
+    queryKey: [KEY, "teacher-options", schoolId],
+    queryFn: () => schoolStructureService.listTeacherOptions(schoolId!),
+    enabled: Boolean(schoolId),
   });
 }
 
@@ -60,11 +77,11 @@ export function useCreateHomeroomAssignment() {
   });
 }
 
-export function useClassroomRoster(classroomId?: number) {
+export function useClassroomRoster(params: ClassroomRosterListParams | null) {
   return useQuery({
-    queryKey: [KEY, "roster", classroomId],
-    queryFn: () => schoolStructureService.listRoster(classroomId!),
-    enabled: Boolean(classroomId),
+    queryKey: [KEY, "roster", params],
+    queryFn: () => schoolStructureService.listRoster(params!),
+    enabled: Boolean(params),
   });
 }
 

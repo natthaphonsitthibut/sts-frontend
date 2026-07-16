@@ -18,6 +18,7 @@ import {
   useConfirm,
 } from "../../../components/base";
 import {
+  FilterCombobox,
   FilterSelect,
   ListPageToolbar,
   PageShell,
@@ -29,6 +30,7 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -36,7 +38,7 @@ import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSc
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import {
-  useSchoolClassrooms,
+  useSchoolClassroomOptions,
   useScopedSchools,
 } from "../../school-structure/hooks/useSchoolStructure";
 import { ImportDropZone } from "../components/ImportDropZone";
@@ -362,7 +364,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
                 </div>
                 <div className="text-slate-700">
                   <div>
-                    {row.gradeLabel} · ห้อง {row.roomId}
+                    {row.gradeLabel} · {formatRoomLabel(row.roomId)}
                   </div>
                   <div className="text-xs text-slate-500">
                     รหัสชั้นจากไฟล์: {row.gradeLevelId}
@@ -530,9 +532,13 @@ export function ImportDataPage() {
     queryFn: () => attendanceService.getTerms(importSchool!),
     enabled: Boolean(importSchool),
   });
-  const importClassroomsQuery = useSchoolClassrooms(
-    importSchool,
-    Number(importSchoolTermId) || undefined,
+  const importClassroomsQuery = useSchoolClassroomOptions(
+    importSchool
+      ? {
+          schoolId: importSchool,
+          termId: Number(importSchoolTermId) || undefined,
+        }
+      : null,
   );
   const importGrades = useMemo(
     () =>
@@ -683,6 +689,15 @@ export function ImportDataPage() {
     setQuarantinePage(1);
   }
 
+  function clearQuarantineFilters(): void {
+    quarantineArea.reset();
+    quarantineScope.reset();
+    setQuarantineSearch("");
+    setQuarantineReasonCode("");
+    setQuarantineStatus("PENDING");
+    resetQuarantineList();
+  }
+
   async function downloadQuarantineReport(): Promise<void> {
     const accepted = await confirm({
       title: "ยืนยันการดาวน์โหลดรายงาน",
@@ -816,6 +831,7 @@ export function ImportDataPage() {
           />
         }
         icon={FileSpreadsheet}
+        onClearFilters={clearQuarantineFilters}
         title="นำเข้าข้อมูล"
         description={
           activeTab === "import"
@@ -848,22 +864,23 @@ export function ImportDataPage() {
                 schoolId={quarantineScope.schoolId}
                 schoolLocked={quarantineScope.schoolLocked}
               />
-              <FilterSelect
+              <FilterCombobox
                 ariaLabel="กรองตามสาเหตุ"
                 className="sm:w-[320px]"
                 onChange={(value) => {
                   setQuarantineReasonCode(value);
                   resetQuarantineList();
                 }}
+                options={[
+                  { value: "", label: "ทุกสาเหตุ" },
+                  ...(quarantineLookups.data?.reasons ?? []).map((reason) => ({
+                    value: reason.code,
+                    label: reason.label,
+                  })),
+                ]}
+                placeholder="ค้นหาสาเหตุ"
                 value={quarantineReasonCode}
-              >
-                <option value="">ทุกสาเหตุ</option>
-                {(quarantineLookups.data?.reasons ?? []).map((reason) => (
-                  <option key={reason.code} value={reason.code}>
-                    {reason.label}
-                  </option>
-                ))}
-              </FilterSelect>
+              />
               <FilterSelect
                 ariaLabel="กรองตามสถานะ"
                 onChange={(value) => {
@@ -887,7 +904,7 @@ export function ImportDataPage() {
         tableActions={
           activeTab === "quarantine" ? (
             <>
-              <RefreshButton onRefresh={() => quarantineQuery.refetch()} />
+              <RefreshButton onRefresh={() => quarantineQuery.refetch()} updatedAt={quarantineQuery.dataUpdatedAt} />
               <Button
                 icon={Download}
                 isLoading={exportQuarantine.isPending}
@@ -966,7 +983,7 @@ export function ImportDataPage() {
                     { value: "", label: "เลือกห้องเรียน" },
                     ...importClassrooms.map((classroom) => ({
                       value: classroom.id,
-                      label: classroom.roomCode,
+                      label: formatRoomLabel(classroom.roomCode),
                     })),
                   ]}
                   placeholder="เลือกห้องเรียน"

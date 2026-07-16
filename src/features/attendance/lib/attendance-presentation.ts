@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
 import { Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
-import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import type {
+  AttendanceSelectionStatus,
+  SchoolTerm,
+  SchoolTermStatus,
+} from "../types/attendance.types";
 import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
@@ -9,6 +13,35 @@ const ATTENDANCE_STATUS_CODE = {
   ABSENT: 2,
   LATE: 3,
 } as const;
+
+export const SCHOOL_TERM_STATUSES: readonly SchoolTermStatus[] = [
+  "DRAFT",
+  "ACTIVE",
+  "CLOSED",
+];
+
+const SCHOOL_TERM_STATUS_FALLBACK_LABELS: Record<SchoolTermStatus, string> = {
+  DRAFT: "ร่าง",
+  ACTIVE: "เปิดใช้งาน",
+  CLOSED: "ปิดภาคเรียน",
+};
+
+export function getSchoolTermStatusLabel(
+  status: SchoolTermStatus,
+  catalog: readonly StatusCatalogItem[] = [],
+): string {
+  return (
+    findStatusCatalogItem(catalog, status)?.label ??
+    SCHOOL_TERM_STATUS_FALLBACK_LABELS[status]
+  );
+}
+
+export function formatSchoolTermLabel(
+  term: Pick<SchoolTerm, "academicYear" | "semester" | "status">,
+  catalog: readonly StatusCatalogItem[] = [],
+): string {
+  return `${term.academicYear}/${term.semester} · ${getSchoolTermStatusLabel(term.status, catalog)}`;
+}
 
 export function normalizeAttendanceSelectionStatus(
   status: unknown,

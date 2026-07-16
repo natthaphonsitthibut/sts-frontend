@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ComboboxOption } from "../../../components/base";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { studentStatusService } from "../../student-statuses/api/student-status.service";
 
@@ -84,10 +85,7 @@ export function useQuarantinePickerOptions({
 
   const roomOptions: ComboboxOption[] = useMemo(
     () =>
-      (roomsQuery.data ?? []).map((room) => ({
-        value: room,
-        label: `ห้อง ${room}`,
-      })),
+      (roomsQuery.data ?? []).map(toRoomOption),
     [roomsQuery.data],
   );
 

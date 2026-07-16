@@ -16,6 +16,7 @@ import {
   Skeleton,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type {
   GradeLevelOption,
@@ -533,9 +534,9 @@ export function PermissionScopeEditor({
                       onChange={(next) => onDataScopeChange(withSingleValue(dataScope, "room_ids", next))}
                       options={[
                         { value: "", label: "ทุกห้อง" },
-                        ...rooms.map((room) => ({ value: room, label: room })),
+                        ...rooms.map(toRoomOption),
                         ...(selectedRoom && !rooms.includes(selectedRoom)
-                          ? [{ value: selectedRoom, label: selectedRoom }]
+                          ? [toRoomOption(selectedRoom)]
                           : []),
                       ]}
                       searchable={false}

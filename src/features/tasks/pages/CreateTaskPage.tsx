@@ -33,6 +33,7 @@ import {
   PageShell,
   PageToolbar,
 } from "../../../components/layout/page-primitives";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
@@ -954,7 +955,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
                     onChange={(next) => scope.setRoom(next)}
                     options={[
                       { value: "", label: "เลือกห้อง" },
-                      ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+                      ...scope.rooms.map(toRoomOption),
                     ]}
                     placeholder="ค้นหาห้อง"
                     value={scope.room}

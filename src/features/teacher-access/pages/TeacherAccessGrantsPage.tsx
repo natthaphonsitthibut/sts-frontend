@@ -52,11 +52,15 @@ import {
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
-import { useSchoolTeachers } from "../../school-structure/hooks/useSchoolStructure";
+import { useSchoolTeacherOptions } from "../../school-structure/hooks/useSchoolStructure";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import {
   useIssueTeacherAccessGrant,
   useRevokeTeacherAccessGrant,
@@ -85,12 +89,6 @@ const CAPABILITY_LABELS: Record<TeacherAccessCapability, string> = {
   TEACHER_OBSERVATION: "บันทึกข้อสังเกตครู",
 };
 
-const TERM_STATUS_LABELS = {
-  ACTIVE: "ใช้งานอยู่",
-  DRAFT: "ฉบับร่าง",
-  CLOSED: "ปิดแล้ว",
-} as const;
-
 const STATUS_META: Record<
   TeacherAccessGrantStatus,
   { label: string; variant: "success" | "destructive" | "warning" | "secondary" }
@@ -116,11 +114,12 @@ function assignmentLabel(assignment: {
   roomName: string | null;
   subjectName: string | null;
 }): string {
-  const room = `${assignment.gradeLabel} / ${assignment.roomName || assignment.roomCode}`;
+  const room = `${assignment.gradeLabel} / ${assignment.roomName || formatRoomLabel(assignment.roomCode)}`;
   return assignment.subjectName ? `${room} · ${assignment.subjectName}` : room;
 }
 
 export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: ReactNode }) {
+  const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
   const [statusInput, setStatusInput] = useState("");
@@ -152,10 +151,8 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
   const defaultTerm = terms.find((term) => term.status === "ACTIVE") ?? terms[0];
   const selectedTermId = Number(termInput || defaultTerm?.id || 0) || undefined;
   const selectedTerm = terms.find((term) => Number(term.id) === selectedTermId);
-  const teachersQuery = useSchoolTeachers(selectedSchoolId);
-  const activeTeachers = (teachersQuery.data ?? []).filter(
-    (teacher) => teacher.membershipStatus === "ACTIVE",
-  );
+  const teachersQuery = useSchoolTeacherOptions(selectedSchoolId);
+  const activeTeachers = teachersQuery.data ?? [];
   const grantsQuery = useTeacherAccessGrants({
     schoolId: selectedSchoolId,
     schoolTermId: selectedTermId,
@@ -200,6 +197,14 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
   function selectSchool(value: string): void {
     setSchoolInput(value);
     setTermInput("");
+    setPage(1);
+  }
+
+  function clearFilters(): void {
+    schoolArea.reset();
+    setSchoolInput("");
+    setTermInput("");
+    setStatusInput("");
     setPage(1);
   }
 
@@ -316,7 +321,12 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
         icon={KeyRound}
         title="ลิงก์เข้าใช้งาน"
         description="ออกลิงก์ตามภาคเรียน ห้อง และความสามารถที่ครูได้รับมอบหมาย"
-        footerActions={<RefreshButton onRefresh={() => Promise.all([schoolArea.refetch(), termsQuery.refetch(), teachersQuery.refetch(), grantsQuery.refetch()])} />}
+        footerActions={(
+          <>
+            <RefreshButton onRefresh={() => Promise.all([schoolArea.refetch(), termsQuery.refetch(), teachersQuery.refetch(), grantsQuery.refetch()])} updatedAt={Math.max(schoolArea.dataUpdatedAt, termsQuery.dataUpdatedAt, teachersQuery.dataUpdatedAt, grantsQuery.dataUpdatedAt)} />
+            <ClearFiltersButton onClear={clearFilters} />
+          </>
+        )}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {navigationTabs}
@@ -354,7 +364,7 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
               { value: "", label: "เลือกภาคเรียน" },
               ...terms.map((term) => ({
                 value: String(term.id),
-                label: `ปี ${term.academicYear} ภาค ${term.semester} · ${TERM_STATUS_LABELS[term.status]}`,
+                label: formatSchoolTermLabel(term, termStatusCatalog.items),
               })),
             ]}
             placeholder="เลือกภาคเรียน"

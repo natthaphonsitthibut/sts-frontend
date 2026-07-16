@@ -1,5 +1,6 @@
 import { Combobox } from "../../../components/base";
 import { ToolbarFilterGrid } from "../../../components/layout/page-primitives";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 
@@ -129,7 +130,7 @@ export function RoomPicker({ onChange }: RoomPickerProps) {
         }}
         options={[
           { value: "", label: "เลือกห้อง" },
-          ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+          ...scope.rooms.map(toRoomOption),
         ]}
         placeholder="ค้นหาห้อง"
         value={scope.room}
