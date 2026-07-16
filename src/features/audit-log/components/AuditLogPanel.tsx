@@ -18,6 +18,8 @@ import {
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { EmptyState, ErrorState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
@@ -361,6 +363,14 @@ export function AuditLogPanel({
     run();
   }
 
+  function clearFilters(): void {
+    setSearchTerm("");
+    setAction("");
+    setDateFrom("");
+    setDateTo("");
+    setPageState({ page: 1, scopeKey });
+  }
+
   return (
     <section className={cn("space-y-4", className)}>
       <div className="rounded-lg border border-slate-200 bg-white p-5">
@@ -369,8 +379,12 @@ export function AuditLogPanel({
             <h2 className="text-xl font-extrabold text-slate-900">{title}</h2>
             {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
           </div>
-          <div className="shrink-0 text-sm font-semibold text-slate-500 md:text-right">
-            {auditLog.isFetching ? "กำลังอัปเดต" : `${totalCount.toLocaleString("en-US")} รายการ`}
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+            <span className="text-sm font-semibold text-slate-500">
+              {auditLog.isFetching ? "กำลังอัปเดต" : `${totalCount.toLocaleString("en-US")} รายการ`}
+            </span>
+            <RefreshButton onRefresh={auditLog.refetch} updatedAt={auditLog.dataUpdatedAt} />
+            <ClearFiltersButton onClear={clearFilters} />
           </div>
         </div>
 

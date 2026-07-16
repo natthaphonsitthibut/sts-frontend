@@ -11,6 +11,7 @@ interface UseCasesResult {
   meta: CasePaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -26,6 +27,7 @@ export function useCases(query: CaseListQuery = {}): UseCasesResult {
     meta: result.data?.meta,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

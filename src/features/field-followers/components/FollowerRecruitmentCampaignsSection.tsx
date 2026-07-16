@@ -19,7 +19,6 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import {
   EmptyState,
   ErrorState,
@@ -287,11 +286,9 @@ export function FollowerRecruitmentCampaignsSection({
           placeholder: "ค้นหาชื่อลิงก์หรือแคมเปญ...",
         }}
         tableActions={
-          <>
-            <RefreshButton onRefresh={() => query.refetch()} />
-            <ClearFiltersButton onClear={clearFilters} />
-          </>
+          <RefreshButton onRefresh={() => query.refetch()} updatedAt={query.dataUpdatedAt} />
         }
+        onClearFilters={clearFilters}
         title="ลิงก์รับสมัคร"
       />
 

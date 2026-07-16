@@ -19,6 +19,7 @@ interface UseStudentsResult {
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -37,6 +38,7 @@ export function useStudents(query: StudentListQuery = {}): UseStudentsResult {
     isLoading: result.isLoading,
     isFetching: result.isFetching,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

@@ -11,6 +11,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { NotificationListItem } from "../components/NotificationListItem";
 import {
@@ -28,7 +29,7 @@ export function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const { data, isError, isLoading, refetch } = useNotifications({
+  const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications({
     unreadOnly,
     page,
     limit: rowsPerPage,
@@ -102,7 +103,17 @@ export function NotificationsPage() {
           </div>
         }
         description="รายการเหตุการณ์สำคัญตามขอบเขตข้อมูลและสิทธิ์ของบัญชีนี้"
-        footerActions={<RefreshButton onRefresh={refetch} />}
+        footerActions={(
+          <>
+            <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
+            <ClearFiltersButton
+              onClear={() => {
+                setUnreadOnly(false);
+                setPage(1);
+              }}
+            />
+          </>
+        )}
         icon={Bell}
         title="การแจ้งเตือน"
       />

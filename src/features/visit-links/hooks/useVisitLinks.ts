@@ -33,6 +33,7 @@ interface UseVisitLinksResult {
   summary: VisitLinkSummary;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -49,6 +50,7 @@ export function useVisitLinks(query: VisitLinkListQuery = {}): UseVisitLinksResu
     summary: result.data?.summary ?? EMPTY_SUMMARY,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

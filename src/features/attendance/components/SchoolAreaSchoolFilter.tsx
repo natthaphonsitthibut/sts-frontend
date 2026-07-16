@@ -82,7 +82,6 @@ export function SchoolAreaSchoolFilter({
         }}
         options={toOptions(area.provinces, "ทุกจังหวัด")}
         placeholder="ค้นหาจังหวัด"
-        searchable={false}
         value={area.province}
       />
       <Combobox
@@ -95,7 +94,6 @@ export function SchoolAreaSchoolFilter({
         }}
         options={toOptions(area.districts, "ทุกอำเภอ/เขต")}
         placeholder="ค้นหาอำเภอ/เขต"
-        searchable={false}
         value={area.district}
       />
       <Combobox
@@ -107,7 +105,6 @@ export function SchoolAreaSchoolFilter({
         }}
         options={toOptions(area.subDistricts, "ทุกตำบล/แขวง")}
         placeholder="ค้นหาตำบล/แขวง"
-        searchable={false}
         value={area.subDistrict}
       />
       {!hideSchool ? (

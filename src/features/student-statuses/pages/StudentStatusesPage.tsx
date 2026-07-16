@@ -108,7 +108,11 @@ export function StudentStatusesPage() {
     <PageShell>
       <ListPageToolbar
         actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button></>}
-        tableActions={<RefreshButton onRefresh={() => query.refetch()} />}
+        tableActions={<RefreshButton onRefresh={() => query.refetch()} updatedAt={query.dataUpdatedAt} />}
+        onClearFilters={() => {
+          setSearch("");
+          setPage(1);
+        }}
         description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยน login หรือสร้าง Case ช่วยเหลืออัตโนมัติ"
         icon={SchoolIcon}
         title="ข้อมูลพื้นฐานสถานะนักเรียน"

@@ -76,7 +76,7 @@ export function VisitLinksPage() {
     ],
   );
 
-  const { links, meta, summary, isLoading, isError, refetch } = useVisitLinks(query);
+  const { links, meta, summary, isLoading, isError, refetch, dataUpdatedAt } = useVisitLinks(query);
   const totalCount = meta?.totalCount ?? 0;
   const hasActiveFilter =
     Boolean(debouncedSearch) ||
@@ -118,6 +118,14 @@ export function VisitLinksPage() {
     setPage(1);
   }
 
+  function handleClearFilters(): void {
+    setSearchQuery("");
+    setStatus("ALL");
+    schoolArea.reset();
+    scope.reset();
+    setPage(1);
+  }
+
   return (
     <PageShell>
       {effectiveTab === "list" ? (
@@ -136,11 +144,12 @@ export function VisitLinksPage() {
             ) : undefined
           }
           icon={MapPin}
+          onClearFilters={handleClearFilters}
           title="ลิงก์ลงพื้นที่"
           description="ดูและจัดการลิงก์ภารกิจลงพื้นที่ตามขอบเขตเคสที่ได้รับสิทธิ์"
           tableActions={
             <div className="flex gap-2">
-              <RefreshButton onRefresh={refetch} />
+              <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
             </div>
           }
           search={{
@@ -187,6 +196,7 @@ export function VisitLinksPage() {
             />
           }
           description="ดูประวัติการสร้าง ปิด และเปิดลิงก์ลงพื้นที่ย้อนหลังตามขอบเขตสิทธิ์"
+          onClearFilters={handleClearFilters}
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}

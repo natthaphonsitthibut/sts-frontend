@@ -48,6 +48,7 @@ interface UseUsersResult {
   meta: UserPaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -56,6 +57,7 @@ interface UseStudentAccountsResult {
   meta: StudentAccountPaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -63,6 +65,7 @@ interface UseRolesCatalogResult {
   rolesCatalog: RoleDefinition[];
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -78,6 +81,7 @@ export function useUsers(query: UserListQuery = {}): UseUsersResult {
     meta: result.data?.meta,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },
@@ -114,6 +118,7 @@ export function useStudentAccounts(
     meta: result.data?.meta,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },
@@ -129,6 +134,7 @@ export function useRolesCatalog(): UseRolesCatalogResult {
     rolesCatalog: result.data ?? EMPTY_ROLES,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

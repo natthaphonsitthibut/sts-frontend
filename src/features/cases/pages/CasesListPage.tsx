@@ -134,7 +134,7 @@ export function CasesListPage() {
     ],
   );
 
-  const { cases, meta, isLoading, isError, refetch } = useCases(query);
+  const { cases, meta, isLoading, isError, refetch, dataUpdatedAt } = useCases(query);
   const workflowStatuses = useStatusCatalog("CASE_WORKFLOW");
   const statuses = workflowStatuses.items;
   const totalCount = meta?.totalCount ?? 0;
@@ -236,6 +236,7 @@ export function CasesListPage() {
             ) : undefined
           }
           onRefresh={refetch}
+          updatedAt={dataUpdatedAt}
           onClearFilters={handleClearFilters}
           onSearchChange={handleSearchChange}
           onStatusChange={handleStatusChange}
@@ -266,6 +267,7 @@ export function CasesListPage() {
             />
           }
           description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          onClearFilters={handleClearFilters}
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}

@@ -3,10 +3,15 @@ import { useSearchParams } from "react-router-dom";
 import { Map as MapIcon, X } from "lucide-react";
 import { Alert, AlertDescription, Badge, IconButton } from "../../../components/base";
 import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { normalizeCoordinates } from "../../../lib/coordinates";
-import { RiskChildPicker, type RiskChildOption } from "../components/RiskChildPicker";
+import {
+  RiskChildPicker,
+  type RiskChildOption,
+} from "../components/RiskChildPicker";
+import { useRiskChildPickerController } from "../hooks/useRiskChildPickerController";
 import { RiskMapView, type RiskMapPin } from "../components/RiskMapView";
 import { useFieldMonitorMap } from "../hooks/useFieldFollowers";
 import { FIELD_MONITOR_MAP_MAX_STUDENTS } from "../types/field-monitor-map.types";
@@ -37,6 +42,7 @@ export function FieldMonitorMapPage() {
   const [knownOptions, setKnownOptions] = useState<Map<string, RiskChildOption>>(
     () => new Map(),
   );
+  const pickerController = useRiskChildPickerController();
 
   const mapQuery = useFieldMonitorMap(Array.from(selectedIds));
 
@@ -113,7 +119,21 @@ export function FieldMonitorMapPage() {
     <PageShell>
       <PageToolbar
         description="เลือกเด็กเสี่ยงเองทีละคน/ชุด (สูงสุด 50 คน) เพื่อดูตำแหน่งบ้านบนแผนที่ — ไม่มีโหมดแสดงทั้งหมด"
-        footerActions={<RefreshButton onRefresh={() => mapQuery.refetch()} />}
+        footerActions={(
+          <>
+            <RefreshButton
+              onRefresh={() => Promise.all([
+                pickerController.refetch(),
+                ...(selectedIds.size > 0 ? [mapQuery.refetch()] : []),
+              ])}
+              updatedAt={Math.max(
+                pickerController.dataUpdatedAt,
+                mapQuery.dataUpdatedAt,
+              )}
+            />
+            <ClearFiltersButton onClear={pickerController.clearFilters} />
+          </>
+        )}
         icon={MapIcon}
         title="แผนที่เด็กเสี่ยง"
       />
@@ -127,6 +147,7 @@ export function FieldMonitorMapPage() {
             </Badge>
           </div>
           <RiskChildPicker
+            controller={pickerController}
             maxSelected={MAX_SELECTED}
             onToggle={handleToggle}
             selectedIds={selectedIds}

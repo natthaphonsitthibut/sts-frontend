@@ -37,11 +37,16 @@ export function ManageRoleGroupsPage() {
     [debouncedSearch, page, rowsPerPage],
   );
 
-  const { roleGroups, meta, isLoading, isError, refetch } = useRoleGroups(query);
+  const { roleGroups, meta, isLoading, isError, refetch, dataUpdatedAt } = useRoleGroups(query);
   const totalCount = meta?.totalCount ?? 0;
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleClearFilters(): void {
+    setSearchQuery("");
     setPage(1);
   }
 
@@ -78,7 +83,8 @@ export function ManageRoleGroupsPage() {
             เพิ่มกลุ่มสิทธิ์
           </NavButton>
         }
-        tableActions={<RefreshButton onRefresh={refetch} />}
+        tableActions={<RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />}
+        onClearFilters={handleClearFilters}
         title="จัดการกลุ่มผู้ใช้งาน"
         description="กำหนดกลุ่มสิทธิ์และแมปสิทธิ์การใช้งานของแต่ละตำแหน่ง"
         search={{

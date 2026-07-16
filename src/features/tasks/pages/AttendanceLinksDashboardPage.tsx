@@ -222,6 +222,14 @@ export function AttendanceLinksDashboardPage() {
     setPage(1);
   }
 
+  function handleClearFilters(): void {
+    setSearch("");
+    setStatus("ALL");
+    schoolArea.reset();
+    scope.reset();
+    setPage(1);
+  }
+
   async function handleToggleLock(linkId: string, locked: boolean): Promise<void> {
     const confirmed = await confirm(getLinkLockConfirm(locked));
     if (!confirmed) {
@@ -262,11 +270,12 @@ export function AttendanceLinksDashboardPage() {
             ) : undefined
           }
           icon={ClipboardCheck}
+          onClearFilters={handleClearFilters}
           title="ลิงก์เช็คชื่อ"
           description="ตรวจสอบลิงก์เช็คชื่อรายชั้นและปิดหรือเปิดใช้งานได้ทันที"
           tableActions={
             <div className="flex flex-wrap gap-2">
-              <RefreshButton onRefresh={() => tasksQuery.refetch()} />
+              <RefreshButton onRefresh={() => tasksQuery.refetch()} updatedAt={tasksQuery.dataUpdatedAt} />
             </div>
           }
           search={{
@@ -313,6 +322,7 @@ export function AttendanceLinksDashboardPage() {
             />
           }
           description="ดูประวัติการสร้าง ปิด และเปิดลิงก์เช็คชื่อย้อนหลังตามขอบเขตสิทธิ์"
+          onClearFilters={handleClearFilters}
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}

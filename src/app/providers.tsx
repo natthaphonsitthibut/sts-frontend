@@ -34,12 +34,14 @@ export function AppProviders() {
       <RouterProvider router={router} />
       <Toaster
         closeButton
-        position="top-right"
+        position="top-center"
+        richColors
         toastOptions={{
           classNames: {
-            success: "border-success-200 bg-success-100 text-success-700",
-            error: "border-danger-200 bg-danger-100 text-danger-700",
-            info: "border-primary/20 bg-primary-soft text-primary-dark",
+            success: "!border-success-200 !bg-success-100 !text-success-700",
+            error: "!border-danger-200 !bg-danger-100 !text-danger-700",
+            warning: "!border-warning-200 !bg-warning-100 !text-warning-700",
+            info: "!border-primary/20 !bg-primary-soft !text-primary-dark",
           },
         }}
       />

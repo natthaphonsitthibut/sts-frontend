@@ -390,7 +390,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
               ขอบเขต: {scopeLabel} · จำนวนที่จะส่งออก {exportCount.toLocaleString("th-TH")} คน
             </p>
           </div>
-          <RefreshButton onRefresh={() => listQuery.refetch()} />
+          <RefreshButton onRefresh={() => listQuery.refetch()} updatedAt={listQuery.dataUpdatedAt} />
         </div>
       </section>
 

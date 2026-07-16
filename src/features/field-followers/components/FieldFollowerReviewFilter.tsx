@@ -18,6 +18,8 @@ interface FieldFollowerReviewFilterProps {
   area: ReturnType<typeof useSchoolAreaFilter>;
   actions?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  onClearFilters: () => void;
+  updatedAt: number;
 }
 
 export function FieldFollowerReviewFilter({
@@ -29,6 +31,8 @@ export function FieldFollowerReviewFilter({
   area,
   actions,
   onRefresh,
+  onClearFilters,
+  updatedAt,
 }: FieldFollowerReviewFilterProps) {
   return (
     <ListPageToolbar
@@ -36,7 +40,8 @@ export function FieldFollowerReviewFilter({
       title="ตรวจสอบใบสมัคร อสม./ผู้ติดตาม"
       description="ตรวจข้อมูลผู้สมัครและจัดการสิทธิ์การเข้าใช้งานระบบ"
       actions={actions}
-      tableActions={<RefreshButton onRefresh={onRefresh} />}
+      tableActions={<RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />}
+      onClearFilters={onClearFilters}
       search={{
         value: searchQuery,
         onChange: onSearchChange,

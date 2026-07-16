@@ -18,6 +18,7 @@ interface UseAuditLogResult {
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -34,6 +35,7 @@ export function useAuditLog(query: AuditLogQuery): UseAuditLogResult {
     isLoading: result.isLoading,
     isFetching: result.isFetching,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

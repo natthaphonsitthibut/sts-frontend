@@ -129,7 +129,7 @@ export function ManageUsersPage() {
     ],
   );
 
-  const { users, meta, isLoading, isError, refetch } = useUsers(query);
+  const { users, meta, isLoading, isError, refetch, dataUpdatedAt } = useUsers(query);
   const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE");
   const totalCount = meta?.totalCount ?? 0;
   const lifecycleStatusCounts = useMemo(
@@ -169,6 +169,14 @@ export function ManageUsersPage() {
 
   function handleRoomChange(value: string): void {
     scope.setRoom(value);
+    setPage(1);
+  }
+
+  function handleClearFilters(): void {
+    setSearchQuery("");
+    setAccountStatus("");
+    schoolArea.reset();
+    scope.reset();
     setPage(1);
   }
 
@@ -239,7 +247,8 @@ export function ManageUsersPage() {
       <ListPageToolbar
         icon={Users}
         actions={<><Tabs aria-label="โหมดจัดการผู้ใช้งาน" onChange={setActiveTab} options={[{ value: "manage", label: "จัดการผู้ใช้งาน" }, { value: "history", label: "ประวัติ" }]} value={activeTab} /><NavButton icon={UserPlus} to="/manage-users/new">เพิ่มผู้ใช้งาน</NavButton></>}
-        tableActions={<RefreshButton onRefresh={refetch} />}
+        tableActions={activeTab === "manage" ? <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} /> : undefined}
+        onClearFilters={handleClearFilters}
         title="จัดการรายชื่อผู้ใช้งาน"
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         search={

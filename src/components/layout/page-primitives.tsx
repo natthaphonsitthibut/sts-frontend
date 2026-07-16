@@ -2,8 +2,19 @@ import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { Alert, AlertDescription, AlertTitle, Button, Input, Select, Skeleton } from "../base";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Combobox,
+  Input,
+  Select,
+  Skeleton,
+  type ComboboxOption,
+} from "../base";
 import { cn } from "../../lib/utils";
+import { ClearFiltersButton } from "./clear-filters-button";
 import { getPageIdentity } from "./page-identity";
 
 export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
@@ -218,6 +229,41 @@ export function FilterSelect({
   );
 }
 
+interface FilterComboboxProps {
+  ariaLabel: string;
+  disabled?: boolean;
+  emptyText?: string;
+  onChange: (value: string) => void;
+  options: ComboboxOption[];
+  placeholder: string;
+  value: string;
+  className?: string;
+}
+
+export function FilterCombobox({
+  ariaLabel,
+  className,
+  disabled = false,
+  emptyText,
+  onChange,
+  options,
+  placeholder,
+  value,
+}: FilterComboboxProps) {
+  return (
+    <Combobox
+      ariaLabel={ariaLabel}
+      className={cn("w-full sm:w-[180px]", className)}
+      disabled={disabled}
+      emptyText={emptyText}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      value={value}
+    />
+  );
+}
+
 export function ToolbarControls({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
@@ -260,15 +306,34 @@ interface ListToolbarSearch {
   placeholder: string;
 }
 
-interface ListPageToolbarProps
+interface ListPageToolbarBaseProps
   extends Omit<PageToolbarProps, "children" | "footerActions"> {
-  /** Optional search box — rendered first in the controls row. */
-  search?: ListToolbarSearch;
-  /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
-  filters?: ReactNode;
   /** Commands acting on the list — rendered below filters and aligned right. */
   tableActions?: ReactNode;
 }
+
+type ListPageToolbarControlProps =
+  | {
+      search?: undefined;
+      filters?: undefined;
+      onClearFilters?: never;
+    }
+  | {
+      /** Optional search box — rendered first in the controls row. */
+      search?: ListToolbarSearch;
+      /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
+      filters: ReactNode;
+      /** Required whenever list controls exist, so a reset action cannot be omitted. */
+      onClearFilters: () => void;
+    }
+  | {
+      /** Search-only list controls still require the same reset action. */
+      search: ListToolbarSearch;
+      filters?: ReactNode;
+      onClearFilters: () => void;
+    };
+
+type ListPageToolbarProps = ListPageToolbarBaseProps & ListPageToolbarControlProps;
 
 /**
  * Canonical list-page header: one shell every list page shares so search,
@@ -280,13 +345,25 @@ interface ListPageToolbarProps
  */
 export function ListPageToolbar({
   filters,
+  onClearFilters,
   search,
   tableActions,
   ...toolbarProps
 }: ListPageToolbarProps) {
   const hasControls = Boolean(search || filters);
+  const showClearFilters = hasControls && Boolean(onClearFilters);
+  const footerActions = tableActions || showClearFilters
+    ? (
+        <>
+          {tableActions}
+          {showClearFilters && onClearFilters
+            ? <ClearFiltersButton onClear={onClearFilters} />
+            : null}
+        </>
+      )
+    : undefined;
   return (
-    <PageToolbar {...toolbarProps} footerActions={tableActions}>
+    <PageToolbar {...toolbarProps} footerActions={footerActions}>
       {hasControls ? (
         <div className="flex flex-col gap-3">
           {search ? (

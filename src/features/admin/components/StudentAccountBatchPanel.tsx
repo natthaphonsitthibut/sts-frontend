@@ -37,6 +37,7 @@ import {
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   useCancelStudentAccountBatch,
   useDownloadStudentAccountBatchCredentials,
@@ -82,7 +83,7 @@ function scopeLabel(scope: StudentAccountBatchJob["scope"]): string {
     // is available, to stay consistent with how schools are shown elsewhere.
     scope.schoolName ?? (scope.schoolId ? `รร. ${scope.schoolId}` : null),
     scope.grade,
-    typeof scope.room === "number" ? `ห้อง ${scope.room}` : null,
+    typeof scope.room === "number" ? formatRoomLabel(scope.room) : null,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(" · ") : "ทุกโรงเรียนในขอบเขต";
 }
@@ -357,7 +358,7 @@ export function StudentAccountBatchPanel({
                   selectedJob.status}
               </Badge>
             </div>
-            <RefreshButton onRefresh={() => listQuery.refetch()} />
+            <RefreshButton onRefresh={() => listQuery.refetch()} updatedAt={listQuery.dataUpdatedAt} />
           </div>
 
           <ProgressBar

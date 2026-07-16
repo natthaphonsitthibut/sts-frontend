@@ -116,6 +116,13 @@ export function useSchoolAreaFilter(initial: {
     setSubDistrict(school.sub_district ?? "");
   }
 
+  function reset(): void {
+    setProvinceState("");
+    setDistrictState("");
+    setSubDistrict("");
+    setSchoolSearch("");
+  }
+
   return {
     province,
     district,
@@ -132,7 +139,12 @@ export function useSchoolAreaFilter(initial: {
     setDistrict,
     setSubDistrict: setSubDistrictValue,
     setAreaFromSchool,
+    reset,
     schoolsEnabled,
+    dataUpdatedAt: Math.max(
+      locationsQuery.dataUpdatedAt,
+      schoolsQuery.dataUpdatedAt,
+    ),
     isLoading:
       locationsQuery.isLoading || (schoolsEnabled && schoolsQuery.isLoading),
     isError: locationsQuery.isError || schoolsQuery.isError,

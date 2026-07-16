@@ -30,6 +30,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { cn } from "../../../lib/utils";
+import { toRoomOption } from "../../../lib/room-presentation";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -163,10 +164,7 @@ function ExportScopeFilters({
           }}
           options={[
             { value: "", label: "ทุกห้อง" },
-            ...scope.rooms.map((room) => ({
-              value: room,
-              label: `ห้อง ${room}`,
-            })),
+            ...scope.rooms.map(toRoomOption),
           ]}
           placeholder="ทุกห้อง"
           searchable={false}
@@ -520,11 +518,13 @@ export function DataExportsPage() {
     isError,
     refetch,
     isFetching,
+    dataUpdatedAt: catalogUpdatedAt,
   } = useDataExportCatalog();
   const {
     data: jobs = [],
     isError: isJobsError,
     refetch: refetchJobs,
+    dataUpdatedAt: jobsUpdatedAt,
   } = useDataExportJobs();
   const createJob = useCreateDataExportJob();
   const downloadJob = useDownloadDataExportJob();
@@ -600,6 +600,7 @@ export function DataExportsPage() {
         footerActions={
           <RefreshButton
             onRefresh={() => Promise.all([refetch(), refetchJobs()])}
+            updatedAt={Math.max(catalogUpdatedAt, jobsUpdatedAt)}
           />
         }
         icon={Download}

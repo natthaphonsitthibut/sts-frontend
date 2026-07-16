@@ -26,6 +26,7 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import { toRoomOption } from "../../../lib/room-presentation";
 import {
   EmptyState,
   ErrorState,
@@ -543,6 +544,7 @@ export function StudentAccountsPage() {
     isLoading: accountsLoading,
     isError: accountsError,
     refetch: refetchAccounts,
+    dataUpdatedAt: accountsUpdatedAt,
   } = useStudentAccounts(managementQuery);
   const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE");
   const accountStatusOptions: Array<{
@@ -795,12 +797,23 @@ export function StudentAccountsPage() {
     setLimit(Math.min(Math.max(numericValue, MIN_BULK_LIMIT), MAX_BULK_LIMIT));
   }
 
+  function handleClearFilters(): void {
+    area.reset();
+    scope.reset();
+    setSearchQuery("");
+    setAccountStatus("");
+    setLimit(50);
+    setPreviewPage(1);
+    resetManagementList();
+  }
+
   return (
     <PageShell>
       <ListPageToolbar
         icon={KeyRound}
         title="บัญชีนักเรียน"
         description="สร้าง username และรหัสผ่านชั่วคราวจาก roster ปัจจุบัน"
+        onClearFilters={handleClearFilters}
         actions={
           <Tabs
             aria-label="โหมดบัญชีนักเรียน"
@@ -915,7 +928,7 @@ export function StudentAccountsPage() {
                 }}
                 options={[
                   { value: "", label: "ทุกห้อง" },
-                  ...scope.rooms.map((room) => ({ value: room, label: `ห้อง ${room}` })),
+                  ...scope.rooms.map(toRoomOption),
                 ]}
                 searchable={false}
                 value={scope.room}
@@ -949,7 +962,7 @@ export function StudentAccountsPage() {
         tableActions={
           selectedTab === "manage" ? (
             <>
-              <RefreshButton onRefresh={refetchAccounts} />
+              <RefreshButton onRefresh={refetchAccounts} updatedAt={accountsUpdatedAt} />
               {selectedAccountIds.size > 0 ? (
                 <Button
                   className="shrink-0"

@@ -161,7 +161,7 @@ export function StudentListPage() {
     ],
   );
 
-  const { students, meta, isLoading, isError, refetch } = useStudents(query);
+  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } = useStudents(query);
   const { options } = useStudentFilterOptions({
     schoolId: scope.schoolId || undefined,
     province: schoolArea.province || undefined,
@@ -338,6 +338,7 @@ export function StudentListPage() {
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
+          updatedAt={dataUpdatedAt}
           onClearFilters={handleClearFilters}
           onRoomChange={handleRoomChange}
           onSearchChange={handleSearchChange}
@@ -372,6 +373,7 @@ export function StudentListPage() {
               ? "ส่งคำขอ อนุมัติ และดาวน์โหลดข้อมูลส่วนบุคคลตามขอบเขตสิทธิ์"
               : "ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
           }
+          onClearFilters={handleClearFilters}
           filters={
             <SchoolAreaSchoolFilter
               area={schoolArea}

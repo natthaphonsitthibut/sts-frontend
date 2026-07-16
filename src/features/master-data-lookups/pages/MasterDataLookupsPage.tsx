@@ -149,6 +149,13 @@ export function MasterDataLookupsPage() {
     setSelected(null);
   }
 
+  function handleClearFilters(): void {
+    setTable(ALL_LOOKUP_TABLES);
+    setSearch("");
+    setPage(1);
+    setSelected(null);
+  }
+
   function openCreate(): void {
     if (isAllTables) {
       // "ทั้งหมด" has no single target table — default to the first real
@@ -177,11 +184,16 @@ export function MasterDataLookupsPage() {
     void query.refetch();
   }
 
+  const lookupsUpdatedAt = isAllTables
+    ? Math.max(0, ...allQueries.map((itemQuery) => itemQuery.dataUpdatedAt))
+    : query.dataUpdatedAt;
+
   return (
     <PageShell>
       <ListPageToolbar
         actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มรายการ</Button></>}
-        tableActions={<RefreshButton onRefresh={refetchLookups} />}
+        tableActions={<RefreshButton onRefresh={refetchLookups} updatedAt={lookupsUpdatedAt} />}
+        onClearFilters={handleClearFilters}
         description={config.description}
         icon={Database}
         title="ข้อมูลพื้นฐานเพิ่มเติม"

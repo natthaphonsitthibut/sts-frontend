@@ -36,6 +36,7 @@ interface UseLoginLinksResult {
   summary: LoginLinkSummary;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -52,6 +53,7 @@ export function useLoginLinks(query: LoginLinkListQuery = {}): UseLoginLinksResu
     summary: result.data?.summary ?? EMPTY_SUMMARY,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

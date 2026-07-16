@@ -1,13 +1,9 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { UserRound } from "lucide-react";
 import { Checkbox, Combobox, Input } from "../../../components/base";
-import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
-import { studentsService } from "../../students/api/students.service";
+import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
 import { STUDENT_RISK_TIER_FILTER_OPTIONS } from "../../students/lib/student-presentation";
-import type { StudentListQuery } from "../../students/types/students.types";
-import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
-import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import type { RiskChildPickerController } from "../hooks/useRiskChildPickerController";
 
 export interface RiskChildOption {
   id: string;
@@ -16,13 +12,12 @@ export interface RiskChildOption {
 }
 
 interface RiskChildPickerProps {
+  controller: RiskChildPickerController;
   selectedIds: ReadonlySet<string>;
   onToggle: (student: RiskChildOption, checked: boolean) => void;
   maxSelected: number;
   disabled?: boolean;
 }
-
-const MAX_RESULTS = 30;
 
 /**
  * Multi-select variant of StudentPicker for the field-monitor risk map — no
@@ -30,19 +25,22 @@ const MAX_RESULTS = 30;
  * checking stops once `maxSelected` is reached (existing checks stay togglable).
  */
 export function RiskChildPicker({
+  controller,
   selectedIds,
   onToggle,
   maxSelected,
   disabled,
 }: RiskChildPickerProps) {
-  const scope = useScopeCascade({ lockToActorScope: true });
-  const area = useSchoolAreaFilter();
-  const [search, setSearch] = useState("");
-  // Defaults to "at risk only" — this picker exists specifically to shortlist
-  // at-risk children, so NORMAL-tier students stay hidden until asked for.
-  const [riskTier, setRiskTier] = useState<
-    NonNullable<StudentListQuery["riskTier"]> | ""
-  >("AT_RISK");
+  const {
+    area,
+    results,
+    riskTier,
+    scope,
+    search,
+    setRiskTier,
+    setSearch,
+    studentsQuery,
+  } = controller;
 
   const schoolOptions = useMemo(
     () =>
@@ -53,42 +51,7 @@ export function RiskChildPicker({
     [area.schools],
   );
 
-  const term = useDebouncedValue(search.trim(), 350);
   const atCap = selectedIds.size >= maxSelected;
-
-  // Always fetch: the server caps at `limit` and enforces the actor's data
-  // scope, so an unnarrowed query is already safe — matches the same fix
-  // applied to useSchoolAreaFilter (no need to force a school/search first).
-  const studentsQuery = useQuery({
-    queryKey: [
-      "risk-child-picker",
-      area.province,
-      area.district,
-      area.subDistrict,
-      scope.schoolId,
-      scope.grade,
-      scope.room,
-      term,
-      riskTier,
-    ],
-    queryFn: () =>
-      studentsService.getStudents({
-        province: area.province || undefined,
-        district: area.district || undefined,
-        subDistrict: area.subDistrict || undefined,
-        schoolId: scope.schoolId || undefined,
-        grade: scope.grade || undefined,
-        room: scope.room || undefined,
-        searchTerm: term || undefined,
-        riskTier: riskTier || undefined,
-        limit: 50,
-      }),
-  });
-
-  const results = useMemo(
-    () => (studentsQuery.data?.items ?? []).slice(0, MAX_RESULTS),
-    [studentsQuery.data],
-  );
   const allVisibleSelected =
     results.length > 0 &&
     results.every((student) => selectedIds.has(student.id));
@@ -203,10 +166,7 @@ export function RiskChildPicker({
           onChange={(next) => scope.setRoom(next)}
           options={[
             { value: "", label: "ทุกห้อง" },
-            ...scope.rooms.map((room) => ({
-              value: room,
-              label: `ห้อง ${room}`,
-            })),
+            ...scope.rooms.map(toRoomOption),
           ]}
           placeholder="ค้นหาห้อง"
           value={scope.room}
@@ -289,7 +249,7 @@ export function RiskChildPicker({
                       </span>
                       <span className="block truncate text-xs text-slate-500">
                         {student.school_name ?? "-"} · {student.grade}/
-                        {student.room}
+                        {formatRoomLabel(student.room)}
                       </span>
                     </span>
                   </div>

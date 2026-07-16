@@ -33,6 +33,7 @@ import {
   Label,
   Select,
 } from "../../../components/base";
+import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
 import {
   DataTable,
   DataTableCell,
@@ -43,6 +44,7 @@ import {
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import {
   EmptyState,
   ErrorState,
@@ -67,7 +69,10 @@ import { CalendarDayEditDialog } from "../components/CalendarDayEditDialog";
 import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
 import { SchoolTermDialog, type SchoolTermFormValues } from "../components/SchoolTermDialog";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
-import { getTodayIso } from "../lib/attendance-presentation";
+import {
+  formatSchoolTermLabel,
+  getTodayIso,
+} from "../lib/attendance-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import type {
   AttendanceSessionAnomalyItem,
@@ -116,13 +121,6 @@ const THAI_MONTH_FORMATTER = new Intl.DateTimeFormat("th-TH", {
   month: "long",
   year: "numeric",
 });
-
-function formatTermOption(
-  term: SchoolTerm,
-  catalog: readonly StatusCatalogItem[],
-): string {
-  return `${term.academicYear}/${term.semester} · ${getCatalogMeta(catalog, term.status).label}`;
-}
 
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
@@ -710,6 +708,52 @@ export function AttendanceOperationsPage() {
     setCalendarEdit(null);
   }
 
+  function clearFilters(): void {
+    const today = getTodayIso();
+    schoolArea.reset();
+    setSchoolInput("");
+    setTermInput("");
+    setGradeFilter("");
+    setRoomFilter("");
+    setDate(today);
+    setCalendarDate(today);
+    setCalendarEdit(null);
+    setPage(1);
+    setAnomalyPage(1);
+  }
+
+  function refreshOperations(): Promise<unknown[]> {
+    const requests: Promise<unknown>[] = [
+      schoolArea.refetch(),
+      gradeLevelsQuery.refetch(),
+    ];
+    if (schoolId) requests.push(termsQuery.refetch());
+    if (schoolId && gradeFilter) requests.push(roomsQuery.refetch());
+    if (selectedTermId) {
+      requests.push(calendarQuery.refetch());
+      if (!reconciliationTermInactive) requests.push(anomalyQuery.refetch());
+      if (
+        !reconciliationTermInactive &&
+        !reconciliationDateOutOfRange &&
+        !waitingForReconciliationCalendar &&
+        !reconciliationCalendarMissing
+      ) {
+        requests.push(reconciliationQuery.refetch());
+      }
+    }
+    return Promise.all(requests);
+  }
+
+  const operationsUpdatedAt = Math.max(
+    schoolArea.dataUpdatedAt,
+    termsQuery.dataUpdatedAt,
+    gradeLevelsQuery.dataUpdatedAt,
+    roomsQuery.dataUpdatedAt,
+    calendarQuery.dataUpdatedAt,
+    reconciliationQuery.dataUpdatedAt,
+    anomalyQuery.dataUpdatedAt,
+  );
+
   return (
     <PageShell>
       <PageToolbar
@@ -730,15 +774,22 @@ export function AttendanceOperationsPage() {
           ) : undefined
         }
         footerActions={
-          can("export-data") ? (
-            <Button
-              icon={FileDown}
-              onClick={() => navigate(filteredAttendanceExportUrl)}
-              variant="outline"
-            >
-              ส่งออกตามตัวกรองนี้
-            </Button>
-          ) : undefined
+          <>
+            <RefreshButton
+              onRefresh={refreshOperations}
+              updatedAt={operationsUpdatedAt}
+            />
+            <ClearFiltersButton onClear={clearFilters} />
+            {can("export-data") ? (
+              <Button
+                icon={FileDown}
+                onClick={() => navigate(filteredAttendanceExportUrl)}
+                variant="outline"
+              >
+                ส่งออกตามตัวกรองนี้
+              </Button>
+            ) : null}
+          </>
         }
       >
         <ToolbarFilterGrid>
@@ -759,7 +810,7 @@ export function AttendanceOperationsPage() {
               }}
               options={terms.map((term) => ({
                 value: term.id,
-                label: formatTermOption(term, termStatusCatalog.items),
+                label: formatSchoolTermLabel(term, termStatusCatalog.items),
               }))}
               placeholder="เลือกภาคเรียน"
               searchable={false}
@@ -787,10 +838,7 @@ export function AttendanceOperationsPage() {
               onChange={handleRoomFilterChange}
               options={[
                 { value: "", label: "ทุกห้อง" },
-                ...(roomsQuery.data ?? []).map((room) => ({
-                  value: room,
-                  label: `ห้อง ${room}`,
-                })),
+                ...(roomsQuery.data ?? []).map(toRoomOption),
               ]}
               placeholder="ค้นหาห้อง"
               value={roomFilter}
@@ -902,7 +950,7 @@ export function AttendanceOperationsPage() {
                       </div>
                     </div>
                     {calendarQuery.isError ? (
-                      <RefreshButton onRefresh={() => calendarQuery.refetch()} />
+                      <RefreshButton onRefresh={() => calendarQuery.refetch()} updatedAt={calendarQuery.dataUpdatedAt} />
                     ) : null}
                   </div>
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,0.48fr)] xl:items-start">
@@ -1159,7 +1207,7 @@ export function AttendanceOperationsPage() {
                   );
                   return (
                     <DataTableRow key={`${row.gradeLevelId}-${row.room}`}>
-                      <DataTableCell className="font-bold">{row.grade} / {row.room}</DataTableCell>
+                      <DataTableCell className="font-bold">{row.grade} / {formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>{row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.recordedCount}</DataTableCell>
                       <DataTableCell>{row.revision ?? "-"}</DataTableCell>
@@ -1179,7 +1227,7 @@ export function AttendanceOperationsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-base font-bold text-slate-900">
-                            {row.grade} / {row.room}
+                            {row.grade} / {formatRoomLabel(row.room)}
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
                             <span>รายชื่อ {row.expectedRosterCount}</span>
@@ -1320,7 +1368,7 @@ export function AttendanceOperationsPage() {
                       <DataTableCell className="font-semibold tabular-nums text-slate-800">
                         {formatThaiDate(row.date)}
                       </DataTableCell>
-                      <DataTableCell className="font-bold">{row.grade} / {row.room}</DataTableCell>
+                      <DataTableCell className="font-bold">{row.grade} / {formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>
                         <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
                       </DataTableCell>
@@ -1370,7 +1418,7 @@ export function AttendanceOperationsPage() {
                               {formatThaiDate(row.date)}
                             </div>
                             <div className="mt-1 text-sm font-bold text-slate-900">
-                              {row.grade} / {row.room}
+                              {row.grade} / {formatRoomLabel(row.room)}
                             </div>
                           </div>
                           <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>

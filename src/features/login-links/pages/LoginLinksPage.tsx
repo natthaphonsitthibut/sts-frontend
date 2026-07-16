@@ -120,7 +120,7 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
     ],
   );
 
-  const { links, meta, summary, isLoading, isError, refetch } = useLoginLinks(query);
+  const { links, meta, summary, isLoading, isError, refetch, dataUpdatedAt } = useLoginLinks(query);
   const totalCount = meta?.totalCount ?? 0;
   const hasActiveFilter = Boolean(debouncedSearch) || status !== "ALL";
 
@@ -154,6 +154,14 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
     setPage(1);
   }
 
+  function handleClearFilters(): void {
+    setSearchQuery("");
+    setStatus("ALL");
+    schoolArea.reset();
+    scope.reset();
+    setPage(1);
+  }
+
   async function handleToggleLock(link: LoginLink): Promise<void> {
     const locked = isLoginLinkLocked(link);
     const confirmed = await confirm(getLinkLockConfirm(locked));
@@ -175,6 +183,7 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
     <PageShell>
       <ListPageToolbar
         icon={Link2}
+        onClearFilters={handleClearFilters}
         title="ลิงก์เข้าสู่ระบบ"
         description={
           effectiveTab === "manage"
@@ -200,7 +209,7 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
         tableActions={
           effectiveTab === "manage" ? (
             <div className="flex gap-2">
-              <RefreshButton onRefresh={refetch} />
+              <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
             </div>
           ) : undefined
         }

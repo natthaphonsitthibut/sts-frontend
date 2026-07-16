@@ -20,6 +20,7 @@ interface UseRoleGroupsResult {
   meta: PaginationMeta | undefined;
   isLoading: boolean;
   isError: boolean;
+  dataUpdatedAt: number;
   refetch: () => void;
 }
 
@@ -37,6 +38,7 @@ export function useRoleGroups(
     meta: result.data?.meta,
     isLoading: result.isLoading,
     isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
       void result.refetch();
     },

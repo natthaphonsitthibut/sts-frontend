@@ -21,7 +21,7 @@ import {
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   EmptyState,
   ErrorState,
@@ -384,7 +384,7 @@ export function DashboardPage() {
     schoolArea.subDistrict,
     !scope.schoolLocked && scope.schoolId ? "โรงเรียน" : "",
     !scope.gradeLocked && scope.grade ? `ชั้น ${scope.grade}` : "",
-    !scope.roomLocked && scope.room ? `ห้อง ${scope.room}` : "",
+    !scope.roomLocked && scope.room ? formatRoomLabel(scope.room) : "",
     sortToValue(sort) !== "default" ? "กำหนดการเรียงเอง" : "",
   ].filter(Boolean);
 
@@ -462,8 +462,7 @@ export function DashboardPage() {
         description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
         tableActions={
           <>
-            <RefreshButton onRefresh={() => void riskQuery.refetch()} />
-            <ClearFiltersButton onClear={handleClearFilters} />
+            <RefreshButton onRefresh={() => void riskQuery.refetch()} updatedAt={riskQuery.dataUpdatedAt} />
             {can("export-data") ? (
               <Button
                 icon={FileDown}
@@ -475,6 +474,7 @@ export function DashboardPage() {
             ) : null}
           </>
         }
+        onClearFilters={handleClearFilters}
         search={{
           value: search,
           onChange: handleSearchChange,

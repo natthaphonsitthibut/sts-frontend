@@ -23,7 +23,7 @@ import {
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getPageIdentity } from "../../../components/layout/page-identity";
-import { formatThaiDateTime } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
@@ -117,6 +117,7 @@ function FilterCombobox({
   value,
   onChange,
   disabled,
+  formatOptionLabel,
 }: {
   allLabel: string;
   ariaLabel: string;
@@ -124,6 +125,7 @@ function FilterCombobox({
   value?: string | number;
   onChange: (value: string) => void;
   disabled?: boolean;
+  formatOptionLabel?: (option: HomeDashboardOption) => string;
 }) {
   return (
     <Combobox
@@ -132,7 +134,10 @@ function FilterCombobox({
       onChange={onChange}
       options={[
         { value: "", label: allLabel },
-        ...options.map((option) => ({ value: String(option.value), label: option.label })),
+        ...options.map((option) => ({
+          value: String(option.value),
+          label: formatOptionLabel?.(option) ?? option.label,
+        })),
       ]}
       placeholder={allLabel}
       value={value === undefined ? "" : String(value)}
@@ -262,6 +267,7 @@ function DashboardFilterBar({
         allLabel="ทุกห้อง"
         ariaLabel="ห้อง"
         options={safeOptions.rooms}
+        formatOptionLabel={(option) => formatRoomLabel(option.value)}
         value={filters.room}
         onChange={(value) => onUpdate({ room: value || undefined })}
         disabled={!filters.grade}
@@ -545,6 +551,7 @@ export function MainPage() {
     isError,
     isTrendsError,
     isFilterOptionsError,
+    dataUpdatedAt,
     refetch,
     refetchTrends,
     refetchFilterOptions,
@@ -568,7 +575,7 @@ export function MainPage() {
         title="ศูนย์สั่งการวันนี้"
         description={`${displayName} · ${roleLabel} · ${affiliation}`}
         footerActions={<>
-          <RefreshButton onRefresh={refetch} />
+          <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
           <ClearFiltersButton onClear={reset} />
         </>}
       >
@@ -609,9 +616,6 @@ export function MainPage() {
                 {PERIOD_OPTIONS.find((option) => option.value === summary.period)?.label}
               </Badge>
             </div>
-            <span>
-              ข้อมูล ณ {formatThaiDateTime(summary.generatedAt)}
-            </span>
           </div>
 
           <AttentionQueue items={summary.attentionItems} />

@@ -88,6 +88,13 @@ export function FieldFollowersReviewPage() {
     resetToFirstPage();
   }
 
+  function handleClearReviewFilters(): void {
+    setSearchQuery("");
+    setStatus("");
+    area.reset();
+    setPage(1);
+  }
+
   return (
     <PageShell>
       {activeTab === "links" ? (
@@ -166,7 +173,9 @@ export function FieldFollowersReviewPage() {
               />
             }
             area={area}
+            onClearFilters={handleClearReviewFilters}
             onRefresh={query.refetch}
+            updatedAt={query.dataUpdatedAt}
             onSearchChange={handleSearchChange}
             onStatusChange={(value) => {
               setStatus(value as FieldFollowerStatus | "");

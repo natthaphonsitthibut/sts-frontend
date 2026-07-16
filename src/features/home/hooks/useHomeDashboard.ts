@@ -30,6 +30,11 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
     isError: summaryQuery.isError,
     isTrendsError: trendsQuery.isError,
     isFilterOptionsError: filterOptionsQuery.isError,
+    dataUpdatedAt: Math.max(
+      summaryQuery.dataUpdatedAt,
+      trendsQuery.dataUpdatedAt,
+      filterOptionsQuery.dataUpdatedAt,
+    ),
     refetch: () => {
       void summaryQuery.refetch();
       void trendsQuery.refetch();

@@ -119,5 +119,13 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
     setGrade,
     setRoom,
     reset,
+    dataUpdatedAt: Math.max(
+      gradeLevelsQuery.dataUpdatedAt,
+      roomsQuery.dataUpdatedAt,
+    ),
+    refetch: () => Promise.all([
+      gradeLevelsQuery.refetch(),
+      ...(grade ? [roomsQuery.refetch()] : []),
+    ]),
   };
 }

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Users } from "lucide-react";
 import {
+  FilterCombobox,
   FilterSelect,
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { toRoomOption } from "../../../lib/room-presentation";
 import type { StudentStatusFilterValue } from "../types/students.types";
 
 export interface StudentStatusFilterOption {
@@ -30,6 +31,7 @@ interface StudentSearchFilterProps {
   actions?: ReactNode;
   exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  updatedAt: number;
   onClearFilters: () => void;
 }
 
@@ -50,6 +52,7 @@ export function StudentSearchFilter({
   actions,
   exportAction,
   onRefresh,
+  updatedAt,
   onClearFilters,
 }: StudentSearchFilterProps) {
   return (
@@ -60,11 +63,11 @@ export function StudentSearchFilter({
       actions={actions}
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <RefreshButton onRefresh={onRefresh} />
-          <ClearFiltersButton onClear={onClearFilters} />
+          <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
           {exportAction}
         </div>
       }
+      onClearFilters={onClearFilters}
       search={{
         value: searchQuery,
         onChange: onSearchChange,
@@ -74,31 +77,27 @@ export function StudentSearchFilter({
         <>
           {schoolFilters}
 
-          <FilterSelect
+          <FilterCombobox
             ariaLabel="กรองตามระดับชั้น"
             onChange={onGradeChange}
+            options={[
+              { value: "ALL", label: "ทุกชั้น" },
+              ...gradeOptions.map((option) => ({ value: option, label: option })),
+            ]}
+            placeholder="ค้นหาระดับชั้น"
             value={grade}
-          >
-            <option value="ALL">ทุกชั้น</option>
-            {gradeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </FilterSelect>
+          />
 
-          <FilterSelect
+          <FilterCombobox
             ariaLabel="กรองตามห้อง"
             onChange={onRoomChange}
+            options={[
+              { value: "ALL", label: "ทุกห้อง" },
+              ...roomOptions.map(toRoomOption),
+            ]}
+            placeholder="ค้นหาห้อง"
             value={room}
-          >
-            <option value="ALL">ทุกห้อง</option>
-            {roomOptions.map((option) => (
-              <option key={option} value={option}>
-                ห้อง {option}
-              </option>
-            ))}
-          </FilterSelect>
+          />
 
           <FilterSelect
             ariaLabel="กรองตามสถานะการเรียน"
