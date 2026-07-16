@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
-import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button, Skeleton } from "../../../components/base";
+import { Button, NotificationsIcon, Skeleton } from "../../../components/base";
 import { useDismissable } from "../../../hooks/useDismissable";
 import { cn } from "../../../lib/utils";
 import {
@@ -60,11 +59,16 @@ export function NotificationBell() {
         aria-label={
           unseenCount > 0 ? `รายการแจ้งเตือน (ใหม่ ${unseenCount} รายการ)` : "รายการแจ้งเตือน"
         }
-        className="relative inline-flex size-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark"
+        className={cn(
+          "relative inline-flex size-10 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark",
+          open
+            ? "bg-surface-app text-primary"
+            : "text-white hover:bg-white/10",
+        )}
         onClick={handleToggle}
         type="button"
       >
-        <Bell className="size-5" aria-hidden="true" />
+        <NotificationsIcon className="size-5" aria-hidden="true" />
         {unseenCount > 0 ? (
           <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-400 px-1 text-xs font-bold leading-none text-white">
             {unseenCount > 99 ? "99+" : unseenCount}

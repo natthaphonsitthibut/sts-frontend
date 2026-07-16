@@ -42,7 +42,8 @@ function navLinkClassName(
   return cn(
     "flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
     collapsed && nested && "mx-auto min-h-10 w-10",
-    isActive && "border-primary/30 bg-primary-soft font-semibold text-primary-dark",
+    // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง ไม่ให้ hover:bg-slate-100 ของ base ทับ
+    isActive && "bg-surface-app font-semibold text-primary hover:bg-surface-app hover:text-primary",
   );
 }
 
@@ -128,7 +129,7 @@ export function SidebarNavItem({
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
             "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
             hasActiveChild
-              ? "border-primary/30 bg-primary-soft font-semibold text-primary-dark"
+              ? "bg-surface-app font-semibold text-primary hover:bg-surface-app hover:text-primary"
               : open
                 ? "bg-slate-50 text-slate-700"
                 : "text-slate-600 hover:text-slate-900",

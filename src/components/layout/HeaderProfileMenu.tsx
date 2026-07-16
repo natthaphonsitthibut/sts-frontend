@@ -67,7 +67,10 @@ export function HeaderProfileMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="เปิดเมนูบัญชีผู้ใช้"
-        className="flex min-h-10 items-center gap-2 rounded-lg px-1.5 text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark sm:px-2"
+        className={cn(
+          "flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark sm:px-2",
+          open ? "bg-surface-app" : "hover:bg-white/10",
+        )}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -78,14 +81,25 @@ export function HeaderProfileMenu({
       >
         <Avatar
           fallback={initials}
-          className="size-9 bg-white font-semibold text-primary"
+          className={cn(
+            "size-9 font-semibold text-primary",
+            open ? "bg-white" : "bg-surface-app",
+          )}
         />
-        <span className="hidden max-w-[140px] truncate text-sm font-semibold text-white sm:block">
+        <span
+          className={cn(
+            "hidden max-w-[140px] truncate text-sm font-semibold sm:block",
+            open ? "text-primary" : "text-white",
+          )}
+        >
           {displayName}
         </span>
         <ChevronDown
           aria-hidden="true"
-          className={cn("hidden size-4 text-white/70 transition-transform sm:block", open && "rotate-180")}
+          className={cn(
+            "hidden size-4 transition-transform sm:block",
+            open ? "rotate-180 text-primary" : "text-white/70",
+          )}
         />
       </button>
 
