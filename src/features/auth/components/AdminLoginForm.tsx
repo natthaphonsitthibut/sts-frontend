@@ -74,7 +74,7 @@ export function AdminLoginForm() {
         </FormItem>
 
         <Button
-          className="h-12 text-base font-bold"
+          className="mx-auto block h-12 max-w-2xs text-base font-bold"
           fullWidth
           isLoading={loginMutation.isPending}
           loadingText="กำลังเข้าสู่ระบบ"
