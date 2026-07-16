@@ -16,9 +16,10 @@
    */
 
   /* Brand / primary actions (blue → navy) */
-  --color-primary: #1d4ed8;
-  --color-primary-dark: #163b8f;
-  --color-primary-soft: #e8f0ff;
+  --color-primary: #0f49bd;
+  --color-primary-dark: #0c3993;
+  /* tint ของ primary (#0f49bd ผสมขาว ~88%) — เข้มกว่า surface-app เล็กน้อยให้อ่านเป็น interactive */
+  --color-primary-soft: #e2e9f7;
 
   /* External channel brand */
   --color-line: #06c755;
@@ -54,8 +55,9 @@
   --color-surface-slate: #eef2f7;
   --color-surface-cyan: #cffafe;
 
-  /* App surfaces — soft blue-gray background + soft surface */
-  --color-surface-app: #eaf0f9;
+  /* App surfaces — page background กลางทุกหน้า (ตรงกับ mockup) + ฟ้า accent + soft surface */
+  --color-surface-page: #f9f9f9;
+  --color-surface-app: #e7edf8;
   --color-surface-soft: #f6f9fd;
 
   /* Muted — subtle table tint + low-emphasis foreground */
@@ -68,9 +70,21 @@
   /* Radius — slightly softer, professional */
   --radius-lg: 0.625rem;
 
+  /* Login surfaces — large soft curves per STS mockup */
+  --radius-login-hero: 2.5rem;
+  --radius-login-brand-mark: 2.75rem;
+  --radius-login-card: 3rem;
+
   /* Elevation — subtle, layered, premium-minimal */
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow-card-hover: 0 2px 6px rgb(15 23 42 / 0.08);
+  --shadow-login-brand-mark:
+    inset 0 1px 4px rgb(0 0 0 / 0.25),
+    0 3px 6px rgb(15 23 42 / 0.1);
+  --shadow-login-surface:
+    inset 0 1px 2px rgb(15 23 42 / 0.04),
+    0 2px 8px rgb(15 23 42 / 0.08);
+  --drop-shadow-login-icon: 0 4px 4px rgb(0 0 0 / 0.25);
 }
 
 :root {
@@ -83,7 +97,7 @@
     "Segoe UI",
     sans-serif;
   color: #0f172a;
-  background: #f8fafc;
+  background: var(--color-surface-page);
   font-synthesis: none;
   font-kerning: normal;
   font-feature-settings: "kern" 1, "liga" 1;
@@ -104,7 +118,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f8fafc;
+  background: var(--color-surface-page);
   line-height: 1.5;
 }
 

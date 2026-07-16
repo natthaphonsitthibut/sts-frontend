@@ -7,7 +7,7 @@ export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-app text-slate-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-surface-page text-slate-900">
       {/* Full-width navy app bar; sidebar + content sit below it. */}
       <AppHeader onMenuClick={() => setMobileSidebarOpen(true)} />
       <div className="flex min-h-0 flex-1">
