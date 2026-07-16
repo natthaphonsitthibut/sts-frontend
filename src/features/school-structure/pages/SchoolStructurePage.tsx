@@ -4,7 +4,6 @@ import {
   Building2,
   DoorOpen,
   FileUp,
-  GraduationCap,
   Plus,
   School,
   Users,
@@ -16,6 +15,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  SchoolIcon,
   Card,
   CardContent,
   Dialog,
@@ -433,7 +433,7 @@ export function SchoolStructurePage() {
             columns={3}
             items={[
               { label: "ห้องในภาคเรียน", value: classrooms.length, icon: DoorOpen, emphasis: true },
-              { label: "ครูในโรงเรียน", value: activeTeachers.length, icon: GraduationCap, tone: "info" },
+              { label: "ครูในโรงเรียน", value: activeTeachers.length, icon: SchoolIcon, tone: "info" },
               { label: "นักเรียนในห้อง", value: selectedClassroom?.studentCount ?? 0, icon: Users, tone: "success" },
             ]}
           />
@@ -513,7 +513,7 @@ export function SchoolStructurePage() {
 
           {tab === "teachers" ? (
               teachersQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : teachers.length === 0 ? (
-                <EmptyState icon={GraduationCap} title="ยังไม่มีครูในโรงเรียน" description="เพิ่มจากบัญชีผู้ใช้ที่มีสิทธิ์ปฏิบัติงานครู" />
+                <EmptyState icon={SchoolIcon} title="ยังไม่มีครูในโรงเรียน" description="เพิ่มจากบัญชีผู้ใช้ที่มีสิทธิ์ปฏิบัติงานครู" />
               ) : (
                 <div className="divide-y divide-slate-200">
                   {teachers.map((teacher) => (

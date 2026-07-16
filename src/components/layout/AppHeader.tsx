@@ -1,4 +1,5 @@
-import { GraduationCap, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
+import { SchoolIcon } from "../base";
 import { IconButton } from "../base";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
@@ -36,7 +37,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         />
         {/* Brand (left) — aligned over the sidebar width on desktop. */}
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <GraduationCap className="size-7 shrink-0 text-white" aria-hidden="true" />
+          <SchoolIcon className="size-7 shrink-0 text-white" aria-hidden="true" />
           <span className="truncate text-base font-semibold text-white">
             ระบบติดตามนักเรียน
           </span>

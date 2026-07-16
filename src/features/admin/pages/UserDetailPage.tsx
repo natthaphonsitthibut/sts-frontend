@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Eye,
-  GraduationCap,
   MapPin,
   SquarePen,
   UserRound,
@@ -20,6 +19,7 @@ import {
   FormItem,
   FormLabel,
   Input,
+  SchoolIcon,
   Tabs,
 } from "../../../components/base";
 import {
@@ -433,7 +433,7 @@ function UserDetailContent({
               </div>
             </div>
             <NavButton
-              icon={GraduationCap}
+              icon={SchoolIcon}
               to={`/students/${user.student_uuid}`}
             >
               เปิดข้อมูลนักเรียน

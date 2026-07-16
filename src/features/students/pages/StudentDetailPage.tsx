@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CircleAlert, GraduationCap, SquarePen } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleAlert, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Button, Card } from "../../../components/base";
+import { Button, Card, SchoolIcon } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -319,7 +319,7 @@ export function StudentDetailPage() {
             </NavButton>
           </>
         }
-        icon={GraduationCap}
+        icon={SchoolIcon}
         title="รายละเอียดนักเรียน"
       />
 

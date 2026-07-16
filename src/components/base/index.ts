@@ -53,6 +53,36 @@ export {
   type PasswordInputProps,
 } from "./input";
 export { Label, type LabelProps } from "./label";
+export {
+  AccountCircleIcon,
+  AddLinkIcon,
+  AssignmentTurnedInIcon,
+  BarChartIcon,
+  CalendarTodayIcon,
+  EditIcon,
+  EqualizerIcon,
+  EventAvailableIcon,
+  FileDownloadIcon,
+  FolderSpecialIcon,
+  GroupIcon,
+  GroupsIcon,
+  HomeIcon,
+  HowToRegIcon,
+  LinkIcon,
+  ManageAccountsIcon,
+  NotificationsIcon,
+  PersonAddIcon,
+  PersonIcon,
+  PlaceIcon,
+  SchoolIcon,
+  SendIcon,
+  SettingsIcon,
+  TableChartIcon,
+  TimelineIcon,
+  UploadFileIcon,
+  VolunteerActivismIcon,
+  VpnKeyIcon,
+} from "./material-icons";
 export { Select, type SelectProps } from "./select";
 export { Skeleton, type SkeletonProps } from "./skeleton";
 export { Tabs, type TabOption } from "./tabs";

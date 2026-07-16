@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CirclePlus, GraduationCap, Pencil, PowerOff } from "lucide-react";
-import { Badge, Button, FormErrorAlert, useConfirm } from "../../../components/base";
+import { CirclePlus, Pencil, PowerOff } from "lucide-react";
+import { Badge, Button, FormErrorAlert, SchoolIcon, useConfirm } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -110,7 +110,7 @@ export function StudentStatusesPage() {
         actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button></>}
         tableActions={<RefreshButton onRefresh={() => query.refetch()} />}
         description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยน login หรือสร้าง Case ช่วยเหลืออัตโนมัติ"
-        icon={GraduationCap}
+        icon={SchoolIcon}
         title="ข้อมูลพื้นฐานสถานะนักเรียน"
         search={{
           value: search,
@@ -139,7 +139,7 @@ export function StudentStatusesPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           description={search ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด" : "เพิ่มสถานะแรกเพื่อเริ่มจัดหมวดหมู่นักเรียน"}
-          icon={GraduationCap}
+          icon={SchoolIcon}
           title={search ? "ไม่พบสถานะที่ค้นหา" : "ยังไม่มีสถานะนักเรียน"}
         />
       ) : (
