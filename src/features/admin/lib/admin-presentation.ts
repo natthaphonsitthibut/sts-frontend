@@ -1,6 +1,6 @@
 import type {
   ManagedUser,
-  StudentAccountManagementStatus,
+  AccountLifecycleStatus,
 } from "../types/admin.types";
 import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
@@ -31,7 +31,7 @@ interface AccountLifecycleStatusMeta {
 }
 
 export function getAccountLifecycleStatusMeta(
-  status: StudentAccountManagementStatus,
+  status: AccountLifecycleStatus,
   catalog: readonly StatusCatalogItem[] = [],
 ): AccountLifecycleStatusMeta {
   const item = findStatusCatalogItem(catalog, status);
@@ -42,7 +42,7 @@ export function getAccountLifecycleStatusMeta(
   };
 }
 
-export function getManagedUserLifecycleStatus(user: ManagedUser): StudentAccountManagementStatus {
+export function getManagedUserLifecycleStatus(user: ManagedUser): AccountLifecycleStatus {
   if (user.status !== "ACTIVE") {
     return "DISABLED";
   }

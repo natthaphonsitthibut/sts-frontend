@@ -44,7 +44,7 @@ import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   AccountDeactivationPayload,
   ManagedUser,
-  StudentAccountManagementStatus,
+  AccountLifecycleStatus,
   StudentAccountStatusCounts,
 } from "../types/admin.types";
 
@@ -93,7 +93,7 @@ export function ManageUsersPage() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [accountStatus, setAccountStatus] =
-    useState<"" | StudentAccountManagementStatus>("");
+    useState<"" | AccountLifecycleStatus>("");
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [deactivationTarget, setDeactivationTarget] =
     useState<ManagedUser | null>(null);
@@ -153,7 +153,7 @@ export function ManageUsersPage() {
   }
 
   function handleAccountStatusChange(value: string): void {
-    setAccountStatus(value as "" | StudentAccountManagementStatus);
+    setAccountStatus(value as "" | AccountLifecycleStatus);
     setPage(1);
   }
 

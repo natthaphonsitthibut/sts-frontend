@@ -147,16 +147,16 @@ export interface ReissueStudentPasswordResponse {
   temporaryPasswordExpiresAt: string;
 }
 
-export type StudentAccountManagementStatus =
+/** Account lifecycle shared by staff and student account management views. */
+export type AccountLifecycleStatus =
   | "PENDING_FIRST_LOGIN"
   | "ACTIVE"
   | "TEMP_PASSWORD_EXPIRED"
   | "DISABLED";
 
-export type StudentAccountStatusCounts = Record<
-  StudentAccountManagementStatus,
-  number
->;
+export type StudentAccountManagementStatus = AccountLifecycleStatus;
+
+export type StudentAccountStatusCounts = Record<AccountLifecycleStatus, number>;
 
 export interface UserPaginationMeta extends PaginationMeta {
   lifecycleStatusCounts?: StudentAccountStatusCounts;

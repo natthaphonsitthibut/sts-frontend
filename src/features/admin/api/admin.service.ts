@@ -28,7 +28,7 @@ import type {
   StudentAccountGenerateResponse,
   StudentAccountListQuery,
   StudentAccountManagementItem,
-  StudentAccountManagementStatus,
+  AccountLifecycleStatus,
   StudentAccountPaginationMeta,
   StudentAccountPreview,
   SystemSetting,
@@ -46,7 +46,7 @@ export interface UserListQuery extends PaginatedSearchQuery {
   gradeLevelId?: number | null;
   room?: string;
   excludeRole?: string;
-  accountStatus?: StudentAccountManagementStatus;
+  accountStatus?: AccountLifecycleStatus;
 }
 
 interface DataEnvelope<T> {
