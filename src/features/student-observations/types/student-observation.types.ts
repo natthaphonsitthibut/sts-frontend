@@ -32,9 +32,11 @@ export interface StudentObservation {
     userId: number;
     username: string;
     displayName: string;
-    source: "USER" | "TEACHER_ACCESS";
+    source: "USER" | "TEACHER_ACCESS" | "TASK_LINK";
   };
-  assignmentId: string;
+  assignmentId: string | null;
+  sourceTaskLinkId?: string | null;
+  sourceTimetableSlotId?: string | null;
   subject: { id: number; code: string | null; name: string | null } | null;
   dimension: { id: string; code: string; labelTh: string };
   concernLevel: ObservationConcernLevel;
@@ -47,7 +49,8 @@ export interface StudentObservation {
 }
 
 export interface CreateStudentObservationInput {
-  assignmentId: number;
+  assignmentId?: number;
+  timetableSlotId?: number;
   studentTermId: string;
   dimensionCode: string;
   concernLevel: ObservationConcernLevel;
@@ -84,6 +87,11 @@ export interface HumanRiskReview {
   sourceObservations: ObservationSourceRef[];
 }
 
+export interface HumanRiskReviewState {
+  review: HumanRiskReview | null;
+  currentCalculatedAttendanceRisk: string;
+}
+
 export interface CreateHumanRiskReviewInput {
   expectedRevision: number;
   humanRiskDecision: HumanRiskDecision;
@@ -92,10 +100,7 @@ export interface CreateHumanRiskReviewInput {
 }
 
 export type FollowUpUrgency = "NORMAL" | "URGENT";
-export type FollowUpReviewDecision =
-  | "APPROVE_AND_ASSIGN"
-  | "NEED_MORE_INFO"
-  | "REJECT";
+export type FollowUpReviewDecision = "APPROVED" | "REJECTED";
 export type FollowUpStatus = "PENDING_REVIEW" | FollowUpReviewDecision;
 
 export interface StudentFollowUpRequest {
@@ -104,6 +109,7 @@ export interface StudentFollowUpRequest {
   schoolId: number;
   requestType: "HOME_VISIT_CONSIDERATION";
   status: FollowUpStatus;
+  statusPresentation: { labelTh: string; badgeVariant: string };
   urgency: FollowUpUrgency;
   reason: string;
   note: string | null;
@@ -120,6 +126,7 @@ export interface StudentFollowUpRequest {
     assignedBy: { userId: number; username: string };
     assignedAt: string;
   } | null;
+  openedCase: { caseId: number; status: string } | null;
   revision: number;
   sourceObservations: ObservationSourceRef[];
   createdAt: string;
@@ -138,6 +145,43 @@ export interface ReviewFollowUpRequestInput {
   expectedRevision: number;
   decision: FollowUpReviewDecision;
   reason: string;
+}
+
+export interface TeacherObservationReport {
+  reportKind: "FOLLOW_UP_REQUEST" | "OBSERVATION";
+  reportId: string;
+  observationId: string;
+  observationRevision: number;
+  studentTermId: string;
+  studentName: string;
+  schoolId: number;
+  schoolName: string;
+  gradeLevelId: number | null;
+  gradeLabel: string | null;
+  classroomId: string | null;
+  roomNo: number | null;
+  authorDisplayName: string;
+  dimensionLabel: string;
+  concernLevel: ObservationConcernLevel;
+  comment: string | null;
+  observedAt: string;
+  followUpRequestId: string | null;
+  followUpStatus: FollowUpStatus | null;
+  urgency: FollowUpUrgency | null;
+  openedCaseId: number | null;
+  openedCaseStatus: string | null;
+}
+
+export interface TeacherObservationReportFilters {
+  page?: number;
+  limit?: number;
+  status?: FollowUpStatus;
+  concernLevel?: ObservationConcernLevel;
+  urgency?: FollowUpUrgency;
+  schoolId?: number;
+  gradeLevelId?: number;
+  roomId?: string;
+  searchTerm?: string;
 }
 
 export interface StudentObservationSummary {

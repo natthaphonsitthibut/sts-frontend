@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ExternalLink,
-  MapPin,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
@@ -23,10 +22,11 @@ import {
   Label,
   Select,
   Textarea,
+  type BadgeProps,
 } from "../../../components/base";
 import { EmptyState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import { usePermissions } from "../../auth/hooks/usePermissions";
+import { getRiskTierLabel } from "../../students/lib/student-presentation";
 import {
   useCreateHumanRiskReview,
   useGenerateObservationSummary,
@@ -39,7 +39,6 @@ import {
 } from "../hooks/useStudentObservations";
 import type {
   FollowUpReviewDecision,
-  FollowUpStatus,
   HumanRiskDecision,
   ObservationSourceRef,
   StudentFollowUpRequest,
@@ -57,21 +56,6 @@ const teacherSignalLabels: Record<TeacherConcernSignal, string> = {
   WATCH: "ควรเฝ้าดู",
   CONCERN: "ครูระบุว่าน่ากังวล",
 };
-
-const followUpStatusLabels: Record<FollowUpStatus, string> = {
-  PENDING_REVIEW: "รอพิจารณา",
-  APPROVE_AND_ASSIGN: "อนุมัติให้มอบหมายต่อ",
-  NEED_MORE_INFO: "ขอข้อมูลเพิ่ม",
-  REJECT: "ไม่อนุมัติ",
-};
-
-interface FollowUpVisitPrefill {
-  studentId: string;
-  studentName: string;
-  studentSchool: string | null;
-  studentAddress: string | null;
-  schoolId: string | number | null;
-}
 
 function derivedTeacherSignal(
   concerns: Array<"NOTE" | "WATCH" | "CONCERN">,
@@ -106,14 +90,18 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
         .slice(0, 20),
     [observations],
   );
-  const review = reviewQuery.data;
+  const review = reviewQuery.data?.review ?? null;
+  const currentCalculatedAttendanceRisk =
+    reviewQuery.data?.currentCalculatedAttendanceRisk ?? "UNKNOWN";
   const teacherSignal =
     review?.teacherConcernSignal ??
     derivedTeacherSignal(observations.map((item) => item.concernLevel));
+  const hasCurrentEvidence =
+    currentCalculatedAttendanceRisk !== "UNKNOWN" || observations.length > 0;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!reason.trim() || sourceObservations.length === 0) return;
+    if (!reason.trim()) return;
     try {
       await createReview.mutateAsync({
         expectedRevision: review?.revision ?? 0,
@@ -135,7 +123,7 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
           ทบทวนสัญญาณความเสี่ยง
         </CardTitle>
         <p className="text-sm text-slate-500">
-          แยกผลคำนวณ ข้อสังเกตครู และคำตัดสินของผู้ทบทวนออกจากกัน
+          เปรียบเทียบข้อมูลการมาเรียน ข้อสังเกตจากครู และคำตัดสินของผู้ทบทวน
         </p>
       </CardHeader>
       <CardContent>
@@ -164,10 +152,12 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
             <dl className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-slate-200 p-3">
                 <dt className="text-xs font-semibold text-slate-500">
-                  ผลคำนวณการมาเรียน
+                  ความเสี่ยงจากการมาเรียน
                 </dt>
                 <dd className="mt-1 font-semibold text-slate-900">
-                  {review?.calculatedAttendanceRisk ?? "ยังไม่มี snapshot"}
+                  {currentCalculatedAttendanceRisk === "UNKNOWN"
+                    ? "ยังไม่มีผลคำนวณ"
+                    : getRiskTierLabel(currentCalculatedAttendanceRisk)}
                 </dd>
               </div>
               <div className="rounded-lg border border-slate-200 p-3">
@@ -194,20 +184,18 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
               <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
                 <p>{review.decisionReason}</p>
                 <p className="mt-1 text-xs">
-                  {review.decidedBy.username} ·{" "}
-                  {formatThaiDateTime(review.decidedAt)} · revision{" "}
-                  {review.revision}
+                  {review.decidedBy.username} · {formatThaiDateTime(review.decidedAt)}
                 </p>
               </div>
             ) : null}
 
-            <form
+            {hasCurrentEvidence ? <form
               className="mt-4 space-y-3 border-t border-slate-200 pt-4"
               onSubmit={(event) => void submit(event)}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="human-risk-decision">คำตัดสินใหม่</Label>
+                  <Label htmlFor="human-risk-decision">ผลการประเมิน</Label>
                   <Select
                     id="human-risk-decision"
                     onChange={(event) =>
@@ -225,8 +213,9 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
                   </Select>
                 </div>
                 <div className="flex items-end text-xs text-slate-500">
-                  ใช้ optimistic revision {review?.revision ?? 0}{" "}
-                  และข้อสังเกตล่าสุด {sourceObservations.length} รายการ
+                  {sourceObservations.length > 0
+                    ? `อ้างอิงข้อสังเกตล่าสุด ${sourceObservations.length} รายการ`
+                    : "ประเมินจากข้อมูลการมาเรียน"}
                 </div>
               </div>
               <div>
@@ -246,7 +235,7 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
               />
               <div className="flex justify-end">
                 <Button
-                  disabled={!reason.trim() || sourceObservations.length === 0}
+                  disabled={!reason.trim()}
                   isLoading={createReview.isPending}
                   loadingText="กำลังบันทึก"
                   type="submit"
@@ -255,6 +244,14 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
                 </Button>
               </div>
             </form>
+            : (
+              <EmptyState
+                className="mt-4 border-t border-slate-200 pt-4"
+                icon={ShieldAlert}
+                title="ยังไม่มีสัญญาณให้ทบทวน"
+                description="เมื่อมีผลคำนวณจากการมาเรียนหรือข้อสังเกตจากครู ระบบจะแสดงแบบประเมินในส่วนนี้"
+              />
+            )}
           </>
         )}
       </CardContent>
@@ -265,17 +262,14 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
 function FollowUpReviewItem({
   request,
   studentTermId,
-  visitPrefill,
 }: {
   request: StudentFollowUpRequest;
   studentTermId: string;
-  visitPrefill: FollowUpVisitPrefill;
 }) {
   const navigate = useNavigate();
-  const { can } = usePermissions();
   const reviewFollowUp = useReviewFollowUp(studentTermId);
   const [decision, setDecision] =
-    useState<FollowUpReviewDecision>("APPROVE_AND_ASSIGN");
+    useState<FollowUpReviewDecision>("APPROVED");
   const [reason, setReason] = useState("");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -299,11 +293,9 @@ function FollowUpReviewItem({
     <li className="rounded-lg border border-slate-200 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge
-          variant={
-            request.status === "PENDING_REVIEW" ? "warning" : "secondary"
-          }
+          variant={request.statusPresentation.badgeVariant as BadgeProps["variant"]}
         >
-          {followUpStatusLabels[request.status]}
+          {request.statusPresentation.labelTh}
         </Badge>
         <Badge
           variant={request.urgency === "URGENT" ? "destructive" : "secondary"}
@@ -337,9 +329,8 @@ function FollowUpReviewItem({
                 }
                 value={decision}
               >
-                <option value="APPROVE_AND_ASSIGN">อนุมัติให้มอบหมายต่อ</option>
-                <option value="NEED_MORE_INFO">ขอข้อมูลเพิ่ม</option>
-                <option value="REJECT">ไม่อนุมัติ</option>
+                <option value="APPROVED">อนุมัติและเปิดเคส</option>
+                <option value="REJECTED">ไม่อนุมัติ</option>
               </Select>
             </div>
             <div>
@@ -373,7 +364,7 @@ function FollowUpReviewItem({
       ) : request.review ? (
         <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
           <p>
-            {request.review.reason ?? followUpStatusLabels[request.status]} ·{" "}
+            {request.review.reason ?? request.statusPresentation.labelTh} ·{" "}
             {request.review.reviewedBy.username}
           </p>
           {request.assignment ? (
@@ -386,30 +377,14 @@ function FollowUpReviewItem({
             >
               ดูงานที่มอบหมายแล้ว
             </Button>
-          ) : request.status === "APPROVE_AND_ASSIGN" &&
-            can("assign-follow-up-cases") &&
-            can("create") ? (
+          ) : request.openedCase ? (
             <Button
               className="mt-3"
-              icon={MapPin}
-              onClick={() => {
-                void navigate("/create/visit", {
-                  state: {
-                    prefill: {
-                      follow_up_request_id: request.id,
-                      student_id: visitPrefill.studentId,
-                      student_name: visitPrefill.studentName,
-                      student_school: visitPrefill.studentSchool,
-                      student_address: visitPrefill.studentAddress,
-                      target_school_id: visitPrefill.schoolId,
-                      reason_flagged: request.reason,
-                    },
-                  },
-                });
-              }}
+              icon={ExternalLink}
+              onClick={() => void navigate("/cases")}
               size="sm"
             >
-              สร้างงานเยี่ยมบ้าน
+              ไปหน้าเคส
             </Button>
           ) : null}
         </div>
@@ -420,10 +395,8 @@ function FollowUpReviewItem({
 
 function FollowUpReviewCard({
   studentTermId,
-  visitPrefill,
 }: {
   studentTermId: string;
-  visitPrefill: FollowUpVisitPrefill;
 }) {
   const followUpsQuery = useManagedFollowUps(studentTermId);
   return (
@@ -461,7 +434,6 @@ function FollowUpReviewCard({
                 key={request.id}
                 request={request}
                 studentTermId={studentTermId}
-                visitPrefill={visitPrefill}
               />
             ))}
           </ul>
@@ -703,16 +675,14 @@ function ObservationSummaryCard({ studentTermId }: { studentTermId: string }) {
 
 export function StudentObservationManagementPanel({
   studentTermId,
-  visitPrefill,
 }: {
   studentTermId: string;
-  visitPrefill: FollowUpVisitPrefill;
 }) {
   return (
     <section className="mb-5 space-y-5" aria-label="ทบทวนข้อสังเกตนักเรียน">
       <RiskSignalsCard studentTermId={studentTermId} />
       <div className="grid gap-5 xl:grid-cols-2">
-        <FollowUpReviewCard studentTermId={studentTermId} visitPrefill={visitPrefill} />
+        <FollowUpReviewCard studentTermId={studentTermId} />
         <ObservationSummaryCard studentTermId={studentTermId} />
       </div>
     </section>

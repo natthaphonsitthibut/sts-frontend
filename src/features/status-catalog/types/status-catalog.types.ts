@@ -24,7 +24,8 @@ export type StatusCatalogDomain =
   | "FIELD_FOLLOWER_STATUS"
   | "RECRUITMENT_CAMPAIGN_STATE"
   | "ROLE_ORIGIN"
-  | "ATTENDANCE_ANOMALY";
+  | "ATTENDANCE_ANOMALY"
+  | "STUDENT_FOLLOW_UP_REQUEST";
 
 export interface StatusCatalogItem {
   code: string;

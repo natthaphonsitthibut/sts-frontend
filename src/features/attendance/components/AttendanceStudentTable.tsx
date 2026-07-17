@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ListChecks,
+  NotebookPen,
   Search,
   Undo2,
   UserCheck,
@@ -36,6 +37,7 @@ interface AttendanceStudentTableProps {
   onUndo?: () => void;
   canUndo?: boolean;
   disabled?: boolean;
+  onObserveStudent?: (student: AttendanceStudent) => void;
 }
 
 interface AttendanceRosterItem {
@@ -129,6 +131,7 @@ export function AttendanceStudentTable({
   onUndo,
   canUndo,
   disabled = false,
+  onObserveStudent,
 }: AttendanceStudentTableProps) {
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [searchTerm, setSearchTerm] = useState("");
@@ -307,6 +310,16 @@ export function AttendanceStudentTable({
             disabled={controlsDisabled}
           />
         ))}
+        {onObserveStudent ? (
+          <Button
+            icon={NotebookPen}
+            onClick={() => onObserveStudent(student)}
+            size="sm"
+            variant="outline"
+          >
+            บันทึกข้อสังเกต
+          </Button>
+        ) : null}
       </div>
     );
   }

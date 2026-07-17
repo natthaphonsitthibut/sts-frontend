@@ -30,6 +30,8 @@ import type {
 } from "../types/task.types";
 import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
+import { TaskLinkObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
 
 const DAY_LABELS: Record<number, string> = {
   1: "จันทร์",
@@ -55,6 +57,7 @@ export function TaskGuestPage() {
     Record<string, AttendanceTaskStatus>
   >({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [observationStudent, setObservationStudent] = useState<TaskGuestStudent | null>(null);
 
   const taskQuery = useQuery({
     queryKey: ["guest-task", token, sessionToken],
@@ -261,6 +264,11 @@ export function TaskGuestPage() {
           ) : (
             <div className="space-y-3">
               <AttendanceStudentTable
+                onObserveStudent={(student) => {
+                  if (timetableSlots.length === 0 || selectedSlotId !== null) {
+                    setObservationStudent(student);
+                  }
+                }}
                 onStatusChange={(studentId, status) =>
                   setSelections((current) => ({
                     ...current,
@@ -316,6 +324,21 @@ export function TaskGuestPage() {
         </div>
       ) : null}
       {confirmDialog}
+      <ObservationEntryDialog
+        open={observationStudent !== null}
+        title="บันทึกข้อสังเกตจากลิงก์เช็คชื่อ"
+        onClose={() => setObservationStudent(null)}
+      >
+        {observationStudent ? (
+          <TaskLinkObservationEntryPanel
+            token={token}
+            sessionToken={sessionToken || undefined}
+            studentTermId={observationStudent.id}
+            studentName={observationStudent.name}
+            timetableSlotId={selectedSlotId ?? undefined}
+          />
+        ) : null}
+      </ObservationEntryDialog>
     </GuestPageShell>
   );
 }

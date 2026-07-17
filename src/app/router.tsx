@@ -51,6 +51,7 @@ import {
   TaskDetailPage,
   TaskGuestPage,
   TeacherAccessGuestPage,
+  TeacherObservationReportsPage,
   TimetablePage,
   UserDetailPage,
   VisitLinksPage,
@@ -88,6 +89,13 @@ export const router = createBrowserRouter([
       {
         path: "student-risk-report",
         element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
+        path: "student-risk-report/teacher-reports",
+        element: protectedElement(
+          <TeacherObservationReportsPage />,
+          "manage-student-observations",
+        ),
       },
       {
         path: "dashboard",

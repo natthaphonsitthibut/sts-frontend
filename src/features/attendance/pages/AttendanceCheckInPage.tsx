@@ -42,7 +42,7 @@ import {
   getAttendanceStatusPresentation,
   getIsoDayOfWeekFromDateString,
 } from "../lib/attendance-presentation";
-import type { AttendanceHistoryRecord } from "../types/attendance.types";
+import type { AttendanceHistoryRecord, AttendanceStudent } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -58,6 +58,9 @@ import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
+import { ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
 
 
 const TAB_OPTIONS = [
@@ -139,6 +142,7 @@ function findDefaultSlot(
 }
 
 export function AttendanceCheckInPage() {
+  const { can } = usePermissions();
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [tab, setTab] = useRouteTab(
     {
@@ -151,6 +155,7 @@ export function AttendanceCheckInPage() {
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
   const [checkInMode, setCheckInMode] = useState<CheckInMode>("daily");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [observationStudent, setObservationStudent] = useState<AttendanceStudent | null>(null);
   // Defaults to today but stays editable — lets a teacher check in for an
   // earlier date (e.g. catching up after the fact). Never a future date; the
   // backend rejects that too.
@@ -568,6 +573,9 @@ export function AttendanceCheckInPage() {
                 onUndo={undoSelections}
                 selections={selections}
                 students={students}
+                onObserveStudent={
+                  can("student-observations") ? setObservationStudent : undefined
+                }
               />
             )}
 
@@ -681,6 +689,19 @@ export function AttendanceCheckInPage() {
         onSubmit={handleReopen}
         open={reopenDialogOpen}
       />
+      <ObservationEntryDialog
+        open={observationStudent !== null}
+        title="บันทึกข้อสังเกตจากหน้าเช็คชื่อ"
+        onClose={() => setObservationStudent(null)}
+      >
+        {observationStudent ? (
+          <ManagedObservationEntryPanel
+            studentName={observationStudent.name}
+            studentTermId={observationStudent.id}
+            timetableSlotId={selectedSlotIdNumber ?? undefined}
+          />
+        ) : null}
+      </ObservationEntryDialog>
     </PageShell>
   );
 }

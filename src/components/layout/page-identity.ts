@@ -96,6 +96,7 @@ export const PAGE_IDENTITIES = {
   "/school-structure": createIdentity("โครงสร้างโรงเรียน", "graduation"),
   "/settings": createIdentity("ตั้งค่าระบบ", "settings"),
   "/student-risk-report": createIdentity("รายงานนักเรียน", "chart-line"),
+  "/student-risk-report/teacher-reports": createIdentity("รายงานจากครู", "chart-line"),
   "/students": createIdentity("รายชื่อนักเรียน", "user-graduate"),
   "/teacher-access-grants": createIdentity("ลิงก์เข้าใช้งานครู", "key-round"),
   "/timetable": createIdentity("ตารางสอน", "calendar"),

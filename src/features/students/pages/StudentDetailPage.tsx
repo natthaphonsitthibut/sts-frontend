@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CircleAlert, SquarePen } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleAlert, NotebookPen, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button, Card, SchoolIcon } from "../../../components/base";
 import {
@@ -15,6 +15,9 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentObservationManagementPanel } from "../../student-observations/components/StudentObservationManagementPanel";
+import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
+import { ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
+import { StudentContactPanel } from "../components/StudentContactPanel";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
@@ -242,6 +245,7 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 
 export function StudentDetailPage() {
   const { can } = usePermissions();
+  const [observationOpen, setObservationOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
 
@@ -306,6 +310,11 @@ export function StudentDetailPage() {
       <PageToolbar
         footerActions={
           <>
+            {can("student-observations") || can("manage-student-observations") ? (
+              <Button icon={NotebookPen} onClick={() => setObservationOpen(true)}>
+                บันทึกข้อสังเกต
+              </Button>
+            ) : null}
             <NavButton
               disabled={!can("edit-students")}
               icon={SquarePen}
@@ -331,16 +340,11 @@ export function StudentDetailPage() {
 
       <AddressPanel student={student} />
 
+      <StudentContactPanel student={student} />
+
       {can("manage-student-observations") ? (
         <StudentObservationManagementPanel
           studentTermId={studentId}
-          visitPrefill={{
-            studentId,
-            studentName: fullName,
-            studentSchool: student.school_name ?? null,
-            studentAddress: student.address ?? null,
-            schoolId: student.school_id ?? student.SchoolID_Onec ?? null,
-          }}
         />
       ) : null}
 
@@ -353,6 +357,19 @@ export function StudentDetailPage() {
         />
         {studentId ? <AttendancePanel studentId={studentId} /> : null}
       </div>
+      <ObservationEntryDialog
+        open={observationOpen}
+        title="บันทึกข้อสังเกตจากโปรไฟล์นักเรียน"
+        onClose={() => setObservationOpen(false)}
+      >
+        {studentId ? (
+          <ManagedObservationEntryPanel
+            studentName={fullName || "นักเรียน"}
+            studentTermId={studentId}
+            allowFollowUp={can("student-observations")}
+          />
+        ) : null}
+      </ObservationEntryDialog>
     </PageShell>
   );
 }

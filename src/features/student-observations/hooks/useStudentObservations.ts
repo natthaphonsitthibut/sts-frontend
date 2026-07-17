@@ -5,7 +5,9 @@ import type {
   CreateFollowUpRequestInput,
   CreateHumanRiskReviewInput,
   CreateStudentObservationInput,
+  HumanRiskReviewState,
   ReviewFollowUpRequestInput,
+  TeacherObservationReportFilters,
 } from "../types/student-observation.types";
 
 const KEY = "student-observations";
@@ -126,6 +128,105 @@ export function useManagedStudentObservations(studentTermId: string) {
   });
 }
 
+export function useManagedObservationCatalog(enabled = true) {
+  return useQuery({
+    queryKey: [KEY, "managed-catalog"],
+    queryFn: studentObservationsService.getManagedCatalog,
+    enabled,
+  });
+}
+
+export function useCreateManagedStudentObservation(studentTermId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<CreateStudentObservationInput, "studentTermId">) =>
+      studentObservationsService.createManagedObservation(studentTermId, input),
+    onSuccess: async () => {
+      await client.invalidateQueries({
+        queryKey: managedKey(studentTermId, "observations"),
+      });
+      await client.invalidateQueries({ queryKey: [KEY, "teacher-reports"] });
+    },
+  });
+}
+
+export function useCreateManagedFollowUp(studentTermId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateFollowUpRequestInput) =>
+      studentObservationsService.createManagedFollowUp(studentTermId, input),
+    onSuccess: async () => {
+      await client.invalidateQueries({
+        queryKey: managedKey(studentTermId, "follow-ups"),
+      });
+      await client.invalidateQueries({ queryKey: [KEY, "teacher-reports"] });
+    },
+  });
+}
+
+export function useTaskLinkObservationCatalog(
+  token: string,
+  sessionToken: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [KEY, "task-catalog", token],
+    queryFn: () =>
+      studentObservationsService.getTaskLinkCatalog(token, sessionToken),
+    enabled: Boolean(enabled && token),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+export function useTaskLinkStudentObservations(
+  token: string,
+  sessionToken: string | undefined,
+  studentTermId?: string,
+  timetableSlotId?: number,
+) {
+  return useQuery({
+    queryKey: [KEY, "task", token, studentTermId, timetableSlotId],
+    queryFn: () =>
+      studentObservationsService.listTaskLinkObservations(
+        token,
+        { studentTermId: studentTermId!, timetableSlotId },
+        sessionToken,
+      ),
+    enabled: Boolean(token && studentTermId),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+export function useCreateTaskLinkStudentObservation(
+  token: string,
+  sessionToken: string | undefined,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateStudentObservationInput) =>
+      studentObservationsService.createTaskLinkObservation(
+        token,
+        input,
+        sessionToken,
+      ),
+    gcTime: 0,
+    onSuccess: async (observation) => {
+      await client.invalidateQueries({
+        queryKey: [KEY, "task", token, observation.studentTermId],
+      });
+    },
+  });
+}
+
+export function useTeacherObservationReports(filters: TeacherObservationReportFilters) {
+  return useQuery({
+    queryKey: [KEY, "teacher-reports", filters],
+    queryFn: () => studentObservationsService.listTeacherObservationReports(filters),
+  });
+}
+
 export function useHumanRiskReview(studentTermId: string) {
   return useQuery({
     queryKey: managedKey(studentTermId, "risk-review"),
@@ -139,7 +240,13 @@ export function useCreateHumanRiskReview(studentTermId: string) {
     mutationFn: (input: CreateHumanRiskReviewInput) =>
       studentObservationsService.createHumanRiskReview(studentTermId, input),
     onSuccess: (review) => {
-      client.setQueryData(managedKey(studentTermId, "risk-review"), review);
+      client.setQueryData<HumanRiskReviewState>(
+        managedKey(studentTermId, "risk-review"),
+        {
+          review,
+          currentCalculatedAttendanceRisk: review.calculatedAttendanceRisk,
+        },
+      );
     },
   });
 }

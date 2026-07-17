@@ -53,6 +53,7 @@ import type {
   RiskDashboardTierFilter,
   RiskDashboardThresholds,
 } from "../types/risk-dashboard.types";
+import { RiskReportTabs } from "../../student-observations/components/RiskReportTabs";
 
 const RISK_FILTER_OPTIONS: Array<{
   value: RiskDashboardTierFilter;
@@ -504,6 +505,7 @@ export function DashboardPage() {
           </>
         }
       />
+      <RiskReportTabs />
 
       <div className="space-y-5">
         <div className="space-y-2">

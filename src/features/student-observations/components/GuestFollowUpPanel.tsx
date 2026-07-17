@@ -16,18 +16,8 @@ import {
   useCreateGuestFollowUp,
   useGuestStudentFollowUps,
 } from "../hooks/useStudentObservations";
-import type {
-  FollowUpStatus,
-  FollowUpUrgency,
-  StudentObservation,
-} from "../types/student-observation.types";
-
-const statusLabels: Record<FollowUpStatus, string> = {
-  PENDING_REVIEW: "รอโรงเรียนพิจารณา",
-  APPROVE_AND_ASSIGN: "อนุมัติให้มอบหมายต่อ",
-  NEED_MORE_INFO: "ขอข้อมูลเพิ่ม",
-  REJECT: "ไม่อนุมัติ",
-};
+import type { BadgeProps } from "../../../components/base";
+import type { FollowUpUrgency, StudentObservation } from "../types/student-observation.types";
 
 interface GuestFollowUpPanelProps {
   assignmentId: number;
@@ -220,13 +210,9 @@ export function GuestFollowUpPanel({
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge
-                  variant={
-                    request.status === "PENDING_REVIEW"
-                      ? "warning"
-                      : "secondary"
-                  }
+                  variant={request.statusPresentation.badgeVariant as BadgeProps["variant"]}
                 >
-                  {statusLabels[request.status]}
+                  {request.statusPresentation.labelTh}
                 </Badge>
                 <Badge
                   variant={

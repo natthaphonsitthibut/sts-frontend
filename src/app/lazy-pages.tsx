@@ -208,6 +208,11 @@ export const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 );
+export const TeacherObservationReportsPage = lazy(() =>
+  import("../features/student-observations/pages/TeacherObservationReportsPage").then((module) => ({
+    default: module.TeacherObservationReportsPage,
+  })),
+);
 export const DelegatePage = lazy(() =>
   import("../features/tasks/pages/DelegatePage").then((module) => ({
     default: module.DelegatePage,

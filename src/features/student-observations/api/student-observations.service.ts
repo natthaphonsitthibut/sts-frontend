@@ -6,6 +6,7 @@ import type {
   CreateStudentObservationInput,
   GenerateObservationSummaryResult,
   HumanRiskReview,
+  HumanRiskReviewState,
   ObservationCatalog,
   ObservationSummaryResponse,
   PaginationMeta,
@@ -13,6 +14,8 @@ import type {
   StudentFollowUpRequest,
   StudentObservation,
   StudentObservationSummary,
+  TeacherObservationReport,
+  TeacherObservationReportFilters,
 } from "../types/student-observation.types";
 
 const TOKEN_HEADER = "x-teacher-access-token";
@@ -118,13 +121,109 @@ async function listManagedObservations(
   return response.data;
 }
 
-async function getHumanRiskReview(
-  studentTermId: string,
-): Promise<HumanRiskReview | null> {
-  const response = await apiClient.get<DataEnvelope<HumanRiskReview | null>>(
-    `/students/${studentTermId}/risk-review`,
+async function getManagedCatalog(): Promise<ObservationCatalog> {
+  const response = await apiClient.get<DataEnvelope<ObservationCatalog>>(
+    "/student-observations/catalog",
   );
   return response.data.data;
+}
+
+async function createManagedObservation(
+  studentTermId: string,
+  input: Omit<CreateStudentObservationInput, "studentTermId">,
+): Promise<StudentObservation> {
+  const response = await apiClient.post<DataEnvelope<StudentObservation>>(
+    `/students/${studentTermId}/observations`,
+    input,
+  );
+  return response.data.data;
+}
+
+function taskLinkHeaders(sessionToken?: string) {
+  return sessionToken ? { "x-magic-session": sessionToken } : undefined;
+}
+
+async function getTaskLinkCatalog(
+  token: string,
+  sessionToken?: string,
+): Promise<ObservationCatalog> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<DataEnvelope<ObservationCatalog>>(
+      `/tasks/${encodeURIComponent(token)}/observations/catalog`,
+      { headers: taskLinkHeaders(sessionToken) },
+    );
+    return response.data.data;
+  });
+}
+
+async function listTaskLinkObservations(
+  token: string,
+  input: { studentTermId: string; timetableSlotId?: number },
+  sessionToken?: string,
+): Promise<PaginatedEnvelope<StudentObservation>> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<PaginatedEnvelope<StudentObservation>>(
+      `/tasks/${encodeURIComponent(token)}/observations`,
+      {
+        headers: taskLinkHeaders(sessionToken),
+        params: { ...input, page: 1, limit: 50 },
+      },
+    );
+    return response.data;
+  });
+}
+
+async function createTaskLinkObservation(
+  token: string,
+  input: CreateStudentObservationInput,
+  sessionToken?: string,
+): Promise<StudentObservation> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.post<DataEnvelope<StudentObservation>>(
+      `/tasks/${encodeURIComponent(token)}/observations`,
+      input,
+      { headers: taskLinkHeaders(sessionToken) },
+    );
+    return response.data.data;
+  });
+}
+
+async function createManagedFollowUp(
+  studentTermId: string,
+  input: CreateFollowUpRequestInput,
+): Promise<{ data: StudentFollowUpRequest; meta: { created: boolean } }> {
+  const response = await apiClient.post<{
+    data: StudentFollowUpRequest;
+    meta: { created: boolean };
+  }>(`/students/${studentTermId}/follow-up-requests`, input);
+  return response.data;
+}
+
+async function listTeacherObservationReports(
+  filters: TeacherObservationReportFilters,
+): Promise<PaginatedEnvelope<TeacherObservationReport>> {
+  const response = await apiClient.get<PaginatedEnvelope<TeacherObservationReport>>(
+    "/student-risk-report/teacher-reports",
+    { params: filters },
+  );
+  return response.data;
+}
+
+async function getHumanRiskReview(
+  studentTermId: string,
+): Promise<HumanRiskReviewState> {
+  const response = await apiClient.get<
+    DataEnvelope<HumanRiskReview | null> & {
+      meta: { currentCalculatedAttendanceRisk: string };
+    }
+  >(
+    `/students/${studentTermId}/risk-review`,
+  );
+  return {
+    review: response.data.data,
+    currentCalculatedAttendanceRisk:
+      response.data.meta.currentCalculatedAttendanceRisk,
+  };
 }
 
 async function createHumanRiskReview(
@@ -214,6 +313,13 @@ export const studentObservationsService = {
   createGuestObservation,
   listGuestFollowUps,
   createGuestFollowUp,
+  getManagedCatalog,
+  createManagedObservation,
+  createManagedFollowUp,
+  getTaskLinkCatalog,
+  listTaskLinkObservations,
+  createTaskLinkObservation,
+  listTeacherObservationReports,
   listManagedObservations,
   getHumanRiskReview,
   createHumanRiskReview,
