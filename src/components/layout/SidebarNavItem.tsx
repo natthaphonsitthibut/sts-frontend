@@ -41,7 +41,13 @@ function navLinkClassName(
 ): string {
   return cn(
     "flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
-    collapsed && nested && "mx-auto min-h-10 w-10",
+    // Nested rows glide between full width and the collapsed icon square via
+    // px max-width caps (percent↔px can't interpolate; max-w-60 ≥ the real
+    // expanded width so it only bites while collapsing). Color transitions
+    // ride along because conflicting transition-property utilities merge.
+    nested &&
+      "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none",
+    collapsed && nested && "max-w-10",
     // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง ไม่ให้ hover:bg-slate-100 ของ base ทับ
     isActive && "bg-surface-app font-semibold text-primary hover:bg-surface-app hover:text-primary",
   );
@@ -171,8 +177,8 @@ export function SidebarNavItem({
                 plus `aria-hidden`/`tabIndex` already cover paint and a11y. */}
             <div
               className={cn(
-                "space-y-0.5 py-1",
-                collapsed ? "border-l border-slate-200/80 pl-2" : "border-l border-slate-200 pl-4",
+                "space-y-0.5 border-l py-1 transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+                collapsed ? "border-slate-200/80 pl-2" : "border-slate-200 pl-4",
               )}
             >
               {item.children.map((child) => (
