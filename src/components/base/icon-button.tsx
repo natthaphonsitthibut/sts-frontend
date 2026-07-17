@@ -9,11 +9,11 @@ const iconButtonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-white shadow-sm hover:bg-primary-dark",
-        secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
+        secondary: "bg-primary-soft text-primary-dark hover:bg-primary/15",
         outline:
           "border border-slate-300 bg-white text-slate-700 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
         ghost:
-          "border border-transparent bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-950",
+          "border border-transparent bg-primary-soft text-primary-dark hover:bg-primary/15",
       },
       size: {
         sm: "size-8",

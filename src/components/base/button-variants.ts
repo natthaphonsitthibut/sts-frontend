@@ -7,11 +7,11 @@ export const buttonVariants = cva(
       variant: {
         default: "bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         secondary:
-          "border border-slate-300 bg-slate-100 text-slate-800 hover:border-slate-500 hover:bg-slate-200",
+          "border border-primary/30 bg-primary-soft text-primary-dark hover:border-primary/50 hover:bg-primary/15",
         outline:
           "border border-slate-300 bg-white text-slate-800 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
         ghost:
-          "border border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200 hover:text-slate-950",
+          "border border-primary/10 bg-primary-soft text-primary-dark hover:border-primary/30 hover:bg-primary/15",
         destructive: "bg-danger text-white shadow-sm hover:bg-danger-700",
       },
       size: {
