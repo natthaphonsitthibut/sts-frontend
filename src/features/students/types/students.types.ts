@@ -89,6 +89,39 @@ export interface StudentDetail extends Record<string, unknown> {
   resolved_home_lat?: number | null;
   resolved_home_lng?: number | null;
   is_approximate_home_location?: boolean;
+  /** Canonical person-level contact channels; independent of login accounts. */
+  contact?: StudentContact | null;
+  guardians?: StudentGuardian[];
+}
+
+export interface StudentContact {
+  phone: string | null;
+  email: string | null;
+  line_id: string | null;
+}
+
+export type StudentGuardianRelation = "FATHER" | "MOTHER" | "GUARDIAN";
+
+export interface StudentGuardian {
+  id: string;
+  relation: StudentGuardianRelation;
+  /** What a GUARDIAN actually is (ยาย, ลุง, ...); null for FATHER/MOTHER. */
+  relation_note: string | null;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  line_id: string | null;
+  is_primary: boolean;
+}
+
+export interface StudentGuardianInput {
+  relation: StudentGuardianRelation;
+  relation_note?: string | null;
+  full_name: string;
+  phone?: string | null;
+  email?: string | null;
+  line_id?: string | null;
+  is_primary?: boolean;
 }
 
 export interface StudentUpdatePayload {
@@ -106,6 +139,12 @@ export interface StudentUpdatePayload {
   PostalCode_Onec?: string | null;
   address_latitude?: number | null;
   address_longitude?: number | null;
+  contact?: {
+    phone?: string | null;
+    email?: string | null;
+    line_id?: string | null;
+  };
+  guardians?: StudentGuardianInput[];
 }
 
 export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";

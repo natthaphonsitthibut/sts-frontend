@@ -8,6 +8,7 @@ import {
   type UseFormReturn,
 } from "react-hook-form";
 import { cn } from "../../lib/utils";
+import { resolveFieldError } from "./field-error";
 import { Label } from "./label";
 
 export interface FormProps<TFieldValues extends FieldValues> {
@@ -90,7 +91,7 @@ export function FormMessage<TFieldValues extends FieldValues>({
     formState: { errors },
   } = useFormContext<TFieldValues>();
 
-  const error = name ? errors[name] : undefined;
+  const error = name ? resolveFieldError(errors, name) : undefined;
   const message = typeof error?.message === "string" ? error.message : "";
 
   // Always render (reserving one line) so toggling the message on/off does not

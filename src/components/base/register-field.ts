@@ -1,4 +1,5 @@
 import type { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
+import { resolveFieldError } from "./field-error";
 
 /**
  * Register a field AND wire `aria-invalid` from its current error, so the base
@@ -12,6 +13,8 @@ export function registerField<TFieldValues extends FieldValues>(
 ) {
   return {
     ...form.register(name),
-    "aria-invalid": form.formState.errors[name] ? true : undefined,
+    "aria-invalid": resolveFieldError(form.formState.errors, name)
+      ? true
+      : undefined,
   };
 }

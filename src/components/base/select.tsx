@@ -117,6 +117,11 @@ export function Select({
         ref={(element) => {
           innerRef.current = element;
           setRef(ref, element);
+          // react-hook-form writes the reset value while registering the ref.
+          // Synchronize in the commit callback, never by reading refs in render.
+          if (!controlled && element) {
+            setInternalValue((current) => (element.value === current ? current : element.value));
+          }
         }}
         required={required}
         tabIndex={-1}

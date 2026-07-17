@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Eye, EyeOff, MapPin, Phone } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Alert,
   AlertDescription,
   Button,
   Card,
-  IconButton,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
@@ -150,7 +149,7 @@ export function StudentProfileHeader({
               onClick={() => handleRevealClick(field)}
               size="sm"
               type="button"
-              variant="ghost"
+              variant="outline"
             >
               แสดง
             </Button>
@@ -161,7 +160,7 @@ export function StudentProfileHeader({
               onClick={() => handleHide(field)}
               size="sm"
               type="button"
-              variant="ghost"
+              variant="outline"
             >
               ซ่อน
             </Button>
@@ -212,22 +211,6 @@ export function StudentProfileHeader({
                     </span>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-center md:self-start">
-                <Button>ประเมิน SDQ</Button>
-                <IconButton
-                  aria-label="โทรหานักเรียน"
-                  className="bg-slate-100 text-slate-600"
-                  icon={Phone}
-                  variant="ghost"
-                />
-                <IconButton
-                  aria-label="ดูที่อยู่"
-                  className="bg-slate-100 text-slate-600"
-                  icon={MapPin}
-                  variant="ghost"
-                />
               </div>
             </div>
 
