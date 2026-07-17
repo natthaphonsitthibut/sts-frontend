@@ -41,7 +41,12 @@ export function useCreateSchoolClassroom() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateClassroomInput) => schoolStructureService.createClassroom(input),
-    onSuccess: async () => client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+        client.invalidateQueries({ queryKey: [KEY, "classroom-options"] }),
+      ]);
+    },
   });
 }
 
@@ -73,7 +78,13 @@ export function useCreateHomeroomAssignment() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: schoolStructureService.createHomeroomAssignment,
-    onSuccess: async () => client.invalidateQueries({ queryKey: [KEY, "assignments"] }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "assignments"] }),
+        client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+        client.invalidateQueries({ queryKey: [KEY, "teachers"] }),
+      ]);
+    },
   });
 }
 

@@ -600,7 +600,13 @@ export function SchoolStructurePage() {
 
           {tab === "classrooms" ? (
               <div>
-                {classroomsQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : classrooms.length === 0 ? (
+                {classroomsQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : classroomsQuery.isError ? (
+                  <ErrorState
+                    description="ไม่สามารถโหลดรายการห้องเรียนได้"
+                    onRetry={() => void classroomsQuery.refetch()}
+                    title="โหลดห้องเรียนไม่สำเร็จ"
+                  />
+                ) : classrooms.length === 0 ? (
                   <EmptyState icon={DoorOpen} title="ยังไม่มีห้องในภาคเรียนนี้" description="เพิ่มห้องจากระดับชั้นและรหัสห้องก่อนนำเข้ารายชื่อนักเรียน" />
                 ) : (
                   <DataTable
@@ -665,7 +671,13 @@ export function SchoolStructurePage() {
           ) : null}
 
           {tab === "teachers" ? (
-              teachersQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : teachers.length === 0 ? (
+              teachersQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : teachersQuery.isError ? (
+                <ErrorState
+                  description="ไม่สามารถโหลดรายชื่อครูตามตัวกรองได้"
+                  onRetry={() => void teachersQuery.refetch()}
+                  title="โหลดรายชื่อครูไม่สำเร็จ"
+                />
+              ) : teachers.length === 0 ? (
                 <EmptyState
                   icon={SchoolIcon}
                   title="ยังไม่มีครูตามตัวกรองนี้"
@@ -713,7 +725,13 @@ export function SchoolStructurePage() {
 
           {tab === "roster" ? (
               <div>
-                {rosterQuery.isLoading ? <div className="p-6"><SkeletonStack lines={5} /></div> : (rosterQuery.data?.data.length ?? 0) === 0 ? (
+                {rosterQuery.isLoading ? <div className="p-6"><SkeletonStack lines={5} /></div> : rosterQuery.isError ? (
+                  <ErrorState
+                    description="ไม่สามารถโหลดรายชื่อนักเรียนตามตัวกรองได้"
+                    onRetry={() => void rosterQuery.refetch()}
+                    title="โหลดรายชื่อนักเรียนไม่สำเร็จ"
+                  />
+                ) : (rosterQuery.data?.data.length ?? 0) === 0 ? (
                   <EmptyState icon={Users} title="ยังไม่มีนักเรียนตามตัวกรองนี้" description="ตรวจสอบภาคเรียน ระดับชั้น และห้องที่เลือก หรือนำเข้ารายชื่อนักเรียนเพิ่ม" />
                 ) : (
                   <DataTable
