@@ -52,12 +52,17 @@ function ManagedFollowUpComposer({
     const observationId = Number(selected.id);
     const assignmentId = Number(selected.assignmentId);
     if (!Number.isSafeInteger(observationId) || !Number.isSafeInteger(assignmentId)) return;
-    await create.mutateAsync({
-      assignmentId,
-      urgency,
-      reason: reason.trim(),
-      sourceObservations: [{ observationId, revision: selected.revision }],
-    });
+    try {
+      await create.mutateAsync({
+        assignmentId,
+        urgency,
+        reason: reason.trim(),
+        sourceObservations: [{ observationId, revision: selected.revision }],
+      });
+    } catch {
+      // Shown through create.error via FormErrorAlert.
+      return;
+    }
     setReason("");
     setSaved(true);
   }

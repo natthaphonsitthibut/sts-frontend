@@ -94,14 +94,19 @@ export function ObservationWorkspace({
       setValidationError("กรุณาระบุเหตุผลสั้น ๆ สำหรับข้อสังเกตนี้");
       return;
     }
-    await onCreate({
-      studentTermId: "",
-      ...context,
-      dimensionCode: effectiveDimensionCode,
-      concernLevel: level,
-      tagCodes,
-      comment: comment.trim() || undefined,
-    });
+    try {
+      await onCreate({
+        studentTermId: "",
+        ...context,
+        dimensionCode: effectiveDimensionCode,
+        concernLevel: level,
+        tagCodes,
+        comment: comment.trim() || undefined,
+      });
+    } catch {
+      // Shown through the `error` prop via FormErrorAlert.
+      return;
+    }
     setLevel("NOTE");
     setTagCodes([]);
     setComment("");

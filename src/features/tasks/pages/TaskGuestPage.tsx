@@ -264,11 +264,13 @@ export function TaskGuestPage() {
           ) : (
             <div className="space-y-3">
               <AttendanceStudentTable
-                onObserveStudent={(student) => {
-                  if (timetableSlots.length === 0 || selectedSlotId !== null) {
-                    setObservationStudent(student);
-                  }
-                }}
+                onObserveStudent={
+                  // Hidden until a period is picked — the backend requires the
+                  // observation to belong to one of the link's periods.
+                  timetableSlots.length === 0 || selectedSlotId !== null
+                    ? setObservationStudent
+                    : undefined
+                }
                 onStatusChange={(studentId, status) =>
                   setSelections((current) => ({
                     ...current,
