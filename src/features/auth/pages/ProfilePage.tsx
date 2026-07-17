@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -35,7 +36,6 @@ import {
 import { stripAddressPrefix } from "../../../components/address/address-format";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { geoService } from "../../tasks/api/geo.service";
-import { getUserAvatarGradient } from "../../admin/lib/admin-presentation";
 import { authService } from "../api/auth.service";
 import { PermissionBadgeList } from "../components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../lib/permissions";
@@ -142,7 +142,7 @@ function ProfileIdentityCard({ user }: { user: AuthUser }) {
       <CardContent className="flex items-center gap-4 p-5">
         <div
           className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-card"
-          style={getUserAvatarGradient(displayName)}
+          style={getAvatarGradient(displayName)}
         >
           {displayName.charAt(0).toUpperCase() || "?"}
         </div>

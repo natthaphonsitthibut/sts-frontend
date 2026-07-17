@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { KeyRound, UserCheck, UserX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge, Checkbox, IconButton } from "../../../components/base";
@@ -15,7 +16,6 @@ import { EmptyState } from "../../../components/layout/page-primitives";
 import type { StudentAccountManagementItem } from "../types/admin.types";
 import {
   getAccountLifecycleStatusMeta,
-  getUserAvatarGradient,
 } from "../lib/admin-presentation";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
@@ -167,7 +167,7 @@ function StudentIdentity({ row }: { row: StudentAccountManagementItem }) {
       <div
         aria-hidden="true"
         className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-        style={getUserAvatarGradient(row.studentName)}
+        style={getAvatarGradient(row.studentName)}
       >
         {initial}
       </div>

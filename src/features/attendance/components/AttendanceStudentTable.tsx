@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,7 +21,6 @@ import { EmptyState } from "../../../components/layout/page-primitives";
 import {
   ATTENDANCE_RECORD_STATUSES,
   getAttendanceStatusPresentation,
-  getAttendanceAvatarGradient,
 } from "../lib/attendance-presentation";
 import type {
   AttendanceSelectionStatus,
@@ -265,7 +265,7 @@ export function AttendanceStudentTable({
       <div className="flex min-w-0 items-center gap-3">
         <div
           className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-          style={getAttendanceAvatarGradient(student.name)}
+          style={getAvatarGradient(student.name)}
         >
           {student.name?.[0] || "?"}
         </div>

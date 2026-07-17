@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -39,7 +40,6 @@ import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDi
 import {
   getAccountLifecycleStatusMeta,
   getManagedUserLifecycleStatus,
-  getUserAvatarGradient,
   getUserDisplayName,
   getUserInitial,
   getUserRoleText,
@@ -97,7 +97,7 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
         <div className="flex min-w-0 items-center gap-4">
           <div
             className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-card"
-            style={getUserAvatarGradient(displayName)}
+            style={getAvatarGradient(displayName)}
           >
             {getUserInitial(user)}
           </div>

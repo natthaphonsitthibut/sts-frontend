@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { Link } from "react-router-dom";
 import { KeyRound, SquarePen, UserCheck, UserX } from "lucide-react";
 import { Badge, IconButton } from "../../../components/base";
@@ -17,7 +18,6 @@ import {
 import {
   getAccountLifecycleStatusMeta,
   getManagedUserLifecycleStatus,
-  getUserAvatarGradient,
   getUserDisplayName,
   getUserInitial,
   getUserRoleText,
@@ -58,7 +58,7 @@ function UserIdentity({ user }: { user: ManagedUser }) {
     <>
       <div
         className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-        style={getUserAvatarGradient(displayName)}
+        style={getAvatarGradient(displayName)}
       >
         {getUserInitial(user)}
       </div>

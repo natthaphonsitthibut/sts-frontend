@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { Eye, EyeOff } from "lucide-react";
 import {
   Alert,
@@ -19,7 +20,6 @@ import type {
   StudentPiiField,
   StudentPiiRevealResponse,
 } from "../types/students.types";
-import { getStudentAvatarGradient } from "../lib/student-presentation";
 import { StudentPiiRevealDialog } from "./StudentPiiRevealDialog";
 
 // "reasoned" = staff reveal: collect a reason via the dialog (audited with that
@@ -181,7 +181,7 @@ export function StudentProfileHeader({
         <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
           <div
             className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-            style={getStudentAvatarGradient(fullName)}
+            style={getAvatarGradient(fullName)}
           >
             {fullName.charAt(0).toUpperCase() || "?"}
           </div>
