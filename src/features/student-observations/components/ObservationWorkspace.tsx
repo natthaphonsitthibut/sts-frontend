@@ -174,7 +174,7 @@ export function ObservationWorkspace({
           </fieldset>
         ) : null}
         <div>
-          <Label htmlFor="observation-workspace-comment">รายละเอียดเพิ่มเติม {commentRequired ? "(จำเป็น)" : "(ไม่บังคับ)"}</Label>
+          <Label required={commentRequired} htmlFor="observation-workspace-comment">รายละเอียดเพิ่มเติม{commentRequired ? "" : " (ไม่บังคับ)"}</Label>
           <Textarea id="observation-workspace-comment" maxLength={2000} rows={3} value={comment} onChange={(event) => setComment(event.target.value)} />
         </div>
         {validationError ? <Alert variant="destructive"><AlertTitle>ข้อมูลยังไม่ครบ</AlertTitle><AlertDescription>{validationError}</AlertDescription></Alert> : null}

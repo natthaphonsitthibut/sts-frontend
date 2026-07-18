@@ -1,9 +1,12 @@
 import type { ComponentProps } from "react";
 import { cn } from "../../lib/utils";
 
-export type LabelProps = ComponentProps<"label">;
+export interface LabelProps extends ComponentProps<"label"> {
+  /** Mark the field as required — one shared red-asterisk pattern app-wide. */
+  required?: boolean;
+}
 
-export function Label({ className, ...props }: LabelProps) {
+export function Label({ className, required, children, ...props }: LabelProps) {
   return (
     <label
       className={cn(
@@ -11,6 +14,9 @@ export function Label({ className, ...props }: LabelProps) {
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+      {required ? <span className="ml-1 text-red-600">*</span> : null}
+    </label>
   );
 }

@@ -69,10 +69,11 @@ export interface FormLabelProps extends ComponentProps<"label"> {
 }
 
 export function FormLabel({ children, required, ...props }: FormLabelProps) {
+  // The asterisk itself lives in the base Label so RHF and plain forms share
+  // one required-marker pattern.
   return (
-    <Label {...props}>
+    <Label required={required} {...props}>
       {children}
-      {required ? <span className="ml-1 text-red-600">*</span> : null}
     </Label>
   );
 }

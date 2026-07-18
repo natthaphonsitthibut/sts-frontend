@@ -219,7 +219,7 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
                 </div>
               </div>
               <div>
-                <Label htmlFor="human-risk-reason">เหตุผลประกอบคำตัดสิน</Label>
+                <Label required htmlFor="human-risk-reason">เหตุผลประกอบคำตัดสิน</Label>
                 <Textarea
                   id="human-risk-reason"
                   maxLength={1000}
@@ -334,7 +334,7 @@ function FollowUpReviewItem({
               </Select>
             </div>
             <div>
-              <Label htmlFor={`follow-up-reason-${request.id}`}>เหตุผล</Label>
+              <Label required htmlFor={`follow-up-reason-${request.id}`}>เหตุผล</Label>
               <Textarea
                 id={`follow-up-reason-${request.id}`}
                 maxLength={1000}

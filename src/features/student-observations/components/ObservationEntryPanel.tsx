@@ -79,7 +79,7 @@ function ManagedFollowUpComposer({
       <form className="mt-3 space-y-3 rounded-lg bg-slate-50 p-4" onSubmit={(event) => void submit(event)}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="managed-follow-up-source">ข้อสังเกตอ้างอิง</Label>
+            <Label required htmlFor="managed-follow-up-source">ข้อสังเกตอ้างอิง</Label>
             <Select id="managed-follow-up-source" required value={sourceId} onChange={(event) => { setSourceId(event.target.value); setSaved(false); }}>
               <option value="">เลือกข้อสังเกต</option>
               {eligible.map((item) => <option key={item.id} value={item.id}>{item.dimension.labelTh} · ครั้งที่ {item.revision}</option>)}
@@ -94,7 +94,7 @@ function ManagedFollowUpComposer({
           </div>
         </div>
         <div>
-          <Label htmlFor="managed-follow-up-reason">เหตุผลที่ขอติดตาม</Label>
+          <Label required htmlFor="managed-follow-up-reason">เหตุผลที่ขอติดตาม</Label>
           <Textarea id="managed-follow-up-reason" maxLength={1000} required rows={2} value={reason} onChange={(event) => setReason(event.target.value)} />
         </div>
         <FormErrorAlert error={create.error} fallback="ส่งคำขอติดตามไม่สำเร็จ" />

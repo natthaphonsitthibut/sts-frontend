@@ -494,7 +494,7 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
             <DialogBody className="space-y-5">
               <FormErrorAlert error={issueGrant.error} fallback="ไม่สามารถออกลิงก์ได้" />
               <div>
-                <Label htmlFor="grant-teacher">ครู</Label>
+                <Label required htmlFor="grant-teacher">ครู</Label>
                 <Select
                   id="grant-teacher"
                   {...issueForm.register("teacherMembershipId")}
@@ -590,7 +590,7 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
           <DialogBody className="space-y-3">
             <FormErrorAlert error={revokeAccess.error} fallback="ไม่สามารถเพิกถอนลิงก์ได้" />
             <div>
-              <Label htmlFor="revoke-reason">เหตุผล</Label>
+              <Label required htmlFor="revoke-reason">เหตุผล</Label>
               <Textarea id="revoke-reason" value={revokeReason} onChange={(event) => setRevokeReason(event.target.value)} />
             </div>
           </DialogBody>

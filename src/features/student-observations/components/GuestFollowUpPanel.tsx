@@ -99,7 +99,7 @@ export function GuestFollowUpPanel({
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="follow-up-source">ข้อสังเกตอ้างอิง</Label>
+              <Label required htmlFor="follow-up-source">ข้อสังเกตอ้างอิง</Label>
               <Select
                 id="follow-up-source"
                 onChange={(event) => {
@@ -133,7 +133,7 @@ export function GuestFollowUpPanel({
             </div>
           </div>
           <div>
-            <Label htmlFor="follow-up-reason">เหตุผลที่ขอติดตาม</Label>
+            <Label required htmlFor="follow-up-reason">เหตุผลที่ขอติดตาม</Label>
             <Textarea
               id="follow-up-reason"
               maxLength={1000}

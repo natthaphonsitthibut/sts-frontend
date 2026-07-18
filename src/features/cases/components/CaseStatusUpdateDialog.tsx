@@ -170,7 +170,7 @@ export function CaseStatusUpdateDialog({
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="case-note">
+              <Label required={requiresReportUp} htmlFor="case-note">
                 {requiresReportUp ? "เหตุผลที่ต้องรายงานขึ้นส่วนกลาง" : "บันทึกเพิ่มเติม"}
               </Label>
               <Textarea
@@ -188,7 +188,7 @@ export function CaseStatusUpdateDialog({
 
             {requiresReportUp ? (
               <div className="space-y-2">
-                <Label htmlFor="case-report-summary">สรุปสำหรับส่วนกลาง</Label>
+                <Label required htmlFor="case-report-summary">สรุปสำหรับส่วนกลาง</Label>
                 <Textarea
                   id="case-report-summary"
                   maxLength={2000}

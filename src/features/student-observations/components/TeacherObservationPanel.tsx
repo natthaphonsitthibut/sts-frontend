@@ -292,9 +292,8 @@ export function TeacherObservationPanel({
             </fieldset>
 
             <div>
-              <Label htmlFor="observation-comment">
-                รายละเอียดเพิ่มเติม{" "}
-                {commentIsRequired ? "(จำเป็น)" : "(ไม่บังคับ)"}
+              <Label required={commentIsRequired} htmlFor="observation-comment">
+                รายละเอียดเพิ่มเติม{commentIsRequired ? "" : " (ไม่บังคับ)"}
               </Label>
               <Textarea
                 id="observation-comment"

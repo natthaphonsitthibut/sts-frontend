@@ -362,7 +362,7 @@ function DatasetCard({
         {requiresPurpose ? (
           <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div>
-              <Label htmlFor={`export-${item.code}-purpose-code`}>
+              <Label required htmlFor={`export-${item.code}-purpose-code`}>
                 รหัสวัตถุประสงค์
               </Label>
               <Input
@@ -378,7 +378,7 @@ function DatasetCard({
               </p>
             </div>
             <div>
-              <Label htmlFor={`export-${item.code}-purpose-note`}>
+              <Label required htmlFor={`export-${item.code}-purpose-note`}>
                 รายละเอียดการใช้งาน
               </Label>
               <Textarea
