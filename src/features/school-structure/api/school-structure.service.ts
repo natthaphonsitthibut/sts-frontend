@@ -2,6 +2,7 @@ import { apiClient } from "../../../lib/api-client";
 import type {
   ClassroomTeacherAssignment,
   CreateClassroomInput,
+  UpdateClassroomInput,
   PaginatedClassroomRoster,
   PaginatedSchoolClassrooms,
   PaginatedSchoolTeachers,
@@ -86,6 +87,21 @@ async function createClassroom(input: CreateClassroomInput): Promise<SchoolClass
   return response.data.data;
 }
 
+async function updateClassroom({
+  classroomId,
+  ...input
+}: UpdateClassroomInput): Promise<SchoolClassroom> {
+  const response = await apiClient.patch<DataEnvelope<SchoolClassroom>>(
+    `/school-structure/classrooms/${classroomId}`,
+    input,
+  );
+  return response.data.data;
+}
+
+async function deleteClassroom(classroomId: string): Promise<void> {
+  await apiClient.delete(`/school-structure/classrooms/${classroomId}`);
+}
+
 async function listTeachers(params: SchoolTeacherListParams): Promise<PaginatedSchoolTeachers> {
   const response = await apiClient.get<PaginatedSchoolTeachers>(
     "/school-structure/teachers",
@@ -136,6 +152,8 @@ export const schoolStructureService = {
   listClassrooms,
   listClassroomOptions,
   createClassroom,
+  updateClassroom,
+  deleteClassroom,
   listTeachers,
   listTeacherOptions,
   listAssignments,

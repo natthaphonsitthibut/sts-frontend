@@ -6,6 +6,8 @@ import {
   FileUp,
   Plus,
   School,
+  SquarePen,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +29,8 @@ import {
   DialogTitle,
   FormErrorAlert,
   FormLabel,
+  IconButton,
+  useConfirm,
   Input,
   Label,
   Select,
@@ -62,14 +66,16 @@ import {
   useClassroomRoster,
   useCreateHomeroomAssignment,
   useCreateSchoolClassroom,
+  useDeleteSchoolClassroom,
   useSchoolClassroomOptions,
   useSchoolClassrooms,
   useSchoolTeacherOptions,
   useSchoolTeachers,
   useScopedSchools,
   useTeacherRosterImport,
+  useUpdateSchoolClassroom,
 } from "../hooks/useSchoolStructure";
-import type { ScopedSchool } from "../types/school-structure.types";
+import type { SchoolClassroom, ScopedSchool } from "../types/school-structure.types";
 
 type StructureTab = "classrooms" | "teachers" | "roster";
 const EMPTY_SCHOOLS: ScopedSchool[] = [];
@@ -107,6 +113,7 @@ function summaryLabels(input: {
 export function SchoolStructurePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
@@ -143,7 +150,11 @@ export function SchoolStructurePage() {
   const [gradeLevelId, setGradeLevelId] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [legacyRoomNumber, setLegacyRoomNumber] = useState("");
+  // Once the user edits เลขห้องเดิม by hand it stops following รหัสห้อง.
+  const [legacyRoomTouched, setLegacyRoomTouched] = useState(false);
   const [roomName, setRoomName] = useState("");
+  // Room whose data the dialog is editing; null = creating a new room.
+  const [editingClassroom, setEditingClassroom] = useState<SchoolClassroom | null>(null);
   const [teacherMembershipId, setTeacherMembershipId] = useState("");
 
   const schoolsQuery = useScopedSchools();
@@ -310,6 +321,8 @@ export function SchoolStructurePage() {
   );
 
   const createClassroom = useCreateSchoolClassroom();
+  const updateClassroom = useUpdateSchoolClassroom();
+  const deleteClassroom = useDeleteSchoolClassroom();
   const createAssignment = useCreateHomeroomAssignment();
   const teacherImport = useTeacherRosterImport();
   const createTerm = useMutation({
@@ -323,20 +336,66 @@ export function SchoolStructurePage() {
     },
   });
 
+  function openClassroomDialog(room: SchoolClassroom | null): void {
+    setEditingClassroom(room);
+    setGradeLevelId(room ? String(room.gradeLevelId) : "");
+    setRoomCode(room ? room.roomCode : "");
+    setLegacyRoomNumber(room?.legacyRoomNumber != null ? String(room.legacyRoomNumber) : "");
+    setLegacyRoomTouched(Boolean(room));
+    setRoomName(room?.roomName ?? "");
+    setClassroomDialogOpen(true);
+  }
+
+  function handleRoomCodeChange(value: string): void {
+    setRoomCode(value);
+    // รหัสห้องกับเลขห้องเดิมมักเป็นเลขเดียวกัน — พิมพ์ครั้งเดียวพอ ปรับทีหลังได้
+    if (!legacyRoomTouched && /^\d*$/.test(value.trim())) {
+      setLegacyRoomNumber(value.trim());
+    }
+  }
+
+  // เลขห้องเดิมโผล่เฉพาะเมื่อรหัสห้องไม่ใช่ตัวเลข (จับคู่ import อัตโนมัติไม่ได้)
+  // หรือเมื่อค่าเดิมของห้องต่างจากรหัสห้องอยู่แล้ว
+  const legacyRoomVisible =
+    !/^\d+$/.test(roomCode.trim()) ||
+    (legacyRoomNumber !== "" && legacyRoomNumber !== roomCode.trim());
+
   async function submitClassroom(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedTermId || !gradeLevelId || !roomCode.trim() || !legacyRoomNumber) return;
-    await createClassroom.mutateAsync({
-      schoolTermId: selectedTermId,
-      gradeLevelId: Number(gradeLevelId),
-      roomCode: roomCode.trim(),
-      roomName: roomName.trim() || undefined,
-      legacyRoomNumber: Number(legacyRoomNumber),
-    });
+    if (!gradeLevelId || !roomCode.trim() || !legacyRoomNumber) return;
+    if (editingClassroom) {
+      await updateClassroom.mutateAsync({
+        classroomId: editingClassroom.id,
+        gradeLevelId: Number(gradeLevelId),
+        roomCode: roomCode.trim(),
+        roomName: roomName.trim() || "",
+        legacyRoomNumber: Number(legacyRoomNumber),
+      });
+    } else {
+      if (!selectedTermId) return;
+      await createClassroom.mutateAsync({
+        schoolTermId: selectedTermId,
+        gradeLevelId: Number(gradeLevelId),
+        roomCode: roomCode.trim(),
+        roomName: roomName.trim() || undefined,
+        legacyRoomNumber: Number(legacyRoomNumber),
+      });
+    }
     setRoomCode("");
     setLegacyRoomNumber("");
     setRoomName("");
+    setEditingClassroom(null);
     setClassroomDialogOpen(false);
+  }
+
+  async function handleDeleteClassroom(room: SchoolClassroom): Promise<void> {
+    const accepted = await confirm({
+      title: "ลบห้องนี้?",
+      description: `${room.gradeLabel} ${room.roomName || formatRoomLabel(room.roomCode)}`,
+      confirmText: "ลบ",
+      variant: "destructive",
+    });
+    if (accepted) deleteClassroom.mutate(room.id);
   }
 
   async function submitAssignment(event: React.FormEvent<HTMLFormElement>) {
@@ -579,7 +638,7 @@ export function SchoolStructurePage() {
                 ]}
               />
               {tab === "classrooms" ? (
-                <Button icon={Plus} onClick={() => setClassroomDialogOpen(true)} disabled={!selectedTermId}>เพิ่มห้อง</Button>
+                <Button icon={Plus} onClick={() => openClassroomDialog(null)} disabled={!selectedTermId}>เพิ่มห้อง</Button>
               ) : null}
               {tab === "teachers" ? (
                 <Button icon={FileUp} variant="outline" onClick={() => setTeacherImportDialogOpen(true)} disabled={!selectedSchoolId}>นำเข้าครู</Button>
@@ -600,6 +659,7 @@ export function SchoolStructurePage() {
 
           {tab === "classrooms" ? (
               <div>
+                <FormErrorAlert className="mb-3" error={deleteClassroom.error} fallback="ไม่สามารถลบห้องได้" />
                 {classroomsQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : classroomsQuery.isError ? (
                   <ErrorState
                     description="ไม่สามารถโหลดรายการห้องเรียนได้"
@@ -634,8 +694,8 @@ export function SchoolStructurePage() {
                       </div>
                     }
                     headings={[
-                      { label: "ห้อง", sortKey: "room" },
                       { label: "ระดับชั้น", sortKey: "grade" },
+                      { label: "ห้อง", sortKey: "room" },
                       { label: "นักเรียน", sortKey: "students" },
                       "ครูประจำชั้น",
                       "",
@@ -650,17 +710,18 @@ export function SchoolStructurePage() {
                   >
                       {classrooms.map((room) => {
                         const selected = room.id === selectedClassroom?.id;
-                        const homeroom = selected
-                          ? assignmentsQuery.data?.find((item) => item.assignmentKind === "HOMEROOM" && item.assignmentStatus === "ACTIVE")
-                          : undefined;
                         return (
                           <DataTableRow key={room.id} className={selected ? "bg-primary-soft/50" : undefined}>
-                            <DataTableCell className="font-semibold text-slate-900">{room.roomName || formatRoomLabel(room.roomCode)}</DataTableCell>
-                            <DataTableCell>{room.gradeLabel}</DataTableCell>
+                            <DataTableCell className="font-semibold text-slate-900">{room.gradeLabel}</DataTableCell>
+                            <DataTableCell>{room.roomName || formatRoomLabel(room.roomCode)}</DataTableCell>
                             <DataTableCell className="tabular-nums">{room.studentCount}</DataTableCell>
-                            <DataTableCell>{homeroom?.teacherName ?? (selected ? "ยังไม่กำหนด" : "เลือกห้องเพื่อดู")}</DataTableCell>
+                            <DataTableCell>{room.homeroomTeacherName ?? <span className="text-slate-500">ยังไม่กำหนด</span>}</DataTableCell>
                             <DataTableCell className="text-right">
-                              <Button size="sm" variant={selected ? "secondary" : "outline"} onClick={() => { setClassroomInput(room.id); setRosterPage(1); }}>เลือก</Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <IconButton aria-label={`แก้ไข${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} className="text-primary" icon={SquarePen} variant="ghost" onClick={() => openClassroomDialog(room)} />
+                                <IconButton aria-label={`ลบ${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} className="text-danger disabled:opacity-40" disabled={room.studentCount > 0 || deleteClassroom.isPending} icon={Trash2} variant="ghost" title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined} onClick={() => void handleDeleteClassroom(room)} />
+                                <Button size="sm" variant={selected ? "secondary" : "outline"} onClick={() => { setClassroomInput(room.id); setRosterPage(1); }}>เลือก</Button>
+                              </div>
                             </DataTableCell>
                           </DataTableRow>
                         );
@@ -795,18 +856,31 @@ export function SchoolStructurePage() {
         term={null}
       />
 
+      {confirmDialog}
       <Dialog open={classroomDialogOpen} onOpenChange={setClassroomDialogOpen}>
         <DialogContent onClose={() => setClassroomDialogOpen(false)}>
-          <DialogHeader><DialogTitle>เพิ่มห้องเรียน</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingClassroom ? "แก้ไขห้องเรียน" : "เพิ่มห้องเรียน"}</DialogTitle></DialogHeader>
           <form onSubmit={(event) => void submitClassroom(event)}>
             <DialogBody className="space-y-4">
-              <FormErrorAlert error={createClassroom.error} fallback="ไม่สามารถเพิ่มห้องได้" />
-              <div><FormLabel htmlFor="classroom-grade" required>ระดับชั้น</FormLabel><Select id="classroom-grade" required value={gradeLevelId} onChange={(event) => setGradeLevelId(event.target.value)}><option value="">เลือกระดับชั้น</option>{gradeLevelsQuery.data?.map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}</Select></div>
-              <div><FormLabel htmlFor="classroom-code" required>รหัสห้อง</FormLabel><Input id="classroom-code" required maxLength={32} value={roomCode} onChange={(event) => setRoomCode(event.target.value)} placeholder="เช่น 1 หรือ ก" /></div>
-              <div><FormLabel htmlFor="classroom-legacy-room" required>เลขห้องในข้อมูลเดิม</FormLabel><Input id="classroom-legacy-room" required min={1} step={1} type="number" value={legacyRoomNumber} onChange={(event) => setLegacyRoomNumber(event.target.value)} placeholder="เช่น 1" /><p className="mt-1 text-xs leading-5 text-slate-500">กรอกเลขห้องที่ใช้ในรายชื่อนักเรียนเดิม เพื่อให้ระบบนำนักเรียนเข้าห้องนี้ได้ถูกต้อง เช่น ข้อมูลเดิมระบุห้อง 1 ให้กรอก 1</p></div>
+              <FormErrorAlert
+                error={createClassroom.error ?? updateClassroom.error}
+                fallback={editingClassroom ? "ไม่สามารถแก้ไขห้องได้" : "ไม่สามารถเพิ่มห้องได้"}
+              />
+              <div>
+                <FormLabel htmlFor="classroom-grade" required>ระดับชั้น</FormLabel>
+                <Select disabled={Boolean(editingClassroom && editingClassroom.studentCount > 0)} id="classroom-grade" required value={gradeLevelId} onChange={(event) => setGradeLevelId(event.target.value)}><option value="">เลือกระดับชั้น</option>{gradeLevelsQuery.data?.map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}</Select>
+                {editingClassroom && editingClassroom.studentCount > 0 ? <p className="mt-1 text-xs leading-5 text-slate-500">ห้องนี้มีนักเรียนแล้ว จึงเปลี่ยนระดับชั้นไม่ได้</p> : null}
+              </div>
+              <div><FormLabel htmlFor="classroom-code" required>รหัสห้อง</FormLabel><Input id="classroom-code" required maxLength={32} value={roomCode} onChange={(event) => handleRoomCodeChange(event.target.value)} placeholder="เช่น 1 หรือ ก" /><p className="mt-1 text-xs leading-5 text-slate-500">เลขหรือชื่อย่อของห้องในชั้น เช่น ชั้น ป.1 ห้อง 1 ให้กรอก 1</p></div>
+              {legacyRoomVisible ? (
+                <div><FormLabel htmlFor="classroom-legacy-room" required>เลขห้องในข้อมูลเดิม</FormLabel><Input id="classroom-legacy-room" required min={1} step={1} type="number" value={legacyRoomNumber} onChange={(event) => { setLegacyRoomTouched(true); setLegacyRoomNumber(event.target.value); }} placeholder="เช่น 1" /><p className="mt-1 text-xs leading-5 text-slate-500">ใช้จับคู่ตอนนำเข้ารายชื่อนักเรียนจากไฟล์เดิม — รหัสห้องนี้ไม่ใช่ตัวเลข จึงต้องบอกว่าไฟล์เดิมเรียกห้องนี้ด้วยเลขอะไร</p></div>
+              ) : null}
               <div><Label htmlFor="classroom-name">ชื่อห้อง (ถ้ามี)</Label><Input id="classroom-name" maxLength={120} value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="เช่น ห้องวิทยาศาสตร์" /></div>
             </DialogBody>
-            <DialogFooter><Button variant="outline" onClick={() => setClassroomDialogOpen(false)}>ยกเลิก</Button><Button type="submit" isLoading={createClassroom.isPending} loadingText="กำลังบันทึก">บันทึกห้อง</Button></DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setClassroomDialogOpen(false)}>ยกเลิก</Button>
+              <Button type="submit" isLoading={createClassroom.isPending || updateClassroom.isPending} loadingText="กำลังบันทึก">บันทึกห้อง</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

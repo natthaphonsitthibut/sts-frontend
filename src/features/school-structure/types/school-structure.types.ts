@@ -27,6 +27,7 @@ export interface SchoolClassroom {
   roomCode: string;
   roomName: string | null;
   classroomStatus: StructureStatus;
+  homeroomTeacherName: string | null;
   studentCount: number;
 }
 
@@ -110,4 +111,12 @@ export interface CreateClassroomInput {
   roomCode: string;
   roomName?: string;
   legacyRoomNumber: number;
+}
+
+export interface UpdateClassroomInput {
+  classroomId: string;
+  gradeLevelId?: number;
+  roomCode?: string;
+  roomName?: string;
+  legacyRoomNumber?: number;
 }

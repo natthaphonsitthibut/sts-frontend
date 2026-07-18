@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schoolStructureService } from "../api/school-structure.service";
 import { importService } from "../../import-data/api/import.service";
-import type { CreateClassroomInput } from "../types/school-structure.types";
+import type {
+  CreateClassroomInput,
+  UpdateClassroomInput,
+} from "../types/school-structure.types";
 import type {
   ClassroomRosterListParams,
   SchoolClassroomListParams,
@@ -41,6 +44,33 @@ export function useCreateSchoolClassroom() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateClassroomInput) => schoolStructureService.createClassroom(input),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+        client.invalidateQueries({ queryKey: [KEY, "classroom-options"] }),
+      ]);
+    },
+  });
+}
+
+export function useUpdateSchoolClassroom() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateClassroomInput) => schoolStructureService.updateClassroom(input),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+        client.invalidateQueries({ queryKey: [KEY, "classroom-options"] }),
+        client.invalidateQueries({ queryKey: [KEY, "roster"] }),
+      ]);
+    },
+  });
+}
+
+export function useDeleteSchoolClassroom() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (classroomId: string) => schoolStructureService.deleteClassroom(classroomId),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
