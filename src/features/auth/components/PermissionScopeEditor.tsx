@@ -129,9 +129,9 @@ export function PermissionScopeEditor({
   const selectedSchoolId = singleString(dataScope.school_ids);
   const selectedGradeId = singleString(dataScope.grade_levels);
   const selectedRoom = singleString(dataScope.room_ids);
-  const selectedProvince = singleString(dataScope.provinces);
-  const selectedDistrict = singleString(dataScope.districts);
-  const selectedSubDistrict = singleString(dataScope.sub_districts);
+  const storedProvince = singleString(dataScope.provinces);
+  const storedDistrict = singleString(dataScope.districts);
+  const storedSubDistrict = singleString(dataScope.sub_districts);
 
   const locationsQuery = useQuery({
     queryKey: ["permission-scope-locations"],
@@ -139,18 +139,18 @@ export function PermissionScopeEditor({
     enabled: !isGlobalScope && !isOwnOnlyScope,
   });
   const schoolsQuery = useQuery({
-    queryKey: ["permission-scope-schools", selectedProvince, selectedDistrict, selectedSubDistrict],
+    queryKey: ["permission-scope-schools", storedProvince, storedDistrict, storedSubDistrict],
     queryFn: () =>
       attendanceLookupService.getSchools({
-        province: selectedProvince || undefined,
-        district: selectedDistrict || undefined,
-        subDistrict: selectedSubDistrict || undefined,
+        province: storedProvince || undefined,
+        district: storedDistrict || undefined,
+        subDistrict: storedSubDistrict || undefined,
         limit: 100,
       }),
     enabled:
       !isGlobalScope &&
       !isOwnOnlyScope &&
-      Boolean(selectedProvince || selectedDistrict || selectedSubDistrict || selectedSchoolId),
+      Boolean(storedProvince || storedDistrict || storedSubDistrict || selectedSchoolId),
   });
   const gradeLevelsQuery = useQuery({
     queryKey: ["permission-scope-grade-levels"],
@@ -173,8 +173,14 @@ export function PermissionScopeEditor({
 
   // Lift resolved names (not ids) so a review dialog can show the real school /
   // grade / room instead of "โรงเรียน 1 แห่ง".
-  const selectedSchoolName =
-    schools.find((school) => String(school.id) === selectedSchoolId)?.name ?? "";
+  const selectedSchool = schools.find((school) => String(school.id) === selectedSchoolId);
+  const selectedSchoolName = selectedSchool?.name ?? "";
+  // A school-only scope (the canonical seeded form) implies the school's own
+  // area — display it instead of "ทุกจังหวัด", which reads as nationwide.
+  // Queries above keep using the stored values so the school list stays stable.
+  const selectedProvince = storedProvince || (selectedSchool?.province ?? "");
+  const selectedDistrict = storedDistrict || (selectedSchool?.district ?? "");
+  const selectedSubDistrict = storedSubDistrict || (selectedSchool?.sub_district ?? "");
   useEffect(() => {
     onScopeLabelsChange?.({
       province: selectedProvince,
