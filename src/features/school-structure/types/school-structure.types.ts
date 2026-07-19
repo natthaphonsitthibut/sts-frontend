@@ -110,7 +110,6 @@ export interface CreateClassroomInput {
   gradeLevelId: number;
   roomCode: string;
   roomName?: string;
-  legacyRoomNumber: number;
 }
 
 export interface UpdateClassroomInput {
@@ -118,5 +117,4 @@ export interface UpdateClassroomInput {
   gradeLevelId?: number;
   roomCode?: string;
   roomName?: string;
-  legacyRoomNumber?: number;
 }

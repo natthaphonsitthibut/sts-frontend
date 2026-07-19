@@ -16,6 +16,11 @@ interface DataScopeSchoolLabel {
   name?: string | null;
 }
 
+interface DataScopeGradeLevelLabel {
+  id: number | string;
+  label?: string | null;
+}
+
 export interface MenuItem {
   id: string;
   label: string;
@@ -49,6 +54,7 @@ export const ROLE_LABELS: Record<string, string> = {
 export function describeDataScopeForDisplay(
   scope: DataScope | null | undefined,
   schoolLabels: DataScopeSchoolLabel[] = [],
+  gradeLevelLabels: DataScopeGradeLevelLabel[] = [],
 ): string {
   if (!scope) return "-";
   if (scope.own_only) return "เฉพาะข้อมูลของตนเอง";
@@ -65,7 +71,13 @@ export function describeDataScopeForDisplay(
         : scope.school_ids.join(", ");
     parts.push(`โรงเรียน: ${schoolText}`);
   }
-  if (scope.grade_levels?.length) parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
+  if (scope.grade_levels?.length) {
+    const gradeText =
+      gradeLevelLabels.length > 0
+        ? gradeLevelLabels.map((grade) => grade.label ?? grade.id).join(", ")
+        : scope.grade_levels.join(", ");
+    parts.push(`ระดับชั้น: ${gradeText}`);
+  }
   if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
 
   return parts.length > 0 ? parts.join(" · ") : "ยังไม่กำหนดขอบเขต";
@@ -133,7 +145,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("attendance-operations", "/attendance-operations", "attendance-dashboard"),
       },
       {
-        ...pageMenuItem("timetable", "/timetable", "home"),
+        ...pageMenuItem("timetable", "/timetable", ["home", "student-self"]),
       },
     ],
   },
@@ -198,6 +210,13 @@ export function getEffectivePermissions(
     ? ["edit-students", "export-data"]
     : [];
   return Array.from(new Set([...customPermissions, ...roleDefaults]));
+}
+
+export function isStudentOnlyRole(roles: string[]): boolean {
+  return (
+    roles.includes("STUDENT") &&
+    !roles.some((role) => ["ADMIN", "DIRECTOR", "EXECUTIVE", "TEACHER"].includes(role))
+  );
 }
 
 export function hasPermission(

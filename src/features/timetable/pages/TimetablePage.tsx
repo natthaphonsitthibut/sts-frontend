@@ -19,6 +19,7 @@ import { ClearFiltersButton } from "../../../components/layout/clear-filters-but
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
 import { SchoolPeriodTimesDialog } from "../components/SchoolPeriodTimesDialog";
@@ -405,7 +406,7 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
             </div>
           ) : null}
 
-          {slots.length === 0 && periodTimes.length === 0 && !slotsQuery.isLoading ? (
+          {slots.length === 0 && !slotsQuery.isLoading ? (
             <div className="border-t border-slate-200 px-5 py-4">
               <EmptyState
                 description={`กด "เพิ่มคาบสอน" ด้านบนเพื่อเริ่มจัดตารางของห้องนี้`}
@@ -552,6 +553,8 @@ function MyScheduleView({
 
 export function TimetablePage() {
   const { can } = usePermissions();
+  const currentUser = useAuthSessionStore((state) => state.user);
+  const isStudent = currentUser?.roles?.includes("STUDENT") === true;
   const isManager = can("manage-timetable");
   const [mode, setMode] = useState<"mine" | "room">("mine");
   const [room, setRoom] = useState<RoomSelection | null>(null);
@@ -574,12 +577,14 @@ export function TimetablePage() {
           ) : undefined
         }
         description={
-          isManager
+          isStudent
+            ? "ดูตารางเรียนของคุณตามชั้นและห้องปัจจุบัน"
+            : isManager
             ? "เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
             : "ดูตารางเรียน/ตารางสอนตามสิทธิ์ของคุณ"
         }
         icon={CalendarClock}
-        title="ตารางสอน"
+        title={isStudent ? "ตารางเรียน" : "ตารางสอน"}
         footerActions={
           isManager || mode === "room" ? (
             <ClearFiltersButton
@@ -591,7 +596,7 @@ export function TimetablePage() {
           ) : undefined
         }
       >
-        {isManager ? (
+        {isStudent ? null : isManager ? (
           <RoomPicker key={roomPickerKey} onChange={setRoom} />
         ) : (
           <div className="space-y-3">
@@ -608,7 +613,11 @@ export function TimetablePage() {
           </div>
         )}
       </PageToolbar>
-      {isManager ? <ManageTimetableView room={room} /> : <MyScheduleView mode={mode} room={room} />}
+      {isManager ? (
+        <ManageTimetableView room={room} />
+      ) : (
+        <MyScheduleView mode={isStudent ? "mine" : mode} room={isStudent ? null : room} />
+      )}
       {room ? (
         <SchoolPeriodTimesDialog
           onClose={() => setPeriodTimesDialogOpen(false)}

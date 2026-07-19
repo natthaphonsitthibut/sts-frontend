@@ -324,13 +324,13 @@ export function VisitMapPreview({
         <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <div className="text-xs font-bold text-slate-500">Latitude</div>
-            <div className="font-mono font-semibold text-slate-900">
+            <div className="font-semibold tabular-nums text-slate-900">
               {formatCoordinate(parsedLat)}
             </div>
           </div>
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <div className="text-xs font-bold text-slate-500">Longitude</div>
-            <div className="font-mono font-semibold text-slate-900">
+            <div className="font-semibold tabular-nums text-slate-900">
               {formatCoordinate(parsedLng)}
             </div>
           </div>

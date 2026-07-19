@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getAvatarGradient } from "../../../lib/avatar-gradient";
+import { maskNationalId } from "../../../lib/pii-presentation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -160,14 +161,18 @@ function ProfileIdentityCard({ user }: { user: AuthUser }) {
 }
 
 function describeProfileScope(user: AuthUser | null | undefined): string {
-  return describeDataScopeForDisplay(user?.data_scope, user?.data_scope_labels?.schools);
+  return describeDataScopeForDisplay(
+    user?.data_scope,
+    user?.data_scope_labels?.schools,
+    user?.data_scope_labels?.gradeLevels,
+  );
 }
 
 function ProfileDetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
       <div className="text-xs font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-slate-800">{value}</div>
+      <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">{value}</div>
     </div>
   );
 }
@@ -366,11 +371,11 @@ export function ProfilePage() {
                       value={
                         isNationalIdVisible
                           ? profileUser?.PersonID_Onec ?? ""
-                          : (profileUser?.PersonID_Onec ?? "").replace(/.(?=.{4})/g, "*")
+                          : maskNationalId(profileUser?.PersonID_Onec)
                       }
                     />
                     <Button
-                      aria-label={isNationalIdVisible ? "ซ่อนเลขบัตรประชาชน" : "แสดงเลขบัตรประชาชน"}
+                      aria-label={isNationalIdVisible ? "ซ่อนเลขบัตร" : "แสดงเลขบัตร"}
                       icon={isNationalIdVisible ? EyeOff : Eye}
                       onClick={() => setNationalIdVisible((visible) => !visible)}
                       type="button"

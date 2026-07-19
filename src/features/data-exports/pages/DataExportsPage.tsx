@@ -474,7 +474,7 @@ function JobHistory({
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-mono text-xs text-slate-500">
+                  <p className="text-xs text-slate-500">
                     ...{job.id.slice(-8)}
                   </p>
                   <Badge className="shrink-0 whitespace-nowrap bg-slate-100 text-slate-700">

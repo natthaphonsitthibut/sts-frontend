@@ -67,7 +67,7 @@ function StatusButton({
     <button
       aria-pressed={isActive}
       className={cn(
-        "flex min-w-20 items-center justify-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-sm font-bold transition-all hover:-translate-y-0.5 active:scale-95",
+        "flex h-10 min-w-20 items-center justify-center gap-1.5 rounded-full border-[1.5px] px-4 text-sm font-bold transition-all hover:-translate-y-0.5 active:scale-95",
         isActive ? meta.activeClass : meta.idleClass,
       )}
       disabled={disabled}
@@ -314,7 +314,7 @@ export function AttendanceStudentTable({
           <Button
             icon={NotebookPen}
             onClick={() => onObserveStudent(student)}
-            size="sm"
+            size="md"
             variant="outline"
           >
             บันทึกข้อสังเกต

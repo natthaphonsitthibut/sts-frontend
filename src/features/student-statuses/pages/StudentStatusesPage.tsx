@@ -166,7 +166,7 @@ export function StudentStatusesPage() {
           >
             {rows.map((status) => (
               <DataTableRow key={status.code}>
-                <DataTableCell className="font-mono font-bold">{status.code}</DataTableCell>
+                <DataTableCell className="font-bold">{status.code}</DataTableCell>
                 <DataTableCell className="font-bold text-slate-800">{status.labelTh}</DataTableCell>
                 <DataTableCell>
                   {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}

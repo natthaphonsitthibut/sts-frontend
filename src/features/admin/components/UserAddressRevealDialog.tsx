@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  FormLabel,
   Input,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -79,7 +80,9 @@ export function UserAddressRevealDialog({
         <DialogBody className="space-y-4">
           {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
           <div className="space-y-2">
-            <label className="text-sm font-semibold" htmlFor="user-address-reason">เหตุผล</label>
+            <FormLabel htmlFor="user-address-reason" required>
+              เหตุผลในการแสดงข้อมูล
+            </FormLabel>
             <Combobox
               id="user-address-reason"
               onChange={(value) => setReasonCode(value)}
@@ -90,7 +93,9 @@ export function UserAddressRevealDialog({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-semibold" htmlFor="user-address-note">รายละเอียดเพิ่มเติม</label>
+            <FormLabel htmlFor="user-address-note" required={reasonCode === "OTHER"}>
+              รายละเอียดเพิ่มเติม
+            </FormLabel>
             <Input
               id="user-address-note"
               maxLength={500}

@@ -62,7 +62,8 @@ const guardianSchema = z
   .object({
     relation: z.enum(["FATHER", "MOTHER", "GUARDIAN"]),
     relation_note: z.string().trim().max(100, "ความสัมพันธ์ยาวเกินไป"),
-    full_name: z.string().trim().min(1, "กรุณากรอกชื่อ-นามสกุล").max(200),
+    first_name: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
+    last_name: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
     phone: optionalPhone,
     email: optionalEmail,
     line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
@@ -121,12 +122,21 @@ function emptyGuardian(relation: StudentGuardianRelation): GuardianFormValue {
   return {
     relation,
     relation_note: "",
-    full_name: "",
+    first_name: "",
+    last_name: "",
     phone: "",
     email: "",
     line_id: "",
     is_primary: false,
   };
+}
+
+function splitLegacyGuardianName(fullName: string): Pick<GuardianFormValue, "first_name" | "last_name"> {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) {
+    return { first_name: parts[0] ?? "", last_name: "" };
+  }
+  return { first_name: parts.slice(0, -1).join(" "), last_name: parts.at(-1) ?? "" };
 }
 
 const ADDRESS_NAMES: AddressFieldNames<FormValues> = {
@@ -254,7 +264,10 @@ export function StudentEditPage() {
       guardians: (student.guardians ?? []).map((guardian) => ({
         relation: guardian.relation,
         relation_note: guardian.relation_note ?? "",
-        full_name: guardian.full_name,
+        first_name:
+          guardian.first_name ?? splitLegacyGuardianName(guardian.full_name).first_name,
+        last_name:
+          guardian.last_name ?? splitLegacyGuardianName(guardian.full_name).last_name,
         phone: guardian.phone ?? "",
         email: guardian.email ?? "",
         line_id: guardian.line_id ?? "",
@@ -288,7 +301,8 @@ export function StudentEditPage() {
       guardians: values.guardians.map((guardian) => ({
         relation: guardian.relation,
         relation_note: guardian.relation === "GUARDIAN" ? nullable(guardian.relation_note) : null,
-        full_name: guardian.full_name.trim(),
+        first_name: guardian.first_name.trim(),
+        last_name: guardian.last_name.trim(),
         phone: nullable(guardian.phone),
         email: nullable(guardian.email),
         line_id: nullable(guardian.line_id),
@@ -356,9 +370,8 @@ export function StudentEditPage() {
                     disabled={updateStudent.isPending || guardianArray.fields.length >= 10}
                     icon={Plus}
                     onClick={addGuardian}
-                    size="sm"
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                   >
                     เพิ่มผู้ติดต่อ
                   </Button>
@@ -385,8 +398,10 @@ export function StudentEditPage() {
                           disabled={updateStudent.isPending}
                           icon={Trash2}
                           onClick={() => guardianArray.remove(index)}
+                          className="text-danger hover:bg-danger-100 hover:text-danger"
                           size="sm"
-                          variant="outline"
+                          title="ลบผู้ติดต่อ"
+                          variant="ghost"
                         />
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -420,15 +435,28 @@ export function StudentEditPage() {
                           </FormItem>
                         ) : null}
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.full_name`} required>
-                            ชื่อ-นามสกุล
+                          <FormLabel htmlFor={`guardians.${index}.first_name`} required>
+                            ชื่อ
                           </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
-                            id={`guardians.${index}.full_name`}
-                            {...registerField(form, `guardians.${index}.full_name`)}
+                            id={`guardians.${index}.first_name`}
+                            autoComplete="given-name"
+                            {...registerField(form, `guardians.${index}.first_name`)}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.full_name`} />
+                          <FormMessage<FormValues> name={`guardians.${index}.first_name`} />
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel htmlFor={`guardians.${index}.last_name`} required>
+                            นามสกุล
+                          </FormLabel>
+                          <Input
+                            disabled={updateStudent.isPending}
+                            id={`guardians.${index}.last_name`}
+                            autoComplete="family-name"
+                            {...registerField(form, `guardians.${index}.last_name`)}
+                          />
+                          <FormMessage<FormValues> name={`guardians.${index}.last_name`} />
                         </FormItem>
                         <FormItem>
                           <FormLabel htmlFor={`guardians.${index}.phone`}>เบอร์โทร</FormLabel>

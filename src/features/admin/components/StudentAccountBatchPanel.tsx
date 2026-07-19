@@ -454,10 +454,10 @@ export function StudentAccountBatchPanel({
                     <DataTableCell className="font-bold text-slate-800">
                       {credential.studentName ?? "-"}
                     </DataTableCell>
-                    <DataTableCell className="font-mono text-slate-700">
+                    <DataTableCell className="text-slate-700">
                       {credential.username}
                     </DataTableCell>
-                    <DataTableCell className="font-mono font-bold text-slate-900">
+                    <DataTableCell className="font-bold text-slate-900">
                       {credential.tempPassword}
                     </DataTableCell>
                     <DataTableCell className="text-slate-600">
@@ -479,8 +479,8 @@ export function StudentAccountBatchPanel({
                   <TableCard key={credential.userId} className="space-y-2">
                     <div className="font-bold text-slate-900">{credential.studentName ?? "-"}</div>
                     <div className="grid gap-1 text-sm">
-                      <span className="font-mono text-slate-700">{credential.username}</span>
-                      <span className="font-mono font-bold text-slate-900">
+                      <span className="text-slate-700">{credential.username}</span>
+                      <span className="font-bold text-slate-900">
                         {credential.tempPassword}
                       </span>
                     </div>

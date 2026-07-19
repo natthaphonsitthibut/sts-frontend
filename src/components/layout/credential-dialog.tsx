@@ -41,7 +41,7 @@ export function CredentialDialog({
         </DialogHeader>
 
         <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <span className="break-all font-mono text-base font-bold text-slate-900">
+          <span className="break-all text-base font-bold text-slate-900">
             {value}
           </span>
           <CopyButton label="คัดลอก" value={value} />

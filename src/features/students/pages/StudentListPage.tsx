@@ -130,6 +130,8 @@ export function StudentListPage() {
     ],
     [studentStatuses],
   );
+  const effectiveGrade = scope.gradeLocked ? scope.grade : grade;
+  const effectiveRoom = scope.roomLocked ? scope.room : room;
 
   // Server is the source of truth for filtering, sorting and the page slice.
   const query = useMemo<StudentListQuery>(
@@ -138,8 +140,8 @@ export function StudentListPage() {
       province: schoolArea.province || undefined,
       district: schoolArea.district || undefined,
       subDistrict: schoolArea.subDistrict || undefined,
-      grade,
-      room,
+      grade: effectiveGrade,
+      room: effectiveRoom,
       enrollmentState,
       studentStatusCode: queryStudentStatusCode,
       searchTerm: debouncedSearch || undefined,
@@ -151,8 +153,8 @@ export function StudentListPage() {
       schoolArea.province,
       schoolArea.district,
       schoolArea.subDistrict,
-      grade,
-      room,
+      effectiveGrade,
+      effectiveRoom,
       enrollmentState,
       queryStudentStatusCode,
       debouncedSearch,
@@ -167,7 +169,7 @@ export function StudentListPage() {
     province: schoolArea.province || undefined,
     district: schoolArea.district || undefined,
     subDistrict: schoolArea.subDistrict || undefined,
-    grade,
+    grade: effectiveGrade,
     studentStatusCode: queryStudentStatusCode,
     enrollmentState,
   });
@@ -182,10 +184,10 @@ export function StudentListPage() {
     [selectedStudentsById],
   );
   const selectedGradeLevelId =
-    grade === "ALL"
+    effectiveGrade === "ALL"
       ? null
-      : (scope.gradeLevels.find((level) => level.label === grade)?.id ?? null);
-  const selectedRoomId = room === "ALL" ? undefined : room;
+      : (scope.gradeLevels.find((level) => level.label === effectiveGrade)?.id ?? null);
+  const selectedRoomId = effectiveRoom === "ALL" ? undefined : effectiveRoom;
   const filteredRosterExportUrl = buildDataExportContextUrl(
     "student_roster_basic",
     {
@@ -193,8 +195,8 @@ export function StudentListPage() {
       district: schoolArea.district,
       subDistrict: schoolArea.subDistrict,
       schoolId: scope.schoolId,
-      grade: grade === "ALL" ? undefined : grade,
-      room: room === "ALL" ? undefined : room,
+      grade: effectiveGrade === "ALL" ? undefined : effectiveGrade,
+      room: effectiveRoom === "ALL" ? undefined : effectiveRoom,
     },
   );
 
@@ -334,7 +336,8 @@ export function StudentListPage() {
               ) : null}
             </>
           }
-          grade={grade}
+          grade={effectiveGrade}
+          gradeLocked={scope.gradeLocked}
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
@@ -343,7 +346,8 @@ export function StudentListPage() {
           onRoomChange={handleRoomChange}
           onSearchChange={handleSearchChange}
           onStudentStatusCodeChange={handleStudentStatusCodeChange}
-          room={room}
+          room={effectiveRoom}
+          roomLocked={scope.roomLocked}
           roomOptions={options.rooms}
           schoolFilters={
             <SchoolAreaSchoolFilter

@@ -99,7 +99,9 @@ export function StudentContactPanel({ student }: { student: StudentDetail }) {
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-bold text-slate-800">
-                    {guardian.full_name}
+                    {[guardian.first_name, guardian.last_name]
+                      .filter(Boolean)
+                      .join(" ") || guardian.full_name}
                   </span>
                   <Badge variant="secondary">{relationLabel(guardian)}</Badge>
                   {guardian.is_primary ? <Badge>ผู้ติดต่อหลัก</Badge> : null}

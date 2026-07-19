@@ -4,6 +4,8 @@ import {
   MENU_ITEMS,
   filterMenuItems,
   getEffectivePermissions,
+  isStudentOnlyRole,
+  type MenuItem,
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { cn } from "../../lib/utils";
@@ -29,7 +31,18 @@ function SidebarContent({
 }: SidebarContentProps) {
   const user = useAuthSessionStore((state) => state.user);
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
-  const visibleMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
+  const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
+  const usesDefaultStudentNavigation =
+    isStudentOnlyRole(user?.roles || []) &&
+    userPermissions.length === 1 &&
+    userPermissions[0] === "student-self";
+  const visibleMenuItems: MenuItem[] = usesDefaultStudentNavigation
+    ? filteredMenuItems.flatMap((item) => {
+        if (item.id === "student-self") return [item];
+        const timetable = item.children?.find((child) => child.id === "timetable");
+        return timetable ? [{ ...timetable, label: "ตารางเรียน" }] : [];
+      })
+    : filteredMenuItems;
 
   return (
     <div className="flex h-full flex-col bg-white">

@@ -222,7 +222,7 @@ function AuditLogTable({
               </div>
             </DataTableCell>
             {showReferenceColumn ? (
-              <DataTableCell className="font-mono text-sm text-slate-600">
+              <DataTableCell className="text-sm text-slate-600">
                 <div className="truncate" title={getAuditLogTargetLabel(entry)}>
                   {getAuditLogTargetLabel(entry)}
                 </div>
@@ -259,7 +259,7 @@ function AuditLogTable({
               </div>
               <div className="text-sm font-semibold text-slate-900">{entry.actorLabel}</div>
               {showReferenceColumn ? (
-                <div className="font-mono text-sm text-slate-600">
+                <div className="text-sm text-slate-600">
                   {getAuditLogTargetLabel(entry)}
                 </div>
               ) : null}

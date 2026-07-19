@@ -14,6 +14,7 @@ import {
 } from "../../../components/base";
 import { EmptyState, ErrorState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
+import { getApiErrorMessage } from "../../../lib/api-error";
 import type {
   CreateStudentObservationInput,
   ObservationCatalog,
@@ -40,6 +41,7 @@ export interface ObservationWorkspaceProps {
   observations: StudentObservation[];
   isLoading: boolean;
   isError: boolean;
+  loadError?: unknown;
   error?: unknown;
   isSaving: boolean;
   context?: Pick<CreateStudentObservationInput, "assignmentId" | "timetableSlotId">;
@@ -54,6 +56,7 @@ export function ObservationWorkspace({
   observations,
   isLoading,
   isError,
+  loadError,
   error,
   isSaving,
   context,
@@ -115,7 +118,16 @@ export function ObservationWorkspace({
 
   if (isLoading) return <SkeletonStack lines={6} />;
   if (isError || !catalog) {
-    return <ErrorState title="โหลดแบบบันทึกข้อสังเกตไม่สำเร็จ" onRetry={onRetry} />;
+    return (
+      <ErrorState
+        description={getApiErrorMessage(
+          loadError,
+          "ไม่สามารถโหลดข้อมูลนักเรียนหรือแบบบันทึกได้ กรุณาลองใหม่อีกครั้ง",
+        )}
+        title="โหลดแบบบันทึกข้อสังเกตไม่สำเร็จ"
+        onRetry={onRetry}
+      />
+    );
   }
 
   return (

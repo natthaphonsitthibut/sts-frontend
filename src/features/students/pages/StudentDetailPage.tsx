@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CircleAlert, NotebookPen, SquarePen } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleAlert, KeyRound, NotebookPen, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Button, Card, SchoolIcon } from "../../../components/base";
+import { Badge, Button, Card, SchoolIcon } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -87,6 +87,69 @@ function AddressPanel({ student }: { student: StudentDetail }) {
         title="ที่อยู่และแผนที่"
       />
     </div>
+  );
+}
+
+const ACCOUNT_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "ใช้งานอยู่",
+  PENDING_FIRST_LOGIN: "รอเข้าสู่ระบบครั้งแรก",
+  TEMP_PASSWORD_EXPIRED: "รหัสหมดอายุ",
+  DISABLED: "ปิดใช้งาน",
+};
+
+function StudentAccountPanel({
+  canManageAccounts,
+  canViewUsers,
+  student,
+}: {
+  canManageAccounts: boolean;
+  canViewUsers: boolean;
+  student: StudentDetail;
+}) {
+  const account = student.account;
+  return (
+    <Card className="mb-5 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-800">
+            <KeyRound className="size-4 text-primary" aria-hidden="true" />
+            บัญชีนักเรียน
+          </h2>
+          {account ? (
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+              <span className="text-slate-500">
+                ชื่อผู้ใช้: <strong className="font-semibold text-slate-800">{account.username}</strong>
+              </span>
+              <Badge
+                variant={
+                  account.lifecycle_status === "ACTIVE"
+                    ? "success"
+                    : account.lifecycle_status === "TEMP_PASSWORD_EXPIRED"
+                      ? "warning"
+                      : "secondary"
+                }
+              >
+                {ACCOUNT_STATUS_LABELS[account.lifecycle_status] ?? account.lifecycle_status}
+              </Badge>
+              {account.lifecycle_status === "PENDING_FIRST_LOGIN" ? (
+                <span className="text-warning-700">ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบ</span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">นักเรียนคนนี้ยังไม่มีบัญชีผู้ใช้</p>
+          )}
+        </div>
+        {account && canViewUsers ? (
+          <NavButton size="sm" to={`/manage-users/${account.user_id}`} variant="outline">
+            ดูบัญชีผู้ใช้
+          </NavButton>
+        ) : !account && canManageAccounts ? (
+          <NavButton size="sm" to="/manage-student-accounts/generate" variant="outline">
+            ไปหน้าสร้างบัญชี
+          </NavButton>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 
@@ -338,6 +401,12 @@ export function StudentDetailPage() {
         studentId={studentId}
       />
 
+      <StudentAccountPanel
+        canManageAccounts={can("manage-student-accounts")}
+        canViewUsers={can("manage-users-list")}
+        student={student}
+      />
+
       <AddressPanel student={student} />
 
       <StudentContactPanel student={student} />
@@ -359,7 +428,7 @@ export function StudentDetailPage() {
       </div>
       <ObservationEntryDialog
         open={observationOpen}
-        title="บันทึกข้อสังเกตจากโปรไฟล์นักเรียน"
+        title="บันทึกข้อสังเกตจากรายละเอียดนักเรียน"
         onClose={() => setObservationOpen(false)}
       >
         {studentId ? (

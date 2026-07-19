@@ -68,7 +68,7 @@ export function HeaderProfileMenu({
         aria-haspopup="menu"
         aria-label="เปิดเมนูบัญชีผู้ใช้"
         className={cn(
-          "flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark sm:px-2",
+          "flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark sm:w-44 sm:px-2",
           open ? "bg-surface-app" : "hover:bg-white/10",
         )}
         onClick={() => setOpen((value) => !value)}
@@ -88,7 +88,7 @@ export function HeaderProfileMenu({
         />
         <span
           className={cn(
-            "hidden max-w-[140px] truncate text-sm font-semibold sm:block",
+            "hidden min-w-0 flex-1 truncate text-sm font-semibold sm:block",
             open ? "text-primary" : "text-white",
           )}
         >

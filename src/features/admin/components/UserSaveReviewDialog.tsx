@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { maskNationalId } from "../../../lib/pii-presentation";
 import {
   Alert,
   Badge,
@@ -42,17 +43,6 @@ interface UserSaveReviewDialogProps {
   onClose: () => void;
 }
 
-function maskPersonId(personId: string | null): string {
-  if (!personId) {
-    return "-";
-  }
-  const digits = personId.replace(/\D/g, "");
-  if (digits.length < 4) {
-    return "•••";
-  }
-  return `${"•".repeat(digits.length - 4)}${digits.slice(-4)}`;
-}
-
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex gap-2 text-sm">
@@ -85,11 +75,11 @@ export function UserSaveReviewDialog({
           <section className="space-y-2">
             <h3 className="text-sm font-bold text-slate-700">ข้อมูลผู้ใช้</h3>
             <InfoRow label="ชื่อ-นามสกุล" value={data.fullName} />
-            <InfoRow label="ชื่อผู้ใช้" value={<span className="font-mono">{data.username}</span>} />
+            <InfoRow label="ชื่อผู้ใช้" value={data.username} />
             <InfoRow label="อีเมล" value={data.email} />
             <InfoRow label="เบอร์โทร" value={data.phone} />
             <InfoRow label="สังกัด" value={data.affiliation} />
-            <InfoRow label="เลขบัตร ปชช." value={maskPersonId(data.personId)} />
+            <InfoRow label="เลขบัตร ปชช." value={maskNationalId(data.personId)} />
             <InfoRow
               label="สถานะบัญชี"
               value={

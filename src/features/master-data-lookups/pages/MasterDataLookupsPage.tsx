@@ -244,7 +244,7 @@ export function MasterDataLookupsPage() {
                     {row.sourceConfig.title}
                   </Badge>
                 </DataTableCell>
-                <DataTableCell className="font-mono font-bold">{row.code}</DataTableCell>
+                <DataTableCell className="font-bold">{row.code}</DataTableCell>
                 <DataTableCell className="font-bold text-slate-800">{row.name}</DataTableCell>
                 <DataTableCell>
                   <div className="space-y-1 text-sm text-slate-600">

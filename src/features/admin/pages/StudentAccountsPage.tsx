@@ -425,10 +425,10 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
             <DataTableCell className="text-slate-600">
               {credential.grade ?? "-"} / {credential.room ?? "-"}
             </DataTableCell>
-            <DataTableCell className="break-all font-mono text-sm leading-5 text-slate-700">
+            <DataTableCell className="break-all text-sm leading-5 text-slate-700">
               {credential.username}
             </DataTableCell>
-            <DataTableCell className="break-all font-mono text-sm font-bold leading-5 text-slate-900">
+            <DataTableCell className="break-all text-sm font-bold leading-5 text-slate-900">
               {credential.tempPassword}
             </DataTableCell>
             <DataTableCell>
@@ -449,8 +449,8 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
               {credential.schoolName ?? "-"} · {credential.grade ?? "-"} / {credential.room ?? "-"}
             </div>
             <div className="grid gap-1 text-sm">
-              <span className="font-mono text-slate-700">{credential.username}</span>
-              <span className="font-mono font-bold text-slate-900">
+              <span className="text-slate-700">{credential.username}</span>
+              <span className="font-bold text-slate-900">
                 {credential.tempPassword}
               </span>
             </div>

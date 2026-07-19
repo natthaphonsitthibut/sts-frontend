@@ -127,6 +127,7 @@ export function ManagedObservationEntryPanel({
       observations={rows}
       isLoading={catalog.isLoading || observations.isLoading}
       isError={catalog.isError || observations.isError}
+      loadError={catalog.error ?? observations.error}
       error={create.error}
       isSaving={create.isPending}
       context={{ timetableSlotId }}
@@ -167,6 +168,7 @@ export function TaskLinkObservationEntryPanel({
       observations={rows}
       isLoading={catalog.isLoading || observations.isLoading}
       isError={catalog.isError || observations.isError}
+      loadError={catalog.error ?? observations.error}
       error={create.error}
       isSaving={create.isPending}
       context={{ timetableSlotId }}

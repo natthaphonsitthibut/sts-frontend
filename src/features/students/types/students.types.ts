@@ -92,6 +92,16 @@ export interface StudentDetail extends Record<string, unknown> {
   /** Canonical person-level contact channels; independent of login accounts. */
   contact?: StudentContact | null;
   guardians?: StudentGuardian[];
+  /** Login account linked to this person; null when the student has no account. */
+  account?: StudentAccountSummary | null;
+}
+
+export interface StudentAccountSummary {
+  user_id: number;
+  username: string;
+  status: string;
+  lifecycle_status: "PENDING_FIRST_LOGIN" | "ACTIVE" | "TEMP_PASSWORD_EXPIRED" | "DISABLED";
+  must_change_password: boolean;
 }
 
 export interface StudentContact {
@@ -107,6 +117,9 @@ export interface StudentGuardian {
   relation: StudentGuardianRelation;
   /** What a GUARDIAN actually is (ยาย, ลุง, ...); null for FATHER/MOTHER. */
   relation_note: string | null;
+  first_name?: string;
+  last_name?: string | null;
+  /** Compatibility field while older backend versions are drained. */
   full_name: string;
   phone: string | null;
   email: string | null;
@@ -117,7 +130,8 @@ export interface StudentGuardian {
 export interface StudentGuardianInput {
   relation: StudentGuardianRelation;
   relation_note?: string | null;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   phone?: string | null;
   email?: string | null;
   line_id?: string | null;

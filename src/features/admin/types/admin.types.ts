@@ -75,6 +75,7 @@ export interface ManagedUserDetail extends ManagedUser {
   has_profile_location?: boolean;
   data_scope_labels?: {
     schools?: Array<{ id: number; name: string | null }>;
+    gradeLevels?: Array<{ id: number; label: string }>;
   };
 }
 

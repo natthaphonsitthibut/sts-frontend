@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Combobox } from "../../../components/base";
 import { ToolbarFilterGrid } from "../../../components/layout/page-primitives";
 import { toRoomOption } from "../../../lib/room-presentation";
@@ -24,6 +25,28 @@ interface RoomPickerProps {
 export function RoomPicker({ onChange }: RoomPickerProps) {
   const area = useSchoolAreaFilter();
   const scope = useScopeCascade({ lockToActorScope: true });
+
+  useEffect(() => {
+    const school = area.schools.find(
+      (candidate) => String(candidate.id) === scope.schoolId,
+    );
+    if (!school || !scope.gradeLevelId || !scope.grade || !scope.room) return;
+
+    onChange({
+      schoolId: Number(scope.schoolId),
+      gradeLevelId: scope.gradeLevelId,
+      gradeLevelLabel: scope.grade,
+      roomNo: Number(scope.room),
+      schoolName: school.name,
+    });
+  }, [
+    area.schools,
+    onChange,
+    scope.grade,
+    scope.gradeLevelId,
+    scope.room,
+    scope.schoolId,
+  ]);
 
   function emit(
     nextSchoolId: string,

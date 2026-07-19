@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  FormLabel,
   Input,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -66,7 +67,7 @@ export function UserNationalIdRevealDialog({
       close();
     } catch (requestError) {
       setError(
-        getApiErrorMessage(requestError, "ไม่สามารถแสดงเลขบัตรประชาชนได้"),
+        getApiErrorMessage(requestError, "ไม่สามารถแสดงเลขบัตรได้"),
       );
     } finally {
       setSubmitting(false);
@@ -80,7 +81,7 @@ export function UserNationalIdRevealDialog({
     >
       <DialogContent className="w-[min(92vw,440px)]" onClose={close}>
         <DialogHeader>
-          <DialogTitle>แสดงเลขบัตรประชาชน</DialogTitle>
+          <DialogTitle>แสดงเลขบัตร</DialogTitle>
           <DialogDescription>
             ระบบจะบันทึกเหตุผลและผู้เปิดดูในประวัติการเข้าถึง
           </DialogDescription>
@@ -92,12 +93,9 @@ export function UserNationalIdRevealDialog({
             </Alert>
           ) : null}
           <div className="space-y-2">
-            <label
-              className="text-sm font-semibold"
-              htmlFor="user-national-id-reason"
-            >
-              เหตุผล
-            </label>
+            <FormLabel htmlFor="user-national-id-reason" required>
+              เหตุผลในการแสดงข้อมูล
+            </FormLabel>
             <Combobox
               id="user-national-id-reason"
               onChange={setReasonCode}
@@ -108,12 +106,12 @@ export function UserNationalIdRevealDialog({
             />
           </div>
           <div className="space-y-2">
-            <label
-              className="text-sm font-semibold"
+            <FormLabel
               htmlFor="user-national-id-note"
+              required={reasonCode === "OTHER"}
             >
               รายละเอียดเพิ่มเติม
-            </label>
+            </FormLabel>
             <Input
               id="user-national-id-note"
               maxLength={500}

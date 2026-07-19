@@ -20,9 +20,11 @@ interface StudentSearchFilterProps {
   grade: string;
   onGradeChange: (value: string) => void;
   gradeOptions: string[];
+  gradeLocked?: boolean;
   room: string;
   onRoomChange: (value: string) => void;
   roomOptions: string[];
+  roomLocked?: boolean;
   studentStatusCode: StudentStatusFilterValue;
   onStudentStatusCodeChange: (value: StudentStatusFilterValue) => void;
   studentStatusOptions: StudentStatusFilterOption[];
@@ -41,9 +43,11 @@ export function StudentSearchFilter({
   grade,
   onGradeChange,
   gradeOptions,
+  gradeLocked = false,
   room,
   onRoomChange,
   roomOptions,
+  roomLocked = false,
   studentStatusCode,
   onStudentStatusCodeChange,
   studentStatusOptions,
@@ -79,6 +83,7 @@ export function StudentSearchFilter({
 
           <FilterCombobox
             ariaLabel="กรองตามระดับชั้น"
+            disabled={gradeLocked}
             onChange={onGradeChange}
             options={[
               { value: "ALL", label: "ทุกชั้น" },
@@ -90,6 +95,7 @@ export function StudentSearchFilter({
 
           <FilterCombobox
             ariaLabel="กรองตามห้อง"
+            disabled={roomLocked}
             onChange={onRoomChange}
             options={[
               { value: "ALL", label: "ทุกห้อง" },

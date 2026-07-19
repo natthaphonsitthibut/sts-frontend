@@ -101,7 +101,7 @@ export function DelegatePage() {
                   )}
                 </AlertDescription>
               </Alert>
-              <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm">
+              <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 {normalizeTaskPublicLink(result.magic_link)}
               </div>
               <div className="flex flex-wrap gap-2">

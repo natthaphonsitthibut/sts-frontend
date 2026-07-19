@@ -131,17 +131,19 @@ export function StudentProfileHeader({
   function renderPiiField(field: StudentPiiField) {
     const maskable = maskedFields.includes(field);
     const masked = isMasked(field);
+    const actionLabel =
+      field === "PersonID_Onec" ? "เลขบัตร" : "เลขหนังสือเดินทาง";
 
     return (
       <div>
         {PII_FIELD_LABELS[field]}:{" "}
-        <span className="font-mono font-medium tabular-nums text-slate-800">
+        <span className="font-medium tabular-nums text-slate-800">
           {getFieldValue(field)}
         </span>
         {maskable ? (
           masked ? (
             <Button
-              className="ml-2 align-middle"
+              className="ml-2 h-8 px-3 align-middle text-xs"
               disabled={directRevealing !== null}
               icon={Eye}
               isLoading={directRevealing === field}
@@ -151,18 +153,18 @@ export function StudentProfileHeader({
               type="button"
               variant="outline"
             >
-              แสดง
+              แสดง{actionLabel}
             </Button>
           ) : (
             <Button
-              className="ml-2 align-middle"
+              className="ml-2 h-8 px-3 align-middle text-xs"
               icon={EyeOff}
               onClick={() => handleHide(field)}
               size="sm"
               type="button"
               variant="outline"
             >
-              ซ่อน
+              ซ่อน{actionLabel}
             </Button>
           )
         ) : null}

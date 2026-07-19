@@ -32,6 +32,7 @@ import {
   IconButton,
   useConfirm,
   Input,
+  NumericInput,
   Label,
   Select,
   Tabs,
@@ -149,9 +150,6 @@ export function SchoolStructurePage() {
   const [teacherImportFile, setTeacherImportFile] = useState<File | null>(null);
   const [gradeLevelId, setGradeLevelId] = useState("");
   const [roomCode, setRoomCode] = useState("");
-  const [legacyRoomNumber, setLegacyRoomNumber] = useState("");
-  // Once the user edits เลขห้องเดิม by hand it stops following รหัสห้อง.
-  const [legacyRoomTouched, setLegacyRoomTouched] = useState(false);
   const [roomName, setRoomName] = useState("");
   // Room whose data the dialog is editing; null = creating a new room.
   const [editingClassroom, setEditingClassroom] = useState<SchoolClassroom | null>(null);
@@ -274,6 +272,9 @@ export function SchoolStructurePage() {
       : null,
   );
   const roomFilterOptions = classroomOptionsQuery.data ?? [];
+  const importClassroomId =
+    classroomRoomFilter ||
+    (roomFilterOptions.length === 1 ? String(roomFilterOptions[0].id) : "");
   const selectedClassroom = useMemo(
     () => classrooms.find((room) => room.id === classroomInput) ?? classrooms[0],
     [classroomInput, classrooms],
@@ -340,36 +341,19 @@ export function SchoolStructurePage() {
     setEditingClassroom(room);
     setGradeLevelId(room ? String(room.gradeLevelId) : "");
     setRoomCode(room ? room.roomCode : "");
-    setLegacyRoomNumber(room?.legacyRoomNumber != null ? String(room.legacyRoomNumber) : "");
-    setLegacyRoomTouched(Boolean(room));
     setRoomName(room?.roomName ?? "");
     setClassroomDialogOpen(true);
   }
 
-  function handleRoomCodeChange(value: string): void {
-    setRoomCode(value);
-    // รหัสห้องกับเลขห้องเดิมมักเป็นเลขเดียวกัน — พิมพ์ครั้งเดียวพอ ปรับทีหลังได้
-    if (!legacyRoomTouched && /^\d*$/.test(value.trim())) {
-      setLegacyRoomNumber(value.trim());
-    }
-  }
-
-  // เลขห้องเดิมโผล่เฉพาะเมื่อรหัสห้องไม่ใช่ตัวเลข (จับคู่ import อัตโนมัติไม่ได้)
-  // หรือเมื่อค่าเดิมของห้องต่างจากรหัสห้องอยู่แล้ว
-  const legacyRoomVisible =
-    !/^\d+$/.test(roomCode.trim()) ||
-    (legacyRoomNumber !== "" && legacyRoomNumber !== roomCode.trim());
-
   async function submitClassroom(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!gradeLevelId || !roomCode.trim() || !legacyRoomNumber) return;
+    if (!gradeLevelId || !roomCode.trim()) return;
     if (editingClassroom) {
       await updateClassroom.mutateAsync({
         classroomId: editingClassroom.id,
         gradeLevelId: Number(gradeLevelId),
         roomCode: roomCode.trim(),
         roomName: roomName.trim() || "",
-        legacyRoomNumber: Number(legacyRoomNumber),
       });
     } else {
       if (!selectedTermId) return;
@@ -378,11 +362,9 @@ export function SchoolStructurePage() {
         gradeLevelId: Number(gradeLevelId),
         roomCode: roomCode.trim(),
         roomName: roomName.trim() || undefined,
-        legacyRoomNumber: Number(legacyRoomNumber),
       });
     }
     setRoomCode("");
-    setLegacyRoomNumber("");
     setRoomName("");
     setEditingClassroom(null);
     setClassroomDialogOpen(false);
@@ -645,10 +627,10 @@ export function SchoolStructurePage() {
               ) : null}
               {tab === "roster" ? (
                 <Button
-                  disabled={!selectedSchoolId || !selectedTermId || !classroomRoomFilter}
+                  disabled={!selectedSchoolId || !selectedTermId || !importClassroomId}
                   icon={FileUp}
-                  onClick={() => navigate(`/import-data?source=school-structure&schoolId=${selectedSchoolId}&schoolTermId=${selectedTermId}&classroomId=${classroomRoomFilter}`)}
-                  title={!classroomRoomFilter ? "เลือกห้องก่อนนำเข้านักเรียน" : undefined}
+                  onClick={() => navigate(`/import-data?source=school-structure&schoolId=${selectedSchoolId}&schoolTermId=${selectedTermId}&classroomId=${importClassroomId}`)}
+                  title={!importClassroomId ? "เลือกห้องก่อนนำเข้านักเรียน" : undefined}
                   variant="outline"
                 >
                   นำเข้านักเรียน
@@ -871,10 +853,7 @@ export function SchoolStructurePage() {
                 <Select disabled={Boolean(editingClassroom && editingClassroom.studentCount > 0)} id="classroom-grade" required value={gradeLevelId} onChange={(event) => setGradeLevelId(event.target.value)}><option value="">เลือกระดับชั้น</option>{gradeLevelsQuery.data?.map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}</Select>
                 {editingClassroom && editingClassroom.studentCount > 0 ? <p className="mt-1 text-xs leading-5 text-slate-500">ห้องนี้มีนักเรียนแล้ว จึงเปลี่ยนระดับชั้นไม่ได้</p> : null}
               </div>
-              <div><FormLabel htmlFor="classroom-code" required>รหัสห้อง</FormLabel><Input id="classroom-code" required maxLength={32} value={roomCode} onChange={(event) => handleRoomCodeChange(event.target.value)} placeholder="เช่น 1 หรือ ก" /><p className="mt-1 text-xs leading-5 text-slate-500">เลขหรือชื่อย่อของห้องในชั้น เช่น ชั้น ป.1 ห้อง 1 ให้กรอก 1</p></div>
-              {legacyRoomVisible ? (
-                <div><FormLabel htmlFor="classroom-legacy-room" required>เลขห้องในข้อมูลเดิม</FormLabel><Input id="classroom-legacy-room" required min={1} step={1} type="number" value={legacyRoomNumber} onChange={(event) => { setLegacyRoomTouched(true); setLegacyRoomNumber(event.target.value); }} placeholder="เช่น 1" /><p className="mt-1 text-xs leading-5 text-slate-500">ใช้จับคู่ตอนนำเข้ารายชื่อนักเรียนจากไฟล์เดิม — รหัสห้องนี้ไม่ใช่ตัวเลข จึงต้องบอกว่าไฟล์เดิมเรียกห้องนี้ด้วยเลขอะไร</p></div>
-              ) : null}
+              <div><FormLabel htmlFor="classroom-code" required>รหัสห้อง</FormLabel><NumericInput id="classroom-code" required maxLength={10} pattern="[1-9][0-9]*" value={roomCode} onChange={(event) => setRoomCode(event.target.value)} placeholder="เช่น 1" /><p className="mt-1 text-xs leading-5 text-slate-500">กรอกเลขห้องในระดับชั้น เช่น ชั้น ป.1 ห้อง 1 ให้กรอก 1</p></div>
               <div><Label htmlFor="classroom-name">ชื่อห้อง (ถ้ามี)</Label><Input id="classroom-name" maxLength={120} value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="เช่น ห้องวิทยาศาสตร์" /></div>
             </DialogBody>
             <DialogFooter>

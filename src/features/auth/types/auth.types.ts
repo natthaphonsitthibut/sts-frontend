@@ -11,6 +11,7 @@ export interface AuthUser {
   data_scope?: DataScope;
   data_scope_labels?: {
     schools?: Array<{ id: number; name: string | null }>;
+    gradeLevels?: Array<{ id: number; label: string }>;
   };
   PersonID_Onec?: string;
   student_uuid?: string;
