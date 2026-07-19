@@ -37,7 +37,7 @@ export function RefreshButton({ disabled = false, onRefresh, updatedAt }: Refres
           : "ยังไม่มีเวลาอัปเดต"}
       </span>
       <Button
-        className="border-transparent bg-primary-soft text-primary-dark hover:border-transparent hover:bg-primary/15 hover:text-primary-dark"
+        className="hover:border-primary/30 hover:bg-white/60 hover:text-primary-dark"
         icon={RotateCw}
         isLoading={isRefreshing}
         disabled={disabled}

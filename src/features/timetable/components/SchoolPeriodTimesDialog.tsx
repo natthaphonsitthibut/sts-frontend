@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -78,6 +78,91 @@ const generateSchema = z
   });
 
 type GenerateFormValues = z.infer<typeof generateSchema>;
+
+const DEFAULT_GENERATE_VALUES: GenerateFormValues = {
+  daysOfWeek: [1, 2, 3, 4, 5],
+  periodsCount: 8,
+  firstPeriodStartsAt: "08:30",
+  periodLengthMinutes: 50,
+  breakAfterPeriod: undefined,
+  breakMinutes: undefined,
+  lunchAfterPeriod: 4,
+  lunchMinutes: 70,
+};
+
+interface PeriodGap {
+  afterPeriod: number;
+  minutes: number;
+}
+
+function durationMinutes(row: SchoolPeriodTime): number {
+  return Math.round(hoursBetween(row.starts_at, row.ends_at) * 60);
+}
+
+function mostCommonPeriodLength(rows: SchoolPeriodTime[]): number {
+  const counts = new Map<number, number>();
+  for (const row of rows) {
+    const minutes = durationMinutes(row);
+    if (minutes > 0) counts.set(minutes, (counts.get(minutes) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).sort(
+    ([leftMinutes, leftCount], [rightMinutes, rightCount]) =>
+      rightCount - leftCount || leftMinutes - rightMinutes,
+  )[0]?.[0] ?? DEFAULT_GENERATE_VALUES.periodLengthMinutes;
+}
+
+function representativeDayRows(rows: SchoolPeriodTime[]): SchoolPeriodTime[] {
+  const rowsByDay = new Map<number, SchoolPeriodTime[]>();
+  for (const row of rows) {
+    const dayRows = rowsByDay.get(row.day_of_week) ?? [];
+    dayRows.push(row);
+    rowsByDay.set(row.day_of_week, dayRows);
+  }
+  return (
+    Array.from(rowsByDay.entries()).sort(
+      ([leftDay, leftRows], [rightDay, rightRows]) =>
+        rightRows.length - leftRows.length || leftDay - rightDay,
+    )[0]?.[1] ?? []
+  ).sort((left, right) => left.period - right.period);
+}
+
+function findPeriodGaps(rows: SchoolPeriodTime[]): PeriodGap[] {
+  const gaps: PeriodGap[] = [];
+  for (let index = 0; index < rows.length - 1; index += 1) {
+    const current = rows[index];
+    const next = rows[index + 1];
+    if (!current || !next || next.period !== current.period + 1) continue;
+    const minutes = Math.round(hoursBetween(current.ends_at, next.starts_at) * 60);
+    if (minutes > 0) gaps.push({ afterPeriod: current.period, minutes });
+  }
+  return gaps;
+}
+
+function deriveGenerateValues(rows: SchoolPeriodTime[]): GenerateFormValues {
+  if (rows.length === 0) return { ...DEFAULT_GENERATE_VALUES };
+
+  const dayRows = representativeDayRows(rows);
+  const gaps = findPeriodGaps(dayRows);
+  const lunchGap = gaps
+    .filter((gap) => gap.minutes >= 30)
+    .sort((left, right) => right.minutes - left.minutes || left.afterPeriod - right.afterPeriod)[0];
+  const breakGap = gaps.find((gap) => gap !== lunchGap);
+  const firstPeriod = dayRows.find((row) => row.period === 1) ?? dayRows[0];
+
+  return {
+    daysOfWeek: Array.from(new Set(rows.map((row) => row.day_of_week))).sort(
+      (left, right) => left - right,
+    ),
+    periodsCount: Math.max(...rows.map((row) => row.period)),
+    firstPeriodStartsAt:
+      firstPeriod?.starts_at.slice(0, 5) ?? DEFAULT_GENERATE_VALUES.firstPeriodStartsAt,
+    periodLengthMinutes: mostCommonPeriodLength(rows),
+    breakAfterPeriod: breakGap?.afterPeriod,
+    breakMinutes: breakGap?.minutes,
+    lunchAfterPeriod: lunchGap?.afterPeriod,
+    lunchMinutes: lunchGap?.minutes,
+  };
+}
 
 function optionalNumber(value: string): number | undefined {
   return value === "" ? undefined : Number(value);
@@ -253,20 +338,22 @@ export function SchoolPeriodTimesDialog({
     [rows],
   );
   const [selectedCurrentDay, setSelectedCurrentDay] = useState<number | null>(null);
+  const initializedSchoolIdRef = useRef<number | null>(null);
 
   const form = useForm<GenerateFormValues>({
-    defaultValues: {
-      daysOfWeek: [1, 2, 3, 4, 5],
-      periodsCount: 8,
-      firstPeriodStartsAt: "08:30",
-      periodLengthMinutes: 50,
-      breakAfterPeriod: undefined,
-      breakMinutes: undefined,
-      lunchAfterPeriod: 4,
-      lunchMinutes: 70,
-    },
+    defaultValues: DEFAULT_GENERATE_VALUES,
     resolver: zodResolver(generateSchema),
   });
+
+  useEffect(() => {
+    if (!open) {
+      initializedSchoolIdRef.current = null;
+      return;
+    }
+    if (!periodTimesQuery.isSuccess || initializedSchoolIdRef.current === schoolId) return;
+    form.reset(deriveGenerateValues(rows));
+    initializedSchoolIdRef.current = schoolId;
+  }, [form, open, periodTimesQuery.isSuccess, rows, schoolId]);
   const selectedDays = useWatch({ control: form.control, name: "daysOfWeek" }) ?? [];
   const firstPeriodStartsAt = useWatch({
     control: form.control,
@@ -306,7 +393,12 @@ export function SchoolPeriodTimesDialog({
         <DialogBody className="max-h-[70vh] space-y-6 overflow-y-auto pb-2">
           <Form form={form} onSubmit={handleGenerate}>
             <div className="space-y-3 rounded-lg border border-slate-200 p-3">
-              <h3 className="text-sm font-bold text-slate-900">สร้างตารางเวลาอัตโนมัติ</h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">สร้างตารางเวลาอัตโนมัติ</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  อ้างอิงค่าจากตารางเวลาปัจจุบันของโรงเรียน จำนวนคาบรวมคาบว่างที่ยังไม่ได้กำหนดวิชา
+                </p>
+              </div>
               <FormErrorAlert error={generate.error} fallback="สร้างตารางเวลาไม่สำเร็จ" />
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormItem>
@@ -333,7 +425,7 @@ export function SchoolPeriodTimesDialog({
                 </FormItem>
                 <FormItem>
                   <FormLabel htmlFor="pt-count" required>
-                    จำนวนคาบ
+                    จำนวนคาบต่อวัน
                   </FormLabel>
                   <Input
                     id="pt-count"

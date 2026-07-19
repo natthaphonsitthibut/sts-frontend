@@ -91,6 +91,8 @@ function getGapAfterPeriods(
 interface TimetableGridProps {
   slots: TimetableSlot[];
   periodTimes: SchoolPeriodTime[];
+  /** Include every school-configured day/period even when no subject is assigned there. */
+  includeConfiguredSchedule?: boolean;
   /** Render a cell's content for one slot; omit for the default subject+teacher label. */
   renderSlot?: (slot: TimetableSlot) => ReactNode;
   emptyDescription?: string;
@@ -110,13 +112,14 @@ interface TimetableGridProps {
 export function TimetableGrid({
   borderless = false,
   emptyDescription,
+  includeConfiguredSchedule = false,
   onAddSlot,
   periodTimes,
   renderSlot,
   slots,
 }: TimetableGridProps) {
-  const includeConfiguredSchedule = Boolean(onAddSlot);
-  if (slots.length === 0 && !(includeConfiguredSchedule && periodTimes.length > 0)) {
+  const showConfiguredSchedule = includeConfiguredSchedule || Boolean(onAddSlot);
+  if (slots.length === 0 && !(showConfiguredSchedule && periodTimes.length > 0)) {
     return (
       <EmptyState
         description={emptyDescription ?? "ยังไม่มีการจัดคาบสอนสำหรับตารางนี้"}
@@ -126,8 +129,8 @@ export function TimetableGrid({
     );
   }
 
-  const days = getGridDays(slots, periodTimes, includeConfiguredSchedule);
-  const periods = getGridPeriods(slots, periodTimes, includeConfiguredSchedule);
+  const days = getGridDays(slots, periodTimes, showConfiguredSchedule);
+  const periods = getGridPeriods(slots, periodTimes, showConfiguredSchedule);
   const representativeDay = getRepresentativeDay(days, periodTimes);
   // A period can end up in `periods` purely because a subject is still
   // assigned there (via `slots`) even though the bell schedule was later
@@ -202,7 +205,7 @@ export function TimetableGrid({
                   );
                 }
                 const period = column.period;
-                const isOutsideBellSchedule = includeConfiguredSchedule
+                const isOutsideBellSchedule = showConfiguredSchedule
                   ? !periodsInBellSchedule.has(period)
                   : false;
                 return (

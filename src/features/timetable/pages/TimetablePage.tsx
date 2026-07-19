@@ -362,7 +362,6 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                     setAddPrefill(null);
                     setAdding(true);
                   }}
-                  size="sm"
                 >
                   เพิ่มคาบสอน
                 </Button>
@@ -476,9 +475,11 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
 }
 
 function MyScheduleView({
+  includeConfiguredSchedule = false,
   mode,
   room,
 }: {
+  includeConfiguredSchedule?: boolean;
   mode: "mine" | "room";
   room: RoomSelection | null;
 }) {
@@ -525,6 +526,7 @@ function MyScheduleView({
         />
       ) : (
         <TimetableGrid
+          includeConfiguredSchedule={includeConfiguredSchedule}
           renderSlot={
             mode === "mine"
               ? (slot) => (
@@ -570,7 +572,6 @@ export function TimetablePage() {
               disabled={!room}
               icon={Clock3}
               onClick={() => setPeriodTimesDialogOpen(true)}
-              variant="outline"
             >
               ตั้งเวลาคาบ
             </Button>
@@ -616,7 +617,11 @@ export function TimetablePage() {
       {isManager ? (
         <ManageTimetableView room={room} />
       ) : (
-        <MyScheduleView mode={isStudent ? "mine" : mode} room={isStudent ? null : room} />
+        <MyScheduleView
+          includeConfiguredSchedule={isStudent}
+          mode={isStudent ? "mine" : mode}
+          room={isStudent ? null : room}
+        />
       )}
       {room ? (
         <SchoolPeriodTimesDialog
