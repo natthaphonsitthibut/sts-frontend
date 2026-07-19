@@ -87,7 +87,7 @@ export function UserProfileMenu({ collapsed = false }: UserProfileMenuProps) {
       <IconButton
         aria-label="ออกจากระบบ"
         className={cn(
-          "border-slate-300 bg-white text-slate-500 shadow-none hover:border-danger/30 hover:bg-danger-100 hover:text-danger",
+          "border-slate-300 bg-white text-slate-500 shadow-none hover:border-danger/30 hover:bg-primary-soft hover:text-danger",
           collapsed && "size-10",
         )}
         icon={LogOut}

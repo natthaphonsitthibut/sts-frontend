@@ -82,6 +82,12 @@ export function CaseDetailPage() {
         description="ตรวจสอบสาเหตุและดำเนินการติดตามนักเรียนจากเคสนี้"
         footerActions={
           <>
+            {can("review-cases") &&
+            (caseRecord.status === "PENDING_REVIEW" || caseRecord.status === "IN_PROGRESS") ? (
+              <Button icon={ClipboardCheck} onClick={() => setReviewOpen(true)}>
+                ดำเนินการเคส
+              </Button>
+            ) : null}
             {!caseRecord.task_id && can("create") ? (
               <Button
                 icon={Plus}
@@ -93,12 +99,6 @@ export function CaseDetailPage() {
               <NavButton icon={Eye} to={`/tasks/${caseRecord.task_id}`} variant="outline">
                 ดูภารกิจ
               </NavButton>
-            ) : null}
-            {can("review-cases") &&
-            (caseRecord.status === "PENDING_REVIEW" || caseRecord.status === "IN_PROGRESS") ? (
-              <Button icon={ClipboardCheck} onClick={() => setReviewOpen(true)}>
-                ดำเนินการเคส
-              </Button>
             ) : null}
             <NavButton icon={ArrowLeft} to={-1} variant="outline">
               ย้อนกลับ

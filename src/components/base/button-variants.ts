@@ -7,14 +7,16 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
+        default:
+          "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         secondary:
-          "border border-primary/30 bg-primary-soft text-primary-dark hover:border-primary/50 hover:bg-primary/15",
+          "border border-primary/30 bg-primary-soft text-primary-dark shadow-sm hover:border-primary/50 hover:bg-primary/15 hover:shadow",
         outline:
-          "border border-slate-300 bg-white text-slate-800 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
+          "border border-primary/30 bg-white text-slate-800 shadow-sm hover:border-primary/50 hover:bg-primary-soft hover:text-primary-dark hover:shadow",
         ghost:
           "border border-primary/10 bg-primary-soft text-primary-dark hover:border-primary/30 hover:bg-primary/15",
-        destructive: "bg-danger text-white shadow-sm hover:bg-danger-700",
+        destructive:
+          "border border-transparent bg-danger text-white shadow-sm hover:bg-danger-700",
       },
       size: {
         sm: "h-9 px-3",

@@ -300,7 +300,7 @@ function CalendarMonthGrid({
       <div className="mb-4 flex items-center justify-between gap-3">
         <Button
           aria-label="เดือนก่อนหน้า"
-          className="size-9 px-0 hover:bg-slate-50"
+          className="size-9 px-0"
           disabled={disablePrevious}
           icon={ChevronLeft}
           onClick={() => onMonthChange(previousMonthDate)}
@@ -312,7 +312,7 @@ function CalendarMonthGrid({
         </div>
         <Button
           aria-label="เดือนถัดไป"
-          className="size-9 px-0 hover:bg-slate-50"
+          className="size-9 px-0"
           disabled={disableNext}
           icon={ChevronRight}
           onClick={() => onMonthChange(nextMonthDate)}

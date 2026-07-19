@@ -498,8 +498,8 @@ export function AttendanceLinksDashboardPage() {
                             aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
                             className={
                               locked
-                                ? "size-9 shrink-0 px-0 hover:bg-slate-50"
-                                : "size-9 shrink-0 border-danger/30 px-0 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger"
+                                ? "size-9 shrink-0 px-0"
+                                : "size-9 shrink-0 border-danger/30 px-0 text-danger hover:border-danger/40 hover:bg-primary-soft hover:text-danger"
                             }
                             icon={locked ? LockOpen : Lock}
                             isLoading={pendingLinkId === task.active_link_id}

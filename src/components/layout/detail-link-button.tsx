@@ -31,7 +31,7 @@ export function DetailLinkButton({
       className={cn(
         buttonVariants({ variant: variant ?? "outline", size }),
         "shrink-0 whitespace-nowrap",
-        iconOnly && "size-9 px-0 hover:bg-slate-50",
+        iconOnly && "size-9 px-0",
         className,
       )}
       {...props}

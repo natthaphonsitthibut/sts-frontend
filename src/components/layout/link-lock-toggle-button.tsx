@@ -62,10 +62,10 @@ export function LinkLockToggleButton({
         aria-label={isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
         className={cn(
           iconOnly
-            ? "size-9 min-w-0 shrink-0 px-0 hover:bg-slate-50"
+            ? "size-9 min-w-0 shrink-0 px-0"
             : "min-w-[112px]",
           iconOnly && !isLocked &&
-            "border-danger/30 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger",
+            "border-danger/30 text-danger hover:border-danger/40 hover:bg-primary-soft hover:text-danger",
           className,
         )}
         icon={isLocked ? LockOpen : Lock}

@@ -88,7 +88,7 @@ export function PasswordInput({
       />
       <IconButton
         aria-label={visibilityLabel}
-        className="absolute right-1 top-1/2 size-8 -translate-y-1/2 border-transparent bg-white text-slate-500 shadow-none hover:bg-slate-50 hover:text-primary"
+        className="absolute right-1 top-1/2 size-8 -translate-y-1/2 border-transparent bg-white text-slate-500 shadow-none hover:bg-primary-soft hover:text-primary"
         icon={Icon}
         onClick={() => setVisible((current) => !current)}
         tabIndex={-1}

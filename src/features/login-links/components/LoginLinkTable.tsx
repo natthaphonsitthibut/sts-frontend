@@ -91,7 +91,7 @@ function LinkActions({
           aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
           className={
             compact
-              ? `size-9 shrink-0 px-0 hover:bg-slate-50${locked ? "" : " border-danger/30 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger"}`
+              ? `size-9 shrink-0 px-0${locked ? "" : " border-danger/30 text-danger hover:border-danger/40 hover:bg-primary-soft hover:text-danger"}`
               : "min-w-[88px]"
           }
           icon={locked ? LockOpen : Lock}

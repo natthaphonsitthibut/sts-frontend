@@ -398,7 +398,7 @@ export function StudentEditPage() {
                           disabled={updateStudent.isPending}
                           icon={Trash2}
                           onClick={() => guardianArray.remove(index)}
-                          className="text-danger hover:bg-danger-100 hover:text-danger"
+                          className="text-danger hover:bg-primary-soft hover:text-danger"
                           size="sm"
                           title="ลบผู้ติดต่อ"
                           variant="ghost"

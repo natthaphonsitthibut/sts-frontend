@@ -30,7 +30,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex h-full items-center gap-3 px-4 lg:px-6">
         <IconButton
           aria-label="เปิดเมนู"
-          className="border-white bg-white text-primary-dark hover:border-white hover:bg-slate-50 hover:text-primary-dark lg:hidden"
+          className="border-white bg-white text-primary-dark hover:border-white hover:bg-primary-soft hover:text-primary-dark lg:hidden"
           icon={Menu}
           onClick={onMenuClick}
           variant="ghost"
