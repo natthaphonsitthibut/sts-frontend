@@ -68,6 +68,7 @@ export function TeacherObservationReportsPage() {
   return (
     <PageShell>
       <ListPageToolbar
+        actions={<RiskReportTabs />}
         icon={ClipboardList}
         title="รายงานนักเรียน"
         description="คิวข้อสังเกตและคำขอติดตามจากครูในขอบเขตข้อมูลของคุณ"
@@ -90,7 +91,6 @@ export function TeacherObservationReportsPage() {
           </>
         }
       />
-      <RiskReportTabs />
 
       {reports.isLoading ? (
         <SkeletonTable rows={8} />

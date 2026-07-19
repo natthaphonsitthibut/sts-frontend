@@ -458,6 +458,7 @@ export function DashboardPage() {
   return (
     <PageShell>
       <ListPageToolbar
+        actions={<RiskReportTabs />}
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
         description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
@@ -505,7 +506,6 @@ export function DashboardPage() {
           </>
         }
       />
-      <RiskReportTabs />
 
       <div className="space-y-5">
         <div className="space-y-2">

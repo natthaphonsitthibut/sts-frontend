@@ -11,7 +11,6 @@ export function RiskReportTabs() {
   return (
     <Tabs
       aria-label="ประเภทรายงานความเสี่ยง"
-      className="mb-5"
       value={value}
       onChange={(next) => void navigate(next === "teacher-reports" ? "/student-risk-report/teacher-reports" : "/student-risk-report")}
       options={[
