@@ -13,6 +13,7 @@ import { LinkShareActions } from "../../../components/layout/link-share-actions"
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
@@ -181,14 +182,18 @@ export function TaskDetailPage() {
                 </Badge>
               )}
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <div className="text-sm text-slate-500">นักเรียน</div>
               <div className="font-bold">{task.student_name || "-"}</div>
             </div>
             <div>
-              <div className="text-sm text-slate-500">โรงเรียน / ชั้น</div>
+              <div className="text-sm text-slate-500">โรงเรียน</div>
+              <div className="break-words font-bold">{task.student_school || "-"}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">ชั้น / ห้อง</div>
               <div className="font-bold">
-                {task.student_school || task.target_grade || "-"} {task.target_room || ""}
+                {task.target_grade || "-"} · {formatRoomLabel(task.target_room)}
               </div>
             </div>
             <div className="sm:col-span-2">
