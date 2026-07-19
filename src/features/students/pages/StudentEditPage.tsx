@@ -371,7 +371,7 @@ export function StudentEditPage() {
                     icon={Plus}
                     onClick={addGuardian}
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                   >
                     เพิ่มผู้ติดต่อ
                   </Button>

@@ -246,7 +246,7 @@ export function ManageUsersPage() {
     <PageShell>
       <ListPageToolbar
         icon={Users}
-        actions={<><Tabs aria-label="โหมดจัดการผู้ใช้งาน" onChange={setActiveTab} options={[{ value: "manage", label: "จัดการผู้ใช้งาน" }, { value: "history", label: "ประวัติ" }]} value={activeTab} /><NavButton icon={UserPlus} to="/manage-users/new">เพิ่มผู้ใช้งาน</NavButton></>}
+        actions={<><Tabs aria-label="โหมดจัดการผู้ใช้งาน" onChange={setActiveTab} options={[{ value: "manage", label: "จัดการผู้ใช้งาน" }, { value: "history", label: "ประวัติ" }]} value={activeTab} /><NavButton className="h-12" icon={UserPlus} to="/manage-users/new">เพิ่มผู้ใช้งาน</NavButton></>}
         tableActions={activeTab === "manage" ? <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} /> : undefined}
         onClearFilters={handleClearFilters}
         title="จัดการรายชื่อผู้ใช้งาน"
