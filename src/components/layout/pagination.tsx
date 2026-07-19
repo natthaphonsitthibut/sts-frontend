@@ -143,7 +143,7 @@ export function Pagination({
   }
 
   const navButtonClass =
-    "flex size-9 items-center justify-center rounded-md bg-white font-semibold text-slate-600 transition-colors hover:bg-primary-soft hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40";
+    "flex size-9 items-center justify-center rounded-md bg-white font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div className="mt-3 flex flex-col gap-3 border-t border-slate-200 pt-4">

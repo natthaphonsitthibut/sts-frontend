@@ -39,7 +39,7 @@ export function CopyButton({
   return (
     <Button
       aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
-      className={cn(iconOnly && "px-2", className)}
+      className={cn(iconOnly && "px-2 hover:bg-slate-50", className)}
       icon={copied ? Check : Copy}
       iconClassName={copied ? "text-success" : undefined}
       isLoading={state === "loading"}

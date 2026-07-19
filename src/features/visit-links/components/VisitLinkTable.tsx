@@ -82,25 +82,33 @@ function LinkActions({ compact = false, link }: { compact?: boolean; link: Visit
   const detailPath = `/tasks/${link.task_id}`;
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {link.magic_link ? (
+    <div
+      className={
+        compact
+          ? "flex flex-nowrap items-center justify-end gap-2"
+          : "flex flex-wrap items-center justify-end gap-2"
+      }
+    >
+      {link.magic_link && compact ? (
         <CopyButton
-          className={compact ? "size-9 px-0" : undefined}
+          className="size-9 shrink-0 px-0"
           value={link.magic_link}
           variant="outline"
         />
       ) : null}
+      <DetailLinkButton
+        aria-label="ดูรายละเอียดงาน"
+        iconOnly={compact}
+        to={detailPath}
+      />
       {canToggleLink ? (
         <LinkLockToggleButton
-          className={compact ? "h-9 min-w-0 px-2" : undefined}
+          iconOnly={compact}
           invalidateKeys={[[VISIT_LINKS_QUERY_KEY]]}
           linkId={link.id}
           locked={locked}
         />
       ) : null}
-      <DetailLinkButton aria-label="ดูรายละเอียดงาน" to={detailPath}>
-        {compact ? null : "ดูรายละเอียด"}
-      </DetailLinkButton>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
+import { Bell, BellRing } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button, NotificationsIcon, Skeleton } from "../../../components/base";
+import { Button, Skeleton } from "../../../components/base";
 import { useDismissable } from "../../../hooks/useDismissable";
 import { cn } from "../../../lib/utils";
 import {
@@ -27,6 +28,7 @@ export function NotificationBell() {
   const unseenCount = data?.unseenCount ?? 0;
   const unreadCount = data?.unreadCount ?? 0;
   const notifications = data?.rows ?? [];
+  const BellIcon = unseenCount > 0 ? BellRing : Bell;
 
   useDismissable(open, containerRef, () => setOpen(false));
 
@@ -60,15 +62,13 @@ export function NotificationBell() {
           unseenCount > 0 ? `รายการแจ้งเตือน (ใหม่ ${unseenCount} รายการ)` : "รายการแจ้งเตือน"
         }
         className={cn(
-          "relative inline-flex size-10 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark",
-          open
-            ? "bg-surface-app text-primary"
-            : "text-white hover:bg-white/10",
+          "relative inline-flex size-10 items-center justify-center rounded-lg border border-white bg-white text-primary-dark transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark",
+          open && "bg-slate-50 text-primary",
         )}
         onClick={handleToggle}
         type="button"
       >
-        <NotificationsIcon className="size-5" aria-hidden="true" />
+        <BellIcon className="size-5" strokeWidth={2.1} aria-hidden="true" />
         {unseenCount > 0 ? (
           <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-400 px-1 text-xs font-bold leading-none text-white">
             {unseenCount > 99 ? "99+" : unseenCount}

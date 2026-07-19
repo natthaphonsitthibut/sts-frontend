@@ -22,6 +22,7 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { CopyButton } from "../../../components/layout/copy-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { Pagination } from "../../../components/layout/pagination";
@@ -477,10 +478,17 @@ export function AttendanceLinksDashboardPage() {
                     </DataTableCell>
                     <DataTableCell className="pr-3">
                       <div className="flex flex-nowrap items-center justify-end gap-2">
+                        {task.active_link ? (
+                          <CopyButton
+                            className="size-9 shrink-0 px-0"
+                            value={task.active_link}
+                            variant="outline"
+                          />
+                        ) : null}
                         {task.active_link_id ? (
                           <DetailLinkButton
                             aria-label="ดูรายละเอียด"
-                            className="min-w-[128px]"
+                            iconOnly
                             state={{ date: task.created_at?.split("T")[0] }}
                             to={`/attendance-links/${task.active_link_id}`}
                           />
@@ -488,14 +496,18 @@ export function AttendanceLinksDashboardPage() {
                         {canToggleLink ? (
                           <Button
                             aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
-                            className="size-9 shrink-0 px-0"
+                            className={
+                              locked
+                                ? "size-9 shrink-0 px-0 hover:bg-slate-50"
+                                : "size-9 shrink-0 border-danger/30 px-0 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger"
+                            }
                             icon={locked ? LockOpen : Lock}
                             isLoading={pendingLinkId === task.active_link_id}
                             onClick={() =>
                               void handleToggleLock(task.active_link_id || "", locked)
                             }
                             size="sm"
-                            variant={locked ? "outline" : "destructive"}
+                            variant="outline"
                           />
                         ) : (
                           <span className="size-9 shrink-0" aria-hidden="true" />

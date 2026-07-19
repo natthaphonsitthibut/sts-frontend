@@ -68,7 +68,7 @@ function SidebarContent({
               aria-expanded={!collapsed}
               aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "พับเมนูด้านข้าง"}
               className={cn(
-                "border-transparent bg-transparent shadow-none hover:bg-slate-100",
+                "border-slate-300 bg-white shadow-none hover:bg-slate-50",
                 collapsed && "text-slate-600",
               )}
               icon={Menu}

@@ -9,6 +9,7 @@ export interface DetailLinkButtonProps
   extends Omit<LinkProps, "children">,
     Pick<VariantProps<typeof buttonVariants>, "variant" | "size"> {
   children?: ReactNode;
+  iconOnly?: boolean;
 }
 
 /**
@@ -19,18 +20,24 @@ export interface DetailLinkButtonProps
  */
 export function DetailLinkButton({
   className,
-  variant = "outline",
+  iconOnly = false,
+  variant,
   size = "sm",
   children = "ดูรายละเอียด",
   ...props
 }: DetailLinkButtonProps) {
   return (
     <Link
-      className={cn(buttonVariants({ variant, size }), "shrink-0 whitespace-nowrap", className)}
+      className={cn(
+        buttonVariants({ variant: variant ?? "outline", size }),
+        "shrink-0 whitespace-nowrap",
+        iconOnly && "size-9 px-0 hover:bg-slate-50",
+        className,
+      )}
       {...props}
     >
       <Eye className="size-4" aria-hidden="true" />
-      {children}
+      {iconOnly ? null : children}
     </Link>
   );
 }

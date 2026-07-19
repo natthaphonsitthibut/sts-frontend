@@ -12,6 +12,7 @@ export interface LinkLockToggleButtonProps {
   /** Query keys to refresh after toggling (detail page + its dashboard list). */
   invalidateKeys?: readonly unknown[][];
   className?: string;
+  iconOnly?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export function LinkLockToggleButton({
   locked,
   invalidateKeys,
   className,
+  iconOnly = false,
 }: LinkLockToggleButtonProps) {
   const isLocked = isLinkLocked(locked);
   const { confirm, dialog } = useConfirm();
@@ -57,13 +59,22 @@ export function LinkLockToggleButton({
   return (
     <>
       <Button
-        className={cn("min-w-[112px]", className)}
+        aria-label={isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
+        className={cn(
+          iconOnly
+            ? "size-9 min-w-0 shrink-0 px-0 hover:bg-slate-50"
+            : "min-w-[112px]",
+          iconOnly && !isLocked &&
+            "border-danger/30 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger",
+          className,
+        )}
         icon={isLocked ? LockOpen : Lock}
-        variant={isLocked ? "outline" : "destructive"}
+        variant={iconOnly || isLocked ? "outline" : "destructive"}
         isLoading={mutation.isPending}
         onClick={() => void handleClick()}
+        size={iconOnly ? "sm" : "md"}
       >
-        {isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
+        {iconOnly ? null : isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
       </Button>
       {dialog}
     </>

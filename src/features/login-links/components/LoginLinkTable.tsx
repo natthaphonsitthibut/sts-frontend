@@ -10,9 +10,11 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { CopyButton } from "../../../components/layout/copy-button";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
+  getLoginLinkUrl,
   getLoginLinkStateMeta,
   getLoginLinkState,
   isLoginLinkLocked,
@@ -64,19 +66,38 @@ function LinkActions({
   const linkState = getLoginLinkState(link);
   const canToggleLink = linkState !== "EXPIRED";
   return (
-    <div className="flex flex-nowrap items-center justify-center gap-2">
+    <div
+      className={
+        compact
+          ? "flex flex-nowrap items-center justify-end gap-2"
+          : "flex flex-wrap items-center justify-end gap-2"
+      }
+    >
+      {link.magic_link ? (
+        <CopyButton
+          className={compact ? "size-9 shrink-0 px-0" : undefined}
+          label={compact ? undefined : "คัดลอก"}
+          value={getLoginLinkUrl(link.magic_link)}
+          variant="outline"
+        />
+      ) : null}
       <DetailLinkButton
         aria-label="ดูรายละเอียด"
+        iconOnly={compact}
         to={`/login-links/${link.id}`}
       />
       {canToggleLink ? (
         <Button
           aria-label={locked ? "เปิดลิงก์" : "ปิดลิงก์"}
-          className={compact ? "size-9 shrink-0 px-0" : "min-w-[88px]"}
+          className={
+            compact
+              ? `size-9 shrink-0 px-0 hover:bg-slate-50${locked ? "" : " border-danger/30 text-danger hover:border-danger/40 hover:bg-danger-100 hover:text-danger"}`
+              : "min-w-[88px]"
+          }
           icon={locked ? LockOpen : Lock}
           onClick={() => onToggleLock(link)}
           size="sm"
-          variant={locked ? "outline" : "destructive"}
+          variant={compact || locked ? "outline" : "destructive"}
         >
           {compact ? null : locked ? "เปิด" : "ปิด"}
         </Button>
