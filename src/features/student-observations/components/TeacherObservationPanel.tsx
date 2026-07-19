@@ -10,7 +10,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Checkbox,
   FormErrorAlert,
   Label,
   Select,
@@ -30,7 +29,6 @@ import {
 } from "../hooks/useStudentObservations";
 import type {
   ObservationConcernLevel,
-  ObservationDimension,
 } from "../types/student-observation.types";
 import { GuestFollowUpPanel } from "./GuestFollowUpPanel";
 
@@ -75,21 +73,6 @@ interface TeacherObservationPanelProps {
   onClose: () => void;
 }
 
-function requiresComment(
-  level: ObservationConcernLevel,
-  dimension: ObservationDimension | undefined,
-  selectedTagCodes: string[],
-  tags: Array<{ code: string; requiresComment: boolean }>,
-): boolean {
-  return (
-    level === "CONCERN" ||
-    Boolean(dimension?.requiresComment) ||
-    tags.some(
-      (tag) => selectedTagCodes.includes(tag.code) && tag.requiresComment,
-    )
-  );
-}
-
 export function TeacherObservationPanel({
   credential,
   assignmentId,
@@ -105,7 +88,6 @@ export function TeacherObservationPanel({
   const createObservation = useCreateGuestStudentObservation(credential);
   const [dimensionCode, setDimensionCode] = useState("");
   const [level, setLevel] = useState<ObservationConcernLevel>("NOTE");
-  const [tagCodes, setTagCodes] = useState<string[]>([]);
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -119,21 +101,8 @@ export function TeacherObservationPanel({
   const selectedDimension = dimensions.find(
     (item) => item.code === effectiveDimensionCode,
   );
-  const availableTags = useMemo(
-    () =>
-      (catalog?.tags ?? []).filter(
-        (tag) =>
-          tag.isActive &&
-          (!tag.dimensionCode || tag.dimensionCode === effectiveDimensionCode),
-      ),
-    [catalog?.tags, effectiveDimensionCode],
-  );
-  const commentIsRequired = requiresComment(
-    level,
-    selectedDimension,
-    tagCodes,
-    availableTags,
-  );
+  const commentIsRequired =
+    level === "CONCERN" || Boolean(selectedDimension?.requiresComment);
 
   async function submit(
     event: React.FormEvent<HTMLFormElement>,
@@ -146,7 +115,7 @@ export function TeacherObservationPanel({
       return;
     }
     if (commentIsRequired && !comment.trim()) {
-      setValidationError("กรุณาระบุเหตุผลสั้น ๆ สำหรับข้อสังเกตนี้");
+      setValidationError("กรุณาระบุความเห็นสำหรับข้อสังเกตนี้");
       return;
     }
     await createObservation.mutateAsync({
@@ -154,11 +123,10 @@ export function TeacherObservationPanel({
       studentTermId: student.studentTermId,
       dimensionCode: effectiveDimensionCode,
       concernLevel: level,
-      tagCodes,
+      tagCodes: [],
       comment: comment.trim() || undefined,
     });
     setLevel("NOTE");
-    setTagCodes([]);
     setComment("");
     setSaved(true);
   }
@@ -205,19 +173,7 @@ export function TeacherObservationPanel({
                 id="observation-dimension"
                 value={effectiveDimensionCode}
                 onChange={(event) => {
-                  const nextDimensionCode = event.target.value;
-                  setDimensionCode(nextDimensionCode);
-                  setTagCodes((current) =>
-                    current.filter((code) =>
-                      (catalog.tags ?? []).some(
-                        (tag) =>
-                          tag.code === code &&
-                          tag.isActive &&
-                          (!tag.dimensionCode ||
-                            tag.dimensionCode === nextDimensionCode),
-                      ),
-                    ),
-                  );
+                  setDimensionCode(event.target.value);
                   setValidationError(null);
                   setSaved(false);
                 }}
@@ -261,39 +217,9 @@ export function TeacherObservationPanel({
               </div>
             </fieldset>
 
-            <fieldset>
-              <legend className="mb-2 text-sm font-bold text-slate-700">
-                สิ่งที่พบ (เลือกได้หลายข้อ)
-              </legend>
-              {availableTags.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  ด้านนี้ยังไม่มีรายการย่อย
-                </p>
-              ) : (
-                <div className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
-                  {availableTags.map((tag) => (
-                    <Checkbox
-                      key={tag.code}
-                      label={tag.labelTh}
-                      checked={tagCodes.includes(tag.code)}
-                      onChange={(event) => {
-                        setTagCodes((current) =>
-                          event.target.checked
-                            ? [...current, tag.code]
-                            : current.filter((code) => code !== tag.code),
-                        );
-                        setValidationError(null);
-                        setSaved(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </fieldset>
-
             <div>
               <Label required={commentIsRequired} htmlFor="observation-comment">
-                รายละเอียดเพิ่มเติม{commentIsRequired ? "" : " (ไม่บังคับ)"}
+                ความเห็น{commentIsRequired ? "" : " (ไม่บังคับ)"}
               </Label>
               <Textarea
                 id="observation-comment"

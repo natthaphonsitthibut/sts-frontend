@@ -6,7 +6,6 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Checkbox,
   FormErrorAlert,
   Label,
   Select,
@@ -66,7 +65,6 @@ export function ObservationWorkspace({
 }: ObservationWorkspaceProps) {
   const [dimensionCode, setDimensionCode] = useState("");
   const [level, setLevel] = useState<ObservationConcernLevel>("NOTE");
-  const [tagCodes, setTagCodes] = useState<string[]>([]);
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -76,14 +74,9 @@ export function ObservationWorkspace({
   );
   const effectiveDimensionCode = dimensionCode || dimensions[0]?.code || "";
   const dimension = dimensions.find((item) => item.code === effectiveDimensionCode);
-  const tags = useMemo(
-    () => (catalog?.tags ?? []).filter((tag) => tag.isActive && (!tag.dimensionCode || tag.dimensionCode === effectiveDimensionCode)),
-    [catalog?.tags, effectiveDimensionCode],
-  );
   const commentRequired =
     level === "CONCERN" ||
-    Boolean(dimension?.requiresComment) ||
-    tags.some((tag) => tagCodes.includes(tag.code) && tag.requiresComment);
+    Boolean(dimension?.requiresComment);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,7 +87,7 @@ export function ObservationWorkspace({
       return;
     }
     if (commentRequired && !comment.trim()) {
-      setValidationError("กรุณาระบุเหตุผลสั้น ๆ สำหรับข้อสังเกตนี้");
+      setValidationError("กรุณาระบุความเห็นสำหรับข้อสังเกตนี้");
       return;
     }
     try {
@@ -103,7 +96,7 @@ export function ObservationWorkspace({
         ...context,
         dimensionCode: effectiveDimensionCode,
         concernLevel: level,
-        tagCodes,
+        tagCodes: [],
         comment: comment.trim() || undefined,
       });
     } catch {
@@ -111,7 +104,6 @@ export function ObservationWorkspace({
       return;
     }
     setLevel("NOTE");
-    setTagCodes([]);
     setComment("");
     setSaved(true);
   }
@@ -134,7 +126,7 @@ export function ObservationWorkspace({
     <div className="space-y-5">
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
         <p className="text-sm text-slate-500">
-          บันทึกสิ่งที่พบจริงของ {studentName} ข้อมูลจะส่งเข้าคิวรายงานตามระดับข้อสังเกต
+          บันทึกข้อสังเกตของ {studentName} ข้อมูลจะส่งเข้าคิวรายงานตามระดับข้อสังเกต
         </p>
         <div>
           <Label htmlFor="observation-workspace-dimension">ด้านที่พบ</Label>
@@ -143,7 +135,6 @@ export function ObservationWorkspace({
             value={effectiveDimensionCode}
             onChange={(event) => {
               setDimensionCode(event.target.value);
-              setTagCodes([]);
               setSaved(false);
             }}
           >
@@ -170,23 +161,8 @@ export function ObservationWorkspace({
             ))}
           </div>
         </fieldset>
-        {tags.length > 0 ? (
-          <fieldset>
-            <legend className="mb-2 text-sm font-bold text-slate-700">สิ่งที่พบ</legend>
-            <div className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
-              {tags.map((tag) => (
-                <Checkbox
-                  key={tag.code}
-                  label={tag.labelTh}
-                  checked={tagCodes.includes(tag.code)}
-                  onChange={(event) => setTagCodes((current) => event.target.checked ? [...current, tag.code] : current.filter((code) => code !== tag.code))}
-                />
-              ))}
-            </div>
-          </fieldset>
-        ) : null}
         <div>
-          <Label required={commentRequired} htmlFor="observation-workspace-comment">รายละเอียดเพิ่มเติม{commentRequired ? "" : " (ไม่บังคับ)"}</Label>
+          <Label required={commentRequired} htmlFor="observation-workspace-comment">ความเห็น{commentRequired ? "" : " (ไม่บังคับ)"}</Label>
           <Textarea id="observation-workspace-comment" maxLength={2000} rows={3} value={comment} onChange={(event) => setComment(event.target.value)} />
         </div>
         {validationError ? <Alert variant="destructive"><AlertTitle>ข้อมูลยังไม่ครบ</AlertTitle><AlertDescription>{validationError}</AlertDescription></Alert> : null}

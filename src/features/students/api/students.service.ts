@@ -103,7 +103,7 @@ interface StudentsService {
   ) => Promise<PiiExportRequestResponse>;
   downloadPiiExportCsv: (token: string) => Promise<PiiExportDownloadResult>;
   updateStudent: (studentId: string, payload: StudentUpdatePayload) => Promise<StudentDetail>;
-  getStudentCasesByName: (studentName: string) => Promise<StudentCase[]>;
+  getStudentCasesById: (studentId: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
   ) => Promise<StudentAttendanceCalendarRecord[]>;
@@ -349,12 +349,10 @@ async function updateStudent(
   return response.data;
 }
 
-async function getStudentCasesByName(
-  studentName: string,
-): Promise<StudentCase[]> {
+async function getStudentCasesById(studentId: string): Promise<StudentCase[]> {
   const response = await apiClient.get<
     StudentCase[] | DataEnvelope<StudentCase[]>
-  >(`/students/cases/by-name/${encodeURIComponent(studentName)}`);
+  >(`/students/${encodeURIComponent(studentId)}/cases`);
   return normalizeArrayResponse(response.data);
 }
 
@@ -410,7 +408,7 @@ export const studentsService: StudentsService = {
   rejectPiiExportRequest,
   downloadPiiExportCsv,
   updateStudent,
-  getStudentCasesByName,
+  getStudentCasesById,
   getStudentAttendance,
   getStudentAttendanceSummary,
 };

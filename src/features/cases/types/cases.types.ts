@@ -46,6 +46,24 @@ export interface CaseRecord {
   active_link_expires_at?: string | null;
   active_link_assigned_to?: string | null;
   link_state?: "ACTIVE" | "LOCKED" | "EXPIRED" | "NONE" | null;
+  school_id?: number | null;
+  grade?: string | null;
+  room?: string | null;
+  updated_at?: string | null;
+}
+
+export interface OpenCasePayload {
+  student_id: string;
+  reason: string;
+}
+
+export interface CaseDetailResponse {
+  success: boolean;
+  data: CaseRecord;
+}
+
+export interface OpenCaseResponse extends CaseDetailResponse {
+  created: boolean;
 }
 
 export interface CaseListQuery {

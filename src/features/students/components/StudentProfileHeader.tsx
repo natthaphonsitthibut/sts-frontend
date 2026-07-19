@@ -3,6 +3,7 @@ import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Card,
 } from "../../../components/base";
 import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
@@ -11,6 +12,7 @@ import { getApiErrorMessage } from "../../../lib/api-error";
 import { maskSensitiveIdentifier } from "../../../lib/pii-presentation";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../api/students.service";
+import { RISK_TIER_PRESENTATION } from "../lib/risk-tier-presentation";
 import {
   PII_FIELD_GROUPS,
   PII_FIELD_LABELS,
@@ -73,6 +75,9 @@ export function StudentProfileHeader({
     `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
     "ไม่ระบุชื่อ";
   const maskedFields = student.masked_fields ?? [];
+  const riskPresentation =
+    RISK_TIER_PRESENTATION[student.risk_tier ?? "NORMAL"] ??
+    RISK_TIER_PRESENTATION.NORMAL;
 
   function hasPiiValue(field: StudentPiiField): boolean {
     const value = student[field];
@@ -180,9 +185,17 @@ export function StudentProfileHeader({
           <div className="min-w-0 flex-1">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
               <div className="w-full text-center md:text-left">
-                <h1 className="text-xl font-bold leading-8 text-slate-800">
-                  {fullName}
-                </h1>
+                <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                  <h1 className="text-xl font-bold leading-8 text-slate-800">
+                    {fullName}
+                  </h1>
+                  <Badge
+                    data-student-risk-tier={student.risk_tier ?? "NORMAL"}
+                    variant={riskPresentation.badge}
+                  >
+                    {riskPresentation.label}
+                  </Badge>
+                </div>
                 <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-1">
                   <div>
                     โรงเรียน:{" "}

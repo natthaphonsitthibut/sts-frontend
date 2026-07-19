@@ -52,9 +52,9 @@ export function GuestFollowUpPanel({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedObservation || !reason.trim()) return;
-    const observationId = Number(selectedObservation.id);
-    if (!Number.isSafeInteger(observationId) || observationId < 1) return;
+    if (!reason.trim()) return;
+    const observationId = selectedObservation ? Number(selectedObservation.id) : null;
+    if (selectedObservation && (!Number.isSafeInteger(observationId) || Number(observationId) < 1)) return;
     setSaveResult(null);
     try {
       const result = await createFollowUp.mutateAsync({
@@ -62,9 +62,9 @@ export function GuestFollowUpPanel({
         urgency,
         reason: reason.trim(),
         note: note.trim() || undefined,
-        sourceObservations: [
-          { observationId, revision: selectedObservation.revision },
-        ],
+        sourceObservations: selectedObservation && observationId !== null
+          ? [{ observationId, revision: selectedObservation.revision }]
+          : [],
       });
       setSaveResult(result.meta.created ? "CREATED" : "MERGED");
       setReason("");
@@ -83,33 +83,31 @@ export function GuestFollowUpPanel({
         />
         <div>
           <h3 className="font-semibold text-slate-900">
-            ขอให้โรงเรียนพิจารณาติดตาม
+            ขอเยี่ยมบ้าน
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            คำขอเป็นสัญญาณให้ผู้รับผิดชอบทบทวน
-            ไม่ได้เปิดเคสหรือมอบหมายงานอัตโนมัติ
+            ส่งคำขอได้โดยตรง หรือแนบข้อสังเกตเป็นหลักฐาน
+            ผู้รับผิดชอบจะพิจารณาก่อนเปิดเคส
           </p>
         </div>
       </div>
 
-      {observations.length > 0 ? (
-        <form
+      <form
           className="mt-4 space-y-3 rounded-lg bg-slate-50 p-4"
           onSubmit={(event) => void submit(event)}
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label required htmlFor="follow-up-source">ข้อสังเกตอ้างอิง</Label>
+              <Label htmlFor="follow-up-source">ข้อสังเกตอ้างอิง (ไม่บังคับ)</Label>
               <Select
                 id="follow-up-source"
                 onChange={(event) => {
                   setSourceId(event.target.value);
                   setSaveResult(null);
                 }}
-                required
                 value={sourceId}
               >
-                <option value="">เลือกข้อสังเกต</option>
+                <option value="">ไม่แนบข้อสังเกต</option>
                 {observations.map((observation) => (
                   <option key={observation.id} value={observation.id}>
                     {observation.dimension.labelTh} · revision{" "}
@@ -133,7 +131,7 @@ export function GuestFollowUpPanel({
             </div>
           </div>
           <div>
-            <Label required htmlFor="follow-up-reason">เหตุผลที่ขอติดตาม</Label>
+            <Label required htmlFor="follow-up-reason">เหตุผลที่ขอเยี่ยมบ้าน</Label>
             <Textarea
               id="follow-up-reason"
               maxLength={1000}
@@ -155,7 +153,7 @@ export function GuestFollowUpPanel({
           </div>
           <FormErrorAlert
             error={createFollowUp.error}
-            fallback="ส่งคำขอติดตามไม่สำเร็จ"
+            fallback="ส่งคำขอเยี่ยมบ้านไม่สำเร็จ"
           />
           {saveResult ? (
             <Alert variant="success">
@@ -171,20 +169,19 @@ export function GuestFollowUpPanel({
           ) : null}
           <div className="flex justify-end">
             <Button
-              disabled={!sourceId || !reason.trim()}
+              disabled={!reason.trim()}
               isLoading={createFollowUp.isPending}
               loadingText="กำลังส่งคำขอ"
               type="submit"
             >
-              ส่งคำขอติดตาม
+              ส่งคำขอเยี่ยมบ้าน
             </Button>
           </div>
         </form>
-      ) : null}
 
       {followUpsQuery.isLoading ? (
         <p className="mt-4 text-sm text-slate-500" role="status">
-          กำลังโหลดสถานะคำขอติดตาม…
+          กำลังโหลดสถานะคำขอเยี่ยมบ้าน…
         </p>
       ) : followUpsQuery.isError ? (
         <Alert className="mt-4" variant="warning">
@@ -202,7 +199,7 @@ export function GuestFollowUpPanel({
           </Button>
         </Alert>
       ) : (followUpsQuery.data?.data.length ?? 0) > 0 ? (
-        <ul className="mt-4 space-y-2" aria-label="สถานะคำขอติดตาม">
+        <ul className="mt-4 space-y-2" aria-label="สถานะคำขอเยี่ยมบ้าน">
           {followUpsQuery.data?.data.map((request) => (
             <li
               className="rounded-lg border border-slate-200 p-3"
@@ -232,7 +229,7 @@ export function GuestFollowUpPanel({
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-sm text-slate-500">ยังไม่มีคำขอติดตามสำหรับนักเรียนคนนี้</p>
+        <p className="mt-4 text-sm text-slate-500">ยังไม่มีคำขอเยี่ยมบ้านสำหรับนักเรียนคนนี้</p>
       )}
     </section>
   );

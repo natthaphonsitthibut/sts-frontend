@@ -11,6 +11,7 @@ import {
   AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
+  CaseDetailPage,
   ChangePasswordPage,
   CreateTaskPage,
   DataExportsPage,
@@ -51,7 +52,10 @@ import {
   TaskDetailPage,
   TaskGuestPage,
   TeacherAccessGuestPage,
+  TeacherObservationDetailPage,
   TeacherObservationReportsPage,
+  HomeVisitRequestDetailPage,
+  HomeVisitRequestsPage,
   TimetablePage,
   UserDetailPage,
   VisitLinksPage,
@@ -94,6 +98,27 @@ export const router = createBrowserRouter([
         path: "student-risk-report/teacher-reports",
         element: protectedElement(
           <TeacherObservationReportsPage />,
+          "manage-student-observations",
+        ),
+      },
+      {
+        path: "student-risk-report/teacher-reports/:observationId",
+        element: protectedElement(
+          <TeacherObservationDetailPage />,
+          "manage-student-observations",
+        ),
+      },
+      {
+        path: "student-risk-report/home-visit-requests",
+        element: protectedElement(
+          <HomeVisitRequestsPage />,
+          "manage-student-observations",
+        ),
+      },
+      {
+        path: "student-risk-report/home-visit-requests/:requestId",
+        element: protectedElement(
+          <HomeVisitRequestDetailPage />,
           "manage-student-observations",
         ),
       },
@@ -164,6 +189,10 @@ export const router = createBrowserRouter([
       {
         path: "cases",
         element: protectedElement(<CasesListPage />, "review-cases"),
+      },
+      {
+        path: "cases/:caseId",
+        element: protectedElement(<CaseDetailPage />, "review-cases"),
       },
       {
         path: "cases/history",

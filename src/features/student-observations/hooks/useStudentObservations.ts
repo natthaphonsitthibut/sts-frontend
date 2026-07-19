@@ -6,6 +6,7 @@ import type {
   CreateHumanRiskReviewInput,
   CreateStudentObservationInput,
   HumanRiskReviewState,
+  HomeVisitRequestReportFilters,
   ReviewFollowUpRequestInput,
   TeacherObservationReportFilters,
 } from "../types/student-observation.types";
@@ -159,6 +160,7 @@ export function useCreateManagedFollowUp(studentTermId: string) {
       await client.invalidateQueries({
         queryKey: managedKey(studentTermId, "follow-ups"),
       });
+      await client.invalidateQueries({ queryKey: [KEY, "home-visit-requests"] });
       await client.invalidateQueries({ queryKey: [KEY, "teacher-reports"] });
     },
   });
@@ -227,6 +229,29 @@ export function useTeacherObservationReports(filters: TeacherObservationReportFi
   });
 }
 
+export function useTeacherObservationReport(observationId: string) {
+  return useQuery({
+    queryKey: [KEY, "teacher-report", observationId],
+    queryFn: () => studentObservationsService.getTeacherObservationReport(observationId),
+    enabled: Boolean(observationId),
+  });
+}
+
+export function useHomeVisitRequests(filters: HomeVisitRequestReportFilters) {
+  return useQuery({
+    queryKey: [KEY, "home-visit-requests", filters],
+    queryFn: () => studentObservationsService.listHomeVisitRequests(filters),
+  });
+}
+
+export function useHomeVisitRequest(requestId: string) {
+  return useQuery({
+    queryKey: [KEY, "home-visit-request", requestId],
+    queryFn: () => studentObservationsService.getHomeVisitRequest(requestId),
+    enabled: Boolean(requestId),
+  });
+}
+
 export function useHumanRiskReview(studentTermId: string) {
   return useQuery({
     queryKey: managedKey(studentTermId, "risk-review"),
@@ -278,6 +303,8 @@ export function useReviewFollowUp(studentTermId: string) {
       await client.invalidateQueries({
         queryKey: managedKey(studentTermId, "follow-ups"),
       });
+      await client.invalidateQueries({ queryKey: [KEY, "home-visit-requests"] });
+      await client.invalidateQueries({ queryKey: [KEY, "home-visit-request"] });
     },
   });
 }

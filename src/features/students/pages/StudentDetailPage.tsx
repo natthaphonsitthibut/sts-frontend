@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CircleAlert, KeyRound, NotebookPen, SquarePen } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleAlert, HouseHeart, KeyRound, NotebookPen, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Badge, Button, Card, SchoolIcon } from "../../../components/base";
 import {
@@ -12,11 +12,13 @@ import {
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import { formatThaiDate } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
 import { StudentObservationManagementPanel } from "../../student-observations/components/StudentObservationManagementPanel";
 import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
-import { ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
+import { ManagedHomeVisitRequestPanel, ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
 import { StudentContactPanel } from "../components/StudentContactPanel";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
@@ -172,11 +174,13 @@ function StudentAccountPanel({
 }
 
 function RiskHistoryPanel({
+  canViewCaseDetail,
   cases,
   isError,
   isLoading,
   onRetry,
 }: {
+  canViewCaseDetail: boolean;
   cases: StudentCase[];
   isError: boolean;
   isLoading: boolean;
@@ -200,7 +204,7 @@ function RiskHistoryPanel({
   const visibleCases = showAll ? sortedCases : sortedCases.slice(0, 3);
 
   return (
-    <Card className="p-5">
+    <Card className="p-5" id="case-history">
       <h2 className="mb-4 text-base font-bold text-slate-800">
         ประวัติการติดตามนักเรียน
       </h2>
@@ -229,7 +233,17 @@ function RiskHistoryPanel({
                     {studentCase.reason_flagged}
                   </div>
                 </div>
-                <CaseStatusBadge status={studentCase.status} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <CaseStatusBadge status={studentCase.status} />
+                  {canViewCaseDetail ? (
+                    <DetailLinkButton
+                      aria-label="ดูรายละเอียดเคส"
+                      iconOnly
+                      title="ดูรายละเอียดเคส"
+                      to={`/cases/${studentCase.id}`}
+                    />
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -327,6 +341,7 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 export function StudentDetailPage() {
   const { can } = usePermissions();
   const [observationOpen, setObservationOpen] = useState(false);
+  const [homeVisitRequestOpen, setHomeVisitRequestOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
 
@@ -337,7 +352,11 @@ export function StudentDetailPage() {
     isLoading: casesLoading,
     isError: casesError,
     refetch: refetchCases,
-  } = useStudentCases(fullName || undefined);
+  } = useStudentCases(studentId);
+  const activeCases = useMemo(
+    () => cases.filter((studentCase) => studentCase.status !== "RESOLVED"),
+    [cases],
+  );
 
   if (isLoading) {
     return (
@@ -392,19 +411,34 @@ export function StudentDetailPage() {
         footerActions={
           <>
             {can("student-observations") || can("manage-student-observations") ? (
-              <Button icon={NotebookPen} onClick={() => setObservationOpen(true)}>
+              <Button icon={NotebookPen} onClick={() => setObservationOpen(true)} size="md">
                 บันทึกข้อสังเกต
               </Button>
+            ) : null}
+            {can("student-observations") ? (
+              <Button icon={HouseHeart} onClick={() => setHomeVisitRequestOpen(true)} size="md">
+                ขอเยี่ยมบ้าน
+              </Button>
+            ) : null}
+            {can("review-cases") && !casesLoading ? (
+              <StudentCaseAction
+                activeCaseCount={activeCases.length}
+                activeCaseId={activeCases.length > 0 ? Number(activeCases[0].id) : null}
+                mode="button"
+                studentId={studentId}
+                studentName={fullName || "นักเรียน"}
+              />
             ) : null}
             <NavButton
               disabled={!can("edit-students")}
               icon={SquarePen}
+              size="md"
               title={can("edit-students") ? undefined : "ไม่มีสิทธิ์แก้ไขข้อมูลนักเรียน"}
               to={`/students/${studentId}/edit`}
             >
               แก้ไขข้อมูลนักเรียน
             </NavButton>
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
+            <NavButton icon={ArrowLeft} size="md" to={-1} variant="outline">
               ย้อนกลับ
             </NavButton>
           </>
@@ -438,6 +472,7 @@ export function StudentDetailPage() {
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <RiskHistoryPanel
+          canViewCaseDetail={can("review-cases")}
           cases={cases}
           isError={casesError}
           isLoading={casesLoading}
@@ -454,9 +489,15 @@ export function StudentDetailPage() {
           <ManagedObservationEntryPanel
             studentName={fullName || "นักเรียน"}
             studentTermId={studentId}
-            allowFollowUp={can("student-observations")}
           />
         ) : null}
+      </ObservationEntryDialog>
+      <ObservationEntryDialog
+        open={homeVisitRequestOpen}
+        title="ส่งคำขอเยี่ยมบ้าน"
+        onClose={() => setHomeVisitRequestOpen(false)}
+      >
+        {studentId ? <ManagedHomeVisitRequestPanel studentTermId={studentId} /> : null}
       </ObservationEntryDialog>
     </PageShell>
   );

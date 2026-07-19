@@ -26,6 +26,7 @@ import {
 } from "../../../components/base";
 import { EmptyState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { getRiskTierLabel } from "../../students/lib/student-presentation";
 import {
   useCreateHumanRiskReview,
@@ -44,6 +45,7 @@ import type {
   StudentFollowUpRequest,
   TeacherConcernSignal,
 } from "../types/student-observation.types";
+import { getObservationConcernPresentation } from "../lib/observation-presentation";
 
 const humanDecisionLabels: Record<HumanRiskDecision, string> = {
   CONFIRM_RISK: "ยืนยันว่ามีความเสี่ยง",
@@ -187,6 +189,38 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
                   {review.decidedBy.username} · {formatThaiDateTime(review.decidedAt)}
                 </p>
               </div>
+            ) : null}
+
+            {observations.length > 0 ? (
+              <section className="mt-4 border-t border-slate-200 pt-4" aria-labelledby="risk-review-evidence-title">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 id="risk-review-evidence-title" className="font-bold text-slate-900">ข้อสังเกตที่ใช้ประกอบการทบทวน</h3>
+                    <p className="mt-1 text-sm text-slate-500">อ่านด้านที่พบ ระดับ และความเห็นจากครูก่อนบันทึกผลการประเมิน</p>
+                  </div>
+                  <span className="text-xs text-slate-500">{sourceObservations.length} รายการล่าสุด</span>
+                </div>
+                <ol className="mt-3 space-y-3">
+                  {observations.slice(0, 20).map((observation) => {
+                    const concern = getObservationConcernPresentation(observation.concernLevel);
+                    return (
+                      <li className="rounded-lg border border-slate-200 p-3" key={observation.id}>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={concern.variant}>{concern.label}</Badge>
+                              <span className="font-semibold text-slate-800">{observation.dimension.labelTh}</span>
+                            </div>
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{observation.comment || "ไม่ได้ระบุความเห็น"}</p>
+                            <p className="mt-2 text-xs text-slate-500">{observation.author.displayName} · {formatThaiDateTime(observation.observedAt)}</p>
+                          </div>
+                          <DetailLinkButton to={`/student-risk-report/teacher-reports/${observation.id}`} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
             ) : null}
 
             {hasCurrentEvidence ? <form
@@ -404,10 +438,10 @@ function FollowUpReviewCard({
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2">
           <ClipboardCheck className="size-5 text-primary" aria-hidden="true" />
-          คำขอติดตามจากครู
+          คำขอเยี่ยมบ้านจากครู
         </CardTitle>
         <p className="text-sm text-slate-500">
-          การอนุมัติเป็นเพียงผลทบทวน ยังไม่สร้างเคสหรือมอบหมายงานอัตโนมัติ
+          ตรวจเหตุผลและหลักฐานก่อนตัดสินใจ เมื่ออนุมัติระบบจะเปิดเคสทันที
         </p>
       </CardHeader>
       <CardContent>
@@ -415,7 +449,7 @@ function FollowUpReviewCard({
           <SkeletonStack lines={4} />
         ) : followUpsQuery.isError ? (
           <Alert variant="warning">
-            <AlertTitle>โหลดคำขอติดตามไม่สำเร็จ</AlertTitle>
+            <AlertTitle>โหลดคำขอเยี่ยมบ้านไม่สำเร็จ</AlertTitle>
             <Button
               className="mt-3"
               onClick={() => void followUpsQuery.refetch()}
@@ -426,7 +460,7 @@ function FollowUpReviewCard({
             </Button>
           </Alert>
         ) : (followUpsQuery.data?.data.length ?? 0) === 0 ? (
-          <EmptyState className="px-5 py-8" title="ยังไม่มีคำขอติดตามจากครู" />
+          <EmptyState className="px-5 py-8" title="ยังไม่มีคำขอเยี่ยมบ้านจากครู" />
         ) : (
           <ul className="space-y-3">
             {followUpsQuery.data?.data.map((request) => (

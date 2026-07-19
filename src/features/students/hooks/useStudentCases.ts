@@ -14,12 +14,12 @@ interface UseStudentCasesResult {
 }
 
 export function useStudentCases(
-  studentName: string | undefined,
+  studentId: string | undefined,
 ): UseStudentCasesResult {
   const result = useQuery({
-    queryKey: [STUDENT_CASES_QUERY_KEY, studentName],
-    queryFn: () => studentsService.getStudentCasesByName(studentName as string),
-    enabled: Boolean(studentName),
+    queryKey: [STUDENT_CASES_QUERY_KEY, studentId],
+    queryFn: () => studentsService.getStudentCasesById(studentId as string),
+    enabled: Boolean(studentId),
   });
 
   return {

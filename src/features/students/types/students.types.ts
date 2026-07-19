@@ -67,6 +67,7 @@ export interface StudentDetail extends Record<string, unknown> {
   grade?: string;
   grade_label?: string;
   room?: string;
+  risk_tier?: "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
   student_status_label?: string;
   student_status_category?: string;
   student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";

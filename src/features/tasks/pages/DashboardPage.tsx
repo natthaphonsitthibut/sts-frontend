@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FileDown,
   LayoutDashboard,
-  Plus,
   Search,
   RotateCcw,
   Users,
@@ -37,6 +36,7 @@ import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRo
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import {
@@ -214,50 +214,43 @@ function StudentCell({ row }: { row: RiskDashboardRow }) {
   );
 }
 
-function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
-  const navigate = useNavigate();
+function getSuggestedCaseReason(row: RiskDashboardRow): string {
+  const tierLabel = RISK_TIER_LABELS[row.riskTier] ?? row.riskTier;
+  const signals = [
+    row.consecutiveAbsentDays > 0
+      ? `ขาดเรียนติดต่อกัน ${row.consecutiveAbsentDays} วัน`
+      : null,
+    row.absentDays > 0 ? `ขาดสะสม ${row.absentDays} วัน` : null,
+    row.lateCount > 0 ? `มาสาย ${row.lateCount} ครั้ง` : null,
+  ].filter(Boolean);
+  return [`สัญญาณความเสี่ยง${tierLabel}`, ...signals].join(" · ");
+}
 
-  if (row.latestOpenTaskId) {
-    return (
-      <DetailLinkButton
-        className="w-[112px]"
-        to={`/tasks/${row.latestOpenTaskId}`}
-        variant="default"
-      >
-        ดูเคส
-      </DetailLinkButton>
-    );
-  }
-
-  if (row.latestOpenCaseId) {
-    return (
-      <Button
-        className="w-[112px]"
-        icon={Plus}
-        onClick={() => {
-          void navigate("/create/visit", {
-            state: {
-              prefill: {
-                existing_case_id: String(row.latestOpenCaseId),
-                student_id: row.studentId,
-                student_name: row.studentName,
-                student_school: row.schoolName,
-                reason_flagged: row.latestOpenCaseReason,
-              },
-            },
-          });
-        }}
-        size="sm"
-      >
-        สร้างลิงก์
-      </Button>
-    );
-  }
-
+function DashboardRowAction({
+  canOpenCases,
+  row,
+}: {
+  canOpenCases: boolean;
+  row: RiskDashboardRow;
+}) {
   return (
-    <DetailLinkButton className="w-[112px]" to={`/students/${row.studentId}`}>
-      ดูโปรไฟล์
-    </DetailLinkButton>
+    <div className="flex items-center justify-end gap-2">
+      {canOpenCases ? (
+        <StudentCaseAction
+          activeCaseCount={row.openCaseCount}
+          activeCaseId={row.latestOpenCaseId}
+          initialReason={getSuggestedCaseReason(row)}
+          studentId={row.studentId}
+          studentName={row.studentName}
+        />
+      ) : null}
+      <DetailLinkButton
+        aria-label="ดูรายละเอียดนักเรียน"
+        iconOnly
+        title="ดูรายละเอียดนักเรียน"
+        to={`/students/${row.studentId}`}
+      />
+    </div>
   );
 }
 
@@ -638,7 +631,7 @@ export function DashboardPage() {
                     className="text-right"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <DashboardRowAction row={row} />
+                    <DashboardRowAction canOpenCases={can("review-cases")} row={row} />
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -722,7 +715,7 @@ export function DashboardPage() {
                     className="flex justify-end"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <DashboardRowAction row={row} />
+                    <DashboardRowAction canOpenCases={can("review-cases")} row={row} />
                   </div>
                 </TableCard>
               ))}

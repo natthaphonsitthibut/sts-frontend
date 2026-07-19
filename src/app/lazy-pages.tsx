@@ -177,6 +177,11 @@ export const StudentDetailPage = lazy(() =>
     default: module.StudentDetailPage,
   })),
 );
+export const CaseDetailPage = lazy(() =>
+  import("../features/cases/pages/CaseDetailPage").then((module) => ({
+    default: module.CaseDetailPage,
+  })),
+);
 export const StudentListPage = lazy(() =>
   import("../features/students/pages/StudentListPage").then((module) => ({
     default: module.StudentListPage,
@@ -211,6 +216,21 @@ export const DashboardPage = lazy(() =>
 export const TeacherObservationReportsPage = lazy(() =>
   import("../features/student-observations/pages/TeacherObservationReportsPage").then((module) => ({
     default: module.TeacherObservationReportsPage,
+  })),
+);
+export const TeacherObservationDetailPage = lazy(() =>
+  import("../features/student-observations/pages/TeacherObservationDetailPage").then((module) => ({
+    default: module.TeacherObservationDetailPage,
+  })),
+);
+export const HomeVisitRequestsPage = lazy(() =>
+  import("../features/student-observations/pages/HomeVisitRequestsPage").then((module) => ({
+    default: module.HomeVisitRequestsPage,
+  })),
+);
+export const HomeVisitRequestDetailPage = lazy(() =>
+  import("../features/student-observations/pages/HomeVisitRequestDetailPage").then((module) => ({
+    default: module.HomeVisitRequestDetailPage,
   })),
 );
 export const DelegatePage = lazy(() =>

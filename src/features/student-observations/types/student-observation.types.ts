@@ -134,11 +134,11 @@ export interface StudentFollowUpRequest {
 }
 
 export interface CreateFollowUpRequestInput {
-  assignmentId: number;
+  assignmentId?: number;
   urgency: FollowUpUrgency;
   reason: string;
   note?: string;
-  sourceObservations: ObservationSourceRef[];
+  sourceObservations?: ObservationSourceRef[];
 }
 
 export interface ReviewFollowUpRequestInput {
@@ -175,13 +175,36 @@ export interface TeacherObservationReport {
 export interface TeacherObservationReportFilters {
   page?: number;
   limit?: number;
-  status?: FollowUpStatus;
   concernLevel?: ObservationConcernLevel;
+  schoolId?: number;
+  gradeLevelId?: number;
+  roomId?: string;
+  searchTerm?: string;
+  sortBy?: "studentName" | "dimension" | "concernLevel" | "comment" | "author";
+  sortDirection?: "asc" | "desc";
+}
+
+export interface HomeVisitRequestReport extends StudentFollowUpRequest {
+  student: {
+    studentTermId: string;
+    displayName: string;
+    schoolName: string;
+    gradeLabel: string | null;
+    roomNo: number | null;
+  };
+}
+
+export interface HomeVisitRequestReportFilters {
+  page?: number;
+  limit?: number;
+  status?: FollowUpStatus;
   urgency?: FollowUpUrgency;
   schoolId?: number;
   gradeLevelId?: number;
   roomId?: string;
   searchTerm?: string;
+  sortBy?: "studentName" | "reason" | "urgency" | "requester" | "status" | "caseStatus";
+  sortDirection?: "asc" | "desc";
 }
 
 export interface StudentObservationSummary {

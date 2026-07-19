@@ -6,18 +6,23 @@ import {
 } from "../../../lib/pagination";
 import type {
   CaseListQuery,
+  CaseDetailResponse,
   CasePaginationMeta,
   CaseRecord,
   CaseReportUpPayload,
   CaseReportUpResponse,
   CaseReviewPayload,
   CaseReviewResponse,
+  OpenCasePayload,
+  OpenCaseResponse,
   CaseStats,
 } from "../types/cases.types";
 
 interface CasesService {
   getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }>;
   getCaseStats: () => Promise<CaseStats>;
+  getCase: (caseId: number) => Promise<CaseDetailResponse>;
+  openCase: (payload: OpenCasePayload) => Promise<OpenCaseResponse>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
    * server-side by a review action (ASSIST / FORWARD / CLOSE) plus an optional
@@ -70,6 +75,16 @@ async function getCaseStats(): Promise<CaseStats> {
   return response.data;
 }
 
+async function getCase(caseId: number): Promise<CaseDetailResponse> {
+  const response = await apiClient.get<CaseDetailResponse>(`/cases/${caseId}`);
+  return response.data;
+}
+
+async function openCase(payload: OpenCasePayload): Promise<OpenCaseResponse> {
+  const response = await apiClient.post<OpenCaseResponse>("/cases", payload);
+  return response.data;
+}
+
 async function reviewCase(
   caseId: number,
   payload: CaseReviewPayload,
@@ -95,6 +110,8 @@ async function reportUpCase(
 export const casesService: CasesService = {
   getCases,
   getCaseStats,
+  getCase,
+  openCase,
   reviewCase,
   reportUpCase,
 };

@@ -5,6 +5,8 @@ import type {
   CreateHumanRiskReviewInput,
   CreateStudentObservationInput,
   GenerateObservationSummaryResult,
+  HomeVisitRequestReport,
+  HomeVisitRequestReportFilters,
   HumanRiskReview,
   HumanRiskReviewState,
   ObservationCatalog,
@@ -209,6 +211,32 @@ async function listTeacherObservationReports(
   return response.data;
 }
 
+async function getTeacherObservationReport(
+  observationId: string,
+): Promise<TeacherObservationReport> {
+  const response = await apiClient.get<DataEnvelope<TeacherObservationReport>>(
+    `/student-risk-report/teacher-reports/${observationId}`,
+  );
+  return response.data.data;
+}
+
+async function listHomeVisitRequests(
+  filters: HomeVisitRequestReportFilters,
+): Promise<PaginatedEnvelope<HomeVisitRequestReport>> {
+  const response = await apiClient.get<PaginatedEnvelope<HomeVisitRequestReport>>(
+    "/student-risk-report/home-visit-requests",
+    { params: filters },
+  );
+  return response.data;
+}
+
+async function getHomeVisitRequest(requestId: string): Promise<HomeVisitRequestReport> {
+  const response = await apiClient.get<DataEnvelope<HomeVisitRequestReport>>(
+    `/student-risk-report/home-visit-requests/${requestId}`,
+  );
+  return response.data.data;
+}
+
 async function getHumanRiskReview(
   studentTermId: string,
 ): Promise<HumanRiskReviewState> {
@@ -320,6 +348,9 @@ export const studentObservationsService = {
   listTaskLinkObservations,
   createTaskLinkObservation,
   listTeacherObservationReports,
+  getTeacherObservationReport,
+  listHomeVisitRequests,
+  getHomeVisitRequest,
   listManagedObservations,
   getHumanRiskReview,
   createHumanRiskReview,
