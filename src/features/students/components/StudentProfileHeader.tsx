@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { getAvatarGradient } from "../../../lib/avatar-gradient";
-import { Eye, EyeOff } from "lucide-react";
 import {
   Alert,
   AlertDescription,
-  Button,
   Card,
 } from "../../../components/base";
+import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
+import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { maskSensitiveIdentifier } from "../../../lib/pii-presentation";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../api/students.service";
 import {
-  PII_FIELDS,
   PII_FIELD_GROUPS,
   PII_FIELD_LABELS,
 } from "../pii.constants";
@@ -59,9 +59,13 @@ export function StudentProfileHeader({
   piiRevealMode = "reasoned",
 }: StudentProfileHeaderProps) {
   const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
-  const [revealedValues, setRevealedValues] = useState<
-    Partial<Record<StudentPiiField, string>>
-  >({});
+  const {
+    hide,
+    reveal,
+    showCached,
+    values: revealedValues,
+    visibleFields,
+  } = useTimedSensitiveReveal<StudentPiiField>(studentId);
   const [directRevealing, setDirectRevealing] =
     useState<StudentPiiField | null>(null);
   const [directError, setDirectError] = useState("");
@@ -70,35 +74,31 @@ export function StudentProfileHeader({
     "ไม่ระบุชื่อ";
   const maskedFields = student.masked_fields ?? [];
 
+  function hasPiiValue(field: StudentPiiField): boolean {
+    const value = student[field];
+    return maskedFields.includes(field) || (value !== null && value !== undefined && value !== "");
+  }
+
   function isMasked(field: StudentPiiField): boolean {
-    return maskedFields.includes(field) && revealedValues[field] === undefined;
+    return hasPiiValue(field) && visibleFields[field] !== true;
   }
 
   function getFieldValue(field: StudentPiiField): string {
-    return toDisplay(revealedValues[field] ?? student[field]);
+    const revealedValue = revealedValues[field];
+    return visibleFields[field] === true && revealedValue !== undefined
+      ? toDisplay(revealedValue)
+      : maskSensitiveIdentifier(student[field]) || "-";
   }
 
   function handleRevealed(values: StudentPiiRevealResponse["values"]): void {
-    setRevealedValues((current) => {
-      const next = { ...current };
-      for (const field of PII_FIELDS) {
-        if (typeof values[field] === "string") {
-          next[field] = values[field];
-        }
-      }
-      return next;
-    });
+    reveal(values);
   }
 
-  // Re-mask a previously revealed field within the session (no server call —
-  // the reveal was already audited). Keeps the toggle button in place so the
-  // row does not shift between masked/revealed states.
+  // Re-mask only the presentation. Keep the revealed value in page memory so
+  // showing it again before navigation/refresh does not ask for the same reason
+  // or create a duplicate audit entry.
   function handleHide(field: StudentPiiField): void {
-    setRevealedValues((current) => {
-      const next = { ...current };
-      delete next[field];
-      return next;
-    });
+    hide(field);
   }
 
   // Self-reveal: no reason dialog. Call the reveal endpoint directly; the
@@ -121,6 +121,10 @@ export function StudentProfileHeader({
   }
 
   function handleRevealClick(field: StudentPiiField): void {
+    if (revealedValues[field] !== undefined) {
+      showCached(field);
+      return;
+    }
     if (piiRevealMode === "direct") {
       void handleDirectReveal(field);
       return;
@@ -129,7 +133,7 @@ export function StudentProfileHeader({
   }
 
   function renderPiiField(field: StudentPiiField) {
-    const maskable = maskedFields.includes(field);
+    const maskable = hasPiiValue(field);
     const masked = isMasked(field);
     const actionLabel =
       field === "PersonID_Onec" ? "เลขบัตร" : "เลขหนังสือเดินทาง";
@@ -141,32 +145,17 @@ export function StudentProfileHeader({
           {getFieldValue(field)}
         </span>
         {maskable ? (
-          masked ? (
-            <Button
-              className="ml-2 h-8 px-3 align-middle text-xs"
+          <span className="ml-2 inline-flex align-middle">
+            <SensitiveValueToggleButton
               disabled={directRevealing !== null}
-              icon={Eye}
               isLoading={directRevealing === field}
-              loadingText="กำลังแสดง"
-              onClick={() => handleRevealClick(field)}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              แสดง{actionLabel}
-            </Button>
-          ) : (
-            <Button
-              className="ml-2 h-8 px-3 align-middle text-xs"
-              icon={EyeOff}
-              onClick={() => handleHide(field)}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              ซ่อน{actionLabel}
-            </Button>
-          )
+              isVisible={!masked}
+              label={actionLabel}
+              onClick={() =>
+                masked ? handleRevealClick(field) : handleHide(field)
+              }
+            />
+          </span>
         ) : null}
       </div>
     );

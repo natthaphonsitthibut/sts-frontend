@@ -9,7 +9,7 @@ import {
   SquarePen,
   UserRound,
 } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -17,9 +17,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  FormItem,
-  FormLabel,
-  Input,
   SchoolIcon,
   Tabs,
 } from "../../../components/base";
@@ -31,7 +28,10 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
+import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { maskNationalId } from "../../../lib/pii-presentation";
+import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { PermissionBadgeList } from "../../auth/components/PermissionBadgeList";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { geoService } from "../../tasks/api/geo.service";
@@ -73,12 +73,25 @@ function describeScope(user: ManagedUserDetail): string {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({
+  action,
+  label,
+  value,
+}: {
+  action?: ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-      <div className="text-xs font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">
-        {value}
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-slate-500">{label}</div>
+          <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">
+            {value}
+          </div>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
     </div>
   );
@@ -121,31 +134,6 @@ function UserHero({ user }: { user: ManagedUserDetail }) {
         </Badge>
       </CardContent>
     </Card>
-  );
-}
-
-function ReadOnlyProfileField({
-  action,
-  label,
-  value,
-}: {
-  action?: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <FormItem>
-      <FormLabel>{label}</FormLabel>
-      <div className="flex items-center gap-2">
-        <Input
-          className="min-w-0 flex-1"
-          readOnly
-          value={value === "-" ? "" : value}
-        />
-        {action}
-      </div>
-      <div className="min-h-5" aria-hidden="true" />
-    </FormItem>
   );
 }
 
@@ -195,69 +183,35 @@ function UserAddressPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           {address ? (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <ReadOnlyProfileField
-                  label="บ้านเลขที่"
-                  value={text(address.address_line)}
-                />
-                <ReadOnlyProfileField
-                  label="หมู่"
-                  value={text(address.address_village_no)}
-                />
-                <ReadOnlyProfileField
-                  label="ตรอก"
-                  value={text(address.address_trok)}
-                />
-                <ReadOnlyProfileField
-                  label="ซอย"
-                  value={text(address.address_soi)}
-                />
-                <ReadOnlyProfileField
-                  label="ถนน"
-                  value={text(address.address_street)}
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <ReadOnlyProfileField
-                  label="จังหวัด"
-                  value={text(address.address_province)}
-                />
-                <ReadOnlyProfileField
-                  label="อำเภอ/เขต"
-                  value={text(address.address_district)}
-                />
-                <ReadOnlyProfileField
-                  label="ตำบล/แขวง"
-                  value={text(address.address_sub_district)}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ReadOnlyProfileField
-                  label="รหัสไปรษณีย์"
-                  value={text(address.address_postal_code)}
-                />
-              </div>
-            </>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <DetailItem label="บ้านเลขที่" value={text(address.address_line)} />
+              <DetailItem label="หมู่" value={text(address.address_village_no)} />
+              <DetailItem label="ถนน" value={text(address.address_street)} />
+              <DetailItem label="ซอย" value={text(address.address_soi)} />
+              <DetailItem label="ตรอก" value={text(address.address_trok)} />
+              <DetailItem
+                label="ตำบล/แขวง"
+                value={text(address.address_sub_district)}
+              />
+              <DetailItem
+                label="อำเภอ/เขต"
+                value={text(address.address_district)}
+              />
+              <DetailItem label="จังหวัด" value={text(address.address_province)} />
+              <DetailItem
+                label="รหัสไปรษณีย์"
+                value={text(address.address_postal_code)}
+              />
+            </div>
           ) : hasProfileLocation ? (
             <div className="flex justify-end">
-              <Button icon={Eye} onClick={() => setDialogOpen(true)}>
+              <Button icon={Eye} onClick={() => setDialogOpen(true)} variant="outline">
                 แสดงที่อยู่และหมุด
               </Button>
             </div>
           ) : null}
 
-          <div className="space-y-3 border-t border-slate-200 pt-4">
-            <div>
-              <div className="text-sm font-bold text-slate-700">
-                พิกัดที่อยู่ติดต่อ
-              </div>
-              <div className="text-xs text-slate-500">
-                {hasProfileLocation
-                  ? "ใช้พิกัดที่บันทึกไว้ก่อน และค้นหาจากที่อยู่เมื่อยังไม่มีพิกัด"
-                  : "ผู้ใช้งานยังไม่ได้บันทึกที่อยู่หรือพิกัด"}
-              </div>
-            </div>
+          <div className="border-t border-slate-200 pt-4">
             <LocationMapPicker
               address={fullAddress || undefined}
               emptyDescription={
@@ -308,11 +262,30 @@ function DetailSection({
 }
 
 function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
-  const [nationalId, setNationalId] = useState<string | null | undefined>(
-    undefined,
-  );
   const [nationalIdDialogOpen, setNationalIdDialogOpen] = useState(false);
-  const displayedNationalId = nationalId ?? user.PersonID_Onec ?? "-";
+  const {
+    hide,
+    reveal,
+    showCached,
+    values,
+    visibleFields,
+  } = useTimedSensitiveReveal<"nationalId">(`user:${user.id}`);
+  const revealedNationalId = values.nationalId;
+  const isNationalIdVisible =
+    visibleFields.nationalId === true && revealedNationalId !== undefined;
+  const displayedNationalId = isNationalIdVisible
+    ? revealedNationalId
+    : maskNationalId(user.PersonID_Onec) || "-";
+
+  function toggleNationalId(): void {
+    if (isNationalIdVisible) {
+      hide("nationalId");
+    } else if (revealedNationalId !== undefined) {
+      showCached("nationalId");
+    } else {
+      setNationalIdDialogOpen(true);
+    }
+  }
   return (
     <Card className="rounded-lg">
       <CardHeader>
@@ -321,38 +294,49 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
           ข้อมูลส่วนตัว
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ReadOnlyProfileField label="ชื่อ" value={text(user.FirstName)} />
-          <ReadOnlyProfileField label="นามสกุล" value={text(user.LastName)} />
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <DetailItem label="ชื่อ" value={text(user.FirstName)} />
+          <DetailItem label="นามสกุล" value={text(user.LastName)} />
+          <div className="sm:col-span-2">
+            <DetailItem
+              action={
+                <SensitiveValueToggleButton
+                  isVisible={isNationalIdVisible}
+                  label="เลขบัตร"
+                  onClick={toggleNationalId}
+                />
+              }
+              label="เลขบัตรประชาชน"
+              value={text(displayedNationalId)}
+            />
+          </div>
+          <DetailItem label="เบอร์โทรศัพท์" value={text(user.phone)} />
+          <DetailItem label="อีเมล" value={text(user.email)} />
+          <DetailItem
+            label="หน่วยงาน/สังกัด"
+            value={text(user.affiliation)}
+          />
+          <DetailItem label="LINE ID" value={text(user.line_id)} />
         </div>
-        <ReadOnlyProfileField
-          action={
-            <Button
-              className="shrink-0"
-              icon={Eye}
-              onClick={() => setNationalIdDialogOpen(true)}
-              type="button"
-              variant="outline"
-            >
-              แสดงเลขบัตร
-            </Button>
-          }
-          label="เลขบัตรประชาชน"
-          value={text(displayedNationalId)}
-        />
-        <ReadOnlyProfileField label="เบอร์โทรศัพท์" value={text(user.phone)} />
-        <ReadOnlyProfileField label="อีเมล" value={text(user.email)} />
-        <ReadOnlyProfileField
-          label="หน่วยงาน/สังกัด"
-          value={text(user.affiliation)}
-        />
-        <ReadOnlyProfileField label="LINE ID" value={text(user.line_id)} />
+        <p className="text-xs text-slate-500">
+          เลขบัตรประชาชนแก้ไขได้ที่{" "}
+          <Link
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+            to={`/manage-users/${user.id}/edit`}
+          >
+            หน้าแก้ไขผู้ใช้งาน
+          </Link>
+        </p>
       </CardContent>
       {user.id ? (
         <UserNationalIdRevealDialog
           onOpenChange={setNationalIdDialogOpen}
-          onRevealed={setNationalId}
+          onRevealed={(nationalId) => {
+            if (nationalId) {
+              reveal({ nationalId });
+            }
+          }}
           open={nationalIdDialogOpen}
           userId={user.id}
         />
@@ -493,6 +477,7 @@ export function UserDetailPage() {
             </NavButton>
           </>
         }
+        description="ตรวจสอบข้อมูลบัญชี สิทธิ์ และขอบเขตการใช้งาน"
         icon={UserRound}
         title="รายละเอียดผู้ใช้งาน"
       />

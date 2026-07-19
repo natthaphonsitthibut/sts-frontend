@@ -2,9 +2,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { maskNationalId } from "../../../lib/pii-presentation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  MapPin,
+  ShieldCheck,
+  SquarePen,
+  UserRound,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -30,6 +38,7 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
 import {
   AddressFormSection,
   type AddressFieldNames,
@@ -46,8 +55,11 @@ import { useRouteTab } from "../../../hooks/useRouteTab";
 import { usePermissions } from "../hooks/usePermissions";
 import { NavButton } from "../../../components/layout/nav-button";
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
+import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
+import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
+const EDIT_MODE_EXIT_DELAY_MS = 400;
 
 const profileSchema = z.object({
   FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ").max(150, "ชื่อยาวเกินไป"),
@@ -168,17 +180,159 @@ function describeProfileScope(user: AuthUser | null | undefined): string {
   );
 }
 
-function ProfileDetailItem({ label, value }: { label: string; value: string }) {
+function ProfileDetailItem({
+  action,
+  label,
+  value,
+}: {
+  action?: ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-      <div className="text-xs font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">{value}</div>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-slate-500">{label}</div>
+          <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">
+            {value}
+          </div>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
     </div>
   );
 }
 
+function ProfilePersonalDetailsCard({
+  canManageUsers,
+  isNationalIdVisible,
+  onToggleNationalId,
+  user,
+}: {
+  canManageUsers: boolean;
+  isNationalIdVisible: boolean;
+  onToggleNationalId: () => void;
+  user: AuthUser;
+}) {
+  const displayedNationalId = isNationalIdVisible
+    ? profileText(user.PersonID_Onec)
+    : maskNationalId(user.PersonID_Onec);
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <UserRound className="size-5 text-primary" aria-hidden="true" />
+          ข้อมูลส่วนตัว
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProfileDetailItem label="ชื่อ" value={profileText(user.FirstName)} />
+          <ProfileDetailItem label="นามสกุล" value={profileText(user.LastName)} />
+          <div className="sm:col-span-2">
+            <ProfileDetailItem
+              action={
+                <SensitiveValueToggleButton
+                  isVisible={isNationalIdVisible}
+                  label="เลขบัตร"
+                  onClick={onToggleNationalId}
+                />
+              }
+              label="เลขบัตรประชาชน"
+              value={displayedNationalId || "-"}
+            />
+          </div>
+          <ProfileDetailItem label="เบอร์โทรศัพท์" value={profileText(user.phone)} />
+          <ProfileDetailItem label="อีเมล" value={profileText(user.email)} />
+          <ProfileDetailItem label="หน่วยงาน/สังกัด" value={profileText(user.affiliation)} />
+          <ProfileDetailItem label="LINE ID" value={profileText(user.line_id)} />
+        </div>
+        <p className="text-xs text-slate-500">
+          {canManageUsers && user.id ? (
+            <>
+              เลขบัตรประชาชนแก้ไขได้ที่{" "}
+              <Link
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+                to={`/manage-users/${user.id}/edit`}
+              >
+                หน้าแก้ไขผู้ใช้งาน
+              </Link>
+            </>
+          ) : (
+            "เลขบัตรประชาชนแก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข"
+          )}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileAddressDetailsCard({ user }: { user: AuthUser }) {
+  const values = toFormValues(user);
+  const fullAddress = [
+    values.address_line,
+    values.address_village_no ? `หมู่ ${values.address_village_no}` : "",
+    values.address_trok ? `ตรอก ${values.address_trok}` : "",
+    values.address_soi ? `ซอย ${values.address_soi}` : "",
+    values.address_street ? `ถนน ${values.address_street}` : "",
+    values.address_sub_district,
+    values.address_district,
+    values.address_province,
+    values.address_postal_code,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <MapPin className="size-5 text-primary" aria-hidden="true" />
+          ที่อยู่ติดต่อ
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ProfileDetailItem label="บ้านเลขที่" value={profileText(values.address_line)} />
+          <ProfileDetailItem label="หมู่" value={profileText(values.address_village_no)} />
+          <ProfileDetailItem label="ถนน" value={profileText(values.address_street)} />
+          <ProfileDetailItem label="ซอย" value={profileText(values.address_soi)} />
+          <ProfileDetailItem label="ตรอก" value={profileText(values.address_trok)} />
+          <ProfileDetailItem
+            label="ตำบล/แขวง"
+            value={profileText(values.address_sub_district)}
+          />
+          <ProfileDetailItem
+            label="อำเภอ/เขต"
+            value={profileText(values.address_district)}
+          />
+          <ProfileDetailItem label="จังหวัด" value={profileText(values.address_province)} />
+          <ProfileDetailItem
+            label="รหัสไปรษณีย์"
+            value={profileText(values.address_postal_code)}
+          />
+        </div>
+        <div className="border-t border-slate-200 pt-4">
+          <LocationMapPicker
+            address={fullAddress || undefined}
+            emptyDescription="ระบบจะแสดงหมุดเมื่อมีการบันทึกพิกัดที่อยู่"
+            lat={values.address_latitude}
+            lng={values.address_longitude}
+            markerLabel="พิกัดที่บันทึกไว้"
+            title="ตำแหน่งที่อยู่บนแผนที่"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ProfilePage() {
-  const [isNationalIdVisible, setNationalIdVisible] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isReturningToView, setIsReturningToView] = useState(false);
+  const editModeExitTimerRef = useRef<number | undefined>(undefined);
   const { can } = usePermissions();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useRouteTab(
@@ -189,9 +343,23 @@ export function ProfilePage() {
     "info",
   );
   const user = useAuthSessionStore((state) => state.user);
+  const {
+    hide: hideSensitiveValue,
+    reveal: revealSensitiveValue,
+    showCached: showCachedSensitiveValue,
+    values: revealedSensitiveValues,
+    visibleFields: visibleSensitiveFields,
+  } = useTimedSensitiveReveal<"nationalId">(
+    `profile:${user?.id ?? user?.username ?? "anonymous"}`,
+  );
   const storageTarget = useAuthSessionStore((state) => state.storageTarget);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
   const saveSession = useAuthSessionStore((state) => state.saveSession);
+
+  useEffect(
+    () => () => window.clearTimeout(editModeExitTimerRef.current),
+    [],
+  );
 
   // Magic/virtual sessions have no persistent account to edit — they use the
   // task guest flow instead, so keep them out of the self-edit page entirely.
@@ -226,6 +394,7 @@ export function ProfilePage() {
         hasAdminAccess,
       });
       form.reset(toFormValues(updatedUser));
+      setIsEditing(false);
     },
     throwOnError: false,
   });
@@ -253,6 +422,10 @@ export function ProfilePage() {
   }
 
   function handleSubmit(values: ProfileFormValues): void {
+    if (!isEditing) {
+      return;
+    }
+
     updateProfile.mutate({
       FirstName: values.FirstName.trim(),
       LastName: values.LastName.trim(),
@@ -276,6 +449,50 @@ export function ProfilePage() {
 
   const showSuccess = updateProfile.isSuccess && !form.formState.isDirty;
   const profileUser = profileQuery.data ?? user;
+  const isNationalIdVisible =
+    visibleSensitiveFields.nationalId === true &&
+    revealedSensitiveValues.nationalId !== undefined;
+
+  function toggleNationalId(): void {
+    if (isNationalIdVisible) {
+      hideSensitiveValue("nationalId");
+    } else if (revealedSensitiveValues.nationalId !== undefined) {
+      showCachedSensitiveValue("nationalId");
+    } else if (profileUser?.PersonID_Onec) {
+      revealSensitiveValue({ nationalId: profileUser.PersonID_Onec });
+    }
+  }
+
+  function cancelEditing(): void {
+    window.clearTimeout(editModeExitTimerRef.current);
+    editModeExitTimerRef.current = undefined;
+    setIsReturningToView(false);
+    form.reset(toFormValues(profileQuery.data ?? user));
+    updateProfile.reset();
+    setIsEditing(false);
+  }
+
+  function returnToView(): void {
+    if (isReturningToView) {
+      return;
+    }
+    setIsReturningToView(true);
+    editModeExitTimerRef.current = window.setTimeout(
+      cancelEditing,
+      EDIT_MODE_EXIT_DELAY_MS,
+    );
+  }
+
+  function handleTabChange(tab: string): void {
+    if (tab !== "info" && tab !== "permissions") {
+      return;
+    }
+
+    if (isEditing) {
+      cancelEditing();
+    }
+    setActiveTab(tab);
+  }
 
   return (
     <PageShell>
@@ -283,7 +500,7 @@ export function ProfilePage() {
         actions={
           <Tabs
             aria-label="โหมดโปรไฟล์ของฉัน"
-            onChange={setActiveTab}
+            onChange={handleTabChange}
             options={[
               { value: "info", label: "ข้อมูล" },
               { value: "permissions", label: "สิทธิ์" },
@@ -291,7 +508,37 @@ export function ProfilePage() {
             value={activeTab}
           />
         }
-        description="ตรวจสอบและแก้ไขข้อมูลส่วนตัวสำหรับการติดต่อและใช้งานระบบ"
+        description="ตรวจสอบข้อมูลส่วนตัวสำหรับการติดต่อและใช้งานระบบ"
+        footerActions={
+          activeTab === "info" &&
+          !profileQuery.isLoading &&
+          !profileQuery.isError &&
+          !locationQuery.isLoading &&
+          !locationQuery.isError ? (
+            isEditing ? (
+              <Button
+                icon={ArrowLeft}
+                isLoading={isReturningToView}
+                onClick={returnToView}
+                type="button"
+                variant="outline"
+              >
+                ย้อนกลับ
+              </Button>
+            ) : (
+              <Button
+                icon={SquarePen}
+                onClick={() => {
+                  updateProfile.reset();
+                  setIsEditing(true);
+                }}
+                type="button"
+              >
+                แก้ไขข้อมูลส่วนตัว
+              </Button>
+            )
+          ) : undefined
+        }
         icon={UserRound}
         title="โปรไฟล์ของฉัน"
       />
@@ -311,7 +558,17 @@ export function ProfilePage() {
       ) : activeTab === "info" ? (
         <Form form={form} onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <Card className="rounded-lg">
+            {showSuccess && !isEditing ? (
+              <Alert variant="success">
+                <AlertDescription className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                  บันทึกโปรไฟล์เรียบร้อยแล้ว
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {isEditing ? (
+              <Card className="rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <UserRound className="size-5 text-primary" aria-hidden="true" />
@@ -324,13 +581,6 @@ export function ProfilePage() {
                     error={updateProfile.error}
                     fallback="บันทึกโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
                   />
-                ) : showSuccess ? (
-                  <Alert variant="success">
-                    <AlertDescription className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4" aria-hidden="true" />
-                      บันทึกโปรไฟล์เรียบร้อยแล้ว
-                    </AlertDescription>
-                  </Alert>
                 ) : null}
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -374,15 +624,11 @@ export function ProfilePage() {
                           : maskNationalId(profileUser?.PersonID_Onec)
                       }
                     />
-                    <Button
-                      aria-label={isNationalIdVisible ? "ซ่อนเลขบัตร" : "แสดงเลขบัตร"}
-                      icon={isNationalIdVisible ? EyeOff : Eye}
-                      onClick={() => setNationalIdVisible((visible) => !visible)}
-                      type="button"
-                      variant="outline"
-                    >
-                      {isNationalIdVisible ? "ซ่อนเลขบัตร" : "แสดงเลขบัตร"}
-                    </Button>
+                    <SensitiveValueToggleButton
+                      isVisible={isNationalIdVisible}
+                      label="เลขบัตร"
+                      onClick={toggleNationalId}
+                    />
                   </div>
                   <p className="text-xs text-slate-500">
                     {can("manage-users-list") && profileUser?.id ? (
@@ -392,7 +638,7 @@ export function ProfilePage() {
                           className="font-semibold text-primary underline-offset-4 hover:underline"
                           to={`/manage-users/${profileUser.id}/edit`}
                         >
-                          หน้าจัดการผู้ใช้งาน
+                          หน้าแก้ไขผู้ใช้งาน
                         </Link>
                       </>
                     ) : (
@@ -442,9 +688,19 @@ export function ProfilePage() {
                   />
                   <FormMessage<ProfileFormValues> name="line_id" />
                 </FormItem>
-
               </CardContent>
-            </Card>
+              </Card>
+            ) : profileUser ? (
+              <>
+                <ProfilePersonalDetailsCard
+                  canManageUsers={can("manage-users-list")}
+                  isNationalIdVisible={isNationalIdVisible}
+                  onToggleNationalId={toggleNationalId}
+                  user={profileUser}
+                />
+                <ProfileAddressDetailsCard user={profileUser} />
+              </>
+            ) : null}
 
             <Card className="rounded-lg">
               <CardHeader>
@@ -463,42 +719,37 @@ export function ProfilePage() {
               </CardContent>
             </Card>
 
-            <AddressFormSection
-              catalog={locationQuery.data}
-              disabled={updateProfile.isPending}
-              form={form}
-              geocodeError={geocodeProfileAddress.isError ? (
-                <FormErrorAlert
-                  error={geocodeProfileAddress.error}
-                  fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+            {isEditing ? (
+              <>
+                <AddressFormSection
+                  catalog={locationQuery.data}
+                  disabled={updateProfile.isPending}
+                  form={form}
+                  geocodeError={geocodeProfileAddress.isError ? (
+                    <FormErrorAlert
+                      error={geocodeProfileAddress.error}
+                      fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+                    />
+                  ) : null}
+                  isGeocoding={geocodeProfileAddress.isPending}
+                  names={ADDRESS_NAMES}
+                  onGeocode={async (address) =>
+                    Boolean(await geocodeProfileAddress.mutateAsync(address))
+                  }
+                  title="ที่อยู่ติดต่อ"
                 />
-              ) : null}
-              isGeocoding={geocodeProfileAddress.isPending}
-              names={ADDRESS_NAMES}
-              onGeocode={async (address) =>
-                Boolean(await geocodeProfileAddress.mutateAsync(address))
-              }
-              title="ที่อยู่ติดต่อ"
-            />
-
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button
-                disabled={updateProfile.isPending}
-                onClick={() => form.reset(toFormValues(profileQuery.data ?? user))}
-                type="button"
-                variant="outline"
-              >
-                ยกเลิกการแก้ไข
-              </Button>
-              <Button
-                disabled={!form.formState.isDirty || geocodeProfileAddress.isPending}
-                isLoading={updateProfile.isPending}
-                loadingText="กำลังบันทึก"
-                type="submit"
-              >
-                บันทึกโปรไฟล์
-              </Button>
-            </div>
+                <div className="flex justify-end">
+                  <Button
+                    disabled={!form.formState.isDirty || geocodeProfileAddress.isPending}
+                    isLoading={updateProfile.isPending}
+                    loadingText="กำลังบันทึก"
+                    type="submit"
+                  >
+                    บันทึก
+                  </Button>
+                </div>
+              </>
+            ) : null}
           </div>
         </Form>
       ) : (
