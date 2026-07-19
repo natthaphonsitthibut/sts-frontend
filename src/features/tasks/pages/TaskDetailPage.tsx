@@ -191,7 +191,7 @@ export function TaskDetailPage() {
               <div className="break-words font-bold">{task.student_school || "-"}</div>
             </div>
             <div>
-              <div className="text-sm text-slate-500">ชั้น / ห้อง</div>
+              <div className="text-sm text-slate-500">ชั้นและห้อง</div>
               <div className="font-bold">
                 {task.target_grade || "-"} · {formatRoomLabel(task.target_room)}
               </div>

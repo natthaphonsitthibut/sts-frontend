@@ -85,7 +85,8 @@ function getHistorySortValue(
   catalog: readonly StatusCatalogItem[],
 ): string {
   if (key === "student") return record.name || record.student_name || "";
-  if (key === "class") return `${record.grade || ""}/${formatStudentRoom(record.room)}`;
+  if (key === "grade") return record.grade || "";
+  if (key === "room") return formatStudentRoom(record.room);
   if (key === "status") return getAttendanceStatusPresentation(record.status, catalog).label;
   if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
   return "";
@@ -562,7 +563,7 @@ export function AttendanceCheckInPage() {
               <EmptyState
                 icon={ClipboardList}
                 title="ไม่พบรายชื่อนักเรียนในห้องนี้"
-                description="ลองเลือกชั้นเรียนหรือห้องอื่น"
+                description="ลองเลือกชั้นหรือห้องอื่น"
               />
             ) : (
               <AttendanceStudentTable
@@ -606,7 +607,7 @@ export function AttendanceCheckInPage() {
         <EmptyState
           icon={ClipboardList}
           title="ไม่พบประวัติการเช็คชื่อ"
-          description="ยังไม่มีการบันทึกการเช็คชื่อตามวันที่และชั้นเรียนที่เลือก"
+          description="ยังไม่มีการบันทึกการเช็คชื่อสำหรับวันที่ ชั้น และห้องที่เลือก"
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -635,13 +636,14 @@ export function AttendanceCheckInPage() {
             <EmptyState
               icon={ClipboardList}
               title="ไม่พบประวัติการเช็คชื่อ"
-              description="ลองเปลี่ยนคำค้นหา ชั้นเรียน หรือห้อง"
+              description="ลองเปลี่ยนคำค้นหา ชั้น หรือห้อง"
             />
           ) : (
             <DataTable
               headings={[
                 { label: "นักเรียน", sortKey: "student" },
-                { label: "ชั้น / ห้อง", sortKey: "class" },
+                { label: "ชั้น", sortKey: "grade" },
+                { label: "ห้อง", sortKey: "room" },
                 { label: "สถานะ", sortKey: "status" },
                 { label: "ผู้บันทึก", sortKey: "recorder" },
               ]}
@@ -655,7 +657,10 @@ export function AttendanceCheckInPage() {
                     {record.name || "-"}
                   </DataTableCell>
                   <DataTableCell className="text-sm text-slate-600">
-                    {record.grade || "-"} / {formatStudentRoom(record.room)}
+                    {record.grade || "-"}
+                  </DataTableCell>
+                  <DataTableCell className="text-sm text-slate-600">
+                    {formatStudentRoom(record.room)}
                   </DataTableCell>
                   <DataTableCell>
                     <Badge

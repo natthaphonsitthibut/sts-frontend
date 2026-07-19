@@ -108,7 +108,7 @@ export function StudentTable({
           { label: "ลำดับ", sortKey: "sequence" },
           { label: "ชื่อ - นามสกุล", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
-          { label: "ระดับชั้น", sortKey: "grade" },
+          { label: "ชั้น", sortKey: "grade" },
           { label: "ห้อง", sortKey: "room" },
           { label: "สถานะ", sortKey: "status" },
         ]}

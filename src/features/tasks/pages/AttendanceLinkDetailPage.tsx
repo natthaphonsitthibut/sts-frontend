@@ -14,6 +14,7 @@ import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
 import { LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { NavButton } from "../../../components/layout/nav-button";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { getTodayIso } from "../../attendance/lib/attendance-presentation";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -115,9 +116,9 @@ export function AttendanceLinkDetailPage() {
               <div className="font-bold">{detail.school_name || "-"}</div>
             </div>
             <div>
-              <div className="text-sm text-slate-500">ชั้น / ห้อง</div>
+              <div className="text-sm text-slate-500">ชั้นและห้อง</div>
               <div className="font-bold">
-                {detail.target_grade || "-"} {detail.target_room || ""}
+                {detail.target_grade || "-"} · {formatRoomLabel(detail.target_room)}
               </div>
             </div>
             <div>

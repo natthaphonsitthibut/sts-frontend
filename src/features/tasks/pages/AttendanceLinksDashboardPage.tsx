@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button, Tabs, useConfirm } from "../../../components/base";
 import { getLinkLockConfirm } from "../../../lib/link-lock";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
@@ -118,7 +119,8 @@ function compareText(a: string | undefined, b: string | undefined): number {
 }
 
 function getAttendanceTaskSortValue(task: AttendanceTask, key: string): string {
-  if (key === "class") return `${task.target_grade || ""}/${task.target_room || ""}`;
+  if (key === "grade") return task.target_grade || "";
+  if (key === "room") return task.target_room || "";
   if (key === "school") return task.target_school_name || "";
   if (key === "assignee") return task.link_assigned_to || "";
   if (key === "status") return getLinkState(task);
@@ -411,7 +413,8 @@ export function AttendanceLinksDashboardPage() {
           <>
             <DataTable
               headings={[
-                { label: "ชั้นเรียน", sortKey: "class" },
+                { label: "ชั้น", sortKey: "grade" },
+                { label: "ห้อง", sortKey: "room" },
                 { label: "โรงเรียน", sortKey: "school" },
                 { label: "ผู้รับลิงก์", sortKey: "assignee" },
                 { label: "สถานะ", sortKey: "status" },
@@ -419,14 +422,15 @@ export function AttendanceLinksDashboardPage() {
                 "",
               ]}
               columnWidths={[
-                "w-[10%]",
+                "w-[8%]",
+                "w-[9%]",
+                "w-[15%]",
                 "w-[16%]",
-                "w-[17%]",
-                "w-[12%]",
-                "w-[27%]",
-                "w-[18%]",
+                "w-[11%]",
+                "w-[25%]",
+                "w-[16%]",
               ]}
-              minWidthClassName="min-w-full"
+              minWidthClassName="min-w-[1080px]"
               onSortChange={setSort}
               responsive={false}
               sort={sort}
@@ -448,7 +452,10 @@ export function AttendanceLinksDashboardPage() {
                 return (
                   <DataTableRow key={task.task_id}>
                     <DataTableCell className="font-bold">
-                      {task.target_grade || "-"} / {task.target_room || "-"}
+                      {task.target_grade || "-"}
+                    </DataTableCell>
+                    <DataTableCell className="font-medium text-slate-600">
+                      {formatRoomLabel(task.target_room)}
                     </DataTableCell>
                     <DataTableCell className="text-sm">
                       {task.target_school_name || "-"}

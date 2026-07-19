@@ -13,6 +13,7 @@ import {
 } from "../../../components/layout/data-table";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { EmptyState } from "../../../components/layout/page-primitives";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import type { StudentAccountManagementItem } from "../types/admin.types";
 import {
   getAccountLifecycleStatusMeta,
@@ -53,8 +54,8 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
 }
 
-function formatClassLevel(row: StudentAccountManagementItem): string {
-  return `${row.grade ?? "-"} / ${row.room ?? "-"}`;
+function formatClassSummary(row: StudentAccountManagementItem): string {
+  return `${row.grade ?? "-"} · ${formatRoomLabel(row.room)}`;
 }
 
 function getSortValue(
@@ -64,7 +65,8 @@ function getSortValue(
 ): string {
   if (key === "student") return row.studentName;
   if (key === "school") return row.schoolName ?? "";
-  if (key === "class") return formatClassLevel(row);
+  if (key === "grade") return row.grade ?? "";
+  if (key === "room") return String(row.room ?? "");
   if (key === "username") return row.username;
   if (key === "status") return getAccountLifecycleStatusMeta(row.status, catalog).label;
   if (key === "accountStatus") return row.accountStatus ?? "";
@@ -248,7 +250,8 @@ export function StudentAccountManagementTable({
           },
           { label: "นักเรียน", sortKey: "student" },
           { label: "โรงเรียน", sortKey: "school" },
-          { label: "ชั้น/ห้อง", sortKey: "class" },
+          { label: "ชั้น", sortKey: "grade" },
+          { label: "ห้อง", sortKey: "room" },
           { label: "สถานะบัญชี", sortKey: "status" },
           {
             label: (
@@ -262,12 +265,13 @@ export function StudentAccountManagementTable({
         ]}
         columnWidths={[
           "w-[52px]",
-          "w-[18%]",
-          "w-[16%]",
-          "w-[10%]",
-          "w-[14%]",
-          "w-[30%]",
-          "w-[10%]",
+          "w-[17%]",
+          "w-[15%]",
+          "w-[7%]",
+          "w-[8%]",
+          "w-[13%]",
+          "w-[29%]",
+          "w-[11%]",
         ]}
         footer={
           sortedRows.length === 0 ? (
@@ -276,7 +280,7 @@ export function StudentAccountManagementTable({
             </div>
           ) : null
         }
-        minWidthClassName="min-w-[1040px]"
+        minWidthClassName="min-w-[1120px]"
         onSortChange={setActiveSort}
         sort={activeSort}
       >
@@ -300,7 +304,10 @@ export function StudentAccountManagementTable({
                 {row.schoolName || "-"}
               </DataTableCell>
               <DataTableCell className="text-sm font-medium text-slate-600">
-                {formatClassLevel(row)}
+                {row.grade || "-"}
+              </DataTableCell>
+              <DataTableCell className="text-sm font-medium text-slate-600">
+                {formatRoomLabel(row.room)}
               </DataTableCell>
               <DataTableCell>
                 <AccountState catalog={lifecycleCatalog} row={row} />
@@ -351,7 +358,7 @@ export function StudentAccountManagementTable({
               </div>
               <div className="mt-3 grid gap-1 text-sm text-slate-600">
                 <div className="font-medium">{row.schoolName || "-"}</div>
-                <div>{formatClassLevel(row)}</div>
+                <div>{formatClassSummary(row)}</div>
               </div>
               <div className="mt-3 rounded-md bg-slate-50 p-3">
                 <LinkTimeSummary

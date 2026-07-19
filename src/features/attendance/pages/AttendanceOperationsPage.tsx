@@ -209,9 +209,8 @@ function compareReconciliationRows(
   key: string,
   catalog: readonly StatusCatalogItem[],
 ): number {
-  if (key === "class") {
-    return compareText(`${left.grade}/${left.room}`, `${right.grade}/${right.room}`);
-  }
+  if (key === "grade") return compareText(left.grade, right.grade);
+  if (key === "room") return compareNumber(left.room, right.room);
   if (key === "expected") {
     return compareNumber(left.expectedRosterCount, right.expectedRosterCount);
   }
@@ -239,9 +238,8 @@ function compareAnomalyRows(
   if (key === "date") {
     return compareText(left.date, right.date);
   }
-  if (key === "class") {
-    return compareText(`${left.grade}/${left.room}`, `${right.grade}/${right.room}`);
-  }
+  if (key === "grade") return compareText(left.grade, right.grade);
+  if (key === "room") return compareNumber(left.room, right.room);
   if (key === "type") {
     return compareText(
       getCatalogMeta(catalog, left.anomalyType).label,
@@ -1191,7 +1189,8 @@ export function AttendanceOperationsPage() {
             <>
               <DataTable
                 headings={[
-                  { label: "ชั้น / ห้อง", sortKey: "class" },
+                  { label: "ชั้น", sortKey: "grade" },
+                  { label: "ห้อง", sortKey: "room" },
                   { label: "รายชื่อ", sortKey: "expected" },
                   { label: "บันทึกแล้ว", sortKey: "recorded" },
                   { label: "รอบบันทึก", sortKey: "revision" },
@@ -1207,7 +1206,8 @@ export function AttendanceOperationsPage() {
                   );
                   return (
                     <DataTableRow key={`${row.gradeLevelId}-${row.room}`}>
-                      <DataTableCell className="font-bold">{row.grade} / {formatRoomLabel(row.room)}</DataTableCell>
+                      <DataTableCell className="font-bold">{row.grade}</DataTableCell>
+                      <DataTableCell>{formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>{row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.recordedCount}</DataTableCell>
                       <DataTableCell>{row.revision ?? "-"}</DataTableCell>
@@ -1332,10 +1332,11 @@ export function AttendanceOperationsPage() {
           ) : (
             <>
               <DataTable
-                columnWidths={["w-[9%]", "w-[11%]", "w-[13%]", "w-[10%]", "w-[8%]", "w-[24%]", "w-[25%]"]}
+                columnWidths={["w-[9%]", "w-[8%]", "w-[9%]", "w-[12%]", "w-[9%]", "w-[8%]", "w-[22%]", "w-[23%]"]}
                 headings={[
                   { label: "วันที่", sortKey: "date" },
-                  { label: "ชั้น / ห้อง", sortKey: "class" },
+                  { label: "ชั้น", sortKey: "grade" },
+                  { label: "ห้อง", sortKey: "room" },
                   {
                     label: (
                       <span className="inline-flex items-center gap-1">
@@ -1357,7 +1358,7 @@ export function AttendanceOperationsPage() {
                   { label: "หมายเหตุ / แนวทางแก้" },
                   { label: "" },
                 ]}
-                minWidthClassName="min-w-[980px]"
+                minWidthClassName="min-w-[1080px]"
                 onSortChange={setAnomalySort}
                 sort={anomalySort}
               >
@@ -1368,7 +1369,8 @@ export function AttendanceOperationsPage() {
                       <DataTableCell className="font-semibold tabular-nums text-slate-800">
                         {formatThaiDate(row.date)}
                       </DataTableCell>
-                      <DataTableCell className="font-bold">{row.grade} / {formatRoomLabel(row.room)}</DataTableCell>
+                      <DataTableCell className="font-bold">{row.grade}</DataTableCell>
+                      <DataTableCell>{formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>
                         <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
                       </DataTableCell>

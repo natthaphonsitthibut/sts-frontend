@@ -27,7 +27,7 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
-import { toRoomOption } from "../../../lib/room-presentation";
+import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
 import {
   EmptyState,
   ErrorState,
@@ -170,7 +170,8 @@ function compareText(a: string | undefined, b: string | undefined): number {
 function getCandidateSortValue(candidate: StudentAccountCandidate, key: string): string {
   if (key === "name") return candidate.studentName;
   if (key === "school") return candidate.schoolName ?? "";
-  if (key === "class") return `${candidate.grade ?? ""}/${candidate.room ?? ""}`;
+  if (key === "grade") return candidate.grade ?? "";
+  if (key === "room") return String(candidate.room ?? "");
   if (key === "term") return `${candidate.academicYear ?? ""}/${candidate.semester ?? ""}`;
   if (key === "status") return candidate.hasActiveAccount ? "มีบัญชีแล้ว" : "พร้อมสร้าง";
   return "";
@@ -179,7 +180,8 @@ function getCandidateSortValue(candidate: StudentAccountCandidate, key: string):
 function getCredentialSortValue(credential: StudentAccountCredential, key: string): string {
   if (key === "name") return credential.studentName;
   if (key === "school") return credential.schoolName ?? "";
-  if (key === "class") return `${credential.grade ?? ""}/${credential.room ?? ""}`;
+  if (key === "grade") return credential.grade ?? "";
+  if (key === "room") return String(credential.room ?? "");
   if (key === "username") return credential.username;
   if (key === "starts") return credential.temporaryPasswordIssuedAt ?? "";
   if (key === "expires") return credential.temporaryPasswordExpiresAt ?? "";
@@ -339,11 +341,12 @@ function CandidateTable({
           },
           { label: "ชื่อ", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
-          { label: "ชั้น/ห้อง", sortKey: "class" },
+          { label: "ชั้น", sortKey: "grade" },
+          { label: "ห้อง", sortKey: "room" },
           { label: "ปี/เทอม", sortKey: "term" },
           { label: "สถานะบัญชี", sortKey: "status" },
         ]}
-        minWidthClassName="min-w-[860px]"
+        minWidthClassName="min-w-[940px]"
         onSortChange={setSort}
         sort={sort}
       >
@@ -365,7 +368,10 @@ function CandidateTable({
               {candidate.schoolName ?? "-"}
             </DataTableCell>
             <DataTableCell className="text-slate-600">
-              {candidate.grade ?? "-"} / {candidate.room ?? "-"}
+              {candidate.grade ?? "-"}
+            </DataTableCell>
+            <DataTableCell className="text-slate-600">
+              {formatRoomLabel(candidate.room)}
             </DataTableCell>
             <DataTableCell className="text-slate-600">
               {candidate.academicYear ?? "-"} / {candidate.semester ?? "-"}
@@ -445,20 +451,22 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
         headings={[
           { label: "ชื่อ", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
-          { label: "ชั้น/ห้อง", sortKey: "class" },
+          { label: "ชั้น", sortKey: "grade" },
+          { label: "ห้อง", sortKey: "room" },
           { label: "username", sortKey: "username" },
           "temp password",
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
         ]}
         columnWidths={[
-          "w-[14%]",
-          "w-[14%]",
+          "w-[13%]",
+          "w-[13%]",
+          "w-[7%]",
           "w-[8%]",
-          "w-[12%]",
-          "w-[20%]",
-          "w-[32%]",
+          "w-[11%]",
+          "w-[18%]",
+          "w-[30%]",
         ]}
-        minWidthClassName="min-w-full"
+        minWidthClassName="min-w-[1080px]"
         onSortChange={setSort}
         sort={sort}
       >
@@ -471,7 +479,10 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
               {credential.schoolName ?? "-"}
             </DataTableCell>
             <DataTableCell className="text-slate-600">
-              {credential.grade ?? "-"} / {credential.room ?? "-"}
+              {credential.grade ?? "-"}
+            </DataTableCell>
+            <DataTableCell className="text-slate-600">
+              {formatRoomLabel(credential.room)}
             </DataTableCell>
             <DataTableCell className="break-all text-sm leading-5 text-slate-700">
               {credential.username}

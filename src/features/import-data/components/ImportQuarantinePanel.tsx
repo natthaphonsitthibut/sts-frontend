@@ -21,6 +21,7 @@ import {
 import { EmptyState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import {
   useImportQuarantine,
@@ -398,10 +399,10 @@ function PersonContextFields({
       sourceValue: source ? contextValue(source.province) : undefined,
     },
     {
-      label: "ชั้น / ห้อง",
-      value: `${gradeValue(candidate)} / ${contextValue(candidate.roomId)}`,
+      label: "ชั้นและห้อง",
+      value: `${gradeValue(candidate)} · ${formatRoomLabel(candidate.roomId)}`,
       sourceValue: source
-        ? `${gradeValue(source)} / ${contextValue(source.roomId)}`
+        ? `${gradeValue(source)} · ${formatRoomLabel(source.roomId)}`
         : undefined,
     },
     {

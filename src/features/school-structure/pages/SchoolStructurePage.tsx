@@ -676,7 +676,7 @@ export function SchoolStructurePage() {
                       </div>
                     }
                     headings={[
-                      { label: "ระดับชั้น", sortKey: "grade" },
+                      { label: "ชั้น", sortKey: "grade" },
                       { label: "ห้อง", sortKey: "room" },
                       { label: "นักเรียน", sortKey: "students" },
                       "ครูประจำชั้น",
@@ -797,7 +797,7 @@ export function SchoolStructurePage() {
                     headings={[
                       "ลำดับ",
                       { label: "ชื่อนักเรียน", sortKey: "name" },
-                      "ระดับชั้น",
+                      "ชั้น",
                       "ห้อง",
                       { label: "สถานะ", sortKey: "status" },
                     ]}

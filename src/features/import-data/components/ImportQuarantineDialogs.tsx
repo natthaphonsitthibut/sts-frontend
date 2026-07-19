@@ -101,7 +101,7 @@ const fixSchema = z.object({
   AcademicYear_Onec: positiveInteger("กรุณากรอกปีการศึกษาเป็นจำนวนเต็มบวก"),
   Semester_Onec: positiveInteger("กรุณากรอกภาคเรียนเป็นจำนวนเต็มบวก"),
   SchoolID_Onec: positiveInteger("กรุณาเลือกโรงเรียนจากรายการ"),
-  GradeLevelID_Onec: positiveInteger("กรุณาเลือกชั้นเรียนจากรายการ"),
+  GradeLevelID_Onec: positiveInteger("กรุณาเลือกระดับชั้นจากรายการ"),
   RoomID_Onec: positiveInteger("กรุณาเลือกหรือพิมพ์เลขห้องเป็นจำนวนเต็มบวก"),
   StudentStatusID_Onec: positiveInteger("กรุณาเลือกสถานะนักเรียนจากรายการ"),
 });
@@ -123,7 +123,7 @@ const FIELD_LABELS: Record<FixField, string> = {
   AcademicYear_Onec: "ปีการศึกษา",
   Semester_Onec: "ภาคเรียน",
   SchoolID_Onec: "โรงเรียน",
-  GradeLevelID_Onec: "ชั้นเรียน",
+  GradeLevelID_Onec: "ระดับชั้น",
   RoomID_Onec: "ห้อง",
   StudentStatusID_Onec: "สถานะนักเรียน",
 };
@@ -133,7 +133,7 @@ const REASON_FIELD_ISSUES: Partial<Record<string, Partial<Record<FixField, strin
     SchoolID_Onec: "ไม่พบโรงเรียนนี้ในข้อมูลหลัก",
   },
   GRADE_NOT_FOUND: {
-    GradeLevelID_Onec: "ไม่พบชั้นเรียนนี้ในข้อมูลหลัก",
+    GradeLevelID_Onec: "ไม่พบระดับชั้นนี้ในข้อมูลหลัก",
   },
   ROOM_NOT_FOUND: {
     RoomID_Onec: "ไม่พบห้องเรียนนี้ในข้อมูลหลัก",
@@ -248,8 +248,8 @@ export function QuarantineSourceGrid({
       />
       <SourceField
         invalidText={gradeRoomIssue}
-        label="ชั้น / ห้อง"
-        value={`${sourceValue(item.student.gradeLabel ?? item.student.gradeLevelId)} / ${sourceValue(item.student.roomId)}`}
+        label="ชั้นและห้อง"
+        value={`${sourceValue(item.student.gradeLabel ?? item.student.gradeLevelId)} · ${formatRoomLabel(item.student.roomId)}`}
       />
       <SourceField
         invalidText={issue("StudentStatusID_Onec")}
@@ -429,7 +429,7 @@ function ImportQuarantineFixDialogContent({
                   const currentValue = watchedValues[name] ?? "";
                   const picker =
                     name === "GradeLevelID_Onec"
-                      ? { options: gradeOptions, placeholder: "เลือกชั้นเรียน" }
+                      ? { options: gradeOptions, placeholder: "เลือกระดับชั้น" }
                       : { options: statusOptions, placeholder: "เลือกสถานะ" };
                   const options =
                     currentValue &&

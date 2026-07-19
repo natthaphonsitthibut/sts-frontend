@@ -51,10 +51,10 @@ function getStudentLabel(link: VisitLink): string {
   );
 }
 
-function getClassLabel(link: VisitLink): string {
+function getClassSummary(link: VisitLink): string {
   const classLabel = [link.grade_label, link.room ? formatRoomLabel(link.room) : null]
     .filter(Boolean)
-    .join(" · ");
+    .join(" ");
   return [link.school_name || link.student_school, classLabel].filter(Boolean).join(" · ");
 }
 
@@ -64,6 +64,9 @@ function getVisitLinkSortValue(
   catalog: readonly StatusCatalogItem[],
 ): string {
   if (key === "student") return getStudentLabel(link);
+  if (key === "school") return link.school_name || link.student_school || "";
+  if (key === "grade") return link.grade_label || "";
+  if (key === "room") return String(link.room ?? "");
   if (key === "assignee") return link.assigned_to_name || "";
   if (key === "status") return getVisitLinkStateMeta(link, catalog).label;
   if (key === "starts") return link.opens_at || link.created_at || "";
@@ -120,18 +123,24 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
     <div className="flex flex-col gap-2">
       <DataTable
         headings={[
-          { label: "เคส/นักเรียน", sortKey: "student" },
+          { label: "นักเรียน", sortKey: "student" },
+          { label: "โรงเรียน", sortKey: "school" },
+          { label: "ชั้น", sortKey: "grade" },
+          { label: "ห้อง", sortKey: "room" },
           { label: "ผู้รับมอบหมาย", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เปิด" /> },
           "",
         ]}
         columnWidths={[
-          "w-[24%]",
-          "w-[18%]",
+          "w-[14%]",
           "w-[13%]",
-          "w-[27%]",
-          "w-[18%]",
+          "w-[6%]",
+          "w-[7%]",
+          "w-[13%]",
+          "w-[9%]",
+          "w-[25%]",
+          "w-[13%]",
         ]}
         minWidthClassName="min-w-full"
         onSortChange={setSort}
@@ -141,9 +150,15 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
           <DataTableRow key={link.id}>
             <DataTableCell>
               <div className="font-bold text-slate-800">{getStudentLabel(link)}</div>
-              <div className="mt-1 text-xs font-medium text-slate-500">
-                {getClassLabel(link) || "-"}
-              </div>
+            </DataTableCell>
+            <DataTableCell className="text-sm text-slate-600">
+              {link.school_name || link.student_school || "-"}
+            </DataTableCell>
+            <DataTableCell className="text-sm font-medium text-slate-600">
+              {link.grade_label || "-"}
+            </DataTableCell>
+            <DataTableCell className="text-sm text-slate-600">
+              {formatRoomLabel(link.room)}
             </DataTableCell>
             <DataTableCell className="text-sm font-medium text-slate-600">
               {link.assigned_to_name || "-"}
@@ -175,7 +190,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
                   {getStudentLabel(link)}
                 </div>
                 <div className="truncate text-xs text-slate-500">
-                  {getClassLabel(link) || "-"}
+                  {getClassSummary(link) || "-"}
                 </div>
               </div>
               <StatusBadge catalog={linkStateCatalog} link={link} />
