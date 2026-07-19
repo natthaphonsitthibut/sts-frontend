@@ -240,6 +240,8 @@ export interface AccountReactivateResponse {
 }
 
 export interface StudentAccountFilter {
+  studentIds?: string[];
+  searchTerm?: string;
   schoolId?: number;
   province?: string;
   district?: string;

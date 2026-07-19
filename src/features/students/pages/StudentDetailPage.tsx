@@ -101,12 +101,26 @@ function StudentAccountPanel({
   canManageAccounts,
   canViewUsers,
   student,
+  studentId,
 }: {
   canManageAccounts: boolean;
   canViewUsers: boolean;
   student: StudentDetail;
+  studentId: string;
 }) {
   const account = student.account;
+  const createAccountParams = new URLSearchParams({ studentId });
+  const studentFilterParams: Array<[string, unknown]> = [
+    ["schoolId", student.school_id ?? student.SchoolID_Onec],
+    ["schoolName", student.school_name],
+    ["grade", student.grade_label ?? student.grade],
+    ["room", student.room],
+  ];
+  for (const [key, value] of studentFilterParams) {
+    if (value !== null && value !== undefined && String(value).trim()) {
+      createAccountParams.set(key, String(value));
+    }
+  }
   return (
     <Card className="mb-5 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -144,7 +158,11 @@ function StudentAccountPanel({
             ดูบัญชีผู้ใช้
           </NavButton>
         ) : !account && canManageAccounts ? (
-          <NavButton size="sm" to="/manage-student-accounts/generate" variant="outline">
+          <NavButton
+            size="sm"
+            to={`/manage-student-accounts/generate?${createAccountParams.toString()}`}
+            variant="outline"
+          >
             ไปหน้าสร้างบัญชี
           </NavButton>
         ) : null}
@@ -405,6 +423,7 @@ export function StudentDetailPage() {
         canManageAccounts={can("manage-student-accounts")}
         canViewUsers={can("manage-users-list")}
         student={student}
+        studentId={studentId}
       />
 
       <AddressPanel student={student} />

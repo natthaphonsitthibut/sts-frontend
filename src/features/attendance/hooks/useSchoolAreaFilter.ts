@@ -28,11 +28,12 @@ export function useSchoolAreaFilter(initial: {
   province?: string;
   district?: string;
   subDistrict?: string;
+  schoolSearch?: string;
 } = {}) {
   const [province, setProvinceState] = useState(initial.province ?? "");
   const [district, setDistrictState] = useState(initial.district ?? "");
   const [subDistrict, setSubDistrict] = useState(initial.subDistrict ?? "");
-  const [schoolSearch, setSchoolSearch] = useState("");
+  const [schoolSearch, setSchoolSearch] = useState(initial.schoolSearch ?? "");
 
   const locationsQuery = useQuery({
     queryKey: ["attendance-locations"],

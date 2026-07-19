@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Clock, Copy, Download, KeyRound, Search, UserPlus, Users, UserX, X } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Combobox,
   FormErrorAlert,
   Input,
@@ -53,6 +54,7 @@ import {
   useDeactivateStudentAccount,
   useReactivateStudentAccount,
   useStudentAccounts,
+  STUDENT_ACCOUNTS_QUERY_KEY,
 } from "../hooks/useUsers";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
@@ -65,6 +67,7 @@ import type {
   StudentAccountManagementStatus,
   StudentAccountStatusCounts,
 } from "../types/admin.types";
+import { STUDENT_QUERY_KEY } from "../../students/hooks/useStudent";
 
 const MIN_BULK_LIMIT = 1;
 const MAX_BULK_LIMIT = 200;
@@ -268,18 +271,26 @@ function downloadTextFile(filename: string, content: string, type: string): void
 
 function CandidateTable({
   candidates,
+  searchTerm,
+  selectedIds,
   page,
   rowsPerPage,
   totalCount,
   onPageChange,
   onRowsPerPageChange,
+  onSelectAll,
+  onSelectRow,
 }: {
   candidates: StudentAccountCandidate[];
+  searchTerm: string;
+  selectedIds: ReadonlySet<string>;
   page: number;
   rowsPerPage: number;
   totalCount: number;
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rowsPerPage: number) => void;
+  onSelectAll: (selected: boolean, rows: readonly StudentAccountCandidate[]) => void;
+  onSelectRow: (studentId: string, selected: boolean) => void;
 }) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedCandidates = useMemo(() => {
@@ -292,13 +303,20 @@ function CandidateTable({
       return sort.direction === "asc" ? result : -result;
     });
   }, [candidates, sort]);
+  const allSelected =
+    sortedCandidates.length > 0 &&
+    sortedCandidates.every((candidate) => selectedIds.has(candidate.studentId));
 
   if (candidates.length === 0) {
     return (
       <EmptyState
-        description="นักเรียนในขอบเขตนี้มีบัญชีผู้ใช้ครบแล้วทุกคน"
+        description={
+          searchTerm
+            ? "ลองตรวจคำค้นหา หรือปรับขอบเขตโรงเรียน ชั้น และห้อง"
+            : "นักเรียนในขอบเขตนี้มีบัญชีผู้ใช้ครบแล้วทุกคน"
+        }
         icon={UserPlus}
-        title="ไม่มีนักเรียนที่ต้องสร้างบัญชี"
+        title={searchTerm ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ต้องสร้างบัญชี"}
       />
     );
   }
@@ -307,6 +325,18 @@ function CandidateTable({
     <>
       <DataTable
         headings={[
+          {
+            label: (
+              <Checkbox
+                aria-label="เลือกนักเรียนทั้งหมดในหน้านี้"
+                checked={allSelected}
+                onChange={(event) =>
+                  onSelectAll(event.currentTarget.checked, sortedCandidates)
+                }
+              />
+            ),
+            className: "w-[52px]",
+          },
           { label: "ชื่อ", sortKey: "name" },
           { label: "โรงเรียน", sortKey: "school" },
           { label: "ชั้น/ห้อง", sortKey: "class" },
@@ -319,6 +349,15 @@ function CandidateTable({
       >
         {sortedCandidates.map((candidate) => (
           <DataTableRow key={candidate.studentId}>
+            <DataTableCell>
+              <Checkbox
+                aria-label={`เลือก ${candidate.studentName}`}
+                checked={selectedIds.has(candidate.studentId)}
+                onChange={(event) =>
+                  onSelectRow(candidate.studentId, event.currentTarget.checked)
+                }
+              />
+            </DataTableCell>
             <DataTableCell className="font-bold text-slate-800">
               {candidate.studentName}
             </DataTableCell>
@@ -342,7 +381,16 @@ function CandidateTable({
       <TableCardList>
         {sortedCandidates.map((candidate) => (
           <TableCard key={candidate.studentId} className="space-y-2">
-            <div className="font-bold text-slate-900">{candidate.studentName}</div>
+            <div className="flex items-start gap-3">
+              <Checkbox
+                aria-label={`เลือก ${candidate.studentName}`}
+                checked={selectedIds.has(candidate.studentId)}
+                onChange={(event) =>
+                  onSelectRow(candidate.studentId, event.currentTarget.checked)
+                }
+              />
+              <div className="font-bold text-slate-900">{candidate.studentName}</div>
+            </div>
             <div className="text-sm text-slate-600">
               {candidate.schoolName ?? "-"} · {candidate.grade ?? "-"} / {candidate.room ?? "-"}
             </div>
@@ -480,11 +528,29 @@ function CredentialTable({ credentials }: { credentials: StudentAccountCredentia
 }
 
 export function StudentAccountsPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkStudentId = searchParams.get("studentId")?.trim() ?? "";
+  const initialSchoolId = searchParams.get("schoolId")?.trim() ?? "";
+  const initialSchoolName = searchParams.get("schoolName")?.trim() ?? "";
+  const initialGrade = searchParams.get("grade")?.trim() ?? "";
+  const initialRoom = searchParams.get("room")?.trim() ?? "";
   const { can } = usePermissions();
+  const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const scope = useScopeCascade({ lockToActorScope: true });
-  const area = useSchoolAreaFilter();
+  const scope = useScopeCascade({
+    lockToActorScope: true,
+    initialSchoolId,
+    initialGrade,
+    initialRoom,
+  });
+  const area = useSchoolAreaFilter({
+    province: deepLinkStudentId ? undefined : searchParams.get("province") ?? undefined,
+    district: deepLinkStudentId ? undefined : searchParams.get("district") ?? undefined,
+    subDistrict: deepLinkStudentId
+      ? undefined
+      : searchParams.get("subDistrict") ?? undefined,
+    schoolSearch: initialSchoolName || undefined,
+  });
   const [activeTab, setActiveTab] = useRouteTab(
     {
       manage: "/manage-student-accounts",
@@ -496,21 +562,36 @@ export function StudentAccountsPage() {
   );
   const selectedTab = activeTab === "batch" ? "generate" : activeTab;
   const [searchQuery, setSearchQuery] = useState("");
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
   const [accountStatus, setAccountStatus] = useState<"" | StudentAccountManagementStatus>("");
   const [managementPage, setManagementPage] = useState(1);
   const [managementRowsPerPage, setManagementRowsPerPage] = useState(20);
   const [selectedAccountIds, setSelectedAccountIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
-  const [limit, setLimit] = useState(50);
+  const [limit, setLimit] = useState(() => {
+    const requestedLimit = Number(searchParams.get("limit"));
+    return Number.isInteger(requestedLimit) &&
+      requestedLimit >= MIN_BULK_LIMIT &&
+      requestedLimit <= MAX_BULK_LIMIT
+      ? requestedLimit
+      : 50;
+  });
   const [previewPage, setPreviewPage] = useState(1);
   const [previewRowsPerPage, setPreviewRowsPerPage] = useState(20);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [createdCredentials, setCreatedCredentials] = useState<StudentAccountCredential[]>([]);
+  const deepLinkAreaHandledRef = useRef(false);
+  const deepLinkHandledRef = useRef(false);
   const [credentialSession, setCredentialSession] = useState<{
     scopeKey: string;
     credentials: StudentAccountCredential[];
   }>({ scopeKey: "", credentials: [] });
   const [batchStartRequestKey, setBatchStartRequestKey] = useState(0);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  const debouncedCandidateSearch = useDebouncedValue(candidateSearchQuery.trim(), 350);
   const managementQuery = useMemo(
     () =>
       buildManagementQuery(
@@ -531,8 +612,11 @@ export function StudentAccountsPage() {
     ],
   );
   const previewFilter = useMemo(
-    () => buildFilter(scope, area, previewRowsPerPage, previewPage),
-    [area, previewPage, previewRowsPerPage, scope],
+    () => ({
+      ...buildFilter(scope, area, previewRowsPerPage, previewPage),
+      searchTerm: debouncedCandidateSearch || undefined,
+    }),
+    [area, debouncedCandidateSearch, previewPage, previewRowsPerPage, scope],
   );
   const generateFilter = useMemo(
     () => buildFilter(scope, area, limit),
@@ -582,12 +666,194 @@ export function StudentAccountsPage() {
     meta: { suppressSuccessToast: true },
   });
   const preview = previewMutation.data;
+  const generateSelectedMutation = useMutation({
+    mutationFn: (payload: StudentAccountFilter) =>
+      adminService.generateStudentAccounts(payload),
+    onSuccess: (result) => {
+      setCreatedCredentials(result.credentials);
+      setSelectedCandidateIds(new Set());
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [STUDENT_ACCOUNTS_QUERY_KEY] });
+      previewMutation.mutate(previewFilter);
+    },
+  });
   const generatedCredentials =
     credentialSession.scopeKey === accountScopeKey ? credentialSession.credentials : [];
+
+  const consumeDeepLinkContext = useCallback((): void => {
+    if (!searchParams.has("studentId")) return;
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete("studentId");
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const updateFilterSearchParams = useCallback(
+    (updates: Record<string, string | undefined>): void => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.delete("studentId");
+      for (const [key, value] of Object.entries(updates)) {
+        if (value) {
+          nextSearchParams.set(key, value);
+        } else {
+          nextSearchParams.delete(key);
+        }
+      }
+      setSearchParams(nextSearchParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearFilterSearchParams = useCallback((): void => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    for (const key of [
+      "studentId",
+      "schoolId",
+      "schoolName",
+      "grade",
+      "room",
+      "province",
+      "district",
+      "subDistrict",
+      "limit",
+    ]) {
+      nextSearchParams.delete(key);
+    }
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (deepLinkAreaHandledRef.current || !initialSchoolId) return;
+
+    const initialSchool = area.filteredSchools.find(
+      (school) => String(school.id) === initialSchoolId,
+    );
+    if (!initialSchool) return;
+
+    deepLinkAreaHandledRef.current = true;
+    area.setAreaFromSchool(initialSchool);
+  }, [area, initialSchoolId]);
+
+  useEffect(() => {
+    if (
+      deepLinkHandledRef.current ||
+      selectedTab !== "generate" ||
+      !deepLinkStudentId ||
+      (initialSchoolId && scope.schoolId !== initialSchoolId) ||
+      (initialGrade && scope.grade !== initialGrade) ||
+      (initialRoom && scope.room !== initialRoom)
+    ) {
+      return;
+    }
+
+    deepLinkHandledRef.current = true;
+    consumeDeepLinkContext();
+    previewMutation.mutate(
+      {
+        ...previewFilter,
+        searchTerm: undefined,
+        studentIds: [deepLinkStudentId],
+        page: 1,
+        limit: 20,
+      },
+      {
+        onSuccess: (result) => {
+          const candidate = result.candidates.find(
+            (item) => item.studentId === deepLinkStudentId,
+          );
+          if (candidate) {
+            setCandidateSearchQuery(candidate.studentName);
+            setSelectedCandidateIds(new Set([deepLinkStudentId]));
+          }
+        },
+      },
+    );
+  }, [
+    consumeDeepLinkContext,
+    deepLinkStudentId,
+    initialGrade,
+    initialRoom,
+    initialSchoolId,
+    previewFilter,
+    previewMutation,
+    scope.grade,
+    scope.room,
+    scope.schoolId,
+    selectedTab,
+  ]);
 
   function resetManagementList(): void {
     setManagementPage(1);
     setSelectedAccountIds(new Set());
+  }
+
+  function cancelCandidateSelection(): void {
+    setSelectedCandidateIds(new Set());
+    consumeDeepLinkContext();
+  }
+
+  function handleSelectCandidate(studentId: string, selected: boolean): void {
+    if (!selected && studentId === deepLinkStudentId) {
+      consumeDeepLinkContext();
+    }
+    setSelectedCandidateIds((current) => {
+      const next = new Set(current);
+      if (selected) {
+        if (next.size >= MAX_BULK_LIMIT) {
+          return current;
+        }
+        next.add(studentId);
+      } else {
+        next.delete(studentId);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAllCandidates(
+    selected: boolean,
+    rows: readonly StudentAccountCandidate[],
+  ): void {
+    if (
+      !selected &&
+      rows.some((row) => row.studentId === deepLinkStudentId)
+    ) {
+      consumeDeepLinkContext();
+    }
+    setSelectedCandidateIds((current) => {
+      const next = new Set(current);
+      for (const row of rows) {
+        if (selected) {
+          if (next.size >= MAX_BULK_LIMIT) {
+            break;
+          }
+          next.add(row.studentId);
+        } else {
+          next.delete(row.studentId);
+        }
+      }
+      return next;
+    });
+  }
+
+  async function generateSelectedStudentAccounts(): Promise<void> {
+    const studentIds = Array.from(selectedCandidateIds);
+    if (studentIds.length === 0) {
+      return;
+    }
+    const accepted = await confirm({
+      title: "สร้างบัญชีนักเรียนที่เลือก",
+      description: `ต้องการสร้างบัญชีให้นักเรียนที่เลือก ${studentIds.length} คนใช่หรือไม่?`,
+      confirmText: "สร้างบัญชี",
+    });
+    if (!accepted) {
+      return;
+    }
+    generateSelectedMutation.mutate({
+      ...generateFilter,
+      studentIds,
+      page: 1,
+      limit: studentIds.length,
+    });
   }
 
   function handleManagementRowsPerPageChange(value: number): void {
@@ -761,50 +1027,119 @@ export function StudentAccountsPage() {
     );
   }
 
+  async function copyCreatedCredentials(): Promise<void> {
+    if (createdCredentials.length === 0) return;
+    await navigator.clipboard.writeText(credentialsToTsv(createdCredentials));
+  }
+
+  async function exportCreatedCredentials(): Promise<void> {
+    if (createdCredentials.length === 0) return;
+    const accepted = await confirm({
+      title: "ยืนยันการดาวน์โหลดไฟล์บัญชี",
+      description:
+        "ไฟล์ CSV มีชื่อผู้ใช้และรหัสผ่านชั่วคราวของนักเรียน กรุณาเก็บรักษาและส่งต่ออย่างปลอดภัย",
+      confirmText: "ดาวน์โหลด",
+    });
+    if (!accepted) return;
+    downloadTextFile(
+      "student-accounts-created.csv",
+      credentialsToCsv(createdCredentials),
+      "text/csv;charset=utf-8",
+    );
+  }
+
   function setAreaAndClearSchool(
     level: "province" | "district" | "subDistrict",
     value: string,
   ): void {
     area.setSchoolSearch("");
     setPreviewPage(1);
+    setSelectedCandidateIds(new Set());
+    previewMutation.reset();
     resetManagementList();
     if (level === "province") {
       area.setProvince(value);
+      updateFilterSearchParams({
+        province: value || undefined,
+        district: undefined,
+        subDistrict: undefined,
+        schoolId: undefined,
+        schoolName: undefined,
+        grade: undefined,
+        room: undefined,
+      });
     } else if (level === "district") {
       area.setDistrict(value);
+      updateFilterSearchParams({
+        district: value || undefined,
+        subDistrict: undefined,
+        schoolId: undefined,
+        schoolName: undefined,
+        grade: undefined,
+        room: undefined,
+      });
     } else {
       area.setSubDistrict(value);
+      updateFilterSearchParams({
+        subDistrict: value || undefined,
+        schoolId: undefined,
+        schoolName: undefined,
+        grade: undefined,
+        room: undefined,
+      });
     }
     scope.setSchoolId("");
   }
 
   function setSchool(nextSchoolId: string): void {
     setPreviewPage(1);
+    setSelectedCandidateIds(new Set());
+    previewMutation.reset();
     resetManagementList();
     scope.setSchoolId(nextSchoolId);
     const school = area.filteredSchools.find(
       (candidate) => String(candidate.id) === nextSchoolId,
     );
     area.setAreaFromSchool(school);
+    updateFilterSearchParams({
+      province: school?.province || undefined,
+      district: school?.district || undefined,
+      subDistrict: school?.sub_district || undefined,
+      schoolId: nextSchoolId || undefined,
+      schoolName: school?.name || undefined,
+      grade: undefined,
+      room: undefined,
+    });
   }
 
   function handleLimitChange(value: string): void {
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue)) {
       setLimit(MIN_BULK_LIMIT);
+      updateFilterSearchParams({ limit: String(MIN_BULK_LIMIT) });
       return;
     }
-    setLimit(Math.min(Math.max(numericValue, MIN_BULK_LIMIT), MAX_BULK_LIMIT));
+    const nextLimit = Math.min(
+      Math.max(numericValue, MIN_BULK_LIMIT),
+      MAX_BULK_LIMIT,
+    );
+    setLimit(nextLimit);
+    updateFilterSearchParams({ limit: String(nextLimit) });
   }
 
   function handleClearFilters(): void {
     area.reset();
     scope.reset();
     setSearchQuery("");
+    setCandidateSearchQuery("");
     setAccountStatus("");
     setLimit(50);
     setPreviewPage(1);
+    setSelectedCandidateIds(new Set());
+    setCreatedCredentials([]);
+    previewMutation.reset();
     resetManagementList();
+    clearFilterSearchParams();
   }
 
   return (
@@ -812,7 +1147,7 @@ export function StudentAccountsPage() {
       <ListPageToolbar
         icon={KeyRound}
         title="บัญชีนักเรียน"
-        description="สร้าง username และรหัสผ่านชั่วคราวจาก roster ปัจจุบัน"
+        description="สร้างชื่อผู้ใช้และรหัสผ่านชั่วคราวจากข้อมูลนักเรียนปัจจุบัน"
         onClearFilters={handleClearFilters}
         actions={
           <Tabs
@@ -832,7 +1167,17 @@ export function StudentAccountsPage() {
                 },
                 placeholder: "ค้นหาชื่อหรือ username...",
               }
-            : undefined
+            : selectedTab === "generate"
+              ? {
+                  value: candidateSearchQuery,
+                  onChange: (value) => {
+                    setCandidateSearchQuery(value);
+                    setPreviewPage(1);
+                    previewMutation.reset();
+                  },
+                  placeholder: "ค้นหาชื่อนักเรียน...",
+                }
+              : undefined
         }
         filters={
           <>
@@ -907,8 +1252,14 @@ export function StudentAccountsPage() {
                 disabled={!scope.schoolId || scope.gradeLocked}
                 onChange={(value) => {
                   setPreviewPage(1);
+                  setSelectedCandidateIds(new Set());
+                  previewMutation.reset();
                   resetManagementList();
                   scope.setGrade(value);
+                  updateFilterSearchParams({
+                    grade: value || undefined,
+                    room: undefined,
+                  });
                 }}
                 options={[
                   { value: "", label: "ทุกชั้น" },
@@ -923,8 +1274,11 @@ export function StudentAccountsPage() {
                 disabled={!scope.grade || scope.roomLocked}
                 onChange={(value) => {
                   setPreviewPage(1);
+                  setSelectedCandidateIds(new Set());
+                  previewMutation.reset();
                   resetManagementList();
                   scope.setRoom(value);
+                  updateFilterSearchParams({ room: value || undefined });
                 }}
                 options={[
                   { value: "", label: "ทุกห้อง" },
@@ -996,6 +1350,15 @@ export function StudentAccountsPage() {
             </>
           ) : selectedTab === "generate" ? (
             <>
+              {selectedCandidateIds.size > 0 ? (
+                <Button
+                  icon={X}
+                  onClick={cancelCandidateSelection}
+                  variant="ghost"
+                >
+                  ยกเลิกการเลือก ({selectedCandidateIds.size})
+                </Button>
+              ) : null}
               <Button
                 icon={Search}
                 isLoading={previewMutation.isPending}
@@ -1005,13 +1368,30 @@ export function StudentAccountsPage() {
                 ดูตัวอย่าง
               </Button>
               <Button
-                disabled={
-                  !preview || preview.summary.withoutAccountCount === 0 || previewMutation.isPending
-                }
+                disabled={selectedCandidateIds.size === 0 || generateSelectedMutation.isPending}
                 icon={UserPlus}
-                onClick={generateStudentAccounts}
+                isLoading={generateSelectedMutation.isPending}
+                loadingText="กำลังสร้าง"
+                onClick={() => void generateSelectedStudentAccounts()}
               >
-                สร้างบัญชี
+                สร้างบัญชีที่เลือก ({selectedCandidateIds.size})
+              </Button>
+              <Button
+                disabled={
+                  !preview ||
+                  preview.summary.withoutAccountCount === 0 ||
+                  previewMutation.isPending ||
+                  Boolean(debouncedCandidateSearch)
+                }
+                onClick={generateStudentAccounts}
+                title={
+                  debouncedCandidateSearch
+                    ? "ล้างคำค้นหาก่อนสร้างทั้งหมดตามตัวกรอง"
+                    : undefined
+                }
+                variant="outline"
+              >
+                สร้างทั้งหมดตามตัวกรอง
               </Button>
             </>
           ) : undefined
@@ -1150,11 +1530,17 @@ export function StudentAccountsPage() {
         </>
       ) : selectedTab === "generate" ? (
         <>
+          <FormErrorAlert
+            error={generateSelectedMutation.error}
+            fallback="สร้างบัญชีนักเรียนที่เลือกไม่สำเร็จ กรุณาลองอีกครั้ง"
+          />
           {previewMutation.isError ? (
             <ErrorState
               title="ตรวจรายชื่อไม่สำเร็จ"
               description={getStudentAccountErrorMessage(previewMutation.error)}
-              onRetry={() => previewMutation.mutate(previewFilter)}
+              onRetry={() =>
+                previewMutation.mutate(previewMutation.variables ?? previewFilter)
+              }
             />
           ) : preview ? (
             <div className="space-y-5">
@@ -1183,20 +1569,30 @@ export function StudentAccountsPage() {
               />
               <CandidateTable
                 candidates={preview.candidates}
+                searchTerm={debouncedCandidateSearch}
+                selectedIds={selectedCandidateIds}
                 page={preview.meta?.page ?? previewPage}
                 rowsPerPage={preview.meta?.limit ?? previewRowsPerPage}
                 totalCount={preview.meta?.totalCount ?? preview.summary.withoutAccountCount}
+                onSelectAll={handleSelectAllCandidates}
+                onSelectRow={handleSelectCandidate}
                 onPageChange={(nextPage) => {
                   setPreviewPage(nextPage);
                   previewMutation.mutate(
-                    buildFilter(scope, area, previewRowsPerPage, nextPage),
+                    {
+                      ...buildFilter(scope, area, previewRowsPerPage, nextPage),
+                      searchTerm: debouncedCandidateSearch || undefined,
+                    },
                   );
                 }}
                 onRowsPerPageChange={(nextRowsPerPage) => {
                   setPreviewRowsPerPage(nextRowsPerPage);
                   setPreviewPage(1);
                   previewMutation.mutate(
-                    buildFilter(scope, area, nextRowsPerPage, 1),
+                    {
+                      ...buildFilter(scope, area, nextRowsPerPage, 1),
+                      searchTerm: debouncedCandidateSearch || undefined,
+                    },
                   );
                 }}
               />
@@ -1208,6 +1604,38 @@ export function StudentAccountsPage() {
               title="เลือกขอบเขตแล้วดูตัวอย่าง"
             />
           )}
+
+          {createdCredentials.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              <Alert variant="success">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <AlertTitle>สร้างแล้ว {createdCredentials.length} บัญชี</AlertTitle>
+                    <AlertDescription>
+                      รหัสชั่วคราวแสดงเพียงครั้งเดียว คัดลอกหรือส่งออกผลลัพธ์ได้ทันที
+                    </AlertDescription>
+                  </div>
+                  <TableActionBar className="min-h-0 shrink-0">
+                    <Button
+                      icon={Copy}
+                      onClick={() => void copyCreatedCredentials()}
+                      variant="outline"
+                    >
+                      คัดลอกตาราง
+                    </Button>
+                    <Button
+                      icon={Download}
+                      onClick={() => void exportCreatedCredentials()}
+                      variant="outline"
+                    >
+                      ส่งออก CSV
+                    </Button>
+                  </TableActionBar>
+                </div>
+              </Alert>
+              <CredentialTable credentials={createdCredentials} />
+            </div>
+          ) : null}
 
           <div className="mt-6">
             <StudentAccountBatchPanel
