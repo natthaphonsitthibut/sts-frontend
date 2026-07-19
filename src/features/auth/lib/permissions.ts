@@ -213,10 +213,8 @@ export function getEffectivePermissions(
 }
 
 export function isStudentOnlyRole(roles: string[]): boolean {
-  return (
-    roles.includes("STUDENT") &&
-    !roles.some((role) => ["ADMIN", "DIRECTOR", "EXECUTIVE", "TEACHER"].includes(role))
-  );
+  // Any non-STUDENT role (system or custom role group) means a staff session.
+  return roles.length > 0 && roles.every((role) => role === "STUDENT");
 }
 
 export function hasPermission(
