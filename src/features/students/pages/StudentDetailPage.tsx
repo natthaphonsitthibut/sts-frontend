@@ -420,15 +420,6 @@ export function StudentDetailPage() {
                 ขอเยี่ยมบ้าน
               </Button>
             ) : null}
-            {can("review-cases") && !casesLoading ? (
-              <StudentCaseAction
-                activeCaseCount={activeCases.length}
-                activeCaseId={activeCases.length > 0 ? Number(activeCases[0].id) : null}
-                mode="button"
-                studentId={studentId}
-                studentName={fullName || "นักเรียน"}
-              />
-            ) : null}
             <NavButton
               disabled={!can("edit-students")}
               icon={SquarePen}
@@ -438,6 +429,15 @@ export function StudentDetailPage() {
             >
               แก้ไขข้อมูลนักเรียน
             </NavButton>
+            {can("review-cases") && !casesLoading ? (
+              <StudentCaseAction
+                activeCaseCount={activeCases.length}
+                activeCaseId={activeCases.length > 0 ? Number(activeCases[0].id) : null}
+                mode="button"
+                studentId={studentId}
+                studentName={fullName || "นักเรียน"}
+              />
+            ) : null}
             <NavButton icon={ArrowLeft} size="md" to={-1} variant="outline">
               ย้อนกลับ
             </NavButton>
