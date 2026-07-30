@@ -1,17 +1,13 @@
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
-  AlertTriangle,
   BarChart3,
-  BriefcaseBusiness,
-  CalendarCheck,
   ClipboardCheck,
   Clock,
-  ShieldAlert,
   Siren,
   Users,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, Combobox, Select, buttonVariants } from "../../../components/base";
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Combobox } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -24,21 +20,15 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
-import { usePermissions } from "../../auth/hooks/usePermissions";
+import { CasePipelineChart } from "../components/CasePipelineChart";
+import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
   HomeDashboardFilters,
   HomeDashboardMetric,
   HomeDashboardOption,
-  HomeDashboardPeriod,
 } from "../types/home-dashboard.types";
-
-const PERIOD_OPTIONS: Array<{ value: HomeDashboardPeriod; label: string }> = [
-  { value: "7_DAYS", label: "7 วัน" },
-  { value: "30_DAYS", label: "30 วัน" },
-  { value: "CURRENT_TERM", label: "ภาคเรียนปัจจุบัน" },
-];
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -87,6 +77,25 @@ function buildQuery(
 
 function destination(path: string, query?: Record<string, string | number>): string {
   return `${path}${buildQuery(query)}`;
+}
+
+function getRiskAreaBackAction(filters: HomeDashboardFilters): {
+  label: string;
+  next: Partial<HomeDashboardFilters>;
+} | null {
+  if (filters.schoolId) {
+    return { label: "กลับไปดูทุกโรงเรียนในพื้นที่", next: { schoolId: undefined } };
+  }
+  if (filters.subDistrict) {
+    return { label: "กลับไปดูตำบล/แขวง", next: { subDistrict: undefined } };
+  }
+  if (filters.district) {
+    return { label: "กลับไปดูอำเภอ/เขต", next: { district: undefined } };
+  }
+  if (filters.province) {
+    return { label: "กลับไปดูจังหวัด", next: { province: undefined } };
+  }
+  return null;
 }
 
 function FilterCombobox({
@@ -191,19 +200,6 @@ function DashboardFilterBar({
   };
   return (
     <ToolbarFilterGrid>
-      <Select
-        aria-label="ช่วงแนวโน้ม"
-        value={filters.period}
-        onChange={(event) =>
-          onUpdate({ period: event.currentTarget.value as HomeDashboardPeriod })
-        }
-      >
-        {PERIOD_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
       <FilterCombobox
         allLabel="ทุกจังหวัด"
         ariaLabel="จังหวัด"
@@ -290,61 +286,10 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
   );
 }
 
-function AttentionQueue({ items }: { items: Array<{
-  id: string;
-  label: string;
-  reason: string;
-  count: number;
-  ageLabel: string | null;
-  targetPath: string;
-  targetQuery?: Record<string, string | number>;
-}> }) {
-  return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">ต้องดำเนินการวันนี้</h2>
-          <p className="text-sm text-slate-500">เรียงตามความเร่งด่วนจากข้อมูลในขอบเขตปัจจุบัน</p>
-        </div>
-        <Badge variant={items.length > 0 ? "warning" : "success"}>
-          {items.length > 0 ? `${items.length} รายการ` : "ไม่มีรายการเร่งด่วน"}
-        </Badge>
-      </div>
-      {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-          ยังไม่พบงานเร่งด่วนในขอบเขตนี้
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <Link
-              key={item.id}
-              to={destination(item.targetPath, item.targetQuery)}
-              className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4 transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-row sm:items-center sm:justify-between"
-            >
-              <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-2">
-                  <AlertTriangle className="size-4 text-warning-700" aria-hidden="true" />
-                  <span className="font-semibold text-slate-900">{item.label}</span>
-                  <Badge variant="secondary">{item.count.toLocaleString("th-TH")}</Badge>
-                </span>
-                <span className="mt-1 block text-sm text-slate-600">{item.reason}</span>
-              </span>
-              <span className="text-sm font-medium text-primary-dark">
-                {item.ageLabel ? `เก่าสุด ${item.ageLabel}` : "เปิดรายการ"}
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
-
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
-  const { can } = usePermissions();
   const { filters, reset, updateFilter } = useDashboardFilters();
+  const riskAreaBackAction = getRiskAreaBackAction(filters);
   const {
     summary,
     filterOptions,
@@ -355,17 +300,6 @@ export function MainPage() {
     refetch,
     refetchFilterOptions,
   } = useHomeDashboard(filters);
-  const shortcuts = [
-    can("attendance") || can("attendance-dashboard")
-      ? { to: "/attendance-operations", icon: CalendarCheck, label: "งานเช็คชื่อ" }
-      : null,
-    can("dashboard")
-      ? { to: "/student-risk-report", icon: ShieldAlert, label: "เฝ้าระวัง" }
-      : null,
-    can("review-cases")
-      ? { to: "/cases", icon: BriefcaseBusiness, label: "เคสติดตาม" }
-      : null,
-  ].filter((item): item is { to: string; icon: typeof Users; label: string } => Boolean(item));
 
   return (
     <PageShell>
@@ -411,54 +345,37 @@ export function MainPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{summary.scopeLabel}</Badge>
-              <Badge variant="secondary">
-                {PERIOD_OPTIONS.find((option) => option.value === summary.period)?.label}
-              </Badge>
             </div>
           </div>
 
-          <AttentionQueue items={summary.attentionItems} />
           <MetricGrid metrics={summary.metrics} />
 
-          {shortcuts.length > 0 ? <Card className="p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">ทางลัดทำงานต่อ</h2>
-                <p className="text-sm text-slate-500">
-                  ไปยังรายการหลักที่รองรับการกรองจริง ไม่มีฟอร์มส่งออกซ้ำบนหน้าหลัก
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {shortcuts.map((shortcut) => (
-                  <LinkButton key={shortcut.to} to={shortcut.to} icon={shortcut.icon}>
-                    {shortcut.label}
-                  </LinkButton>
-                ))}
-              </div>
-            </div>
-          </Card> : null}
+          <div
+            className={cn(
+              "grid gap-5",
+              summary.riskAreaRanking &&
+                summary.casePipeline &&
+                "xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]",
+            )}
+          >
+            {summary.riskAreaRanking ? (
+              <RiskAreaRankingChart
+                backLabel={riskAreaBackAction?.label}
+                onBack={
+                  riskAreaBackAction
+                    ? () => updateFilter(riskAreaBackAction.next)
+                    : undefined
+                }
+                onSelect={(filter) => updateFilter(filter)}
+                ranking={summary.riskAreaRanking}
+              />
+            ) : null}
+            {summary.casePipeline ? (
+              <CasePipelineChart filters={filters} pipeline={summary.casePipeline} />
+            ) : null}
+          </div>
         </div>
       )}
     </PageShell>
-  );
-}
-
-function LinkButton({
-  children,
-  icon: Icon,
-  to,
-}: {
-  children: string;
-  icon: typeof Users;
-  to: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className={buttonVariants({ variant: "outline" })}
-    >
-      <Icon className="size-4" aria-hidden="true" />
-      {children}
-    </Link>
   );
 }
