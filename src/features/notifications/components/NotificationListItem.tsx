@@ -2,6 +2,7 @@ import { cn } from "../../../lib/utils";
 import { formatThaiRelativeTime } from "../../../lib/date-time";
 import { Badge } from "../../../components/base";
 import type { NotificationItem } from "../types/notifications.types";
+import { formatNotificationBody } from "../lib/notification-body";
 
 interface NotificationListItemProps {
   compact?: boolean;
@@ -17,6 +18,7 @@ export function NotificationListItem({
   showType = false,
 }: NotificationListItemProps) {
   const isUnread = !notification.read_at;
+  const body = formatNotificationBody(notification);
 
   return (
     <li>
@@ -43,14 +45,14 @@ export function NotificationListItem({
           >
             {notification.title}
           </span>
-          {notification.body ? (
+          {body ? (
             <span
               className={cn(
                 "mt-0.5 block break-words text-xs text-slate-500",
                 compact && "truncate",
               )}
             >
-              {notification.body}
+              {body}
             </span>
           ) : null}
           <span className={cn("mt-1 block text-xs", isUnread ? "text-primary" : "text-slate-500")}>

@@ -4,6 +4,10 @@ export interface NotificationItem {
   type_label?: string | null;
   title: string;
   body?: string | null;
+  student_person_uuid: string | null;
+  case_id: number | null;
+  student_name_masked: string | null;
+  reason_text: string | null;
   ref_entity?: string | null;
   ref_id?: string | null;
   seen_at?: string | null;
