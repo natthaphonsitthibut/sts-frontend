@@ -25,13 +25,11 @@ export function formatNotificationBody(notification: NotificationItem): string |
   const reason = normalizeText(notification.reason_text);
   switch (notification.type_code) {
     case "CASE_CREATED":
-      return [studentName, reason].filter(Boolean).join(" · ");
     case "CASE_STATUS_CHANGED":
     case "CASE_SLA_WARNING":
     case "CASE_SLA_BREACHED":
-      return `เคสของ ${studentName}`;
     case "CASE_RISK_ESCALATED":
-      return [`เคสของ ${studentName}`, reason].filter(Boolean).join(" · ");
+      return [studentName, reason].filter(Boolean).join(" · ");
     case "STUDENT_RISK_WATCH":
       return [`เฝ้าระวัง ${studentName}`, reason].filter(Boolean).join(" · ");
     default:
