@@ -68,8 +68,8 @@ export function HeaderProfileMenu({
         aria-haspopup="menu"
         aria-label="เปิดเมนูบัญชีผู้ใช้"
         className={cn(
-          "flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark sm:w-44 sm:px-2",
-          open ? "bg-surface-app" : "hover:bg-white/10",
+          "group flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-44 sm:px-2",
+          open && "bg-surface-app hover:bg-surface-app",
         )}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
@@ -79,17 +79,11 @@ export function HeaderProfileMenu({
           focusMenuEdge(event.key === "ArrowDown" ? "first" : "last");
         }}
       >
-        <Avatar
-          fallback={initials}
-          className={cn(
-            "size-9 font-semibold text-primary",
-            open ? "bg-white" : "bg-surface-app",
-          )}
-        />
+        <Avatar fallback={initials} className="size-9 bg-primary-soft font-semibold text-primary" />
         <span
           className={cn(
-            "hidden min-w-0 flex-1 truncate text-sm font-semibold sm:block",
-            open ? "text-primary" : "text-white",
+            "hidden min-w-0 flex-1 truncate text-sm sm:block",
+            open ? "font-semibold text-primary" : "font-medium text-slate-600 group-hover:text-slate-900",
           )}
         >
           {displayName}
@@ -98,7 +92,7 @@ export function HeaderProfileMenu({
           aria-hidden="true"
           className={cn(
             "hidden size-4 transition-transform sm:block",
-            open ? "rotate-180 text-primary" : "text-white/70",
+            open ? "rotate-180 text-primary" : "text-slate-400 group-hover:text-slate-600",
           )}
         />
       </button>

@@ -26,7 +26,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       .join("") || "U";
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-primary-dark text-white shadow-card">
+    <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white">
       <div className="flex h-full items-center gap-3 px-4 lg:px-6">
         <IconButton
           aria-label="เปิดเมนู"
@@ -37,20 +37,16 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         />
         {/* Brand (left) — aligned over the sidebar width on desktop. */}
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <SchoolIcon className="size-7 shrink-0 text-white" aria-hidden="true" />
-          <span className="truncate text-base font-semibold text-white">
-            ระบบติดตามนักเรียน
-          </span>
+          <SchoolIcon className="size-7 shrink-0 text-primary" aria-hidden="true" />
+          <span className="truncate text-xl font-bold text-primary">ระบบติดตามนักเรียน</span>
         </div>
         <div className="flex items-center gap-3">
           {canEditProfile ? <NotificationBell /> : null}
-          <div className="ml-1 border-l border-white/20 pl-2 sm:pl-3">
-            <HeaderProfileMenu
-              canEditProfile={canEditProfile}
-              displayName={displayName}
-              initials={initials}
-            />
-          </div>
+          <HeaderProfileMenu
+            canEditProfile={canEditProfile}
+            displayName={displayName}
+            initials={initials}
+          />
         </div>
       </div>
     </header>

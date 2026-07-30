@@ -62,8 +62,8 @@ export function NotificationBell() {
           unseenCount > 0 ? `รายการแจ้งเตือน (ใหม่ ${unseenCount} รายการ)` : "รายการแจ้งเตือน"
         }
         className={cn(
-          "relative inline-flex size-10 items-center justify-center rounded-lg border border-white bg-white text-primary-dark transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-dark",
-          open && "border-primary bg-primary/15 text-primary-dark hover:bg-primary/20",
+          "relative inline-flex size-10 items-center justify-center rounded-full text-primary-dark transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          open && "bg-surface-app text-primary hover:bg-surface-app",
         )}
         onClick={handleToggle}
         type="button"
