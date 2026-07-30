@@ -10,11 +10,11 @@ export const buttonVariants = cva(
         default:
           "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         secondary:
-          "border border-primary/30 bg-primary-soft text-primary-dark shadow-sm hover:border-primary/50 hover:bg-primary/15 hover:shadow",
+          "border border-slate-300 bg-primary-soft text-primary-dark shadow-sm hover:border-slate-400 hover:bg-slate-100 hover:shadow",
         outline:
-          "border border-primary/30 bg-white text-slate-800 shadow-sm hover:border-primary/50 hover:bg-primary-soft hover:text-primary-dark hover:shadow",
+          "border border-slate-300 bg-white text-slate-800 shadow-sm hover:border-slate-400 hover:bg-primary-soft hover:text-primary-dark hover:shadow",
         ghost:
-          "border border-primary/10 bg-primary-soft text-primary-dark hover:border-primary/30 hover:bg-primary/15",
+          "border border-slate-300 bg-primary-soft text-primary-dark hover:border-slate-400 hover:bg-slate-100",
         destructive:
           "border border-transparent bg-danger text-white shadow-sm hover:bg-danger-700",
       },

@@ -175,7 +175,7 @@ export function CaseStatusUpdateDialog({
             </div>
 
             {selectedAction?.code === "CONTINUE" ? (
-              <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-blue-800">
                 เมื่อบันทึกแล้ว ระบบจะพาไปสร้างรอบติดตามและลิงก์เยี่ยมบ้านรอบใหม่
               </p>
             ) : null}

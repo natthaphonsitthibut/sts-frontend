@@ -66,7 +66,7 @@ const sensitivityLabels: Record<DataExportSensitivityClass, string> = {
 
 const sensitivityTone: Record<DataExportSensitivityClass, string> = {
   LOW: "bg-slate-100 text-slate-700",
-  AGGREGATE: "bg-sky-50 text-sky-700",
+  AGGREGATE: "bg-slate-100 text-sky-700",
   OPERATIONAL: "bg-indigo-50 text-indigo-700",
   SENSITIVE_OPERATIONAL: "bg-amber-50 text-amber-700",
   SENSITIVE_PII: "bg-rose-50 text-rose-700",

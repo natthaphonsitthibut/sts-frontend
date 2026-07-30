@@ -59,7 +59,9 @@ interface DataTableProps {
   className?: string;
 }
 
-function isHeadingConfig(heading: DataTableHeadingInput): heading is DataTableHeading {
+function isHeadingConfig(
+  heading: DataTableHeadingInput,
+): heading is DataTableHeading {
   return (
     typeof heading === "object" &&
     heading !== null &&
@@ -103,7 +105,9 @@ export function DataTable({
       className={cn(
         "overflow-hidden rounded-lg border border-slate-200 bg-white",
         responsive &&
-          (responsiveBreakpoint === "lg" ? "hidden lg:block" : "hidden md:block"),
+          (responsiveBreakpoint === "lg"
+            ? "hidden lg:block"
+            : "hidden md:block"),
         className,
       )}
     >
@@ -124,7 +128,10 @@ export function DataTable({
           ) : null}
           <thead>
             {rows.map((headingRow, rowIndex) => (
-              <tr className="bg-muted" key={rowIndex}>
+              <tr
+                className="border-b border-white/20 bg-primary"
+                key={rowIndex}
+              >
                 {headingRow.map((heading, index) => {
                   const config = isHeadingConfig(heading)
                     ? heading
@@ -153,7 +160,7 @@ export function DataTable({
                           : undefined
                       }
                       className={cn(
-                        "px-4 py-3 text-xs font-semibold text-slate-600",
+                        "px-4 py-4 text-sm font-semibold text-white",
                         !headingRows && columnWidths?.[index],
                         config.className,
                       )}
@@ -163,11 +170,13 @@ export function DataTable({
                           type="button"
                           aria-label={config.ariaLabel}
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                            isActiveSort && "text-primary",
+                            "-mx-1.5 -my-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-white transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary",
+                            isActiveSort && "bg-primary-dark text-white hover:bg-primary-dark",
                           )}
                           onClick={() =>
-                            onSortChange(getNextSortState(sort, sortKey, clearableSort))
+                            onSortChange(
+                              getNextSortState(sort, sortKey, clearableSort),
+                            )
                           }
                         >
                           <span>{config.label}</span>
@@ -195,7 +204,7 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
   return (
     <tr
       className={cn(
-        "border-t border-slate-100 transition-colors hover:bg-muted",
+        "border-t border-slate-100 transition-colors hover:bg-slate-50",
         className,
       )}
       {...props}
@@ -243,7 +252,11 @@ interface TableCardProps extends ComponentProps<"div"> {
 }
 
 /** A single mobile card mirroring one table row. */
-export function TableCard({ className, interactive, ...props }: TableCardProps) {
+export function TableCard({
+  className,
+  interactive,
+  ...props
+}: TableCardProps) {
   const classes = cn(
     "rounded-lg border border-slate-200 bg-white p-4",
     className,

@@ -281,7 +281,7 @@ export function CaseDetailPage() {
       ) : null}
 
       {caseRecord.status === "PENDING_REVIEW" && can("review-cases") ? (
-        <Card className="border-primary/20 bg-primary/5 p-5">
+        <Card className="border-primary/20 bg-slate-50 p-5">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h2 className="font-bold text-slate-900">พิจารณาผลการติดตาม</h2>

@@ -140,8 +140,8 @@ export function LinkTimeHeader({
       <button
         aria-label={`เรียงตาม${item.label}`}
         className={cn(
-          "inline-flex min-w-0 items-center gap-1 rounded-md text-left transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          isActiveSort && "text-primary",
+          "-mx-1.5 inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-white transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary",
+          isActiveSort && "bg-primary-dark text-white hover:bg-primary-dark",
           extraClassName,
         )}
         key={item.sortKey}

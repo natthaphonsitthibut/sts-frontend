@@ -9,13 +9,13 @@ const iconButtonVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-slate-300 bg-white text-primary-dark hover:border-primary/40 hover:bg-primary-soft",
+          "border border-slate-300 bg-white text-primary-dark hover:border-slate-400 hover:bg-primary-soft",
         secondary:
-          "border border-slate-300 bg-white text-primary-dark hover:border-primary/40 hover:bg-primary-soft",
+          "border border-slate-300 bg-white text-primary-dark hover:border-slate-400 hover:bg-primary-soft",
         outline:
-          "border border-slate-300 bg-white text-slate-700 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
+          "border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-primary-soft hover:text-primary-dark",
         ghost:
-          "border border-slate-300 bg-white text-slate-700 hover:border-primary/40 hover:bg-primary-soft hover:text-primary-dark",
+          "border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-primary-soft hover:text-primary-dark",
       },
       size: {
         sm: "size-8",
@@ -31,10 +31,12 @@ const iconButtonVariants = cva(
 );
 
 export interface IconButtonProps
-  extends Omit<ComponentProps<"button">, "children">,
+  extends
+    Omit<ComponentProps<"button">, "children">,
     VariantProps<typeof iconButtonVariants> {
   "aria-label": string;
   icon: LucideIcon;
+  iconClassName?: string;
 }
 
 export function IconButton({
@@ -42,6 +44,7 @@ export function IconButton({
   variant,
   size,
   icon: Icon,
+  iconClassName,
   type = "button",
   ...props
 }: IconButtonProps) {
@@ -51,7 +54,7 @@ export function IconButton({
       type={type}
       {...props}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className={cn("size-4", iconClassName)} aria-hidden="true" />
     </button>
   );
 }

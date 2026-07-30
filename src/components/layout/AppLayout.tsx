@@ -21,7 +21,7 @@ export function AppLayout() {
             one sitting below the fold escapes both this scroller and the
             overflow-hidden shell and stretches the document — the page then
             scrolls past its own content into a void. */}
-        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-50">
+        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-surface-page">
           <Outlet />
         </main>
       </div>

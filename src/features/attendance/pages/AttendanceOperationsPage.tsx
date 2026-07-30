@@ -346,7 +346,7 @@ function CalendarMonthGrid({
                   ? "cursor-default border-transparent bg-transparent text-slate-300"
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                 !calendarDay && cell.inMonth && !outsideTerm && "border-dashed text-slate-500",
-                selected && "border-primary bg-primary/5 ring-1 ring-primary",
+                selected && "border-primary bg-slate-50 ring-1 ring-primary",
               )}
               disabled={disabled}
               onClick={() => {

@@ -56,8 +56,11 @@ function RoleGroupForm({
     roleGroup?.default_permissions ?? [],
   );
   const hasNoPermissions = permissions.length === 0;
-  const { catalog: permissionOptions, isLoading: permissionsLoading } = usePermissionCatalog();
-  const rankRows = [...roleGroups].sort((left, right) => right.rank - left.rank);
+  const { catalog: permissionOptions, isLoading: permissionsLoading } =
+    usePermissionCatalog();
+  const rankRows = [...roleGroups].sort(
+    (left, right) => right.rank - left.rank,
+  );
   // Nobody (not even ADMIN) can create a role above the highest existing rank —
   // mirror the backend cap. Derived from the catalog, never hardcoded.
   const maxRank = rankRows[0]?.rank ?? 1;
@@ -153,30 +156,37 @@ function RoleGroupForm({
               value={selectedRank}
             />
             <p className="text-sm text-slate-500" id="role-rank-description">
-              เลขมากหมายถึงระดับสิทธิ์สูงกว่า ใช้กำหนดว่า role นี้สามารถจัดการ role ระดับใดได้ (สูงสุด {maxRank})
+              เลขมากหมายถึงระดับสิทธิ์สูงกว่า ใช้กำหนดว่า role นี้สามารถจัดการ
+              role ระดับใดได้ (สูงสุด {maxRank})
             </p>
             <FormMessage<RoleGroupFormValues> name="rank" />
           </FormItem>
 
           <div className="sm:col-span-2">
-            <div className="mb-2 text-sm font-bold text-slate-700">ตารางลำดับสิทธิ์</div>
+            <div className="mb-2 text-sm font-bold text-slate-700">
+              ตารางลำดับสิทธิ์
+            </div>
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full table-fixed text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500">
+                <thead className="bg-primary text-white">
                   <tr>
-                    <th className="w-20 px-3 py-2 font-semibold">Rank</th>
-                    <th className="px-3 py-2 font-semibold">ตำแหน่ง</th>
-                    <th className="hidden px-3 py-2 font-semibold sm:table-cell">รหัส role</th>
+                    <th className="w-20 px-3 py-4 font-semibold">Rank</th>
+                    <th className="px-3 py-4 font-semibold">ตำแหน่ง</th>
+                    <th className="hidden px-3 py-4 font-semibold sm:table-cell">
+                      รหัส role
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {rankRows.map((role) => (
                     <tr key={role.id ?? role.name}>
-                      <td className="px-3 py-2 font-bold tabular-nums text-slate-800">
+                      <td className="px-3 py-3 font-bold tabular-nums text-slate-800">
                         {role.rank}
                       </td>
-                      <td className="px-3 py-2 font-medium text-slate-700">{role.label}</td>
-                      <td className="hidden px-3 py-2 text-xs text-slate-500 sm:table-cell">
+                      <td className="px-3 py-3 font-medium text-slate-700">
+                        {role.label}
+                      </td>
+                      <td className="hidden px-3 py-3 text-xs text-slate-500 sm:table-cell">
                         {role.name}
                       </td>
                     </tr>
@@ -205,7 +215,9 @@ function RoleGroupForm({
                   />
                 ))}
           </div>
-          <p className={`mt-2 text-sm font-medium text-red-600 ${hasNoPermissions ? "" : "invisible"}`}>
+          <p
+            className={`mt-2 text-sm font-medium text-red-600 ${hasNoPermissions ? "" : "invisible"}`}
+          >
             กรุณาเลือกสิทธิ์อย่างน้อย 1 รายการ
           </p>
         </div>
@@ -235,7 +247,7 @@ export function ManageRoleGroupFormPage() {
   const isEdit = Boolean(name);
   const { roleGroups, isLoading, isError } = useRoleGroups();
   const roleGroup = isEdit
-    ? roleGroups.find((item) => item.name === name) ?? null
+    ? (roleGroups.find((item) => item.name === name) ?? null)
     : null;
 
   return (
@@ -245,7 +257,11 @@ export function ManageRoleGroupFormPage() {
         title={isEdit ? "แก้ไขกลุ่มสิทธิ์" : "เพิ่มกลุ่มสิทธิ์"}
         description="กำหนดรหัส ชื่อ ลำดับขั้น และสิทธิ์การเข้าถึง โดยกำหนดขอบเขตข้อมูลตอนเพิ่มผู้ใช้"
         actions={
-          <NavButton icon={ArrowLeft} to={MANAGE_ROLE_GROUPS_PATH} variant="outline">
+          <NavButton
+            icon={ArrowLeft}
+            to={MANAGE_ROLE_GROUPS_PATH}
+            variant="outline"
+          >
             ย้อนกลับ
           </NavButton>
         }

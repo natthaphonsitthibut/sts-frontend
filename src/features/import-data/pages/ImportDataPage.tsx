@@ -446,32 +446,32 @@ function CatalogImportPreviewPanel({
       {preview.sampleRows.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-bold text-slate-600">
+            <thead className="bg-primary text-sm font-bold text-white">
               <tr>
-                <th className="px-3 py-2">แถว</th>
+                <th className="px-3 py-4">แถว</th>
                 {fields.map((field) => (
-                  <th className="px-3 py-2" key={field.key}>
+                  <th className="px-3 py-4" key={field.key}>
                     {field.label}
                   </th>
                 ))}
-                <th className="px-3 py-2">ผลตรวจ</th>
+                <th className="px-3 py-4">ผลตรวจ</th>
               </tr>
             </thead>
             <tbody>
               {preview.sampleRows.map((row) => (
                 <tr className="border-t border-slate-100" key={row.rowNumber}>
-                  <td className="px-3 py-2 font-medium text-slate-500">
+                  <td className="px-3 py-3 font-medium text-slate-500">
                     {row.rowNumber}
                   </td>
                   {fields.map((field) => (
                     <td
-                      className="max-w-64 truncate px-3 py-2 text-slate-700"
+                      className="max-w-64 truncate px-3 py-3 text-slate-700"
                       key={field.key}
                     >
                       {row.values[field.key] || "-"}
                     </td>
                   ))}
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-3">
                     <Badge
                       variant={
                         row.action === "insert"
@@ -904,7 +904,10 @@ export function ImportDataPage() {
         tableActions={
           activeTab === "quarantine" ? (
             <>
-              <RefreshButton onRefresh={() => quarantineQuery.refetch()} updatedAt={quarantineQuery.dataUpdatedAt} />
+              <RefreshButton
+                onRefresh={() => quarantineQuery.refetch()}
+                updatedAt={quarantineQuery.dataUpdatedAt}
+              />
               <Button
                 icon={Download}
                 isLoading={exportQuarantine.isPending}

@@ -40,7 +40,7 @@ function navLinkClassName(
   nested = false,
 ): string {
   return cn(
-    "flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
+    "flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
     // Nested rows glide between full width and the collapsed icon square via
     // px max-width caps (percent↔px can't interpolate; max-w-60 ≥ the real
     // expanded width so it only bites while collapsing). Color transitions
@@ -48,8 +48,8 @@ function navLinkClassName(
     nested &&
       "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none",
     collapsed && nested && "max-w-10",
-    // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง ไม่ให้ hover:bg-slate-100 ของ base ทับ
-    isActive && "bg-surface-app font-semibold text-primary hover:bg-surface-app hover:text-primary",
+    // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง
+    isActive && "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
   );
 }
 
@@ -133,12 +133,12 @@ export function SidebarNavItem({
           className={cn(
             // justify-center is unconditional for the same glide reason as
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
-            "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition-colors hover:bg-slate-100",
+            "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition-colors hover:bg-brand-soft",
             hasActiveChild
-              ? "bg-surface-app font-semibold text-primary hover:bg-surface-app hover:text-primary"
+              ? "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary"
               : open
-                ? "bg-slate-50 text-slate-700"
-                : "text-slate-600 hover:text-slate-900",
+                ? "bg-brand-soft text-primary-dark"
+                : "text-slate-600 hover:text-primary-dark",
           )}
         >
           <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />

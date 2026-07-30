@@ -489,7 +489,7 @@ function CandidateResolver({
         ) : null}
         {response && importRow ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <div className="rounded-lg border border-primary/20 bg-slate-50 p-4">
               <div className="mb-3">
                 <div className="font-bold text-slate-900">ข้อมูลจากแถว import</div>
                 <div className="text-xs text-slate-500">{importRow.personIdMasked}</div>
@@ -505,7 +505,7 @@ function CandidateResolver({
                     className={cn(
                       "flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors",
                       checked
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        ? "border-primary bg-slate-50 ring-1 ring-primary"
                         : "border-slate-200 bg-white hover:border-primary/40",
                     )}
                     key={candidate.candidateKey}

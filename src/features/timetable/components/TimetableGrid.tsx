@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { CalendarClock, Plus } from "lucide-react";
 import { EmptyState } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
-import { DAY_LABELS, getPeriodTimeLabel, hoursBetween } from "../lib/period-times";
+import {
+  DAY_LABELS,
+  getPeriodTimeLabel,
+  hoursBetween,
+} from "../lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../types/timetable.types";
 
 const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7];
@@ -53,8 +57,15 @@ function getGridPeriods(
  * deliberate simplification of the header display, not a data limitation
  * (each cell's own day still resolves its own real time if shown elsewhere).
  */
-function getRepresentativeDay(days: number[], periodTimes: SchoolPeriodTime[]): number {
-  return days.find((day) => periodTimes.some((row) => row.day_of_week === day)) ?? days[0] ?? 1;
+function getRepresentativeDay(
+  days: number[],
+  periodTimes: SchoolPeriodTime[],
+): number {
+  return (
+    days.find((day) => periodTimes.some((row) => row.day_of_week === day)) ??
+    days[0] ??
+    1
+  );
 }
 
 /** Postgres TIME comes back as "HH:MM:SS" — trim to "HH:MM" for display. */
@@ -76,13 +87,18 @@ function getGapAfterPeriods(
   const gaps = new Map<number, { startsAt: string; endsAt: string }>();
   for (let i = 0; i < periods.length - 1; i += 1) {
     const current = periodTimes.find(
-      (row) => row.day_of_week === representativeDay && row.period === periods[i],
+      (row) =>
+        row.day_of_week === representativeDay && row.period === periods[i],
     );
     const next = periodTimes.find(
-      (row) => row.day_of_week === representativeDay && row.period === periods[i + 1],
+      (row) =>
+        row.day_of_week === representativeDay && row.period === periods[i + 1],
     );
     if (current && next && hoursBetween(current.ends_at, next.starts_at) > 0) {
-      gaps.set(periods[i], { startsAt: current.ends_at, endsAt: next.starts_at });
+      gaps.set(periods[i], {
+        startsAt: current.ends_at,
+        endsAt: next.starts_at,
+      });
     }
   }
   return gaps;
@@ -118,8 +134,12 @@ export function TimetableGrid({
   renderSlot,
   slots,
 }: TimetableGridProps) {
-  const showConfiguredSchedule = includeConfiguredSchedule || Boolean(onAddSlot);
-  if (slots.length === 0 && !(showConfiguredSchedule && periodTimes.length > 0)) {
+  const showConfiguredSchedule =
+    includeConfiguredSchedule || Boolean(onAddSlot);
+  if (
+    slots.length === 0 &&
+    !(showConfiguredSchedule && periodTimes.length > 0)
+  ) {
     return (
       <EmptyState
         description={emptyDescription ?? "ยังไม่มีการจัดคาบสอนสำหรับตารางนี้"}
@@ -140,7 +160,11 @@ export function TimetableGrid({
   // when it's actually orphaned data outside today's bell schedule that the
   // admin should reassign or delete.
   const periodsInBellSchedule = new Set(periodTimes.map((row) => row.period));
-  const gapAfterPeriods = getGapAfterPeriods(periods, periodTimes, representativeDay);
+  const gapAfterPeriods = getGapAfterPeriods(
+    periods,
+    periodTimes,
+    representativeDay,
+  );
   const columns = periods.flatMap((period) =>
     gapAfterPeriods.has(period)
       ? [
@@ -179,8 +203,8 @@ export function TimetableGrid({
             ))}
           </colgroup>
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="bg-slate-50 px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+            <tr className="border-b border-white/20 bg-primary">
+              <th className="bg-primary px-3 py-4 text-sm font-bold uppercase tracking-wider text-white">
                 วัน
               </th>
               {columns.map((column) => {
@@ -188,7 +212,7 @@ export function TimetableGrid({
                   const gap = gapAfterPeriods.get(column.afterPeriod);
                   return (
                     <th
-                      className="px-1 py-3 text-center align-top text-xs font-bold"
+                      className="px-1 py-4 text-center align-top text-sm font-bold"
                       key={column.key}
                     >
                       {gap ? (
@@ -196,7 +220,7 @@ export function TimetableGrid({
                           <div className="invisible" aria-hidden="true">
                             .
                           </div>
-                          <div className="mt-0.5 whitespace-nowrap text-xs font-normal leading-tight text-slate-500">
+                          <div className="mt-0.5 whitespace-nowrap text-xs font-normal leading-tight text-white/75">
                             {trimToHHMM(gap.startsAt)}–{trimToHHMM(gap.endsAt)}
                           </div>
                         </>
@@ -210,19 +234,25 @@ export function TimetableGrid({
                   : false;
                 return (
                   <th
-                    className="px-2 py-3 align-top text-xs font-bold text-slate-600"
+                    className="px-2 py-4 align-top text-sm font-bold text-white"
                     key={period}
                   >
                     <div>คาบ {period}</div>
                     <div
                       className={cn(
                         "mt-0.5 font-normal",
-                        isOutsideBellSchedule ? "text-warning-700" : "text-slate-500",
+                        isOutsideBellSchedule
+                          ? "text-warning-100"
+                          : "text-white/75",
                       )}
                     >
                       {isOutsideBellSchedule
                         ? "นอกตารางเวลาปัจจุบัน"
-                        : getPeriodTimeLabel(periodTimes, representativeDay, period)}
+                        : getPeriodTimeLabel(
+                            periodTimes,
+                            representativeDay,
+                            period,
+                          )}
                     </div>
                   </th>
                 );
@@ -231,7 +261,10 @@ export function TimetableGrid({
           </thead>
           <tbody>
             {days.map((day) => (
-              <tr className="border-b border-slate-100 last:border-b-0" key={day}>
+              <tr
+                className="border-b border-slate-100 last:border-b-0"
+                key={day}
+              >
                 <td className="whitespace-nowrap bg-white px-3 align-middle text-sm font-bold text-slate-800">
                   {DAY_LABELS[day]}
                 </td>
@@ -246,10 +279,18 @@ export function TimetableGrid({
                     );
                   }
                   const period = column.period;
-                  const cellSlots = slotsByDayAndPeriod.get(`${day}-${period}`) ?? [];
+                  const cellSlots =
+                    slotsByDayAndPeriod.get(`${day}-${period}`) ?? [];
                   return (
                     <td className="border-l border-slate-100 p-0" key={period}>
-                      <div className="px-2 py-2" style={{ height: "88px", maxHeight: "88px", overflow: "hidden" }}>
+                      <div
+                        className="px-2 py-2"
+                        style={{
+                          height: "88px",
+                          maxHeight: "88px",
+                          overflow: "hidden",
+                        }}
+                      >
                         {cellSlots.length === 0 ? (
                           onAddSlot ? (
                             <button
@@ -279,7 +320,11 @@ export function TimetableGrid({
                                 <div
                                   className="relative overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2"
                                   key={slot.id}
-                                  style={{ height: "72px", maxHeight: "72px", overflow: "hidden" }}
+                                  style={{
+                                    height: "72px",
+                                    maxHeight: "72px",
+                                    overflow: "hidden",
+                                  }}
                                 >
                                   <span
                                     aria-hidden="true"

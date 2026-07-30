@@ -43,7 +43,7 @@ export function RefreshButton({ disabled = false, onRefresh, updatedAt }: Refres
         loadingIconMotion="refresh"
         loadingText="รีเฟรช"
         onClick={() => void refresh(onRefresh)}
-        variant="secondary"
+        variant="outline"
       >
         รีเฟรช
       </Button>

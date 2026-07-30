@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Search } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { ChevronRight, Search } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -15,21 +15,17 @@ import {
 } from "../base";
 import { cn } from "../../lib/utils";
 import { ClearFiltersButton } from "./clear-filters-button";
-import { getPageIdentity } from "./page-identity";
+import { getPageIdentity, PAGE_ICONS } from "./page-identity";
 
 export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
 type PageShellProps = ComponentProps<"div">;
 
-export function PageShell({
-  children,
-  className,
-  ...props
-}: PageShellProps) {
+export function PageShell({ children, className, ...props }: PageShellProps) {
   return (
     <div
       className={cn(
-        "min-h-[calc(100vh-4rem)] bg-slate-50 px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
+        "min-h-[calc(100vh-4rem)] bg-surface-page px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
         className,
       )}
       {...props}
@@ -58,23 +54,17 @@ const toolbarToneClasses: Record<
   NonNullable<PageToolbarProps["tone"]>,
   {
     surface: string;
-    icon: string;
-    iconSurface: string;
     title: string;
     description: string;
   }
 > = {
   default: {
     surface: "bg-transparent",
-    icon: "text-primary",
-    iconSurface: "bg-surface-sky",
-    title: "text-slate-800",
-    description: "text-slate-500",
+    title: "text-content-primary",
+    description: "text-content-secondary",
   },
   primary: {
     surface: "border-primary bg-primary shadow-card",
-    icon: "text-white",
-    iconSurface: "bg-white/15",
     title: "text-white",
     description: "text-white/80",
   },
@@ -95,15 +85,11 @@ export function PageToolbar({
   const pageIdentity = getPageIdentity(pathname);
   const ToolbarIcon = pageIdentity?.icon ?? Icon;
   const toolbarTitle = pageIdentity?.title ?? title;
+  const isHomePage = pathname === "/";
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
   return (
-    <div
-      className={cn(
-        "relative z-20",
-        hasAttachedSurface ? "mb-6" : "mb-4",
-      )}
-    >
+    <div className={cn("relative z-20", hasAttachedSurface ? "mb-6" : "mb-4")}>
       <section
         className={cn(
           "overflow-hidden",
@@ -115,35 +101,94 @@ export function PageToolbar({
       >
         <div
           className={cn(
-            "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+            "flex flex-col",
             tone === "primary" ? "min-h-20 p-5" : "py-1",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            {ToolbarIcon ? (
-              <div
+          <nav
+            aria-label="เส้นทางนำทาง"
+            className={cn(
+              "flex min-h-6 items-center gap-2 text-sm font-medium",
+              tone === "primary" ? "text-white/80" : "text-content-secondary",
+            )}
+          >
+            {isHomePage ? (
+              <span
                 className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                  toneClasses.iconSurface,
+                  "inline-flex min-w-0 items-center gap-1.5",
+                  tone === "primary" ? "text-white" : "text-content-primary",
+                )}
+                aria-current="page"
+              >
+                <PAGE_ICONS.home
+                  className="size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="truncate">หน้าหลัก</span>
+              </span>
+            ) : (
+              <>
+                <Link
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                    tone === "primary"
+                      ? "hover:text-white"
+                      : "hover:text-content-primary",
+                  )}
+                  to="/"
+                >
+                  <PAGE_ICONS.home className="size-4" aria-hidden="true" />
+                  <span>หน้าหลัก</span>
+                </Link>
+                <ChevronRight
+                  className="size-4 shrink-0 opacity-60"
+                  aria-hidden="true"
+                />
+                <span
+                  className={cn(
+                    "inline-flex min-w-0 items-center gap-1.5",
+                    tone === "primary" ? "text-white" : "text-content-primary",
+                  )}
+                  aria-current="page"
+                >
+                  {ToolbarIcon ? (
+                    <ToolbarIcon
+                      className="size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <span className="truncate">{toolbarTitle}</span>
+                </span>
+              </>
+            )}
+          </nav>
+          <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1
+                className={cn(
+                  "text-xl font-semibold leading-8",
+                  toneClasses.title,
                 )}
               >
-                <ToolbarIcon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
-              </div>
-            ) : null}
-            <div className="min-w-0">
-              <h1 className={cn("text-xl font-semibold leading-8", toneClasses.title)}>
                 {toolbarTitle}
               </h1>
               {description ? (
-                <p className={cn("mt-1 max-w-3xl text-sm leading-6", toneClasses.description)}>{description}</p>
+                <p
+                  className={cn(
+                    "mt-1 max-w-3xl text-sm leading-6",
+                    toneClasses.description,
+                  )}
+                >
+                  {description}
+                </p>
               ) : null}
             </div>
+            {actions ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                {actions}
+              </div>
+            ) : null}
           </div>
-          {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-              {actions}
-            </div>
-          ) : null}
         </div>
       </section>
       {hasAttachedSurface ? (
@@ -264,7 +309,10 @@ export function FilterCombobox({
   );
 }
 
-export function ToolbarControls({ className, ...props }: ComponentProps<"div">) {
+export function ToolbarControls({
+  className,
+  ...props
+}: ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -276,7 +324,10 @@ export function ToolbarControls({ className, ...props }: ComponentProps<"div">) 
   );
 }
 
-export function ToolbarFilterGrid({ className, ...props }: ComponentProps<"div">) {
+export function ToolbarFilterGrid({
+  className,
+  ...props
+}: ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -306,8 +357,10 @@ interface ListToolbarSearch {
   placeholder: string;
 }
 
-interface ListPageToolbarBaseProps
-  extends Omit<PageToolbarProps, "children" | "footerActions"> {
+interface ListPageToolbarBaseProps extends Omit<
+  PageToolbarProps,
+  "children" | "footerActions"
+> {
   /** Commands acting on the list — rendered below filters and aligned right. */
   tableActions?: ReactNode;
 }
@@ -333,7 +386,8 @@ type ListPageToolbarControlProps =
       onClearFilters: () => void;
     };
 
-type ListPageToolbarProps = ListPageToolbarBaseProps & ListPageToolbarControlProps;
+type ListPageToolbarProps = ListPageToolbarBaseProps &
+  ListPageToolbarControlProps;
 
 /**
  * Canonical list-page header: one shell every list page shares so search,
@@ -352,16 +406,15 @@ export function ListPageToolbar({
 }: ListPageToolbarProps) {
   const hasControls = Boolean(search || filters);
   const showClearFilters = hasControls && Boolean(onClearFilters);
-  const footerActions = tableActions || showClearFilters
-    ? (
-        <>
-          {tableActions}
-          {showClearFilters && onClearFilters
-            ? <ClearFiltersButton onClear={onClearFilters} />
-            : null}
-        </>
-      )
-    : undefined;
+  const footerActions =
+    tableActions || showClearFilters ? (
+      <>
+        {tableActions}
+        {showClearFilters && onClearFilters ? (
+          <ClearFiltersButton onClear={onClearFilters} />
+        ) : null}
+      </>
+    ) : undefined;
   return (
     <PageToolbar {...toolbarProps} footerActions={footerActions}>
       {hasControls ? (
@@ -420,7 +473,7 @@ const summaryToneClasses: Record<
   },
   info: {
     surface: "bg-white",
-    iconBg: "bg-primary-soft",
+    iconBg: "bg-brand-soft",
     iconColor: "text-primary",
     value: "text-primary",
   },
@@ -458,21 +511,21 @@ interface SummaryMetricsProps {
   className?: string;
 }
 
-export function SummaryMetrics({ centerRows = false, className, columns, items }: SummaryMetricsProps) {
+export function SummaryMetrics({
+  centerRows = false,
+  className,
+  columns,
+  items,
+}: SummaryMetricsProps) {
   // Default: cards auto-fit and stretch to fill the available width, so a row
   // with few cards never leaves an empty gap on the right and never gets cramped.
   const columnsClass = columns
-    ? summaryColumnClasses[columns] ?? summaryColumnClasses[4]
+    ? (summaryColumnClasses[columns] ?? summaryColumnClasses[4])
     : "[grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]";
   const centeredCardClass =
     "w-full flex-none sm:w-[calc((100%-0.875rem)/2)] lg:w-[calc((100%-1.75rem)/3)]";
   return (
-    <section
-      className={cn(
-        "w-full",
-        className,
-      )}
-    >
+    <section className={cn("w-full", className)}>
       <div
         className={cn(
           centerRows ? "flex flex-wrap justify-center gap-3.5" : "grid gap-3.5",
@@ -487,8 +540,9 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
             centerRows && centeredCardClass,
             tone.surface,
             item.onSelect &&
-              "transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            item.selected && "border-primary bg-primary-soft ring-1 ring-primary/20",
+              "transition-colors hover:border-primary/50 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            item.selected &&
+              "border-primary bg-brand-active ring-1 ring-primary/20",
           );
           const content = (
             <>
@@ -499,11 +553,16 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
                     tone.iconBg,
                   )}
                 >
-                  <Icon className={cn("size-5", tone.iconColor)} aria-hidden="true" />
+                  <Icon
+                    className={cn("size-5", tone.iconColor)}
+                    aria-hidden="true"
+                  />
                 </div>
               ) : null}
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-500">{item.label}</div>
+                <div className="truncate text-xs font-medium text-slate-500">
+                  {item.label}
+                </div>
                 <div
                   className={cn(
                     "animate-value-in font-bold leading-tight tabular-nums",
@@ -522,7 +581,9 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
               aria-label={item.selectionLabel}
               aria-pressed={item.selected}
               className={metricClassName}
-              data-summary-label={typeof item.label === "string" ? item.label : undefined}
+              data-summary-label={
+                typeof item.label === "string" ? item.label : undefined
+              }
               key={index}
               onClick={item.onSelect}
               type="button"
@@ -540,7 +601,10 @@ export function SummaryMetrics({ centerRows = false, className, columns, items }
   );
 }
 
-interface ChoiceCardButtonProps extends Omit<ComponentProps<"button">, "title"> {
+interface ChoiceCardButtonProps extends Omit<
+  ComponentProps<"button">,
+  "title"
+> {
   description: ReactNode;
   icon: LucideIcon;
   selected: boolean;
@@ -568,7 +632,7 @@ export function ChoiceCardButton({
       type={type}
       {...props}
     >
-      <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-primary-soft ring-1 ring-inset ring-black/[0.03]">
+      <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-brand-soft ring-1 ring-inset ring-black/[0.03]">
         <Icon className="size-6 text-primary" aria-hidden="true" />
       </div>
       <div className="font-bold text-slate-900">{title}</div>
@@ -640,7 +704,9 @@ export function EmptyState({
       ) : null}
       <h2 className="mb-2 text-lg font-bold text-slate-800">{title}</h2>
       {description ? (
-        <p className="mx-auto max-w-sm text-sm leading-relaxed text-slate-500">{description}</p>
+        <p className="mx-auto max-w-sm text-sm leading-relaxed text-slate-500">
+          {description}
+        </p>
       ) : null}
       {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
     </div>
@@ -668,10 +734,17 @@ export function ErrorState({
       <div className="flex items-start justify-between gap-4">
         <div>
           <AlertTitle>{title}</AlertTitle>
-          {description ? <AlertDescription>{description}</AlertDescription> : null}
+          {description ? (
+            <AlertDescription>{description}</AlertDescription>
+          ) : null}
         </div>
         {onRetry ? (
-          <Button className="shrink-0" onClick={onRetry} size="sm" variant="destructive">
+          <Button
+            className="shrink-0"
+            onClick={onRetry}
+            size="sm"
+            variant="destructive"
+          >
             {retryLabel}
           </Button>
         ) : null}
@@ -720,7 +793,10 @@ export function SkeletonTable({
 }) {
   return (
     <div
-      className={cn("overflow-hidden rounded-lg border border-slate-200 bg-white", className)}
+      className={cn(
+        "overflow-hidden rounded-lg border border-slate-200 bg-white",
+        className,
+      )}
       aria-busy="true"
     >
       <Skeleton className="h-12 w-full rounded-none" />

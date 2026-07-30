@@ -1,5 +1,4 @@
-import { Menu } from "lucide-react";
-import { IconButton, Sheet, SheetHeader, SidebarContainer } from "../base";
+import { Sheet, SheetHeader, SidebarContainer } from "../base";
 import {
   MENU_ITEMS,
   filterMenuItems,
@@ -11,7 +10,6 @@ import { useAuthSessionStore } from "../../features/auth/store/auth-session.stor
 import { cn } from "../../lib/utils";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { useSidebarUiStore } from "./sidebar-ui.store";
-import { UserProfileMenu } from "./UserProfileMenu";
 
 interface AppSidebarProps {
   mobileOpen: boolean;
@@ -21,14 +19,9 @@ interface AppSidebarProps {
 interface SidebarContentProps {
   collapsed?: boolean;
   onNavigate?: () => void;
-  onToggleCollapsed?: () => void;
 }
 
-function SidebarContent({
-  collapsed = false,
-  onNavigate,
-  onToggleCollapsed,
-}: SidebarContentProps) {
+function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
   const user = useAuthSessionStore((state) => state.user);
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
   const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
@@ -46,40 +39,26 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
-        {/* justify-center stays on in both states (a no-op while the flex-1
-            label fills the row) so the toggle button glides to the middle as
-            the label squeezes, instead of snapping when layout classes flip. */}
-        <div className="mb-2 flex min-h-9 items-center justify-center gap-2 px-3">
-          {/* Fades/squeezes with the width transition (same treatment as the
-              nav-item labels in SidebarNavItem) instead of snapping away;
-              `-ml-2` cancels the row's `gap-2` when fully collapsed. */}
-          <div
-            className={cn(
-              "min-w-0 flex-1 truncate text-xs font-semibold text-slate-500",
-              "transition-[opacity,max-width,margin] duration-200 ease-out motion-reduce:transition-none",
-              collapsed ? "-ml-2 max-w-0 opacity-0" : "max-w-48 opacity-100",
-            )}
-          >
-            เมนู
-          </div>
-          {onToggleCollapsed ? (
-            <IconButton
-              aria-expanded={!collapsed}
-              aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "พับเมนูด้านข้าง"}
-              className={cn(
-                "border-slate-300 bg-white shadow-none",
-                collapsed && "text-slate-600",
-              )}
-              icon={Menu}
-              onClick={onToggleCollapsed}
-              size="sm"
-              title={collapsed ? "ขยายเมนู" : "พับเมนู"}
-              variant="ghost"
-            />
-          ) : null}
+      <nav
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-2",
+          "transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+          collapsed ? "pt-2 pb-4" : "py-4",
+        )}
+      >
+        {/* Collapses to zero height (not just opacity) so the icon rail sits
+            right under the header instead of leaving the label's reserved
+            space behind. */}
+        <div
+          className={cn(
+            "truncate overflow-hidden px-3 text-xs font-semibold text-slate-500",
+            "transition-[opacity,max-width,max-height,margin] duration-200 ease-out motion-reduce:transition-none",
+            collapsed ? "max-h-0 max-w-0 opacity-0" : "mb-2 max-h-9 max-w-48 opacity-100",
+          )}
+        >
+          เมนู
         </div>
-        <div className="space-y-0.5">
+        <div className={cn("space-y-0.5", collapsed && "space-y-2")}>
           {visibleMenuItems.map((item) => (
             <SidebarNavItem
               collapsed={collapsed}
@@ -90,14 +69,12 @@ function SidebarContent({
           ))}
         </div>
       </nav>
-      <UserProfileMenu collapsed={collapsed} />
     </div>
   );
 }
 
 export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
-  const toggleCollapsed = useSidebarUiStore((state) => state.toggleCollapsed);
 
   return (
     <>
@@ -107,10 +84,7 @@ export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) 
           collapsed ? "w-20" : "w-[260px]",
         )}
       >
-        <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-        />
+        <SidebarContent collapsed={collapsed} />
       </SidebarContainer>
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetHeader heading="ระบบติดตามนักเรียน" onClose={() => onMobileOpenChange(false)} />

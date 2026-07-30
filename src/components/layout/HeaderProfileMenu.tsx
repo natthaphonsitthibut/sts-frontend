@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { ChevronDown, LogOut, UserCircle } from "lucide-react";
+import { LogOut, Pencil } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar } from "../base";
 import { authService } from "../../features/auth/api/auth.service";
+import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
@@ -19,7 +20,10 @@ export function HeaderProfileMenu({
   initials,
 }: HeaderProfileMenuProps) {
   const navigate = useNavigate();
+  const user = useAuthSessionStore((state) => state.user);
   const clearSession = useAuthSessionStore((state) => state.clearSession);
+  const primaryRole = user?.roles?.[0];
+  const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-";
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -66,11 +70,8 @@ export function HeaderProfileMenu({
         aria-controls="header-profile-menu"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="เปิดเมนูบัญชีผู้ใช้"
-        className={cn(
-          "group flex min-h-10 items-center gap-2 rounded-full px-1.5 text-left transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-44 sm:px-2",
-          open && "bg-surface-app hover:bg-surface-app",
-        )}
+        aria-label={`เปิดเมนูบัญชีผู้ใช้: ${displayName}`}
+        className="group flex size-10 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -79,20 +80,15 @@ export function HeaderProfileMenu({
           focusMenuEdge(event.key === "ArrowDown" ? "first" : "last");
         }}
       >
-        <Avatar fallback={initials} className="size-9 bg-primary-soft font-semibold text-primary" />
-        <span
+        {/* The button's own hover/active background would sit fully behind
+            the avatar (both are size-10, matching the bell/menu buttons), so
+            the color feedback lives on the avatar itself instead — same
+            bg-brand-soft → bg-brand-active transition the bell uses. */}
+        <Avatar
+          fallback={initials}
           className={cn(
-            "hidden min-w-0 flex-1 truncate text-sm sm:block",
-            open ? "font-semibold text-primary" : "font-medium text-slate-600 group-hover:text-slate-900",
-          )}
-        >
-          {displayName}
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className={cn(
-            "hidden size-4 transition-transform sm:block",
-            open ? "rotate-180 text-primary" : "text-slate-400 group-hover:text-slate-600",
+            "size-10 font-semibold text-primary transition-colors",
+            open ? "bg-brand-active" : "bg-brand-soft group-hover:bg-brand-active",
           )}
         />
       </button>
@@ -103,7 +99,7 @@ export function HeaderProfileMenu({
           id="header-profile-menu"
           role="menu"
           aria-label="บัญชีผู้ใช้"
-          className="absolute inset-x-0 top-full z-50 mt-2 max-sm:min-w-48 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-max min-w-60 max-w-72 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
           onKeyDown={(event) => {
             if (event.key === "Tab") {
               setOpen(false);
@@ -125,6 +121,20 @@ export function HeaderProfileMenu({
             items[nextIndex]?.focus();
           }}
         >
+          <div className="flex items-start gap-3 px-3 py-2.5">
+            <Avatar
+              fallback={initials}
+              className="size-12 bg-brand-soft font-semibold text-primary"
+            />
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+              {user?.affiliation ? (
+                <div className="truncate text-xs text-slate-500">สังกัด: {user.affiliation}</div>
+              ) : null}
+              <div className="truncate text-xs text-slate-500">ตำแหน่ง: {roleLabel}</div>
+            </div>
+          </div>
+          <div className="my-1 border-t border-slate-100" />
           {canEditProfile ? (
             <Link
               role="menuitem"
@@ -132,8 +142,10 @@ export function HeaderProfileMenu({
               onClick={() => setOpen(false)}
               to="/profile"
             >
-              <UserCircle className="size-5 text-slate-500" aria-hidden="true" />
-              โปรไฟล์ของฉัน
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                <Pencil className="size-3.5" aria-hidden="true" />
+              </span>
+              แก้ไขข้อมูลส่วนตัว
             </Link>
           ) : null}
           <button
@@ -143,7 +155,9 @@ export function HeaderProfileMenu({
             disabled={loggingOut}
             onClick={() => void handleLogout()}
           >
-            <LogOut className="size-5" aria-hidden="true" />
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-danger-100 text-danger">
+              <LogOut className="size-3.5" aria-hidden="true" />
+            </span>
             {loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"}
           </button>
         </div>

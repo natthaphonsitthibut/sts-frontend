@@ -62,8 +62,8 @@ export function NotificationBell() {
           unseenCount > 0 ? `รายการแจ้งเตือน (ใหม่ ${unseenCount} รายการ)` : "รายการแจ้งเตือน"
         }
         className={cn(
-          "relative inline-flex size-10 items-center justify-center rounded-full text-primary-dark transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          open && "bg-surface-app text-primary hover:bg-surface-app",
+          "relative inline-flex size-10 items-center justify-center rounded-full bg-brand-soft text-primary-dark transition-colors hover:bg-brand-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          open && "bg-brand-active text-primary",
         )}
         onClick={handleToggle}
         type="button"
@@ -77,9 +77,13 @@ export function NotificationBell() {
       </button>
       {open ? (
         <div className="absolute right-0 top-12 z-40 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-800 shadow-card">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-            <span className="text-sm font-bold">การแจ้งเตือน</span>
+          <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
+            <span className="flex items-center gap-2 text-sm font-bold">
+              <Bell className="size-4 shrink-0" aria-hidden="true" />
+              การแจ้งเตือน
+            </span>
             <Button
+              className="text-xs"
               disabled={unreadCount === 0 || markAllRead.isPending}
               onClick={() => markAllRead.mutate()}
               size="sm"
@@ -88,11 +92,11 @@ export function NotificationBell() {
               ทำเครื่องหมายว่าอ่านทั้งหมด
             </Button>
           </div>
-          <div className="flex gap-1 border-b border-slate-100 px-4 py-2" role="tablist">
+          <div className="flex gap-1 px-4 pb-2" role="tablist">
             <button
               aria-selected={!unreadOnly}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "min-h-11 rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 !unreadOnly ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-100",
               )}
               onClick={() => setUnreadOnly(false)}
@@ -104,7 +108,7 @@ export function NotificationBell() {
             <button
               aria-selected={unreadOnly}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "min-h-11 rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 unreadOnly ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-100",
               )}
               onClick={() => setUnreadOnly(true)}
@@ -130,7 +134,7 @@ export function NotificationBell() {
                 {unreadOnly ? "ไม่มีการแจ้งเตือนที่ยังไม่อ่าน" : "ยังไม่มีการแจ้งเตือน"}
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul>
                 {notifications.map((notification) => (
                   <NotificationListItem
                     compact
@@ -142,18 +146,17 @@ export function NotificationBell() {
               </ul>
             )}
           </div>
-          <div className="border-t border-slate-100 p-2">
-            <Button
-              fullWidth
+          <div className="border-t border-slate-100 py-1 text-center">
+            <button
+              className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-2 hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => {
                 setOpen(false);
                 void navigate("/notifications");
               }}
-              size="sm"
-              variant="ghost"
+              type="button"
             >
-              ดูการแจ้งเตือนทั้งหมด
-            </Button>
+              แสดงรายการแจ้งเตือนทั้งหมด
+            </button>
           </div>
         </div>
       ) : null}

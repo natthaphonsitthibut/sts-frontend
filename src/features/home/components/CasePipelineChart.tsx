@@ -54,7 +54,7 @@ export function CasePipelineChart({
   return (
     <Card className="p-5">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary-dark">
           <BriefcaseBusiness className="size-5" aria-hidden="true" />
         </span>
         <div>

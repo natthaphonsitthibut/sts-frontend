@@ -28,7 +28,12 @@ import {
   useOverridePeriodTime,
   usePeriodTimes,
 } from "../hooks/useTimetable";
-import { addHoursToTime, DAY_LABELS, formatDurationHours, hoursBetween } from "../lib/period-times";
+import {
+  addHoursToTime,
+  DAY_LABELS,
+  formatDurationHours,
+  hoursBetween,
+} from "../lib/period-times";
 import type { SchoolPeriodTime } from "../types/timetable.types";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 7] as const;
@@ -105,10 +110,12 @@ function mostCommonPeriodLength(rows: SchoolPeriodTime[]): number {
     const minutes = durationMinutes(row);
     if (minutes > 0) counts.set(minutes, (counts.get(minutes) ?? 0) + 1);
   }
-  return Array.from(counts.entries()).sort(
-    ([leftMinutes, leftCount], [rightMinutes, rightCount]) =>
-      rightCount - leftCount || leftMinutes - rightMinutes,
-  )[0]?.[0] ?? DEFAULT_GENERATE_VALUES.periodLengthMinutes;
+  return (
+    Array.from(counts.entries()).sort(
+      ([leftMinutes, leftCount], [rightMinutes, rightCount]) =>
+        rightCount - leftCount || leftMinutes - rightMinutes,
+    )[0]?.[0] ?? DEFAULT_GENERATE_VALUES.periodLengthMinutes
+  );
 }
 
 function representativeDayRows(rows: SchoolPeriodTime[]): SchoolPeriodTime[] {
@@ -132,7 +139,9 @@ function findPeriodGaps(rows: SchoolPeriodTime[]): PeriodGap[] {
     const current = rows[index];
     const next = rows[index + 1];
     if (!current || !next || next.period !== current.period + 1) continue;
-    const minutes = Math.round(hoursBetween(current.ends_at, next.starts_at) * 60);
+    const minutes = Math.round(
+      hoursBetween(current.ends_at, next.starts_at) * 60,
+    );
     if (minutes > 0) gaps.push({ afterPeriod: current.period, minutes });
   }
   return gaps;
@@ -145,7 +154,10 @@ function deriveGenerateValues(rows: SchoolPeriodTime[]): GenerateFormValues {
   const gaps = findPeriodGaps(dayRows);
   const lunchGap = gaps
     .filter((gap) => gap.minutes >= 30)
-    .sort((left, right) => right.minutes - left.minutes || left.afterPeriod - right.afterPeriod)[0];
+    .sort(
+      (left, right) =>
+        right.minutes - left.minutes || left.afterPeriod - right.afterPeriod,
+    )[0];
   const breakGap = gaps.find((gap) => gap !== lunchGap);
   const firstPeriod = dayRows.find((row) => row.period === 1) ?? dayRows[0];
 
@@ -155,7 +167,8 @@ function deriveGenerateValues(rows: SchoolPeriodTime[]): GenerateFormValues {
     ),
     periodsCount: Math.max(...rows.map((row) => row.period)),
     firstPeriodStartsAt:
-      firstPeriod?.starts_at.slice(0, 5) ?? DEFAULT_GENERATE_VALUES.firstPeriodStartsAt,
+      firstPeriod?.starts_at.slice(0, 5) ??
+      DEFAULT_GENERATE_VALUES.firstPeriodStartsAt,
     periodLengthMinutes: mostCommonPeriodLength(rows),
     breakAfterPeriod: breakGap?.afterPeriod,
     breakMinutes: breakGap?.minutes,
@@ -181,11 +194,14 @@ function OverrideRow({
   const [startsAt, setStartsAt] = useState(row.starts_at.slice(0, 5));
   const [endsAt, setEndsAt] = useState(row.ends_at.slice(0, 5));
   const [durationInput, setDurationInput] = useState(() =>
-    formatDurationHours(hoursBetween(row.starts_at.slice(0, 5), row.ends_at.slice(0, 5))),
+    formatDurationHours(
+      hoursBetween(row.starts_at.slice(0, 5), row.ends_at.slice(0, 5)),
+    ),
   );
   const override = useOverridePeriodTime();
   const durationHours = Number(durationInput);
-  const isDurationInvalid = durationInput.trim() !== "" && !Number.isFinite(durationHours);
+  const isDurationInvalid =
+    durationInput.trim() !== "" && !Number.isFinite(durationHours);
   const isEndBeforeStart = endsAt <= startsAt;
   const durationHint = isDurationInvalid
     ? "จำนวนชั่วโมงไม่ถูกต้อง"
@@ -220,21 +236,35 @@ function OverrideRow({
 
   function handleSave(): void {
     override.mutate(
-      { schoolId, dayOfWeek: row.day_of_week, period: row.period, startsAt, endsAt },
+      {
+        schoolId,
+        dayOfWeek: row.day_of_week,
+        period: row.period,
+        startsAt,
+        endsAt,
+      },
       { onSuccess: () => setEditing(false) },
     );
   }
 
   const sourceLabel =
-    row.source === "MANUAL" ? "แก้เอง" : row.source === "BACKFILL" ? "ค่าตั้งต้น" : "สร้างอัตโนมัติ";
+    row.source === "MANUAL"
+      ? "แก้เอง"
+      : row.source === "BACKFILL"
+        ? "ค่าตั้งต้น"
+        : "สร้างอัตโนมัติ";
   const sourceVariant = row.source === "MANUAL" ? "warning" : "secondary";
 
   return (
     <tr className="h-16 border-t border-slate-100">
       {showDay ? (
-        <td className="px-3 py-2 align-middle text-sm text-slate-700">{DAY_LABELS[row.day_of_week]}</td>
+        <td className="px-3 py-2 align-middle text-sm text-slate-700">
+          {DAY_LABELS[row.day_of_week]}
+        </td>
       ) : null}
-      <td className="w-20 px-3 py-2 align-middle text-sm text-slate-700">คาบ {row.period}</td>
+      <td className="w-20 px-3 py-2 align-middle text-sm text-slate-700">
+        คาบ {row.period}
+      </td>
       <td className="w-[440px] px-3 py-2 align-middle">
         {editing ? (
           <div className="flex flex-nowrap items-center gap-2">
@@ -256,7 +286,8 @@ function OverrideRow({
                 aria-label="จำนวนชั่วโมง"
                 className={cn(
                   "h-9 w-24 text-sm",
-                  (isDurationInvalid || isEndBeforeStart) && "border-danger-500",
+                  (isDurationInvalid || isEndBeforeStart) &&
+                    "border-danger-500",
                 )}
                 min="0"
                 onChange={(event) => handleDurationChange(event.target.value)}
@@ -291,7 +322,11 @@ function OverrideRow({
       <td className="w-36 px-3 py-2 align-middle text-right">
         {editing ? (
           <div className="flex justify-end gap-1.5 whitespace-nowrap">
-            <Button onClick={() => setEditing(false)} size="sm" variant="outline">
+            <Button
+              onClick={() => setEditing(false)}
+              size="sm"
+              variant="outline"
+            >
               ยกเลิก
             </Button>
             <Button
@@ -337,7 +372,9 @@ export function SchoolPeriodTimesDialog({
       ),
     [rows],
   );
-  const [selectedCurrentDay, setSelectedCurrentDay] = useState<number | null>(null);
+  const [selectedCurrentDay, setSelectedCurrentDay] = useState<number | null>(
+    null,
+  );
   const initializedSchoolIdRef = useRef<number | null>(null);
 
   const form = useForm<GenerateFormValues>({
@@ -350,11 +387,16 @@ export function SchoolPeriodTimesDialog({
       initializedSchoolIdRef.current = null;
       return;
     }
-    if (!periodTimesQuery.isSuccess || initializedSchoolIdRef.current === schoolId) return;
+    if (
+      !periodTimesQuery.isSuccess ||
+      initializedSchoolIdRef.current === schoolId
+    )
+      return;
     form.reset(deriveGenerateValues(rows));
     initializedSchoolIdRef.current = schoolId;
   }, [form, open, periodTimesQuery.isSuccess, rows, schoolId]);
-  const selectedDays = useWatch({ control: form.control, name: "daysOfWeek" }) ?? [];
+  const selectedDays =
+    useWatch({ control: form.control, name: "daysOfWeek" }) ?? [];
   const firstPeriodStartsAt = useWatch({
     control: form.control,
     name: "firstPeriodStartsAt",
@@ -369,7 +411,8 @@ export function SchoolPeriodTimesDialog({
 
   async function handleGenerate(values: GenerateFormValues): Promise<void> {
     const manualDaysAffected = rows.some(
-      (row) => row.source === "MANUAL" && values.daysOfWeek.includes(row.day_of_week),
+      (row) =>
+        row.source === "MANUAL" && values.daysOfWeek.includes(row.day_of_week),
     );
     if (manualDaysAffected) {
       const accepted = await confirm({
@@ -394,12 +437,18 @@ export function SchoolPeriodTimesDialog({
           <Form form={form} onSubmit={handleGenerate}>
             <div className="space-y-3 rounded-lg border border-slate-200 p-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">สร้างตารางเวลาอัตโนมัติ</h3>
+                <h3 className="text-sm font-bold text-slate-900">
+                  สร้างตารางเวลาอัตโนมัติ
+                </h3>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  อ้างอิงค่าจากตารางเวลาปัจจุบันของโรงเรียน จำนวนคาบรวมคาบว่างที่ยังไม่ได้กำหนดวิชา
+                  อ้างอิงค่าจากตารางเวลาปัจจุบันของโรงเรียน
+                  จำนวนคาบรวมคาบว่างที่ยังไม่ได้กำหนดวิชา
                 </p>
               </div>
-              <FormErrorAlert error={generate.error} fallback="สร้างตารางเวลาไม่สำเร็จ" />
+              <FormErrorAlert
+                error={generate.error}
+                fallback="สร้างตารางเวลาไม่สำเร็จ"
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormItem>
                   <FormLabel htmlFor="pt-first-start" required>
@@ -407,7 +456,11 @@ export function SchoolPeriodTimesDialog({
                   </FormLabel>
                   <TimePicker
                     ariaLabel="เวลาเริ่มคาบ 1"
-                    onChange={(val) => form.setValue("firstPeriodStartsAt", val, { shouldValidate: true })}
+                    onChange={(val) =>
+                      form.setValue("firstPeriodStartsAt", val, {
+                        shouldValidate: true,
+                      })
+                    }
                     value={firstPeriodStartsAt}
                   />
                   <FormMessage<GenerateFormValues> name="firstPeriodStartsAt" />
@@ -419,7 +472,9 @@ export function SchoolPeriodTimesDialog({
                   <Input
                     id="pt-length"
                     type="number"
-                    {...form.register("periodLengthMinutes", { valueAsNumber: true })}
+                    {...form.register("periodLengthMinutes", {
+                      valueAsNumber: true,
+                    })}
                   />
                   <FormMessage<GenerateFormValues> name="periodLengthMinutes" />
                 </FormItem>
@@ -436,42 +491,58 @@ export function SchoolPeriodTimesDialog({
                 </FormItem>
                 <div />
                 <FormItem>
-                  <FormLabel htmlFor="pt-break-after">พักหลังคาบที่ (ถ้ามี)</FormLabel>
+                  <FormLabel htmlFor="pt-break-after">
+                    พักหลังคาบที่ (ถ้ามี)
+                  </FormLabel>
                   <Input
                     id="pt-break-after"
                     placeholder="เช่น 1"
                     type="number"
-                    {...form.register("breakAfterPeriod", { setValueAs: optionalNumber })}
+                    {...form.register("breakAfterPeriod", {
+                      setValueAs: optionalNumber,
+                    })}
                   />
                   <FormMessage<GenerateFormValues> name="breakAfterPeriod" />
                 </FormItem>
                 <FormItem>
-                  <FormLabel htmlFor="pt-break-minutes">พักนาน (นาที)</FormLabel>
+                  <FormLabel htmlFor="pt-break-minutes">
+                    พักนาน (นาที)
+                  </FormLabel>
                   <Input
                     id="pt-break-minutes"
                     placeholder="เช่น 10"
                     type="number"
-                    {...form.register("breakMinutes", { setValueAs: optionalNumber })}
+                    {...form.register("breakMinutes", {
+                      setValueAs: optionalNumber,
+                    })}
                   />
                   <FormMessage<GenerateFormValues> name="breakMinutes" />
                 </FormItem>
                 <FormItem>
-                  <FormLabel htmlFor="pt-lunch-after">พักเที่ยงหลังคาบที่ (ถ้ามี)</FormLabel>
+                  <FormLabel htmlFor="pt-lunch-after">
+                    พักเที่ยงหลังคาบที่ (ถ้ามี)
+                  </FormLabel>
                   <Input
                     id="pt-lunch-after"
                     placeholder="เช่น 4"
                     type="number"
-                    {...form.register("lunchAfterPeriod", { setValueAs: optionalNumber })}
+                    {...form.register("lunchAfterPeriod", {
+                      setValueAs: optionalNumber,
+                    })}
                   />
                   <FormMessage<GenerateFormValues> name="lunchAfterPeriod" />
                 </FormItem>
                 <FormItem>
-                  <FormLabel htmlFor="pt-lunch-minutes">พักเที่ยงนาน (นาที)</FormLabel>
+                  <FormLabel htmlFor="pt-lunch-minutes">
+                    พักเที่ยงนาน (นาที)
+                  </FormLabel>
                   <Input
                     id="pt-lunch-minutes"
                     placeholder="เช่น 70"
                     type="number"
-                    {...form.register("lunchMinutes", { setValueAs: optionalNumber })}
+                    {...form.register("lunchMinutes", {
+                      setValueAs: optionalNumber,
+                    })}
                   />
                   <FormMessage<GenerateFormValues> name="lunchMinutes" />
                 </FormItem>
@@ -492,7 +563,9 @@ export function SchoolPeriodTimesDialog({
                           const next = e.currentTarget.checked
                             ? [...selectedDays, day]
                             : selectedDays.filter((d) => d !== day);
-                          form.setValue("daysOfWeek", next, { shouldValidate: true });
+                          form.setValue("daysOfWeek", next, {
+                            shouldValidate: true,
+                          });
                         }}
                       />
                     );
@@ -501,7 +574,11 @@ export function SchoolPeriodTimesDialog({
                 <FormMessage<GenerateFormValues> name="daysOfWeek" />
               </div>
               <div className="flex justify-end">
-                <Button isLoading={generate.isPending} loadingText="กำลังสร้าง" type="submit">
+                <Button
+                  isLoading={generate.isPending}
+                  loadingText="กำลังสร้าง"
+                  type="submit"
+                >
                   สร้าง/แทนที่ตารางเวลา
                 </Button>
               </div>
@@ -509,7 +586,9 @@ export function SchoolPeriodTimesDialog({
           </Form>
 
           <div>
-            <h3 className="mb-2 text-sm font-bold text-slate-900">ตารางเวลาปัจจุบัน</h3>
+            <h3 className="mb-2 text-sm font-bold text-slate-900">
+              ตารางเวลาปัจจุบัน
+            </h3>
             {periodTimesQuery.isError ? (
               <p className="text-sm text-danger-600">โหลดตารางเวลาไม่สำเร็จ</p>
             ) : rows.length === 0 ? (
@@ -527,7 +606,9 @@ export function SchoolPeriodTimesDialog({
                         onClick={() => setSelectedCurrentDay(day)}
                         size="sm"
                         type="button"
-                        variant={effectiveCurrentDay === day ? "default" : "outline"}
+                        variant={
+                          effectiveCurrentDay === day ? "default" : "outline"
+                        }
                       >
                         {DAY_LABELS[day]}
                       </Button>
@@ -536,17 +617,17 @@ export function SchoolPeriodTimesDialog({
                 </div>
                 <table className="w-full table-fixed text-left">
                   <thead>
-                    <tr className="bg-muted">
-                      <th className="w-24 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                    <tr className="bg-primary">
+                      <th className="w-24 px-3 py-4 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
                         คาบ
                       </th>
-                      <th className="w-[440px] px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                      <th className="w-[440px] px-3 py-4 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
                         เวลา
                       </th>
-                      <th className="w-28 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                      <th className="w-28 px-3 py-4 text-sm font-extrabold uppercase tracking-[0.08em] text-white">
                         ที่มา
                       </th>
-                      <th className="w-36 px-3 py-2" />
+                      <th className="w-36 px-3 py-4" />
                     </tr>
                   </thead>
                   <tbody>
