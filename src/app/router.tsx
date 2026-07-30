@@ -12,6 +12,7 @@ import {
   AttendanceRecordPage,
   CasesListPage,
   CaseDetailPage,
+  CaseReviewDetailPage,
   ChangePasswordPage,
   CreateTaskPage,
   DataExportsPage,
@@ -193,6 +194,10 @@ export const router = createBrowserRouter([
       {
         path: "cases/:caseId",
         element: protectedElement(<CaseDetailPage />, "review-cases"),
+      },
+      {
+        path: "cases/:caseId/reviews/:reviewId",
+        element: protectedElement(<CaseReviewDetailPage />, "review-cases"),
       },
       {
         path: "cases/history",

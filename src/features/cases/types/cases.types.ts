@@ -54,6 +54,15 @@ export interface CaseFollowUpRound {
   follow_up_decision?: string | null;
   resolution_outcome?: string | null;
 }
+
+export interface CaseRiskSignal {
+  id: string;
+  source_code: string;
+  rule_code?: string | null;
+  reason: string;
+  detected_at: string;
+}
+
 export interface CaseRecord {
   id: number;
   student_id?: string | null;
@@ -79,6 +88,7 @@ export interface CaseRecord {
   updated_at?: string | null;
   follow_up_rounds?: CaseFollowUpRound[];
   reviews?: CaseReviewRecord[];
+  risk_signals?: CaseRiskSignal[];
 }
 
 export interface OpenCasePayload {
@@ -131,7 +141,7 @@ export interface CaseReviewRecord {
   id: string;
   review_action: string;
   resolution_outcome?: CaseResolutionOutcome | null;
-  reviewed_by: string;
+  reviewed_by: string | null;
   reviewed_at: string;
   review_note: string | null;
   review_summary?: string | null;
@@ -139,7 +149,7 @@ export interface CaseReviewRecord {
 
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
-  review_note?: string | null;
+  review_note: string;
   resolution_outcome?: CaseResolutionOutcome | null;
 }
 

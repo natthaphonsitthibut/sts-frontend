@@ -68,6 +68,7 @@ export function CaseStatusUpdateDialog({
   const submitDisabled =
     !caseRecord ||
     !selectedAction ||
+    !note.trim() ||
     optionsQuery.isLoading ||
     (requiresResolutionOutcome && !resolutionOutcome);
 
@@ -79,7 +80,7 @@ export function CaseStatusUpdateDialog({
         caseId: caseRecord.id,
         payload: {
           review_action: reviewAction,
-          review_note: note.trim() || null,
+          review_note: note.trim(),
           resolution_outcome: requiresResolutionOutcome
             ? (resolutionOutcome as CaseResolutionOutcome)
             : null,
@@ -157,11 +158,18 @@ export function CaseStatusUpdateDialog({
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="case-note">บันทึกการพิจารณา</Label>
+              <Label required htmlFor="case-note">
+                เหตุผลการพิจารณา
+              </Label>
               <Textarea
                 id="case-note"
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="ระบุเหตุผลหรือสิ่งที่ต้องติดตามเพิ่มเติม (ถ้ามี)"
+                placeholder={
+                  selectedAction?.code === "CONTINUE"
+                    ? "ระบุเหตุผลที่ต้องติดตามต่อและประเด็นที่ต้องดำเนินการ"
+                    : "ระบุเหตุผลที่ปิดเคสและข้อสรุปจากการติดตาม"
+                }
+                required
                 value={note}
               />
             </div>

@@ -182,6 +182,11 @@ export const CaseDetailPage = lazy(() =>
     default: module.CaseDetailPage,
   })),
 );
+export const CaseReviewDetailPage = lazy(() =>
+  import("../features/cases/pages/CaseReviewDetailPage").then((module) => ({
+    default: module.CaseReviewDetailPage,
+  })),
+);
 export const StudentListPage = lazy(() =>
   import("../features/students/pages/StudentListPage").then((module) => ({
     default: module.StudentListPage,
