@@ -80,7 +80,7 @@ export function OpenCaseDialog({
         onClose={() => handleOpenChange(false)}
       >
         <DialogHeader>
-          <DialogTitle>เปิดเคสช่วยเหลือ</DialogTitle>
+          <DialogTitle>เปิดเคสติดตามนักเรียน</DialogTitle>
           <DialogDescription>
             {studentName} · ระบบจะใช้ข้อมูลโรงเรียน ชั้น และห้องจากระเบียนนักเรียนปัจจุบัน
           </DialogDescription>

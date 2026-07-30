@@ -4,7 +4,6 @@ export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
   | "IN_PROGRESS"
-  | "REPORTED_UP"
   | "RESOLVED";
 
 export type CaseStatus = KnownCaseStatus | (string & {});
@@ -18,15 +17,43 @@ export type CaseBadgeVariant =
 
 export type CaseSummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
-export type CaseReviewAction = "ASSIST" | "CLOSE";
-export type CaseWorkflowAction = CaseReviewAction | "REPORT_UP";
-export type CaseResolutionOutcome =
-  | "RETURNED_TO_SCHOOL"
-  | "TRANSFERRED_SCHOOL"
-  | "ILLNESS"
-  | "WORKING"
-  | "UNREACHABLE"
-  | "OTHER";
+export type CaseReviewAction = "CONTINUE" | "CLOSE";
+export type CaseResolutionOutcome = string;
+
+export interface CaseTrackingOption {
+  code: string;
+  label: string;
+  targetStatus: string | null;
+  requiresResolutionOutcome: boolean;
+  requiredPermission?: string;
+}
+
+export interface CaseTrackingOptions {
+  reviewActions: CaseTrackingOption[];
+  followUpDecisions: CaseTrackingOption[];
+  resolutionOutcomes: Array<{ code: string; label: string }>;
+}
+
+export interface CaseFollowUpRound {
+  task_id: string;
+  task_status: string;
+  created_at: string;
+  initial_assignee?: string | null;
+  link_count: number;
+  submitted_at?: string | null;
+  cause_category?: string | null;
+  cause_detail?: string | null;
+  recommendation?: string | null;
+  visit_lat?: number | null;
+  visit_lng?: number | null;
+  photo_paths?: string | null;
+  address_changed?: boolean;
+  updated_student_address?: string | null;
+  updated_lat?: number | null;
+  updated_lng?: number | null;
+  follow_up_decision?: string | null;
+  resolution_outcome?: string | null;
+}
 export interface CaseRecord {
   id: number;
   student_id?: string | null;
@@ -50,6 +77,8 @@ export interface CaseRecord {
   grade?: string | null;
   room?: string | null;
   updated_at?: string | null;
+  follow_up_rounds?: CaseFollowUpRound[];
+  reviews?: CaseReviewRecord[];
 }
 
 export interface OpenCasePayload {
@@ -91,7 +120,6 @@ export interface CaseStats {
   atRiskStudents?: number;
   open: number;
   inProgress: number;
-  reportedUp: number;
   resolved: number;
   today: number;
   pendingReview: number;
@@ -106,37 +134,13 @@ export interface CaseReviewRecord {
   reviewed_by: string;
   reviewed_at: string;
   review_note: string | null;
+  review_summary?: string | null;
 }
 
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note?: string | null;
   resolution_outcome?: CaseResolutionOutcome | null;
-}
-
-export interface CaseReportUpPayload {
-  reason: string;
-  summary: string;
-}
-
-export interface CaseReportUpRecord {
-  id: string;
-  case_id: number;
-  school_id: number | null;
-  reported_by: number | null;
-  reported_by_label: string | null;
-  report_reason: string | null;
-  report_summary: string | null;
-  school_name_snapshot: string | null;
-  province_snapshot: string | null;
-  district_snapshot: string | null;
-  sub_district_snapshot: string | null;
-  reported_at: string;
-}
-
-export interface CaseReportUpResponse {
-  success: boolean;
-  data: CaseReportUpRecord;
 }
 
 export interface CaseReviewResponse {

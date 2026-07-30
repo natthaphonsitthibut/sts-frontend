@@ -6,7 +6,7 @@ const MENU_TITLES = Object.fromEntries(
 
 /** Routes not present in the sidebar menu still need a header title. */
 const EXTRA_TITLES: Record<string, string> = {
-  "/cases": "เคสช่วยเหลือนักเรียน",
+  "/cases": "เคสติดตามนักเรียน",
   "/profile": "โปรไฟล์ของฉัน",
   "/notifications": "การแจ้งเตือน",
   "/login": "เข้าสู่ระบบ",

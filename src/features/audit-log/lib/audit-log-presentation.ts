@@ -1,7 +1,7 @@
 import type { AuditLogDetail, AuditLogEntry } from "../types/audit-log.types";
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
-  case: "เคสช่วยเหลือ",
+  case: "เคสติดตามนักเรียน",
   import: "การนำเข้าข้อมูล",
   role_group: "กลุ่มสิทธิ์",
   student_accounts: "บัญชีนักเรียน",

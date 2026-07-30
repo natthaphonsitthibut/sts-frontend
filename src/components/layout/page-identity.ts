@@ -80,7 +80,7 @@ export const PAGE_IDENTITIES = {
   "/attendance": createIdentity("เช็คชื่อ", "edit"),
   "/attendance-links": createIdentity("ลิงก์เช็คชื่อ", "clipboard-check"),
   "/attendance-operations": createIdentity("ความครบถ้วน", "calendar-check"),
-  "/cases": createIdentity("เคสช่วยเหลือ", "heart-handshake"),
+  "/cases": createIdentity("เคสติดตาม", "clipboard-check"),
   "/create": createIdentity("สร้างลิงก์", "link-plus"),
   "/data-exports": createIdentity("ส่งออกข้อมูล", "download"),
   "/field-follower-applications": createIdentity("ตรวจสอบใบสมัคร", "user-check"),

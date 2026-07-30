@@ -12,9 +12,7 @@ interface UpdateCaseVariables {
 }
 
 /**
- * Updates a case through the school review actions (ASSIST / CLOSE). Reporting
- * upward is a separate explicit endpoint and hook so report-up semantics cannot
- * leak back into the review DTO.
+ * Updates a case through the configured review actions.
  */
 export function useUpdateCase() {
   const queryClient = useQueryClient();

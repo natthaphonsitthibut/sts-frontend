@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { HeartHandshake } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import {
   FilterSelect,
   ListPageToolbar,
@@ -36,9 +36,9 @@ export function CaseListFilter({
 }: CaseListFilterProps) {
   return (
     <ListPageToolbar
-      icon={HeartHandshake}
-      title="เคสช่วยเหลือนักเรียน"
-      description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
+      icon={ClipboardList}
+      title="เคสติดตามนักเรียน"
+      description="ติดตามรายงานแต่ละรอบจนปิดเคส"
       actions={actions}
       tableActions={
         <>

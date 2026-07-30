@@ -9,8 +9,7 @@ import type {
   CaseDetailResponse,
   CasePaginationMeta,
   CaseRecord,
-  CaseReportUpPayload,
-  CaseReportUpResponse,
+  CaseTrackingOptions,
   CaseReviewPayload,
   CaseReviewResponse,
   OpenCasePayload,
@@ -25,14 +24,14 @@ interface CasesService {
   openCase: (payload: OpenCasePayload) => Promise<OpenCaseResponse>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
-   * server-side by a review action (ASSIST / FORWARD / CLOSE) plus an optional
+   * server-side by a review action plus an optional
    * note, via POST /cases/:id/review through apiClient.
    */
   reviewCase: (
     caseId: number,
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
-  reportUpCase: (caseId: number, payload: CaseReportUpPayload) => Promise<CaseReportUpResponse>;
+  getTrackingOptions: () => Promise<CaseTrackingOptions>;
 }
 
 async function getCases(
@@ -96,13 +95,9 @@ async function reviewCase(
   return response.data;
 }
 
-async function reportUpCase(
-  caseId: number,
-  payload: CaseReportUpPayload,
-): Promise<CaseReportUpResponse> {
-  const response = await apiClient.post<CaseReportUpResponse>(
-    `/cases/${caseId}/report-up`,
-    payload,
+async function getTrackingOptions(): Promise<CaseTrackingOptions> {
+  const response = await apiClient.get<CaseTrackingOptions>(
+    "/public/case-tracking-options",
   );
   return response.data;
 }
@@ -113,5 +108,5 @@ export const casesService: CasesService = {
   getCase,
   openCase,
   reviewCase,
-  reportUpCase,
+  getTrackingOptions,
 };

@@ -1,5 +1,4 @@
 import type { DataScope } from "../../auth/lib/permissions";
-import type { CaseReportUpRecord } from "../../cases/types/cases.types";
 
 export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
@@ -149,6 +148,8 @@ export interface TaskSubmission {
   visit_lat?: number | string | null;
   visit_lng?: number | string | null;
   photo_paths?: string | null;
+  case_follow_up_decision?: string | null;
+  case_resolution_outcome_code?: string | null;
 }
 
 export interface TaskChainResponse {
@@ -166,5 +167,4 @@ export interface TaskChainResponse {
   result_summary?: string | null;
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;
-  reportUps?: CaseReportUpRecord[];
 }

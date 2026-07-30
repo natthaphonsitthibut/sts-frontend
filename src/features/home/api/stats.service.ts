@@ -19,7 +19,7 @@ function createEmptyOverviewStats(): OverviewStatsData {
     totalStudents: 0,
     activeCases: 0,
     atRiskStudents: 0,
-    helpStats: {
+    caseTrackingStats: {
       waiting: 0,
       inProgress: 0,
       resolved: 0,
@@ -40,10 +40,10 @@ async function getOverviewStats(): Promise<OverviewStatsData> {
     totalStudents: toNumber(payload.totalStudents),
     activeCases: toNumber(payload.activeCases),
     atRiskStudents: toNumber(payload.atRiskStudents),
-    helpStats: {
-      waiting: toNumber(payload.helpStats?.waiting),
-      inProgress: toNumber(payload.helpStats?.inProgress),
-      resolved: toNumber(payload.helpStats?.resolved),
+    caseTrackingStats: {
+      waiting: toNumber(payload.caseTrackingStats?.waiting),
+      inProgress: toNumber(payload.caseTrackingStats?.inProgress),
+      resolved: toNumber(payload.caseTrackingStats?.resolved),
     },
   };
 }

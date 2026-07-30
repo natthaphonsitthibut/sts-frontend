@@ -101,7 +101,7 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("students", "/students"),
   {
     id: "case-system",
-    label: "งานเคส/ช่วยเหลือ",
+    label: "งานติดตามเคส",
     iconName: "folder-heart",
     children: [
       {

@@ -150,13 +150,13 @@ export function StudentCaseAction({
   return (
     <>
       <Button
-        aria-label="เปิดเคสช่วยเหลือ"
+        aria-label="เปิดเคสติดตามนักเรียน"
         className={mode === "icon" ? "size-9 shrink-0 px-0" : undefined}
         icon={CirclePlus}
         iconClassName={mode === "icon" ? "text-success-700" : undefined}
         onClick={() => setOpenCaseDialogOpen(true)}
         size={mode === "icon" ? "sm" : "md"}
-        title="เปิดเคสช่วยเหลือ"
+        title="เปิดเคสติดตามนักเรียน"
         variant={mode === "icon" ? "outline" : "default"}
       >
         {mode === "button" ? "เปิดเคส" : null}

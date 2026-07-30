@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,7 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
 import { normalizeCoordinates, type Coordinates } from "../../../lib/coordinates";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
 import { taskService } from "../api/task.service";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VISIT_CAUSE_CATEGORY_OPTIONS } from "../lib/task-options";
@@ -38,6 +39,8 @@ const reportSchema = z.object({
   causeCategory: z.string().trim().min(1, "กรุณาเลือกประเภทสาเหตุ"),
   causeDetail: z.string().trim(),
   recommendation: z.string().trim(),
+  followUpDecision: z.string().trim().min(1, "กรุณาเลือกผลหลังการติดตาม"),
+  resolutionOutcome: z.string().trim(),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -86,13 +89,38 @@ export function ReportPage() {
   const [photos, setPhotos] = useState<File[]>([]);
 
   const form = useForm<ReportFormValues>({
-    defaultValues: { causeCategory: "", causeDetail: "", recommendation: "" },
+    defaultValues: {
+      causeCategory: "",
+      causeDetail: "",
+      recommendation: "",
+      followUpDecision: "",
+      resolutionOutcome: "",
+    },
     resolver: zodResolver(reportSchema),
   });
   const causeCategory = useWatch({
     control: form.control,
     name: "causeCategory",
   });
+  const followUpDecision = useWatch({
+    control: form.control,
+    name: "followUpDecision",
+  });
+  const resolutionOutcome = useWatch({
+    control: form.control,
+    name: "resolutionOutcome",
+  });
+  const trackingOptionsQuery = useCaseTrackingOptions();
+  const selectedDecision = trackingOptionsQuery.data?.followUpDecisions.find(
+    (option) => option.code === followUpDecision,
+  );
+
+  useEffect(() => {
+    const firstDecision = trackingOptionsQuery.data?.followUpDecisions[0];
+    if (!followUpDecision && firstDecision) {
+      form.setValue("followUpDecision", firstDecision.code);
+    }
+  }, [followUpDecision, form, trackingOptionsQuery.data?.followUpDecisions]);
 
   const sessionToken = readMagicToken(token, "local") || undefined;
   const taskQuery = useQuery({
@@ -123,6 +151,10 @@ export function ReportPage() {
       formData.set("cause_category", values.causeCategory);
       formData.set("cause_detail", values.causeDetail);
       formData.set("recommendation", values.recommendation);
+      formData.set("case_follow_up_decision", values.followUpDecision);
+      if (values.resolutionOutcome) {
+        formData.set("case_resolution_outcome_code", values.resolutionOutcome);
+      }
       formData.set("visit_lat", lat);
       formData.set("visit_lng", lng);
       if (homeCorrection) {
@@ -140,6 +172,25 @@ export function ReportPage() {
   async function handleSubmitReport(values: ReportFormValues): Promise<void> {
     if (submitReport.isPending) {
       return;
+    }
+
+    if (selectedDecision?.requiresResolutionOutcome && !values.resolutionOutcome) {
+      form.setError("resolutionOutcome", {
+        message: "กรุณาเลือกผลลัพธ์การติดตามก่อนปิดเคส",
+      });
+      return;
+    }
+
+    if (selectedDecision?.targetStatus === "RESOLVED") {
+      const confirmed = await confirm({
+        cancelText: "กลับไปตรวจสอบ",
+        confirmText: "ปิดเคส",
+        description:
+          "รายงานนี้จะถูกบันทึกเป็นหลักฐานการติดตามและปิดเคสทันที โดยไม่ต้องรอตรวจผลอีกครั้ง",
+        title: "ยืนยันการปิดเคส",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
     }
 
     if (homeCorrection && !homeCorrectionConfirmed) {
@@ -246,7 +297,7 @@ export function ReportPage() {
           <Form form={form} onSubmit={handleSubmitReport}>
             <div className="space-y-4">
               <FormErrorAlert
-                error={submitReport.error}
+                error={trackingOptionsQuery.error ?? submitReport.error}
                 fallback="ส่งรายงานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
               />
 
@@ -296,6 +347,66 @@ export function ReportPage() {
                 />
                 <FormMessage<ReportFormValues> name="recommendation" />
               </FormItem>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <FormItem>
+                  <FormLabel htmlFor="follow-up-decision" required>
+                    ผลหลังการติดตาม
+                  </FormLabel>
+                  <Combobox
+                    aria-invalid={
+                      form.formState.errors.followUpDecision ? true : undefined
+                    }
+                    disabled={trackingOptionsQuery.isLoading}
+                    id="follow-up-decision"
+                    name="followUpDecision"
+                    onChange={(next) => {
+                      form.setValue("followUpDecision", next, {
+                        shouldValidate: form.formState.isSubmitted,
+                      });
+                      form.setValue("resolutionOutcome", "");
+                    }}
+                    options={(trackingOptionsQuery.data?.followUpDecisions ?? []).map(
+                      (option) => ({ value: option.code, label: option.label }),
+                    )}
+                    placeholder="เลือกผลหลังการติดตาม"
+                    searchable={false}
+                    value={followUpDecision}
+                  />
+                  <FormMessage<ReportFormValues> name="followUpDecision" />
+                  <p className="text-xs text-slate-500">
+                    เลือก “ส่งให้ตรวจผล” เมื่อควรให้ผู้รับผิดชอบดูรายงานก่อน
+                    หรือ “ปิดเคส” สำหรับกรณีที่ได้ข้อสรุปแล้ว
+                  </p>
+                </FormItem>
+
+                {selectedDecision?.requiresResolutionOutcome ? (
+                  <FormItem className="mt-4">
+                    <FormLabel htmlFor="resolution-outcome" required>
+                      ผลลัพธ์การติดตาม
+                    </FormLabel>
+                    <Combobox
+                      aria-invalid={
+                        form.formState.errors.resolutionOutcome ? true : undefined
+                      }
+                      id="resolution-outcome"
+                      name="resolutionOutcome"
+                      onChange={(next) =>
+                        form.setValue("resolutionOutcome", next, {
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      options={(trackingOptionsQuery.data?.resolutionOutcomes ?? []).map(
+                        (option) => ({ value: option.code, label: option.label }),
+                      )}
+                      placeholder="เลือกผลลัพธ์"
+                      searchable={false}
+                      value={resolutionOutcome}
+                    />
+                    <FormMessage<ReportFormValues> name="resolutionOutcome" />
+                  </FormItem>
+                ) : null}
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormItem>
@@ -434,12 +545,13 @@ export function ReportPage() {
               </div>
 
               <Button
+                disabled={trackingOptionsQuery.isLoading || !selectedDecision}
                 fullWidth
                 isLoading={submitReport.isPending}
                 loadingText="กำลังส่งรายงาน"
                 type="submit"
               >
-                บันทึกและส่งรายงาน
+                {selectedDecision?.label || "บันทึกรายงาน"}
               </Button>
             </div>
           </Form>

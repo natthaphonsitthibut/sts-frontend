@@ -4,9 +4,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardCheck,
+  ClipboardList,
   Clock,
   FileDown,
-  HeartHandshake,
   ListChecks,
 } from "lucide-react";
 import { Button, Tabs } from "../../../components/base";
@@ -30,7 +30,6 @@ import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { CaseListFilter } from "../components/CaseListFilter";
-import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTable } from "../components/CaseTable";
 import { useCases } from "../hooks/useCases";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
@@ -43,7 +42,6 @@ const CASE_STATUS_ICONS = {
   OPEN: AlertCircle,
   PENDING_REVIEW: ClipboardCheck,
   IN_PROGRESS: Clock,
-  REPORTED_UP: HeartHandshake,
   RESOLVED: CheckCircle2,
 } as const;
 
@@ -84,8 +82,6 @@ export function CasesListPage() {
   const [status, setStatus] = useState(() => initialQuery.get("status") || "ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const schoolArea = useSchoolAreaFilter({
     province: initialQuery.get("province") || undefined,
     district: initialQuery.get("district") || undefined,
@@ -187,11 +183,6 @@ export function CasesListPage() {
     setPage(1);
   }
 
-  function openUpdate(caseRecord: CaseRecord): void {
-    setSelectedCase(caseRecord);
-    setDialogOpen(true);
-  }
-
   function openCreateLink(caseRecord: CaseRecord): void {
     void navigate("/create/visit", {
       state: {
@@ -214,7 +205,7 @@ export function CasesListPage() {
           actions={
             canViewAuditLog ? (
               <Tabs
-                aria-label="โหมดเคสช่วยเหลือ"
+                aria-label="มุมมองเคสติดตามนักเรียน"
                 onChange={setActiveTab}
                 options={[
                   { value: "list", label: "รายการ" },
@@ -257,7 +248,7 @@ export function CasesListPage() {
         <ListPageToolbar
           actions={
             <Tabs
-              aria-label="โหมดเคสช่วยเหลือ"
+              aria-label="มุมมองเคสติดตามนักเรียน"
               onChange={setActiveTab}
               options={[
                 { value: "list", label: "รายการ" },
@@ -266,7 +257,7 @@ export function CasesListPage() {
               value={activeTab}
             />
           }
-          description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          description="ดูประวัติการติดตาม การพิจารณา และการปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
           onClearFilters={handleClearFilters}
           filters={
             <SchoolAreaSchoolFilter
@@ -276,20 +267,20 @@ export function CasesListPage() {
               schoolLocked={scope.schoolLocked}
             />
           }
-          icon={HeartHandshake}
-          title="เคสช่วยเหลือนักเรียน"
+          icon={ClipboardList}
+          title="เคสติดตามนักเรียน"
         />
       )}
 
       {effectiveTab === "history" ? (
         <AuditLogPanel
-          description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          description="ดูประวัติการติดตาม การพิจารณา และการปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
           district={schoolArea.district || undefined}
           domain="cases"
           province={schoolArea.province || undefined}
           schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
           subDistrict={schoolArea.subDistrict || undefined}
-          title="ประวัติเคสช่วยเหลือนักเรียน"
+          title="ประวัติเคสติดตามนักเรียน"
         />
       ) : isError || workflowStatuses.isError ? (
         <ErrorState
@@ -331,13 +322,17 @@ export function CasesListPage() {
           />
           {cases.length === 0 ? (
             <EmptyState
-              icon={HeartHandshake}
-              title="ไม่พบเคสช่วยเหลือ"
+              icon={ClipboardList}
+              title="ไม่พบเคสติดตามนักเรียน"
               description="ลองปรับตัวกรองสถานะ หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
             />
           ) : (
             <>
-              <CaseTable onCreateLink={openCreateLink} onUpdate={openUpdate} rows={cases} />
+              <CaseTable
+                canCreateLinks={can("create")}
+                onCreateLink={openCreateLink}
+                rows={cases}
+              />
               <Pagination
                 onPageChange={setPage}
                 onRowsPerPageChange={handleRowsPerPageChange}
@@ -351,14 +346,6 @@ export function CasesListPage() {
           )}
         </div>
       )}
-
-      <CaseStatusUpdateDialog
-        key={selectedCase?.id ?? "none"}
-        caseRecord={selectedCase}
-        onOpenChange={setDialogOpen}
-        onUpdated={() => void refetch()}
-        open={dialogOpen}
-      />
     </PageShell>
   );
 }

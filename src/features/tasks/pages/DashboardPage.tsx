@@ -454,7 +454,7 @@ export function DashboardPage() {
         actions={<RiskReportTabs />}
         icon={LayoutDashboard}
         title="รายงานนักเรียน"
-        description="ติดตามข้อมูลการมาเรียนและเคสช่วยเหลือของนักเรียนในขอบเขตข้อมูล"
+        description="ติดตามข้อมูลการมาเรียนและเคสติดตามนักเรียนในขอบเขตข้อมูล"
         tableActions={
           <>
             <RefreshButton onRefresh={() => void riskQuery.refetch()} updatedAt={riskQuery.dataUpdatedAt} />

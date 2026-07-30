@@ -113,7 +113,7 @@ export function StudentStatusesPage() {
           setSearch("");
           setPage(1);
         }}
-        description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยน login หรือสร้าง Case ช่วยเหลืออัตโนมัติ"
+        description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยนการเข้าสู่ระบบหรือสร้างเคสติดตามอัตโนมัติ"
         icon={SchoolIcon}
         title="ข้อมูลพื้นฐานสถานะนักเรียน"
         search={{

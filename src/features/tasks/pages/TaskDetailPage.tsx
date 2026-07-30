@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ClipboardList } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardList, Eye } from "lucide-react";
 import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
@@ -16,10 +16,8 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { CaseReviewActionButton } from "../../cases/components/CaseReviewActionButton";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { CaseStatusUpdateDialog } from "../../cases/components/CaseStatusUpdateDialog";
-import type { CaseRecord, CaseReportUpRecord } from "../../cases/types/cases.types";
+import type { CaseRecord } from "../../cases/types/cases.types";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -33,38 +31,6 @@ import {
   findStatusCatalogItem,
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
-function ReportUpCard({ reportUp }: { reportUp: CaseReportUpRecord }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="font-bold text-slate-900">รายงานขึ้นส่วนกลาง</div>
-          <div className="text-sm text-slate-500">
-            {reportUp.school_name_snapshot || "ไม่ระบุโรงเรียน"}
-            {reportUp.province_snapshot ? ` · ${reportUp.province_snapshot}` : ""}
-          </div>
-        </div>
-        <Badge variant="destructive">รายงานแล้ว</Badge>
-      </div>
-      <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-        <div>รายงานโดย {reportUp.reported_by_label || "-"}</div>
-        <div>รายงานเมื่อ {formatDateTime(reportUp.reported_at)}</div>
-      </div>
-      {reportUp.report_reason ? (
-        <div className="mt-3 text-sm font-medium text-slate-700">
-          {reportUp.report_reason}
-        </div>
-      ) : null}
-      {reportUp.report_summary ? (
-        <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-          <div className="font-semibold text-slate-900">สรุปสำหรับส่วนกลาง</div>
-          <div>{reportUp.report_summary}</div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export function TaskDetailPage() {
   const caseStatusCatalog = useStatusCatalog("CASE_WORKFLOW").items;
   const taskStatusCatalog = useStatusCatalog("TASK_WORKFLOW").items;
@@ -72,7 +38,6 @@ export function TaskDetailPage() {
   const linkStatusCatalog = useStatusCatalog("TASK_LINK_STATUS").items;
   const { taskId } = useParams<{ taskId: string }>();
   const { can } = usePermissions();
-  const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const taskQuery = useQuery({
     queryKey: ["task-chain", taskId],
     queryFn: () => taskService.getTaskChain(taskId || ""),
@@ -95,7 +60,6 @@ export function TaskDetailPage() {
       task_id: taskData.task_id,
     };
   }, [taskData]);
-  const canUpdateCase = Boolean(caseRecord) && can("review-cases");
   const canViewAuditLog = Boolean(caseRecord) && can("audit-log");
 
   if (taskQuery.isLoading) {
@@ -121,7 +85,6 @@ export function TaskDetailPage() {
 
   const task = taskQuery.data;
   const firstSubmission = task.chain.find((link) => link.submission)?.submission;
-  const reportUps = task.reportUps ?? [];
   // Only the current active link in the chain can be opened/closed by an admin.
   const activeLink = task.chain.find(
     (link) =>
@@ -138,13 +101,10 @@ export function TaskDetailPage() {
         description={task.task_id}
         actions={
           <div className="flex flex-nowrap items-center gap-3">
-            {canUpdateCase ? (
-              <CaseReviewActionButton
-                onClick={() => setCaseDialogOpen(true)}
-                size="md"
-              >
-                ดำเนินการเคส
-              </CaseReviewActionButton>
+            {caseRecord ? (
+              <NavButton icon={Eye} to={`/cases/${caseRecord.id}`} variant="outline">
+                ดูรายละเอียดเคส
+              </NavButton>
             ) : null}
             {activeLink ? (
               <LinkLockToggleButton
@@ -273,7 +233,7 @@ export function TaskDetailPage() {
           <Card className="rounded-lg p-6">
             <AuditLogPanel
               caseId={caseRecord.id}
-              description="ดูประวัติการช่วยเหลือ รายงานขึ้นส่วนกลาง และปิดเคสของรายการนี้"
+              description="ดูประวัติการติดตาม การพิจารณา และการปิดเคสของรายการนี้"
               domain="cases"
               showReferenceColumn={false}
               title="ประวัติเคสนี้"
@@ -318,24 +278,7 @@ export function TaskDetailPage() {
           </Card>
         ) : null}
 
-        {reportUps.length > 0 ? (
-          <Card className="rounded-lg p-6">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">ประวัติรายงานขึ้นส่วนกลาง</h2>
-            <div className="space-y-3">
-              {reportUps.map((reportUp) => (
-                <ReportUpCard key={reportUp.id} reportUp={reportUp} />
-              ))}
-            </div>
-          </Card>
-        ) : null}
       </div>
-      <CaseStatusUpdateDialog
-        key={caseRecord?.id ?? "none"}
-        caseRecord={caseRecord}
-        onOpenChange={setCaseDialogOpen}
-        onUpdated={() => void taskQuery.refetch()}
-        open={caseDialogOpen}
-      />
     </PageShell>
   );
 }

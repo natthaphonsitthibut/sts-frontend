@@ -12,7 +12,6 @@ import {
   Users,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, Combobox, Select, buttonVariants } from "../../../components/base";
-import { ChartLegend, EmptyChart, PairedBarChart, StackedBarTrend } from "../../../components/charts/chart-primitives";
 import {
   ErrorState,
   PageShell,
@@ -29,14 +28,10 @@ import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
-  HomeDashboardCaseMovementPoint,
-  HomeDashboardCasePipeline,
   HomeDashboardFilters,
   HomeDashboardMetric,
   HomeDashboardOption,
   HomeDashboardPeriod,
-  HomeDashboardRiskDistribution,
-  HomeDashboardTrendPoint,
 } from "../types/home-dashboard.types";
 
 const PERIOD_OPTIONS: Array<{ value: HomeDashboardPeriod; label: string }> = [
@@ -58,22 +53,6 @@ const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
   warning: "bg-warning-100 text-warning-700",
   danger: "bg-danger-100 text-danger-700",
   info: "bg-primary-soft text-primary-dark",
-};
-
-const RISK_LABELS: Record<keyof HomeDashboardRiskDistribution, string> = {
-  HIGH: "สูง",
-  MEDIUM: "กลาง",
-  LOW: "ต่ำ",
-  WATCH: "เฝ้าดู",
-  NORMAL: "ปกติ",
-};
-
-const CASE_LABELS: Record<keyof HomeDashboardCasePipeline, string> = {
-  OPEN: "เปิดใหม่",
-  IN_PROGRESS: "กำลังติดตาม",
-  REPORTED_UP: "รายงานขึ้นส่วนกลางแล้ว",
-  PENDING_REVIEW: "รอตรวจผล",
-  RESOLVED: "ปิดแล้ว",
 };
 
 function parseFilters(searchParams: URLSearchParams): HomeDashboardFilters {
@@ -362,198 +341,18 @@ function AttentionQueue({ items }: { items: Array<{
   );
 }
 
-function AttendanceTrendChart({ points }: { points: HomeDashboardTrendPoint[] }) {
-  const hasData = points.some((point) => point.total > 0);
-  return (
-    <Card className="p-5">
-      <h2 className="text-lg font-semibold text-slate-900">แนวโน้มการมาเรียน</h2>
-      <p className="mb-4 text-sm text-slate-500">จำนวนมา สาย และขาด รายวันตามขอบเขตที่เลือก</p>
-      {!hasData ? (
-        <EmptyChart />
-      ) : (
-        <>
-          <ChartLegend items={[
-            { className: "bg-success-300", label: "มา" },
-            { className: "bg-warning-200", label: "สาย" },
-            { className: "bg-danger-200", label: "ขาด" },
-          ]} />
-          <StackedBarTrend
-            points={points.map((point) => ({
-              key: point.key,
-              label: point.label.slice(5),
-              values: [point.present, point.late, point.absent],
-            }))}
-            segmentClasses={["bg-success-300", "bg-warning-200", "bg-danger-200"]}
-          />
-          <ChartTable
-            headers={["วัน", "มา", "สาย", "ขาด", "อัตรามา"]}
-            rows={points.slice(-7).map((point) => [
-              point.label,
-              point.present.toLocaleString("th-TH"),
-              point.late.toLocaleString("th-TH"),
-              point.absent.toLocaleString("th-TH"),
-              point.attendanceRate === null ? "-" : `${point.attendanceRate}%`,
-            ])}
-          />
-        </>
-      )}
-    </Card>
-  );
-}
-
-function RiskDistributionChart({ summary }: { summary: HomeDashboardRiskDistribution }) {
-  const entries = Object.entries(summary) as Array<[keyof HomeDashboardRiskDistribution, number]>;
-  const total = entries.reduce((sum, [, value]) => sum + value, 0);
-  const segmentClasses: Record<keyof HomeDashboardRiskDistribution, string> = {
-    HIGH: "bg-danger-600",
-    MEDIUM: "bg-warning-500",
-    LOW: "bg-warning-200",
-    WATCH: "bg-primary",
-    NORMAL: "bg-success-500",
-  };
-  return (
-    <Card className="p-5">
-      <h2 className="text-lg font-semibold text-slate-900">การกระจายระดับความเสี่ยง</h2>
-      <p className="mb-4 text-sm text-slate-500">สรุปจากการประเมินความเสี่ยงล่าสุด</p>
-      {total === 0 ? (
-        <EmptyChart />
-      ) : (
-        <>
-          <div className="flex h-5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-            {entries.map(([key, value]) => (
-              <div
-                key={key}
-                className={segmentClasses[key]}
-                style={{ width: `${(value / total) * 100}%` }}
-              />
-            ))}
-          </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-5">
-            {entries.map(([key, value]) => (
-              <div key={key} className="rounded-md bg-slate-50 p-2 text-sm">
-                <div className="font-semibold text-slate-900">{RISK_LABELS[key]}</div>
-                <div className="tabular-nums text-slate-600">{value.toLocaleString("th-TH")}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
-function CaseCharts({
-  pipeline,
-  movement,
-}: {
-  pipeline: HomeDashboardCasePipeline | null;
-  movement: HomeDashboardCaseMovementPoint[] | null;
-}) {
-  if (!pipeline && !movement) return null;
-  const pipelineEntries = pipeline
-    ? (Object.entries(pipeline) as Array<[keyof HomeDashboardCasePipeline, number]>)
-    : [];
-  const maxPipeline = Math.max(1, ...pipelineEntries.map(([, value]) => value));
-  const hasMovementData = movement?.some((point) => point.opened > 0 || point.resolved > 0) ?? false;
-  return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      {pipeline ? (
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold text-slate-900">สถานะเคสช่วยเหลือ</h2>
-          <div className="mt-4 space-y-3">
-            {pipelineEntries.map(([key, value]) => (
-              <div key={key}>
-                <div className="mb-1 flex justify-between text-sm">
-                  <span className="font-medium text-slate-700">{CASE_LABELS[key]}</span>
-                  <span className="tabular-nums text-slate-600">
-                    {value.toLocaleString("th-TH")}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100">
-                  <div
-                    className="h-2 rounded-full bg-primary"
-                    style={{ width: `${(value / maxPipeline) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) : null}
-      {movement ? (
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold text-slate-900">เคสเปิดใหม่เทียบปิดแล้ว</h2>
-          {!hasMovementData ? (
-            <EmptyChart />
-          ) : (
-            <>
-              <ChartLegend items={[
-                { className: "bg-primary", label: "เปิดใหม่" },
-                { className: "bg-success-500", label: "ปิดแล้ว" },
-              ]} />
-              <PairedBarChart points={movement.map((point) => ({
-                key: point.key,
-                label: point.label,
-                primary: point.opened,
-                secondary: point.resolved,
-              }))} />
-            </>
-          )}
-          <ChartTable
-            headers={["สัปดาห์", "เปิดใหม่", "ปิดแล้ว"]}
-            rows={(movement ?? []).map((point) => [
-              point.label,
-              point.opened.toLocaleString("th-TH"),
-              point.resolved.toLocaleString("th-TH"),
-            ])}
-          />
-        </Card>
-      ) : null}
-    </div>
-  );
-}
-
-function ChartTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
-  return (
-    <div className="sr-only">
-      <table>
-        <thead>
-          <tr>
-            {headers.map((header) => (
-              <th key={header}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.join("|")}>
-              {row.map((cell, index) => (
-                <td key={`${cell}-${index}`}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
   const { can } = usePermissions();
   const { filters, reset, updateFilter } = useDashboardFilters();
   const {
     summary,
-    trends,
     filterOptions,
     isLoading,
-    isTrendsLoading,
     isError,
-    isTrendsError,
     isFilterOptionsError,
     dataUpdatedAt,
     refetch,
-    refetchTrends,
     refetchFilterOptions,
   } = useHomeDashboard(filters);
   const shortcuts = [
@@ -564,7 +363,7 @@ export function MainPage() {
       ? { to: "/student-risk-report", icon: ShieldAlert, label: "เฝ้าระวัง" }
       : null,
     can("review-cases")
-      ? { to: "/cases", icon: BriefcaseBusiness, label: "เคสช่วยเหลือ" }
+      ? { to: "/cases", icon: BriefcaseBusiness, label: "เคสติดตาม" }
       : null,
   ].filter((item): item is { to: string; icon: typeof Users; label: string } => Boolean(item));
 
@@ -620,30 +419,6 @@ export function MainPage() {
 
           <AttentionQueue items={summary.attentionItems} />
           <MetricGrid metrics={summary.metrics} />
-
-          {isTrendsLoading ? (
-            <SkeletonCards count={2} />
-          ) : isTrendsError || !trends ? (
-            <Alert variant="destructive">
-              <AlertTitle>โหลดข้อมูลแนวโน้มไม่สำเร็จ</AlertTitle>
-              <AlertDescription>งานเร่งด่วนและตัวเลขสรุปด้านบนยังเป็นข้อมูลล่าสุดที่โหลดสำเร็จ</AlertDescription>
-              <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetchTrends()}>
-                โหลดแนวโน้มใหม่
-              </Button>
-            </Alert>
-          ) : (
-            <>
-              <div className="grid gap-5 xl:grid-cols-2">
-                {trends.attendanceTrend ? (
-                  <AttendanceTrendChart points={trends.attendanceTrend} />
-                ) : null}
-                {trends.riskDistribution ? (
-                  <RiskDistributionChart summary={trends.riskDistribution.summary} />
-                ) : null}
-              </div>
-              <CaseCharts pipeline={trends.casePipeline} movement={trends.caseMovement} />
-            </>
-          )}
 
           {shortcuts.length > 0 ? <Card className="p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

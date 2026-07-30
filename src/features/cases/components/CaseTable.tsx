@@ -14,27 +14,23 @@ import {
 import { getCaseReason } from "../lib/case-presentation";
 import type { CaseRecord } from "../types/cases.types";
 import { CaseStatusBadge } from "./CaseStatusBadge";
-import { CaseReviewActionButton } from "./CaseReviewActionButton";
 
 interface CaseTableProps {
   rows: CaseRecord[];
-  canReviewCases?: boolean;
+  canCreateLinks?: boolean;
   onCreateLink: (caseRecord: CaseRecord) => void;
-  onUpdate: (caseRecord: CaseRecord) => void;
 }
 
 function CaseAction({
-  canReviewCases,
+  canCreateLinks,
   caseRecord,
   onCreateLink,
-  onUpdate,
 }: {
-  canReviewCases: boolean;
+  canCreateLinks: boolean;
   caseRecord: CaseRecord;
   onCreateLink: (caseRecord: CaseRecord) => void;
-  onUpdate: (caseRecord: CaseRecord) => void;
 }) {
-  if (!caseRecord.task_id) {
+  if (!caseRecord.task_id && canCreateLinks) {
     return (
       <Button
         className="min-w-[140px]"
@@ -47,19 +43,8 @@ function CaseAction({
     );
   }
 
-  if (
-    canReviewCases &&
-    (caseRecord.status === "PENDING_REVIEW" || caseRecord.status === "IN_PROGRESS")
-  ) {
-    return (
-      <CaseReviewActionButton onClick={() => onUpdate(caseRecord)}>
-        ดำเนินการ
-      </CaseReviewActionButton>
-    );
-  }
-
   return (
-    <DetailLinkButton className="min-w-[140px]" to={`/tasks/${caseRecord.task_id}`}>
+    <DetailLinkButton className="min-w-[140px]" to={`/cases/${caseRecord.id}`}>
       ดูรายละเอียด
     </DetailLinkButton>
   );
@@ -82,9 +67,8 @@ function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
 
 export function CaseTable({
   rows,
-  canReviewCases = true,
+  canCreateLinks = true,
   onCreateLink,
-  onUpdate,
 }: CaseTableProps) {
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const sortedRows = useMemo(() => {
@@ -153,10 +137,9 @@ export function CaseTable({
             </DataTableCell>
             <DataTableCell className="text-right">
               <CaseAction
-                canReviewCases={canReviewCases}
+                canCreateLinks={canCreateLinks}
                 caseRecord={caseRecord}
                 onCreateLink={onCreateLink}
-                onUpdate={onUpdate}
               />
             </DataTableCell>
           </DataTableRow>
@@ -198,10 +181,9 @@ export function CaseTable({
             </div>
             <div className="mt-4 flex items-center justify-end">
               <CaseAction
-                canReviewCases={canReviewCases}
+                canCreateLinks={canCreateLinks}
                 caseRecord={caseRecord}
                 onCreateLink={onCreateLink}
-                onUpdate={onUpdate}
               />
             </div>
           </TableCard>
