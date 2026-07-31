@@ -1,6 +1,6 @@
 import { Lock, LockOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, useConfirm } from "../base";
+import { Button, IconButton, useConfirm } from "../base";
 import { cn } from "../../lib/utils";
 import { loginLinksService } from "../../features/login-links/api/login-links.service";
 import { getLinkLockConfirm, isLinkLocked } from "../../lib/link-lock";
@@ -56,26 +56,35 @@ export function LinkLockToggleButton({
     mutation.mutate();
   }
 
+  const label = isLocked ? "เปิดลิงก์" : "ปิดลิงก์";
+
+  // Icon-only mode sits in the same action row as share and view, so it uses the
+  // shared IconButton with a semantic variant — same size, solid surface, white
+  // glyph and hover motion — instead of a one-off outline button.
   return (
     <>
-      <Button
-        aria-label={isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
-        className={cn(
-          iconOnly
-            ? "size-9 min-w-0 shrink-0 px-0"
-            : "min-w-[112px]",
-          iconOnly && !isLocked &&
-            "border-danger/30 text-danger hover:border-danger/40 hover:bg-primary-soft hover:text-danger",
-          className,
-        )}
-        icon={isLocked ? LockOpen : Lock}
-        variant={iconOnly || isLocked ? "outline" : "destructive"}
-        isLoading={mutation.isPending}
-        onClick={() => void handleClick()}
-        size={iconOnly ? "sm" : "md"}
-      >
-        {iconOnly ? null : isLocked ? "เปิดลิงก์" : "ปิดลิงก์"}
-      </Button>
+      {iconOnly ? (
+        <IconButton
+          aria-label={label}
+          className={className}
+          disabled={mutation.isPending}
+          icon={isLocked ? LockOpen : Lock}
+          onClick={() => void handleClick()}
+          variant={isLocked ? "unlock" : "lock"}
+        />
+      ) : (
+        <Button
+          aria-label={label}
+          className={cn("min-w-[112px]", className)}
+          icon={isLocked ? LockOpen : Lock}
+          isLoading={mutation.isPending}
+          onClick={() => void handleClick()}
+          size="md"
+          variant={isLocked ? "outline" : "destructive"}
+        >
+          {label}
+        </Button>
+      )}
       {dialog}
     </>
   );
