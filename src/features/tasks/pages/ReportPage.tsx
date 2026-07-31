@@ -50,6 +50,7 @@ import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions
 import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
+import { buildVisitReportFormTitle } from "../lib/task-presentation";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 
@@ -339,7 +340,12 @@ export function ReportPage() {
       return taskService.submitTaskReport(token, formData, sessionToken || undefined);
     },
     onSuccess: () => {
-      void navigate(`/task/${token}/success?type=visit`, { replace: true });
+      // Carry the heading over: the link is COMPLETED once this returns, so the
+      // receipt page can no longer read the student/term context from the task.
+      void navigate(`/task/${token}/success?type=visit`, {
+        replace: true,
+        state: taskQuery.data ? { formTitle: buildVisitReportFormTitle(taskQuery.data) } : undefined,
+      });
     },
   });
 
@@ -402,12 +408,7 @@ export function ReportPage() {
   const assignmentStart = parseDateTimeParts(task.opens_at || task.created_at);
   const assignmentEnd = parseDateTimeParts(task.expires_at);
   const studentClass = [task.student_grade, task.student_room].filter(Boolean).join("/");
-  const formTitle = [
-    task.academic_year ? `ปีการศึกษา ${task.academic_year}` : null,
-    task.semester ? `ภาคเรียนที่ ${task.semester}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const formTitle = buildVisitReportFormTitle(task);
   const history = task.follow_up_history ?? [];
   const homeVisitExceptions = trackingOptionsQuery.data?.homeVisitExceptions ?? [];
   const hasHomeCoordinates = task.student_lat != null && task.student_lng != null;
@@ -418,12 +419,7 @@ export function ReportPage() {
       contentClassName="max-w-[1120px] space-y-4"
       profileName={task.assigned_to_name}
     >
-      <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">
-        แบบฟอร์มการติดตามนักเรียน
-        {formTitle ? ` ${formTitle}` : ""}
-        {task.student_name ? `: ${task.student_name}` : ""}
-        {studentClass ? ` ${studentClass}` : ""}
-      </h1>
+      <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">{formTitle}</h1>
 
       <Card className="rounded-lg border-slate-200 shadow-sm">
         <CardContent className="p-4 sm:p-5">

@@ -164,3 +164,32 @@ export function toAbsoluteUrl(value: string): string {
 // Re-exported from the shared lock module so login + attendance/visit links
 // detect "closed" the same robust way (number 1 / string "1" / boolean true).
 export { isLinkLocked } from "../../../lib/link-lock";
+
+/**
+ * Heading of a home-visit follow-up form: term context plus who the round is
+ * about. Composed from the task payload — every part is omitted when the API
+ * did not return it — so the submitted receipt and the form itself always read
+ * the same line without either one restating the wording.
+ */
+export function buildVisitReportFormTitle(task: {
+  academic_year?: number | string | null;
+  semester?: number | string | null;
+  student_name?: string | null;
+  student_grade?: string | null;
+  student_room?: string | null;
+}): string {
+  const term = [
+    task.academic_year ? `ปีการศึกษา ${task.academic_year}` : null,
+    task.semester ? `ภาคเรียนที่ ${task.semester}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const studentClass = [task.student_grade, task.student_room].filter(Boolean).join("/");
+
+  return [
+    "แบบฟอร์มการติดตามนักเรียน",
+    term ? ` ${term}` : "",
+    task.student_name ? `: ${task.student_name}` : "",
+    studentClass ? ` ${studentClass}` : "",
+  ].join("");
+}
