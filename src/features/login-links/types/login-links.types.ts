@@ -8,7 +8,7 @@ export interface LoginLink {
   assigned_to_email: string | null;
   expires_at: string;
   status: string;
-  magic_link: string;
+  magic_link: string | null;
   created_at: string;
   first_used_at?: string | null;
   admin_locked?: boolean | number;

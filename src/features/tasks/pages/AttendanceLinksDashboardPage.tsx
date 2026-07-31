@@ -22,7 +22,7 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { CopyButton } from "../../../components/layout/copy-button";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { Pagination } from "../../../components/layout/pagination";
@@ -259,7 +259,7 @@ export function AttendanceLinksDashboardPage() {
     <PageShell>
       {effectiveTab === "list" ? (
         <ListPageToolbar
-          actions={
+          navigation={
             canViewAuditLog ? (
               <Tabs
                 aria-label="โหมดลิงก์เช็คชื่อ"
@@ -313,7 +313,7 @@ export function AttendanceLinksDashboardPage() {
         />
       ) : (
         <ListPageToolbar
-          actions={
+          navigation={
             <Tabs
               aria-label="โหมดลิงก์เช็คชื่อ"
               onChange={setActiveTab}
@@ -479,11 +479,7 @@ export function AttendanceLinksDashboardPage() {
                     <DataTableCell className="pr-3">
                       <div className="flex flex-nowrap items-center justify-end gap-2">
                         {task.active_link ? (
-                          <CopyButton
-                            className="size-9 shrink-0 px-0"
-                            value={task.active_link}
-                            variant="outline"
-                          />
+                          <LinkShareButton compact link={task.active_link} />
                         ) : null}
                         {task.active_link_id ? (
                           <DetailLinkButton

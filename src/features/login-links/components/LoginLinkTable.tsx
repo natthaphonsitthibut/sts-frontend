@@ -10,7 +10,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { CopyButton } from "../../../components/layout/copy-button";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import {
@@ -74,11 +74,9 @@ function LinkActions({
       }
     >
       {link.magic_link ? (
-        <CopyButton
-          className={compact ? "size-9 shrink-0 px-0" : undefined}
-          label={compact ? undefined : "คัดลอก"}
-          value={getLoginLinkUrl(link.magic_link)}
-          variant="outline"
+        <LinkShareButton
+          compact={compact}
+          link={getLoginLinkUrl(link.magic_link)}
         />
       ) : null}
       <DetailLinkButton

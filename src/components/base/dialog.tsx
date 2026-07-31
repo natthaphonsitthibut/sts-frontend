@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ComponentProps } from "react";
+import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { IconButton } from "./icon-button";
@@ -105,7 +106,7 @@ export function DialogContent({
       role="dialog"
       tabIndex={-1}
       className={cn(
-        "relative z-10 w-full max-w-md rounded-lg border border-slate-100 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.16)] animate-dialog-in",
+        "relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] animate-dialog-in",
         className,
       )}
       {...props}
@@ -113,7 +114,7 @@ export function DialogContent({
       {onClose ? (
         <IconButton
           aria-label="Close dialog"
-          className="absolute right-4 top-4 text-slate-500"
+          className="absolute right-3 top-3 z-20 size-8 border-transparent bg-transparent text-slate-500 shadow-none hover:border-transparent hover:bg-slate-100 hover:text-slate-900"
           icon={X}
           onClick={onClose}
         />
@@ -124,15 +125,38 @@ export function DialogContent({
 }
 
 export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("space-y-1.5 pr-10", className)} {...props} />;
-}
-
-export function DialogTitle({ className, ...props }: ComponentProps<"h2">) {
   return (
-    <h2
-      className={cn("text-lg font-bold text-slate-900", className)}
+    <div
+      className={cn(
+        "-mx-6 -mt-6 mb-5 min-h-14 space-y-1 border-b border-slate-200 px-6 py-4 pr-14",
+        className,
+      )}
       {...props}
     />
+  );
+}
+
+export interface DialogTitleProps extends ComponentProps<"h2"> {
+  icon?: LucideIcon;
+}
+
+export function DialogTitle({
+  children,
+  className,
+  icon: Icon,
+  ...props
+}: DialogTitleProps) {
+  return (
+    <h2
+      className={cn(
+        "flex items-center gap-2 text-base font-bold text-slate-900",
+        className,
+      )}
+      {...props}
+    >
+      {Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null}
+      <span>{children}</span>
+    </h2>
   );
 }
 

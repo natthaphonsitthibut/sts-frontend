@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { ExternalLink, MessageCircle } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { buttonVariants } from "../base";
 import { cn } from "../../lib/utils";
-import { CopyButton } from "./copy-button";
+import { LinkShareButton } from "./link-share-dialog";
 
 interface LinkShareActionsProps {
   /** Public, ready-to-open link (already normalized to the current origin). */
@@ -12,15 +12,10 @@ interface LinkShareActionsProps {
   trailing?: ReactNode;
 }
 
-function buildLineShareUrl(url: string): string {
-  return `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`;
-}
-
 /**
  * The single share row used everywhere a public link is shown (create result,
- * task detail, attendance/login link detail). Renders the mono link box plus the
- * three shared actions — คัดลอก / แชร์ผ่าน LINE / เปิดลิงก์ — so every page shares
- * one look and wording instead of hand-rolling its own buttons.
+ * task detail, attendance/login link detail). Detailed share targets live in
+ * the shared dialog, so this row stays compact: share and open-link icons only.
  */
 export function LinkShareActions({ link, className, trailing }: LinkShareActionsProps) {
   return (
@@ -29,28 +24,20 @@ export function LinkShareActions({ link, className, trailing }: LinkShareActions
         {link}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <CopyButton label="คัดลอก" size="md" value={link} variant="outline" />
-        <a
-          className={cn(
-            buttonVariants({ variant: "default" }),
-            "border-line bg-line text-white hover:border-line-hover hover:bg-line-hover",
-          )}
-          href={buildLineShareUrl(link)}
-          rel="noreferrer"
-          target="_blank"
-        >
-          <MessageCircle className="size-4" aria-hidden="true" />
-          แชร์ผ่าน LINE
-        </a>
+        <LinkShareButton compact link={link} />
         {trailing}
         <a
-          className={buttonVariants({ variant: "default" })}
+          aria-label="เปิดลิงก์"
+          className={cn(
+            buttonVariants({ size: "sm", variant: "outline" }),
+            "size-9 px-0",
+          )}
           href={link}
           rel="noreferrer"
           target="_blank"
+          title="เปิดลิงก์"
         >
           <ExternalLink className="size-4" aria-hidden="true" />
-          เปิดลิงก์
         </a>
       </div>
     </div>

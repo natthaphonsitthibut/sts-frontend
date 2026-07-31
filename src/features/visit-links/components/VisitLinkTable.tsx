@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CopyButton } from "../../../components/layout/copy-button";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import {
   DataTable,
   DataTableCell,
@@ -90,11 +90,7 @@ function LinkActions({ compact = false, link }: { compact?: boolean; link: Visit
       }
     >
       {link.magic_link && compact ? (
-        <CopyButton
-          className="size-9 shrink-0 px-0"
-          value={link.magic_link}
-          variant="outline"
-        />
+        <LinkShareButton compact link={link.magic_link} />
       ) : null}
       <DetailLinkButton
         aria-label="ดูรายละเอียดงาน"
