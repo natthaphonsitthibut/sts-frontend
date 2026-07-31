@@ -10,6 +10,7 @@ import {
   DataTableRow,
   TableCard,
   TableCardList,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import {
   EmptyState,
@@ -34,6 +35,7 @@ import {
   getFieldFollowerStatusMeta,
 } from "../lib/field-follower-presentation";
 import {
+  type FieldFollowerSortKey,
   type FieldFollowerStatus,
 } from "../types/field-follower.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
@@ -63,6 +65,7 @@ export function FieldFollowersReviewPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
+  const [sort, setSort] = useState<DataTableSortState>();
   const area = useSchoolAreaFilter();
   const followerStatusCatalog = useStatusCatalog("FIELD_FOLLOWER_STATUS").items;
 
@@ -73,6 +76,8 @@ export function FieldFollowersReviewPage() {
     district: area.district || undefined,
     subDistrict: area.subDistrict || undefined,
     searchTerm: debouncedSearch || undefined,
+    sortBy: sort?.key as FieldFollowerSortKey | undefined,
+    sortDirection: sort?.direction,
     page,
     limit,
   });
@@ -100,7 +105,7 @@ export function FieldFollowersReviewPage() {
       {activeTab === "links" ? (
         <>
           <FollowerRecruitmentCampaignsSection
-            actions={
+            navigation={
               <Tabs
                 aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
                 onChange={setActiveTab}
@@ -113,7 +118,7 @@ export function FieldFollowersReviewPage() {
       ) : activeTab === "history" ? (
         <>
           <ListPageToolbar
-            actions={
+            navigation={
               <Tabs
                 aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
                 onChange={setActiveTab}
@@ -141,7 +146,7 @@ export function FieldFollowersReviewPage() {
       ) : activeTab === "reviewHistory" ? (
         <>
           <ListPageToolbar
-            actions={
+            navigation={
               <Tabs
                 aria-label="โหมดตรวจสอบใบสมัคร"
                 onChange={setActiveTab}
@@ -164,7 +169,7 @@ export function FieldFollowersReviewPage() {
       ) : (
         <>
           <FieldFollowerReviewFilter
-            actions={
+            navigation={
               <Tabs
                 aria-label="โหมดผู้สมัคร อสม./ผู้ติดตาม"
                 onChange={setActiveTab}
@@ -205,9 +210,21 @@ export function FieldFollowersReviewPage() {
       {!query.isError && !query.isLoading && followers.length > 0 ? (
         <>
           <DataTable
-            headings={["ผู้สมัคร", "เบอร์โทรศัพท์", "พื้นที่", "สถานะ", "วันที่สมัคร", ""]}
+            headings={[
+              { label: "ผู้สมัคร", sortKey: "applicant" },
+              { label: "เบอร์โทรศัพท์", sortKey: "phone" },
+              { label: "พื้นที่", sortKey: "area" },
+              { label: "สถานะ", sortKey: "status" },
+              { label: "วันที่สมัคร", sortKey: "createdAt" },
+              "",
+            ]}
             minWidthClassName="min-w-full"
+            onSortChange={(nextSort) => {
+              setSort(nextSort);
+              setPage(1);
+            }}
             responsiveBreakpoint="lg"
+            sort={sort}
           >
             {followers.map((follower) => {
               const statusMeta = getFieldFollowerStatusMeta(followerStatusCatalog, follower.status);

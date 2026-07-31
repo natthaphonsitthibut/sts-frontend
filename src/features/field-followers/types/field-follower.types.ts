@@ -10,6 +10,8 @@ export const FIELD_FOLLOWER_REVIEW_ACTIONS = [
 ] as const;
 export type FieldFollowerReviewAction = (typeof FIELD_FOLLOWER_REVIEW_ACTIONS)[number];
 export type FieldFollowerVerificationMethod = "THAID" | "ID_CARD_PHOTO";
+export type FieldFollowerSortKey = "applicant" | "phone" | "area" | "status" | "createdAt";
+export type FieldFollowerSortDirection = "asc" | "desc";
 
 export interface FieldFollower {
   id: string;
@@ -45,6 +47,8 @@ export interface FieldFollowerListParams {
   subDistrict?: string;
   searchTerm?: string;
   campaignId?: string;
+  sortBy?: FieldFollowerSortKey;
+  sortDirection?: FieldFollowerSortDirection;
   page: number;
   limit: number;
 }

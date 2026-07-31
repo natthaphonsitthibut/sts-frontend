@@ -41,6 +41,8 @@ async function listFollowers(
       ...(params.subDistrict ? { subDistrict: params.subDistrict } : {}),
       ...(params.searchTerm ? { searchTerm: params.searchTerm } : {}),
       ...(params.campaignId ? { campaignId: params.campaignId } : {}),
+      ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+      ...(params.sortDirection ? { sortDirection: params.sortDirection } : {}),
     },
   });
   return response.data;
