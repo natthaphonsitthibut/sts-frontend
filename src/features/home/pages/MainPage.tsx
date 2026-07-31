@@ -257,27 +257,47 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
       {metrics.map((metric) => {
         const pageIdentity = getPageIdentity(metric.targetPath);
         const Icon = METRIC_ICONS[metric.key] ?? pageIdentity?.icon ?? BarChart3;
+        const comparison = metric.comparison ?? {
+          value: "—%",
+          description: "ไม่มีข้อมูลเทียบปีการศึกษาที่แล้ว",
+          tone: "default" as const,
+        };
         return (
           <Link
             key={metric.key}
             to={destination(metric.targetPath, metric.targetQuery)}
-            className="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-xs font-medium text-slate-600">
+                  {metric.label}
+                </div>
+                <div className="text-2xl font-bold leading-tight tabular-nums text-slate-950">
+                  {metric.value.toLocaleString("th-TH")}
+                </div>
+              </div>
               <span
                 className={cn(
-                  "flex size-9 items-center justify-center rounded-lg",
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg",
                   TONE_CLASSES[metric.tone],
                 )}
               >
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span className="text-2xl font-semibold tabular-nums text-slate-900">
-                {metric.value.toLocaleString("th-TH")}
-              </span>
             </div>
-            <div className="text-sm font-medium text-slate-700">
-              {metric.label}
+            <div className="flex min-w-0 items-center gap-1.5 text-xs">
+              <span
+                className={cn(
+                  "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
+                  TONE_CLASSES[comparison.tone],
+                )}
+              >
+                {comparison.value}
+              </span>
+              <span className="truncate text-slate-500">
+                {comparison.description}
+              </span>
             </div>
           </Link>
         );

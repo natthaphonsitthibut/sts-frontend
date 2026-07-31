@@ -22,6 +22,11 @@ export interface HomeDashboardMetric {
   key: string;
   label: string;
   value: number;
+  comparison?: {
+    value: string;
+    description: string;
+    tone: "default" | "success" | "warning" | "danger" | "info";
+  };
   targetPath: string;
   targetQuery?: Record<string, string | number>;
   tone: "default" | "success" | "warning" | "danger" | "info";
