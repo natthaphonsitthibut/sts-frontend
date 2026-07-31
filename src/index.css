@@ -110,11 +110,9 @@
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow-card-hover: 0 2px 6px rgb(15 23 42 / 0.08);
   --shadow-login-brand-mark:
-    inset 0 1px 4px rgb(0 0 0 / 0.25),
-    0 3px 6px rgb(15 23 42 / 0.1);
+    inset 0 1px 4px rgb(0 0 0 / 0.25), 0 3px 6px rgb(15 23 42 / 0.1);
   --shadow-login-surface:
-    inset 0 1px 2px rgb(15 23 42 / 0.04),
-    0 2px 8px rgb(15 23 42 / 0.08);
+    inset 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 8px rgb(15 23 42 / 0.08);
   --drop-shadow-login-icon: 0 4px 4px rgb(0 0 0 / 0.25);
 }
 
@@ -131,7 +129,9 @@
   background: var(--color-surface-page);
   font-synthesis: none;
   font-kerning: normal;
-  font-feature-settings: "kern" 1, "liga" 1;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -164,11 +164,13 @@ p {
   text-wrap: pretty;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 #root {
