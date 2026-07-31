@@ -816,7 +816,7 @@ export function ImportDataPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดนำเข้าข้อมูล"
             onChange={setActiveTab}

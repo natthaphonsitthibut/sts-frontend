@@ -1160,7 +1160,7 @@ export function StudentAccountsPage() {
         title="บัญชีนักเรียน"
         description="สร้างชื่อผู้ใช้และรหัสผ่านชั่วคราวจากข้อมูลนักเรียนปัจจุบัน"
         onClearFilters={handleClearFilters}
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดบัญชีนักเรียน"
             value={selectedTab}

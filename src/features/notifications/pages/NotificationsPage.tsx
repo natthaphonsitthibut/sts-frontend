@@ -73,34 +73,34 @@ export function NotificationsPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Tabs
-              aria-label="ตัวกรองการแจ้งเตือน"
-              onChange={handleFilterChange}
-              options={[
-                { value: "all", label: "ทั้งหมด" },
-                {
-                  value: "unread",
-                  label: unreadCount > 0 ? `ยังไม่อ่าน (${unreadCount})` : "ยังไม่อ่าน",
-                },
-              ]}
-              value={unreadOnly ? "unread" : "all"}
-            />
-            <Button
-              disabled={unreadCount === 0}
-              icon={CheckCheck}
-              isLoading={markAllRead.isPending}
-              loadingText="กำลังบันทึก"
-              onClick={() =>
-                markAllRead.mutate(undefined, {
-                  onSuccess: () => setPage(1),
-                })
-              }
-              variant="outline"
-            >
-              อ่านทั้งหมด
-            </Button>
-          </div>
+          <Button
+            disabled={unreadCount === 0}
+            icon={CheckCheck}
+            isLoading={markAllRead.isPending}
+            loadingText="กำลังบันทึก"
+            onClick={() =>
+              markAllRead.mutate(undefined, {
+                onSuccess: () => setPage(1),
+              })
+            }
+            variant="outline"
+          >
+            อ่านทั้งหมด
+          </Button>
+        }
+        navigation={
+          <Tabs
+            aria-label="ตัวกรองการแจ้งเตือน"
+            onChange={handleFilterChange}
+            options={[
+              { value: "all", label: "ทั้งหมด" },
+              {
+                value: "unread",
+                label: unreadCount > 0 ? `ยังไม่อ่าน (${unreadCount})` : "ยังไม่อ่าน",
+              },
+            ]}
+            value={unreadOnly ? "unread" : "all"}
+          />
         }
         description="รายการเหตุการณ์สำคัญตามขอบเขตข้อมูลและสิทธิ์ของบัญชีนี้"
         footerActions={(

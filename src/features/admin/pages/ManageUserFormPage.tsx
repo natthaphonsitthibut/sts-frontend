@@ -793,7 +793,7 @@ export function ManageUserFormPage() {
         icon={UserCog}
         title={isEdit ? "แก้ไขผู้ใช้งาน" : "เพิ่มผู้ใช้งาน"}
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
-        actions={isEdit ? (
+        navigation={isEdit ? (
           <Tabs
             aria-label="โหมดแก้ไขผู้ใช้งาน"
             onChange={setActiveTab}

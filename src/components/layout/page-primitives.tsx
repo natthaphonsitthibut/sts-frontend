@@ -15,7 +15,11 @@ import {
 } from "../base";
 import { cn } from "../../lib/utils";
 import { ClearFiltersButton } from "./clear-filters-button";
-import { getPageIdentity, PAGE_ICONS } from "./page-identity";
+import {
+  getPageIdentity,
+  getPageIdentityByTitle,
+  PAGE_ICONS,
+} from "./page-identity";
 
 export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
@@ -45,6 +49,7 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   description?: ReactNode;
   footerActions?: ReactNode;
   icon?: LucideIcon;
+  navigation?: ReactNode;
   title?: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
   tone?: "default" | "primary";
@@ -77,12 +82,15 @@ export function PageToolbar({
   description,
   footerActions,
   icon: Icon,
+  navigation,
   title,
   tone = "default",
   ...props
 }: PageToolbarProps) {
   const { pathname } = useLocation();
-  const pageIdentity = getPageIdentity(pathname);
+  const pageIdentity =
+    getPageIdentity(pathname) ??
+    (typeof title === "string" ? getPageIdentityByTitle(title) : undefined);
   const ToolbarIcon = pageIdentity?.icon ?? Icon;
   const toolbarTitle = pageIdentity?.title ?? title;
   const isHomePage = pathname === "/";
@@ -105,64 +113,71 @@ export function PageToolbar({
             tone === "primary" ? "min-h-20 p-5" : "py-1",
           )}
         >
-          <nav
-            aria-label="เส้นทางนำทาง"
-            className={cn(
-              "flex min-h-6 items-center gap-2 text-sm font-medium",
-              tone === "primary" ? "text-white/80" : "text-content-secondary",
-            )}
-          >
-            {isHomePage ? (
-              <span
-                className={cn(
-                  "inline-flex min-w-0 items-center gap-1.5",
-                  tone === "primary" ? "text-white" : "text-content-primary",
-                )}
-                aria-current="page"
-              >
-                <PAGE_ICONS.home
-                  className="size-4 shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="truncate">หน้าหลัก</span>
-              </span>
-            ) : (
-              <>
-                <Link
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                    tone === "primary"
-                      ? "hover:text-white"
-                      : "hover:text-content-primary",
-                  )}
-                  to="/"
-                >
-                  <PAGE_ICONS.home className="size-4" aria-hidden="true" />
-                  <span>หน้าหลัก</span>
-                </Link>
-                <ChevronRight
-                  className="size-4 shrink-0 opacity-60"
-                  aria-hidden="true"
-                />
+          <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
+            <nav
+              aria-label="เส้นทางนำทาง"
+              className={cn(
+                "flex min-h-6 items-center gap-2 text-sm font-medium",
+                tone === "primary" ? "text-white/80" : "text-breadcrumb-muted",
+              )}
+            >
+              {isHomePage ? (
                 <span
                   className={cn(
-                    "inline-flex min-w-0 items-center gap-1.5",
+                    "inline-flex min-w-0 items-center gap-1.5 font-semibold",
                     tone === "primary" ? "text-white" : "text-content-primary",
                   )}
                   aria-current="page"
                 >
-                  {ToolbarIcon ? (
-                    <ToolbarIcon
-                      className="size-4 shrink-0"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  <span className="truncate">{toolbarTitle}</span>
+                  <PAGE_ICONS.home
+                    className="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">หน้าหลัก</span>
                 </span>
-              </>
-            )}
-          </nav>
-          <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              ) : (
+                <>
+                  <Link
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                      tone === "primary"
+                        ? "hover:text-white"
+                        : "hover:text-content-primary",
+                    )}
+                    to="/"
+                  >
+                    <PAGE_ICONS.home className="size-4" aria-hidden="true" />
+                    <span>หน้าหลัก</span>
+                  </Link>
+                  <ChevronRight
+                    className="size-4 shrink-0 opacity-60"
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={cn(
+                      "inline-flex min-w-0 items-center gap-1.5 font-semibold",
+                      tone === "primary" ? "text-white" : "text-content-primary",
+                    )}
+                    aria-current="page"
+                  >
+                    {ToolbarIcon ? (
+                      <ToolbarIcon
+                        className="size-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    <span className="truncate">{toolbarTitle}</span>
+                  </span>
+                </>
+              )}
+            </nav>
+            {navigation ? (
+              <div className="flex shrink-0 flex-wrap items-center sm:justify-end">
+                {navigation}
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-2 flex flex-col gap-4 sm:min-h-16 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <h1
                 className={cn(
@@ -444,46 +459,48 @@ const summaryToneClasses: Record<
     surface: string;
     iconBg: string;
     iconColor: string;
-    value: string;
   }
 > = {
   default: {
     surface: "bg-white",
     iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
-    value: "text-slate-900",
   },
   success: {
     surface: "bg-white",
     iconBg: "bg-success-100",
     iconColor: "text-success-700",
-    value: "text-success-700",
   },
   warning: {
     surface: "bg-white",
     iconBg: "bg-warning-100",
     iconColor: "text-warning-700",
-    value: "text-warning-700",
   },
   danger: {
     surface: "bg-white",
     iconBg: "bg-danger-100",
     iconColor: "text-danger-700",
-    value: "text-danger-700",
   },
   info: {
     surface: "bg-white",
     iconBg: "bg-brand-soft",
     iconColor: "text-primary",
-    value: "text-primary",
   },
 };
+
+interface SummaryMetricComparison {
+  value: ReactNode;
+  description: ReactNode;
+  tone?: SummaryTone;
+}
 
 interface SummaryMetric {
   label: ReactNode;
   value: ReactNode;
   tone?: SummaryTone;
   icon?: LucideIcon;
+  /** Optional real baseline comparison, for example versus the previous academic year. */
+  comparison?: SummaryMetricComparison;
   /** The one headline number in the row (usually "ทั้งหมด") reads larger than its siblings. */
   emphasis?: boolean;
   /** Turns the whole metric into one accessible filter/action target. */
@@ -534,9 +551,16 @@ export function SummaryMetrics({
       >
         {items.map((item, index) => {
           const tone = summaryToneClasses[item.tone ?? "default"];
+          const comparison = item.comparison ?? {
+            value: "—%",
+            description: "ไม่มีข้อมูลเทียบปีการศึกษาที่แล้ว",
+            tone: "default" as const,
+          };
+          const comparisonTone =
+            summaryToneClasses[comparison.tone ?? "default"];
           const Icon = item.icon;
           const metricClassName = cn(
-            "relative flex min-h-20 items-center gap-3 overflow-hidden rounded-lg border border-slate-200 px-4 py-3.5 text-left",
+            "relative flex min-h-24 flex-col justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 px-4 py-3.5 text-left shadow-card",
             centerRows && centeredCardClass,
             tone.surface,
             item.onSelect &&
@@ -546,33 +570,48 @@ export function SummaryMetrics({
           );
           const content = (
             <>
-              {Icon ? (
-                <div
+              <div className="flex w-full items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-medium text-slate-600">
+                    {item.label}
+                  </div>
+                  <div
+                    className={cn(
+                      "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
+                      item.emphasis ? "text-3xl" : "text-2xl",
+                    )}
+                    key={String(item.value)}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+                {Icon ? (
+                  <div
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                      tone.iconBg,
+                    )}
+                  >
+                    <Icon
+                      className={cn("size-5", tone.iconColor)}
+                      aria-hidden="true"
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex w-full min-w-0 items-center gap-1.5 text-xs">
+                <span
                   className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                    tone.iconBg,
+                    "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
+                    comparisonTone.iconBg,
+                    comparisonTone.iconColor,
                   )}
                 >
-                  <Icon
-                    className={cn("size-5", tone.iconColor)}
-                    aria-hidden="true"
-                  />
-                </div>
-              ) : null}
-              <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-500">
-                  {item.label}
-                </div>
-                <div
-                  className={cn(
-                    "animate-value-in font-bold leading-tight tabular-nums",
-                    item.emphasis ? "text-2xl" : "text-xl",
-                    tone.value,
-                  )}
-                  key={String(item.value)}
-                >
-                  {item.value}
-                </div>
+                  {comparison.value}
+                </span>
+                <span className="truncate text-slate-500">
+                  {comparison.description}
+                </span>
               </div>
             </>
           );

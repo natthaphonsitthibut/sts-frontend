@@ -27,7 +27,7 @@ export function Tabs({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex max-w-full overflow-x-auto border-b border-slate-200",
+        "inline-flex max-w-full overflow-x-auto overflow-y-hidden border-b border-slate-200",
         className,
       )}
     >

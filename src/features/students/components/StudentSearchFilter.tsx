@@ -30,7 +30,7 @@ interface StudentSearchFilterProps {
   studentStatusOptions: StudentStatusFilterOption[];
   isStudentStatusLoading?: boolean;
   schoolFilters?: ReactNode;
-  actions?: ReactNode;
+  navigation?: ReactNode;
   exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
   updatedAt: number;
@@ -53,7 +53,7 @@ export function StudentSearchFilter({
   studentStatusOptions,
   isStudentStatusLoading = false,
   schoolFilters,
-  actions,
+  navigation,
   exportAction,
   onRefresh,
   updatedAt,
@@ -64,7 +64,7 @@ export function StudentSearchFilter({
       icon={Users}
       title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
-      actions={actions}
+      navigation={navigation}
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />

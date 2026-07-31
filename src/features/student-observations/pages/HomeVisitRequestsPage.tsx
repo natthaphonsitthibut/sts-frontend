@@ -54,7 +54,7 @@ export function HomeVisitRequestsPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<RiskReportTabs />}
+        navigation={<RiskReportTabs />}
         description="พิจารณาคำขอจากครูและติดตามเคสเยี่ยมบ้านที่เปิดจากคำขอ"
         icon={HouseHeart}
         onClearFilters={resetFilters}

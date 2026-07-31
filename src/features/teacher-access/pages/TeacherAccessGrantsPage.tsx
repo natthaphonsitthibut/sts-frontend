@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardCopy,
-  KeyRound,
   Link2,
   Plus,
   RefreshCw,
@@ -318,7 +317,7 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
   return (
     <PageShell>
       <PageToolbar
-        icon={KeyRound}
+        icon={Link2}
         title="ลิงก์เข้าใช้งาน"
         description="ออกลิงก์ตามภาคเรียน ห้อง และความสามารถที่ครูได้รับมอบหมาย"
         footerActions={(
@@ -328,23 +327,21 @@ export function TeacherAccessGrantsPage({ navigationTabs }: { navigationTabs?: R
           </>
         )}
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {navigationTabs}
-            <Button
-              icon={Plus}
-              disabled={
-                !selectedSchoolId ||
-                !selectedTermId ||
-                selectedTerm?.status !== "ACTIVE" ||
-                !selectedTerm.endsOn ||
-                activeTeachers.length === 0
-              }
-              onClick={() => setIssueOpen(true)}
-            >
-              ออกลิงก์ใหม่
-            </Button>
-          </div>
+          <Button
+            icon={Plus}
+            disabled={
+              !selectedSchoolId ||
+              !selectedTermId ||
+              selectedTerm?.status !== "ACTIVE" ||
+              !selectedTerm.endsOn ||
+              activeTeachers.length === 0
+            }
+            onClick={() => setIssueOpen(true)}
+          >
+            ออกลิงก์ใหม่
+          </Button>
         }
+        navigation={navigationTabs}
       >
         <ToolbarFilterGrid>
           <SchoolAreaSchoolFilter

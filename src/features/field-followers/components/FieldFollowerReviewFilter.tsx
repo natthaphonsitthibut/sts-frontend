@@ -16,7 +16,7 @@ interface FieldFollowerReviewFilterProps {
   onStatusChange: (value: string) => void;
   statusOptions: readonly StatusCatalogItem[];
   area: ReturnType<typeof useSchoolAreaFilter>;
-  actions?: ReactNode;
+  navigation?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
   onClearFilters: () => void;
   updatedAt: number;
@@ -29,7 +29,7 @@ export function FieldFollowerReviewFilter({
   onStatusChange,
   statusOptions,
   area,
-  actions,
+  navigation,
   onRefresh,
   onClearFilters,
   updatedAt,
@@ -39,7 +39,7 @@ export function FieldFollowerReviewFilter({
       icon={UserCheck}
       title="ตรวจสอบใบสมัคร อสม./ผู้ติดตาม"
       description="ตรวจข้อมูลผู้สมัครและจัดการสิทธิ์การเข้าใช้งานระบบ"
-      actions={actions}
+      navigation={navigation}
       tableActions={<RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />}
       onClearFilters={onClearFilters}
       search={{

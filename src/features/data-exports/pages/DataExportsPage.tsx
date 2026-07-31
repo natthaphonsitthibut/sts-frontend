@@ -586,7 +586,7 @@ export function DataExportsPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดส่งออกข้อมูล"
             onChange={setActiveTab}

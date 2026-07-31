@@ -389,7 +389,7 @@ export function AttendanceCheckInPage() {
         icon={ClipboardCheck}
         title="เช็คชื่อมาเรียน"
         description="บันทึกการมาเรียนประจำวันของนักเรียนในแต่ละห้อง"
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดเช็คชื่อ"
             value={tab}

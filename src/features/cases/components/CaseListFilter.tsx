@@ -13,7 +13,7 @@ interface CaseListFilterProps {
   status: string;
   onStatusChange: (value: string) => void;
   schoolFilters?: ReactNode;
-  actions?: ReactNode;
+  navigation?: ReactNode;
   exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
   updatedAt: number;
@@ -27,7 +27,7 @@ export function CaseListFilter({
   status,
   onStatusChange,
   schoolFilters,
-  actions,
+  navigation,
   exportAction,
   onRefresh,
   updatedAt,
@@ -39,7 +39,7 @@ export function CaseListFilter({
       icon={ClipboardList}
       title="เคสติดตามนักเรียน"
       description="ติดตามรายงานแต่ละรอบจนปิดเคส"
-      actions={actions}
+      navigation={navigation}
       tableActions={
         <>
           <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />

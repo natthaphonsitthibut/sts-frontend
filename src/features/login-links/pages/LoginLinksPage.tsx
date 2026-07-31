@@ -31,14 +31,10 @@ import type { LoginLink, LoginLinkListQuery } from "../types/login-links.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { TeacherAccessGrantsPage } from "../../teacher-access/pages/TeacherAccessGrantsPage";
 
-const LOGIN_LINK_TAB_ROUTES = {
-  manage: "/login-links",
-  history: "/login-links/history",
-} as const;
-
 const ACCESS_LINK_TAB_ROUTES = {
   account: "/login-links",
   teacher: "/login-links/teacher",
+  history: "/login-links/history",
 } as const;
 
 export function LoginLinksPage() {
@@ -46,6 +42,7 @@ export function LoginLinksPage() {
   const [accessTab, setAccessTab] = useRouteTab(ACCESS_LINK_TAB_ROUTES, "account");
   const canManageAccountLinks = can("login-links");
   const canManageTeacherLinks = can("manage-teacher-access");
+  const canViewAccountHistory = canManageAccountLinks && can("audit-log");
   const accessTabs = (
     <Tabs
       aria-label="ประเภทลิงก์เข้าใช้งาน"
@@ -53,10 +50,19 @@ export function LoginLinksPage() {
       options={[
         ...(canManageAccountLinks ? [{ value: "account", label: "บัญชีผู้ใช้" }] : []),
         ...(canManageTeacherLinks ? [{ value: "teacher", label: "ครูตามห้องเรียน" }] : []),
+        ...(canViewAccountHistory ? [{ value: "history", label: "ประวัติ" }] : []),
       ]}
       value={accessTab}
     />
   );
+
+  if (accessTab === "history") {
+    return canViewAccountHistory ? (
+      <LoginLinksAccountPage activeTab="history" navigationTabs={accessTabs} />
+    ) : (
+      <Navigate replace to={canManageTeacherLinks ? "/login-links/teacher" : "/login-links"} />
+    );
+  }
 
   if (accessTab === "teacher") {
     return canManageTeacherLinks ? (
@@ -70,14 +76,16 @@ export function LoginLinksPage() {
     return <Navigate replace to="/login-links/teacher" />;
   }
 
-  return <LoginLinksAccountPage navigationTabs={accessTabs} />;
+  return <LoginLinksAccountPage activeTab="manage" navigationTabs={accessTabs} />;
 }
 
-function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }) {
-  const { can } = usePermissions();
-  const [activeTab, setActiveTab] = useRouteTab(LOGIN_LINK_TAB_ROUTES, "manage");
-  const canViewAuditLog = can("audit-log");
-  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "manage";
+function LoginLinksAccountPage({
+  activeTab,
+  navigationTabs,
+}: {
+  activeTab: "manage" | "history";
+  navigationTabs: ReactNode;
+}) {
   const linkStateCatalog = useStatusCatalog("TASK_LINK_STATE");
   const linkStateOptions = linkStateCatalog.items.filter((item) =>
     ["SCHEDULED", "ACTIVE", "LOCKED", "EXPIRED"].includes(item.code),
@@ -184,37 +192,26 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
       <ListPageToolbar
         icon={Link2}
         onClearFilters={handleClearFilters}
-        title="ลิงก์เข้าสู่ระบบ"
+        title="ลิงก์เข้าใช้งาน"
         description={
-          effectiveTab === "manage"
+          activeTab === "manage"
             ? "สร้างและจัดการลิงก์เข้าสู่ระบบสำหรับผู้รับสิทธิ์"
             : "ดูประวัติการเปิดและปิดลิงก์ย้อนหลังตามขอบเขตสิทธิ์"
         }
-        actions={
+        navigation={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {navigationTabs}
-            {canViewAuditLog ? (
-              <Tabs
-                aria-label="โหมดจัดการลิงก์เข้าสู่ระบบ"
-                onChange={setActiveTab}
-                options={[
-                  { value: "manage", label: "จัดการลิงก์" },
-                  { value: "history", label: "ประวัติ" },
-                ]}
-                value={activeTab}
-              />
-            ) : null}
           </div>
         }
         tableActions={
-          effectiveTab === "manage" ? (
+          activeTab === "manage" ? (
             <div className="flex gap-2">
               <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
             </div>
           ) : undefined
         }
         search={
-          effectiveTab === "manage"
+          activeTab === "manage"
             ? {
                 value: searchQuery,
                 onChange: handleSearchChange,
@@ -223,7 +220,7 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
             : undefined
         }
         filters={
-          effectiveTab === "manage" ? (
+          activeTab === "manage" ? (
             <>
               <SchoolClassRoomFilter
                 area={schoolArea}
@@ -257,7 +254,7 @@ function LoginLinksAccountPage({ navigationTabs }: { navigationTabs: ReactNode }
         }
       />
 
-      {effectiveTab === "manage" ? (
+      {activeTab === "manage" ? (
         <div className="space-y-5">
           <SummaryMetrics
             centerRows

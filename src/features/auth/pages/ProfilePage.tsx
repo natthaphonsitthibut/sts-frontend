@@ -497,7 +497,7 @@ export function ProfilePage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดโปรไฟล์ของฉัน"
             onChange={handleTabChange}

@@ -80,7 +80,7 @@ export function SystemSettingsPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={<SettingsTabs />}
+        navigation={<SettingsTabs />}
         icon={Settings}
         title="ตั้งค่าระบบ"
         description="กำหนดพารามิเตอร์หลักที่ส่งผลต่อพฤติกรรมของระบบ"

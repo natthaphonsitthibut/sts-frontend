@@ -456,7 +456,7 @@ export function UserDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        navigation={
           <Tabs
             aria-label="โหมดรายละเอียดผู้ใช้งาน"
             onChange={setActiveTab}

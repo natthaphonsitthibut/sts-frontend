@@ -202,7 +202,7 @@ export function CasesListPage() {
     <PageShell>
       {effectiveTab === "list" ? (
         <CaseListFilter
-          actions={
+          navigation={
             canViewAuditLog ? (
               <Tabs
                 aria-label="มุมมองเคสติดตามนักเรียน"
@@ -246,7 +246,7 @@ export function CasesListPage() {
         />
       ) : (
         <ListPageToolbar
-          actions={
+          navigation={
             <Tabs
               aria-label="มุมมองเคสติดตามนักเรียน"
               onChange={setActiveTab}

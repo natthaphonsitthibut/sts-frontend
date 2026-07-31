@@ -291,7 +291,7 @@ export function StudentListPage() {
     <PageShell>
       {effectiveTab === "list" ? (
         <StudentSearchFilter
-          actions={
+          navigation={
             <Tabs
               aria-label="โหมดรายชื่อนักเรียน"
               onChange={setActiveTab}
@@ -364,7 +364,7 @@ export function StudentListPage() {
         />
       ) : (
         <ListPageToolbar
-          actions={
+          navigation={
             <Tabs
               aria-label="โหมดรายชื่อนักเรียน"
               onChange={setActiveTab}

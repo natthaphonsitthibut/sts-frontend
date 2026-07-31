@@ -451,9 +451,9 @@ export function DashboardPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<RiskReportTabs />}
+        navigation={<RiskReportTabs />}
         icon={LayoutDashboard}
-        title="รายงานนักเรียน"
+        title="ความเสี่ยงจากการมาเรียน"
         description="ติดตามข้อมูลการมาเรียนและเคสติดตามนักเรียนในขอบเขตข้อมูล"
         tableActions={
           <>

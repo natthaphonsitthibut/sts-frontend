@@ -53,7 +53,7 @@ export function TeacherObservationReportsPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<RiskReportTabs />}
+        navigation={<RiskReportTabs />}
         icon={ClipboardList}
         title="ข้อสังเกตจากครู"
         description="ตรวจรายละเอียดที่ครูบันทึกและใช้ประกอบการทบทวนความเสี่ยงของนักเรียน"

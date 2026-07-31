@@ -142,7 +142,7 @@ export function VisitLinksPage() {
     <PageShell>
       {effectiveTab === "list" ? (
         <ListPageToolbar
-          actions={canViewAuditLog ? modeTabs : undefined}
+          navigation={canViewAuditLog ? modeTabs : undefined}
           icon={MapPin}
           onClearFilters={handleClearFilters}
           title="ลิงก์ลงพื้นที่"
@@ -184,7 +184,7 @@ export function VisitLinksPage() {
         />
       ) : (
         <ListPageToolbar
-          actions={modeTabs}
+          navigation={modeTabs}
           description="ดูประวัติการสร้าง ปิด และเปิดลิงก์ลงพื้นที่ย้อนหลังตามขอบเขตสิทธิ์"
           onClearFilters={handleClearFilters}
           filters={
