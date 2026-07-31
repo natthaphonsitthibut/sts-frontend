@@ -8,12 +8,16 @@ export interface TaskCreatePayload {
   task_type: TaskType;
   type: TaskType;
   assigned_to_name: string;
+  assigned_to_first_name: string;
+  assigned_to_last_name: string;
   assigned_to_email?: string | null;
   assigned_to_phone?: string | null;
   expires_value: number;
   expires_unit: TaskDurationUnit;
   /** ISO datetime the link becomes usable; omit/null = opens immediately. */
   opens_at?: string | null;
+  /** Optional explicit link deadline. Used by visit assignments with a date/time range. */
+  expires_at?: string | null;
   student_name?: string | null;
   student_first_name?: string | null;
   student_last_name?: string | null;
@@ -56,7 +60,11 @@ export interface TaskAccessTask {
   id: string;
   type: TaskType | string;
   assigned_to_name?: string | null;
+  assigned_to_first_name?: string | null;
+  assigned_to_last_name?: string | null;
+  opens_at?: string | null;
   expires_at?: string | null;
+  created_at?: string | null;
   status?: string;
   reason?: string;
   subject?: string | null;
@@ -68,14 +76,35 @@ export interface TaskAccessTask {
   student_last_name?: string | null;
   student_school?: string | null;
   student_address?: string | null;
+  student_phone?: string | null;
+  contact_channels?: Array<{
+    contact_kind: "STUDENT" | "GUARDIAN";
+    relation?: string | null;
+    relation_note?: string | null;
+    full_name?: string | null;
+    phone?: string | null;
+    is_primary?: boolean;
+  }>;
   address_line?: string | null;
   address_province?: string | null;
   address_district?: string | null;
   address_sub_district?: string | null;
   postal_code?: string | null;
   reason_flagged?: string | null;
+  delegation_note?: string | null;
   student_lat?: number | null;
   student_lng?: number | null;
+  academic_year?: number | string | null;
+  semester?: number | string | null;
+  student_grade?: string | null;
+  student_room?: string | null;
+  follow_up_history?: Array<{
+    assigned_to_name?: string | null;
+    visited_at?: string | null;
+    submitted_at?: string | null;
+    cause_detail?: string | null;
+    exception_label?: string | null;
+  }>;
   auth_required?: boolean;
   can_delegate?: boolean;
   delegation_depth?: number;
@@ -112,10 +141,14 @@ export interface TaskSubmitResponse {
 }
 
 export interface TaskDelegationPayload {
-  new_assignee_name: string;
-  new_assignee_phone?: string | null;
-  new_assignee_email?: string | null;
-  expires_in_hours: number;
+  new_assignee_name?: string;
+  new_assignee_first_name: string;
+  new_assignee_last_name: string;
+  new_assignee_phone: string;
+  new_assignee_email: string;
+  delegation_note: string;
+  expires_in_hours?: number;
+  expires_at?: string;
 }
 
 export interface TaskDelegationResponse {
@@ -128,6 +161,8 @@ export interface TaskDelegationResponse {
 export interface TaskChainLink {
   id: string | number;
   assigned_to_name?: string | null;
+  assigned_to_first_name?: string | null;
+  assigned_to_last_name?: string | null;
   assigned_to_email?: string | null;
   status?: string | null;
   created_at?: string | null;
@@ -141,7 +176,10 @@ export interface TaskChainLink {
 }
 
 export interface TaskSubmission {
+  visited_at?: string | null;
   cause_category?: string | null;
+  follow_up_assessment_code?: string | null;
+  follow_up_assessment_label?: string | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   submitted_at?: string | null;
@@ -150,6 +188,12 @@ export interface TaskSubmission {
   photo_paths?: string | null;
   case_follow_up_decision?: string | null;
   case_resolution_outcome_code?: string | null;
+  home_visit_exception_code?: string | null;
+  updated_address_line?: string | null;
+  updated_address_province?: string | null;
+  updated_address_district?: string | null;
+  updated_address_sub_district?: string | null;
+  updated_postal_code?: string | null;
 }
 
 export interface TaskChainResponse {

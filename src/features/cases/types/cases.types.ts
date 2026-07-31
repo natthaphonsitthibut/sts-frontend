@@ -32,6 +32,12 @@ export interface CaseTrackingOptions {
   reviewActions: CaseTrackingOption[];
   followUpDecisions: CaseTrackingOption[];
   resolutionOutcomes: Array<{ code: string; label: string }>;
+  homeVisitExceptions: Array<{
+    code: string;
+    label: string;
+    requiresUpdatedAddress: boolean;
+  }>;
+  homeVisitAssessments: Array<{ code: string; label: string }>;
 }
 
 export interface CaseFollowUpRound {
@@ -41,14 +47,23 @@ export interface CaseFollowUpRound {
   initial_assignee?: string | null;
   link_count: number;
   submitted_at?: string | null;
+  visited_at?: string | null;
   cause_category?: string | null;
+  follow_up_assessment_code?: string | null;
+  follow_up_assessment_label?: string | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   visit_lat?: number | null;
   visit_lng?: number | null;
   photo_paths?: string | null;
   address_changed?: boolean;
+  home_visit_exception_code?: string | null;
   updated_student_address?: string | null;
+  updated_address_line?: string | null;
+  updated_address_province?: string | null;
+  updated_address_district?: string | null;
+  updated_address_sub_district?: string | null;
+  updated_postal_code?: string | null;
   updated_lat?: number | null;
   updated_lng?: number | null;
   follow_up_decision?: string | null;

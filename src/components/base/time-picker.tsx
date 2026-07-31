@@ -9,6 +9,10 @@ export interface TimePickerProps {
   ariaLabel: string;
   value: string;
   onChange: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+  id?: string;
+  placeholder?: string;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
@@ -22,7 +26,15 @@ function parseTime(value: string): { hour: string; minute: string } {
   };
 }
 
-export function TimePicker({ ariaLabel, onChange, value }: TimePickerProps) {
+export function TimePicker({
+  ariaLabel,
+  className,
+  disabled = false,
+  id,
+  onChange,
+  placeholder = "--:--",
+  value,
+}: TimePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { hour, minute } = parseTime(value);
@@ -30,17 +42,19 @@ export function TimePicker({ ariaLabel, onChange, value }: TimePickerProps) {
   useDismissable(open, containerRef, () => setOpen(false));
 
   return (
-    <div className={cn("relative sm:flex-1", open && "z-50")} ref={containerRef}>
+    <div className={cn("relative sm:flex-1", open && "z-50", className)} ref={containerRef}>
       <Button
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
         className="w-full justify-start px-3 font-medium"
+        disabled={disabled}
         icon={Clock}
+        id={id}
         onClick={() => setOpen((current) => !current)}
         variant="outline"
       >
-        <span className="min-w-0 flex-1 text-left tabular-nums">{value || "--:--"}</span>
+        <span className="min-w-0 flex-1 text-left tabular-nums">{value || placeholder}</span>
         <ChevronDown
           aria-hidden="true"
           className={cn("size-4 text-primary transition-transform", open && "rotate-180")}

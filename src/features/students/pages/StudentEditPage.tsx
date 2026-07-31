@@ -31,6 +31,7 @@ import {
 import { stripAddressPrefix } from "../../../components/address/address-format";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { geoService } from "../../tasks/api/geo.service";
+import { GUARDIAN_RELATION_LABELS } from "../lib/guardian-relation-presentation";
 import { useStudent } from "../hooks/useStudent";
 import { useUpdateStudent } from "../hooks/useUpdateStudent";
 import type {
@@ -51,12 +52,6 @@ const optionalEmail = z
   .refine((value) => value === "" || z.string().email().safeParse(value).success, {
     message: "รูปแบบอีเมลไม่ถูกต้อง",
   });
-
-const GUARDIAN_RELATION_LABELS: Record<StudentGuardianRelation, string> = {
-  FATHER: "บิดา",
-  MOTHER: "มารดา",
-  GUARDIAN: "ผู้ปกครอง",
-};
 
 const guardianSchema = z
   .object({
@@ -168,7 +163,7 @@ function StudentContactSection({
     <Card className="rounded-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Phone className="size-5 text-primary" aria-hidden="true" />
+          <Phone className="size-5 text-success-700" aria-hidden="true" />
           ช่องทางติดต่อนักเรียน
         </CardTitle>
       </CardHeader>

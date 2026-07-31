@@ -61,9 +61,10 @@ async function getSchools(params: GetSchoolsParams = {}): Promise<SchoolOption[]
   return unwrapData(response.data) || [];
 }
 
+/** Area catalog only (no student or account data), so guest forms can read it unauthenticated. */
 async function getLocations(): Promise<LocationCatalog> {
   const response = await apiClient.get<LocationCatalog | DataEnvelope<LocationCatalog>>(
-    "/attendance/locations",
+    "/public/locations",
   );
   return unwrapData(response.data) || { provinces: [], districts: [], subDistricts: [] };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ClipboardCheck, MapPin, Save } from "lucide-react";
 import {
@@ -175,6 +175,10 @@ export function TaskGuestPage() {
         />
       </MagicAuthCard>
     );
+  }
+
+  if (task.type === "VISIT") {
+    return <Navigate replace to={`/task/${token}/report`} />;
   }
 
   return (

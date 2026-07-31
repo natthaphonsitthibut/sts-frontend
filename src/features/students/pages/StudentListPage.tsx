@@ -315,7 +315,7 @@ export function StudentListPage() {
                       ? `ดูบนแผนที่ได้สูงสุด ${FIELD_MONITOR_MAP_MAX_STUDENTS} คน — เอาที่เลือกออกบางส่วนก่อน`
                       : undefined
                   }
-                  variant="outline"
+                  variant="location"
                 >
                   ดูบนแผนที่ ({selectedStudents.length})
                 </Button>

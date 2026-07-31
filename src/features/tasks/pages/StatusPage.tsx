@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Lock, SearchX } from "lucide-react";
 import { buttonVariants, Card, CardContent } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
@@ -69,11 +69,22 @@ export function StatusPage({
 }
 
 export function SuccessPage() {
+  const [searchParams] = useSearchParams();
+  const isVisitReport = searchParams.get("type") === "visit";
+
   return (
     <StatusPage
-      message="ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว"
-      note="ลิงก์นี้ใช้งานเสร็จสมบูรณ์แล้ว"
-      title="บันทึกสำเร็จ"
+      message={
+        isVisitReport
+          ? "ส่งผลการติดตามเพื่อรอผู้รับผิดชอบตรวจสอบแล้ว"
+          : "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว"
+      }
+      note={
+        isVisitReport
+          ? "งานลงพื้นที่เสร็จสมบูรณ์และลิงก์นี้ใช้งานเสร็จแล้ว"
+          : "ลิงก์นี้ใช้งานเสร็จสมบูรณ์แล้ว"
+      }
+      title={isVisitReport ? "บันทึกข้อมูลเรียบร้อยแล้ว" : "บันทึกสำเร็จ"}
       tone="success"
     />
   );

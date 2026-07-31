@@ -3,6 +3,7 @@ import { SchoolIcon } from "../base";
 import { IconButton } from "../base";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
+import { getNameInitials } from "../../lib/person-name";
 import { HeaderProfileMenu } from "./HeaderProfileMenu";
 import { useSidebarUiStore } from "./sidebar-ui.store";
 
@@ -20,13 +21,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     [user?.FirstName, user?.LastName].filter(Boolean).join(" ").trim() ||
     user?.username ||
     "ผู้ใช้งาน";
-  const initials =
-    displayName
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("") || "U";
+  const initials = getNameInitials(displayName);
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white">

@@ -19,6 +19,7 @@ export interface VisitMapPreviewProps {
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
+  mapClassName?: string;
   details?: ReactNode;
   editable?: boolean;
   onCoordinateChange?: (coordinates: { lat: number; lng: number }) => void;
@@ -48,6 +49,7 @@ export function VisitMapPreview({
   emptyTitle = "ยังไม่มีพิกัด",
   emptyDescription = "ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง",
   className,
+  mapClassName,
   details,
   editable = false,
   onCoordinateChange,
@@ -115,6 +117,9 @@ export function VisitMapPreview({
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
+            gestureHandling: "greedy",
+            scrollwheel: true,
+            zoomControl: true,
           });
         mapRef.current = map;
         if (appConfig.isDevelopment) {
@@ -289,7 +294,12 @@ export function VisitMapPreview({
         </div>
       ) : null}
 
-      <div className="relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+      <div
+        className={cn(
+          "relative min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-100",
+          mapClassName,
+        )}
+      >
         {showMap ? (
           <>
             <div className="absolute inset-0" data-sts-map-surface ref={mapElementRef} />

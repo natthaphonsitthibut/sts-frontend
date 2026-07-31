@@ -1,26 +1,14 @@
 import { Phone, Users } from "lucide-react";
 import { Badge, Card } from "../../../components/base";
-import type {
-  StudentDetail,
-  StudentGuardian,
-  StudentGuardianRelation,
-} from "../types/students.types";
-
-const RELATION_LABELS: Record<StudentGuardianRelation, string> = {
-  FATHER: "บิดา",
-  MOTHER: "มารดา",
-  GUARDIAN: "ผู้ปกครอง",
-};
+import type { StudentDetail, StudentGuardian } from "../types/students.types";
+import { getGuardianRelationLabel } from "../lib/guardian-relation-presentation";
 
 function toDisplay(value: string | null | undefined): string {
   return value?.trim() ? value : "-";
 }
 
 function relationLabel(guardian: StudentGuardian): string {
-  if (guardian.relation === "GUARDIAN" && guardian.relation_note) {
-    return `${RELATION_LABELS.GUARDIAN} (${guardian.relation_note})`;
-  }
-  return RELATION_LABELS[guardian.relation];
+  return getGuardianRelationLabel(guardian.relation, guardian.relation_note);
 }
 
 function ChannelList({
@@ -70,7 +58,7 @@ export function StudentContactPanel({ student }: { student: StudentDetail }) {
     <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
       <Card className="p-5">
         <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-800">
-          <Phone className="size-4 text-primary" aria-hidden="true" />
+          <Phone className="size-4 text-success-700" aria-hidden="true" />
           ช่องทางติดต่อนักเรียน
         </h2>
         {contact ? (

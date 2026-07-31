@@ -28,6 +28,9 @@ export interface GoogleMapsApi {
         mapTypeControl?: boolean;
         streetViewControl?: boolean;
         fullscreenControl?: boolean;
+        gestureHandling?: "auto" | "cooperative" | "greedy" | "none";
+        scrollwheel?: boolean;
+        zoomControl?: boolean;
       },
     ) => GoogleMapInstance;
     Marker: new (options: {

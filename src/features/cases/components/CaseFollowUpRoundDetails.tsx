@@ -91,7 +91,14 @@ export function CaseFollowUpRoundDetails({
   return (
     <>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-        <RoundDetailItem label="ประเภทสาเหตุ" value={round.cause_category} />
+        <RoundDetailItem
+          label="ผลประเมินหลังลงพื้นที่"
+          value={
+            round.follow_up_assessment_label ||
+            round.follow_up_assessment_code ||
+            round.cause_category
+          }
+        />
         <RoundDetailItem
           label="ผลหลังการติดตาม"
           value={optionLabel(round.follow_up_decision)}

@@ -27,12 +27,14 @@ import {
   NumericInput,
   registerField,
   Textarea,
+  TimePicker,
 } from "../../../components/base";
 import {
   ChoiceCardButton,
   PageShell,
   PageToolbar,
 } from "../../../components/layout/page-primitives";
+import { joinNameParts } from "../../../lib/person-name";
 import { toRoomOption } from "../../../lib/room-presentation";
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
@@ -119,7 +121,9 @@ function isEmail(value: string): boolean {
 
 function addDuration(date: Date, value: number, unit: string): Date {
   const next = new Date(date);
-  if (unit === "hours") {
+  if (unit === "minutes") {
+    next.setMinutes(next.getMinutes() + value);
+  } else if (unit === "hours") {
     next.setHours(next.getHours() + value);
   } else if (unit === "weeks") {
     next.setDate(next.getDate() + value * 7);
@@ -127,6 +131,19 @@ function addDuration(date: Date, value: number, unit: string): Date {
     next.setDate(next.getDate() + value);
   }
   return next;
+}
+
+function getLocalDateTimeParts(date: Date): { date: string; time: string } {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return { date: `${year}-${month}-${day}`, time: `${hour}:${minute}` };
+}
+
+function combineLocalDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00`);
 }
 
 function toSlotDayOfWeek(date: Date): number {
@@ -160,7 +177,8 @@ function dateRangeIncludesDayOfWeek(start: Date, end: Date, dayOfWeek: number): 
 const createTaskSchema = z
   .object({
     task_type: z.enum(["VISIT", "ATTENDANCE", "LOGIN"]),
-    assigned_to_name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับมอบหมาย"),
+    assigned_to_first_name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับมอบหมาย"),
+    assigned_to_last_name: z.string().trim().min(1, "กรุณากรอกนามสกุลผู้รับมอบหมาย"),
     assigned_to_email: z.string().trim(),
     role: z.string().trim(),
     student_name: z.string().trim(),
@@ -192,6 +210,10 @@ const createTaskSchema = z
       ),
     expires_unit: z.string().min(1),
     opens_at: z.string().trim(),
+    assignment_start_date: z.string().trim(),
+    assignment_start_time: z.string().trim(),
+    assignment_end_date: z.string().trim(),
+    assignment_end_time: z.string().trim(),
   })
   .superRefine((values, ctx) => {
     // Every link type needs a contactable assignee email.
@@ -239,6 +261,46 @@ const createTaskSchema = z
           path: ["reason_flagged"],
           message: "กรุณากรอกเหตุผล",
         });
+      }
+      const assignmentFields = [
+        ["assignment_start_date", values.assignment_start_date, "กรุณาเลือกวันที่เริ่ม"],
+        ["assignment_start_time", values.assignment_start_time, "กรุณาเลือกเวลาเริ่ม"],
+        ["assignment_end_date", values.assignment_end_date, "กรุณาเลือกวันที่สิ้นสุด"],
+        ["assignment_end_time", values.assignment_end_time, "กรุณาเลือกเวลาสิ้นสุด"],
+      ] as const;
+      assignmentFields.forEach(([field, value, message]) => {
+        if (!value) {
+          ctx.addIssue({ code: "custom", path: [field], message });
+        }
+      });
+      if (assignmentFields.every(([, value]) => Boolean(value))) {
+        const startsAt = combineLocalDateTime(
+          values.assignment_start_date,
+          values.assignment_start_time,
+        );
+        const endsAt = combineLocalDateTime(
+          values.assignment_end_date,
+          values.assignment_end_time,
+        );
+        if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["assignment_start_date"],
+            message: "ช่วงเวลามอบหมายไม่ถูกต้อง",
+          });
+        } else if (endsAt.getTime() <= startsAt.getTime()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["assignment_end_time"],
+            message: "วันและเวลาสิ้นสุดต้องอยู่หลังวันและเวลาเริ่ม",
+          });
+        } else if (endsAt.getTime() <= Date.now()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["assignment_end_time"],
+            message: "วันและเวลาสิ้นสุดต้องอยู่ในอนาคต",
+          });
+        }
       }
     }
     if (values.task_type === "ATTENDANCE" && !values.subject_id) {
@@ -315,9 +377,14 @@ interface VisitPrefill {
 }
 
 function makeDefaults(type: TaskType): CreateTaskFormValues {
+  const assignmentStart = new Date();
+  const assignmentEnd = addDuration(assignmentStart, 7, "days");
+  const startParts = getLocalDateTimeParts(assignmentStart);
+  const endParts = getLocalDateTimeParts(assignmentEnd);
   return {
     task_type: type,
-    assigned_to_name: "",
+    assigned_to_first_name: "",
+    assigned_to_last_name: "",
     assigned_to_email: "",
     role: "",
     student_name: "",
@@ -343,6 +410,10 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
     expires_value: "7",
     expires_unit: "days",
     opens_at: "",
+    assignment_start_date: startParts.date,
+    assignment_start_time: startParts.time,
+    assignment_end_date: endParts.date,
+    assignment_end_time: endParts.time,
   };
 }
 
@@ -386,11 +457,13 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   // overwrite a newer student selection. Coordinates now live in the form and
   // are auto-resolved by AddressFormSection.
   const addressRequestVersionRef = useRef(0);
+  const assigneeNameParts = (prefill?.assigned_to_name ?? "").trim().split(/\s+/).filter(Boolean);
 
   const form = useForm<CreateTaskFormValues>({
     defaultValues: {
       ...makeDefaults(type),
-      assigned_to_name: prefill?.assigned_to_name ?? "",
+      assigned_to_first_name: assigneeNameParts[0] ?? "",
+      assigned_to_last_name: assigneeNameParts.slice(1).join(" "),
       assigned_to_email: prefill?.assigned_to_email ?? "",
       student_name: prefill?.student_name ?? "",
       address_line: prefill?.student_address ?? "",
@@ -404,6 +477,22 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
   const expiresValue = useWatch({ control: form.control, name: "expires_value" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
   const opensAt = useWatch({ control: form.control, name: "opens_at" });
+  const assignmentStartDate = useWatch({
+    control: form.control,
+    name: "assignment_start_date",
+  });
+  const assignmentStartTime = useWatch({
+    control: form.control,
+    name: "assignment_start_time",
+  });
+  const assignmentEndDate = useWatch({
+    control: form.control,
+    name: "assignment_end_date",
+  });
+  const assignmentEndTime = useWatch({
+    control: form.control,
+    name: "assignment_end_time",
+  });
   const locationQuery = useQuery({
     queryKey: ["task-create-locations"],
     queryFn: attendanceLookupService.getLocations,
@@ -645,22 +734,40 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+    const visitStartsAt =
+      type === "VISIT"
+        ? combineLocalDateTime(values.assignment_start_date, values.assignment_start_time)
+        : null;
+    const visitEndsAt =
+      type === "VISIT"
+        ? combineLocalDateTime(values.assignment_end_date, values.assignment_end_time)
+        : null;
     const payload: TaskCreatePayload = {
       task_type: type,
       type,
-      assigned_to_name: values.assigned_to_name,
+      assigned_to_name: joinNameParts([
+        values.assigned_to_first_name,
+        values.assigned_to_last_name,
+      ]),
+      assigned_to_first_name: values.assigned_to_first_name,
+      assigned_to_last_name: values.assigned_to_last_name,
       assigned_to_email: values.assigned_to_email || null,
       assigned_to_phone: prefill?.assigned_to_phone ?? null,
       expires_value: Number(values.expires_value) || 1,
       expires_unit: values.expires_unit as TaskCreatePayload["expires_unit"],
-      opens_at: values.opens_at ? new Date(values.opens_at).toISOString() : null,
+      opens_at:
+        visitStartsAt && !Number.isNaN(visitStartsAt.getTime())
+          ? visitStartsAt.toISOString()
+          : values.opens_at
+            ? new Date(values.opens_at).toISOString()
+            : null,
+      expires_at:
+        visitEndsAt && !Number.isNaN(visitEndsAt.getTime()) ? visitEndsAt.toISOString() : undefined,
     };
 
     if (type === "VISIT") {
-      const studentName = joinAddressParts([
-        values.student_first_name,
-        values.student_last_name,
-      ]) || values.student_name;
+      const studentName =
+        joinNameParts([values.student_first_name, values.student_last_name]) || values.student_name;
       const composedAddressLine = joinAddressParts([
         values.address_house_no,
         prefixedAddressPart("หมู่ ", stripAddressPrefix("หมู่", values.address_village_no)),
@@ -736,7 +843,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
           <Alert variant="success">
             <AlertTitle>Magic link พร้อมใช้งาน</AlertTitle>
             <AlertDescription>
-              เริ่มใช้งานตอนนี้ · หมดอายุ {formatDateTime(result.expires_at)} · อายุ{" "}
+              หมดอายุ {formatDateTime(result.expires_at)} · อายุ{" "}
               {formatDateTimeRangeAge(new Date().toISOString(), result.expires_at)}
             </AlertDescription>
           </Alert>
@@ -775,12 +882,28 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormItem>
-              <FormLabel htmlFor="assigned_to_name" required>
-                ผู้รับมอบหมาย
+              <FormLabel htmlFor="assigned_to_first_name" required>
+                ชื่อผู้รับมอบหมาย
               </FormLabel>
-              <Input id="assigned_to_name" {...registerField(form, "assigned_to_name")} />
-              <FormMessage<CreateTaskFormValues> name="assigned_to_name" />
+              <Input
+                id="assigned_to_first_name"
+                {...registerField(form, "assigned_to_first_name")}
+              />
+              <FormMessage<CreateTaskFormValues> name="assigned_to_first_name" />
             </FormItem>
+            <FormItem>
+              <FormLabel htmlFor="assigned_to_last_name" required>
+                นามสกุลผู้รับมอบหมาย
+              </FormLabel>
+              <Input
+                id="assigned_to_last_name"
+                {...registerField(form, "assigned_to_last_name")}
+              />
+              <FormMessage<CreateTaskFormValues> name="assigned_to_last_name" />
+            </FormItem>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormItem>
               <FormLabel htmlFor="assigned_to_email" required>
                 อีเมล
@@ -1103,52 +1226,136 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
             </>
           ) : null}
 
-          <div className="grid gap-x-4 sm:grid-cols-[1fr_160px]">
-            <FormItem>
-              <FormLabel htmlFor="expires_value" required>
-                อายุลิงก์
-              </FormLabel>
-              <NumericInput
-                id="expires_value"
-                maxLength={4}
-                {...registerField(form, "expires_value")}
-              />
-              <FormMessage<CreateTaskFormValues> name="expires_value" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="expires_unit">หน่วย</FormLabel>
-              <Combobox
-                id="expires_unit"
-                name="expires_unit"
-                onChange={(next) =>
-                  form.setValue("expires_unit", next as CreateTaskFormValues["expires_unit"], {
-                    shouldValidate: form.formState.isSubmitted,
-                  })
-                }
-                options={TASK_DURATION_UNIT_OPTIONS.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))}
-                searchable={false}
-                value={expiresUnit}
-              />
-              <FormMessage<CreateTaskFormValues> name="expires_unit" />
-            </FormItem>
-          </div>
+          {type === "VISIT" ? (
+            <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">ช่วงเวลามอบหมายงาน</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  ผู้รับมอบหมายจะเปิดแบบฟอร์มได้ตั้งแต่เวลาเริ่มจนถึงเวลาสิ้นสุด
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <FormItem>
+                  <FormLabel htmlFor="assignment-start-date" required>
+                    วันที่เริ่ม
+                  </FormLabel>
+                  <DatePicker
+                    ariaLabel="วันที่เริ่มงาน"
+                    id="assignment-start-date"
+                    onChange={(value) =>
+                      form.setValue("assignment_start_date", value, {
+                        shouldDirty: true,
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    value={assignmentStartDate}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="assignment_start_date" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="assignment-start-time" required>
+                    เวลาเริ่ม
+                  </FormLabel>
+                  <TimePicker
+                    ariaLabel="เวลาเริ่มงาน"
+                    id="assignment-start-time"
+                    onChange={(value) =>
+                      form.setValue("assignment_start_time", value, {
+                        shouldDirty: true,
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    value={assignmentStartTime}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="assignment_start_time" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="assignment-end-date" required>
+                    วันที่สิ้นสุด
+                  </FormLabel>
+                  <DatePicker
+                    ariaLabel="วันที่สิ้นสุดงาน"
+                    id="assignment-end-date"
+                    onChange={(value) =>
+                      form.setValue("assignment_end_date", value, {
+                        shouldDirty: true,
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    value={assignmentEndDate}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="assignment_end_date" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="assignment-end-time" required>
+                    เวลาสิ้นสุด
+                  </FormLabel>
+                  <TimePicker
+                    ariaLabel="เวลาสิ้นสุดงาน"
+                    id="assignment-end-time"
+                    onChange={(value) =>
+                      form.setValue("assignment_end_time", value, {
+                        shouldDirty: true,
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    value={assignmentEndTime}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="assignment_end_time" />
+                </FormItem>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-x-4 sm:grid-cols-[1fr_160px]">
+                <FormItem>
+                  <FormLabel htmlFor="expires_value" required>
+                    อายุลิงก์
+                  </FormLabel>
+                  <NumericInput
+                    id="expires_value"
+                    maxLength={4}
+                    {...registerField(form, "expires_value")}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="expires_value" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="expires_unit">หน่วย</FormLabel>
+                  <Combobox
+                    id="expires_unit"
+                    name="expires_unit"
+                    onChange={(next) =>
+                      form.setValue("expires_unit", next as CreateTaskFormValues["expires_unit"], {
+                        shouldValidate: form.formState.isSubmitted,
+                      })
+                    }
+                    options={TASK_DURATION_UNIT_OPTIONS.map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                    searchable={false}
+                    value={expiresUnit}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="expires_unit" />
+                </FormItem>
+              </div>
 
-          <FormItem>
-            <FormLabel htmlFor="opens_at">เปิดใช้งานเมื่อ (ไม่บังคับ)</FormLabel>
-            <DateTimePicker
-              ariaLabel="เปิดใช้งานเมื่อ"
-              id="opens_at"
-              onChange={(next) => form.setValue("opens_at", next, { shouldValidate: true })}
-              value={opensAt}
-            />
-            <p className="text-xs text-slate-500">
-              เว้นว่าง = เปิดใช้งานทันที · ตั้งเวลาไว้ = ลิงก์จะใช้ไม่ได้จนถึงเวลานั้น (สถานะ “รอเปิด”)
-            </p>
-            <FormMessage<CreateTaskFormValues> name="opens_at" />
-          </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="opens_at">เปิดใช้งานเมื่อ (ไม่บังคับ)</FormLabel>
+                <DateTimePicker
+                  ariaLabel="เปิดใช้งานเมื่อ"
+                  id="opens_at"
+                  onChange={(next) => form.setValue("opens_at", next, { shouldValidate: true })}
+                  value={opensAt}
+                />
+                <p className="text-xs text-slate-500">
+                  เว้นว่าง = เปิดใช้งานทันที · ตั้งเวลาไว้ = ลิงก์จะใช้ไม่ได้จนถึงเวลานั้น
+                  (สถานะ “รอเปิด”)
+                </p>
+                <FormMessage<CreateTaskFormValues> name="opens_at" />
+              </FormItem>
+            </>
+          )}
 
           <div className="flex justify-end">
             <Button

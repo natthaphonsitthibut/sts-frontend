@@ -126,12 +126,15 @@ export function Combobox({
                     "block w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
                     option.value === value && "bg-slate-50 font-medium text-primary",
                   )}
-                  // mousedown fires before the input's blur, so the pick registers
-                  onMouseDown={(event) => {
-                    event.preventDefault();
+                  onClick={() => {
                     onChange(option.value);
                     setQuery("");
                     setOpen(false);
+                  }}
+                  // Keep focus inside the combobox until the click selects the
+                  // option; otherwise the input blur closes the panel first.
+                  onMouseDown={(event) => {
+                    event.preventDefault();
                   }}
                   type="button"
                 >

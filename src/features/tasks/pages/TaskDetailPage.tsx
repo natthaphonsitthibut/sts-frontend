@@ -246,8 +246,13 @@ export function TaskDetailPage() {
             <h2 className="mb-4 text-lg font-bold text-slate-900">ข้อมูลรายงานการลงพื้นที่</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <div className="text-sm text-slate-500">ประเภทสาเหตุ</div>
-                <div className="font-bold">{firstSubmission.cause_category || "-"}</div>
+                <div className="text-sm text-slate-500">ผลประเมินหลังลงพื้นที่</div>
+                <div className="font-bold">
+                  {firstSubmission.follow_up_assessment_label ||
+                    firstSubmission.follow_up_assessment_code ||
+                    firstSubmission.cause_category ||
+                    "-"}
+                </div>
               </div>
               <div>
                 <div className="text-sm text-slate-500">ส่งเมื่อ</div>
