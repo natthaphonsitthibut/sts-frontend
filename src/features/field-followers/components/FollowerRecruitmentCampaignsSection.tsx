@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { CalendarClock, CheckCircle2, Clock, Link2, Lock, UserCheck } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Link2, Lock, Trash2, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Combobox,
+  IconButton,
   Input,
   useConfirm,
 } from "../../../components/base";
@@ -46,7 +47,7 @@ import type { FollowerRecruitmentCampaign } from "../types/follower-recruitment-
 type CampaignStatusFilter = "ALL" | "ACTIVE" | "LOCKED" | "EXPIRED" | "SCHEDULED";
 
 interface FollowerRecruitmentCampaignsSectionProps {
-  actions?: ReactNode;
+  navigation?: ReactNode;
 }
 
 function buildPublicUrl(publicCode: string): string {
@@ -117,15 +118,20 @@ function CampaignRowActions({
       >
         {campaign.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
       </Button>
-      <Button disabled={isMutating} onClick={() => onDelete(campaign)} size="sm" variant="destructive">
-        ลบลิงก์
-      </Button>
+      <IconButton
+        aria-label={`ลบลิงก์ ${campaign.name}`}
+        disabled={isMutating}
+        icon={Trash2}
+        onClick={() => onDelete(campaign)}
+        title="ลบลิงก์"
+        variant="delete"
+      />
     </div>
   );
 }
 
 export function FollowerRecruitmentCampaignsSection({
-  actions,
+  navigation,
 }: FollowerRecruitmentCampaignsSectionProps) {
   const [status, setStatus] = useState<CampaignStatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,7 +285,7 @@ export function FollowerRecruitmentCampaignsSection({
           </>
         }
         icon={Link2}
-        actions={actions}
+        navigation={navigation}
         search={{
           value: searchQuery,
           onChange: setSearchQuery,

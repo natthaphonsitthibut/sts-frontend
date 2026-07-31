@@ -608,7 +608,7 @@ export function SchoolStructurePage() {
           />
 
           <Card className="mb-4">
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardContent className="flex flex-col gap-3 p-4">
               <Tabs
                 aria-label="ส่วนจัดการโครงสร้าง"
                 value={tab}
@@ -619,23 +619,25 @@ export function SchoolStructurePage() {
                   { value: "roster", label: "นักเรียน" },
                 ]}
               />
-              {tab === "classrooms" ? (
-                <Button icon={Plus} onClick={() => openClassroomDialog(null)} disabled={!selectedTermId}>เพิ่มห้อง</Button>
-              ) : null}
-              {tab === "teachers" ? (
-                <Button icon={FileUp} variant="outline" onClick={() => setTeacherImportDialogOpen(true)} disabled={!selectedSchoolId}>นำเข้าครู</Button>
-              ) : null}
-              {tab === "roster" ? (
-                <Button
-                  disabled={!selectedSchoolId || !selectedTermId || !importClassroomId}
-                  icon={FileUp}
-                  onClick={() => navigate(`/import-data?source=school-structure&schoolId=${selectedSchoolId}&schoolTermId=${selectedTermId}&classroomId=${importClassroomId}`)}
-                  title={!importClassroomId ? "เลือกห้องก่อนนำเข้านักเรียน" : undefined}
-                  variant="outline"
-                >
-                  นำเข้านักเรียน
-                </Button>
-              ) : null}
+              <div className="flex justify-end">
+                {tab === "classrooms" ? (
+                  <Button icon={Plus} onClick={() => openClassroomDialog(null)} disabled={!selectedTermId}>เพิ่มห้อง</Button>
+                ) : null}
+                {tab === "teachers" ? (
+                  <Button icon={FileUp} variant="outline" onClick={() => setTeacherImportDialogOpen(true)} disabled={!selectedSchoolId}>นำเข้าครู</Button>
+                ) : null}
+                {tab === "roster" ? (
+                  <Button
+                    disabled={!selectedSchoolId || !selectedTermId || !importClassroomId}
+                    icon={FileUp}
+                    onClick={() => navigate(`/import-data?source=school-structure&schoolId=${selectedSchoolId}&schoolTermId=${selectedTermId}&classroomId=${importClassroomId}`)}
+                    title={!importClassroomId ? "เลือกห้องก่อนนำเข้านักเรียน" : undefined}
+                    variant="outline"
+                  >
+                    นำเข้านักเรียน
+                  </Button>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
 
@@ -700,8 +702,8 @@ export function SchoolStructurePage() {
                             <DataTableCell>{room.homeroomTeacherName ?? <span className="text-slate-500">ยังไม่กำหนด</span>}</DataTableCell>
                             <DataTableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <IconButton aria-label={`แก้ไข${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} className="text-primary" icon={SquarePen} variant="ghost" onClick={() => openClassroomDialog(room)} />
-                                <IconButton aria-label={`ลบ${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} className="text-danger disabled:opacity-40" disabled={room.studentCount > 0 || deleteClassroom.isPending} icon={Trash2} variant="ghost" title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined} onClick={() => void handleDeleteClassroom(room)} />
+                                <IconButton aria-label={`แก้ไข${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} icon={SquarePen} variant="edit" onClick={() => openClassroomDialog(room)} />
+                                <IconButton aria-label={`ลบ${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} disabled={room.studentCount > 0 || deleteClassroom.isPending} icon={Trash2} variant="delete" title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined} onClick={() => void handleDeleteClassroom(room)} />
                                 <Button size="sm" variant={selected ? "secondary" : "outline"} onClick={() => { setClassroomInput(room.id); setRosterPage(1); }}>เลือก</Button>
                               </div>
                             </DataTableCell>

@@ -26,6 +26,7 @@ export {
   type DialogContentProps,
   type DialogFooterProps,
   type DialogProps,
+  type DialogTitleProps,
 } from "./dialog";
 export { DatePicker, type DatePickerProps } from "./date-picker";
 export { DateTimePicker, type DateTimePickerProps } from "./date-time-picker";
@@ -43,6 +44,7 @@ export {
 export { FormErrorAlert } from "./form-error-alert";
 export { registerField } from "./register-field";
 export { IconButton, type IconButtonProps } from "./icon-button";
+export { iconButtonVariants } from "./icon-button-variants";
 export { InfoTooltip, type InfoTooltipProps } from "./info-tooltip";
 export {
   Input,

@@ -109,18 +109,16 @@ export function RoleGroupTable({
             <div className="flex items-center justify-end gap-1">
               <IconButton
                 aria-label="แก้ไขกลุ่มสิทธิ์"
-                className="text-primary"
                 icon={SquarePen}
                 onClick={() => onEdit(role)}
-                variant="ghost"
+                variant="edit"
               />
               <IconButton
                 aria-label="ลบกลุ่มสิทธิ์"
-                className="text-danger disabled:opacity-40"
                 disabled={role.is_system}
                 icon={Trash2}
                 onClick={() => onDelete(role)}
-                variant="ghost"
+                variant="delete"
               />
             </div>
           </DataTableCell>

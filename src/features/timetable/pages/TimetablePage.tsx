@@ -434,23 +434,19 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                     <div className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-white/80 opacity-0 backdrop-blur-[2px] transition-opacity group-hover/slot:opacity-100">
                       <IconButton
                         aria-label={`แก้ไขคาบ ${slot.period} วัน${DAY_LABELS[slot.day_of_week]}`}
-                        className="text-primary"
                         icon={SquarePen}
                         onClick={() => {
                           setAdding(false);
                           setEditingSlot(slot);
                         }}
-                        size="sm"
-                        variant="ghost"
+                        variant="edit"
                       />
                       <IconButton
                         aria-label={`ลบคาบ ${slot.period} วัน${DAY_LABELS[slot.day_of_week]}`}
-                        className="text-danger disabled:opacity-40"
                         disabled={deleteSlot.isPending}
                         icon={Trash2}
                         onClick={() => void handleDelete(slot)}
-                        size="sm"
-                        variant="ghost"
+                        variant="delete"
                       />
                     </div>
                   </div>

@@ -131,21 +131,19 @@ function RowActions({
         <IconButton
           aria-busy={isReissuing}
           aria-label={`ออกรหัสชั่วคราวใหม่ให้ ${row.studentName}`}
-          className="text-warning"
           disabled={isReissuing || isDeactivating}
           icon={KeyRound}
           onClick={() => onReissueTemporaryPassword(row)}
-          variant="ghost"
+          variant="credential"
         />
       ) : null}
       <IconButton
         aria-busy={isDeactivating}
         aria-label={`ปิดใช้งานบัญชีของ ${row.studentName}`}
-        className="text-danger"
         disabled={isDisabled || isDeactivating || isReissuing}
         icon={UserX}
         onClick={() => onDeactivate(row)}
-        variant="ghost"
+        variant="delete"
       />
       {isDisabled ? (
         <IconButton

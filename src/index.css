@@ -27,6 +27,7 @@
   /* Neutral content — primary labels/icons are black; supporting copy stays #676767. */
   --color-content-primary: #111111;
   --color-content-secondary: #676767;
+  --color-breadcrumb-muted: #737373;
 
   /* Replace Tailwind's blue-cast slate ramp with true neutral grays. */
   --color-slate-50: #fafafa;
@@ -59,6 +60,16 @@
   --color-warning-100: #fef3c7;
   --color-warning-200: #fde68a;
   --color-warning-700: #92400e;
+
+  /* Credential actions — yellow-gold, kept distinct from destructive red. */
+  --color-credential: #c38a00;
+  --color-credential-dark: #9f7100;
+
+  /* Row actions — share is teal; view remains a neutral slate action. */
+  --color-share: #0d9488;
+  --color-share-dark: #0f766e;
+  --color-view: #64748b;
+  --color-view-dark: #475569;
 
   /* Danger — absent / negative (deep red) */
   --color-danger: #b91c1c;

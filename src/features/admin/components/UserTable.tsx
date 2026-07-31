@@ -109,20 +109,18 @@ function RowActions({
       {!isDisabled ? (
         <IconButton
           aria-label="ออกรหัสชั่วคราวใหม่"
-          className="text-warning"
           disabled={reissuingUserId === userId || isDeactivating}
           icon={KeyRound}
           onClick={() => onReissueTemporaryPassword(user)}
-          variant="ghost"
+          variant="credential"
         />
       ) : null}
       <IconButton
         aria-label="แก้ไขผู้ใช้งาน"
-        className="text-primary"
         disabled={isDeactivating || isReactivating}
         icon={SquarePen}
         onClick={() => onEdit(user)}
-        variant="ghost"
+        variant="edit"
       />
       {isDisabled ? (
         <IconButton
@@ -138,11 +136,10 @@ function RowActions({
         <IconButton
           aria-busy={isDeactivating}
           aria-label="ปิดใช้งานผู้ใช้งาน"
-          className="text-danger"
           disabled={isDeactivating}
           icon={UserX}
           onClick={() => onDeactivate(user)}
-          variant="ghost"
+          variant="delete"
         />
       )}
     </div>

@@ -3,7 +3,7 @@ import { Link, type LinkProps } from "react-router-dom";
 import { Eye } from "lucide-react";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
-import { buttonVariants } from "../base";
+import { buttonVariants, iconButtonVariants } from "../base";
 
 export interface DetailLinkButtonProps
   extends Omit<LinkProps, "children">,
@@ -29,9 +29,10 @@ export function DetailLinkButton({
   return (
     <Link
       className={cn(
-        buttonVariants({ variant: variant ?? "outline", size }),
+        iconOnly
+          ? iconButtonVariants({ variant: "view", size: "md" })
+          : buttonVariants({ variant: variant ?? "outline", size }),
         "shrink-0 whitespace-nowrap",
-        iconOnly && "size-9 px-0",
         className,
       )}
       {...props}
