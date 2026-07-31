@@ -73,6 +73,15 @@ export function LinkShareDialog({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
+  // Straight to the Messenger inbox with the link on the clipboard, same shape
+  // as Discord below. `facebook.com/sharer` is never used here — that is the
+  // *feed* sharer and composes a public post instead of a chat.
+  async function handleMessenger(): Promise<void> {
+    if (!(await copyLink(link))) return;
+    appToast.info("คัดลอกลิงก์แล้ว วางใน Messenger ได้เลย");
+    openShareTarget("https://www.facebook.com/messages/");
+  }
+
   async function handleDiscord(): Promise<void> {
     if (!(await copyLink(link))) return;
     appToast.info("คัดลอกลิงก์แล้ว วางใน Discord ได้เลย");
@@ -144,11 +153,7 @@ export function LinkShareDialog({
               </ShareChoice>
               <ShareChoice
                 label="Messenger"
-                onClick={() =>
-                  openShareTarget(
-                    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`,
-                  )
-                }
+                onClick={() => void handleMessenger()}
               >
                 <img
                   alt=""
