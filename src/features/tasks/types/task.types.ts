@@ -1,8 +1,9 @@
 import type { DataScope } from "../../auth/lib/permissions";
+import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 
 export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
-export type AttendanceTaskStatus = "P_PRESENT" | "P_ABSENT" | "P_LATE";
+export type AttendanceTaskStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 
 export interface TaskCreatePayload {
   task_type: TaskType;

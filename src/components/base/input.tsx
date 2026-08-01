@@ -68,11 +68,15 @@ export function NumericInput({ onChange, maxLength, ...props }: NumericInputProp
 }
 
 export interface PasswordInputProps extends Omit<InputProps, "type"> {
+  visibilityButtonClassName?: string;
+  visibilityIconClassName?: string;
   visibilityLabel?: string;
 }
 
 export function PasswordInput({
   className,
+  visibilityButtonClassName,
+  visibilityIconClassName,
   visibilityLabel = "แสดงหรือซ่อนรหัสผ่าน",
   ...props
 }: PasswordInputProps) {
@@ -88,8 +92,12 @@ export function PasswordInput({
       />
       <IconButton
         aria-label={visibilityLabel}
-        className="absolute right-1 top-1/2 size-8 -translate-y-1/2 border-transparent bg-white text-slate-500 shadow-none hover:bg-primary-soft hover:text-primary"
+        className={cn(
+          "absolute right-1 top-1/2 size-8 -translate-y-1/2 border-transparent bg-inherit text-slate-500 shadow-none hover:bg-primary-soft hover:text-primary",
+          visibilityButtonClassName,
+        )}
         icon={Icon}
+        iconClassName={visibilityIconClassName}
         onClick={() => setVisible((current) => !current)}
         tabIndex={-1}
         variant="ghost"

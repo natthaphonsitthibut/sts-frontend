@@ -1,4 +1,4 @@
-import { Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
+import { CalendarOff, Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
 import type {
   AttendanceSelectionStatus,
   SchoolTerm,
@@ -11,6 +11,7 @@ const ATTENDANCE_STATUS_CODE = {
   PRESENT: 1,
   ABSENT: 2,
   LATE: 3,
+  LEAVE: 4,
 } as const;
 
 export const SCHOOL_TERM_STATUSES: readonly SchoolTermStatus[] = [
@@ -69,6 +70,14 @@ export function normalizeAttendanceSelectionStatus(
   ) {
     return "P_LATE";
   }
+  if (
+    status === ATTENDANCE_STATUS_CODE.LEAVE ||
+    status === String(ATTENDANCE_STATUS_CODE.LEAVE) ||
+    status === "P_LEAVE" ||
+    status === "LEAVE"
+  ) {
+    return "P_LEAVE";
+  }
   return "NONE";
 }
 
@@ -80,6 +89,10 @@ interface AttendanceStatusStyle {
   activeClass: string;
   /** Read-only status chip classes. */
   displayClass: string;
+  /** Outlined pill shown when the status is NOT the one a row landed on. */
+  pillIdleClass: string;
+  /** Filled pill marking the status a row actually landed on. */
+  pillActiveClass: string;
 }
 
 // Color tokens copied verbatim from the legacy Quasar AttendancePage styles.
@@ -93,6 +106,8 @@ export const ATTENDANCE_STATUS_STYLE: Record<
     activeClass:
       "border-success bg-gradient-to-br from-success-100 to-success-200 text-success-700 shadow-[0_4px_12px_rgba(34,197,94,0.25)]",
     displayClass: "bg-gradient-to-br from-success-100 to-success-200 text-success-700",
+    pillIdleClass: "border-success text-success-700",
+    pillActiveClass: "border-success bg-success text-white",
   },
   P_ABSENT: {
     icon: X,
@@ -100,6 +115,8 @@ export const ATTENDANCE_STATUS_STYLE: Record<
     activeClass:
       "border-danger bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700 shadow-[0_4px_12px_rgba(239,68,68,0.25)]",
     displayClass: "bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700",
+    pillIdleClass: "border-danger text-danger-700",
+    pillActiveClass: "border-danger bg-danger text-white",
   },
   P_LATE: {
     icon: Clock,
@@ -107,12 +124,26 @@ export const ATTENDANCE_STATUS_STYLE: Record<
     activeClass:
       "border-warning bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700 shadow-[0_4px_12px_rgba(245,158,11,0.25)]",
     displayClass: "bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700",
+    pillIdleClass: "border-warning text-warning-700",
+    pillActiveClass: "border-warning bg-warning text-white",
+  },
+  // "ลา" has no dedicated accent token — the status catalog assigns it the
+  // neutral `secondary` badge, so the button styling follows the slate ramp.
+  P_LEAVE: {
+    icon: CalendarOff,
+    idleClass: "border-slate-200 bg-white text-slate-500",
+    activeClass: "border-slate-400 bg-slate-200 text-slate-700",
+    displayClass: "bg-slate-100 text-slate-700",
+    pillIdleClass: "border-slate-400 text-slate-700",
+    pillActiveClass: "border-slate-500 bg-slate-500 text-white",
   },
   NONE: {
     icon: HelpCircle,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass: "border-slate-300 bg-slate-100 text-slate-500",
     displayClass: "bg-slate-100 text-slate-500",
+    pillIdleClass: "border-slate-200 text-slate-500",
+    pillActiveClass: "border-slate-300 bg-slate-300 text-slate-700",
   },
 };
 
@@ -130,12 +161,40 @@ export function getAttendanceStatusPresentation(
   };
 }
 
-/** Record-page status buttons in legacy display order: มา / ขาด / สาย. */
+/** Record-page status buttons in legacy display order: มา / ขาด / สาย / ลา. */
 export const ATTENDANCE_RECORD_STATUSES: AttendanceSelectionStatus[] = [
   "P_PRESENT",
   "P_ABSENT",
   "P_LATE",
+  "P_LEAVE",
 ];
+
+export interface AttendanceCounts {
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+}
+
+/** Which tally each recordable status feeds; `NONE` is deliberately absent. */
+export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<string, keyof AttendanceCounts> = {
+  P_PRESENT: "present",
+  P_ABSENT: "absent",
+  P_LATE: "late",
+  P_LEAVE: "leave",
+};
+
+/** Tallies selections so every check-in surface reports the same status set. */
+export function countAttendanceStatuses(
+  statuses: readonly AttendanceSelectionStatus[],
+): AttendanceCounts {
+  const counts: AttendanceCounts = { present: 0, absent: 0, late: 0, leave: 0 };
+  for (const status of statuses) {
+    const key = ATTENDANCE_COUNT_KEY_BY_STATUS[status];
+    if (key) counts[key] += 1;
+  }
+  return counts;
+}
 
 
 

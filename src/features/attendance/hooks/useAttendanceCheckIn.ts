@@ -5,7 +5,7 @@ import type { GradeLevelOption } from "../../tasks/api/attendance-lookup.service
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../api/attendance.service";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
-import { getTodayIso } from "../lib/attendance-presentation";
+import { countAttendanceStatuses, getTodayIso } from "../lib/attendance-presentation";
 import { useSchoolAreaFilter } from "./useSchoolAreaFilter";
 import type {
   AttendanceSaveRecord,
@@ -181,18 +181,13 @@ export function useAttendanceCheckInForSession({
   );
   const session = sessionQuery.data?.session ?? null;
   const canEditAttendance = session?.status !== "SUBMITTED";
-  const counts = useMemo(() => {
-    return students.reduce(
-      (acc, student) => {
-        const status = effectiveSelections[student.id] ?? DEFAULT_STATUS;
-        if (status === "P_PRESENT") acc.present += 1;
-        else if (status === "P_ABSENT") acc.absent += 1;
-        else if (status === "P_LATE") acc.late += 1;
-        return acc;
-      },
-      { present: 0, absent: 0, late: 0 },
-    );
-  }, [students, effectiveSelections]);
+  const counts = useMemo(
+    () =>
+      countAttendanceStatuses(
+        students.map((student) => effectiveSelections[student.id] ?? DEFAULT_STATUS),
+      ),
+    [students, effectiveSelections],
+  );
 
   function setStatus(studentId: string, status: AttendanceSelectionStatus): void {
     if (!canEditAttendance) return;

@@ -49,6 +49,22 @@ export const RISK_TIER_PRESENTATION: Record<string, RiskTierPresentation> = {
   },
 };
 
+/**
+ * Outlined chip classes for roster tables. Deliberately coarser than `tone`:
+ * the tiers are slated to collapse to เสี่ยง / เฝ้าระวัง / ปกติ, so every
+ * at-risk tier shares one treatment until that consolidation lands.
+ */
+const RISK_TIER_CHIP_CLASS: Record<string, string> = {
+  NORMAL: "border-success text-success-700",
+  WATCH: "border-warning text-warning-700",
+};
+
+const RISK_TIER_CHIP_CLASS_AT_RISK = "border-danger text-danger-700";
+
+export function getRiskTierChipClass(riskTier: string): string {
+  return RISK_TIER_CHIP_CLASS[riskTier] ?? RISK_TIER_CHIP_CLASS_AT_RISK;
+}
+
 /** Canonical dashboard/filter order; severity desc, normal last. */
 export const RISK_TIER_ORDER = [
   "HIGH",

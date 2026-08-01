@@ -10,7 +10,7 @@ export const buttonVariants = cva(
         default:
           "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         secondary:
-          "border border-slate-300 bg-primary-soft text-primary-dark shadow-sm hover:border-slate-400 hover:bg-slate-100 hover:shadow",
+          "border border-slate-200 bg-slate-200 text-slate-900 shadow-none hover:border-slate-300 hover:bg-slate-300 hover:text-slate-900",
         outline:
           "border border-slate-300 bg-white text-slate-800 shadow-sm hover:border-slate-400 hover:bg-primary-soft hover:text-primary-dark hover:shadow",
         ghost:

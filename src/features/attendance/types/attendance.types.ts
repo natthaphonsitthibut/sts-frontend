@@ -2,6 +2,7 @@ export type AttendanceSelectionStatus =
   | "P_PRESENT"
   | "P_ABSENT"
   | "P_LATE"
+  | "P_LEAVE"
   | "NONE";
 
 export interface AttendanceStudent {

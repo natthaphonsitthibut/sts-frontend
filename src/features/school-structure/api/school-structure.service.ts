@@ -1,15 +1,20 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   ClassroomTeacherAssignment,
+  ClassroomStudentCommentResult,
   CreateClassroomInput,
   UpdateClassroomInput,
   PaginatedClassroomRoster,
+  PaginatedClassroomDailyAttendance,
+  PaginatedClassroomStudentAttendance,
+  PaginatedClassroomStudentAttendanceDays,
   PaginatedSchoolClassrooms,
   PaginatedSchoolTeachers,
   SchoolClassroom,
   SchoolClassroomOption,
   SchoolTeacherMembership,
   ScopedSchool,
+  UpdateClassroomPresentationInput,
 } from "../types/school-structure.types";
 
 interface DataEnvelope<T> {
@@ -21,6 +26,7 @@ export interface SchoolClassroomListParams {
   termId?: number;
   gradeLevelId?: number;
   classroomId?: number;
+  search?: string;
   page: number;
   limit: number;
   sortBy: "room" | "grade" | "students";
@@ -40,14 +46,40 @@ export interface SchoolTeacherListParams {
 }
 
 export interface ClassroomRosterListParams {
+  search?: string;
+  riskTier?: string;
   schoolId?: number;
   termId?: number;
   gradeLevelId?: number;
   classroomId?: number;
   page: number;
   limit: number;
-  sortBy: "name" | "status";
+  sortBy: "studentNumber" | "name" | "comment" | "status";
   sortDirection: "asc" | "desc";
+}
+
+export interface ClassroomAttendanceHistoryParams {
+  classroomId: number;
+  view: "DAILY" | "STUDENT";
+  studentUuid?: string;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  sortBy?:
+    | "date"
+    | "time"
+    | "recordedBy"
+    | "studentNumber"
+    | "name"
+    | "status"
+    | "present"
+    | "late"
+    | "leave"
+    | "absent";
+  sortDirection?: "asc" | "desc";
+  page: number;
+  limit: number;
 }
 
 async function listSchools(): Promise<ScopedSchool[]> {
@@ -79,6 +111,13 @@ async function listClassroomOptions(params: {
   return response.data.data ?? [];
 }
 
+async function getClassroom(classroomId: string): Promise<SchoolClassroom> {
+  const response = await apiClient.get<DataEnvelope<SchoolClassroom>>(
+    `/school-structure/classrooms/${encodeURIComponent(classroomId)}`,
+  );
+  return response.data.data;
+}
+
 async function createClassroom(input: CreateClassroomInput): Promise<SchoolClassroom> {
   const response = await apiClient.post<DataEnvelope<SchoolClassroom>>(
     "/school-structure/classrooms",
@@ -100,6 +139,39 @@ async function updateClassroom({
 
 async function deleteClassroom(classroomId: string): Promise<void> {
   await apiClient.delete(`/school-structure/classrooms/${classroomId}`);
+}
+
+async function setClassroomFavorite(input: {
+  classroomId: string;
+  isFavorite: boolean;
+}): Promise<void> {
+  await apiClient.put(
+    `/school-structure/classrooms/${encodeURIComponent(input.classroomId)}/favorite`,
+    { isFavorite: input.isFavorite },
+  );
+}
+
+async function updateClassroomPresentation({
+  classroomId,
+  cardCoverColor,
+  coverImagePositionX,
+  coverImagePositionY,
+  coverImageScale,
+  file,
+  removeCover,
+}: UpdateClassroomPresentationInput): Promise<SchoolClassroom> {
+  const formData = new FormData();
+  formData.append("cardCoverColor", cardCoverColor);
+  formData.append("coverImagePositionX", String(coverImagePositionX));
+  formData.append("coverImagePositionY", String(coverImagePositionY));
+  formData.append("coverImageScale", String(coverImageScale));
+  if (file) formData.append("photo", file);
+  if (removeCover) formData.append("removeCover", "true");
+  const response = await apiClient.patch<DataEnvelope<SchoolClassroom>>(
+    `/school-structure/classrooms/${encodeURIComponent(classroomId)}/presentation`,
+    formData,
+  );
+  return response.data.data;
 }
 
 async function listTeachers(params: SchoolTeacherListParams): Promise<PaginatedSchoolTeachers> {
@@ -147,16 +219,85 @@ async function listRoster(
   return response.data;
 }
 
+async function createStudentComment(input: {
+  classroomId: number;
+  studentUuid: string;
+  commentText: string;
+}): Promise<ClassroomStudentCommentResult> {
+  const response = await apiClient.post<DataEnvelope<ClassroomStudentCommentResult>>(
+    `/school-structure/classrooms/${input.classroomId}/students/${encodeURIComponent(input.studentUuid)}/comments`,
+    { commentText: input.commentText },
+  );
+  return response.data.data;
+}
+
+async function listClassroomDailyAttendance(
+  params: ClassroomAttendanceHistoryParams,
+): Promise<PaginatedClassroomDailyAttendance> {
+  const { classroomId, ...query } = params;
+  const response = await apiClient.get<PaginatedClassroomDailyAttendance>(
+    `/school-structure/classrooms/${classroomId}/attendance-history`,
+    { params: query },
+  );
+  return response.data;
+}
+
+async function listClassroomStudentAttendance(
+  params: ClassroomAttendanceHistoryParams,
+): Promise<PaginatedClassroomStudentAttendance> {
+  const { classroomId, ...query } = params;
+  const response = await apiClient.get<PaginatedClassroomStudentAttendance>(
+    `/school-structure/classrooms/${classroomId}/attendance-history`,
+    { params: query },
+  );
+  return response.data;
+}
+
+async function listStudentAttendanceDays(
+  params: ClassroomAttendanceHistoryParams & { studentUuid: string },
+): Promise<PaginatedClassroomStudentAttendanceDays> {
+  const { classroomId, ...query } = params;
+  const response = await apiClient.get<PaginatedClassroomStudentAttendanceDays>(
+    `/school-structure/classrooms/${classroomId}/attendance-history`,
+    { params: query },
+  );
+  return response.data;
+}
+
+async function authorizeClassroomExport(input: {
+  classroomId: number;
+  exportScope: "ROSTER" | "ATTENDANCE";
+  format: "pdf" | "xlsx" | "csv";
+  columns: string[];
+}): Promise<void> {
+  await apiClient.post(
+    `/school-structure/classrooms/${input.classroomId}/export-events`,
+    {
+      exportScope: input.exportScope,
+      format: input.format,
+      columns: input.columns,
+    },
+  );
+}
+
 export const schoolStructureService = {
   listSchools,
   listClassrooms,
+  getClassroom,
   listClassroomOptions,
   createClassroom,
   updateClassroom,
   deleteClassroom,
+  setClassroomFavorite,
+  updateClassroomPresentation,
   listTeachers,
   listTeacherOptions,
   listAssignments,
   createHomeroomAssignment,
   listRoster,
+  createStudentComment,
+  listClassroomDailyAttendance,
+  listClassroomStudentAttendance,
+  listStudentAttendanceDays,
+  authorizeClassroomExport,
 };

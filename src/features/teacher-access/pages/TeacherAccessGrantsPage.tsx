@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import {
   Alert,
   AlertDescription,
@@ -98,13 +99,8 @@ const STATUS_META: Record<
   SUSPENDED: { label: "ระงับชั่วคราว", variant: "secondary" },
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 function formatDateTime(value: string | null): string {
-  return value ? dateTimeFormatter.format(new Date(value)) : "ยังไม่เคยใช้งาน";
+  return value ? formatThaiDateTime(value) : "ยังไม่เคยใช้งาน";
 }
 
 function assignmentLabel(assignment: {

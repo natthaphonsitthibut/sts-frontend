@@ -859,7 +859,7 @@ export function SchoolStructurePage() {
               <div><Label htmlFor="classroom-name">ชื่อห้อง (ถ้ามี)</Label><Input id="classroom-name" maxLength={120} value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="เช่น ห้องวิทยาศาสตร์" /></div>
             </DialogBody>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setClassroomDialogOpen(false)}>ยกเลิก</Button>
+              <Button variant="secondary" onClick={() => setClassroomDialogOpen(false)}>ยกเลิก</Button>
               <Button type="submit" isLoading={createClassroom.isPending || updateClassroom.isPending} loadingText="กำลังบันทึก">บันทึกห้อง</Button>
             </DialogFooter>
           </form>
@@ -875,7 +875,7 @@ export function SchoolStructurePage() {
               <p className="text-sm text-slate-600">{selectedClassroom ? `${selectedClassroom.gradeLabel} / ${formatRoomLabel(selectedClassroom.roomCode)}` : ""}</p>
               <div><FormLabel htmlFor="homeroom-teacher" required>ครูประจำชั้น</FormLabel><Select id="homeroom-teacher" required value={teacherMembershipId} onChange={(event) => setTeacherMembershipId(event.target.value)}><option value="">เลือกครู</option>{activeTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.displayName}</option>)}</Select></div>
             </DialogBody>
-            <DialogFooter><Button variant="outline" onClick={() => setAssignmentDialogOpen(false)}>ยกเลิก</Button><Button type="submit" isLoading={createAssignment.isPending} loadingText="กำลังบันทึก">บันทึกการมอบหมาย</Button></DialogFooter>
+            <DialogFooter><Button variant="secondary" onClick={() => setAssignmentDialogOpen(false)}>ยกเลิก</Button><Button type="submit" isLoading={createAssignment.isPending} loadingText="กำลังบันทึก">บันทึกการมอบหมาย</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

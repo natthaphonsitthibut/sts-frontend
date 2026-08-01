@@ -3,10 +3,14 @@ import { schoolStructureService } from "../api/school-structure.service";
 import { importService } from "../../import-data/api/import.service";
 import type {
   CreateClassroomInput,
+  PaginatedClassroomRoster,
+  PaginatedSchoolClassrooms,
   UpdateClassroomInput,
+  UpdateClassroomPresentationInput,
 } from "../types/school-structure.types";
 import type {
   ClassroomRosterListParams,
+  ClassroomAttendanceHistoryParams,
   SchoolClassroomListParams,
   SchoolTeacherListParams,
 } from "../api/school-structure.service";
@@ -25,6 +29,14 @@ export function useSchoolClassrooms(params: SchoolClassroomListParams | null) {
     queryKey: [KEY, "classrooms", params],
     queryFn: () => schoolStructureService.listClassrooms(params!),
     enabled: Boolean(params),
+  });
+}
+
+export function useSchoolClassroom(classroomId: string | null) {
+  return useQuery({
+    queryKey: [KEY, "classroom", classroomId],
+    queryFn: () => schoolStructureService.getClassroom(classroomId!),
+    enabled: Boolean(classroomId),
   });
 }
 
@@ -80,6 +92,72 @@ export function useDeleteSchoolClassroom() {
   });
 }
 
+export function useSetClassroomFavorite() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: schoolStructureService.setClassroomFavorite,
+    onMutate: async (input) => {
+      const queryKey = [KEY, "classrooms"] as const;
+      await client.cancelQueries({ queryKey });
+      const snapshots = client.getQueriesData<PaginatedSchoolClassrooms>({ queryKey });
+      client.setQueriesData<PaginatedSchoolClassrooms>({ queryKey }, (current) => {
+        if (!current) return current;
+        const target = current.data.find((item) => item.id === input.classroomId);
+        if (!target) return current;
+        const updatedTarget = { ...target, isFavorite: input.isFavorite };
+        const remaining = current.data.filter((item) => item.id !== input.classroomId);
+        const data = input.isFavorite
+          ? [updatedTarget, ...remaining]
+          : [
+              ...remaining.filter((item) => item.isFavorite),
+              updatedTarget,
+              ...remaining.filter((item) => !item.isFavorite),
+            ];
+        return { ...current, data };
+      });
+      return { snapshots };
+    },
+    onError: (_error, _input, context) => {
+      context?.snapshots.forEach(([queryKey, data]) => client.setQueryData(queryKey, data));
+    },
+    onSettled: async () => client.invalidateQueries({ queryKey: [KEY, "classrooms"] }),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useUpdateClassroomPresentation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateClassroomPresentationInput) =>
+      schoolStructureService.updateClassroomPresentation(input),
+    onSuccess: async (updated) => {
+      client.setQueriesData<PaginatedSchoolClassrooms>(
+        { queryKey: [KEY, "classrooms"] },
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: current.data.map((item) =>
+                  item.id === updated.id
+                    ? {
+                        ...item,
+                        cardCoverColor: updated.cardCoverColor,
+                        coverImageUrl: updated.coverImageUrl,
+                        coverImagePositionX: updated.coverImagePositionX,
+                        coverImagePositionY: updated.coverImagePositionY,
+                        coverImageScale: updated.coverImageScale,
+                      }
+                    : item,
+                ),
+              }
+            : current,
+      );
+      await client.invalidateQueries({ queryKey: [KEY, "classrooms"] });
+    },
+    meta: { successMessage: "บันทึกการปรับแต่งห้องเรียนแล้ว" },
+  });
+}
+
 export function useSchoolTeachers(params: SchoolTeacherListParams | null) {
   return useQuery({
     queryKey: [KEY, "teachers", params],
@@ -122,6 +200,56 @@ export function useClassroomRoster(params: ClassroomRosterListParams | null) {
   return useQuery({
     queryKey: [KEY, "roster", params],
     queryFn: () => schoolStructureService.listRoster(params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useCreateClassroomStudentComment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: schoolStructureService.createStudentComment,
+    onSuccess: async (created, input) => {
+      client.setQueriesData<PaginatedClassroomRoster>(
+        { queryKey: [KEY, "roster"] },
+        (current) => current
+          ? {
+              ...current,
+              data: current.data.map((student) =>
+                student.studentUuid === input.studentUuid
+                  ? { ...student, teacherComment: created.teacherComment }
+                  : student,
+              ),
+            }
+          : current,
+      );
+      await client.invalidateQueries({ queryKey: [KEY, "roster"] });
+    },
+    meta: { successMessage: "บันทึกความคิดเห็นแล้ว" },
+  });
+}
+
+export function useClassroomDailyAttendance(params: ClassroomAttendanceHistoryParams | null) {
+  return useQuery({
+    queryKey: [KEY, "attendance-history", "daily", params],
+    queryFn: () => schoolStructureService.listClassroomDailyAttendance(params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useClassroomStudentAttendance(params: ClassroomAttendanceHistoryParams | null) {
+  return useQuery({
+    queryKey: [KEY, "attendance-history", "student", params],
+    queryFn: () => schoolStructureService.listClassroomStudentAttendance(params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useStudentAttendanceDays(
+  params: (ClassroomAttendanceHistoryParams & { studentUuid: string }) | null,
+) {
+  return useQuery({
+    queryKey: [KEY, "attendance-history", "student-days", params],
+    queryFn: () => schoolStructureService.listStudentAttendanceDays(params!),
     enabled: Boolean(params),
   });
 }

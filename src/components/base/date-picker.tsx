@@ -34,6 +34,7 @@ const THAI_MONTH_NAMES = [
 ];
 
 const WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const BUDDHIST_ERA_OFFSET = 543;
 type CalendarView = "day" | "month" | "year";
 
 interface DateParts {
@@ -57,9 +58,13 @@ function getTodayParts(): DateParts {
   return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
 }
 
-/** ค.ศ. (Gregorian) year on purpose — matches the underlying `YYYY-MM-DD` value, no พ.ศ. conversion. */
+/** Display Thai Buddhist Era while keeping the transport value as Gregorian YYYY-MM-DD. */
 function formatDisplayDate(parts: DateParts): string {
-  return `${parts.day} ${THAI_MONTH_NAMES[parts.month]} ${parts.year}`;
+  return `${parts.day} ${THAI_MONTH_NAMES[parts.month]} ${parts.year + BUDDHIST_ERA_OFFSET}`;
+}
+
+function formatBuddhistYear(gregorianYear: number): string {
+  return String(gregorianYear + BUDDHIST_ERA_OFFSET);
 }
 
 /** Days in a month, accounting for leap years without a Date-object round-trip per cell. */
@@ -176,10 +181,10 @@ export function DatePicker({
   const yearCells = Array.from({ length: 12 }, (_, index) => rangeStart + index);
   const headerLabel =
     calendarView === "day"
-      ? `${THAI_MONTH_NAMES[view.month]} ${view.year}`
+      ? `${THAI_MONTH_NAMES[view.month]} ${formatBuddhistYear(view.year)}`
       : calendarView === "month"
-        ? String(view.year)
-        : `${rangeStart} - ${rangeStart + 11}`;
+        ? formatBuddhistYear(view.year)
+        : `${formatBuddhistYear(rangeStart)} - ${formatBuddhistYear(rangeStart + 11)}`;
 
   return (
     <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
@@ -187,7 +192,7 @@ export function DatePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
-        className="w-full justify-start px-3 font-medium"
+        className="w-full justify-start border-slate-300 bg-white px-3 font-medium text-slate-800 shadow-none hover:border-slate-400 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:ring-primary/20 focus-visible:ring-offset-0 [&>span]:w-full [&>span>span]:w-full"
         disabled={disabled}
         icon={CalendarDays}
         id={id}
@@ -332,7 +337,7 @@ export function DatePicker({
                     onClick={() => selectYear(year)}
                     type="button"
                   >
-                    {year}
+                    {formatBuddhistYear(year)}
                   </button>
                 );
               })}

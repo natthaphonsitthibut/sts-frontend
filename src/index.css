@@ -90,6 +90,7 @@
   --color-surface-page: rgb(250 250 250);
   --color-surface-app: #eeeeee;
   --color-surface-soft: #f5f5f5;
+  --color-login-hero: #e7edf8;
 
   /* Muted — subtle table tint + low-emphasis foreground */
   --color-muted: rgb(250 250 250);
@@ -102,9 +103,9 @@
   --radius-lg: 0.625rem;
 
   /* Login surfaces — large soft curves per STS mockup */
-  --radius-login-hero: 2.5rem;
-  --radius-login-brand-mark: 2.75rem;
-  --radius-login-card: 3rem;
+  --radius-login-hero: 3rem;
+  --radius-login-brand-mark: 3rem;
+  --radius-login-card: 3.5rem;
 
   /* Elevation — subtle, layered, premium-minimal */
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05);
@@ -112,7 +113,7 @@
   --shadow-login-brand-mark:
     inset 0 1px 4px rgb(0 0 0 / 0.25), 0 3px 6px rgb(15 23 42 / 0.1);
   --shadow-login-surface:
-    inset 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 8px rgb(15 23 42 / 0.08);
+    inset 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 8px rgb(15 23 42 / 0.14);
   --drop-shadow-login-icon: 0 4px 4px rgb(0 0 0 / 0.25);
 }
 

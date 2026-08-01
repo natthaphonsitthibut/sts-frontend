@@ -1,18 +1,12 @@
 import { Badge } from "../../../components/base";
 import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+import {
+  ATTENDANCE_COUNT_KEY_BY_STATUS,
+  type AttendanceCounts,
+} from "../lib/attendance-presentation";
 
-interface AttendanceCounts {
-  present: number;
-  absent: number;
-  late: number;
-}
-
-const COUNT_BY_INTERNAL_CODE: Record<string, keyof AttendanceCounts> = {
-  P_PRESENT: "present",
-  P_ABSENT: "absent",
-  P_LATE: "late",
-};
+const COUNT_BY_INTERNAL_CODE = ATTENDANCE_COUNT_KEY_BY_STATUS;
 
 export function AttendanceCountBadges({
   catalog,

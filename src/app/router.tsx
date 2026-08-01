@@ -11,6 +11,8 @@ import {
   AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
+  ClassroomsPage,
+  ClassroomDetailPage,
   CaseDetailPage,
   CaseReviewDetailPage,
   ChangePasswordPage,
@@ -236,6 +238,14 @@ export const router = createBrowserRouter([
       {
         path: "timetable",
         element: protectedElement(<TimetablePage />),
+      },
+      {
+        path: "classrooms",
+        element: protectedElement(<ClassroomsPage />, "manage-school-structure"),
+      },
+      {
+        path: "classrooms/:classroomId",
+        element: protectedElement(<ClassroomDetailPage />, "manage-school-structure"),
       },
       {
         path: "school-structure",

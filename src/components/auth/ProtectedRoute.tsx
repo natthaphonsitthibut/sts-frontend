@@ -16,9 +16,8 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   const location = useLocation();
   const user = useAuthSessionStore((state) => state.user);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
-  const loadSession = useAuthSessionStore((state) => state.loadSession);
 
-  const session = user ? { user, hasAdminAccess } : loadSession();
+  const session = { user, hasAdminAccess };
   const isAuthenticated = Boolean(session.user && session.hasAdminAccess);
   const nextPath = `${location.pathname}${location.search}`;
   const isChangePasswordRoute = location.pathname === "/change-password";

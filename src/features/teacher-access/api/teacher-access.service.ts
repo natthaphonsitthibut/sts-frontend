@@ -1,4 +1,5 @@
 import { apiClient } from "../../../lib/api-client";
+import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import type {
   IssueTeacherAccessGrantInput,
   PaginationMeta,
@@ -123,7 +124,10 @@ async function saveAttendance(
   input: {
     assignmentId: number;
     date: string;
-    records: Array<{ studentId: string; status: "P_PRESENT" | "P_ABSENT" | "P_LATE" }>;
+    records: Array<{
+      studentId: string;
+      status: Exclude<AttendanceSelectionStatus, "NONE">;
+    }>;
   },
 ): Promise<void> {
   await runGuestRequest(async () => {

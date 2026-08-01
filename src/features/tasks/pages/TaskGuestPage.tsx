@@ -29,6 +29,7 @@ import type {
   TaskGuestStudent,
 } from "../types/task.types";
 import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
+import { countAttendanceStatuses } from "../../attendance/lib/attendance-presentation";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
 import { TaskLinkObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
@@ -99,19 +100,13 @@ export function TaskGuestPage() {
     }
   }, [navigate, taskQuery.error, token]);
 
-  const counts = useMemo(() => {
-    const students = studentsQuery.data ?? [];
-    return students.reduce(
-      (acc, student) => {
-        const status = selections[student.id] || "P_PRESENT";
-        if (status === "P_PRESENT") acc.present += 1;
-        if (status === "P_LATE") acc.late += 1;
-        if (status === "P_ABSENT") acc.absent += 1;
-        return acc;
-      },
-      { absent: 0, late: 0, present: 0 },
-    );
-  }, [selections, studentsQuery.data]);
+  const counts = useMemo(
+    () =>
+      countAttendanceStatuses(
+        (studentsQuery.data ?? []).map((student) => selections[student.id] || "P_PRESENT"),
+      ),
+    [selections, studentsQuery.data],
+  );
 
   if (taskQuery.isLoading) {
     return (

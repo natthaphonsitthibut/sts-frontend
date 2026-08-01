@@ -21,11 +21,13 @@ import {
   PAGE_ICONS,
 } from "./page-identity";
 
-export const PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
+export const PAGE_MAX_WIDTH_CLASS = "max-w-[1700px]";
 
-type PageShellProps = ComponentProps<"div">;
+interface PageShellProps extends ComponentProps<"div"> {
+  contentClassName?: string;
+}
 
-export function PageShell({ children, className, ...props }: PageShellProps) {
+export function PageShell({ children, className, contentClassName, ...props }: PageShellProps) {
   return (
     <div
       className={cn(
@@ -35,7 +37,7 @@ export function PageShell({ children, className, ...props }: PageShellProps) {
       {...props}
     >
       <div
-        className={cn("mx-auto w-full", PAGE_MAX_WIDTH_CLASS)}
+        className={cn("mx-auto w-full", PAGE_MAX_WIDTH_CLASS, contentClassName)}
         data-page-container="authenticated"
       >
         {children}
@@ -50,6 +52,7 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   footerActions?: ReactNode;
   icon?: LucideIcon;
   navigation?: ReactNode;
+  parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
   title?: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
   tone?: "default" | "primary";
@@ -83,6 +86,7 @@ export function PageToolbar({
   footerActions,
   icon: Icon,
   navigation,
+  parentBreadcrumb,
   title,
   tone = "default",
   ...props
@@ -92,6 +96,12 @@ export function PageToolbar({
     getPageIdentity(pathname) ??
     (typeof title === "string" ? getPageIdentityByTitle(title) : undefined);
   const ToolbarIcon = pageIdentity?.icon ?? Icon;
+  const parentBreadcrumbIdentity = parentBreadcrumb
+    ? getPageIdentity(parentBreadcrumb.to) ??
+      getPageIdentityByTitle(parentBreadcrumb.label)
+    : undefined;
+  const ParentBreadcrumbIcon =
+    parentBreadcrumb?.icon ?? parentBreadcrumbIdentity?.icon;
   const toolbarTitle = pageIdentity?.title ?? title;
   const isHomePage = pathname === "/";
   const toneClasses = toolbarToneClasses[tone];
@@ -153,6 +163,25 @@ export function PageToolbar({
                     className="size-4 shrink-0 opacity-60"
                     aria-hidden="true"
                   />
+                  {parentBreadcrumb ? (
+                    <>
+                      <Link
+                        className={cn(
+                          "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          tone === "primary"
+                            ? "hover:text-white"
+                            : "hover:text-content-primary",
+                        )}
+                        to={parentBreadcrumb.to}
+                      >
+                        {ParentBreadcrumbIcon ? (
+                          <ParentBreadcrumbIcon className="size-4 shrink-0" aria-hidden="true" />
+                        ) : null}
+                        <span className="truncate">{parentBreadcrumb.label}</span>
+                      </Link>
+                      <ChevronRight className="size-4 shrink-0 opacity-60" aria-hidden="true" />
+                    </>
+                  ) : null}
                   <span
                     className={cn(
                       "inline-flex min-w-0 items-center gap-1.5 font-semibold",
@@ -177,7 +206,7 @@ export function PageToolbar({
               </div>
             ) : null}
           </div>
-          <div className="mt-2 flex flex-col gap-4 sm:min-h-16 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <h1
                 className={cn(

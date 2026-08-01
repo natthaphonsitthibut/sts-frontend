@@ -5,9 +5,10 @@ export function AdminAccessPage() {
   return (
     <GuestPageShell
       as="main"
-      className="relative isolate overflow-hidden bg-surface-page px-0 py-0 before:absolute before:inset-x-0 before:top-0 before:h-64 before:rounded-b-login-hero before:bg-surface-app before:content-[''] sm:before:h-80"
-      containerClassName="max-w-none"
-      contentClassName="relative z-10 max-w-5xl px-4 pb-10 pt-9 sm:px-6"
+      className="relative isolate overflow-x-hidden bg-surface-page px-0 py-0 before:absolute before:inset-x-0 before:top-0 before:h-[clamp(18rem,39vh,31rem)] before:rounded-b-login-hero before:bg-login-hero before:content-['']"
+      containerClassName="max-w-none px-0 py-0 sm:px-0 sm:py-0"
+      contentClassName="relative z-10 max-w-[1380px] px-4 pb-0 pt-[clamp(2rem,5vh,5rem)] sm:px-6"
+      showHeader={false}
     >
       <LoginCard />
     </GuestPageShell>

@@ -14,6 +14,7 @@ import {
 import { EmptyState, ErrorState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import type {
   CreateStudentObservationInput,
   ObservationCatalog,
@@ -31,8 +32,6 @@ const LEVELS: Array<{
   { value: "WATCH", label: "ควรเฝ้าดู", description: "ติดตามความเปลี่ยนแปลงต่อเนื่อง", selectedClass: "border-warning-200 bg-warning-50 text-warning-700" },
   { value: "CONCERN", label: "น่ากังวล", description: "ต้องระบุเหตุผลสั้น ๆ", selectedClass: "border-danger-200 bg-danger-50 text-danger-700" },
 ];
-
-const formatter = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" });
 
 export interface ObservationWorkspaceProps {
   studentName: string;
@@ -186,7 +185,7 @@ export function ObservationWorkspace({
                   <span className="font-bold text-slate-800">{item.dimension.labelTh}</span>
                 </div>
                 {item.comment ? <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{item.comment}</p> : null}
-                <p className="mt-2 text-xs text-slate-500">{item.author.displayName} · {formatter.format(new Date(item.observedAt))}</p>
+                <p className="mt-2 text-xs text-slate-500">{item.author.displayName} · {formatThaiDateTime(item.observedAt)}</p>
               </li>
             ))}
           </ol>

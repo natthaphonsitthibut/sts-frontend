@@ -43,6 +43,7 @@ import {
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
@@ -126,18 +127,14 @@ function parseDateTimeParts(value?: string | null): { date: string; time: string
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return { date: "-", time: "-" };
   const local = getLocalDateTimeParts(parsed);
-  const [year, month, day] = local.date.split("-");
-  return { date: `${day}/${month}/${year}`, time: local.time };
+  return { date: formatThaiDate(parsed), time: local.time };
 }
 
 function formatHistoryDate(value?: string | null): string {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(parsed);
+  return formatThaiDateTime(parsed);
 }
 
 function getContactRelationLabel(

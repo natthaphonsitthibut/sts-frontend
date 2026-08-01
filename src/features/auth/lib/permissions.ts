@@ -99,6 +99,7 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("home", "/"),
   pageMenuItem("dashboard", "/student-risk-report"),
   pageMenuItem("students", "/students"),
+  pageMenuItem("classrooms", "/classrooms", "manage-school-structure"),
   {
     id: "case-system",
     label: "งานติดตามเคส",

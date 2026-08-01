@@ -1,9 +1,10 @@
 const THAI_TIME_ZONE = "Asia/Bangkok";
 
 const thaiDateFormatter = new Intl.DateTimeFormat("th-TH", {
-  day: "2-digit",
-  month: "short",
-  year: "2-digit",
+  calendar: "buddhist",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
   timeZone: THAI_TIME_ZONE,
 });
 

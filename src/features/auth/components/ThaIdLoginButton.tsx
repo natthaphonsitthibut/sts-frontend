@@ -29,7 +29,7 @@ export function ThaIdLoginButton() {
       ) : null}
 
       <Button
-        className="mx-auto block h-12 max-w-2xs text-base font-bold"
+        className="mx-auto block h-12 max-w-sm text-base font-bold"
         fullWidth
         onClick={handleClick}
         type="button"

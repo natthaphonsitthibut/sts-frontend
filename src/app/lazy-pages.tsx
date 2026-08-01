@@ -156,6 +156,16 @@ export const SchoolStructurePage = lazy(() =>
     default: module.SchoolStructurePage,
   })),
 );
+export const ClassroomsPage = lazy(() =>
+  import("../features/school-structure/pages/ClassroomsPage").then((module) => ({
+    default: module.ClassroomsPage,
+  })),
+);
+export const ClassroomDetailPage = lazy(() =>
+  import("../features/school-structure/pages/ClassroomDetailPage").then((module) => ({
+    default: module.ClassroomDetailPage,
+  })),
+);
 export const TeacherAccessGrantsPage = lazy(() =>
   import("../features/teacher-access/pages/TeacherAccessGrantsPage").then((module) => ({
     default: module.TeacherAccessGrantsPage,

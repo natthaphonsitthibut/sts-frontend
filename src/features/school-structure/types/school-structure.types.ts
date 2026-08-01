@@ -1,4 +1,5 @@
 export type StructureStatus = "ACTIVE" | "INACTIVE";
+export type ClassroomCardCoverColor = `#${string}`;
 
 export interface PaginationMeta {
   page: number;
@@ -27,8 +28,24 @@ export interface SchoolClassroom {
   roomCode: string;
   roomName: string | null;
   classroomStatus: StructureStatus;
+  cardCoverColor: ClassroomCardCoverColor;
+  coverImageUrl: string | null;
+  coverImagePositionX: number;
+  coverImagePositionY: number;
+  coverImageScale: number;
+  isFavorite: boolean;
   homeroomTeacherName: string | null;
   studentCount: number;
+}
+
+export interface UpdateClassroomPresentationInput {
+  classroomId: string;
+  cardCoverColor: ClassroomCardCoverColor;
+  coverImagePositionX: number;
+  coverImagePositionY: number;
+  coverImageScale: number;
+  file?: File;
+  removeCover?: boolean;
 }
 
 export interface SchoolClassroomOption {
@@ -84,6 +101,10 @@ export interface ClassroomTeacherAssignment {
 
 export interface ClassroomRosterStudent {
   studentUuid: string;
+  studentNumber: string | null;
+  riskTier: string;
+  riskSeverity: number;
+  teacherComment: string | null;
   firstName: string | null;
   lastName: string | null;
   studentStatusCode: number | null;
@@ -102,6 +123,56 @@ export interface ClassroomRosterStudent {
 
 export interface PaginatedClassroomRoster {
   data: ClassroomRosterStudent[];
+  meta: PaginationMeta;
+}
+
+export interface ClassroomStudentCommentResult {
+  id: string;
+  studentUuid: string;
+  teacherComment: string;
+  createdAt: string;
+}
+
+export interface ClassroomDailyAttendance {
+  date: string;
+  recordedBy: string;
+  presentCount: number;
+  lateCount: number;
+  leaveCount: number;
+  absentCount: number;
+}
+
+export interface ClassroomStudentAttendanceSummary {
+  studentUuid: string;
+  studentNumber: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  presentCount: number;
+  lateCount: number;
+  leaveCount: number;
+  absentCount: number;
+}
+
+export interface ClassroomStudentAttendanceDay {
+  id: string;
+  date: string;
+  time: string | null;
+  recordedBy: string;
+  status: "P_PRESENT" | "P_LATE" | "P_LEAVE" | "P_ABSENT" | "NONE";
+}
+
+export interface PaginatedClassroomDailyAttendance {
+  data: ClassroomDailyAttendance[];
+  meta: PaginationMeta;
+}
+
+export interface PaginatedClassroomStudentAttendance {
+  data: ClassroomStudentAttendanceSummary[];
+  meta: PaginationMeta;
+}
+
+export interface PaginatedClassroomStudentAttendanceDays {
+  data: ClassroomStudentAttendanceDay[];
   meta: PaginationMeta;
 }
 

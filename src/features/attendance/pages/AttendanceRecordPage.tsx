@@ -10,6 +10,7 @@ import {
 } from "../../../components/base";
 import {
   EmptyState,
+  PAGE_MAX_WIDTH_CLASS,
   PageShell,
   SkeletonStack,
   SkeletonTable,
@@ -22,6 +23,7 @@ import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
+import { countAttendanceStatuses } from "../lib/attendance-presentation";
 
 export function AttendanceRecordPage() {
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
@@ -42,18 +44,13 @@ export function AttendanceRecordPage() {
     setSelections((current) => ({ ...current, [studentId]: status }));
   }
 
-  const counts = useMemo(() => {
-    return students.reduce(
-      (acc, student) => {
-        const status = selections[student.id] ?? "P_PRESENT";
-        if (status === "P_PRESENT") acc.present += 1;
-        else if (status === "P_ABSENT") acc.absent += 1;
-        else if (status === "P_LATE") acc.late += 1;
-        return acc;
-      },
-      { present: 0, absent: 0, late: 0 },
-    );
-  }, [students, selections]);
+  const counts = useMemo(
+    () =>
+      countAttendanceStatuses(
+        students.map((student) => selections[student.id] ?? "P_PRESENT"),
+      ),
+    [students, selections],
+  );
 
   function handleSave(): void {
     const records = students.map((student) => ({
@@ -167,7 +164,7 @@ export function AttendanceRecordPage() {
 
       {students.length > 0 ? (
         <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur lg:left-[260px]">
-          <div className="mx-auto flex w-full max-w-[1180px] items-center justify-end">
+          <div className={`mx-auto flex w-full items-center justify-end ${PAGE_MAX_WIDTH_CLASS}`}>
             <Button
               icon={Save}
               isLoading={submitAttendance.isPending}

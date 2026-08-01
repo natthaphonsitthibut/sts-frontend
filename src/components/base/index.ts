@@ -76,6 +76,7 @@ export {
   PersonAddIcon,
   PersonIcon,
   PlaceIcon,
+  SchoolBuildingIcon,
   SchoolIcon,
   SendIcon,
   SettingsIcon,

@@ -21,6 +21,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import type { TeacherAccessGuestCredential } from "../../teacher-access/hooks/useTeacherAccess";
 import {
   useCreateGuestStudentObservation,
@@ -57,11 +58,6 @@ const LEVELS: Array<{
     selectedClass: "border-danger-200 bg-danger-50 text-danger-700",
   },
 ];
-
-const dateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 interface TeacherObservationPanelProps {
   credential: TeacherAccessGuestCredential | null;
@@ -337,7 +333,7 @@ export function TeacherObservationPanel({
                   ) : null}
                   <p className="mt-3 text-xs text-slate-500">
                     {observation.author.displayName} ·{" "}
-                    {dateTimeFormatter.format(new Date(observation.observedAt))}
+                    {formatThaiDateTime(observation.observedAt)}
                     {observation.subject?.name
                       ? ` · ${observation.subject.name}`
                       : ""}

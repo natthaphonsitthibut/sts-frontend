@@ -43,8 +43,9 @@ import type {
   TeacherAccessAssignment,
   TeacherAccessRosterStudent,
 } from "../types/teacher-access.types";
+import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 
-type AttendanceStatus = "P_PRESENT" | "P_ABSENT" | "P_LATE";
+type AttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 
 const ATTENDANCE_OPTIONS: Array<{
   value: AttendanceStatus;
@@ -54,6 +55,7 @@ const ATTENDANCE_OPTIONS: Array<{
   { value: "P_PRESENT", label: "มา", selectedClass: "border-success-200 bg-success-100 text-success-700" },
   { value: "P_LATE", label: "สาย", selectedClass: "border-warning-200 bg-warning-100 text-warning-700" },
   { value: "P_ABSENT", label: "ขาด", selectedClass: "border-danger-200 bg-danger-100 text-danger-700" },
+  { value: "P_LEAVE", label: "ลา", selectedClass: "border-slate-400 bg-slate-200 text-slate-700" },
 ];
 
 function studentName(student: TeacherAccessRosterStudent): string {
@@ -286,7 +288,7 @@ export function TeacherAccessGuestPage() {
                                 <p className="font-semibold text-slate-800"><span className="mr-2 text-slate-400">{index + 1}.</span>{studentName(student)}</p>
                                 {student.studentStatusLabel ? <p className="mt-1 text-xs text-slate-500">{student.studentStatusLabel}</p> : null}
                               </div>
-                              <div className="grid grid-cols-3 gap-2" role="group" aria-label={`สถานะของ ${studentName(student)}`}>
+                              <div className="grid grid-cols-4 gap-2" role="group" aria-label={`สถานะของ ${studentName(student)}`}>
                                 {ATTENDANCE_OPTIONS.map((option) => (
                                   <button
                                     key={option.value}
