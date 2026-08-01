@@ -7,7 +7,14 @@ import {
   Siren,
   Users,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Combobox } from "../../../components/base";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Combobox,
+} from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -29,6 +36,7 @@ import type {
   HomeDashboardMetric,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
+import GeoMapSVG from "../components/GeoMapSVG";
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -66,16 +74,21 @@ function buildQuery(
   base: Record<string, string | number | undefined> | HomeDashboardFilters = {},
 ): string {
   const params = new URLSearchParams();
-  Object.entries(base as Record<string, string | number | undefined>).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") {
-      params.set(key, String(value));
-    }
-  });
+  Object.entries(base as Record<string, string | number | undefined>).forEach(
+    ([key, value]) => {
+      if (value !== undefined && value !== "") {
+        params.set(key, String(value));
+      }
+    },
+  );
   const query = params.toString();
   return query ? `?${query}` : "";
 }
 
-function destination(path: string, query?: Record<string, string | number>): string {
+function destination(
+  path: string,
+  query?: Record<string, string | number>,
+): string {
   return `${path}${buildQuery(query)}`;
 }
 
@@ -84,7 +97,10 @@ function getRiskAreaBackAction(filters: HomeDashboardFilters): {
   next: Partial<HomeDashboardFilters>;
 } | null {
   if (filters.schoolId) {
-    return { label: "กลับไปดูทุกโรงเรียนในพื้นที่", next: { schoolId: undefined } };
+    return {
+      label: "กลับไปดูทุกโรงเรียนในพื้นที่",
+      next: { schoolId: undefined },
+    };
   }
   if (filters.subDistrict) {
     return { label: "กลับไปดูตำบล/แขวง", next: { subDistrict: undefined } };
@@ -228,7 +244,9 @@ function DashboardFilterBar({
         ariaLabel="โรงเรียน"
         options={safeOptions.schools}
         value={filters.schoolId}
-        onChange={(value) => onUpdate({ schoolId: value ? Number(value) : undefined })}
+        onChange={(value) =>
+          onUpdate({ schoolId: value ? Number(value) : undefined })
+        }
       />
       <FilterCombobox
         allLabel="ทุกชั้น"
@@ -256,7 +274,8 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => {
         const pageIdentity = getPageIdentity(metric.targetPath);
-        const Icon = METRIC_ICONS[metric.key] ?? pageIdentity?.icon ?? BarChart3;
+        const Icon =
+          METRIC_ICONS[metric.key] ?? pageIdentity?.icon ?? BarChart3;
         const comparison = metric.comparison ?? {
           value: "—%",
           description: "ไม่มีข้อมูลเทียบปีการศึกษาที่แล้ว",
@@ -327,10 +346,12 @@ export function MainPage() {
         icon={Activity}
         title="ศูนย์สั่งการวันนี้"
         description={`${displayName} · ${roleLabel} · ${affiliation}`}
-        footerActions={<>
-          <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
-          <ClearFiltersButton onClear={reset} />
-        </>}
+        footerActions={
+          <>
+            <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
+            <ClearFiltersButton onClear={reset} />
+          </>
+        }
       >
         <DashboardFilterBar
           filters={filters}
@@ -342,8 +363,15 @@ export function MainPage() {
       {isFilterOptionsError ? (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>โหลดตัวเลือกขอบเขตไม่สำเร็จ</AlertTitle>
-          <AlertDescription>ข้อมูลสรุปยังใช้งานได้ แต่ยังเปลี่ยนขอบเขตไม่ได้</AlertDescription>
-          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetchFilterOptions()}>
+          <AlertDescription>
+            ข้อมูลสรุปยังใช้งานได้ แต่ยังเปลี่ยนขอบเขตไม่ได้
+          </AlertDescription>
+          <Button
+            className="mt-3"
+            size="sm"
+            variant="outline"
+            onClick={() => void refetchFilterOptions()}
+          >
             โหลดตัวเลือกใหม่
           </Button>
         </Alert>
@@ -361,7 +389,7 @@ export function MainPage() {
           onRetry={refetch}
         />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-5 ">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{summary.scopeLabel}</Badge>
@@ -372,12 +400,15 @@ export function MainPage() {
 
           <div
             className={cn(
-              "grid gap-5",
+              "grid gap-5 items-stretch",
               summary.riskAreaRanking &&
-                summary.casePipeline &&
-                "xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]",
+                "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
+            <div className="">
+              <GeoMapSVG />
+            </div>
+
             {summary.riskAreaRanking ? (
               <RiskAreaRankingChart
                 backLabel={riskAreaBackAction?.label}
@@ -390,10 +421,14 @@ export function MainPage() {
                 ranking={summary.riskAreaRanking}
               />
             ) : null}
-            {summary.casePipeline ? (
-              <CasePipelineChart filters={filters} pipeline={summary.casePipeline} />
-            ) : null}
           </div>
+
+          {summary.casePipeline ? (
+            <CasePipelineChart
+              filters={filters}
+              pipeline={summary.casePipeline}
+            />
+          ) : null}
         </div>
       )}
     </PageShell>
