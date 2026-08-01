@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { homeDashboardService } from "../api/home-dashboard.service";
 import type { HomeDashboardFilters } from "../types/home-dashboard.types";
 
@@ -8,11 +8,13 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
   const summaryQuery = useQuery({
     queryKey: [...HOME_DASHBOARD_QUERY_KEY, "summary", filters],
     queryFn: () => homeDashboardService.getSummary(filters),
+    placeholderData: keepPreviousData,
   });
 
   const filterOptionsQuery = useQuery({
     queryKey: [...HOME_DASHBOARD_QUERY_KEY, "filter-options", filters],
     queryFn: () => homeDashboardService.getFilterOptions(filters),
+    placeholderData: keepPreviousData,
   });
 
   return {
