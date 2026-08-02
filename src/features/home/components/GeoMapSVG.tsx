@@ -82,7 +82,7 @@ const PROVINCE_MAP: Record<string, string> = {
   Yasothon: "ยโสธร",
 };
 
-const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
+const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
   const [hovered, setHovered] = useState<{
     id: string;
     name: string;
@@ -176,7 +176,7 @@ const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
 
     if (hoveredId === "Songkhla" || hoveredId === "Songkhla (Songkhla Lake)") {
       return `
-                path[id="Songkhla"], path[id="Songkhla (Songkhla Lake)"] {
+                .geo-map path[id="Songkhla"], .geo-map path[id="Songkhla (Songkhla Lake)"] {
                     fill: var(--color-primary, #0f49bd) !important;
                     stroke: #ffffff !important;
                     stroke-width: 2.5 !important;
@@ -190,7 +190,7 @@ const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
       hoveredId === "Phatthalung (Songkhla Lake)"
     ) {
       return `
-                path[id="Phatthalung"], path[id="Phatthalung (Songkhla Lake)"] {
+                .geo-map path[id="Phatthalung"], .geo-map path[id="Phatthalung (Songkhla Lake)"] {
                     fill: var(--color-primary, #0f49bd) !important;
                     stroke: #ffffff !important;
                     stroke-width: 2.5 !important;
@@ -226,7 +226,7 @@ const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
-        className={`flex-1 min-h-0 outline-none ${zoomScale > 1.0 ? "cursor-grab active:cursor-grabbing" : ""}`}
+        className={`geo-map flex-1 min-h-0 outline-none ${zoomScale > 1.0 ? "cursor-grab active:cursor-grabbing" : ""} ${className ?? ""}`}
         style={{
           transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
           transformOrigin: "center center",
@@ -234,7 +234,7 @@ const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
         {...props}
       >
         <style>{`
-          path {
+          .geo-map path {
             fill: #f8fafc;
             stroke: #cbd5e1;
             stroke-width: 1.5;
@@ -242,7 +242,7 @@ const GeoMapSVG = (props: React.SVGProps<SVGSVGElement>) => {
             transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
             cursor: pointer;
           }
-          path:hover {
+          .geo-map path:hover {
             fill: var(--color-primary, #0f49bd) !important;
             stroke: #ffffff !important;
             stroke-width: 2.5;
