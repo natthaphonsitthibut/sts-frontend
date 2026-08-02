@@ -1,8 +1,9 @@
-import { Download, FileSpreadsheet, FileText, ListChecks, Sheet } from "lucide-react";
+import { CalendarRange, Download, FileSpreadsheet, FileText, ListChecks, Sheet } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Button,
   Checkbox,
+  DatePicker,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -23,18 +24,29 @@ const FORMAT_OPTIONS = [
 ] as const;
 
 interface ClassroomTableExportDialogProps {
-  authorizeExport: (format: RosterExportFormat, columns: string[]) => Promise<void>;
+  authorizeExport: (
+    format: RosterExportFormat,
+    columns: string[],
+    dateRange?: ExportDateRange,
+  ) => Promise<void>;
   columns: readonly RosterExportColumn[];
+  enableDateRange?: boolean;
   fileName: string;
-  loadRows: () => Promise<Record<string, string>[]>;
+  loadRows: (dateRange?: ExportDateRange) => Promise<Record<string, string>[]>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   title: string;
 }
 
+export interface ExportDateRange {
+  dateFrom: string;
+  dateTo: string;
+}
+
 export function ClassroomTableExportDialog({
   authorizeExport,
   columns: availableColumns,
+  enableDateRange = false,
   fileName,
   loadRows,
   onOpenChange,
@@ -54,6 +66,9 @@ export function ClassroomTableExportDialog({
   const selectedColumns =
     columnSelection.schema === columnSchema ? columnSelection.keys : availableColumnKeys;
   const [isExporting, setIsExporting] = useState(false);
+  const [rangeMode, setRangeMode] = useState<"ALL" | "CUSTOM">("ALL");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const columns = useMemo(
     () => availableColumns.filter((column) => selectedColumns.includes(column.key)),
@@ -67,11 +82,23 @@ export function ClassroomTableExportDialog({
 
   async function handleExport(): Promise<void> {
     if (columns.length === 0) return;
+    const dateRange =
+      enableDateRange && rangeMode === "CUSTOM" && dateFrom && dateTo
+        ? { dateFrom, dateTo }
+        : undefined;
+    if (enableDateRange && rangeMode === "CUSTOM" && (!dateFrom || !dateTo)) {
+      setError("กรุณาเลือกวันเริ่มและวันจบ");
+      return;
+    }
+    if (dateRange && dateRange.dateFrom > dateRange.dateTo) {
+      setError("วันเริ่มต้องไม่เกินวันจบ");
+      return;
+    }
     setIsExporting(true);
     setError(null);
     try {
-      await authorizeExport(format, columns.map((column) => column.key));
-      const rows = await loadRows();
+      await authorizeExport(format, columns.map((column) => column.key), dateRange);
+      const rows = await loadRows(dateRange);
       exportRosterFile(
         format,
         fileName,
@@ -149,6 +176,50 @@ export function ClassroomTableExportDialog({
             ))}
           </div>
         </section>
+
+        {enableDateRange ? (
+          <section className="mt-4 border-t border-slate-200 pt-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
+              <CalendarRange className="size-4" aria-hidden="true" /> เลือกช่วงข้อมูล
+            </h3>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-slate-800">
+              {([
+                ["ALL", "ทั้งหมด"],
+                ["CUSTOM", "กำหนดเอง"],
+              ] as const).map(([value, label]) => (
+                <label className="inline-flex cursor-pointer items-center gap-2" key={value}>
+                  <input
+                    checked={rangeMode === value}
+                    className="size-4 accent-primary"
+                    name="export-date-range"
+                    onChange={() => { setRangeMode(value); setError(null); }}
+                    type="radio"
+                    value={value}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {rangeMode === "CUSTOM" ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <DatePicker
+                  ariaLabel="วันเริ่มสำหรับส่งออกข้อมูล"
+                  max={dateTo || undefined}
+                  onChange={setDateFrom}
+                  placeholder="วันเริ่ม"
+                  value={dateFrom}
+                />
+                <DatePicker
+                  ariaLabel="วันจบสำหรับส่งออกข้อมูล"
+                  min={dateFrom || undefined}
+                  onChange={setDateTo}
+                  placeholder="วันจบ"
+                  value={dateTo}
+                />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {error ? <p className="mt-4 text-sm font-medium text-danger">{error}</p> : null}
 

@@ -124,15 +124,15 @@ export function SchoolStructurePage() {
   const [subDistrictFilter, setSubDistrictFilter] = useState("");
   const [classroomGradeFilter, setClassroomGradeFilter] = useState("");
   const [classroomRoomFilter, setClassroomRoomFilter] = useState("");
-  const [classroomSort, setClassroomSort] = useState<DataTableSortState>({
+  const [classroomSort, setClassroomSort] = useState<DataTableSortState | undefined>({
     key: "grade",
     direction: "asc",
   });
-  const [teacherSort, setTeacherSort] = useState<DataTableSortState>({
+  const [teacherSort, setTeacherSort] = useState<DataTableSortState | undefined>({
     key: "name",
     direction: "asc",
   });
-  const [rosterSort, setRosterSort] = useState<DataTableSortState>({
+  const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
     key: "name",
     direction: "asc",
   });
@@ -253,8 +253,8 @@ export function SchoolStructurePage() {
           classroomId: Number(classroomRoomFilter) || undefined,
           page: classroomPage,
           limit: classroomRowsPerPage,
-          sortBy: classroomSort.key as "room" | "grade" | "students",
-          sortDirection: classroomSort.direction,
+          sortBy: classroomSort?.key as "room" | "grade" | "students" | undefined,
+          sortDirection: classroomSort?.direction,
         }
       : null,
   );
@@ -289,8 +289,8 @@ export function SchoolStructurePage() {
           assignedToFilteredClassrooms: true,
           page: teacherPage,
           limit: teacherRowsPerPage,
-          sortBy: teacherSort.key as "name" | "status",
-          sortDirection: teacherSort.direction,
+          sortBy: teacherSort?.key as "name" | "status" | undefined,
+          sortDirection: teacherSort?.direction,
         }
       : null,
   );
@@ -315,8 +315,8 @@ export function SchoolStructurePage() {
           classroomId: Number(classroomRoomFilter) || undefined,
           page: rosterPage,
           limit: rosterRowsPerPage,
-          sortBy: rosterSort.key as "name" | "status",
-          sortDirection: rosterSort.direction,
+          sortBy: rosterSort?.key as "name" | "status" | undefined,
+          sortDirection: rosterSort?.direction,
         }
       : null,
   );
@@ -686,7 +686,7 @@ export function SchoolStructurePage() {
                     ]}
                     minWidthClassName="min-w-[680px]"
                     onSortChange={(next) => {
-                      setClassroomSort(next ?? { key: "grade", direction: "asc" });
+                      setClassroomSort(next);
                       setClassroomPage(1);
                     }}
                     responsive={false}
@@ -752,7 +752,7 @@ export function SchoolStructurePage() {
                   ]}
                   minWidthClassName="min-w-[560px]"
                   onSortChange={(next) => {
-                    setTeacherSort(next ?? { key: "name", direction: "asc" });
+                    setTeacherSort(next);
                     setTeacherPage(1);
                   }}
                   responsive={false}
@@ -805,7 +805,7 @@ export function SchoolStructurePage() {
                     ]}
                     minWidthClassName="min-w-[720px]"
                     onSortChange={(next) => {
-                      setRosterSort(next ?? { key: "name", direction: "asc" });
+                      setRosterSort(next);
                       setRosterPage(1);
                     }}
                     responsive={false}

@@ -51,7 +51,7 @@ export function ClassroomDetailPage() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState>({ key: "name", direction: "asc" });
+  const [sort, setSort] = useState<DataTableSortState | undefined>({ key: "name", direction: "asc" });
   const [exportOpen, setExportOpen] = useState(false);
   const [commentStudent, setCommentStudent] = useState<ClassroomRosterStudent | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
@@ -65,8 +65,8 @@ export function ClassroomDetailPage() {
           riskTier: status || undefined,
           page,
           limit: rowsPerPage,
-          sortBy: sort.key as "studentNumber" | "name" | "comment" | "status",
-          sortDirection: sort.direction,
+          sortBy: sort?.key as "studentNumber" | "name" | "comment" | "status" | undefined,
+          sortDirection: sort?.direction,
         }
       : null,
   );
@@ -167,7 +167,6 @@ export function ClassroomDetailPage() {
             />
           ) : (
             <DataTable
-              clearableSort={false}
               headings={[
                 { label: "ลำดับ", className: "text-center" },
                 { label: "รูปประจำตัว", className: "text-center" },
@@ -179,7 +178,7 @@ export function ClassroomDetailPage() {
               ]}
               minWidthClassName="min-w-[1200px]"
               onSortChange={(nextSort) => {
-                if (nextSort) setSort(nextSort);
+                setSort(nextSort);
                 setPage(1);
               }}
               responsive={false}
@@ -267,8 +266,8 @@ export function ClassroomDetailPage() {
         open={exportOpen}
         riskTier={status || undefined}
         search={debouncedSearch || undefined}
-        sortBy={sort.key as "studentNumber" | "name" | "comment" | "status"}
-        sortDirection={sort.direction}
+        sortBy={sort?.key as "studentNumber" | "name" | "comment" | "status" | undefined}
+        sortDirection={sort?.direction}
       />
       <ClassroomStudentCommentDialog
         classroomId={Number(classroom.id)}

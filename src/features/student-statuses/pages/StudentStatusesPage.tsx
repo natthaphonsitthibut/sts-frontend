@@ -66,7 +66,7 @@ export function StudentStatusesPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<DataTableSortState>({ key: "sortOrder", direction: "asc" });
+  const [sort, setSort] = useState<DataTableSortState | undefined>({ key: "sortOrder", direction: "asc" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<StudentStatus | null>(null);
   const debouncedSearch = useDebouncedValue(search);
@@ -76,8 +76,8 @@ export function StudentStatusesPage() {
     page,
     limit,
     searchTerm: debouncedSearch || undefined,
-    sortBy: sort.key as "code" | "labelTh" | "category" | "sortOrder",
-    sortDirection: sort.direction,
+    sortBy: sort?.key as "code" | "labelTh" | "category" | "sortOrder" | undefined,
+    sortDirection: sort?.direction,
   });
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.meta.totalCount ?? 0;
@@ -159,7 +159,7 @@ export function StudentStatusesPage() {
             ]}
             minWidthClassName="min-w-[980px]"
             onSortChange={(next) => {
-              setSort(next ?? { key: "sortOrder", direction: "asc" });
+              setSort(next);
               setPage(1);
             }}
             sort={sort}

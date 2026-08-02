@@ -18,8 +18,8 @@ interface ClassroomRosterExportDialogProps {
   open: boolean;
   riskTier?: string;
   search?: string;
-  sortBy: "studentNumber" | "name" | "comment" | "status";
-  sortDirection: "asc" | "desc";
+  sortBy?: "studentNumber" | "name" | "comment" | "status";
+  sortDirection?: "asc" | "desc";
   onOpenChange: (open: boolean) => void;
 }
 

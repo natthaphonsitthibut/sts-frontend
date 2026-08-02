@@ -32,7 +32,10 @@ import {
 } from "../hooks/useSchoolStructure";
 import type { RosterExportColumn } from "../lib/classroom-roster-export";
 import type { ClassroomStudentAttendanceSummary } from "../types/school-structure.types";
-import { ClassroomTableExportDialog } from "./ClassroomTableExportDialog";
+import {
+  ClassroomTableExportDialog,
+  type ExportDateRange,
+} from "./ClassroomTableExportDialog";
 
 type HistoryView = "DAILY" | "STUDENT";
 
@@ -145,7 +148,7 @@ export function ClassroomAttendanceHistory({
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState>(() => defaultSummarySort("DAILY"));
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() => defaultSummarySort("DAILY"));
   const [exportOpen, setExportOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const baseParams = {
@@ -155,7 +158,7 @@ export function ClassroomAttendanceHistory({
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     search: debouncedSearch || undefined,
-    sortBy: sort.key as
+    sortBy: sort?.key as
       | "date"
       | "time"
       | "recordedBy"
@@ -166,7 +169,7 @@ export function ClassroomAttendanceHistory({
       | "late"
       | "leave"
       | "absent",
-    sortDirection: sort.direction,
+    sortDirection: sort?.direction,
     page,
     limit: rowsPerPage,
   };
@@ -214,7 +217,7 @@ export function ClassroomAttendanceHistory({
   }
 
   function handleSortChange(nextSort: DataTableSortState | undefined): void {
-    if (nextSort) setSort(nextSort);
+    setSort(nextSort);
     setPage(1);
   }
 
@@ -226,10 +229,16 @@ export function ClassroomAttendanceHistory({
       ? DAILY_COLUMNS
       : STUDENT_COLUMNS;
 
-  async function loadExportRows(): Promise<Record<string, string>[]> {
+  async function loadExportRows(exportDateRange?: ExportDateRange): Promise<Record<string, string>[]> {
+    const exportParams = {
+      ...baseParams,
+      date: selectedDay ?? undefined,
+      dateFrom: exportDateRange?.dateFrom,
+      dateTo: exportDateRange?.dateTo,
+    };
     if (selectedStudent) {
       const first = await schoolStructureService.listStudentAttendanceDays({
-        ...baseParams,
+        ...exportParams,
         view: "STUDENT",
         studentUuid: selectedStudent.studentUuid,
         page: 1,
@@ -238,7 +247,7 @@ export function ClassroomAttendanceHistory({
       const rows = [...first.data];
       for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
         const next = await schoolStructureService.listStudentAttendanceDays({
-          ...baseParams,
+          ...exportParams,
           view: "STUDENT",
           studentUuid: selectedStudent.studentUuid,
           page: nextPage,
@@ -256,7 +265,7 @@ export function ClassroomAttendanceHistory({
     }
     if (selectedDay) {
       const first = await schoolStructureService.listClassroomStudentAttendance({
-        ...baseParams,
+        ...exportParams,
         view: "STUDENT",
         date: selectedDay,
         page: 1,
@@ -265,7 +274,7 @@ export function ClassroomAttendanceHistory({
       const rows = [...first.data];
       for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
         const next = await schoolStructureService.listClassroomStudentAttendance({
-          ...baseParams,
+          ...exportParams,
           view: "STUDENT",
           date: selectedDay,
           page: nextPage,
@@ -283,7 +292,7 @@ export function ClassroomAttendanceHistory({
     }
     if (view === "DAILY") {
       const first = await schoolStructureService.listClassroomDailyAttendance({
-        ...baseParams,
+        ...exportParams,
         view: "DAILY",
         page: 1,
         limit: 50,
@@ -291,7 +300,7 @@ export function ClassroomAttendanceHistory({
       const rows = [...first.data];
       for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
         const next = await schoolStructureService.listClassroomDailyAttendance({
-          ...baseParams,
+          ...exportParams,
           view: "DAILY",
           page: nextPage,
           limit: 50,
@@ -309,7 +318,7 @@ export function ClassroomAttendanceHistory({
       }));
     }
     const first = await schoolStructureService.listClassroomStudentAttendance({
-      ...baseParams,
+      ...exportParams,
       view: "STUDENT",
       page: 1,
       limit: 50,
@@ -317,7 +326,7 @@ export function ClassroomAttendanceHistory({
     const rows = [...first.data];
     for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
       const next = await schoolStructureService.listClassroomStudentAttendance({
-        ...baseParams,
+        ...exportParams,
         view: "STUDENT",
         page: nextPage,
         limit: 50,
@@ -359,7 +368,7 @@ export function ClassroomAttendanceHistory({
       <ToolbarControls className="mb-5">
         {view === "STUDENT" || selectedStudent || selectedDay ? (
           <SearchInput
-            className="sm:max-w-[430px]"
+            className="sm:max-w-[560px]"
             onChange={(value) => { setSearch(value); setPage(1); }}
             placeholder={selectedStudent ? "ค้นหาผู้เช็คชื่อ" : "ค้นหา"}
             value={search}
@@ -435,7 +444,6 @@ export function ClassroomAttendanceHistory({
         <EmptyState description="ลองเปลี่ยนวันที่หรือคำค้นหา" icon={School} title="ไม่มีประวัติการเช็คชื่อ" />
       ) : selectedStudent ? (
         <DataTable
-          clearableSort={false}
           headings={[
             { label: "ลำดับ", className: "text-center" },
             { label: "วันที่", sortKey: "date", className: "text-center" },
@@ -461,7 +469,6 @@ export function ClassroomAttendanceHistory({
         </DataTable>
       ) : selectedDay ? (
         <DataTable
-          clearableSort={false}
           headings={[
             { label: "ลำดับ", className: "text-center" },
             { label: "รูปประจำตัว", className: "text-center" },
@@ -487,7 +494,6 @@ export function ClassroomAttendanceHistory({
         </DataTable>
       ) : view === "DAILY" ? (
         <DataTable
-          clearableSort={false}
           headings={[
             { label: "ลำดับ", className: "text-center" },
             { label: "วันที่", sortKey: "date", className: "text-center" },
@@ -519,7 +525,6 @@ export function ClassroomAttendanceHistory({
         </DataTable>
       ) : (
         <DataTable
-          clearableSort={false}
           headings={[
             { label: "ลำดับ", className: "text-center" },
             { label: "รูปประจำตัว", className: "text-center" },
@@ -554,15 +559,18 @@ export function ClassroomAttendanceHistory({
       )}
 
       <ClassroomTableExportDialog
-        authorizeExport={(format, columns) =>
+        authorizeExport={(format, columns, dateRange) =>
           schoolStructureService.authorizeClassroomExport({
             classroomId,
             exportScope: "ATTENDANCE",
             format,
             columns,
+            dateFrom: dateRange?.dateFrom,
+            dateTo: dateRange?.dateTo,
           })
         }
         columns={exportColumns}
+        enableDateRange={!selectedDay}
         fileName={`attendance-${classroomLabel.replace("/", "-")}`}
         loadRows={loadExportRows}
         onOpenChange={setExportOpen}

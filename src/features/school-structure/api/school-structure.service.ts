@@ -29,8 +29,8 @@ export interface SchoolClassroomListParams {
   search?: string;
   page: number;
   limit: number;
-  sortBy: "room" | "grade" | "students";
-  sortDirection: "asc" | "desc";
+  sortBy?: "room" | "grade" | "students";
+  sortDirection?: "asc" | "desc";
 }
 
 export interface SchoolTeacherListParams {
@@ -41,8 +41,8 @@ export interface SchoolTeacherListParams {
   assignedToFilteredClassrooms: boolean;
   page: number;
   limit: number;
-  sortBy: "name" | "status";
-  sortDirection: "asc" | "desc";
+  sortBy?: "name" | "status";
+  sortDirection?: "asc" | "desc";
 }
 
 export interface ClassroomRosterListParams {
@@ -54,8 +54,8 @@ export interface ClassroomRosterListParams {
   classroomId?: number;
   page: number;
   limit: number;
-  sortBy: "studentNumber" | "name" | "comment" | "status";
-  sortDirection: "asc" | "desc";
+  sortBy?: "studentNumber" | "name" | "comment" | "status";
+  sortDirection?: "asc" | "desc";
 }
 
 export interface ClassroomAttendanceHistoryParams {
@@ -269,6 +269,8 @@ async function authorizeClassroomExport(input: {
   exportScope: "ROSTER" | "ATTENDANCE";
   format: "pdf" | "xlsx" | "csv";
   columns: string[];
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<void> {
   await apiClient.post(
     `/school-structure/classrooms/${input.classroomId}/export-events`,
@@ -276,6 +278,8 @@ async function authorizeClassroomExport(input: {
       exportScope: input.exportScope,
       format: input.format,
       columns: input.columns,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
     },
   );
 }
