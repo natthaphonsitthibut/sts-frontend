@@ -91,6 +91,10 @@ export function PageToolbar({
   tone = "default",
   ...props
 }: PageToolbarProps) {
+  // Page identity is title-only across the authenticated product. Keep the
+  // legacy prop temporarily so feature pages can be migrated without a broad,
+  // noisy call-site rewrite; descriptions continue to belong in page content.
+  void description;
   const { pathname } = useLocation();
   const pageIdentity =
     getPageIdentity(pathname) ??
@@ -216,16 +220,6 @@ export function PageToolbar({
               >
                 {toolbarTitle}
               </h1>
-              {description ? (
-                <p
-                  className={cn(
-                    "mt-1 max-w-3xl text-sm leading-6",
-                    toneClasses.description,
-                  )}
-                >
-                  {description}
-                </p>
-              ) : null}
             </div>
             {actions ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">

@@ -62,12 +62,14 @@ export interface StudentDetail extends Record<string, unknown> {
   AcademicYear_Onec?: number | string;
   Semester_Onec?: number | string;
   GPAX_Onec?: number | string;
+  term_gpa?: number | string | null;
   school_name?: string;
   school_id?: number | string;
   grade?: string;
   grade_label?: string;
   room?: string;
   risk_tier?: "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
+  homeroom_teacher_name?: string | null;
   student_status_label?: string;
   student_status_category?: string;
   student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
@@ -217,6 +219,53 @@ export interface StudentAttendanceSummaryStats {
 export interface StudentAttendanceSummaryResponse {
   records: StudentAttendanceHistoryRecord[];
   stats: StudentAttendanceSummaryStats;
+}
+
+export interface StudentProfileAttendanceDay {
+  attendanceCategory: "ALL_PERIODS" | "SOME_PERIODS" | "NO_PERIODS";
+  attendanceCategoryLabel: string;
+  date: string;
+  statusCode: number;
+  statusInternalCode: string;
+  statusLabel: string;
+  statusBadgeVariant: string;
+}
+
+export interface StudentProfileSummary {
+  term: {
+    academicYear: number;
+    semester: number;
+    startsOn: string | null;
+    endsOn: string | null;
+  };
+  grades: {
+    termGpa: number | null;
+    cumulativeGpax: number | null;
+  };
+  attendance: {
+    ratePercent: number | null;
+    counts: {
+      present: number;
+      absent: number;
+      late: number;
+      leave: number;
+      total: number;
+    };
+    days: StudentProfileAttendanceDay[];
+  };
+}
+
+export interface StudentSubjectAttendanceRecord {
+  date: string;
+  period: number;
+  subjectCode: string | null;
+  subjectName: string | null;
+  statusCode: number;
+  statusInternalCode: string;
+  statusLabel: string;
+  statusBadgeVariant: string;
+  recordedAt: string | null;
+  recordedBy: string | null;
 }
 
 export type PiiExportStatus =

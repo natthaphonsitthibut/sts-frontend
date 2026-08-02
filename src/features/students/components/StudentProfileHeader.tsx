@@ -1,10 +1,13 @@
 import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Award, ClipboardList, GraduationCap, MapPin, PhoneCall, UserRound } from "lucide-react";
 import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import {
   Alert,
   AlertDescription,
   Badge,
   Card,
+  IconButton,
 } from "../../../components/base";
 import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
@@ -19,6 +22,7 @@ import {
 } from "../pii.constants";
 import type {
   StudentDetail,
+  StudentProfileSummary,
   StudentPiiField,
   StudentPiiRevealResponse,
 } from "../types/students.types";
@@ -30,16 +34,38 @@ import { StudentPiiRevealDialog } from "./StudentPiiRevealDialog";
 type PiiRevealMode = "reasoned" | "direct";
 
 interface StudentProfileHeaderProps {
+  contactsOpen?: boolean;
+  locationOpen?: boolean;
+  onOpenContacts?: () => void;
+  onOpenLocation?: () => void;
   student: StudentDetail;
   studentId: string;
   piiRevealMode?: PiiRevealMode;
+  summary?: StudentProfileSummary;
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function MetricCard({
+  icon: Icon,
+  iconClassName,
+  iconSurfaceClassName,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  iconClassName: string;
+  iconSurfaceClassName: string;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="rounded-lg border border-slate-200 px-3 py-2.5 text-center">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className="text-base font-bold text-slate-800">{value}</div>
+    <div className="flex min-h-16 items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 sm:min-h-20 sm:px-5">
+      <div className="min-w-0">
+        <div className="text-xs font-medium text-slate-500">{label}</div>
+        <div className="mt-0.5 text-2xl font-bold tabular-nums text-slate-950">{value}</div>
+      </div>
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${iconSurfaceClassName}`}>
+        <Icon className={`size-5 ${iconClassName}`} aria-hidden="true" />
+      </span>
     </div>
   );
 }
@@ -51,14 +77,15 @@ function toDisplay(value: unknown): string {
   return String(value);
 }
 
-function getSchoolDisplay(student: StudentDetail): string {
-  return toDisplay(student.school_name ?? student.SchoolID_Onec);
-}
-
 export function StudentProfileHeader({
+  contactsOpen = false,
+  locationOpen = false,
+  onOpenContacts,
+  onOpenLocation,
   student,
   studentId,
   piiRevealMode = "reasoned",
+  summary,
 }: StudentProfileHeaderProps) {
   const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
   const {
@@ -78,6 +105,16 @@ export function StudentProfileHeader({
   const riskPresentation =
     RISK_TIER_PRESENTATION[student.risk_tier ?? "NORMAL"] ??
     RISK_TIER_PRESENTATION.NORMAL;
+  const attendanceRate = summary?.attendance.ratePercent;
+  const termGpa = summary?.grades.termGpa ?? student.term_gpa;
+  const cumulativeGpax = summary?.grades.cumulativeGpax ?? student.GPAX_Onec;
+
+  function formatMetric(value: unknown, suffix = ""): string {
+    const numeric = Number(value);
+    return value !== null && value !== undefined && Number.isFinite(numeric)
+      ? `${numeric.toFixed(suffix ? 0 : 2)}${suffix}`
+      : "—";
+  }
 
   function hasPiiValue(field: StudentPiiField): boolean {
     const value = student[field];
@@ -168,69 +205,106 @@ export function StudentProfileHeader({
 
   return (
     <>
-      <Card className="mb-5 p-5">
+      <Card className="mb-5 p-5 sm:p-6" data-student-profile-overview>
         {directError ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{directError}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="flex flex-col items-center gap-5 md:flex-row md:items-start">
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <UserRound className="size-4 text-primary" aria-hidden="true" />
+          ข้อมูลนักเรียน
+        </h2>
+        <div className="mt-4 flex flex-col items-center gap-5 sm:mt-5 sm:gap-6 md:flex-row md:items-start">
           <div
-            className="flex size-24 shrink-0 items-center justify-center rounded-full text-2xl font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            className="flex size-28 shrink-0 items-center justify-center rounded-full text-3xl font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)] sm:size-32 sm:text-4xl"
             style={getAvatarGradient(fullName)}
           >
             {fullName.charAt(0).toUpperCase() || "?"}
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
+            <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
               <div className="w-full text-center md:text-left">
                 <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                  <h1 className="text-xl font-bold leading-8 text-slate-800">
+                  <h1 className="min-w-0 text-xl font-bold leading-8 text-slate-800 sm:text-2xl">
                     {fullName}
                   </h1>
-                  <Badge
-                    data-student-risk-tier={student.risk_tier ?? "NORMAL"}
-                    variant={riskPresentation.badge}
-                  >
-                    {riskPresentation.label}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {onOpenContacts ? (
+                      <IconButton
+                        aria-expanded={contactsOpen}
+                        aria-haspopup="dialog"
+                        aria-label="ดูเบอร์ติดต่อนักเรียนและผู้ปกครอง"
+                        icon={PhoneCall}
+                        onClick={onOpenContacts}
+                        size="sm"
+                        title="ดูเบอร์ติดต่อ"
+                        variant="default"
+                      />
+                    ) : null}
+                    {onOpenLocation ? (
+                      <IconButton
+                        aria-expanded={locationOpen}
+                        aria-haspopup="dialog"
+                        aria-label="ดูที่อยู่และแผนที่"
+                        icon={MapPin}
+                        onClick={onOpenLocation}
+                        size="sm"
+                        title="ดูที่อยู่และแผนที่"
+                        variant="default"
+                      />
+                    ) : null}
+                  </div>
                 </div>
                 <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-1">
-                  <div>
-                    โรงเรียน:{" "}
-                    <span className="font-medium text-slate-800">
-                      {getSchoolDisplay(student)}
-                    </span>
-                  </div>
                   {renderPiiField("PersonID_Onec")}
-                  {student.PassportNumber_Onec !== undefined ||
-                  maskedFields.includes("PassportNumber_Onec")
-                    ? renderPiiField("PassportNumber_Onec")
-                    : null}
                   <div>
-                    ชั้นเรียน:{" "}
+                    ระดับชั้น:{" "}
                     <span className="font-medium text-slate-800">
                       {toDisplay(student.grade)} {formatRoomLabel(student.room)}
                     </span>
                   </div>
+                  <div>
+                    ครูที่ปรึกษา:{" "}
+                    <span className="font-medium text-slate-800">
+                      {toDisplay(student.homeroom_teacher_name)}
+                    </span>
+                  </div>
                 </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 text-sm">
+                <span className="font-medium text-slate-600">สถานะความเสี่ยง:</span>
+                <Badge
+                  data-student-risk-tier={student.risk_tier ?? "NORMAL"}
+                  variant={riskPresentation.badge}
+                >
+                  {riskPresentation.label}
+                </Badge>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="ปีการศึกษา"
-                value={toDisplay(student.AcademicYear_Onec)}
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-3 sm:gap-4">
+              <MetricCard
+                icon={ClipboardList}
+                iconClassName="text-success-700"
+                iconSurfaceClassName="bg-success-100"
+                label="อัตราการมาเรียน"
+                value={formatMetric(attendanceRate, "%")}
               />
-              <StatCard
-                label="ภาคเรียน"
-                value={toDisplay(student.Semester_Onec)}
+              <MetricCard
+                icon={Award}
+                iconClassName="text-primary"
+                iconSurfaceClassName="bg-primary-soft"
+                label="เกรดเฉลี่ยเทอมนี้"
+                value={formatMetric(termGpa)}
               />
-              <StatCard label="GPAX" value={toDisplay(student.GPAX_Onec)} />
-              <StatCard
-                label="สถานะการศึกษา"
-                value={toDisplay(student.student_status_label ?? "ยังไม่ได้จับคู่")}
+              <MetricCard
+                icon={GraduationCap}
+                iconClassName="text-violet-700"
+                iconSurfaceClassName="bg-violet-100"
+                label="เกรดเฉลี่ยรวม"
+                value={formatMetric(cumulativeGpax)}
               />
             </div>
           </div>

@@ -1,11 +1,7 @@
 import { cva } from "class-variance-authority";
 
-/**
- * Shared motion for solid semantic icon actions: the glyph grows slightly on
- * hover. Kept in one place so every solid variant animates identically instead
- * of repeating the same utility chain per variant.
- */
-const SOLID_ICON_MOTION =
+/** Shared glyph motion used by every icon-only action. */
+const ICON_MOTION =
   "[&>svg]:transition-transform [&>svg]:duration-150 [&>svg]:ease-out hover:[&>svg]:scale-110 motion-reduce:[&>svg]:transition-none motion-reduce:hover:[&>svg]:scale-100";
 
 /**
@@ -14,11 +10,11 @@ const SOLID_ICON_MOTION =
  * so Tailwind's source scanner still sees every class it has to emit.
  */
 function solid(surface: string): string {
-  return `border border-transparent ${surface} text-white shadow-sm ${SOLID_ICON_MOTION}`;
+  return `border border-transparent ${surface} text-white shadow-sm`;
 }
 
 export const iconButtonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-lg transition duration-150 ease-out active:scale-[0.94] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  `inline-flex shrink-0 items-center justify-center rounded-lg transition duration-150 ease-out active:scale-[0.94] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${ICON_MOTION}`,
   {
     variants: {
       variant: {

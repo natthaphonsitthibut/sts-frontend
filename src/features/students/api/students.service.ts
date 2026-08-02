@@ -3,6 +3,8 @@ import type {
   PaginationMeta,
   StudentAttendanceCalendarRecord,
   StudentAttendanceSummaryResponse,
+  StudentProfileSummary,
+  StudentSubjectAttendanceRecord,
   StudentCase,
   StudentDetail,
   StudentFilterOptions,
@@ -110,6 +112,11 @@ interface StudentsService {
   getStudentAttendanceSummary: (
     studentId: string,
   ) => Promise<StudentAttendanceSummaryResponse>;
+  getStudentProfileSummary: (studentId: string) => Promise<StudentProfileSummary>;
+  getStudentSubjectAttendance: (
+    studentId: string,
+    date: string,
+  ) => Promise<StudentSubjectAttendanceRecord[]>;
 }
 
 function normalizeArrayResponse<T>(
@@ -397,6 +404,27 @@ async function getStudentAttendanceSummary(
   return { records: summaryRecords, stats };
 }
 
+async function getStudentProfileSummary(studentId: string): Promise<StudentProfileSummary> {
+  const response = await apiClient.get<DataEnvelope<StudentProfileSummary>>(
+    `/students/${encodeURIComponent(studentId)}/profile-summary`,
+  );
+  if (!response.data.data) {
+    throw new Error("Student profile summary response is missing data");
+  }
+  return response.data.data;
+}
+
+async function getStudentSubjectAttendance(
+  studentId: string,
+  date: string,
+): Promise<StudentSubjectAttendanceRecord[]> {
+  const response = await apiClient.get<DataEnvelope<StudentSubjectAttendanceRecord[]>>(
+    `/students/${encodeURIComponent(studentId)}/attendance-subjects`,
+    { params: { date } },
+  );
+  return response.data.data ?? [];
+}
+
 export const studentsService: StudentsService = {
   getStudents,
   getFilterOptions,
@@ -411,4 +439,6 @@ export const studentsService: StudentsService = {
   getStudentCasesById,
   getStudentAttendance,
   getStudentAttendanceSummary,
+  getStudentProfileSummary,
+  getStudentSubjectAttendance,
 };

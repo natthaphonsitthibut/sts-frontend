@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CircleAlert, HouseHeart, KeyRound, NotebookPen, SquarePen } from "lucide-react";
+import { CircleAlert, History, MessageSquareText } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Badge, Button, Card, SchoolIcon } from "../../../components/base";
+import { Button, Card, SchoolIcon } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -9,169 +9,22 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
-import { formatThaiDate } from "../../../lib/date-time";
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
-import { StudentObservationManagementPanel } from "../../student-observations/components/StudentObservationManagementPanel";
-import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
-import { ManagedHomeVisitRequestPanel, ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
-import { StudentContactPanel } from "../components/StudentContactPanel";
+import { useManagedStudentObservations } from "../../student-observations/hooks/useStudentObservations";
+import { StudentAttendanceCalendar } from "../components/StudentAttendanceCalendar";
+import {
+  StudentContactDialog,
+  StudentLocationDialog,
+} from "../components/StudentProfileDialogs";
 import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
-import { useStudentAttendanceSummary } from "../hooks/useStudentAttendanceSummary";
 import { useStudentCases } from "../hooks/useStudentCases";
-import type { StudentCase, StudentDetail } from "../types/students.types";
-
-function resolveFullName(student: StudentDetail | undefined): string {
-  if (!student) {
-    return "";
-  }
-  return `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim();
-}
-
-function toDisplay(value: unknown): string {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-  return String(value);
-}
-
-function AddressPanel({ student }: { student: StudentDetail }) {
-  const address = typeof student.address === "string" ? student.address.trim() : "";
-  const hasAddress = address.length > 0;
-  const lat = student.resolved_home_lat ?? null;
-  const lng = student.resolved_home_lng ?? null;
-  const hasMapCoordinates = lat !== null && lng !== null;
-  const isApproximate = Boolean(student.is_approximate_home_location);
-  const addressDetails = (
-    <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-      <div>
-        <dt className="text-xs font-medium text-slate-500">จังหวัด</dt>
-        <dd className="mt-1 font-semibold text-slate-800">
-          {toDisplay(student.ProvinceNameThai_Onec)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs font-medium text-slate-500">อำเภอ/เขต</dt>
-        <dd className="mt-1 font-semibold text-slate-800">
-          {toDisplay(student.DistrictNameThai_Onec)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs font-medium text-slate-500">ตำบล/แขวง</dt>
-        <dd className="mt-1 font-semibold text-slate-800">
-          {toDisplay(student.SubDistrictNameThai_Onec)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs font-medium text-slate-500">รหัสไปรษณีย์</dt>
-        <dd className="mt-1 font-semibold text-slate-800">
-          {toDisplay(student.PostalCode_Onec)}
-        </dd>
-      </div>
-    </dl>
-  );
-
-  return (
-    <div className="mb-5">
-      <LocationMapPicker
-        address={hasAddress ? address : undefined}
-        details={addressDetails}
-        emptyDescription="ยังไม่มีพิกัดบ้านจากข้อมูลนักเรียน ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง"
-        emptyTitle={hasMapCoordinates ? "มีพิกัด" : "ยังไม่มีพิกัด"}
-        lat={lat}
-        lng={lng}
-        markerLabel={isApproximate ? "พิกัดโดยประมาณ (ยังไม่ยืนยัน)" : "พิกัดที่ยืนยันแล้ว"}
-        title="ที่อยู่และแผนที่"
-      />
-    </div>
-  );
-}
-
-const ACCOUNT_STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "ใช้งานอยู่",
-  PENDING_FIRST_LOGIN: "รอเข้าสู่ระบบครั้งแรก",
-  TEMP_PASSWORD_EXPIRED: "รหัสหมดอายุ",
-  DISABLED: "ปิดใช้งาน",
-};
-
-function StudentAccountPanel({
-  canManageAccounts,
-  canViewUsers,
-  student,
-  studentId,
-}: {
-  canManageAccounts: boolean;
-  canViewUsers: boolean;
-  student: StudentDetail;
-  studentId: string;
-}) {
-  const account = student.account;
-  const createAccountParams = new URLSearchParams({ studentId });
-  const studentFilterParams: Array<[string, unknown]> = [
-    ["schoolId", student.school_id ?? student.SchoolID_Onec],
-    ["schoolName", student.school_name],
-    ["grade", student.grade_label ?? student.grade],
-    ["room", student.room],
-  ];
-  for (const [key, value] of studentFilterParams) {
-    if (value !== null && value !== undefined && String(value).trim()) {
-      createAccountParams.set(key, String(value));
-    }
-  }
-  return (
-    <Card className="mb-5 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <KeyRound className="size-4 text-primary" aria-hidden="true" />
-            บัญชีนักเรียน
-          </h2>
-          {account ? (
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              <span className="text-slate-500">
-                ชื่อผู้ใช้: <strong className="font-semibold text-slate-800">{account.username}</strong>
-              </span>
-              <Badge
-                variant={
-                  account.lifecycle_status === "ACTIVE"
-                    ? "success"
-                    : account.lifecycle_status === "TEMP_PASSWORD_EXPIRED"
-                      ? "warning"
-                      : "secondary"
-                }
-              >
-                {ACCOUNT_STATUS_LABELS[account.lifecycle_status] ?? account.lifecycle_status}
-              </Badge>
-              {account.lifecycle_status === "PENDING_FIRST_LOGIN" ? (
-                <span className="text-warning-700">ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบ</span>
-              ) : null}
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-slate-500">นักเรียนคนนี้ยังไม่มีบัญชีผู้ใช้</p>
-          )}
-        </div>
-        {account && canViewUsers ? (
-          <NavButton size="sm" to={`/manage-users/${account.user_id}`} variant="outline">
-            ดูบัญชีผู้ใช้
-          </NavButton>
-        ) : !account && canManageAccounts ? (
-          <NavButton
-            size="sm"
-            to={`/manage-student-accounts/generate?${createAccountParams.toString()}`}
-            variant="outline"
-          >
-            ไปหน้าสร้างบัญชี
-          </NavButton>
-        ) : null}
-      </div>
-    </Card>
-  );
-}
+import { useStudentProfileSummary } from "../hooks/useStudentProfileSummary";
+import type { StudentCase } from "../types/students.types";
 
 function RiskHistoryPanel({
   canViewCaseDetail,
@@ -205,7 +58,8 @@ function RiskHistoryPanel({
 
   return (
     <Card className="p-5" id="case-history">
-      <h2 className="mb-4 text-base font-bold text-slate-800">
+      <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-900">
+        <History className="size-4 text-primary" aria-hidden="true" />
         ประวัติการติดตามนักเรียน
       </h2>
 
@@ -214,9 +68,12 @@ function RiskHistoryPanel({
       ) : isError ? (
         <ErrorState title="โหลดประวัติการติดตามไม่สำเร็จ" onRetry={onRetry} />
       ) : sortedCases.length === 0 ? (
-        <div className="py-6 text-center text-slate-500">
-          ไม่มีประวัติการติดตาม
-        </div>
+        <EmptyState
+          className="border-none py-6 shadow-none"
+          description="รายการติดตามและการดำเนินการของนักเรียนจะปรากฏในส่วนนี้"
+          icon={History}
+          title="ยังไม่มีประวัติการติดตามนักเรียน"
+        />
       ) : (
         <>
           <ul className="divide-y divide-slate-100">
@@ -265,74 +122,49 @@ function RiskHistoryPanel({
   );
 }
 
-function AttendanceStat({
-  label,
-  value,
-  dotClass,
-}: {
-  label: string;
-  value: number;
-  dotClass: string;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 p-4 text-center">
-      <div className="mb-1 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
-        <span
-          className={`size-2 rounded-full ${dotClass}`}
-          aria-hidden="true"
-        />
-        <span>{label}</span>
-      </div>
-      <div className="text-2xl font-bold text-slate-800">{value}</div>
-    </div>
-  );
-}
-
-function AttendancePanel({ studentId }: { studentId: string }) {
-  const { summary, isLoading, isError, refetch } =
-    useStudentAttendanceSummary(studentId);
-  const stats = summary?.stats;
+function TeacherCommentsPanel({ studentId }: { studentId: string }) {
+  const observationsQuery = useManagedStudentObservations(studentId);
+  const observations = observationsQuery.data?.data ?? [];
 
   return (
-    <Card className="h-full p-5">
-      <h2 className="mb-4 text-base font-bold text-slate-800">
-        ประวัติการเข้าเรียน
+    <Card className="p-5" data-student-teacher-comments>
+      <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-900">
+        <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
+        ความคิดเห็นจากคุณครู
       </h2>
-
-      {isLoading ? (
-        <SkeletonStack lines={3} className="py-2" />
-      ) : isError ? (
-        <ErrorState title="โหลดประวัติการเข้าเรียนไม่สำเร็จ" onRetry={refetch} />
-      ) : !stats || stats.total === 0 ? (
+      {observationsQuery.isLoading ? (
+        <SkeletonStack lines={2} />
+      ) : observationsQuery.isError ? (
+        <ErrorState
+          description="ส่วนอื่นของข้อมูลนักเรียนยังใช้งานได้ตามปกติ"
+          onRetry={() => void observationsQuery.refetch()}
+          title="โหลดความคิดเห็นจากคุณครูไม่สำเร็จ"
+        />
+      ) : observations.length === 0 ? (
         <EmptyState
           className="border-none py-6 shadow-none"
-          description="ข้อมูลการเข้าเรียนจะแสดงที่นี่หลังมีการเช็คชื่อครั้งแรก"
-          icon={CalendarDays}
-          title="ไม่มีข้อมูลการเข้าเรียน"
+          description="ความคิดเห็นที่ครูบันทึกจะปรากฏในส่วนนี้"
+          icon={MessageSquareText}
+          title="ยังไม่มีความคิดเห็นจากคุณครู"
         />
       ) : (
-        <>
-          <div className="grid grid-cols-3 gap-3">
-            <AttendanceStat
-              dotClass="bg-success"
-              label="เข้าเรียน"
-              value={stats.present}
-            />
-            <AttendanceStat
-              dotClass="bg-warning"
-              label="มาเรียนสาย"
-              value={stats.late}
-            />
-            <AttendanceStat
-              dotClass="bg-danger"
-              label="ไม่เข้าเรียน"
-              value={stats.absent}
-            />
-          </div>
-          <p className="mt-4 text-center text-sm text-slate-500">
-            จากทั้งหมด {stats.total} วันที่บันทึก
-          </p>
-        </>
+        <ul className="space-y-3">
+          {observations.slice(0, 3).map((observation) => (
+            <li className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={observation.id}>
+              <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
+                <strong className="font-semibold text-slate-800">
+                  ผู้รายงาน: {observation.author.displayName}
+                </strong>
+                <time dateTime={observation.observedAt}>
+                  {formatThaiDateTime(observation.observedAt)}
+                </time>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                {observation.comment || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );
@@ -340,28 +172,21 @@ function AttendancePanel({ studentId }: { studentId: string }) {
 
 export function StudentDetailPage() {
   const { can } = usePermissions();
-  const [observationOpen, setObservationOpen] = useState(false);
-  const [homeVisitRequestOpen, setHomeVisitRequestOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
 
   const { student, isLoading, isError, refetch } = useStudent(studentId);
-  const fullName = resolveFullName(student);
+  const profileSummaryQuery = useStudentProfileSummary(studentId);
   const {
     cases,
     isLoading: casesLoading,
     isError: casesError,
     refetch: refetchCases,
   } = useStudentCases(studentId);
-  const activeCases = useMemo(
-    () =>
-      cases.filter((studentCase) =>
-        ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
-      ),
-    [cases],
-  );
 
-  if (isLoading) {
+  if (isLoading || profileSummaryQuery.isLoading) {
     return (
       <PageShell>
         <Card className="mb-5 p-5">
@@ -379,19 +204,22 @@ export function StudentDetailPage() {
     );
   }
 
-  if (isError) {
+  if (isError || profileSummaryQuery.isError) {
     return (
       <PageShell>
         <ErrorState
           title="โหลดข้อมูลนักเรียนไม่สำเร็จ"
           description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลนักเรียน กรุณาลองใหม่อีกครั้ง"
-          onRetry={refetch}
+          onRetry={() => {
+            refetch();
+            void profileSummaryQuery.refetch();
+          }}
         />
       </PageShell>
     );
   }
 
-  if (!studentId || !student) {
+  if (!studentId || !student || !profileSummaryQuery.data) {
     return (
       <PageShell>
         <EmptyState
@@ -410,98 +238,51 @@ export function StudentDetailPage() {
 
   return (
     <PageShell>
-      <PageToolbar
-        footerActions={
-          <>
-            {can("student-observations") || can("manage-student-observations") ? (
-              <Button icon={NotebookPen} onClick={() => setObservationOpen(true)} size="md">
-                บันทึกข้อสังเกต
-              </Button>
-            ) : null}
-            {can("student-observations") ? (
-              <Button icon={HouseHeart} onClick={() => setHomeVisitRequestOpen(true)} size="md">
-                ขอเยี่ยมบ้าน
-              </Button>
-            ) : null}
-            <NavButton
-              disabled={!can("edit-students")}
-              icon={SquarePen}
-              size="md"
-              title={can("edit-students") ? undefined : "ไม่มีสิทธิ์แก้ไขข้อมูลนักเรียน"}
-              to={`/students/${studentId}/edit`}
-            >
-              แก้ไขข้อมูลนักเรียน
-            </NavButton>
-            {can("review-cases") && !casesLoading ? (
-              <StudentCaseAction
-                activeCaseCount={activeCases.length}
-                activeCaseId={activeCases.length > 0 ? Number(activeCases[0].id) : null}
-                mode="button"
-                studentId={studentId}
-                studentName={fullName || "นักเรียน"}
-              />
-            ) : null}
-            <NavButton icon={ArrowLeft} size="md" to={-1} variant="outline">
-              ย้อนกลับ
-            </NavButton>
-          </>
-        }
-        icon={SchoolIcon}
-        title="รายละเอียดนักเรียน"
-      />
+      <PageToolbar icon={SchoolIcon} title="ข้อมูลนักเรียน" />
 
       <StudentProfileHeader
+        contactsOpen={contactsOpen}
         key={studentId}
+        locationOpen={locationOpen}
+        onOpenContacts={() => setContactsOpen(true)}
+        onOpenLocation={() => setLocationOpen(true)}
         student={student}
         studentId={studentId}
+        summary={profileSummaryQuery.data}
       />
 
-      <StudentAccountPanel
-        canManageAccounts={can("manage-student-accounts")}
-        canViewUsers={can("manage-users-list")}
-        student={student}
-        studentId={studentId}
-      />
-
-      <AddressPanel student={student} />
-
-      <StudentContactPanel student={student} />
-
-      {can("manage-student-observations") ? (
-        <StudentObservationManagementPanel
-          studentTermId={studentId}
-        />
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <RiskHistoryPanel
-          canViewCaseDetail={can("review-cases")}
-          cases={cases}
-          isError={casesError}
-          isLoading={casesLoading}
-          onRetry={refetchCases}
-        />
-        {studentId ? <AttendancePanel studentId={studentId} /> : null}
-      </div>
-      <ObservationEntryDialog
-        open={observationOpen}
-        title="บันทึกข้อสังเกตจากรายละเอียดนักเรียน"
-        onClose={() => setObservationOpen(false)}
-      >
-        {studentId ? (
-          <ManagedObservationEntryPanel
-            studentName={fullName || "นักเรียน"}
-            studentTermId={studentId}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
+        <div className="space-y-5 lg:col-span-2">
+          {can("student-observations") || can("manage-student-observations") ? (
+            <TeacherCommentsPanel studentId={studentId} />
+          ) : null}
+          <RiskHistoryPanel
+            canViewCaseDetail={can("review-cases")}
+            cases={cases}
+            isError={casesError}
+            isLoading={casesLoading}
+            onRetry={refetchCases}
           />
-        ) : null}
-      </ObservationEntryDialog>
-      <ObservationEntryDialog
-        open={homeVisitRequestOpen}
-        title="ส่งคำขอเยี่ยมบ้าน"
-        onClose={() => setHomeVisitRequestOpen(false)}
-      >
-        {studentId ? <ManagedHomeVisitRequestPanel studentTermId={studentId} /> : null}
-      </ObservationEntryDialog>
+        </div>
+        <div className="lg:col-span-3">
+          <StudentAttendanceCalendar
+            key={studentId}
+            studentId={studentId}
+            summary={profileSummaryQuery.data}
+          />
+        </div>
+      </div>
+
+      <StudentContactDialog
+        onOpenChange={setContactsOpen}
+        open={contactsOpen}
+        student={student}
+      />
+      <StudentLocationDialog
+        onOpenChange={setLocationOpen}
+        open={locationOpen}
+        student={student}
+      />
     </PageShell>
   );
 }
