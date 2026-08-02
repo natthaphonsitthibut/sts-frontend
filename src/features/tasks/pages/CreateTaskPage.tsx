@@ -849,6 +849,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
           </Alert>
           <LinkShareActions
             link={publicLink}
+            showRawLink={false}
             trailing={
               <Button icon={Plus} onClick={startNewTask}>
                 สร้างรายการใหม่

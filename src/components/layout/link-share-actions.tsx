@@ -10,6 +10,7 @@ interface LinkShareActionsProps {
   className?: string;
   /** Optional action rendered beside the right-aligned open-link action. */
   trailing?: ReactNode;
+  showRawLink?: boolean;
 }
 
 /**
@@ -17,20 +18,22 @@ interface LinkShareActionsProps {
  * task detail, attendance/login link detail). Detailed share targets live in
  * the shared dialog, so this row stays compact: share and open-link icons only.
  */
-export function LinkShareActions({ link, className, trailing }: LinkShareActionsProps) {
+export function LinkShareActions({ link, className, trailing, showRawLink = true }: LinkShareActionsProps) {
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        {link}
-      </div>
+      {showRawLink ? (
+        <div className="break-all rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+          {link}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <LinkShareButton compact link={link} />
+        <LinkShareButton className="size-10" compact link={link} />
         {trailing}
         <a
           aria-label="เปิดลิงก์"
           className={cn(
             buttonVariants({ size: "sm", variant: "outline" }),
-            "size-9 px-0",
+            "size-10 px-0",
           )}
           href={link}
           rel="noreferrer"
