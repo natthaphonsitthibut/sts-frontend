@@ -2,7 +2,7 @@ import type { TaskType } from "../types/task.types";
 
 export interface TaskTypeOption {
   label: string;
-  value: TaskType;
+  value: Exclude<TaskType, "LOGIN">;
   description: string;
 }
 
@@ -16,11 +16,6 @@ export const TASK_TYPE_OPTIONS: TaskTypeOption[] = [
     value: "ATTENDANCE",
     label: "ภารกิจเช็คชื่อ",
     description: "สร้างลิงก์เช็คชื่อนักเรียนรายชั้นเรียน",
-  },
-  {
-    value: "LOGIN",
-    label: "ลิงก์เข้าสู่ระบบ",
-    description: "ให้ผู้รับสิทธิ์เข้าสู่ระบบผ่าน magic link",
   },
 ];
 

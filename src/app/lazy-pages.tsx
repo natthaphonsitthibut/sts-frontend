@@ -61,11 +61,6 @@ export const UserDetailPage = lazy(() =>
     default: module.UserDetailPage,
   })),
 );
-export const StudentAccountsPage = lazy(() =>
-  import("../features/admin/pages/StudentAccountsPage").then((module) => ({
-    default: module.StudentAccountsPage,
-  })),
-);
 export const StudentEditPage = lazy(() =>
   import("../features/students/pages/StudentEditPage").then((module) => ({
     default: module.StudentEditPage,
@@ -116,11 +111,6 @@ export const ImportQuarantineDetailPage = lazy(() =>
     default: module.ImportQuarantineDetailPage,
   })),
 );
-export const LoginLinksPage = lazy(() =>
-  import("../features/login-links/pages/LoginLinksPage").then((module) => ({
-    default: module.LoginLinksPage,
-  })),
-);
 export const VisitLinksPage = lazy(() =>
   import("../features/visit-links/pages/VisitLinksPage").then((module) => ({
     default: module.VisitLinksPage,
@@ -164,22 +154,6 @@ export const ClassroomsPage = lazy(() =>
 export const ClassroomDetailPage = lazy(() =>
   import("../features/school-structure/pages/ClassroomDetailPage").then((module) => ({
     default: module.ClassroomDetailPage,
-  })),
-);
-export const TeacherAccessGrantsPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAccessGrantsPage").then((module) => ({
-    default: module.TeacherAccessGrantsPage,
-  })),
-);
-export const TeacherAccessGuestPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAccessGuestPage").then((module) => ({
-    default: module.TeacherAccessGuestPage,
-  })),
-);
-
-export const LoginLinkDetailPage = lazy(() =>
-  import("../features/login-links/pages/LoginLinkDetailPage").then((module) => ({
-    default: module.LoginLinkDetailPage,
   })),
 );
 export const StudentDetailPage = lazy(() =>
@@ -251,11 +225,6 @@ export const HomeVisitRequestDetailPage = lazy(() =>
 export const DelegatePage = lazy(() =>
   import("../features/tasks/pages/DelegatePage").then((module) => ({
     default: module.DelegatePage,
-  })),
-);
-export const MagicLoginPage = lazy(() =>
-  import("../features/tasks/pages/MagicLoginPage").then((module) => ({
-    default: module.MagicLoginPage,
   })),
 );
 export const ReportPage = lazy(() =>

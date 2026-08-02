@@ -42,11 +42,9 @@ import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
 import { geoService } from "../api/geo.service";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
-import { loginLinksService } from "../../login-links/api/login-links.service";
 import { useCreateFollowerRecruitmentCampaign } from "../../field-followers/hooks/useFollowerRecruitmentCampaigns";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
-import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
 import {
   AddressFormSection,
@@ -65,8 +63,6 @@ import {
   formatTimetableSlotLabel,
   getPeriodTimeLabel,
 } from "../../timetable/lib/period-times";
-import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
-import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import {
   buildTaskResultLink,
   formatDateTime,
@@ -78,19 +74,17 @@ import {
 } from "../lib/task-options";
 import type { TaskCreatePayload, TaskCreateResponse, TaskType } from "../types/task.types";
 
-const EMPTY_PERMISSIONS: string[] = [];
-type CreateLinkType = TaskType | "RECRUITMENT";
+type ActiveTaskType = Exclude<TaskType, "LOGIN">;
+type CreateLinkType = ActiveTaskType | "RECRUITMENT";
 /** URL slug ↔ task type, so each link type is its own route (/create/:type). */
 const PATH_TO_TYPE: Record<string, CreateLinkType> = {
   visit: "VISIT",
   attendance: "ATTENDANCE",
-  login: "LOGIN",
   recruitment: "RECRUITMENT",
 };
 const TYPE_TO_PATH: Record<CreateLinkType, string> = {
   VISIT: "visit",
   ATTENDANCE: "attendance",
-  LOGIN: "login",
   RECRUITMENT: "recruitment",
 };
 
@@ -106,14 +100,6 @@ const CREATE_LINK_TYPE_OPTIONS: Array<{
     description: "เปิดรับสมัคร อสม./ผู้ติดตามภาคสนาม",
   },
 ];
-
-function sameSet(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  const set = new Set(a);
-  return b.every((item) => set.has(item));
-}
 
 function isEmail(value: string): boolean {
   return z.string().email().safeParse(value).success;
@@ -176,7 +162,7 @@ function dateRangeIncludesDayOfWeek(start: Date, end: Date, dayOfWeek: number): 
 
 const createTaskSchema = z
   .object({
-    task_type: z.enum(["VISIT", "ATTENDANCE", "LOGIN"]),
+    task_type: z.enum(["VISIT", "ATTENDANCE"]),
     assigned_to_first_name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับมอบหมาย"),
     assigned_to_last_name: z.string().trim().min(1, "กรุณากรอกนามสกุลผู้รับมอบหมาย"),
     assigned_to_email: z.string().trim(),
@@ -229,9 +215,6 @@ const createTaskSchema = z
         path: ["assigned_to_email"],
         message: "รูปแบบอีเมลไม่ถูกต้อง",
       });
-    }
-    if (values.task_type === "LOGIN" && !values.role) {
-      ctx.addIssue({ code: "custom", path: ["role"], message: "กรุณาเลือกตำแหน่ง" });
     }
     if (values.task_type === "VISIT") {
       if (!values.student_name) {
@@ -376,7 +359,7 @@ interface VisitPrefill {
   target_school_id?: string | number | null;
 }
 
-function makeDefaults(type: TaskType): CreateTaskFormValues {
+function makeDefaults(type: ActiveTaskType): CreateTaskFormValues {
   const assignmentStart = new Date();
   const assignmentEnd = addDuration(assignmentStart, 7, "days");
   const startParts = getLocalDateTimeParts(assignmentStart);
@@ -421,23 +404,17 @@ function makeDefaults(type: TaskType): CreateTaskFormValues {
  * The actual create form for one task type. Mounted with `key={type}` so it
  * starts fresh whenever the type (route) changes — no manual state syncing.
  */
-function CreateTaskTypeForm({ type }: { type: TaskType }) {
+function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
   const [result, setResult] = useState<TaskCreateResponse | null>(null);
   const location = useLocation();
   const prefill =
     type === "VISIT"
       ? ((location.state as { prefill?: VisitPrefill } | null)?.prefill ?? null)
       : null;
-  const rolesQuery = useQuery({
-    queryKey: ["task-create-roles"],
-    queryFn: loginLinksService.getRoleOptions,
-    enabled: type === "LOGIN",
-  });
   // Same school → grade → room cascade as the check-in page, locked to the
   // creator's own scope so every link type stays inside their allowed area.
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
-  const [dataScope, setDataScope] = useState<DataScope>({});
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(
     prefill?.student_name
       ? {
@@ -473,7 +450,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     },
     resolver: zodResolver(createTaskSchema),
   });
-  const selectedRole = useWatch({ control: form.control, name: "role" });
   const expiresValue = useWatch({ control: form.control, name: "expires_value" });
   const expiresUnit = useWatch({ control: form.control, name: "expires_unit" });
   const opensAt = useWatch({ control: form.control, name: "opens_at" });
@@ -551,34 +527,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     } อาจหมดอายุก่อนถึง ${labels}`;
   })();
 
-  const selectedRoleOption = (rolesQuery.data ?? []).find(
-    (role) => role.name === selectedRole,
-  );
-  const baseline = selectedRoleOption?.default_permissions?.length
-    ? selectedRoleOption.default_permissions
-    : EMPTY_PERMISSIONS;
-  const roleLabel = selectedRoleOption?.label ?? ROLE_LABELS[selectedRole] ?? selectedRole;
-  const scopeMode = selectedRoleOption?.scope_mode ?? "flexible";
-  const scopePolicy = selectedRoleOption?.scope_policy ?? "ASSIGNABLE";
-  const [permissions, setPermissions] = useState<string[]>(baseline);
-  const isCustomized = !sameSet(permissions, baseline);
-
-  // Load the selected role's standard permissions whenever the role changes.
-  const [trackedRole, setTrackedRole] = useState(selectedRole);
-  if (selectedRole !== trackedRole) {
-    setTrackedRole(selectedRole);
-    setPermissions(baseline);
-    setDataScope((current) =>
-      scopePolicy === "OWN_ONLY"
-        ? { ...current, global: undefined, own_only: true }
-        : { ...current, own_only: undefined },
-    );
-  }
-
-  const scopeError =
-    type === "LOGIN"
-      ? getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy)
-      : null;
   // ATTENDANCE must target at least a school, otherwise there is no roster to check.
   const locationError =
     type === "ATTENDANCE"
@@ -590,7 +538,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
             ? "กรุณาเลือกห้อง"
             : null
       : null;
-  const submitBlockError = scopeError ?? locationError;
+  const submitBlockError = locationError;
 
   const createTask = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
@@ -618,9 +566,7 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
     addressRequestVersionRef.current += 1;
     setResult(null);
     form.reset(makeDefaults(type));
-    setDataScope({});
     setSelectedStudent(null);
-    setPermissions([]);
     scope.reset();
   }
 
@@ -821,19 +767,11 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
       });
     }
 
-    if (type === "LOGIN") {
-      Object.assign(payload, {
-        data_scope: dataScope,
-        permissions: isCustomized ? permissions : [],
-        role: values.role || null,
-      });
-    }
-
     createTask.mutate(payload);
   }
 
   if (result) {
-    const publicLink = buildTaskResultLink(result.magic_link, type === "LOGIN");
+    const publicLink = buildTaskResultLink(result.magic_link, false);
     return (
       <Card>
         <CardHeader>
@@ -1184,48 +1122,6 @@ function CreateTaskTypeForm({ type }: { type: TaskType }) {
             </div>
           ) : null}
 
-          {type === "LOGIN" ? (
-            <>
-              <FormItem>
-                <FormLabel htmlFor="role" required>
-                  ตำแหน่ง
-                </FormLabel>
-                <Combobox
-                  aria-invalid={form.formState.errors.role ? true : undefined}
-                  id="role"
-                  name="role"
-                  onChange={(next) =>
-                    form.setValue("role", next, {
-                      shouldValidate: form.formState.isSubmitted,
-                    })
-                  }
-                  options={[
-                    { value: "", label: "เลือกตำแหน่ง" },
-                    ...(rolesQuery.data ?? []).map((role) => ({
-                      value: role.name,
-                      label: role.label,
-                    })),
-                  ]}
-                  searchable={false}
-                  value={selectedRole}
-                />
-                <FormMessage<CreateTaskFormValues> name="role" />
-              </FormItem>
-              <PermissionScopeEditor
-                baselinePermissions={baseline}
-                dataScope={dataScope}
-                disabled={createTask.isPending}
-                onDataScopeChange={setDataScope}
-                onPermissionsChange={setPermissions}
-                permissions={permissions}
-                role={selectedRole}
-                roleLabel={roleLabel}
-                scopeMode={scopeMode}
-                scopePolicy={scopePolicy}
-                showErrors={form.formState.isSubmitted}
-              />
-            </>
-          ) : null}
 
           {type === "VISIT" ? (
             <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1578,7 +1474,7 @@ export function CreateTaskPage() {
                 description={description}
                 icon={Icon}
                 key={value}
-                onClick={() => chooseType(value as TaskType)}
+                onClick={() => chooseType(value)}
                 selected={activeType === value}
                 title={label}
               />

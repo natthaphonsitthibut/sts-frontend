@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   getEffectivePermissions,
   getFirstAccessibleRoute,
-  isStudentOnlyRole,
+  isStudentSelfSession,
 } from "../lib/permissions";
 import type { AuthUser } from "../types/auth.types";
 
@@ -28,7 +28,7 @@ export function usePostLoginRedirect() {
       user.permissions || [],
     );
 
-    if (isStudentOnlyRole(user.roles || [])) {
+    if (isStudentSelfSession(user)) {
       void navigate("/my-attendance");
       return;
     }

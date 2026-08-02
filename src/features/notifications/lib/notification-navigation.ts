@@ -18,7 +18,7 @@ export function getNotificationRoute(notification: NotificationItem): string | n
   }
 
   if (notification.ref_entity === "student-account-batch") {
-    return "/manage-student-accounts/history";
+    return null;
   }
 
   return null;

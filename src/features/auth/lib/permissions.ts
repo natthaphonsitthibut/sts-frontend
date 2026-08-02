@@ -159,13 +159,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("manage-users-list", "/manage-users"),
       },
       {
-        ...pageMenuItem("manage-student-accounts", "/manage-student-accounts"),
-      },
-      {
         ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
-      },
-      {
-        ...pageMenuItem("login-links", "/login-links", ["login-links", "manage-teacher-access"]),
       },
     ],
   },
@@ -216,6 +210,24 @@ export function getEffectivePermissions(
 export function isStudentOnlyRole(roles: string[]): boolean {
   // Any non-STUDENT role (system or custom role group) means a staff session.
   return roles.length > 0 && roles.every((role) => role === "STUDENT");
+}
+
+interface StudentSelfSessionLike {
+  virtual_login?: boolean;
+  virtual_auth_token?: string;
+  permissions?: string[];
+  data_scope?: DataScope;
+}
+
+export function isStudentSelfSession(
+  user: StudentSelfSessionLike | null | undefined,
+): boolean {
+  return Boolean(
+    user?.virtual_login &&
+      user.virtual_auth_token &&
+      user.permissions?.includes("student-self") &&
+      user.data_scope?.own_only,
+  );
 }
 
 export function hasPermission(

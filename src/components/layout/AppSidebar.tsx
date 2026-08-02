@@ -3,7 +3,7 @@ import {
   MENU_ITEMS,
   filterMenuItems,
   getEffectivePermissions,
-  isStudentOnlyRole,
+  isStudentSelfSession,
   type MenuItem,
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
@@ -26,7 +26,7 @@ function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) 
   const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
   const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
   const usesDefaultStudentNavigation =
-    isStudentOnlyRole(user?.roles || []) &&
+    isStudentSelfSession(user) &&
     userPermissions.length === 1 &&
     userPermissions[0] === "student-self";
   const visibleMenuItems: MenuItem[] = usesDefaultStudentNavigation

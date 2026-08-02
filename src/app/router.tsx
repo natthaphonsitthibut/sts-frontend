@@ -30,9 +30,6 @@ import {
   ImportDataPage,
   ImportQuarantineDetailPage,
   LockedPage,
-  LoginLinkDetailPage,
-  LoginLinksPage,
-  MagicLoginPage,
   MainPage,
   MasterDataLookupsPage,
   ManageRoleGroupFormPage,
@@ -47,7 +44,6 @@ import {
   SchoolStructurePage,
   StudentDetailPage,
   StudentEditPage,
-  StudentAccountsPage,
   StudentListPage,
   StudentSelfPage,
   StudentStatusesPage,
@@ -55,7 +51,6 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
-  TeacherAccessGuestPage,
   TeacherObservationDetailPage,
   TeacherObservationReportsPage,
   HomeVisitRequestDetailPage,
@@ -253,10 +248,6 @@ export const router = createBrowserRouter([
         element: protectedElement(<SchoolStructurePage />, "manage-school-structure"),
       },
       {
-        path: "teacher-access-grants",
-        element: <LegacyRouteRedirect to="/login-links/teacher" />,
-      },
-      {
         path: "import-data",
         element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
       },
@@ -291,22 +282,6 @@ export const router = createBrowserRouter([
       {
         path: "manage-users/:id/permissions",
         element: protectedElement(<UserDetailPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-student-accounts",
-        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
-      },
-      {
-        path: "manage-student-accounts/generate",
-        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
-      },
-      {
-        path: "manage-student-accounts/batch",
-        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
-      },
-      {
-        path: "manage-student-accounts/history",
-        element: protectedElement(<StudentAccountsPage />, "manage-student-accounts"),
       },
       {
         path: "manage-users/history",
@@ -346,10 +321,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "login-links",
-        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
-      },
-      {
         path: "field-followers",
         element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
@@ -382,18 +353,6 @@ export const router = createBrowserRouter([
         element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
       },
       {
-        path: "login-links/history",
-        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
-      },
-      {
-        path: "login-links/teacher",
-        element: protectedElement(<LoginLinksPage />, ["login-links", "manage-teacher-access"]),
-      },
-      {
-        path: "login-links/:id",
-        element: protectedElement(<LoginLinkDetailPage />, "login-links"),
-      },
-      {
         path: "audit-log/:id",
         element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
@@ -418,10 +377,6 @@ export const router = createBrowserRouter([
         element: <LegacyTaskDetailRedirect />,
       },
     ],
-  },
-  {
-    path: "/teacher-access",
-    element: withSuspense(<TeacherAccessGuestPage />),
   },
   {
     path: "/task/:token",
@@ -450,10 +405,6 @@ export const router = createBrowserRouter([
   {
     path: "/task/:token/locked",
     element: withSuspense(<LockedPage />),
-  },
-  {
-    path: "/login/magic/:token",
-    element: withSuspense(<MagicLoginPage />),
   },
   {
     path: "/apply/field-follower/:code",
