@@ -1,129 +1,86 @@
-import { useMemo, useState } from "react";
-import { Lock, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
-import { Badge, IconButton } from "../../../components/base";
+import { SquarePen, Trash2 } from "lucide-react";
+import { IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { EmptyState } from "../../../components/layout/page-primitives";
 import type { RoleDefinition } from "../types/admin.types";
-import {
-  findStatusCatalogItem,
-  useStatusCatalog,
-} from "../../status-catalog/hooks/useStatusCatalog";
+
+const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
 
 interface RoleGroupTableProps {
-  roleGroups: RoleDefinition[];
-  onEdit: (roleGroup: RoleDefinition) => void;
+  labelOf: (permission: string) => string;
   onDelete: (roleGroup: RoleDefinition) => void;
-}
-
-function compareText(a: string | undefined, b: string | undefined): number {
-  return (a || "").localeCompare(b || "", "th");
-}
-
-function compareNumber(a: number | null | undefined, b: number | null | undefined): number {
-  return (a ?? 0) - (b ?? 0);
-}
-
-function compareRoleGroups(left: RoleDefinition, right: RoleDefinition, key: string): number {
-  if (key === "role") return compareText(left.label || left.name, right.label || right.name);
-  if (key === "rank") return compareNumber(left.rank, right.rank);
-  if (key === "permissions") {
-    return compareNumber(left.default_permissions.length, right.default_permissions.length);
-  }
-  if (key === "users") return compareNumber(left.user_count, right.user_count);
-  return 0;
+  onEdit: (roleGroup: RoleDefinition) => void;
+  onSortChange: (sort: DataTableSortState | undefined) => void;
+  roleGroups: RoleDefinition[];
+  sort?: DataTableSortState;
 }
 
 export function RoleGroupTable({
-  roleGroups,
-  onEdit,
+  labelOf,
   onDelete,
+  onEdit,
+  onSortChange,
+  roleGroups,
+  sort,
 }: RoleGroupTableProps) {
-  const roleOriginCatalog = useStatusCatalog("ROLE_ORIGIN").items;
-  const systemOrigin = findStatusCatalogItem(roleOriginCatalog, "SYSTEM");
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const sortedRoleGroups = useMemo(() => {
-    if (!sort) return roleGroups;
-    return [...roleGroups].sort((a, b) => {
-      const result = compareRoleGroups(a, b, sort.key);
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [roleGroups, sort]);
-
   return (
     <DataTable
+      columnWidths={["w-[30%]", "w-[55%]", "w-[15%]"]}
       headings={[
-        { label: "ตำแหน่ง", sortKey: "role" },
-        { label: "ลำดับขั้น", sortKey: "rank" },
-        { label: "สิทธิ์", sortKey: "permissions" },
-        { label: "ผู้ใช้", sortKey: "users" },
-        "",
+        { label: "กลุ่มเมนู", sortKey: "group" },
+        { label: "เมนู", sortKey: "menus" },
+        { label: "เครื่องมือ", className: "text-right" },
       ]}
       minWidthClassName="min-w-[640px]"
-      onSortChange={setSort}
+      onSortChange={onSortChange}
       responsive={false}
       sort={sort}
       footer={
         roleGroups.length === 0 ? (
           <EmptyState
             className="rounded-none border-none shadow-none"
-            description="สร้างกลุ่มสิทธิ์แรกเพื่อกำหนดขอบเขตการใช้งานของผู้ใช้"
-            icon={ShieldCheck}
-            title="ยังไม่มีกลุ่มสิทธิ์"
+            description="เพิ่มกลุ่มเมนูแรกเพื่อกำหนดรายการเมนูของโรงเรียนนี้"
+            icon={MENU_GROUPS_ICON}
+            title="ยังไม่มีกลุ่มเมนู"
           />
         ) : null
       }
     >
-      {sortedRoleGroups.map((role) => (
-        <DataTableRow key={role.id ?? role.name}>
-          <DataTableCell>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">
-                {role.label || role.name}
-              </span>
-              {role.is_system ? (
-                <Badge variant={systemOrigin?.badgeVariant ?? "secondary"} className="gap-1">
-                  <Lock className="size-3" aria-hidden="true" />
-                  {systemOrigin?.label ?? "SYSTEM"}
-                </Badge>
-              ) : null}
-            </div>
-            <div className="mt-0.5 text-xs font-semibold text-slate-500">
-              {role.name} · ลำดับ {role.rank}
-            </div>
-          </DataTableCell>
-          <DataTableCell className="text-sm font-bold tabular-nums text-slate-700">
-            {role.rank}
-          </DataTableCell>
-          <DataTableCell className="text-sm font-medium text-slate-500">
-            {role.default_permissions.length} รายการ
-          </DataTableCell>
-          <DataTableCell className="text-sm font-medium text-slate-500">
-            {role.user_count ?? 0}
-          </DataTableCell>
-          <DataTableCell>
-            <div className="flex items-center justify-end gap-1">
-              <IconButton
-                aria-label="แก้ไขกลุ่มสิทธิ์"
-                icon={SquarePen}
-                onClick={() => onEdit(role)}
-                variant="edit"
-              />
-              <IconButton
-                aria-label="ลบกลุ่มสิทธิ์"
-                disabled={role.is_system}
-                icon={Trash2}
-                onClick={() => onDelete(role)}
-                variant="delete"
-              />
-            </div>
-          </DataTableCell>
-        </DataTableRow>
-      ))}
+      {roleGroups.map((role) => {
+        const menuLabels = role.default_permissions.map(labelOf);
+        return (
+          <DataTableRow key={role.id ?? role.name}>
+            <DataTableCell className="font-semibold text-slate-800">
+              {role.label || role.name}
+            </DataTableCell>
+            <DataTableCell className="whitespace-normal leading-6 text-slate-700">
+              {menuLabels.length > 0 ? menuLabels.join(", ") : "-"}
+            </DataTableCell>
+            <DataTableCell>
+              <div className="flex items-center justify-end gap-1">
+                <IconButton
+                  aria-label={`แก้ไขกลุ่มเมนู ${role.label || role.name}`}
+                  icon={SquarePen}
+                  onClick={() => onEdit(role)}
+                  variant="edit"
+                />
+                <IconButton
+                  aria-label={`ลบกลุ่มเมนู ${role.label || role.name}`}
+                  icon={Trash2}
+                  onClick={() => onDelete(role)}
+                  variant="delete"
+                />
+              </div>
+            </DataTableCell>
+          </DataTableRow>
+        );
+      })}
     </DataTable>
   );
 }

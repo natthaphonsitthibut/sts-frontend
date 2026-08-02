@@ -4,12 +4,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type {
-  PaginatedSearchQuery,
-  PaginationMeta,
-} from "../../../lib/pagination";
+import type { PaginationMeta } from "../../../lib/pagination";
 import { adminService } from "../api/admin.service";
-import type { RoleDefinition, RoleGroupForm } from "../types/admin.types";
+import type {
+  RoleDefinition,
+  RoleGroupForm,
+  RoleGroupListQuery,
+} from "../types/admin.types";
 
 export const ROLE_GROUPS_QUERY_KEY = "admin-role-groups";
 
@@ -25,11 +26,12 @@ interface UseRoleGroupsResult {
 }
 
 export function useRoleGroups(
-  query: PaginatedSearchQuery = {},
+  query: RoleGroupListQuery | null,
 ): UseRoleGroupsResult {
   const result = useQuery({
     queryKey: [ROLE_GROUPS_QUERY_KEY, query],
-    queryFn: () => adminService.getRoleGroups(query),
+    queryFn: () => adminService.getRoleGroups(query!),
+    enabled: Boolean(query),
     placeholderData: keepPreviousData,
   });
 

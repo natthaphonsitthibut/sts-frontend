@@ -1,127 +1,239 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus, ShieldCheck } from "lucide-react";
-import { useConfirm } from "../../../components/base";
-import {
-  ErrorState,
-  ListPageToolbar,
-  PageShell,
-  SkeletonTable,
-} from "../../../components/layout/page-primitives";
-import { NavButton } from "../../../components/layout/nav-button";
+import { Plus } from "lucide-react";
+import { Button, useConfirm } from "../../../components/base";
+import type { DataTableSortState } from "../../../components/layout/data-table";
+import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
+import {
+  EmptyState,
+  ErrorState,
+  FilterCombobox,
+  PageToolbar,
+  PageShell,
+  SearchInput,
+  SkeletonTable,
+  ToolbarControls,
+} from "../../../components/layout/page-primitives";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
-  type PaginatedSearchQuery,
 } from "../../../lib/pagination";
-import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
+import { RoleGroupDialog } from "../components/RoleGroupDialog";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
-import type { RoleDefinition } from "../types/admin.types";
+import { useRolesCatalog } from "../hooks/useUsers";
+import type {
+  RoleDefinition,
+  RoleGroupListQuery,
+} from "../types/admin.types";
+
+const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
 
 export function ManageRoleGroupsPage() {
-  const navigate = useNavigate();
   const deleteRoleGroup = useDeleteRoleGroup();
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const schoolsQuery = useScopedSchools();
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const {
+    rolesCatalog,
+    isLoading: rolesCatalogLoading,
+    isError: rolesCatalogError,
+    refetch: refetchRolesCatalog,
+  } = useRolesCatalog();
+  const {
+    labelOf,
+    isLoading: permissionCatalogLoading,
+    isError: permissionCatalogError,
+    refetch: refetchPermissionCatalog,
+  } = usePermissionCatalog();
 
+  const [schoolInput, setSchoolInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<DataTableSortState | undefined>({
+    key: "group",
+    direction: "asc",
+  });
+  const [dialogRoleGroup, setDialogRoleGroup] = useState<
+    RoleDefinition | null | undefined
+  >(undefined);
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
-
-  const query = useMemo<PaginatedSearchQuery>(
-    () => ({ searchTerm: debouncedSearch || undefined, page, limit: rowsPerPage }),
-    [debouncedSearch, page, rowsPerPage],
+  const selectedSchoolValue =
+    schools.length === 1 ? String(schools[0].id) : schoolInput;
+  const selectedSchoolId = Number(selectedSchoolValue) || null;
+  const selectedSchool = schools.find((school) => school.id === selectedSchoolId);
+  const multipleSchools = schools.length > 1;
+  const maxRank = rolesCatalog.reduce(
+    (highest, role) => Math.max(highest, role.rank),
+    1,
   );
 
-  const { roleGroups, meta, isLoading, isError, refetch, dataUpdatedAt } = useRoleGroups(query);
-  const totalCount = meta?.totalCount ?? 0;
+  const query = useMemo<RoleGroupListQuery | null>(
+    () =>
+      selectedSchoolId
+        ? {
+            searchTerm: debouncedSearch || undefined,
+            page,
+            limit: rowsPerPage,
+            schoolId: selectedSchoolId,
+            sortBy: sort?.key === "menus" ? "menus" : sort ? "group" : undefined,
+            sortDirection: sort?.direction,
+          }
+        : null,
+    [debouncedSearch, page, rowsPerPage, selectedSchoolId, sort],
+  );
+
+  const {
+    roleGroups,
+    meta,
+    isLoading,
+    isError,
+    refetch,
+  } = useRoleGroups(query);
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
     setPage(1);
   }
 
-  function handleClearFilters(): void {
-    setSearchQuery("");
+  function handleSchoolChange(value: string): void {
+    setSchoolInput(value);
     setPage(1);
+    setDialogRoleGroup(undefined);
   }
 
-  function handleRowsPerPageChange(value: number): void {
-    setRowsPerPage(value);
+  function handleSortChange(nextSort: DataTableSortState | undefined): void {
+    setSort(nextSort);
     setPage(1);
-  }
-
-  function openEdit(roleGroup: RoleDefinition): void {
-    void navigate(`/manage-role-groups/${encodeURIComponent(roleGroup.name)}/edit`);
   }
 
   async function handleDelete(roleGroup: RoleDefinition): Promise<void> {
-    if (roleGroup.is_system) {
-      return;
-    }
     const confirmed = await confirm({
-      title: "ลบกลุ่มสิทธิ์",
-      description: `ต้องการลบกลุ่มสิทธิ์ "${roleGroup.label || roleGroup.name}" ใช่หรือไม่?`,
+      title: "ลบกลุ่มเมนู",
+      description: `ต้องการลบกลุ่มเมนู “${roleGroup.label || roleGroup.name}” ใช่หรือไม่?`,
       confirmText: "ลบ",
       variant: "destructive",
     });
-    if (confirmed) {
-      deleteRoleGroup.mutate(roleGroup.name);
-    }
+    if (confirmed) deleteRoleGroup.mutate(roleGroup.name);
   }
 
   return (
     <PageShell>
-      <ListPageToolbar
-        icon={ShieldCheck}
+      <PageToolbar
         actions={
-          <NavButton icon={Plus} to="/manage-role-groups/new">
-            เพิ่มกลุ่มสิทธิ์
-          </NavButton>
+          <Button
+            disabled={
+              !selectedSchoolId ||
+              rolesCatalogLoading ||
+              permissionCatalogLoading
+            }
+            icon={Plus}
+            onClick={() => setDialogRoleGroup(null)}
+          >
+            เพิ่มกลุ่มเมนู
+          </Button>
         }
-        tableActions={<RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />}
-        onClearFilters={handleClearFilters}
-        title="จัดการกลุ่มผู้ใช้งาน"
-        description="กำหนดกลุ่มสิทธิ์และแมปสิทธิ์การใช้งานของแต่ละตำแหน่ง"
-        search={{
-          onChange: handleSearchChange,
-          placeholder: "ค้นหาตำแหน่ง...",
-          value: searchQuery,
-        }}
+        description="กรอกข้อมูลรายละเอียดผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ"
+        title="จัดการกลุ่มเมนู"
       />
+      <ToolbarControls className="mb-8">
+        <SearchInput
+          className="sm:max-w-[560px]"
+          onChange={handleSearchChange}
+          placeholder="ค้นหา"
+          value={searchQuery}
+        />
+        {multipleSchools ? (
+          <FilterCombobox
+            ariaLabel="กรองตามโรงเรียน"
+            emptyText="ไม่พบโรงเรียน"
+            onChange={handleSchoolChange}
+            options={schools.map((school) => ({
+              value: String(school.id),
+              label: school.name,
+            }))}
+            placeholder="เลือกโรงเรียน"
+            value={selectedSchoolValue}
+          />
+        ) : null}
+      </ToolbarControls>
 
-      {isError ? (
+      {schoolsQuery.isError || rolesCatalogError || permissionCatalogError ? (
         <ErrorState
-          title="ไม่สามารถโหลดกลุ่มสิทธิ์ได้"
-          description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลกลุ่มสิทธิ์"
+          description="ไม่สามารถโหลดข้อมูลโรงเรียนหรือสิทธิ์ที่จำเป็นสำหรับหน้านี้ได้"
+          onRetry={() => {
+            void schoolsQuery.refetch();
+            refetchRolesCatalog();
+            refetchPermissionCatalog();
+          }}
+          title="โหลดข้อมูลไม่สำเร็จ"
+        />
+      ) : schoolsQuery.isLoading || permissionCatalogLoading ? (
+        <SkeletonTable />
+      ) : schools.length === 0 ? (
+        <EmptyState
+          description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
+          icon={MENU_GROUPS_ICON}
+          title="ไม่พบโรงเรียนในขอบเขต"
+        />
+      ) : multipleSchools && !selectedSchoolId ? (
+        <EmptyState
+          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงกลุ่มเมนู"
+          icon={MENU_GROUPS_ICON}
+          title="เลือกโรงเรียน"
+        />
+      ) : isError ? (
+        <ErrorState
+          description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลกลุ่มเมนู"
           onRetry={refetch}
+          title="ไม่สามารถโหลดกลุ่มเมนูได้"
         />
       ) : isLoading ? (
         <SkeletonTable />
       ) : (
         <>
           <RoleGroupTable
-            onDelete={handleDelete}
-            onEdit={openEdit}
+            labelOf={labelOf}
+            onDelete={(roleGroup) => void handleDelete(roleGroup)}
+            onEdit={setDialogRoleGroup}
+            onSortChange={handleSortChange}
             roleGroups={roleGroups}
+            sort={sort}
           />
           {roleGroups.length > 0 ? (
             <Pagination
               onPageChange={setPage}
-              onRowsPerPageChange={handleRowsPerPageChange}
+              onRowsPerPageChange={(value) => {
+                setRowsPerPage(value);
+                setPage(1);
+              }}
               page={page}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-              totalCount={totalCount}
+              totalCount={meta?.totalCount ?? 0}
               unitLabel="กลุ่ม"
             />
           ) : null}
         </>
       )}
+
+      {dialogRoleGroup !== undefined && selectedSchoolId && selectedSchool ? (
+        <RoleGroupDialog
+          key={dialogRoleGroup?.name ?? `new-${selectedSchoolId}`}
+          maxRank={maxRank}
+          onOpenChange={(open) => {
+            if (!open) setDialogRoleGroup(undefined);
+          }}
+          roleGroup={dialogRoleGroup}
+          schoolId={selectedSchoolId}
+          schoolName={selectedSchool.name}
+        />
+      ) : null}
 
       {confirmDialog}
     </PageShell>

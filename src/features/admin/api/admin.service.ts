@@ -18,6 +18,7 @@ import type {
   RoleDefinition,
   ReissueStudentPasswordResponse,
   RoleGroupForm,
+  RoleGroupListQuery,
   SettingsUpdatePayload,
   SettingsUpdateResponse,
   StudentAccountBatchCredentialResponse,
@@ -400,9 +401,12 @@ async function downloadStudentAccountBatchCredentials(
 
 // --- Role groups ---
 async function getRoleGroups(
-  query: PaginatedSearchQuery = {},
+  query: RoleGroupListQuery,
 ): Promise<PaginatedResult<RoleDefinition>> {
   const params: Record<string, string> = toPaginationParams(query);
+  params.schoolId = String(query.schoolId);
+  if (query.sortBy) params.sortBy = query.sortBy;
+  if (query.sortDirection) params.sortDirection = query.sortDirection;
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
     params.searchTerm = searchTerm;

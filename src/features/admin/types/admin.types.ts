@@ -379,14 +379,25 @@ export interface RoleDefinition {
   scope_policy: RoleScopePolicy;
   is_assignable: boolean;
   is_system: boolean;
+  school_id: number | null;
   user_count?: number;
   login_link_count?: number;
 }
 
 export interface RoleGroupForm {
-  name: string;
+  schoolId: number;
+  name?: string;
   label: string;
   rank: number;
   scope_mode?: RoleScopeMode;
   default_permissions: string[];
+}
+
+export interface RoleGroupListQuery {
+  searchTerm?: string;
+  page: number;
+  limit: number;
+  schoolId: number;
+  sortBy?: "group" | "menus";
+  sortDirection?: "asc" | "desc";
 }

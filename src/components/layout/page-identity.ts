@@ -100,7 +100,7 @@ export const PAGE_IDENTITIES = {
   "/login-links": createIdentity("ลิงก์เข้าใช้งาน", "link"),
   "/login-links/history": createIdentity("ลิงก์เข้าใช้งาน", "link"),
   "/login-links/teacher": createIdentity("ลิงก์เข้าใช้งาน", "link"),
-  "/manage-role-groups": createIdentity("จัดการกลุ่มผู้ใช้งาน", "users-cog"),
+  "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),
   "/manage-student-accounts": createIdentity("บัญชีนักเรียน", "user-plus"),
   "/manage-student-accounts/batch": createIdentity("บัญชีนักเรียน", "user-plus"),
   "/manage-student-accounts/generate": createIdentity("บัญชีนักเรียน", "user-plus"),
