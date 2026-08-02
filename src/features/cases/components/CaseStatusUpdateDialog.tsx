@@ -19,7 +19,6 @@ import { useUpdateCase } from "../hooks/useUpdateCase";
 import type {
   CaseRecord,
   CaseReviewAction,
-  CaseResolutionOutcome,
 } from "../types/cases.types";
 
 interface CaseStatusUpdateDialogProps {
@@ -40,12 +39,10 @@ export function CaseStatusUpdateDialog({
   const updateCase = useUpdateCase();
   const [action, setAction] = useState("");
   const [note, setNote] = useState("");
-  const [resolutionOutcome, setResolutionOutcome] = useState("");
 
   function closeDialog(): void {
     setAction("");
     setNote("");
-    setResolutionOutcome("");
     updateCase.reset();
     onOpenChange(false);
   }
@@ -63,14 +60,11 @@ export function CaseStatusUpdateDialog({
 
   const selectedAction =
     allowedActions.find((option) => option.code === action) ?? allowedActions[0];
-  const requiresResolutionOutcome =
-    selectedAction?.requiresResolutionOutcome === true;
   const submitDisabled =
     !caseRecord ||
     !selectedAction ||
     !note.trim() ||
-    optionsQuery.isLoading ||
-    (requiresResolutionOutcome && !resolutionOutcome);
+    optionsQuery.isLoading;
 
   function handleSubmit(): void {
     if (submitDisabled || !caseRecord || !selectedAction) return;
@@ -81,9 +75,7 @@ export function CaseStatusUpdateDialog({
         payload: {
           review_action: reviewAction,
           review_note: note.trim(),
-          resolution_outcome: requiresResolutionOutcome
-            ? (resolutionOutcome as CaseResolutionOutcome)
-            : null,
+          resolution_outcome: null,
         },
       },
       {
@@ -139,24 +131,6 @@ export function CaseStatusUpdateDialog({
               </p>
             ) : null}
 
-            {requiresResolutionOutcome ? (
-              <div className="space-y-2">
-                <Label required htmlFor="case-resolution-outcome">
-                  ผลลัพธ์การติดตาม
-                </Label>
-                <Combobox
-                  id="case-resolution-outcome"
-                  onChange={setResolutionOutcome}
-                  options={(optionsQuery.data?.resolutionOutcomes ?? []).map(
-                    (option) => ({ value: option.code, label: option.label }),
-                  )}
-                  placeholder="เลือกผลลัพธ์"
-                  searchable={false}
-                  value={resolutionOutcome}
-                />
-              </div>
-            ) : null}
-
             <div className="space-y-2">
               <Label required htmlFor="case-note">
                 เหตุผลการพิจารณา
@@ -164,21 +138,12 @@ export function CaseStatusUpdateDialog({
               <Textarea
                 id="case-note"
                 onChange={(event) => setNote(event.target.value)}
-                placeholder={
-                  selectedAction?.code === "CONTINUE"
-                    ? "ระบุเหตุผลที่ต้องติดตามต่อและประเด็นที่ต้องดำเนินการ"
-                    : "ระบุเหตุผลที่ปิดเคสและข้อสรุปจากการติดตาม"
-                }
+                placeholder="ระบุเหตุผลและข้อสรุปจากการติดตาม"
                 required
                 value={note}
               />
             </div>
 
-            {selectedAction?.code === "CONTINUE" ? (
-              <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-blue-800">
-                เมื่อบันทึกแล้ว ระบบจะพาไปสร้างรอบติดตามและลิงก์เยี่ยมบ้านรอบใหม่
-              </p>
-            ) : null}
           </div>
         </DialogBody>
 

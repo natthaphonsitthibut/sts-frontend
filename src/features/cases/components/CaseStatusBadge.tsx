@@ -18,7 +18,7 @@ export function CaseStatusBadge({
   const item = findStatusCatalogItem(catalog, status);
   return (
     <Badge
-      className="w-[104px] max-w-full justify-center whitespace-normal break-words px-2 text-center leading-4"
+      className="max-w-full justify-center whitespace-normal break-words px-2 text-center leading-4"
       variant={badgeVariant ?? item?.badgeVariant ?? "secondary"}
     >
       {label || item?.label || status || "-"}

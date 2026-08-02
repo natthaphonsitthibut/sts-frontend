@@ -57,7 +57,7 @@ function compareText(a: string | undefined, b: string | undefined): number {
 function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
   if (key === "student") return caseRecord.student_name || "";
   if (key === "reason") return getCaseReason(caseRecord.reason, caseRecord.reason_flagged);
-  if (key === "assignee") return caseRecord.active_link_assigned_to || "";
+  if (key === "assignee") return caseRecord.latest_link_assigned_to || "";
   if (key === "status") return caseRecord.status || "";
   if (key === "starts") return caseRecord.active_link_created_at || caseRecord.created_at || "";
   if (key === "expires") return caseRecord.active_link_expires_at || "";
@@ -119,12 +119,12 @@ export function CaseTable({
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
             </DataTableCell>
             <DataTableCell className="text-sm text-slate-600">
-              {caseRecord.active_link_assigned_to || "-"}
+              {caseRecord.latest_link_assigned_to || "-"}
             </DataTableCell>
             <DataTableCell>
               <CaseStatusBadge
                 badgeVariant={caseRecord.status_badge_variant}
-                label={caseRecord.status_label}
+                label={caseRecord.display_status_label ?? caseRecord.status_label}
                 status={caseRecord.status}
               />
             </DataTableCell>
@@ -160,7 +160,7 @@ export function CaseTable({
               </div>
               <CaseStatusBadge
                 badgeVariant={caseRecord.status_badge_variant}
-                label={caseRecord.status_label}
+                label={caseRecord.display_status_label ?? caseRecord.status_label}
                 status={caseRecord.status}
               />
             </div>
@@ -170,7 +170,7 @@ export function CaseTable({
             {caseRecord.task_id ? (
               <div className="mt-3 text-sm text-slate-600">
                 <span className="font-semibold text-slate-500">ผู้รับลิงก์:</span>{" "}
-                {caseRecord.active_link_assigned_to || "-"}
+                {caseRecord.latest_link_assigned_to || "-"}
               </div>
             ) : null}
             <div className="mt-3 rounded-md bg-slate-50 p-3">

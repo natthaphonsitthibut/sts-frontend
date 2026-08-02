@@ -20,8 +20,8 @@ const PIPELINE_ITEMS: Array<{
   barClassName: string;
 }> = [
   { key: "OPEN", label: "เปิดเคส", barClassName: "bg-primary" },
-  { key: "IN_PROGRESS", label: "กำลังติดตาม", barClassName: "bg-warning" },
-  { key: "PENDING_REVIEW", label: "รอตรวจผล", barClassName: "bg-primary-dark" },
+  { key: "IN_PROGRESS", label: "รอติดตาม", barClassName: "bg-warning" },
+  { key: "PENDING_REVIEW", label: "รอพิจารณา", barClassName: "bg-primary-dark" },
 ];
 
 function buildCasePath(

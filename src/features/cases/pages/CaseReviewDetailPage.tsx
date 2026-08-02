@@ -183,7 +183,7 @@ export function CaseReviewDetailPage() {
               value={
                 <CaseStatusBadge
                   badgeVariant={caseRecord.status_badge_variant}
-                  label={caseRecord.status_label}
+                  label={caseRecord.display_status_label ?? caseRecord.status_label}
                   status={caseRecord.status}
                 />
               }

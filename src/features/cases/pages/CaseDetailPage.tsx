@@ -28,7 +28,6 @@ import { CaseStatusBadge } from "../components/CaseStatusBadge";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
-import type { CaseReviewAction } from "../types/cases.types";
 
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -109,11 +108,7 @@ export function CaseDetailPage() {
   };
   const createFollowUpRound = () =>
     void navigate("/create/visit", { state: { prefill: visitPrefill } });
-  const handleReviewed = (action: CaseReviewAction) => {
-    if (action === "CONTINUE") {
-      createFollowUpRound();
-      return;
-    }
+  const handleReviewed = () => {
     void detailQuery.refetch();
   };
 
@@ -147,7 +142,7 @@ export function CaseDetailPage() {
           </div>
           <CaseStatusBadge
             badgeVariant={caseRecord.status_badge_variant}
-            label={caseRecord.status_label}
+            label={caseRecord.display_status_label ?? caseRecord.status_label}
             status={caseRecord.status}
           />
         </div>

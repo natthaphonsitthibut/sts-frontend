@@ -2,12 +2,11 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
-  CheckCircle2,
   ClipboardCheck,
   ClipboardList,
   Clock,
   FileDown,
-  ListChecks,
+  UserRoundX,
 } from "lucide-react";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -42,8 +41,15 @@ const CASE_STATUS_ICONS = {
   OPEN: AlertCircle,
   PENDING_REVIEW: ClipboardCheck,
   IN_PROGRESS: Clock,
-  RESOLVED: CheckCircle2,
+  STUDENT_NOT_FOUND: UserRoundX,
 } as const;
+
+const SUMMARY_STATUS_CODES = [
+  "OPEN",
+  "IN_PROGRESS",
+  "PENDING_REVIEW",
+  "STUDENT_NOT_FOUND",
+] as const;
 
 const CASE_TAB_ROUTES = {
   list: "/cases",
@@ -140,9 +146,12 @@ export function CasesListPage() {
     }),
     [cases, meta?.statusCounts],
   );
-  const statusTotal = useMemo(
-    () => statuses.reduce((total, item) => total + (statusCounts[item.code] ?? 0), 0),
-    [statusCounts, statuses],
+  const summaryStatuses = useMemo(
+    () =>
+      SUMMARY_STATUS_CODES.map((code) => statuses.find((item) => item.code === code)).filter(
+        (item): item is NonNullable<typeof item> => Boolean(item),
+      ),
+    [statuses],
   );
 
   function handleSearchChange(value: string): void {
@@ -296,23 +305,13 @@ export function CasesListPage() {
       ) : (
         <div className="space-y-4">
           <SummaryMetrics
-            centerRows
+            columns={4}
             items={[
-              {
-                label: "ทั้งหมด",
-                value: statusTotal,
-                tone: "default",
-                icon: ListChecks,
-                emphasis: true,
-                onSelect: () => handleStatusChange("ALL"),
-                selected: status === "ALL",
-                selectionLabel: "แสดงเคสทุกสถานะ",
-              },
-              ...statuses.map((item) => ({
+              ...summaryStatuses.map((item) => ({
                 label: item.label,
                 value: statusCounts[item.code] ?? 0,
                 tone: item.summaryTone ?? undefined,
-                icon: CASE_STATUS_ICONS[item.code as keyof typeof CASE_STATUS_ICONS] ?? ListChecks,
+                icon: CASE_STATUS_ICONS[item.code as keyof typeof CASE_STATUS_ICONS],
                 onSelect: () =>
                   handleStatusChange(status === item.code ? "ALL" : item.code),
                 selected: status === item.code,

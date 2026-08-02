@@ -4,6 +4,7 @@ export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
   | "IN_PROGRESS"
+  | "STUDENT_NOT_FOUND"
   | "RESOLVED";
 
 export type CaseStatus = KnownCaseStatus | (string & {});
@@ -17,7 +18,7 @@ export type CaseBadgeVariant =
 
 export type CaseSummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
-export type CaseReviewAction = "CONTINUE" | "CLOSE";
+export type CaseReviewAction = "REFER_AGENCY" | "CLOSE";
 export type CaseResolutionOutcome = string;
 
 export interface CaseTrackingOption {
@@ -89,6 +90,9 @@ export interface CaseRecord {
   reason_flagged?: string | null;
   status: CaseStatus;
   status_label?: string | null;
+  completion_outcome_code?: "CLOSED" | "REFERRED_AGENCY" | null;
+  completion_outcome_label?: string | null;
+  display_status_label?: string | null;
   status_badge_variant?: CaseBadgeVariant | null;
   status_summary_tone?: CaseSummaryTone | null;
   created_at: string;
@@ -96,6 +100,9 @@ export interface CaseRecord {
   active_link_created_at?: string | null;
   active_link_expires_at?: string | null;
   active_link_assigned_to?: string | null;
+  latest_link_id?: string | null;
+  latest_link_status?: string | null;
+  latest_link_assigned_to?: string | null;
   link_state?: "ACTIVE" | "LOCKED" | "EXPIRED" | "NONE" | null;
   school_id?: number | null;
   grade?: string | null;

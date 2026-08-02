@@ -45,7 +45,10 @@ export function StudentCaseAction({
     refetch: refetchCases,
   } = useStudentCases(studentId, caseListDialogOpen);
   const activeCases = useMemo(
-    () => cases.filter((studentCase) => studentCase.status !== "RESOLVED"),
+    () =>
+      cases.filter((studentCase) =>
+        ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
+      ),
     [cases],
   );
   const hasActiveCase = activeCaseCount > 0 && activeCaseId !== null;

@@ -1,4 +1,5 @@
 import { appConfig } from "../../../config/env";
+import { FileText } from "lucide-react";
 import type { CaseFollowUpRound } from "../types/cases.types";
 
 interface CaseFollowUpRoundDetailsProps {
@@ -37,7 +38,7 @@ function resolveUploadUrl(path: string): string {
   }
 }
 
-function VisitPhotos({ value }: { value: string | null | undefined }) {
+export function VisitAttachments({ value }: { value: string | null | undefined }) {
   if (!value) return null;
 
   let paths: string[] = [];
@@ -56,18 +57,32 @@ function VisitPhotos({ value }: { value: string | null | undefined }) {
 
   return (
     <div className="mt-4">
-      <h4 className="text-sm font-semibold text-slate-700">รูปประกอบการติดตาม</h4>
+      <h4 className="text-sm font-semibold text-slate-700">ไฟล์แนบการติดตาม</h4>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {paths.map((path, index) => {
-          const photoUrl = resolveUploadUrl(path);
+          const attachmentUrl = resolveUploadUrl(path);
+          const isImage = /\.(?:jpe?g|png|webp)$/i.test(path);
           return (
-            <a href={photoUrl} key={path} rel="noreferrer" target="_blank">
-              <img
-                alt={`รูปประกอบการติดตาม ${index + 1}`}
-                className="aspect-video w-full rounded-lg border border-slate-200 object-cover"
-                loading="lazy"
-                src={photoUrl}
-              />
+            <a
+              className={isImage ? undefined : "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center text-sm font-semibold text-slate-700"}
+              href={attachmentUrl}
+              key={path}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {isImage ? (
+                <img
+                  alt={`ไฟล์แนบการติดตาม ${index + 1}`}
+                  className="aspect-video w-full rounded-lg border border-slate-200 object-cover"
+                  loading="lazy"
+                  src={attachmentUrl}
+                />
+              ) : (
+                <>
+                  <FileText className="size-7 text-primary" aria-hidden="true" />
+                  <span>ไฟล์แนบ {index + 1}</span>
+                </>
+              )}
             </a>
           );
         })}
@@ -132,7 +147,7 @@ export function CaseFollowUpRoundDetails({
           />
         ) : null}
       </dl>
-      <VisitPhotos value={round.photo_paths} />
+      <VisitAttachments value={round.photo_paths} />
     </>
   );
 }

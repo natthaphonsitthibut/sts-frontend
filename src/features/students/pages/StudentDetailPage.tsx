@@ -354,7 +354,10 @@ export function StudentDetailPage() {
     refetch: refetchCases,
   } = useStudentCases(studentId);
   const activeCases = useMemo(
-    () => cases.filter((studentCase) => studentCase.status !== "RESOLVED"),
+    () =>
+      cases.filter((studentCase) =>
+        ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
+      ),
     [cases],
   );
 
