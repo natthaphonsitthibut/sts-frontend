@@ -18,6 +18,7 @@ import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import type { CaseRecord } from "../../cases/types/cases.types";
+import { VisitAttachments } from "../../cases/components/CaseFollowUpRoundDetails";
 import { taskService } from "../api/task.service";
 import {
   formatDateTime,
@@ -133,7 +134,7 @@ export function TaskDetailPage() {
               {task.case_status ? (
                 <CaseStatusBadge
                   badgeVariant={caseStatus?.badgeVariant}
-                  label={caseStatus?.label}
+                  label={task.display_status_label ?? caseStatus?.label}
                   status={task.case_status}
                 />
               ) : (
@@ -263,6 +264,9 @@ export function TaskDetailPage() {
                 <div className="font-medium text-slate-700">
                   {firstSubmission.cause_detail || "-"}
                 </div>
+              </div>
+              <div className="sm:col-span-2">
+                <VisitAttachments value={firstSubmission.photo_paths} />
               </div>
               <div className="sm:col-span-2">
                 <div className="text-sm text-slate-500">ข้อเสนอแนะ</div>

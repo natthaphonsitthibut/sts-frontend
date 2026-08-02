@@ -288,6 +288,11 @@ export const SuccessPage = lazy(() =>
     default: module.SuccessPage,
   })),
 );
+export const CompletedPage = lazy(() =>
+  import("../features/tasks/pages/StatusPage").then((module) => ({
+    default: module.CompletedPage,
+  })),
+);
 export const TaskDetailPage = lazy(() =>
   import("../features/tasks/pages/TaskDetailPage").then((module) => ({
     default: module.TaskDetailPage,

@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
-import { FileImage, UploadCloud, X } from "lucide-react";
+import { File, FileImage, UploadCloud, X } from "lucide-react";
 import { Button, IconButton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 
@@ -11,6 +11,9 @@ const ACCEPTED_TYPES = new Set([
   "image/png",
   "image/gif",
   "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
 interface VisitPhotoUploadProps {
@@ -37,7 +40,7 @@ export function VisitPhotoUpload({
   function addFiles(nextFiles: File[]): void {
     const invalidType = nextFiles.find((file) => !ACCEPTED_TYPES.has(file.type));
     if (invalidType) {
-      setError("รองรับเฉพาะไฟล์ JPG, PNG, GIF และ WEBP");
+      setError("รองรับเฉพาะไฟล์ JPG, PNG, GIF, WEBP, PDF, DOC และ DOCX");
       return;
     }
     const oversized = nextFiles.find((file) => file.size > MAX_FILE_BYTES);
@@ -49,7 +52,7 @@ export function VisitPhotoUpload({
     const unique = new Map(files.map((file) => [fileKey(file), file]));
     nextFiles.forEach((file) => unique.set(fileKey(file), file));
     const merged = Array.from(unique.values()).slice(0, MAX_FILES);
-    setError(unique.size > MAX_FILES ? "แนบรูปได้สูงสุด 5 ไฟล์" : "");
+    setError(unique.size > MAX_FILES ? "แนบไฟล์ได้สูงสุด 5 ไฟล์" : "");
     onChange(merged);
   }
 
@@ -62,7 +65,7 @@ export function VisitPhotoUpload({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <input
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.doc,.docx"
         className="sr-only"
         multiple
         onChange={(event) => {
@@ -91,7 +94,7 @@ export function VisitPhotoUpload({
         <p className="mt-2 text-sm font-semibold text-slate-800">
           ลากและวางไฟล์ที่นี่ หรือเลือกไฟล์
         </p>
-        <p className="mt-1 text-xs text-slate-600">รองรับรูปภาพสูงสุด 5 ไฟล์ ไฟล์ละไม่เกิน 5MB</p>
+        <p className="mt-1 text-xs text-slate-600">รองรับรูปภาพ, PDF และ Word สูงสุด 5 ไฟล์ ไฟล์ละไม่เกิน 5MB</p>
         <Button
           className="mt-3"
           disabled={files.length >= MAX_FILES}
@@ -111,14 +114,20 @@ export function VisitPhotoUpload({
       ) : null}
 
       {files.length > 0 ? (
-        <ul className="space-y-2" aria-label="รูปภาพที่เลือก">
+        <ul className="space-y-2" aria-label="ไฟล์แนบที่เลือก">
           {files.map((file) => (
             <li
               className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
               key={fileKey(file)}
             >
-              <FileImage className="size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{file.name}</span>
+              {file.type.startsWith("image/") ? (
+                <FileImage className="size-5 shrink-0 text-primary" aria-hidden="true" />
+              ) : (
+                <File className="size-5 shrink-0 text-primary" aria-hidden="true" />
+              )}
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+              </span>
               <IconButton
                 aria-label={`ลบไฟล์ ${file.name}`}
                 icon={X}

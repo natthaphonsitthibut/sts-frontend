@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ClipboardCheck, MapPin, Save } from "lucide-react";
 import {
   Alert,
   AlertDescription,
   Button,
-  buttonVariants,
   Card,
   CardContent,
   CardHeader,
@@ -98,7 +97,16 @@ export function TaskGuestPage() {
     ) {
       void navigate(`/task/${token}/expired`, { replace: true });
     }
+    if (status?.response?.data?.status === "COMPLETED") {
+      void navigate(`/task/${token}/completed`, { replace: true });
+    }
   }, [navigate, taskQuery.error, token]);
+
+  useEffect(() => {
+    if (taskQuery.data?.status === "COMPLETED") {
+      void navigate(`/task/${token}/completed`, { replace: true });
+    }
+  }, [navigate, taskQuery.data?.status, token]);
 
   const counts = useMemo(
     () =>
@@ -295,35 +303,6 @@ export function TaskGuestPage() {
         </Card>
       ) : null}
 
-      {task.type === "VISIT" ? (
-        <div className="space-y-2">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link
-              className={buttonVariants({ fullWidth: true, size: "lg" })}
-              to={`/task/${token}/report`}
-            >
-              ลงพื้นที่และส่งรายงาน
-            </Link>
-            {task.can_delegate ? (
-              <Link
-                className={buttonVariants({
-                  fullWidth: true,
-                  size: "lg",
-                  variant: "outline",
-                })}
-                to={`/task/${token}/delegate`}
-              >
-                มอบหมายให้ผู้อื่น
-              </Link>
-            ) : null}
-          </div>
-          {task.can_delegate ? (
-            <p className="text-center text-xs leading-relaxed text-slate-500">
-              มอบหมายภารกิจนี้ให้ผู้อื่นดำเนินการแทน — คุณจะไม่ใช่ผู้รับผิดชอบหลักของภารกิจนี้อีกต่อไป
-            </p>
-          ) : null}
-        </div>
-      ) : null}
       {confirmDialog}
       <ObservationEntryDialog
         open={observationStudent !== null}

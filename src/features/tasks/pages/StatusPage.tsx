@@ -101,6 +101,20 @@ export function SuccessPage() {
   );
 }
 
+export function CompletedPage() {
+  return (
+    <GuestPageShell centered contentClassName="max-w-[520px]">
+      <Card className="rounded-lg">
+        <CardContent className="flex min-h-56 items-center justify-center p-8 text-center">
+          <h1 className="text-xl font-bold text-slate-900">
+            ลิงก์นี้ถูกบันทึกเรียบร้อยแล้ว
+          </h1>
+        </CardContent>
+      </Card>
+    </GuestPageShell>
+  );
+}
+
 export function ExpiredPage() {
   return (
     <StatusPage

@@ -58,8 +58,9 @@ export interface TaskCreateResponse {
 }
 
 export interface TaskAccessTask {
-  id: string;
-  type: TaskType | string;
+  id?: string;
+  type?: TaskType | string;
+  error?: string;
   assigned_to_name?: string | null;
   assigned_to_first_name?: string | null;
   assigned_to_last_name?: string | null;
@@ -209,6 +210,8 @@ export interface TaskChainResponse {
   reason_flagged?: string | null;
   task_status?: string | null;
   case_status?: string | null;
+  completion_outcome_code?: string | null;
+  display_status_label?: string | null;
   result_summary?: string | null;
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;

@@ -11,6 +11,7 @@ import {
   AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
+  CompletedPage,
   ClassroomsPage,
   ClassroomDetailPage,
   CaseDetailPage,
@@ -437,6 +438,10 @@ export const router = createBrowserRouter([
   {
     path: "/task/:token/success",
     element: withSuspense(<SuccessPage />),
+  },
+  {
+    path: "/task/:token/completed",
+    element: withSuspense(<CompletedPage />),
   },
   {
     path: "/task/:token/expired",

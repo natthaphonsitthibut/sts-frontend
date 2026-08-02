@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -20,7 +20,6 @@ import { z } from "zod";
 import {
   Avatar,
   Button,
-  buttonVariants,
   Card,
   CardContent,
   Combobox,
@@ -54,6 +53,11 @@ import { taskService } from "../api/task.service";
 import { buildVisitReportFormTitle } from "../lib/task-presentation";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
+import {
+  deleteVisitReportDraft,
+  loadVisitReportDraft,
+  saveVisitReportDraft,
+} from "../lib/visit-report-draft";
 
 const reportSchema = z
   .object({
@@ -216,6 +220,10 @@ export function ReportPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [mapOpen, setMapOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState("");
+  const [draftNotice, setDraftNotice] = useState("");
 
   const form = useForm<ReportFormValues>({
     defaultValues: {
@@ -259,6 +267,7 @@ export function ReportPage() {
     control: form.control,
     name: "updatedPostalCode",
   });
+  const draftFormValues = useWatch({ control: form.control });
 
   const taskQuery = useQuery({
     queryKey: ["report-task", token, sessionToken],
@@ -308,7 +317,60 @@ export function ReportPage() {
     if (status?.response?.status === 410 || status?.response?.data?.status === "EXPIRED") {
       void navigate(`/task/${token}/expired`, { replace: true });
     }
+    if (status?.response?.data?.status === "COMPLETED") {
+      void deleteVisitReportDraft(token).catch(() => undefined);
+      void navigate(`/task/${token}/completed`, { replace: true });
+    }
   }, [navigate, taskQuery.error, token]);
+
+  useEffect(() => {
+    if (taskQuery.data?.status === "COMPLETED") {
+      void deleteVisitReportDraft(token).catch(() => undefined);
+      void navigate(`/task/${token}/completed`, { replace: true });
+    }
+  }, [navigate, taskQuery.data?.status, token]);
+
+  useEffect(() => {
+    if (!taskQuery.data || taskQuery.data.status === "COMPLETED" || draftHydrated) return;
+    let cancelled = false;
+    void loadVisitReportDraft<ReportFormValues>(token)
+      .then((draft) => {
+        if (cancelled || !draft) return;
+        form.reset(draft.formValues);
+        setLat(draft.latitude);
+        setLng(draft.longitude);
+        setPhotos(draft.files);
+        setDraftSavedAt(draft.updatedAt);
+      })
+      .catch(() => {
+        if (!cancelled) setDraftError("ไม่สามารถกู้คืนฉบับร่างใน browser นี้ได้");
+      })
+      .finally(() => {
+        if (!cancelled) setDraftHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftHydrated, form, taskQuery.data, token]);
+
+  useEffect(() => {
+    if (!draftHydrated || !taskQuery.data || taskQuery.data.status === "COMPLETED") return;
+    const timer = window.setTimeout(() => {
+      void saveVisitReportDraft({
+        token,
+        formValues: form.getValues(),
+        latitude: lat,
+        longitude: lng,
+        files: photos,
+      })
+        .then((updatedAt) => {
+          setDraftSavedAt(updatedAt);
+          setDraftError("");
+        })
+        .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [draftFormValues, draftHydrated, form, lat, lng, photos, taskQuery.data, token]);
 
   const submitReport = useMutation({
     mutationFn: (values: ReportFormValues) => {
@@ -336,7 +398,8 @@ export function ReportPage() {
       photos.forEach((photo) => formData.append("photos", photo));
       return taskService.submitTaskReport(token, formData, sessionToken || undefined);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await deleteVisitReportDraft(token).catch(() => undefined);
       // Carry the heading over: the link is COMPLETED once this returns, so the
       // receipt page can no longer read the student/term context from the task.
       void navigate(`/task/${token}/success?type=visit`, {
@@ -345,6 +408,23 @@ export function ReportPage() {
       });
     },
   });
+
+  async function handleSaveDraft(): Promise<void> {
+    try {
+      const updatedAt = await saveVisitReportDraft({
+        token,
+        formValues: form.getValues(),
+        latitude: lat,
+        longitude: lng,
+        files: photos,
+      });
+      setDraftSavedAt(updatedAt);
+      setDraftError("");
+      setDraftNotice("บันทึกฉบับร่างแล้ว");
+    } catch {
+      setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม");
+    }
+  }
 
   function handleUseCurrentLocation(): void {
     if (!navigator.geolocation) {
@@ -623,16 +703,6 @@ export function ReportPage() {
                     </div>
                   </div>
                 </div>
-                {task.can_delegate ? (
-                  <div className="mt-4 flex justify-end">
-                    <Link
-                      className={buttonVariants({ size: "sm", variant: "outline" })}
-                      to={`/task/${token}/delegate`}
-                    >
-                      มอบหมายให้ผู้อื่น
-                    </Link>
-                  </div>
-                ) : null}
             </section>
 
             <div className="relative flex items-start justify-center pt-[14.5rem]">
@@ -967,7 +1037,19 @@ export function ReportPage() {
                       </div>
                     ) : null}
 
-                    <div className="flex justify-end border-t border-primary/20 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-3">
+                      <div className="text-xs text-slate-500">
+                        <p>ฉบับร่างอยู่เฉพาะ browser/device นี้ และยังไม่ถือว่าส่งรายงาน</p>
+                        {draftError ? <p className="mt-1 text-danger-700">{draftError}</p> : null}
+                        {draftNotice ? <p className="mt-1 text-success-700">{draftNotice}</p> : null}
+                        {!draftError && draftSavedAt ? (
+                          <p className="mt-1">บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => void handleSaveDraft()} type="button" variant="outline">
+                          บันทึกฉบับร่าง
+                        </Button>
                       <Button
                         disabled={trackingOptionsQuery.isLoading}
                         icon={Save}
@@ -977,6 +1059,7 @@ export function ReportPage() {
                       >
                         บันทึกข้อมูล
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </Form>
