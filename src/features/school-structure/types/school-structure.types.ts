@@ -133,6 +133,19 @@ export interface ClassroomStudentCommentResult {
   createdAt: string;
 }
 
+export interface StudentClassroomComment {
+  id: string;
+  studentTermId: string;
+  comment: string;
+  authorDisplayName: string;
+  commentedAt: string;
+}
+
+export interface StudentClassroomCommentsResponse {
+  data: StudentClassroomComment[];
+  meta: { totalCount: number };
+}
+
 export interface ClassroomDailyAttendance {
   date: string;
   recordedBy: string;

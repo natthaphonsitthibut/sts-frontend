@@ -191,13 +191,11 @@ export interface TeacherWatchlistRow {
   schoolName: string;
   gradeLabel: string | null;
   roomNo: number | null;
-  latestObservationId: string;
-  latestDimensionLabel: string;
-  latestConcernLevel: ObservationConcernLevel;
-  latestComment: string | null;
+  latestCommentId: string;
+  latestComment: string;
   latestAuthorDisplayName: string;
-  latestObservedAt: string;
-  observationCount: number;
+  latestCommentedAt: string;
+  commentCount: number;
 }
 
 export interface TeacherWatchlistFilters {

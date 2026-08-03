@@ -403,7 +403,7 @@ export function CasesListPage() {
               <EmptyState
                 icon={ClipboardList}
                 title="ไม่พบนักเรียนกลุ่มเฝ้าระวัง"
-                description="นักเรียนที่มีข้อสังเกตจากคุณครูจะแสดงในส่วนนี้"
+                description="นักเรียนที่มีความคิดเห็นจากครูประจำห้องจะแสดงในส่วนนี้"
               />
             ) : (
               <>

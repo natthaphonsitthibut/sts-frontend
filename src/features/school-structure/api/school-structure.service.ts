@@ -14,6 +14,7 @@ import type {
   SchoolClassroomOption,
   SchoolTeacherMembership,
   ScopedSchool,
+  StudentClassroomCommentsResponse,
   UpdateClassroomPresentationInput,
 } from "../types/school-structure.types";
 
@@ -118,7 +119,9 @@ async function getClassroom(classroomId: string): Promise<SchoolClassroom> {
   return response.data.data;
 }
 
-async function createClassroom(input: CreateClassroomInput): Promise<SchoolClassroom> {
+async function createClassroom(
+  input: CreateClassroomInput,
+): Promise<SchoolClassroom> {
   const response = await apiClient.post<DataEnvelope<SchoolClassroom>>(
     "/school-structure/classrooms",
     input,
@@ -174,7 +177,9 @@ async function updateClassroomPresentation({
   return response.data.data;
 }
 
-async function listTeachers(params: SchoolTeacherListParams): Promise<PaginatedSchoolTeachers> {
+async function listTeachers(
+  params: SchoolTeacherListParams,
+): Promise<PaginatedSchoolTeachers> {
   const response = await apiClient.get<PaginatedSchoolTeachers>(
     "/school-structure/teachers",
     { params },
@@ -182,7 +187,9 @@ async function listTeachers(params: SchoolTeacherListParams): Promise<PaginatedS
   return response.data;
 }
 
-async function listTeacherOptions(schoolId: number): Promise<SchoolTeacherMembership[]> {
+async function listTeacherOptions(
+  schoolId: number,
+): Promise<SchoolTeacherMembership[]> {
   const response = await apiClient.get<DataEnvelope<SchoolTeacherMembership[]>>(
     "/school-structure/teachers/options",
     { params: { schoolId } },
@@ -190,11 +197,12 @@ async function listTeacherOptions(schoolId: number): Promise<SchoolTeacherMember
   return response.data.data ?? [];
 }
 
-async function listAssignments(classroomId: number): Promise<ClassroomTeacherAssignment[]> {
-  const response = await apiClient.get<DataEnvelope<ClassroomTeacherAssignment[]>>(
-    "/school-structure/assignments",
-    { params: { classroomId } },
-  );
+async function listAssignments(
+  classroomId: number,
+): Promise<ClassroomTeacherAssignment[]> {
+  const response = await apiClient.get<
+    DataEnvelope<ClassroomTeacherAssignment[]>
+  >("/school-structure/assignments", { params: { classroomId } });
   return response.data.data ?? [];
 }
 
@@ -202,10 +210,9 @@ async function createHomeroomAssignment(input: {
   classroomId: number;
   teacherMembershipId: number;
 }): Promise<ClassroomTeacherAssignment> {
-  const response = await apiClient.post<DataEnvelope<ClassroomTeacherAssignment>>(
-    "/school-structure/assignments",
-    { ...input, assignmentKind: "HOMEROOM" },
-  );
+  const response = await apiClient.post<
+    DataEnvelope<ClassroomTeacherAssignment>
+  >("/school-structure/assignments", { ...input, assignmentKind: "HOMEROOM" });
   return response.data.data;
 }
 
@@ -224,11 +231,22 @@ async function createStudentComment(input: {
   studentUuid: string;
   commentText: string;
 }): Promise<ClassroomStudentCommentResult> {
-  const response = await apiClient.post<DataEnvelope<ClassroomStudentCommentResult>>(
+  const response = await apiClient.post<
+    DataEnvelope<ClassroomStudentCommentResult>
+  >(
     `/school-structure/classrooms/${input.classroomId}/students/${encodeURIComponent(input.studentUuid)}/comments`,
     { commentText: input.commentText },
   );
   return response.data.data;
+}
+
+async function listStudentClassroomComments(
+  studentTermId: string,
+): Promise<StudentClassroomCommentsResponse> {
+  const response = await apiClient.get<StudentClassroomCommentsResponse>(
+    `/students/${encodeURIComponent(studentTermId)}/classroom-comments`,
+  );
+  return response.data;
 }
 
 async function listClassroomDailyAttendance(
@@ -300,6 +318,7 @@ export const schoolStructureService = {
   createHomeroomAssignment,
   listRoster,
   createStudentComment,
+  listStudentClassroomComments,
   listClassroomDailyAttendance,
   listClassroomStudentAttendance,
   listStudentAttendanceDays,

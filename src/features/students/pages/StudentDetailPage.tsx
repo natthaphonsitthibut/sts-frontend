@@ -14,7 +14,7 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { useManagedStudentObservations } from "../../student-observations/hooks/useStudentObservations";
+import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
 import { StudentAttendanceCalendar } from "../components/StudentAttendanceCalendar";
 import {
   StudentContactDialog,
@@ -123,8 +123,8 @@ function RiskHistoryPanel({
 }
 
 function TeacherCommentsPanel({ studentId }: { studentId: string }) {
-  const observationsQuery = useManagedStudentObservations(studentId);
-  const observations = observationsQuery.data?.data ?? [];
+  const commentsQuery = useStudentClassroomComments(studentId);
+  const comments = commentsQuery.data?.data ?? [];
 
   return (
     <Card className="p-5" data-student-teacher-comments>
@@ -132,15 +132,15 @@ function TeacherCommentsPanel({ studentId }: { studentId: string }) {
         <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
         ความคิดเห็นจากคุณครู
       </h2>
-      {observationsQuery.isLoading ? (
+      {commentsQuery.isLoading ? (
         <SkeletonStack lines={2} />
-      ) : observationsQuery.isError ? (
+      ) : commentsQuery.isError ? (
         <ErrorState
           description="ส่วนอื่นของข้อมูลนักเรียนยังใช้งานได้ตามปกติ"
-          onRetry={() => void observationsQuery.refetch()}
+          onRetry={() => void commentsQuery.refetch()}
           title="โหลดความคิดเห็นจากคุณครูไม่สำเร็จ"
         />
-      ) : observations.length === 0 ? (
+      ) : comments.length === 0 ? (
         <EmptyState
           className="border-none py-6 shadow-none"
           description="ความคิดเห็นที่ครูบันทึกจะปรากฏในส่วนนี้"
@@ -149,18 +149,21 @@ function TeacherCommentsPanel({ studentId }: { studentId: string }) {
         />
       ) : (
         <ul className="space-y-3">
-          {observations.slice(0, 3).map((observation) => (
-            <li className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={observation.id}>
+          {comments.map((comment) => (
+            <li
+              className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+              key={comment.id}
+            >
               <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
                 <strong className="font-semibold text-slate-800">
-                  ผู้รายงาน: {observation.author.displayName}
+                  ผู้รายงาน: {comment.authorDisplayName}
                 </strong>
-                <time dateTime={observation.observedAt}>
-                  {formatThaiDateTime(observation.observedAt)}
+                <time dateTime={comment.commentedAt}>
+                  {formatThaiDateTime(comment.commentedAt)}
                 </time>
               </div>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                {observation.comment || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
+                {comment.comment}
               </p>
             </li>
           ))}
@@ -253,7 +256,7 @@ export function StudentDetailPage() {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
         <div className="space-y-5 lg:col-span-2">
-          {can("student-observations") || can("manage-student-observations") ? (
+          {can("manage-student-observations") ? (
             <TeacherCommentsPanel studentId={studentId} />
           ) : null}
           <RiskHistoryPanel
