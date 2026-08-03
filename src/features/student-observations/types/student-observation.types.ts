@@ -184,6 +184,34 @@ export interface TeacherObservationReportFilters {
   sortDirection?: "asc" | "desc";
 }
 
+export interface TeacherWatchlistRow {
+  studentTermId: string;
+  studentName: string;
+  schoolId: number;
+  schoolName: string;
+  gradeLabel: string | null;
+  roomNo: number | null;
+  latestObservationId: string;
+  latestDimensionLabel: string;
+  latestConcernLevel: ObservationConcernLevel;
+  latestComment: string | null;
+  latestAuthorDisplayName: string;
+  latestObservedAt: string;
+  observationCount: number;
+}
+
+export interface TeacherWatchlistFilters {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  schoolId?: number;
+  grade?: string;
+  room?: string;
+}
+
 export interface HomeVisitRequestReport extends StudentFollowUpRequest {
   student: {
     studentTermId: string;
@@ -203,7 +231,13 @@ export interface HomeVisitRequestReportFilters {
   gradeLevelId?: number;
   roomId?: string;
   searchTerm?: string;
-  sortBy?: "studentName" | "reason" | "urgency" | "requester" | "status" | "caseStatus";
+  sortBy?:
+    | "studentName"
+    | "reason"
+    | "urgency"
+    | "requester"
+    | "status"
+    | "caseStatus";
   sortDirection?: "asc" | "desc";
 }
 

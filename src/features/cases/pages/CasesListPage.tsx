@@ -30,12 +30,11 @@ import { usePermissions } from "../../auth/hooks/usePermissions";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { CaseListFilter } from "../components/CaseListFilter";
 import { CaseTable } from "../components/CaseTable";
+import { TeacherWatchlistTable } from "../components/TeacherWatchlistTable";
 import { useCases } from "../hooks/useCases";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
-import type {
-  CaseListQuery,
-  CaseRecord,
-} from "../types/cases.types";
+import { useTeacherWatchlist } from "../../student-observations/hooks/useStudentObservations";
+import type { CaseListQuery, CaseRecord } from "../types/cases.types";
 
 const CASE_STATUS_ICONS = {
   OPEN: AlertCircle,
@@ -56,16 +55,17 @@ const CASE_TAB_ROUTES = {
   history: "/cases/history",
 } as const;
 
-function getFallbackCaseStatusCounts(cases: readonly CaseRecord[]): Record<string, number> {
-  return cases.reduce<Record<string, number>>(
-    (counts, caseRecord) => {
-      return {
-        ...counts,
-        [caseRecord.status]: (counts[caseRecord.status] ?? 0) + 1,
-      };
-    },
-    {},
-  );
+type CaseGroup = "risk" | "watchlist";
+
+function getFallbackCaseStatusCounts(
+  cases: readonly CaseRecord[],
+): Record<string, number> {
+  return cases.reduce<Record<string, number>>((counts, caseRecord) => {
+    return {
+      ...counts,
+      [caseRecord.status]: (counts[caseRecord.status] ?? 0) + 1,
+    };
+  }, {});
 }
 
 function getInitialSearchQuery(state: unknown): string {
@@ -79,14 +79,26 @@ function getInitialSearchQuery(state: unknown): string {
 export function CasesListPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const initialQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const initialQuery = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(CASE_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
-  const effectiveTab = activeTab === "history" && canViewAuditLog ? "history" : "list";
-  const [searchQuery, setSearchQuery] = useState(() => getInitialSearchQuery(location.state));
-  const [status, setStatus] = useState(() => initialQuery.get("status") || "ALL");
-  const [page, setPage] = useState(1);
+  const canViewWatchlist =
+    can("review-cases") && can("manage-student-observations");
+  const effectiveTab =
+    activeTab === "history" && canViewAuditLog ? "history" : "list";
+  const [caseGroup, setCaseGroup] = useState<CaseGroup>("risk");
+  const [searchQuery, setSearchQuery] = useState(() =>
+    getInitialSearchQuery(location.state),
+  );
+  const [status, setStatus] = useState(
+    () => initialQuery.get("status") || "ALL",
+  );
+  const [riskPage, setRiskPage] = useState(1);
+  const [watchlistPage, setWatchlistPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const schoolArea = useSchoolAreaFilter({
     province: initialQuery.get("province") || undefined,
@@ -119,7 +131,7 @@ export function CasesListPage() {
       grade: scope.grade || undefined,
       room: scope.room || undefined,
       searchTerm: debouncedSearch || undefined,
-      page,
+      page: riskPage,
       limit: rowsPerPage,
     }),
     [
@@ -131,12 +143,27 @@ export function CasesListPage() {
       scope.grade,
       scope.room,
       debouncedSearch,
-      page,
+      riskPage,
       rowsPerPage,
     ],
   );
 
-  const { cases, meta, isLoading, isError, refetch, dataUpdatedAt } = useCases(query);
+  const { cases, meta, isLoading, isError, refetch, dataUpdatedAt } =
+    useCases(query);
+  const watchlist = useTeacherWatchlist(
+    {
+      province: schoolArea.province || undefined,
+      district: schoolArea.district || undefined,
+      subDistrict: schoolArea.subDistrict || undefined,
+      schoolId: scope.schoolId ? Number(scope.schoolId) : undefined,
+      grade: scope.grade || undefined,
+      room: scope.room || undefined,
+      searchTerm: debouncedSearch || undefined,
+      page: watchlistPage,
+      limit: rowsPerPage,
+    },
+    effectiveTab === "list" && caseGroup === "watchlist" && canViewWatchlist,
+  );
   const workflowStatuses = useStatusCatalog("CASE_WORKFLOW");
   const statuses = workflowStatuses.items;
   const totalCount = meta?.totalCount ?? 0;
@@ -148,40 +175,46 @@ export function CasesListPage() {
   );
   const summaryStatuses = useMemo(
     () =>
-      SUMMARY_STATUS_CODES.map((code) => statuses.find((item) => item.code === code)).filter(
-        (item): item is NonNullable<typeof item> => Boolean(item),
-      ),
+      SUMMARY_STATUS_CODES.map((code) =>
+        statuses.find((item) => item.code === code),
+      ).filter((item): item is NonNullable<typeof item> => Boolean(item)),
     [statuses],
   );
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
   }
 
   function handleStatusChange(value: string): void {
+    setCaseGroup("risk");
     setStatus(value);
-    setPage(1);
+    setRiskPage(1);
   }
 
   function handleSchoolChange(value: string): void {
     scope.setSchoolId(value);
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
   }
 
   function handleGradeChange(value: string): void {
     scope.setGrade(value);
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
   }
 
   function handleRoomChange(value: string): void {
     scope.setRoom(value);
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
   }
 
   function handleRowsPerPageChange(value: number): void {
     setRowsPerPage(value);
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
   }
 
   function handleClearFilters(): void {
@@ -189,7 +222,24 @@ export function CasesListPage() {
     setStatus("ALL");
     schoolArea.setProvince("");
     scope.reset();
-    setPage(1);
+    setRiskPage(1);
+    setWatchlistPage(1);
+  }
+
+  function handleCaseGroupChange(value: string): void {
+    if (value === "watchlist" && canViewWatchlist) {
+      setCaseGroup("watchlist");
+      return;
+    }
+    setCaseGroup("risk");
+  }
+
+  async function refreshActiveList(): Promise<void> {
+    if (caseGroup === "watchlist" && canViewWatchlist) {
+      await Promise.all([refetch(), watchlist.refetch()]);
+      return;
+    }
+    await refetch();
   }
 
   function openCreateLink(caseRecord: CaseRecord): void {
@@ -201,7 +251,8 @@ export function CasesListPage() {
           student_name: caseRecord.student_name,
           student_school: caseRecord.student_school ?? null,
           student_address: caseRecord.student_address ?? null,
-          reason_flagged: caseRecord.reason_flagged ?? caseRecord.reason ?? null,
+          reason_flagged:
+            caseRecord.reason_flagged ?? caseRecord.reason ?? null,
         },
       },
     });
@@ -225,7 +276,7 @@ export function CasesListPage() {
             ) : undefined
           }
           exportAction={
-            can("export-data") ? (
+            caseGroup === "risk" && can("export-data") ? (
               <Button
                 icon={FileDown}
                 onClick={() => navigate(filteredCasesExportUrl)}
@@ -235,8 +286,12 @@ export function CasesListPage() {
               </Button>
             ) : undefined
           }
-          onRefresh={refetch}
-          updatedAt={dataUpdatedAt}
+          onRefresh={refreshActiveList}
+          updatedAt={
+            caseGroup === "watchlist"
+              ? Math.max(dataUpdatedAt, watchlist.dataUpdatedAt)
+              : dataUpdatedAt
+          }
           onClearFilters={handleClearFilters}
           onSearchChange={handleSearchChange}
           onStatusChange={handleStatusChange}
@@ -252,6 +307,7 @@ export function CasesListPage() {
           }
           status={status}
           statuses={statuses}
+          showStatusFilter={caseGroup === "risk"}
         />
       ) : (
         <ListPageToolbar
@@ -311,7 +367,9 @@ export function CasesListPage() {
                 label: item.label,
                 value: statusCounts[item.code] ?? 0,
                 tone: item.summaryTone ?? undefined,
-                icon: CASE_STATUS_ICONS[item.code as keyof typeof CASE_STATUS_ICONS],
+                icon: CASE_STATUS_ICONS[
+                  item.code as keyof typeof CASE_STATUS_ICONS
+                ],
                 onSelect: () =>
                   handleStatusChange(status === item.code ? "ALL" : item.code),
                 selected: status === item.code,
@@ -319,7 +377,49 @@ export function CasesListPage() {
               })),
             ]}
           />
-          {cases.length === 0 ? (
+          {canViewWatchlist ? (
+            <Tabs
+              aria-label="กลุ่มนักเรียนในหน้าเคสติดตาม"
+              className="w-full"
+              onChange={handleCaseGroupChange}
+              options={[
+                { value: "risk", label: "กลุ่มเสี่ยง" },
+                { value: "watchlist", label: "กลุ่มเฝ้าระวัง" },
+              ]}
+              value={caseGroup}
+            />
+          ) : null}
+
+          {caseGroup === "watchlist" && canViewWatchlist ? (
+            watchlist.isLoading ? (
+              <SkeletonTable />
+            ) : watchlist.isError ? (
+              <ErrorState
+                title="ไม่สามารถโหลดกลุ่มเฝ้าระวังได้"
+                description="เกิดข้อผิดพลาดระหว่างโหลดความคิดเห็นจากคุณครู"
+                onRetry={() => void watchlist.refetch()}
+              />
+            ) : (watchlist.data?.data.length ?? 0) === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="ไม่พบนักเรียนกลุ่มเฝ้าระวัง"
+                description="นักเรียนที่มีข้อสังเกตจากคุณครูจะแสดงในส่วนนี้"
+              />
+            ) : (
+              <>
+                <TeacherWatchlistTable rows={watchlist.data?.data ?? []} />
+                <Pagination
+                  onPageChange={setWatchlistPage}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  page={watchlistPage}
+                  rowsPerPage={rowsPerPage}
+                  rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                  totalCount={watchlist.data?.meta.totalCount ?? 0}
+                  unitLabel="คน"
+                />
+              </>
+            )
+          ) : cases.length === 0 ? (
             <EmptyState
               icon={ClipboardList}
               title="ไม่พบเคสติดตามนักเรียน"
@@ -333,9 +433,9 @@ export function CasesListPage() {
                 rows={cases}
               />
               <Pagination
-                onPageChange={setPage}
+                onPageChange={setRiskPage}
                 onRowsPerPageChange={handleRowsPerPageChange}
-                page={page}
+                page={riskPage}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={PAGE_SIZE_OPTIONS}
                 totalCount={totalCount}

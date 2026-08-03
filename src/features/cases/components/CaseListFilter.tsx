@@ -19,6 +19,7 @@ interface CaseListFilterProps {
   updatedAt: number;
   onClearFilters: () => void;
   statuses: readonly StatusCatalogItem[];
+  showStatusFilter?: boolean;
 }
 
 export function CaseListFilter({
@@ -33,6 +34,7 @@ export function CaseListFilter({
   updatedAt,
   onClearFilters,
   statuses,
+  showStatusFilter = true,
 }: CaseListFilterProps) {
   return (
     <ListPageToolbar
@@ -55,18 +57,20 @@ export function CaseListFilter({
       filters={
         <>
           {schoolFilters}
-          <FilterSelect
-            ariaLabel="กรองตามสถานะ"
-            onChange={onStatusChange}
-            value={status}
-          >
-            <option value="ALL">ทั้งหมด</option>
-            {statuses.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.label}
-              </option>
-            ))}
-          </FilterSelect>
+          {showStatusFilter ? (
+            <FilterSelect
+              ariaLabel="กรองตามสถานะ"
+              onChange={onStatusChange}
+              value={status}
+            >
+              <option value="ALL">ทั้งหมด</option>
+              {statuses.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </FilterSelect>
+          ) : null}
         </>
       }
     />

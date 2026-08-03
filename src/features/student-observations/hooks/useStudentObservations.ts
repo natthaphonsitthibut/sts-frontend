@@ -9,6 +9,7 @@ import type {
   HomeVisitRequestReportFilters,
   ReviewFollowUpRequestInput,
   TeacherObservationReportFilters,
+  TeacherWatchlistFilters,
 } from "../types/student-observation.types";
 
 const KEY = "student-observations";
@@ -160,7 +161,9 @@ export function useCreateManagedFollowUp(studentTermId: string) {
       await client.invalidateQueries({
         queryKey: managedKey(studentTermId, "follow-ups"),
       });
-      await client.invalidateQueries({ queryKey: [KEY, "home-visit-requests"] });
+      await client.invalidateQueries({
+        queryKey: [KEY, "home-visit-requests"],
+      });
       await client.invalidateQueries({ queryKey: [KEY, "teacher-reports"] });
     },
   });
@@ -222,18 +225,33 @@ export function useCreateTaskLinkStudentObservation(
   });
 }
 
-export function useTeacherObservationReports(filters: TeacherObservationReportFilters) {
+export function useTeacherObservationReports(
+  filters: TeacherObservationReportFilters,
+) {
   return useQuery({
     queryKey: [KEY, "teacher-reports", filters],
-    queryFn: () => studentObservationsService.listTeacherObservationReports(filters),
+    queryFn: () =>
+      studentObservationsService.listTeacherObservationReports(filters),
   });
 }
 
 export function useTeacherObservationReport(observationId: string) {
   return useQuery({
     queryKey: [KEY, "teacher-report", observationId],
-    queryFn: () => studentObservationsService.getTeacherObservationReport(observationId),
+    queryFn: () =>
+      studentObservationsService.getTeacherObservationReport(observationId),
     enabled: Boolean(observationId),
+  });
+}
+
+export function useTeacherWatchlist(
+  filters: TeacherWatchlistFilters,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [KEY, "teacher-watchlist", filters],
+    queryFn: () => studentObservationsService.listTeacherWatchlist(filters),
+    enabled,
   });
 }
 
@@ -303,7 +321,9 @@ export function useReviewFollowUp(studentTermId: string) {
       await client.invalidateQueries({
         queryKey: managedKey(studentTermId, "follow-ups"),
       });
-      await client.invalidateQueries({ queryKey: [KEY, "home-visit-requests"] });
+      await client.invalidateQueries({
+        queryKey: [KEY, "home-visit-requests"],
+      });
       await client.invalidateQueries({ queryKey: [KEY, "home-visit-request"] });
     },
   });

@@ -18,6 +18,8 @@ import type {
   StudentObservationSummary,
   TeacherObservationReport,
   TeacherObservationReportFilters,
+  TeacherWatchlistFilters,
+  TeacherWatchlistRow,
 } from "../types/student-observation.types";
 
 const TOKEN_HEADER = "x-teacher-access-token";
@@ -204,10 +206,9 @@ async function createManagedFollowUp(
 async function listTeacherObservationReports(
   filters: TeacherObservationReportFilters,
 ): Promise<PaginatedEnvelope<TeacherObservationReport>> {
-  const response = await apiClient.get<PaginatedEnvelope<TeacherObservationReport>>(
-    "/student-risk-report/teacher-reports",
-    { params: filters },
-  );
+  const response = await apiClient.get<
+    PaginatedEnvelope<TeacherObservationReport>
+  >("/student-risk-report/teacher-reports", { params: filters });
   return response.data;
 }
 
@@ -220,17 +221,28 @@ async function getTeacherObservationReport(
   return response.data.data;
 }
 
-async function listHomeVisitRequests(
-  filters: HomeVisitRequestReportFilters,
-): Promise<PaginatedEnvelope<HomeVisitRequestReport>> {
-  const response = await apiClient.get<PaginatedEnvelope<HomeVisitRequestReport>>(
-    "/student-risk-report/home-visit-requests",
+async function listTeacherWatchlist(
+  filters: TeacherWatchlistFilters,
+): Promise<PaginatedEnvelope<TeacherWatchlistRow>> {
+  const response = await apiClient.get<PaginatedEnvelope<TeacherWatchlistRow>>(
+    "/student-risk-report/teacher-watchlist",
     { params: filters },
   );
   return response.data;
 }
 
-async function getHomeVisitRequest(requestId: string): Promise<HomeVisitRequestReport> {
+async function listHomeVisitRequests(
+  filters: HomeVisitRequestReportFilters,
+): Promise<PaginatedEnvelope<HomeVisitRequestReport>> {
+  const response = await apiClient.get<
+    PaginatedEnvelope<HomeVisitRequestReport>
+  >("/student-risk-report/home-visit-requests", { params: filters });
+  return response.data;
+}
+
+async function getHomeVisitRequest(
+  requestId: string,
+): Promise<HomeVisitRequestReport> {
   const response = await apiClient.get<DataEnvelope<HomeVisitRequestReport>>(
     `/student-risk-report/home-visit-requests/${requestId}`,
   );
@@ -244,9 +256,7 @@ async function getHumanRiskReview(
     DataEnvelope<HumanRiskReview | null> & {
       meta: { currentCalculatedAttendanceRisk: string };
     }
-  >(
-    `/students/${studentTermId}/risk-review`,
-  );
+  >(`/students/${studentTermId}/risk-review`);
   return {
     review: response.data.data,
     currentCalculatedAttendanceRisk:
@@ -349,6 +359,7 @@ export const studentObservationsService = {
   createTaskLinkObservation,
   listTeacherObservationReports,
   getTeacherObservationReport,
+  listTeacherWatchlist,
   listHomeVisitRequests,
   getHomeVisitRequest,
   listManagedObservations,
