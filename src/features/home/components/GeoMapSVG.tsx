@@ -1,5 +1,7 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ZoomIn, ZoomOut } from "lucide-react";
+import type { HomeDashboardRiskAreaPoint } from "../types/home-dashboard.types";
 
 const PROVINCE_MAP: Record<string, string> = {
   "Amnat Charoen": "อำนาจเจริญ",
@@ -82,7 +84,27 @@ const PROVINCE_MAP: Record<string, string> = {
   Yasothon: "ยโสธร",
 };
 
-const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
+interface GeoMapSVGProps extends React.SVGProps<SVGSVGElement> {
+  data?: HomeDashboardRiskAreaPoint[];
+  focusedProvince?: string;
+  onProvinceClick?: (provinceName: string) => void;
+}
+
+// Heatmap color scale (defined outside component to satisfy exhaustive-deps)
+const HEATMAP_COLORS = [
+  "#f8fafc", // 0: slate-50
+  "#fecaca", // 1: red-200
+  "#f87171", // 2: red-400
+  "#ef4444", // 3: red-500
+  "#b91c1c", // 4: red-700
+];
+
+const GeoMapSVG = ({
+  data,
+  focusedProvince,
+  onProvinceClick,
+  ...props
+}: GeoMapSVGProps) => {
   const [hovered, setHovered] = useState<{
     id: string;
     name: string;
@@ -93,8 +115,31 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [focusedLabel, setFocusedLabel] = useState<{
+    x: number;
+    y: number;
+    name: string;
+  } | null>(null);
+
+  // Keep last non-empty data in state (updating during render is safe and avoids effect lints)
+  const [cachedData, setCachedData] = useState<HomeDashboardRiskAreaPoint[]>(
+    data || [],
+  );
+  const [prevData, setPrevData] = useState<
+    HomeDashboardRiskAreaPoint[] | undefined
+  >(undefined);
+
+  if (data !== prevData) {
+    setPrevData(data);
+    if (data && data.length > 0) {
+      setCachedData(data);
+    }
+  }
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const hasDragged = useRef(false);
+  const prevFocusedRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -102,6 +147,7 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+      setIsAnimating(false);
       setZoomScale((prev) => {
         const zoomIntensity = 0.15;
         const delta = -e.deltaY * zoomIntensity * 0.05;
@@ -119,9 +165,144 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
     };
   }, []);
 
+  // Zoom and center map on focused province
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const prevProvince = prevFocusedRef.current;
+    prevFocusedRef.current = focusedProvince;
+
+    if (!focusedProvince) {
+      setIsAnimating(true);
+      setZoomScale(1.0);
+      setPanOffset({ x: 0, y: 0 });
+      const t = setTimeout(() => setIsAnimating(false), 600);
+      return () => clearTimeout(t);
+    }
+
+    // Helper: compute zoom target for a province name.
+    // Uses clientWidth/clientHeight which are NOT affected by CSS transforms,
+    // so we can call this at any time without interrupting an ongoing animation.
+    const computeTarget = () => {
+      // Resolve English name
+      let englishName = focusedProvince;
+      if (!(focusedProvince in PROVINCE_MAP)) {
+        const entry = Object.entries(PROVINCE_MAP).find(
+          ([, thai]) => thai === focusedProvince,
+        );
+        if (entry) englishName = entry[0];
+      }
+
+      const ids = [englishName];
+      if (englishName === "Songkhla") ids.push("Songkhla (Songkhla Lake)");
+      if (englishName === "Phatthalung")
+        ids.push("Phatthalung (Songkhla Lake)");
+
+      const paths: SVGGraphicsElement[] = ids
+        .map((id) => svg.querySelector<SVGGraphicsElement>(`path[id="${id}"]`))
+        .filter((p): p is SVGGraphicsElement => p !== null);
+
+      if (paths.length === 0) return null;
+
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      paths.forEach((path) => {
+        const b = path.getBBox();
+        minX = Math.min(minX, b.x);
+        minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.width);
+        maxY = Math.max(maxY, b.y + b.height);
+      });
+
+      const bw = maxX - minX;
+      const bh = maxY - minY;
+      const bcx = (minX + maxX) / 2;
+      const bcy = (minY + maxY) / 2;
+
+      // clientWidth/clientHeight give the layout size unaffected by CSS transforms
+      const W = svg.clientWidth;
+      const H = svg.clientHeight;
+      if (W === 0 || H === 0) return null;
+
+      const scaleX = W / 800;
+      const scaleY = H / 1431;
+      const renderScale = Math.min(scaleX, scaleY);
+
+      const contentW = 800 * renderScale;
+      const contentH = 1431 * renderScale;
+
+      const offsetX = (W - contentW) / 2;
+      const offsetY = (H - contentH) / 2;
+
+      const pcx = offsetX + bcx * renderScale;
+      const pcy = offsetY + bcy * renderScale;
+
+      const newScale = Math.min(
+        (W * 0.5) / (bw * renderScale),
+        (H * 0.5) / (bh * renderScale),
+        8.0,
+      );
+
+      const tx = newScale * (W / 2 - pcx);
+      const ty = newScale * (H / 2 - pcy);
+
+      return { scale: newScale, x: tx, y: ty };
+    };
+
+    // Province-to-province: zoom out first, then zoom into the new one
+    const isProvinceSwitch = !!prevProvince && prevProvince !== focusedProvince;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (isProvinceSwitch) {
+      // Step 1: animate zoom-out to full map view
+      setIsAnimating(true);
+      setZoomScale(1.0);
+      setPanOffset({ x: 0, y: 0 });
+
+      // Step 2: after zoom-out animation completes, zoom into the new province
+      const t1 = setTimeout(() => {
+        const target = computeTarget();
+        if (!target) {
+          setIsAnimating(false);
+          return;
+        }
+        // Still animating — just update the target, CSS transition handles it
+        setZoomScale(target.scale);
+        setPanOffset({ x: target.x, y: target.y });
+
+        const t2 = setTimeout(() => setIsAnimating(false), 600);
+        timers.push(t2);
+      }, 550);
+      timers.push(t1);
+    } else {
+      // Direct zoom (from full map or first selection)
+      const target = computeTarget();
+      if (!target) return;
+
+      setIsAnimating(true);
+      setZoomScale(target.scale);
+      setPanOffset({ x: target.x, y: target.y });
+
+      const t = setTimeout(() => setIsAnimating(false), 600);
+      timers.push(t);
+    }
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [focusedProvince]);
+
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (zoomScale <= 1.0) return;
     if (e.button !== 0) return; // Only left click
+    hasDragged.current = false;
+    setIsAnimating(false); // Cancel any pan/zoom animation
+    if (zoomScale <= 1.0) return;
 
     setIsDragging(true);
     setDragStart({
@@ -130,8 +311,46 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
     });
   };
 
+  const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (hasDragged.current) return; // Was a drag, not a click
+    const target = e.target as SVGElement;
+    if (target.tagName !== "path") return;
+    const id = target.getAttribute("id");
+    if (!id) return;
+    // Normalize grouped lake variants to their canonical province
+    const canonicalId =
+      id === "Songkhla (Songkhla Lake)"
+        ? "Songkhla"
+        : id === "Phatthalung (Songkhla Lake)"
+          ? "Phatthalung"
+          : id;
+    // Convert to Thai name (API expects Thai)
+    const thaiName = PROVINCE_MAP[canonicalId] ?? canonicalId;
+
+    if (thaiName === focusedProvince) {
+      onProvinceClick?.("");
+    } else {
+      onProvinceClick?.(thaiName);
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoomScale((prev) => Math.min(prev + 0.5, 8.0));
+  };
+
+  const handleZoomOut = () => {
+    setZoomScale((prev) => {
+      const newScale = Math.max(prev - 0.5, 1.0);
+      if (newScale === 1.0) {
+        setPanOffset({ x: 0, y: 0 });
+      }
+      return newScale;
+    });
+  };
+
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (isDragging) {
+      hasDragged.current = true;
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
       setPanOffset({ x: newX, y: newY });
@@ -202,17 +421,184 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
     return "";
   })();
 
+  // Persistent highlight CSS for province selected from the ranking chart
+  const focusedEnglishName = (() => {
+    if (!focusedProvince) return null;
+    if (focusedProvince in PROVINCE_MAP) return focusedProvince;
+    const entry = Object.entries(PROVINCE_MAP).find(
+      ([, thai]) => thai === focusedProvince,
+    );
+    return entry?.[0] ?? null;
+  })();
+
+  const focusedProvinceCss = (() => {
+    if (!focusedEnglishName) return "";
+    const ids = [focusedEnglishName];
+    if (focusedEnglishName === "Songkhla") ids.push("Songkhla (Songkhla Lake)");
+    if (focusedEnglishName === "Phatthalung")
+      ids.push("Phatthalung (Songkhla Lake)");
+    const sel = ids.map((id) => `path[id="${id}"]`).join(", ");
+    return `
+      ${sel} {
+        
+        stroke: #ffffff !important;
+        stroke-width: 2 !important;
+        filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.4)) !important;
+      }
+    `;
+  })();
+
+  // Compute the center of the focused province in SVG coordinates for label placement
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!focusedEnglishName || !svg) {
+      setFocusedLabel(null);
+      return;
+    }
+    const ids = [focusedEnglishName];
+    if (focusedEnglishName === "Songkhla") ids.push("Songkhla (Songkhla Lake)");
+    if (focusedEnglishName === "Phatthalung")
+      ids.push("Phatthalung (Songkhla Lake)");
+
+    const paths: SVGGraphicsElement[] = ids
+      .map((id) => svg.querySelector<SVGGraphicsElement>(`path[id="${id}"]`))
+      .filter((p): p is SVGGraphicsElement => p !== null);
+
+    if (paths.length === 0) {
+      setFocusedLabel(null);
+      return;
+    }
+
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    paths.forEach((path) => {
+      const b = path.getBBox();
+      minX = Math.min(minX, b.x);
+      minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.width);
+      maxY = Math.max(maxY, b.y + b.height);
+    });
+
+    const thaiName = PROVINCE_MAP[focusedEnglishName] ?? focusedEnglishName;
+    setFocusedLabel({
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      name: thaiName,
+    });
+  }, [focusedEnglishName]);
+
+  // Heatmap configuration
+
+  const heatmapConfig = useMemo(() => {
+    if (!cachedData || cachedData.length === 0) return null;
+    const maxCount = Math.max(...cachedData.map((d) => d.count), 0);
+
+    // Normalize logic: split maxCount into 4 buckets (since we have 4 colors for > 0)
+    const bucketSize = Math.max(
+      Math.ceil(maxCount / (HEATMAP_COLORS.length - 1)),
+      1,
+    );
+
+    const legend = [{ color: HEATMAP_COLORS[0], label: "0 คน" }];
+
+    if (maxCount > 0) {
+      for (let i = 1; i < HEATMAP_COLORS.length; i++) {
+        const min = (i - 1) * bucketSize + 1;
+        const max = i * bucketSize;
+
+        if (min > maxCount && i < HEATMAP_COLORS.length - 1) {
+          // Skip intermediate empty buckets if data is too small, but keep the highest bucket
+          continue;
+        }
+
+        let bucketLabel: string;
+        if (i === HEATMAP_COLORS.length - 1) {
+          bucketLabel =
+            min === maxCount
+              ? `${min.toLocaleString("th-TH")} คนขึ้นไป`
+              : `${min.toLocaleString("th-TH")} คนขึ้นไป`;
+        } else if (min === max) {
+          bucketLabel = `${min.toLocaleString("th-TH")} คน`;
+        } else {
+          bucketLabel = `${min.toLocaleString("th-TH")} - ${max.toLocaleString("th-TH")} คน`;
+        }
+
+        legend.push({
+          color: HEATMAP_COLORS[i],
+          label: bucketLabel,
+        });
+      }
+    }
+
+    // CSS generation
+    const css = cachedData
+      .map((d) => {
+        const englishNames = Object.entries(PROVINCE_MAP)
+          .filter(([, thai]) => thai === d.label)
+          .map(([english]) => english);
+
+        const ids = englishNames.flatMap((name) => {
+          if (name === "Songkhla")
+            return ["Songkhla", "Songkhla (Songkhla Lake)"];
+          if (name === "Phatthalung")
+            return ["Phatthalung", "Phatthalung (Songkhla Lake)"];
+          return [name];
+        });
+
+        if (ids.length === 0) return "";
+
+        let colorIndex = 0;
+        if (d.count > 0) {
+          colorIndex = Math.min(
+            Math.ceil(d.count / bucketSize),
+            HEATMAP_COLORS.length - 1,
+          );
+        }
+        const color = HEATMAP_COLORS[colorIndex];
+
+        const selectors = ids.map((id) => `path[id="${id}"]`).join(", ");
+        return `
+        ${selectors} {
+          fill: ${color} !important;
+        }
+      `;
+      })
+      .join("\n");
+
+    return { css, legend };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cachedData is derived from ref, use `data` as trigger
+  }, [data]);
+
   return (
     <div className="relative h-[700px] w-[auto] bg-white rounded-xl border border-slate-200 p-5 shadow-card transition-shadow hover:shadow-card-hover flex flex-col select-none overflow-hidden">
-      <div className="flex items-center gap-2 self-start mb-4 z-10">
-        <span className="size-2 rounded-full bg-primary" />
-        <h3 className="text-sm font-semibold text-slate-800">
-          แผนที่ความเสี่ยงรายจังหวัด
-        </h3>
-        {zoomScale > 1.0 && (
-          <span className="text-xs font-medium text-slate-400">
-            (ซูม: {Math.round(zoomScale * 100)}% - ดึงลากเพื่อขยับได้)
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 self-stretch mb-4 z-10">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-primary" />
+          <h3 className="text-sm font-semibold text-slate-800">
+            แผนที่ความเสี่ยงรายจังหวัด
+          </h3>
+          {zoomScale > 1.0 && (
+            <span className="text-xs font-medium text-slate-400">
+              (ซูม: {Math.round(zoomScale * 100)}% - ดึงลากเพื่อขยับได้)
+            </span>
+          )}
+        </div>
+
+        {heatmapConfig && (
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+            {heatmapConfig.legend.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5">
+                <span
+                  className="size-3 rounded-[3px] border border-slate-200 shadow-sm"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="font-medium">{item.label}</span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
       <svg
@@ -226,10 +612,14 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
-        className={`geo-map flex-1 min-h-0 outline-none ${zoomScale > 1.0 ? "cursor-grab active:cursor-grabbing" : ""} ${className ?? ""}`}
+        onClick={handleClick}
+        className={`geo-map flex-1 min-h-0 outline-none ${isDragging ? "cursor-grabbing" : zoomScale > 1.0 ? "cursor-grab" : ""}`}
         style={{
           transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
           transformOrigin: "center center",
+          transition: isAnimating
+            ? "transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+            : "none",
         }}
         {...props}
       >
@@ -242,12 +632,14 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
             transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
             cursor: pointer;
           }
-          .geo-map path:hover {
-            fill: var(--color-primary, #0f49bd) !important;
+          path:hover {
+            fill: #505050ff !important;
             stroke: #ffffff !important;
             stroke-width: 2.5;
-            filter: drop-shadow(0 2px 4px rgba(15, 73, 189, 0.15));
+            filter: drop-shadow(0 2px 4px rgba(179, 179, 179, 0.15));
           }
+          ${heatmapConfig?.css || ""}
+          ${focusedProvinceCss}
           ${highlightedGroupCss}
         `}</style>
         <path
@@ -573,7 +965,50 @@ const GeoMapSVG = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
           d="M 715.48 412.03 717.87 415.82 720.92 415.88 719.8 421.69 701.56 419.01 695.37 422.12 695.33 422.27 695.3 422.37 695.12 422.49 695.01 422.55 694.72 423.08 694.54 423.29 694.5 423.33 694.15 423.87 694.13 423.93 693.95 424.29 693.91 424.36 693.89 424.38 693.86 424.42 693.85 424.45 693.81 424.51 693.8 424.52 693.77 424.57 693.68 424.69 693.67 424.71 693.6 424.85 691.22 428.37 692.67 430.4 692.6 430.44 692.69 430.84 692.69 430.89 692.47 430.8 692.22 430.78 692.17 430.81 692.2 430.95 692.24 431.09 692.1 431.3 691.97 431.49 691.98 431.53 691.99 431.64 691.84 431.79 691.65 431.91 691.68 432.11 691.67 432.13 691.66 432.21 691.49 432.36 691.32 432.38 690.99 432.5 690.86 432.62 690.59 432.55 690.55 432.51 690.44 432.44 690.36 432.64 690.13 432.58 690.1 432.63 690.04 432.8 689.96 432.93 689.86 433 689.86 433.44 689.99 433.47 689.93 433.62 689.86 433.78 689.97 433.85 690.11 434.09 689.99 434.2 689.83 434.32 689.92 434.71 689.98 434.98 689.97 435.2 689.8 435.59 689.64 435.63 689.56 435.74 689.28 435.8 689.36 435.91 689.38 436.15 689.29 436.24 689.25 436.29 685.06 442.38 682.76 452.53 682.36 458.91 684.07 459.78 683.86 465.21 686.27 470.6 690.67 472.9 686.81 475 681.18 475.48 678.53 478.5 677.42 483.02 679.46 489.92 682.01 493.9 680.53 499.2 678.53 498.85 675.72 493.97 670.08 493.86 665.32 491.16 664.01 487.49 659.03 481.03 655.65 479.03 653.34 472.87 653.37 471.46 660.15 468.04 655.03 458.57 654.73 451.72 654.78 451.65 654.79 451.27 654.77 451.19 654.69 450.9 654.69 450.81 654.59 450.47 654.52 450.31 654.45 450.21 654.39 450.14 654.3 450.04 654.17 450.01 654.08 450 653.95 449.98 653.86 449.98 653.77 449.97 653.68 449.95 653.6 449.91 650.93 447.74 644.85 450.42 643.11 440.45 644.35 438.14 644.39 438.06 644.38 437.98 644.38 437.85 644.4 437.81 644.48 437.77 644.57 437.74 644.61 437.73 644.71 437.65 644.76 437.58 644.79 437.49 644.79 437.36 644.84 437.29 644.88 437.27 644.93 437.16 644.89 437.08 644.81 437.06 644.89 436.8 644.98 436.74 644.99 436.52 644.87 436.65 644.8 436.6 644.79 436.52 644.85 436.29 644.83 436.2 644.72 436.07 644.7 435.98 644.71 435.94 644.69 435.86 644.67 435.82 644.59 435.79 644.5 435.79 644.39 435.72 644.36 435.64 644.37 435.51 644.44 435.46 644.42 435.37 644.25 435.3 644.4 435.1 644.44 435.07 644.44 435 644.35 435.03 644.27 435.04 644.22 434.97 644.19 434.89 644.18 434.8 644.18 434.71 644.1 434.62 644.06 434.62 643.97 434.62 643.9 434.66 643.96 434.7 643.96 434.79 643.88 434.83 643.84 434.9 643.75 435.04 643.64 435.11 643.47 435.23 643.47 435.31 643.49 435.35 643.57 435.4 643.58 435.48 643.54 435.55 643.49 435.56 643.42 435.52 643.32 435.37 643.13 435.47 643.2 435.59 643.18 435.67 642.93 435.7 642.89 435.62 643 435.49 642.95 435.44 642.75 435.37 642.71 435.3 642.72 435.08 642.68 435.01 642.66 434.83 642.72 434.72 642.79 434.67 643 434.68 643.01 434.59 642.97 434.58 642.98 434.51 643.02 434.43 643.02 434.34 643.05 434.21 643.15 434.13 643.27 434.05 643.3 433.95 643.36 433.88 643.39 433.85 643.46 433.79 643.58 433.67 643.64 433.6 643.66 433.56 643.69 433.44 643.57 433.31 643.51 433.24 643.51 433.2 643.54 433.12 643.6 433.16 643.63 433.19 643.7 433.25 643.76 433.05 643.77 432.97 643.85 433 643.92 433.06 644 433.09 644.2 432.96 644.26 432.89 644.37 432.82 644.38 432.63 644.32 432.56 644.27 432.49 644.3 432.42 644.39 432.5 644.45 432.57 644.53 432.59 644.62 432.59 644.71 432.57 644.75 432.55 644.83 432.52 644.87 432.5 645.04 432.43 645.12 432.42 645.17 432.42 645.26 432.42 645.35 432.42 645.44 432.44 645.65 432.44 645.78 432.39 645.91 432.37 646 432.4 646.08 432.43 646.21 432.47 646.24 432.41 646.19 432.34 646.25 432.27 646.32 432.21 650.65 433.07 650.7 433.02 650.75 432.82 650.91 432.78 650.95 432.76 651.05 432.69 651.09 432.56 651.37 432.46 651.45 432.42 651.5 432.3 651.52 432.22 651.53 432.18 651.57 432.1 651.74 431.91 651.79 431.81 651.84 431.7 651.82 431.66 651.87 431.47 651.83 431.27 651.8 431.18 651.74 431.13 651.66 431.08 651.64 431.04 651.63 430.91 651.62 430.83 651.57 430.75 651.5 430.69 651.45 430.62 651.4 430.55 651.27 430.45 651.3 430.33 651.35 430.26 651.5 430.09 651.6 430 651.67 429.9 651.71 429.87 651.78 429.77 652.02 429.52 652.04 429.39 652.06 429.35 652.12 429.29 652.2 429.14 652.17 429.06 652.11 428.99 652.13 428.91 652.16 428.89 652.25 428.86 652.3 428.74 650.75 423.88 651.9 421.38 651.89 421.3 651.88 420.96 651.98 420.87 652 420.83 652.03 420.75 652.03 420.71 652.09 420.55 656.24 419.46 658.74 416.53 658.82 416.55 658.86 416.57 658.95 416.55 658.99 416.47 659.07 416.47 659.29 416.55 659.38 416.53 659.47 416.55 659.55 416.58 659.61 416.64 659.66 416.71 659.8 416.64 659.88 416.54 659.98 416.46 660.11 416.45 660.32 416.38 660.46 416.28 660.49 416.25 660.54 416.18 660.56 416.14 660.61 416.07 660.65 415.98 660.66 415.94 660.69 415.86 660.75 415.79 660.8 415.72 660.85 415.65 660.92 415.6 661.01 415.57 661.07 415.51 661.13 415.4 661.17 415.28 661.19 415.24 661.25 415.17 661.29 415.15 661.38 415.13 661.41 415.11 661.5 415.12 661.57 415.17 661.66 415.27 661.67 415.35 661.73 415.54 661.8 415.65 662 415.69 662.44 415.66 662.44 415.58 662.57 415.49 662.66 415.48 662.74 415.45 662.81 415.39 662.89 415.2 662.96 415.14 663 415.11 663.07 415.06 663.11 415.05 663.2 415.02 663.49 414.74 663.63 414.66 663.7 414.61 663.69 414.56 663.63 414.5 663.61 414.37 663.64 414.29 663.71 414.18 663.74 414.14 663.8 414.08 663.86 413.96 663.93 413.91 663.99 413.84 664.07 413.69 664.11 413.66 664.18 413.61 664.22 413.58 664.33 413.51 664.35 413.22 664.42 413.12 664.42 413.07 664.45 412.95 664.51 412.83 664.7 412.74 664.82 412.67 664.86 412.64 664.91 412.58 664.95 412.5 665 412.38 665.01 412.34 665.03 412.25 665.03 412.21 665.01 412.12 664.94 411.96 664.92 411.83 664.93 411.7 665 411.59 665.06 411.53 665.14 411.52 665.43 411.45 665.51 411.34 665.51 411.26 665.62 410.94 665.59 410.86 665.56 410.78 665.54 410.69 665.54 410.65 665.63 410.44 665.65 410.31 665.64 410.1 665.63 410.01 665.62 409.92 665.73 409.74 665.89 409.66 666.02 409.54 666.12 409.46 666.41 409.26 666.53 409.2 666.62 409.19 666.71 409.2 666.84 409.21 666.97 409.18 667.06 409.15 667.32 409.07 667.4 409.05 667.49 409.05 667.58 409.07 667.66 409.1 667.75 409.13 667.87 409.18 667.91 409.2 668 409.22 670.34 407.58 670.3 407.5 670.27 407.42 670.22 407.3 670.17 407.18 670.14 407.09 670.12 407.01 670.11 406.97 670.11 406.79 670.13 406.62 670.17 406.54 670.22 406.47 670.3 406.42 670.54 406.3 670.62 406.26 670.7 406.22 670.78 406.18 670.86 406.16 670.95 406.13 671.08 406.12 671.23 406.22 671.32 406.24 671.44 406.19 671.54 406.11 671.65 406.03 671.76 405.95 671.82 405.9 671.89 405.83 672.05 405.68 672.18 405.57 672.26 405.53 672.6 405.4 672.68 405.36 672.79 405.22 672.84 405.15 672.91 405.04 672.97 404.93 673.03 404.85 673.09 404.79 673.17 404.75 673.2 404.73 673.37 404.67 673.53 404.58 673.61 404.47 673.65 404.39 673.68 404.31 673.72 404.19 673.83 403.85 673.86 403.77 673.91 403.65 674.04 403.43 674.15 403.29 674.22 403.23 674.37 403.07 674.45 403.03 674.62 402.79 674.61 402.7 674.56 402.63 674.47 402.53 674.33 402.08 674.36 401.95 674.41 401.88 674.46 401.81 674.51 401.73 674.55 401.65 674.53 401.48 674.53 401.44 674.52 401.35 674.52 401.31 674.55 401.23 674.57 401.19 674.62 401.12 674.69 401.06 674.76 401.01 674.86 400.92 674.92 400.81 675.02 400.73 675.05 400.69 675.1 400.57 675.1 400.44 675.1 400.35 675.1 400.31 675.11 400.22 675.13 400.18 675.15 400.1 675.21 399.93 675.24 399.85 675.28 399.77 675.32 399.7 675.34 399.66 675.35 399.57 675.39 399.54 675.42 399.53 675.48 399.48 675.61 399.35 675.67 399.29 675.7 399.26 675.81 399.15 675.87 399.09 676.1 398.87 676.13 398.83 676.17 398.79 676.24 398.71 676.38 398.55 676.43 398.49 676.47 398.46 676.51 398.42 676.53 398.4 676.56 398.36 676.6 398.33 676.64 398.29 676.66 398.27 676.73 398.2 676.93 398.02 677 397.97 677.02 397.96 677.07 397.93 677.21 397.86 677.26 397.83 677.33 397.79 677.38 397.77 677.5 397.72 677.56 397.71 677.63 397.68 677.69 397.67 677.74 397.66 677.82 397.64 677.87 397.62 677.92 397.61 678 397.58 678.1 397.55 678.15 397.54 678.23 397.52 678.28 397.5 678.36 397.49 678.44 397.47 678.57 397.44 678.68 397.42 678.73 397.4 678.76 397.4 678.81 397.39 678.86 397.37 678.92 397.36 678.97 397.35 679.02 397.34 679.07 397.33 679.18 397.3 679.26 397.29 679.28 397.28 679.34 397.27 679.47 397.24 679.52 397.23 679.63 397.21 679.68 397.21 679.74 397.21 679.82 397.22 679.86 397.21 679.9 397.23 679.98 397.24 680.11 397.27 680.19 397.27 680.22 397.28 680.3 397.28 680.38 397.28 680.44 397.27 680.49 397.25 680.54 397.24 680.75 397.26 680.8 397.28 680.83 397.29 680.87 397.31 680.92 397.34 680.97 397.36 680.99 397.38 681.04 397.4 681.06 397.42 681.11 397.44 681.18 397.48 681.25 397.52 681.33 397.54 681.35 397.55 681.41 397.56 681.54 397.58 681.62 397.59 681.67 397.6 689.87 397.94 694.61 401.59 697.19 407.17 702.04 410.57 706.25 408.64 710.48 411.23 715.48 412.03 Z"
           id="Yasothon"
         />
+        {/* Province name label when focused */}
+        {focusedLabel && (
+          <text
+            x={focusedLabel.x}
+            y={focusedLabel.y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            style={{
+              fontSize: "18px",
+              fontWeight: 700,
+              fill: "#1e293b",
+              pointerEvents: "none",
+              paintOrder: "stroke",
+              stroke: "#ffffff",
+              strokeWidth: "4px",
+              strokeLinejoin: "round",
+              transition: "opacity 0.3s ease",
+              opacity: zoomScale > 1.5 ? 1 : 0,
+            }}
+          >
+            {focusedLabel.name}
+          </text>
+        )}
       </svg>
+
+      {/* Zoom Controls */}
+      <div className="absolute bottom-5 right-5 flex flex-col gap-2 z-20">
+        <button
+          onClick={handleZoomIn}
+          className="p-2 bg-white border border-slate-200 shadow-sm rounded-md hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+          aria-label="Zoom in"
+          title="ซูมเข้า"
+        >
+          <ZoomIn className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="p-2 bg-white border border-slate-200 shadow-sm rounded-md hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+          aria-label="Zoom out"
+          title="ซูมออก"
+        >
+          <ZoomOut className="w-5 h-5" />
+        </button>
+      </div>
       {hovered && (
         <div
           className="absolute pointer-events-none z-50 rounded-lg bg-slate-900/95 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-xs flex items-center gap-2 transition-all duration-75"

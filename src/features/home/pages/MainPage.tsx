@@ -331,6 +331,7 @@ export function MainPage() {
   const riskAreaBackAction = getRiskAreaBackAction(filters);
   const {
     summary,
+    nationalSummary,
     filterOptions,
     isLoading,
     isError,
@@ -402,12 +403,20 @@ export function MainPage() {
             className={cn(
               "grid gap-5 items-stretch",
               summary.riskAreaRanking &&
-                "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
+              "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
-            <div className="">
-              <GeoMapSVG />
-            </div>
+            <GeoMapSVG
+              data={
+                nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
+                  ? nationalSummary.riskAreaRanking.items
+                  : undefined
+              }
+              focusedProvince={filters.province}
+              onProvinceClick={(provinceName) =>
+                updateFilter({ province: provinceName })
+              }
+            />
 
             {summary.riskAreaRanking ? (
               <RiskAreaRankingChart
