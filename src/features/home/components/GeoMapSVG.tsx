@@ -563,6 +563,8 @@ const GeoMapSVG = ({
         return `
         ${selectors} {
           fill: ${color} !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
         }
       `;
       })
@@ -630,9 +632,9 @@ const GeoMapSVG = ({
             stroke-width: 1.5;
             vector-effect: non-scaling-stroke;
             transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
-            cursor: pointer;
+            pointer-events: none; /* Disable interaction for paths without data */
           }
-          path:hover {
+          .geo-map path:hover {
             fill: #505050ff !important;
             stroke: #ffffff !important;
             stroke-width: 2.5;
