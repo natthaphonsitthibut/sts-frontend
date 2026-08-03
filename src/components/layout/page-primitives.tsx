@@ -210,7 +210,10 @@ export function PageToolbar({
               </div>
             ) : null}
           </div>
-          <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Fixed row height so the page title sits at the same y whether or not
+              the page has action buttons — otherwise the tallest child (an lg
+              button) shifts the heading down on some pages only. */}
+          <div className="mt-2 flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <h1
                 className={cn(

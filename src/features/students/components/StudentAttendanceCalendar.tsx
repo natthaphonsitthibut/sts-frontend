@@ -4,6 +4,7 @@ import { Badge, Card, IconButton, type BadgeProps } from "../../../components/ba
 import { EmptyState, ErrorState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
+import { useTeacherStudentSubjectAttendance } from "../../teacher-access/hooks/useTeacherAccess";
 import { useStudentSubjectAttendance } from "../hooks/useStudentProfileSummary";
 import type {
   StudentProfileAttendanceDay,
@@ -62,11 +63,17 @@ const ATTENDANCE_LEGEND: Array<{
 interface StudentAttendanceCalendarProps {
   studentId: string;
   summary: StudentProfileSummary;
+  /**
+   * When rendered inside a teacher link there is no session, so the per-day
+   * subject breakdown is read through the link's own grant-scoped endpoint.
+   */
+  teacherLinkAssignmentId?: number;
 }
 
 export function StudentAttendanceCalendar({
   studentId,
   summary,
+  teacherLinkAssignmentId,
 }: StudentAttendanceCalendarProps) {
   const termStartsOn = parseIsoDate(summary.term.startsOn);
   const termEndsOn = parseIsoDate(summary.term.endsOn);
@@ -88,10 +95,18 @@ export function StudentAttendanceCalendar({
     return new Date(date.getFullYear(), date.getMonth(), 1);
   });
 
-  const subjectQuery = useStudentSubjectAttendance(
-    studentId,
-    hasTermBounds ? selectedDate : undefined,
+  const authenticatedSubjectQuery = useStudentSubjectAttendance(
+    teacherLinkAssignmentId ? undefined : studentId,
+    hasTermBounds && !teacherLinkAssignmentId ? selectedDate : undefined,
   );
+  const linkSubjectQuery = useTeacherStudentSubjectAttendance(
+    teacherLinkAssignmentId,
+    teacherLinkAssignmentId ? studentId : undefined,
+    hasTermBounds && teacherLinkAssignmentId ? selectedDate : undefined,
+  );
+  const subjectQuery = (teacherLinkAssignmentId
+    ? linkSubjectQuery
+    : authenticatedSubjectQuery) as typeof authenticatedSubjectQuery;
   const calendarCells = useMemo(() => {
     const year = visibleMonth.getFullYear();
     const month = visibleMonth.getMonth();

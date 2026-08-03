@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import { apiClient } from "../../../lib/api-client";
+import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import type {
   CreateFollowUpRequestInput,
   CreateHumanRiskReviewInput,
@@ -23,6 +24,18 @@ import type {
 } from "../types/student-observation.types";
 
 const TOKEN_HEADER = "x-teacher-access-token";
+const SESSION_HEADER = "x-teacher-access-session";
+
+/**
+ * Teacher-link requests carry the link token plus, once the teacher has passed
+ * the emailed OTP, the session that proves it. Both travel as headers so the
+ * token never lands in a URL or a log line.
+ */
+function guestHeaders(credential: TeacherLinkCredential): Record<string, string> {
+  return credential.sessionToken
+    ? { [TOKEN_HEADER]: credential.token, [SESSION_HEADER]: credential.sessionToken }
+    : { [TOKEN_HEADER]: credential.token };
+}
 
 interface DataEnvelope<T> {
   data: T;
@@ -42,25 +55,25 @@ async function runGuestRequest<T>(request: () => Promise<T>): Promise<T> {
   }
 }
 
-async function getGuestCatalog(token: string): Promise<ObservationCatalog> {
+async function getGuestCatalog(credential: TeacherLinkCredential): Promise<ObservationCatalog> {
   return runGuestRequest(async () => {
     const response = await apiClient.get<DataEnvelope<ObservationCatalog>>(
       "/teacher-access/observations/catalog",
-      { headers: { [TOKEN_HEADER]: token } },
+      { headers: guestHeaders(credential) },
     );
     return response.data.data;
   });
 }
 
 async function listGuestObservations(
-  token: string,
+  credential: TeacherLinkCredential,
   input: { assignmentId: number; studentTermId: string },
 ): Promise<PaginatedEnvelope<StudentObservation>> {
   return runGuestRequest(async () => {
     const response = await apiClient.get<PaginatedEnvelope<StudentObservation>>(
       "/teacher-access/observations",
       {
-        headers: { [TOKEN_HEADER]: token },
+        headers: guestHeaders(credential),
         params: { ...input, page: 1, limit: 50 },
       },
     );
@@ -69,28 +82,28 @@ async function listGuestObservations(
 }
 
 async function createGuestObservation(
-  token: string,
+  credential: TeacherLinkCredential,
   input: CreateStudentObservationInput,
 ): Promise<StudentObservation> {
   return runGuestRequest(async () => {
     const response = await apiClient.post<DataEnvelope<StudentObservation>>(
       "/teacher-access/observations",
       input,
-      { headers: { [TOKEN_HEADER]: token } },
+      { headers: guestHeaders(credential) },
     );
     return response.data.data;
   });
 }
 
 async function listGuestFollowUps(
-  token: string,
+  credential: TeacherLinkCredential,
   input: { assignmentId: number; studentTermId: string },
 ): Promise<PaginatedEnvelope<StudentFollowUpRequest>> {
   return runGuestRequest(async () => {
     const response = await apiClient.get<
       PaginatedEnvelope<StudentFollowUpRequest>
     >("/teacher-access/follow-up-requests", {
-      headers: { [TOKEN_HEADER]: token },
+      headers: guestHeaders(credential),
       params: { ...input, page: 1, limit: 50 },
     });
     return response.data;
@@ -98,7 +111,7 @@ async function listGuestFollowUps(
 }
 
 async function createGuestFollowUp(
-  token: string,
+  credential: TeacherLinkCredential,
   studentTermId: string,
   input: CreateFollowUpRequestInput,
 ): Promise<{ data: StudentFollowUpRequest; meta: { created: boolean } }> {
@@ -109,7 +122,7 @@ async function createGuestFollowUp(
     }>(
       "/teacher-access/follow-up-requests",
       { studentTermId, ...input },
-      { headers: { [TOKEN_HEADER]: token } },
+      { headers: guestHeaders(credential) },
     );
     return response.data;
   });

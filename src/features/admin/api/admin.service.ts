@@ -40,6 +40,8 @@ import type {
 } from "../types/admin.types";
 
 export interface UserListQuery extends PaginatedSearchQuery {
+  sortBy?: "name" | "role" | "affiliation";
+  sortOrder?: "asc" | "desc";
   province?: string;
   district?: string;
   subDistrict?: string;
@@ -127,6 +129,8 @@ async function getUsers(
   if (query.accountStatus) {
     params.accountStatus = query.accountStatus;
   }
+  if (query.sortBy) params.sortBy = query.sortBy;
+  if (query.sortOrder) params.sortOrder = query.sortOrder;
 
   const response = await apiClient.get("/users", { params });
   const result = normalizePaginatedResponse<ManagedUser>(response.data, query);
@@ -286,6 +290,17 @@ async function createUser(
 
 async function updateUser(id: number, payload: UserSavePayload): Promise<void> {
   await apiClient.put(`/users/${id}`, payload);
+}
+
+/** Upload replaces the photo; passing no file with `remove` clears it. */
+async function updateUserPhoto(
+  id: number,
+  input: { photo?: File; remove?: boolean },
+): Promise<void> {
+  const form = new FormData();
+  if (input.photo) form.append("photo", input.photo);
+  if (input.remove) form.append("removePhoto", "true");
+  await apiClient.patch(`/users/${id}/photo`, form);
 }
 
 async function deleteUser(id: number): Promise<void> {
@@ -461,6 +476,7 @@ export const adminService = {
   resumeStudentAccountBatch,
   cancelStudentAccountBatch,
   downloadStudentAccountBatchCredentials,
+  updateUserPhoto,
   getRoleGroups,
   createRoleGroup,
   updateRoleGroup,

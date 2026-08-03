@@ -22,7 +22,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import type { TeacherAccessGuestCredential } from "../../teacher-access/hooks/useTeacherAccess";
+import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import {
   useCreateGuestStudentObservation,
   useGuestObservationCatalog,
@@ -60,7 +60,7 @@ const LEVELS: Array<{
 ];
 
 interface TeacherObservationPanelProps {
-  credential: TeacherAccessGuestCredential | null;
+  credential: TeacherLinkCredential;
   assignmentId: number;
   student: {
     studentTermId: string;

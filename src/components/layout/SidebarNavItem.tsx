@@ -102,7 +102,10 @@ function isRouteActive(item: MenuItem, pathname: string): boolean {
   const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean) as string[];
   if (routes.length === 0) return false;
   const bestMatch = findBestMatchingRoute(pathname);
-  return bestMatch !== null && routes.includes(bestMatch);
+  if (bestMatch !== null) return routes.includes(bestMatch);
+  // Menus outside the permission-driven registry (the teacher-link rail) have
+  // no entry in ALL_MENU_ROUTES, so fall back to the item's own route.
+  return routes.some((route) => routeMatchesPathname(route, pathname));
 }
 
 export function SidebarNavItem({

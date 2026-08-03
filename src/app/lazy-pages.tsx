@@ -51,6 +51,31 @@ export const ManageRoleGroupFormPage = lazy(() =>
     default: module.ManageRoleGroupFormPage,
   })),
 );
+export const CurriculumGradesPage = lazy(() =>
+  import("../features/curriculum/pages/CurriculumGradesPage").then((module) => ({
+    default: module.CurriculumGradesPage,
+  })),
+);
+export const CurriculumSubjectsPage = lazy(() =>
+  import("../features/curriculum/pages/CurriculumSubjectsPage").then((module) => ({
+    default: module.CurriculumSubjectsPage,
+  })),
+);
+export const CurriculumSubjectFormPage = lazy(() =>
+  import("../features/curriculum/pages/CurriculumSubjectFormPage").then((module) => ({
+    default: module.CurriculumSubjectFormPage,
+  })),
+);
+export const TeachersPage = lazy(() =>
+  import("../features/teachers/pages/TeachersPage").then((module) => ({
+    default: module.TeachersPage,
+  })),
+);
+export const TeacherFormPage = lazy(() =>
+  import("../features/teachers/pages/TeacherFormPage").then((module) => ({
+    default: module.TeacherFormPage,
+  })),
+);
 export const ManageUsersPage = lazy(() =>
   import("../features/admin/pages/ManageUsersPage").then((module) => ({
     default: module.ManageUsersPage,
@@ -181,15 +206,39 @@ export const StudentSelfPage = lazy(() =>
     default: module.StudentSelfPage,
   })),
 );
-export const AttendanceLinksDashboardPage = lazy(() =>
-  import("../features/tasks/pages/AttendanceLinksDashboardPage").then((module) => ({
-    default: module.AttendanceLinksDashboardPage,
+export const TeacherAttendanceLinksPage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherAttendanceLinksPage").then((module) => ({
+    default: module.TeacherAttendanceLinksPage,
   })),
 );
 
-export const AttendanceLinkDetailPage = lazy(() =>
-  import("../features/tasks/pages/AttendanceLinkDetailPage").then((module) => ({
-    default: module.AttendanceLinkDetailPage,
+export const TeacherLinkLayout = lazy(() =>
+  import("../features/teacher-access/pages/TeacherLinkLayout").then((module) => ({
+    default: module.TeacherLinkLayout,
+  })),
+);
+
+export const MyClassroomsPage = lazy(() =>
+  import("../features/teacher-access/pages/MyClassroomsPage").then((module) => ({
+    default: module.MyClassroomsPage,
+  })),
+);
+
+export const TeacherClassroomPage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherClassroomPage").then((module) => ({
+    default: module.TeacherClassroomPage,
+  })),
+);
+
+export const TeacherStudentProfilePage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherStudentProfilePage").then((module) => ({
+    default: module.TeacherStudentProfilePage,
+  })),
+);
+
+export const TeacherAttendanceHistoryPage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherAttendanceHistoryPage").then((module) => ({
+    default: module.TeacherAttendanceHistoryPage,
   })),
 );
 export const CreateTaskPage = lazy(() =>

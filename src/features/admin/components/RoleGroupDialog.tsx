@@ -214,7 +214,7 @@ export function RoleGroupDialog({
               fullWidth
               onClick={() => handleOpenChange(false)}
               type="button"
-              variant="secondary"
+              variant="outline"
             >
               ยกเลิก
             </Button>

@@ -4,6 +4,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  CropRange,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,7 +16,10 @@ import {
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { cn } from "../../../lib/utils";
 import { useUpdateClassroomPresentation } from "../hooks/useSchoolStructure";
-import type { SchoolClassroom } from "../types/school-structure.types";
+import type {
+  SchoolClassroom,
+  UpdateClassroomPresentationInput,
+} from "../types/school-structure.types";
 import {
   classroomCoverImageStyle,
   classroomCoverStyle,
@@ -26,48 +30,22 @@ interface ClassroomCardDialogProps {
   classroom: SchoolClassroom;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-}
-
-function CropRange({
-  label,
-  max,
-  min,
-  onChange,
-  step = 1,
-  value,
-  valueLabel,
-}: {
-  label: string;
-  max: number;
-  min: number;
-  onChange: (value: number) => void;
-  step?: number;
-  value: number;
-  valueLabel?: string;
-}) {
-  return (
-    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-      <span className="flex items-center justify-between gap-3">
-        {label}
-        <span className="tabular-nums text-slate-500">{valueLabel ?? `${value}%`}</span>
-      </span>
-      <input
-        className="h-2 w-full cursor-pointer accent-primary"
-        max={max}
-        min={min}
-        onChange={(event) => onChange(Number(event.target.value))}
-        step={step}
-        type="range"
-        value={value}
-      />
-    </label>
-  );
+  /**
+   * Replaces the authenticated write. Teacher links save through their own
+   * grant-scoped endpoint instead of the school-structure API.
+   */
+  savePresentation?: (input: UpdateClassroomPresentationInput) => Promise<unknown>;
+  isSaving?: boolean;
+  saveError?: unknown;
 }
 
 export function ClassroomCardDialog({
   classroom,
+  isSaving,
   onOpenChange,
   open,
+  savePresentation,
+  saveError,
 }: ClassroomCardDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
@@ -83,6 +61,8 @@ export function ClassroomCardDialog({
     startPositionY: number;
   } | null>(null);
   const updatePresentation = useUpdateClassroomPresentation();
+  const pending = savePresentation ? Boolean(isSaving) : updatePresentation.isPending;
+  const error = savePresentation ? saveError : updatePresentation.error;
 
   useEffect(() => {
     return () => {
@@ -107,18 +87,20 @@ export function ClassroomCardDialog({
   }
 
   function handleSave(): void {
-    updatePresentation.mutate(
-      {
-        classroomId: classroom.id,
-        cardCoverColor: classroom.cardCoverColor,
-        coverImagePositionX: positionX,
-        coverImagePositionY: positionY,
-        coverImageScale: scale,
-        file: file ?? undefined,
-        removeCover,
-      },
-      { onSuccess: () => onOpenChange(false) },
-    );
+    const payload = {
+      classroomId: classroom.id,
+      cardCoverColor: classroom.cardCoverColor,
+      coverImagePositionX: positionX,
+      coverImagePositionY: positionY,
+      coverImageScale: scale,
+      file: file ?? undefined,
+      removeCover,
+    };
+    if (savePresentation) {
+      void savePresentation(payload).then(() => onOpenChange(false));
+      return;
+    }
+    updatePresentation.mutate(payload, { onSuccess: () => onOpenChange(false) });
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>): void {
@@ -185,7 +167,7 @@ export function ClassroomCardDialog({
           <label
             className={cn(
               buttonVariants({ variant: "outline", size: "md" }),
-              updatePresentation.isPending && "pointer-events-none opacity-50",
+              pending && "pointer-events-none opacity-50",
             )}
           >
             <Upload className="size-4" aria-hidden="true" />
@@ -193,14 +175,14 @@ export function ClassroomCardDialog({
             <input
               accept="image/jpeg,image/png,image/gif,image/webp"
               className="sr-only"
-              disabled={updatePresentation.isPending}
+              disabled={pending}
               onChange={handleFileChange}
               type="file"
             />
           </label>
           {previewUrl ? (
             <Button
-              disabled={updatePresentation.isPending}
+              disabled={pending}
               icon={Trash2}
               onClick={() => {
                 setFile(null);
@@ -240,25 +222,25 @@ export function ClassroomCardDialog({
           </p>
         )}
 
-        {updatePresentation.error ? (
+        {error ? (
           <Alert className="mt-4" variant="destructive">
             <AlertDescription>
-              {getApiErrorMessage(updatePresentation.error, "บันทึกรูปปกห้องเรียนไม่สำเร็จ")}
+              {getApiErrorMessage(error, "บันทึกรูปปกห้องเรียนไม่สำเร็จ")}
             </AlertDescription>
           </Alert>
         ) : null}
 
         <DialogFooter>
           <Button
-            disabled={updatePresentation.isPending}
+            disabled={pending}
             onClick={() => onOpenChange(false)}
-            variant="secondary"
+            variant="outline"
           >
             ยกเลิก
           </Button>
           <Button
-            disabled={updatePresentation.isPending}
-            isLoading={updatePresentation.isPending}
+            disabled={pending}
+            isLoading={pending}
             onClick={handleSave}
           >
             บันทึก

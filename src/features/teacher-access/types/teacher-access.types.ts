@@ -1,5 +1,17 @@
-export type TeacherAccessCapability = "HOMEROOM_ATTENDANCE" | "TEACHER_OBSERVATION";
+import type { StudentObservation } from "../../student-observations/types/student-observation.types";
+import type {
+  StudentCase,
+  StudentDetail,
+  StudentProfileSummary,
+} from "../../students/types/students.types";
+
+export type TeacherAccessCapability =
+  | "HOMEROOM_ATTENDANCE"
+  | "SUBJECT_ATTENDANCE"
+  | "TEACHER_OBSERVATION";
 export type TeacherAccessGrantStatus = "ACTIVE" | "REVOKED" | "EXPIRED" | "SUSPENDED";
+/** Roster rows also cover teachers who have no link yet. */
+export type TeacherLinkStatus = TeacherAccessGrantStatus | "NOT_CREATED";
 
 export interface TeacherAccessAssignment {
   id: string;
@@ -8,6 +20,11 @@ export interface TeacherAccessAssignment {
   gradeLabel: string;
   roomCode: string;
   roomName: string | null;
+  cardCoverColor: string;
+  hasCoverImage: boolean;
+  coverImagePositionX: number;
+  coverImagePositionY: number;
+  coverImageScale: number;
   assignmentKind: "HOMEROOM" | "SUBJECT";
   subjectId: number | null;
   subjectCode: string | null;
@@ -44,6 +61,21 @@ export interface TeacherAccessGrant {
   accessUrl?: string;
 }
 
+/** One teacher row of the จัดการลิงก์เช็คชื่อ screen. */
+export interface TeacherLinkRosterEntry {
+  teacherMembershipId: string;
+  teacherId: string;
+  teacherDisplayName: string;
+  hasEmail: boolean;
+  assignmentCount: number;
+  grantId: string | null;
+  linkStatus: TeacherLinkStatus;
+  canCopyLink: boolean;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+}
+
 export interface TeacherAccessContext {
   grantId: string;
   teacherDisplayName: string;
@@ -60,18 +92,46 @@ export interface TeacherAccessRosterStudent {
   studentUuid: string;
   /** Canonical UUID of this student_term enrollment snapshot. */
   studentTermId: string;
+  /** School-owned roster number; null until the school imports one. */
+  studentNumber: string | null;
   firstName: string | null;
   lastName: string | null;
   studentStatusCode: number | null;
   studentStatusLabel: string | null;
+  riskTier: string | null;
+  /** Latest homeroom note about this student, shown as หมายเหตุ. */
+  teacherComment: string | null;
+}
+
+/** One recorded attendance round, as shown in ประวัติการเช็คชื่อ. */
+export interface TeacherAttendanceHistoryEntry {
+  sessionId: string;
+  attendanceDate: string;
+  period: number;
+  status: string;
+  recordedBy: string | null;
+  submittedAt: string | null;
+  presentCount: number;
+  lateCount: number;
+  leaveCount: number;
+  absentCount: number;
+}
+
+export interface TeacherAccessOtpChallenge {
+  method: "EMAIL";
+  maskedEmail: string;
+  expiresAt: string;
 }
 
 export interface IssueTeacherAccessGrantInput {
   teacherMembershipId: number;
   schoolTermId: number;
-  capabilities: TeacherAccessCapability[];
-  assignmentIds: number[];
   expiresAt?: string;
+}
+
+export interface BulkIssueTeacherAccessResult {
+  issued: number;
+  skipped: Array<{ teacherMembershipId: number; reason: string }>;
 }
 
 export interface PaginationMeta {
@@ -79,4 +139,13 @@ export interface PaginationMeta {
   limit: number;
   totalCount: number;
   totalPages: number;
+}
+
+/** Everything the teacher-link student profile screen renders, in one payload. */
+export interface TeacherStudentProfile {
+  student: StudentDetail;
+  summary: StudentProfileSummary;
+  cases: StudentCase[];
+  attendance: unknown;
+  observations: { data: StudentObservation[] };
 }

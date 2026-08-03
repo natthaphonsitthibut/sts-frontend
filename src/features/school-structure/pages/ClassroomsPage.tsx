@@ -163,7 +163,7 @@ export function ClassroomsPage() {
         />
       ) : !currentTerm ? (
         <EmptyState
-          description="เพิ่มหรือเปิดใช้งานภาคเรียนในหน้าโครงสร้างโรงเรียนก่อน"
+          description="เพิ่มหรือเปิดใช้งานภาคเรียนในหน้าจัดการภาคเรียนและห้องเรียนก่อน"
           icon={CLASSROOMS_ICON}
           title="ยังไม่มีภาคเรียน"
         />

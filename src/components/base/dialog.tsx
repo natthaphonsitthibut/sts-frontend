@@ -179,7 +179,7 @@ export function DialogFooter({
   return (
     <div
       className={cn(
-        "mt-6 flex flex-col-reverse gap-2 sm:flex-row",
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:[&>button]:min-w-24",
         align === "right" && "sm:justify-end",
         align === "between" && "sm:justify-between",
         align === "left" && "sm:justify-start",

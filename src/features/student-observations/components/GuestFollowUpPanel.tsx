@@ -11,7 +11,7 @@ import {
   Select,
   Textarea,
 } from "../../../components/base";
-import type { TeacherAccessGuestCredential } from "../../teacher-access/hooks/useTeacherAccess";
+import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import {
   useCreateGuestFollowUp,
   useGuestStudentFollowUps,
@@ -21,7 +21,7 @@ import type { FollowUpUrgency, StudentObservation } from "../types/student-obser
 
 interface GuestFollowUpPanelProps {
   assignmentId: number;
-  credential: TeacherAccessGuestCredential | null;
+  credential: TeacherLinkCredential;
   observations: StudentObservation[];
   studentTermId: string;
 }

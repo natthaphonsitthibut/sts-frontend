@@ -4,7 +4,7 @@ import {
   toPaginationParams,
   type PaginatedResult,
 } from "../../../lib/pagination";
-import { loginLinksService } from "../../login-links/api/login-links.service";
+import type { LinkAdminPayload, LinkAdminResponse } from "../types/link-admin.types";
 import type {
   VisitLink,
   VisitLinkListQuery,
@@ -67,7 +67,18 @@ async function getVisitLinksPage(
   };
 }
 
+async function setLinkAdminLock(
+  linkId: string,
+  payload: LinkAdminPayload,
+): Promise<LinkAdminResponse> {
+  const response = await apiClient.post<LinkAdminResponse>(
+    `/task-links/${linkId}/admin-lock`,
+    payload,
+  );
+  return response.data;
+}
+
 export const visitLinksService = {
   getVisitLinksPage,
-  setLinkAdminLock: loginLinksService.setLinkAdminLock,
+  setLinkAdminLock,
 };

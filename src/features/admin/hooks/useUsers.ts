@@ -144,14 +144,30 @@ export function useRolesCatalog(): UseRolesCatalogResult {
 interface SaveUserVariables {
   id: number | null;
   payload: UserSavePayload;
+  /** Chosen in the form but only uploadable once the account row exists. */
+  photo?: File | null;
+  removePhoto?: boolean;
 }
 
 export function useSaveUser() {
   const queryClient = useQueryClient();
 
   return useMutation<CreateUserResponse | void, Error, SaveUserVariables>({
-    mutationFn: ({ id, payload }) =>
-      id ? adminService.updateUser(id, payload) : adminService.createUser(payload),
+    // The photo is synced inside the same mutation so the form has a single
+    // pending/error state to render.
+    mutationFn: async ({ id, payload, photo, removePhoto }) => {
+      const result = id
+        ? await adminService.updateUser(id, payload)
+        : await adminService.createUser(payload);
+      const savedId = id ?? result?.userId ?? null;
+      if (savedId && (photo || removePhoto)) {
+        await adminService.updateUserPhoto(savedId, {
+          photo: photo ?? undefined,
+          remove: removePhoto,
+        });
+      }
+      return result;
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });

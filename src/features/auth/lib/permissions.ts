@@ -124,6 +124,9 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("manage-school-structure", "/school-structure"),
       },
       {
+        ...pageMenuItem("manage-curriculum", "/curriculum"),
+      },
+      {
         ...pageMenuItem("import-data", "/import-data"),
       },
       {
@@ -140,7 +143,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("attendance", "/attendance"),
       },
       {
-        ...pageMenuItem("attendance-dashboard", "/attendance-links"),
+        ...pageMenuItem("manage-teacher-access", "/attendance-links"),
       },
       {
         ...pageMenuItem("attendance-operations", "/attendance-operations", "attendance-dashboard"),
@@ -157,6 +160,9 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         ...pageMenuItem("manage-users-list", "/manage-users"),
+      },
+      {
+        ...pageMenuItem("manage-teachers", "/manage-teachers"),
       },
       {
         ...pageMenuItem("manage-role-groups", "/manage-role-groups"),

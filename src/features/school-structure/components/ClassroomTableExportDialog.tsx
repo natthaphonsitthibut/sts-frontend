@@ -24,7 +24,12 @@ const FORMAT_OPTIONS = [
 ] as const;
 
 interface ClassroomTableExportDialogProps {
-  authorizeExport: (
+  /**
+   * Server-side permission + audit step. Omitted for teacher-link exports, which
+   * only re-save rows the link already displayed (and whose read is audited on
+   * the grant itself).
+   */
+  authorizeExport?: (
     format: RosterExportFormat,
     columns: string[],
     dateRange?: ExportDateRange,
@@ -97,7 +102,7 @@ export function ClassroomTableExportDialog({
     setIsExporting(true);
     setError(null);
     try {
-      await authorizeExport(format, columns.map((column) => column.key), dateRange);
+      await authorizeExport?.(format, columns.map((column) => column.key), dateRange);
       const rows = await loadRows(dateRange);
       exportRosterFile(
         format,

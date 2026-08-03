@@ -311,7 +311,7 @@ export function StudentEditPage() {
   return (
     <PageShell>
       <PageToolbar
-        footerActions={<NavButton icon={ArrowLeft} to={-1} variant="outline">ย้อนกลับ</NavButton>}
+        actions={<NavButton icon={ArrowLeft} to={-1} variant="outline">ย้อนกลับ</NavButton>}
         icon={UserRound}
         title="แก้ไขข้อมูลนักเรียน"
       />

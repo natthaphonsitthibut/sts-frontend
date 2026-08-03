@@ -6,16 +6,16 @@ export interface TaskTypeOption {
   description: string;
 }
 
+/**
+ * Per-classroom attendance links were replaced by per-teacher links
+ * (จัดการลิงก์เช็คชื่อ), so ATTENDANCE is no longer offered here. Existing rows
+ * and their history stay readable; only the way to create new ones is gone.
+ */
 export const TASK_TYPE_OPTIONS: TaskTypeOption[] = [
   {
     value: "VISIT",
     label: "ภารกิจลงพื้นที่",
     description: "ส่งผู้รับผิดชอบไปเยี่ยมบ้านและรายงานผล",
-  },
-  {
-    value: "ATTENDANCE",
-    label: "ภารกิจเช็คชื่อ",
-    description: "สร้างลิงก์เช็คชื่อนักเรียนรายชั้นเรียน",
   },
 ];
 

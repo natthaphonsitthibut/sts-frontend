@@ -16,14 +16,32 @@ import type { ClassroomRosterStudent } from "../types/school-structure.types";
 
 interface ClassroomStudentCommentDialogProps {
   classroomId: number;
-  student: ClassroomRosterStudent | null;
+  /** Only the identity fields are rendered, so link rosters fit as well. */
+  student: Pick<
+    ClassroomRosterStudent,
+    "studentUuid" | "firstName" | "lastName" | "studentNumber"
+  > | null;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Replaces the authenticated write. Teacher links post through their own
+   * grant-scoped endpoint instead of the school-structure API.
+   */
+  submitComment?: (input: {
+    classroomId: number;
+    studentUuid: string;
+    commentText: string;
+  }) => Promise<unknown>;
+  isSubmitting?: boolean;
+  submitError?: unknown;
 }
 
 export function ClassroomStudentCommentDialog({
   classroomId,
+  isSubmitting,
   onOpenChange,
   student,
+  submitComment,
+  submitError,
 }: ClassroomStudentCommentDialogProps) {
   const [commentText, setCommentText] = useState("");
   const mutation = useCreateClassroomStudentComment();
@@ -44,11 +62,16 @@ export function ClassroomStudentCommentDialog({
   async function handleSubmit(): Promise<void> {
     const normalizedComment = commentText.trim();
     if (!normalizedComment) return;
-    await mutation.mutateAsync({
+    const payload = {
       classroomId,
       studentUuid: student!.studentUuid,
       commentText: normalizedComment,
-    });
+    };
+    if (submitComment) {
+      await submitComment(payload);
+    } else {
+      await mutation.mutateAsync(payload);
+    }
     handleOpenChange(false);
   }
 
@@ -84,7 +107,7 @@ export function ClassroomStudentCommentDialog({
 
         <FormErrorAlert
           className="mt-4"
-          error={mutation.error}
+          error={submitComment ? submitError : mutation.error}
           fallback="ไม่สามารถบันทึกความคิดเห็นได้"
         />
 
@@ -93,7 +116,7 @@ export function ClassroomStudentCommentDialog({
           <Button
             disabled={!commentText.trim()}
             fullWidth
-            isLoading={mutation.isPending}
+            isLoading={submitComment ? Boolean(isSubmitting) : mutation.isPending}
             loadingText="กำลังบันทึก"
             onClick={() => void handleSubmit()}
           >

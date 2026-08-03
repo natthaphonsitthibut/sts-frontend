@@ -5,10 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { PaginationMeta } from "../../../lib/pagination";
-import type {
-  LinkAdminPayload,
-  LinkAdminResponse,
-} from "../../login-links/types/login-links.types";
+import type { LinkAdminPayload, LinkAdminResponse } from "../types/link-admin.types";
 import { visitLinksService } from "../api/visit-links.service";
 import type {
   VisitLink,

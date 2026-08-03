@@ -1,8 +1,6 @@
-import { useMemo, useState } from "react";
-import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { Link } from "react-router-dom";
-import { KeyRound, SquarePen, UserCheck, UserX } from "lucide-react";
-import { Badge, IconButton } from "../../../components/base";
+import { SquarePen, Trash2 } from "lucide-react";
+import { Avatar, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -11,210 +9,108 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import {
-  LinkTimeHeader,
-  LinkTimeSummary,
-} from "../../../components/layout/link-time-summary";
-import {
-  getAccountLifecycleStatusMeta,
-  getManagedUserLifecycleStatus,
-  getUserDisplayName,
-  getUserInitial,
-  getUserRoleText,
-} from "../lib/admin-presentation";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
+import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
-import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
-import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface UserTableProps {
   users: ManagedUser[];
+  /** 1-based index of the first row on the current page, for the ลำดับ column. */
+  startIndex: number;
   onEdit: (user: ManagedUser) => void;
   onDeactivate: (user: ManagedUser) => void;
-  onReactivate: (user: ManagedUser) => void;
-  onReissueTemporaryPassword: (user: ManagedUser) => void;
   deactivatingUserId?: number | null;
-  reactivatingUserId?: number | null;
-  reissuingUserId?: number | null;
-}
-
-function StatusBadge({
-  catalog,
-  user,
-}: {
-  catalog: readonly StatusCatalogItem[];
-  user: ManagedUser;
-}) {
-  const status = getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user), catalog);
-  return (
-    <Badge className="whitespace-nowrap" variant={status.badgeVariant}>
-      {status.label}
-    </Badge>
-  );
+  sort?: DataTableSortState;
+  onSortChange: (sort: DataTableSortState | undefined) => void;
 }
 
 function UserIdentity({ user }: { user: ManagedUser }) {
   const displayName = getUserDisplayName(user);
   const content = (
     <>
-      <div
-        className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-        style={getAvatarGradient(displayName)}
-      >
-        {getUserInitial(user)}
-      </div>
-      <div className="min-w-0">
-        <div className="truncate font-bold text-slate-800">{displayName}</div>
-        <div className="truncate text-xs font-semibold text-slate-500">
-          @{user.username}
-        </div>
-      </div>
+      <Avatar
+        className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
+        gradientName={displayName}
+        imageAlt={`รูปประจำตัวของ ${displayName}`}
+        imageUrl={resolveApiMediaUrl(user.photo_url ?? null)}
+      />
+      <span className="truncate font-bold text-slate-800">{displayName}</span>
     </>
   );
 
   if (user.id) {
     return (
       <Link
-        className="flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="group flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
         to={`/manage-users/${user.id}`}
       >
         {content}
       </Link>
     );
   }
-
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      {content}
-    </div>
-  );
+  return <div className="flex min-w-0 items-center gap-3">{content}</div>;
 }
 
 function RowActions({
   user,
   onEdit,
   onDeactivate,
-  onReactivate,
-  onReissueTemporaryPassword,
   deactivatingUserId,
-  reactivatingUserId,
-  reissuingUserId,
-}: UserTableProps & { user: ManagedUser }) {
-  const userId = user.id ?? -1;
-  const isDisabled = user.status !== "ACTIVE";
-  const isDeactivating = deactivatingUserId === userId;
-  const isReactivating = reactivatingUserId === userId;
-
+}: Omit<UserTableProps, "users" | "startIndex" | "sort" | "onSortChange"> & {
+  user: ManagedUser;
+}) {
+  const isDeactivating = deactivatingUserId === (user.id ?? -1);
+  const displayName = getUserDisplayName(user);
   return (
     <div className="flex items-center justify-end gap-1">
-      {!isDisabled ? (
-        <IconButton
-          aria-label="ออกรหัสชั่วคราวใหม่"
-          disabled={reissuingUserId === userId || isDeactivating}
-          icon={KeyRound}
-          onClick={() => onReissueTemporaryPassword(user)}
-          variant="credential"
-        />
-      ) : null}
       <IconButton
-        aria-label="แก้ไขผู้ใช้งาน"
-        disabled={isDeactivating || isReactivating}
+        aria-label={`แก้ไขผู้ใช้งาน ${displayName}`}
+        disabled={isDeactivating}
         icon={SquarePen}
         onClick={() => onEdit(user)}
         variant="edit"
       />
-      {isDisabled ? (
-        <IconButton
-          aria-busy={isReactivating}
-          aria-label="เปิดใช้งานผู้ใช้งาน"
-          className="text-success"
-          disabled={isReactivating}
-          icon={UserCheck}
-          onClick={() => onReactivate(user)}
-          variant="ghost"
-        />
-      ) : (
-        <IconButton
-          aria-busy={isDeactivating}
-          aria-label="ปิดใช้งานผู้ใช้งาน"
-          disabled={isDeactivating}
-          icon={UserX}
-          onClick={() => onDeactivate(user)}
-          variant="delete"
-        />
-      )}
+      <IconButton
+        aria-busy={isDeactivating}
+        aria-label={`ปิดใช้งานผู้ใช้งาน ${displayName}`}
+        disabled={isDeactivating}
+        icon={Trash2}
+        onClick={() => onDeactivate(user)}
+        variant="delete"
+      />
     </div>
   );
 }
 
-function compareText(a: string | undefined, b: string | undefined): number {
-  return (a || "").localeCompare(b || "", "th");
-}
-
-function getUserSortValue(
-  user: ManagedUser,
-  key: string,
-  catalog: readonly StatusCatalogItem[],
-): string {
-  if (key === "name") return getUserDisplayName(user);
-  if (key === "role") return getUserRoleText(user);
-  if (key === "affiliation") return user.affiliation || "";
-  if (key === "status") {
-    return getAccountLifecycleStatusMeta(getManagedUserLifecycleStatus(user), catalog).label;
-  }
-  if (key === "starts") return user.temporary_password_issued_at ?? "";
-  if (key === "expires") return user.temporary_password_expires_at ?? "";
-  if (key === "remaining") return user.temporary_password_expires_at ?? "";
-  return "";
-}
-
 export function UserTable({
   users,
+  startIndex,
   onEdit,
   onDeactivate,
-  onReactivate,
-  onReissueTemporaryPassword,
   deactivatingUserId,
-  reactivatingUserId,
-  reissuingUserId,
+  sort,
+  onSortChange,
 }: UserTableProps) {
-  const lifecycleCatalog = useStatusCatalog("USER_ACCOUNT_LIFECYCLE").items;
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const sortedUsers = useMemo(() => {
-    if (!sort) return users;
-    return [...users].sort((a, b) => {
-      const result = compareText(
-        getUserSortValue(a, sort.key, lifecycleCatalog),
-        getUserSortValue(b, sort.key, lifecycleCatalog),
-      );
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [lifecycleCatalog, users, sort]);
-
   return (
     <div className="flex flex-col gap-2">
       <DataTable
         headings={[
-          { label: "ผู้ใช้งาน", sortKey: "name" },
-          { label: "ตำแหน่ง", sortKey: "role" },
+          "ลำดับ",
+          { label: "ชื่อ-นามสกุล", sortKey: "name" },
+          { label: "สถานะ", sortKey: "role" },
           { label: "สังกัด", sortKey: "affiliation" },
-          { label: "สถานะ", sortKey: "status" },
-          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
-          "",
+          "เครื่องมือ",
         ]}
-        columnWidths={[
-          "w-[21%]",
-          "w-[10%]",
-          "w-[14%]",
-          "w-[14%]",
-          "w-[28%]",
-          "w-[13%]",
-        ]}
-        minWidthClassName="min-w-[1000px]"
-        onSortChange={setSort}
+        columnWidths={["w-[8%]", "w-[30%]", "w-[18%]", "w-[30%]", "w-[14%]"]}
+        minWidthClassName="min-w-[900px]"
+        onSortChange={onSortChange}
         sort={sort}
       >
-        {sortedUsers.map((user) => (
+        {users.map((user, index) => (
           <DataTableRow key={user.id ?? user.username}>
+            <DataTableCell className="text-center">
+              {startIndex + index}
+            </DataTableCell>
             <DataTableCell>
               <UserIdentity user={user} />
             </DataTableCell>
@@ -225,26 +121,11 @@ export function UserTable({
               {user.affiliation || "-"}
             </DataTableCell>
             <DataTableCell>
-              <StatusBadge catalog={lifecycleCatalog} user={user} />
-            </DataTableCell>
-            <DataTableCell>
-              <LinkTimeSummary
-                expiresAt={user.temporary_password_expires_at}
-                startsAt={user.temporary_password_issued_at}
-                variant="columns"
-              />
-            </DataTableCell>
-            <DataTableCell>
               <RowActions
                 deactivatingUserId={deactivatingUserId}
                 onDeactivate={onDeactivate}
                 onEdit={onEdit}
-                onReactivate={onReactivate}
-                onReissueTemporaryPassword={onReissueTemporaryPassword}
-                reactivatingUserId={reactivatingUserId}
-                reissuingUserId={reissuingUserId}
                 user={user}
-                users={users}
               />
             </DataTableCell>
           </DataTableRow>
@@ -252,34 +133,29 @@ export function UserTable({
       </DataTable>
 
       <TableCardList>
-        {sortedUsers.map((user) => (
+        {users.map((user) => (
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
               <UserIdentity user={user} />
-              <StatusBadge catalog={lifecycleCatalog} user={user} />
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <div className="text-sm text-slate-500">
-                {getUserRoleText(user)}
-              </div>
               <RowActions
                 deactivatingUserId={deactivatingUserId}
                 onDeactivate={onDeactivate}
                 onEdit={onEdit}
-                onReactivate={onReactivate}
-                onReissueTemporaryPassword={onReissueTemporaryPassword}
-                reactivatingUserId={reactivatingUserId}
-                reissuingUserId={reissuingUserId}
                 user={user}
-                users={users}
               />
             </div>
-            <div className="mt-3 rounded-md bg-slate-50 p-3">
-              <LinkTimeSummary
-                expiresAt={user.temporary_password_expires_at}
-                startsAt={user.temporary_password_issued_at}
-              />
-            </div>
+            <dl className="mt-3 grid grid-cols-1 gap-1 rounded-md bg-slate-50 p-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">สถานะ</dt>
+                <dd className="text-slate-700">{getUserRoleText(user)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">สังกัด</dt>
+                <dd className="truncate text-slate-700">
+                  {user.affiliation || "-"}
+                </dd>
+              </div>
+            </dl>
           </TableCard>
         ))}
       </TableCardList>

@@ -1,16 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useForm, useWatch, type FieldErrors } from "react-hook-form";
-import { ArrowLeft, UserCog } from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
+import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
   Card,
-  Combobox,
+  EMPTY_PHOTO_PICKER_VALUE,
   Form,
   FormErrorAlert,
   FormItem,
@@ -19,8 +15,9 @@ import {
   Input,
   NumericInput,
   PasswordInput,
+  PhotoPicker,
   registerField,
-  Tabs,
+  type PhotoPickerValue,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -30,429 +27,89 @@ import {
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
-import { useRouteTab } from "../../../hooks/useRouteTab";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import {
-  AddressFormSection,
-  type AddressFieldNames,
-} from "../../../components/address/AddressFormSection";
-import { stripAddressPrefix } from "../../../components/address/address-format";
-import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
-import { geoService } from "../../tasks/api/geo.service";
-import { ROLE_LABELS, type DataScope } from "../../auth/lib/permissions";
-import {
-  getScopeFieldStates,
-  getScopeValidationError,
-} from "../../auth/lib/scope-validation";
-import {
-  PermissionScopeEditor,
-  type ScopeSelectionLabels,
-} from "../../auth/components/PermissionScopeEditor";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
-import { UserSaveReviewDialog, type UserSaveReview } from "../components/UserSaveReviewDialog";
+import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
   EMPTY_USER_FORM,
   userFormSchema,
   type UserFormValues,
 } from "../schemas/user.schema";
-import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type {
   ManagedUser,
   RoleDefinition,
-  RoleScopeMode,
   UserSavePayload,
 } from "../types/admin.types";
 
 const MANAGE_USERS_PATH = "/manage-users";
 
-// The free-form `address_line` column backs the บ้านเลขที่ field; หมู่ keeps its
-// own `address_village_no` column. Mirrors the profile page mapping.
-const ADDRESS_NAMES: AddressFieldNames<UserFormValues> = {
-  houseNo: "address_line",
-  moo: "address_village_no",
-  street: "address_street",
-  soi: "address_soi",
-  trok: "address_trok",
-  province: "address_province",
-  district: "address_district",
-  subDistrict: "address_sub_district",
-  postalCode: "address_postal_code",
-  latitude: "address_latitude",
-  longitude: "address_longitude",
-};
-
-const SCOPE_KEYS = [
-  "provinces",
-  "districts",
-  "sub_districts",
-  "school_ids",
-  "grade_levels",
-  "room_ids",
-] as const;
-
-function normalizeOptionalText(value: string): string | undefined {
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function sameSet(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  const set = new Set(a);
-  return b.every((item) => set.has(item));
-}
-
-function clearForbiddenScopeFields(
-  scope: DataScope,
-  scopeMode: RoleScopeMode,
-): DataScope {
-  const states = getScopeFieldStates(scopeMode);
-  let changed = false;
-  const next: DataScope = { ...scope };
-  for (const key of SCOPE_KEYS) {
-    if (states[key] === "forbidden" && next[key] !== undefined) {
-      next[key] = undefined;
-      changed = true;
-    }
-  }
-  return changed ? next : scope;
-}
-
-/**
- * Human-readable one-line scope summary for the save review dialog. Prefers the
- * resolved names lifted from the editor (school/grade/room) and falls back to
- * the ids in dataScope for any level whose name has not resolved yet.
- */
-function describeDataScope(
-  scope: DataScope,
-  scopePolicy: string,
-  labels: ScopeSelectionLabels | null,
-): string {
-  if (scopePolicy === "OWN_ONLY" || scope.own_only === true) {
-    return "เฉพาะข้อมูลของตนเอง";
-  }
-  const segments: string[] = [];
-  const push = (label: string, name: string, ids: unknown[] | undefined, fallback: string) => {
-    if (name) {
-      segments.push(`${label}: ${name}`);
-    } else if (ids?.length) {
-      segments.push(fallback);
-    }
-  };
-  push("จังหวัด", labels?.province ?? "", scope.provinces, `จังหวัด ${scope.provinces?.length} รายการ`);
-  push("อำเภอ/เขต", labels?.district ?? "", scope.districts, `อำเภอ/เขต ${scope.districts?.length} รายการ`);
-  push("ตำบล/แขวง", labels?.subDistrict ?? "", scope.sub_districts, `ตำบล/แขวง ${scope.sub_districts?.length} รายการ`);
-  push("โรงเรียน", labels?.school ?? "", scope.school_ids, `โรงเรียน ${scope.school_ids?.length} แห่ง`);
-  push("ระดับชั้น", labels?.grade ?? "", scope.grade_levels, `ระดับชั้น ${scope.grade_levels?.length} รายการ`);
-  push("ห้อง", labels?.room ?? "", scope.room_ids, `ห้อง ${scope.room_ids?.length} รายการ`);
-  return segments.length > 0 ? segments.join(" · ") : "ทั้งประเทศ (ทุกจังหวัด)";
-}
-
-function resolveBaseline(
-  role: string,
-  rolesCatalog: RoleDefinition[],
-): string[] {
-  const definition = rolesCatalog.find((item) => item.name === role);
-  if (definition?.default_permissions?.length) {
-    return definition.default_permissions;
-  }
-  return [];
-}
-
-/** Thai labels for the submit-blocked summary — keep in step with the form's FormLabel texts. */
-const FIELD_LABELS: Partial<Record<keyof UserFormValues, string>> = {
-  username: "ชื่อผู้ใช้งาน",
-  password: "รหัสผ่าน",
-  FirstName: "ชื่อ",
-  LastName: "นามสกุล",
-  PersonID_Onec: "เลขบัตรประชาชน",
-  phone: "เบอร์โทรศัพท์",
-  email: "อีเมล",
-  line_id: "LINE ID",
-  address_postal_code: "รหัสไปรษณีย์",
-  address_latitude: "พิกัดที่อยู่",
-  address_longitude: "พิกัดที่อยู่",
-  role: "ตำแหน่ง",
-  status: "สถานะ",
-};
-
-interface BlockedError {
-  field: string;
-  label: string;
-  message: string;
-  /** Field ไม่ได้ render อยู่บนแท็บปัจจุบัน — คนกดจะไม่เห็น error ที่ตัว field */
-  hidden: boolean;
-}
-
 function toDefaults(user: ManagedUser | null): UserFormValues {
-  if (!user) {
-    return EMPTY_USER_FORM;
-  }
+  if (!user) return EMPTY_USER_FORM;
   return {
     username: user.username,
     password: "",
     FirstName: user.FirstName ?? "",
     LastName: user.LastName ?? "",
-    PersonID_Onec: user.PersonID_Onec ?? "",
     phone: user.phone ?? "",
     email: user.email ?? "",
     affiliation: user.affiliation ?? "",
-    line_id: user.line_id ?? "",
-    address_line: user.address_line ?? "",
-    address_village_no: stripAddressPrefix("หมู่", user.address_village_no),
-    address_street: stripAddressPrefix("ถนน", user.address_street),
-    address_soi: stripAddressPrefix("ซอย", user.address_soi),
-    address_trok: stripAddressPrefix("ตรอก", user.address_trok),
-    address_sub_district: user.address_sub_district ?? "",
-    address_district: user.address_district ?? "",
-    address_province: user.address_province ?? "",
-    address_postal_code: user.address_postal_code ?? "",
-    address_latitude: user.address_latitude ?? null,
-    address_longitude: user.address_longitude ?? null,
     role: user.role || user.roles?.[0] || "",
-    status: user.status || "ACTIVE",
   };
 }
 
-/** The actual form — mounted only once `user` is resolved so RHF gets correct defaults. */
 function UserForm({
-  activeTab,
   user,
   rolesCatalog,
 }: {
-  activeTab: "all" | "info" | "permissions";
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
 }) {
-  const accountStatuses = useStatusCatalog("USER_ACCOUNT_STATUS").items;
   const navigate = useNavigate();
   const saveUser = useSaveUser();
   const isEdit = Boolean(user?.id);
   const [generatedPassword, setGeneratedPassword] = useState("");
-  const initialRole = user?.role || user?.roles?.[0] || "";
-  const initialScopeMode =
-    rolesCatalog.find((item) => item.name === initialRole)?.scope_mode ?? "flexible";
-  const [permissions, setPermissions] = useState(
-    user?.permissions?.length
-      ? user.permissions
-      : resolveBaseline(initialRole, rolesCatalog),
-  );
-  const [dataScope, setDataScope] = useState(() =>
-    clearForbiddenScopeFields(user?.data_scope ?? {}, initialScopeMode),
-  );
+  const [photo, setPhoto] = useState<PhotoPickerValue>(EMPTY_PHOTO_PICKER_VALUE);
+  const { labelOf } = usePermissionCatalog();
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
     resolver: zodResolver(userFormSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
-  const selectedStatus = useWatch({ control: form.control, name: "status" });
-  const locationQuery = useQuery({
-    queryKey: ["attendance-locations"],
-    queryFn: attendanceLookupService.getLocations,
-  });
-  const geocode = useMutation({
-    meta: { suppressSuccessToast: true },
-    mutationFn: geoService.geocodeProfileAddress,
-    onSuccess: (result) => {
-      if (!result) return;
-      form.setValue("address_latitude", result.lat, { shouldDirty: true });
-      form.setValue("address_longitude", result.lng, { shouldDirty: true });
-      if (result.postalCode) {
-        form.setValue("address_postal_code", result.postalCode, { shouldDirty: true });
-      }
-    },
-    throwOnError: false,
-  });
-
-  const roleDefinition = useMemo(
-    () => rolesCatalog.find((item) => item.name === selectedRole),
-    [rolesCatalog, selectedRole],
-  );
-  const baseline = useMemo(
-    () => resolveBaseline(selectedRole, rolesCatalog),
-    [selectedRole, rolesCatalog],
-  );
-  const scopeMode = roleDefinition?.scope_mode ?? "flexible";
-  const scopePolicy = roleDefinition?.scope_policy ?? "ASSIGNABLE";
-  const roleLabel = roleDefinition?.label ?? ROLE_LABELS[selectedRole] ?? selectedRole;
-
-  // Adjust dependent state when the role changes — done during render (React's
-  // recommended pattern) rather than in an effect: keep the permission set in
-  // step with the new role's standard set until the user customises it, and
-  // drop any scope levels the new role is not allowed to set.
-  const [trackedRole, setTrackedRole] = useState(selectedRole);
-  if (selectedRole !== trackedRole) {
-    setTrackedRole(selectedRole);
-    setPermissions(baseline);
-    setDataScope((current) => {
-      const next = clearForbiddenScopeFields(current, scopeMode);
-      if (scopePolicy === "OWN_ONLY") {
-        return { ...next, global: undefined, own_only: true };
-      }
-      return { ...next, own_only: undefined };
-    });
-  }
-
-  const teacherSchoolError =
-    selectedRole === "TEACHER" && !(dataScope.school_ids?.length)
-      ? "บัญชีครูต้องเลือกโรงเรียนสังกัดอย่างน้อย 1 แห่ง"
-      : null;
-  const scopeError = teacherSchoolError
-    ?? getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
-  const isCustomized = !sameSet(permissions, baseline);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null);
-  const [blockedErrors, setBlockedErrors] = useState<BlockedError[]>([]);
-  const [scopeLabels, setScopeLabels] = useState<ScopeSelectionLabels | null>(null);
-  const handleScopeLabelsChange = useCallback(
-    (labels: ScopeSelectionLabels) => setScopeLabels(labels),
-    [],
-  );
-  const { catalog: permissionCatalog, labelOf } = usePermissionCatalog();
-  // Permission ids the backend no longer recognises (renamed/retired) still sit
-  // on older accounts; submitting them makes the backend reject the whole save
-  // ("สิทธิ์ไม่ถูกต้อง: …"), so they must be stripped from the payload. Only
-  // sanitize once the catalog actually loaded — an empty catalog on fetch
-  // failure must not wipe the account's permissions.
-  const validPermissionIds = useMemo(
-    () => new Set([...permissionCatalog.map((item) => item.id), "*", "ALL"]),
-    [permissionCatalog],
-  );
-  const legacyPermissions =
-    permissionCatalog.length > 0
-      ? permissions.filter((permission) => !validPermissionIds.has(permission))
-      : [];
-
-  // A flexible role with no area selected = nationwide access. Highlighted in
-  // the review dialog before saving (there is no longer a dedicated checkbox).
-  const isNationwideScope =
-    scopeMode === "flexible" &&
-    scopePolicy !== "OWN_ONLY" &&
-    dataScope.own_only !== true &&
-    ([
-      dataScope.provinces,
-      dataScope.districts,
-      dataScope.sub_districts,
-      dataScope.school_ids,
-      dataScope.grade_levels,
-      dataScope.room_ids,
-    ].every((values) => !Array.isArray(values) || values.length === 0));
+  const assignableRoleGroups = rolesCatalog.filter((role) => role.is_assignable);
 
   function goBack(): void {
-    if (isEdit) {
-      void navigate(-1);
-      return;
-    }
     void navigate(MANAGE_USERS_PATH);
   }
 
-  // Step 1: validate scope, then open the review dialog for a final recheck.
   function handleSubmit(values: UserFormValues): void {
-    if (scopeError) {
-      const scopeSection = document.getElementById("user-permission-scope");
-      scopeSection?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setBlockedErrors([
-        {
-          field: "data_scope",
-          label: "ขอบเขตข้อมูล",
-          message: scopeError,
-          hidden: !scopeSection,
-        },
-      ]);
-      return;
-    }
-    setBlockedErrors([]);
-    setPendingValues(values);
-    setReviewOpen(true);
-  }
-
-  // Validation failed — the shared scroll-to-first-error can't reach fields on
-  // a tab that isn't rendered, so surface every error next to the submit
-  // button. Without this, saving from the permissions tab while a profile
-  // field is invalid does nothing visible at all.
-  function handleInvalid(errors: FieldErrors<UserFormValues>): void {
-    setBlockedErrors(
-      Object.entries(errors).map(([field, error]) => ({
-        field,
-        label: FIELD_LABELS[field as keyof UserFormValues] ?? field,
-        message:
-          typeof error?.message === "string" && error.message
-            ? error.message
-            : "ข้อมูลไม่ถูกต้อง",
-        hidden: !document.querySelector(`[name="${field}"]`),
-      })),
-    );
-  }
-
-  // Jump to the tab that actually renders the invalid fields, then take the
-  // user to the first one (route change keeps this component instance, so no
-  // form state is lost).
-  function goFixOnInfoTab(): void {
-    const firstHidden = blockedErrors.find((item) => item.hidden);
-    void navigate(`/manage-users/${user?.id}/edit`);
-    window.setTimeout(() => {
-      if (!firstHidden) return;
-      const field = document.querySelector(`[name="${firstHidden.field}"]`);
-      if (field instanceof HTMLElement) {
-        field.scrollIntoView({ behavior: "smooth", block: "center" });
-        field.focus({ preventScroll: true });
-      }
-    }, 150);
-  }
-
-  // Step 2: user confirmed in the review dialog — build the payload and save.
-  function confirmSave(): void {
-    if (!pendingValues) {
-      return;
-    }
-    const values = pendingValues;
     const role = values.role.trim();
-    const password = normalizeOptionalText(values.password);
-    const phone = normalizeOptionalText(values.phone);
-    const email = normalizeOptionalText(values.email);
-    const affiliation = normalizeOptionalText(values.affiliation);
-
+    const password = values.password.trim();
     const payload: UserSavePayload = {
       id: user?.id ?? null,
       username: values.username.trim(),
       FirstName: values.FirstName.trim(),
       LastName: values.LastName.trim(),
-      PersonID_Onec: values.PersonID_Onec.trim(),
+      // Kept from the stored record — the ref form does not collect it, and
+      // sending an empty value would wipe an existing national id.
+      PersonID_Onec: user?.PersonID_Onec ?? "",
       role,
       roles: [role],
-      permissions: isCustomized
-        ? permissions.filter(
-            (permission) =>
-              permissionCatalog.length === 0 || validPermissionIds.has(permission),
-          )
-        : [],
-      status: values.status,
-      data_scope: dataScope,
-      line_id: values.line_id.trim(),
-      address_line: values.address_line.trim(),
-      address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
-      address_street: stripAddressPrefix("ถนน", values.address_street),
-      address_soi: stripAddressPrefix("ซอย", values.address_soi),
-      address_trok: stripAddressPrefix("ตรอก", values.address_trok),
-      address_sub_district: values.address_sub_district.trim(),
-      address_district: values.address_district.trim(),
-      address_province: values.address_province.trim(),
-      address_postal_code: values.address_postal_code.trim(),
-      address_latitude: values.address_latitude,
-      address_longitude: values.address_longitude,
-      ...(phone ? { phone } : {}),
-      ...(email ? { email } : {}),
-      ...(affiliation ? { affiliation } : {}),
+      // Empty means "use the role group's standard permission set".
+      permissions: [],
+      status: user?.status || "ACTIVE",
+      data_scope: user?.data_scope ?? {},
+      phone: values.phone.trim(),
+      email: values.email.trim(),
+      affiliation: values.affiliation.trim(),
       ...(password ? { password } : {}),
     };
 
     saveUser.mutate(
-      { id: user?.id ?? null, payload },
+      { id: user?.id ?? null, payload, photo: photo.file, removePhoto: photo.removed },
       {
         onSuccess: (response) => {
-          setReviewOpen(false);
           if (!isEdit && response?.tempPassword) {
             setGeneratedPassword(response.tempPassword);
             return;
@@ -460,287 +117,166 @@ function UserForm({
           goBack();
         },
         onError: (error) => {
-          setReviewOpen(false);
           const message = getApiErrorMessage(
             error,
             "บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล",
           );
           if (message.startsWith("ชื่อผู้ใช้งานนี้ถูกใช้แล้ว")) {
             form.setError("username", { type: "server", message });
-            requestAnimationFrame(() => {
-              const usernameField = document.getElementById("username");
-              usernameField?.scrollIntoView({ behavior: "smooth", block: "center" });
-              usernameField?.focus({ preventScroll: true });
-            });
-            return;
           }
-          // The error alert sits at the top of the form; the user is at the
-          // bottom (submit row) when the dialog closes — bring it into view.
-          requestAnimationFrame(() => {
-            document
-              .getElementById("user-save-error")
-              ?.scrollIntoView({ behavior: "smooth", block: "center" });
-          });
         },
       },
     );
   }
 
-  const reviewData: UserSaveReview | null = pendingValues
-    ? {
-        isEdit,
-        fullName: `${pendingValues.FirstName} ${pendingValues.LastName}`.trim(),
-        username: pendingValues.username.trim(),
-        email: normalizeOptionalText(pendingValues.email) ?? null,
-        phone: normalizeOptionalText(pendingValues.phone) ?? null,
-        affiliation: normalizeOptionalText(pendingValues.affiliation) ?? null,
-        personId: pendingValues.PersonID_Onec.trim() || null,
-        roleLabel,
-        status: pendingValues.status,
-        scopeText: describeDataScope(dataScope, scopePolicy, scopeLabels),
-        isNationwide: isNationwideScope,
-        isCustomized,
-        permissions,
-        addedPermissions: permissions.filter(
-          (permission) =>
-            !baseline.includes(permission) && !legacyPermissions.includes(permission),
-        ),
-        // Retired ids surface under "เอาออก" so the cleanup is visible in the
-        // review step instead of silently disappearing from the account.
-        removedPermissions: [
-          ...baseline.filter((permission) => !permissions.includes(permission)),
-          ...legacyPermissions,
-        ],
-      }
-    : null;
-
   return (
     <>
-      <Form form={form} onInvalid={handleInvalid} onSubmit={handleSubmit}>
+      <Form form={form} onSubmit={handleSubmit}>
         <Card className="p-6">
-          <div id="user-save-error">
-            <FormErrorAlert
-              className="mb-4"
-              error={saveUser.error}
-              fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
-            />
+          <div className="mb-6 flex items-center gap-2">
+            <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+            <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
           </div>
 
-          {activeTab !== "permissions" ? (
-          <>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <FormItem>
-              <FormLabel htmlFor="username" required>
-                ชื่อผู้ใช้งาน
-              </FormLabel>
-              <Input id="username" {...registerField(form, "username")} />
-              <FormMessage<UserFormValues> name="username" />
-            </FormItem>
+          <FormErrorAlert
+            className="mb-4"
+            error={saveUser.error}
+            fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+          />
 
-            <FormItem>
-              <FormLabel htmlFor="password">
-                {isEdit
-                  ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)"
-                  : "รหัสผ่าน (เว้นว่างเพื่อสร้างอัตโนมัติ)"}
-              </FormLabel>
-              <PasswordInput id="password" {...registerField(form, "password")} />
-              <FormMessage<UserFormValues> name="password" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="FirstName" required>
-                ชื่อ
-              </FormLabel>
-              <Input id="FirstName" {...registerField(form, "FirstName")} />
-              <FormMessage<UserFormValues> name="FirstName" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="LastName" required>
-                นามสกุล
-              </FormLabel>
-              <Input id="LastName" {...registerField(form, "LastName")} />
-              <FormMessage<UserFormValues> name="LastName" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="PersonID_Onec" required>
-                เลขบัตรประชาชน
-              </FormLabel>
-              <NumericInput
-                id="PersonID_Onec"
-                maxLength={13}
-                {...registerField(form, "PersonID_Onec")}
-              />
-              <FormMessage<UserFormValues> name="PersonID_Onec" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="phone">เบอร์โทร</FormLabel>
-              <NumericInput id="phone" maxLength={10} {...registerField(form, "phone")} />
-              <FormMessage<UserFormValues> name="phone" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="email">อีเมล</FormLabel>
-              <Input id="email" type="email" {...registerField(form, "email")} />
-              <FormMessage<UserFormValues> name="email" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="affiliation">สังกัด</FormLabel>
-              <Input id="affiliation" {...registerField(form, "affiliation")} />
-              <FormMessage<UserFormValues> name="affiliation" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="line_id">LINE ID</FormLabel>
-              <Input id="line_id" {...registerField(form, "line_id")} />
-              <FormMessage<UserFormValues> name="line_id" />
-            </FormItem>
-          </div>
-          <div className="mt-6">
-            <AddressFormSection
-              catalog={locationQuery.data}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+            <PhotoPicker
               disabled={saveUser.isPending}
-              form={form}
-              geocodeError={geocode.isError ? (
-                <FormErrorAlert
-                  error={geocode.error}
-                  fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
-                />
-              ) : null}
-              isGeocoding={geocode.isPending}
-              names={ADDRESS_NAMES}
-              onGeocode={async (address) => Boolean(await geocode.mutateAsync(address))}
-              showPlaceholders={!isEdit}
-              title="ที่อยู่ติดต่อ"
+              label="รูปประจำตัวผู้ใช้งาน"
+              onChange={setPhoto}
+              storedUrl={resolveApiMediaUrl(user?.photo_url ?? null)}
+              value={photo}
             />
-          </div>
-          </>
-          ) : null}
 
-          {activeTab !== "info" ? (
-          <div className="mt-4 grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <FormItem>
-              <FormLabel htmlFor="role" required>
-                ตำแหน่ง
-              </FormLabel>
-              <Combobox
-                aria-invalid={form.formState.errors.role ? true : undefined}
-                id="role"
-                name="role"
-                onChange={(next) =>
-                  form.setValue("role", next, {
-                    shouldValidate: form.formState.isSubmitted,
-                  })
-                }
-                options={[
-                  { value: "", label: "เลือกตำแหน่ง" },
-                  ...rolesCatalog.map((role) => ({
-                    value: role.name,
-                    label: role.label || ROLE_LABELS[role.name] || role.name,
-                  })),
-                ]}
-                searchable={false}
-                value={selectedRole}
-              />
-              <FormMessage<UserFormValues> name="role" />
-            </FormItem>
-
-            {!isEdit ? (
+            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
               <FormItem>
-                <FormLabel htmlFor="status">สถานะ</FormLabel>
-                <Combobox
-                  id="status"
-                  name="status"
-                  onChange={(next) =>
-                    form.setValue("status", next, {
-                      shouldValidate: form.formState.isSubmitted,
-                    })
-                  }
-                  options={accountStatuses.map((option) => ({
-                    value: option.code,
-                    label: option.label,
-                  }))}
-                  searchable={false}
-                  value={selectedStatus}
+                <FormLabel htmlFor="FirstName" required>
+                  ชื่อ
+                </FormLabel>
+                <Input
+                  id="FirstName"
+                  placeholder="ระบุชื่อผู้ใช้งาน"
+                  {...registerField(form, "FirstName")}
                 />
-                <FormMessage<UserFormValues> name="status" />
+                <FormMessage<UserFormValues> name="FirstName" />
               </FormItem>
-            ) : null}
-          </div>
-          ) : null}
 
-          {activeTab !== "info" ? (
-          <div className="mt-4" id="user-permission-scope">
-            {selectedRole === "TEACHER" ? (
-              <Alert className="mb-4" variant={teacherSchoolError && form.formState.isSubmitted ? "destructive" : "default"}>
-                <AlertTitle>โรงเรียนสังกัดของครู</AlertTitle>
-                <AlertDescription>เมื่อบันทึก ระบบจะเชื่อมบัญชีครูกับโรงเรียนที่เลือกให้อัตโนมัติ และใช้รายชื่อนี้ในตารางสอนกับโครงสร้างโรงเรียน</AlertDescription>
-              </Alert>
-            ) : null}
-            <PermissionScopeEditor
-              baselinePermissions={baseline}
-              dataScope={dataScope}
-              disabled={saveUser.isPending}
-              onDataScopeChange={setDataScope}
-              onPermissionsChange={setPermissions}
-              onScopeLabelsChange={handleScopeLabelsChange}
-              permissions={permissions}
-              role={selectedRole}
-              roleLabel={roleLabel}
-              scopeMode={scopeMode}
-              scopePolicy={scopePolicy}
-              showErrors={form.formState.isSubmitted}
-            />
-          </div>
-          ) : null}
+              <FormItem>
+                <FormLabel htmlFor="LastName" required>
+                  นามสกุล
+                </FormLabel>
+                <Input
+                  id="LastName"
+                  placeholder="ระบุนามสกุลผู้ใช้งาน"
+                  {...registerField(form, "LastName")}
+                />
+                <FormMessage<UserFormValues> name="LastName" />
+              </FormItem>
 
-          {blockedErrors.length > 0 ? (
-            <Alert className="mt-6" variant="destructive">
-              <AlertTitle>ยังบันทึกไม่ได้ — มีข้อมูลไม่ผ่านการตรวจสอบ</AlertTitle>
-              <AlertDescription>
-                <ul className="list-disc space-y-1 pl-5">
-                  {blockedErrors.map((item) => (
-                    <li key={item.field}>
-                      {item.label}: {item.message}
-                      {item.hidden && activeTab === "permissions"
-                        ? " (อยู่ในแท็บข้อมูล)"
-                        : ""}
-                    </li>
-                  ))}
-                </ul>
-              </AlertDescription>
-              {isEdit &&
-              activeTab === "permissions" &&
-              blockedErrors.some((item) => item.hidden) ? (
-                <Button
-                  className="mt-3"
-                  onClick={goFixOnInfoTab}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  ไปแก้ในแท็บข้อมูล
-                </Button>
-              ) : null}
-            </Alert>
-          ) : null}
+              <FormItem>
+                <FormLabel htmlFor="email" required>
+                  อีเมล
+                </FormLabel>
+                <Input
+                  id="email"
+                  placeholder="example@gmail.com"
+                  type="email"
+                  {...registerField(form, "email")}
+                />
+                <FormMessage<UserFormValues> name="email" />
+              </FormItem>
 
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={goBack} size="lg" type="button" variant="outline">
-              ยกเลิก
-            </Button>
-            <Button
-              isLoading={saveUser.isPending}
-              loadingText="กำลังบันทึก"
-              size="lg"
-              type="submit"
-            >
-              บันทึก
-            </Button>
+              <FormItem>
+                <FormLabel htmlFor="phone" required>
+                  เบอร์โทรศัพท์
+                </FormLabel>
+                <NumericInput
+                  id="phone"
+                  maxLength={10}
+                  placeholder="XXXXXXXXXX"
+                  {...registerField(form, "phone")}
+                />
+                <FormMessage<UserFormValues> name="phone" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="password" required={!isEdit}>
+                  {isEdit ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)" : "รหัสผ่าน"}
+                </FormLabel>
+                <PasswordInput
+                  id="password"
+                  placeholder="**********"
+                  {...registerField(form, "password")}
+                />
+                <FormMessage<UserFormValues> name="password" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="affiliation" required>
+                  สังกัด
+                </FormLabel>
+                <Input
+                  id="affiliation"
+                  placeholder="สังกัดหน่วยงาน"
+                  {...registerField(form, "affiliation")}
+                />
+                <FormMessage<UserFormValues> name="affiliation" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="username" required>
+                  ชื่อผู้ใช้งาน
+                </FormLabel>
+                <Input
+                  id="username"
+                  placeholder="ใช้สำหรับเข้าสู่ระบบ"
+                  {...registerField(form, "username")}
+                />
+                <FormMessage<UserFormValues> name="username" />
+              </FormItem>
+            </div>
           </div>
         </Card>
+
+        <Card className="mt-6 p-6">
+          <div className="mb-6 flex items-center gap-2">
+            <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
+            <h2 className="text-lg font-bold text-slate-800">
+              กำหนดสิทธิ์การเข้าถึง
+            </h2>
+          </div>
+          <RoleGroupSelector
+            disabled={saveUser.isPending}
+            labelOf={labelOf}
+            onChange={(role) =>
+              form.setValue("role", role, {
+                shouldValidate: form.formState.isSubmitted,
+              })
+            }
+            roleGroups={assignableRoleGroups}
+            value={selectedRole}
+          />
+          <FormMessage<UserFormValues> name="role" />
+        </Card>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={goBack} size="lg" type="button" variant="outline">
+            ยกเลิก
+          </Button>
+          <Button
+            isLoading={saveUser.isPending}
+            loadingText="กำลังบันทึก"
+            size="lg"
+            type="submit"
+          >
+            บันทึก
+          </Button>
+        </div>
       </Form>
 
       <CredentialDialog
@@ -750,14 +286,6 @@ function UserForm({
         }}
         open={Boolean(generatedPassword)}
         value={generatedPassword}
-      />
-      <UserSaveReviewDialog
-        data={reviewData}
-        labelOf={labelOf}
-        isSubmitting={saveUser.isPending}
-        onClose={() => setReviewOpen(false)}
-        onConfirm={confirmSave}
-        open={reviewOpen}
       />
     </>
   );
@@ -779,42 +307,17 @@ export function ManageUserFormPage() {
     isError: isRolesError,
     refetch: refetchRoles,
   } = useRolesCatalog();
-  const [activeTab, setActiveTab] = useRouteTab(
-    {
-      info: id ? `/manage-users/${id}/edit` : "/manage-users/new",
-      permissions: id ? `/manage-users/${id}/edit/permissions` : "/manage-users/new",
-    } as const,
-    "info",
-  );
 
   return (
     <PageShell>
       <PageToolbar
-        icon={UserCog}
-        title={isEdit ? "แก้ไขผู้ใช้งาน" : "เพิ่มผู้ใช้งาน"}
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
-        navigation={isEdit ? (
-          <Tabs
-            aria-label="โหมดแก้ไขผู้ใช้งาน"
-            onChange={setActiveTab}
-            options={[
-              { value: "info", label: "ข้อมูล" },
-              { value: "permissions", label: "สิทธิ์" },
-            ]}
-            value={activeTab}
-          />
-        ) : undefined}
-        footerActions={
-          isEdit ? (
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
-              ย้อนกลับ
-            </NavButton>
-          ) : (
-            <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
-              ย้อนกลับ
-            </NavButton>
-          )
+        actions={
+          <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
+            ย้อนกลับ
+          </NavButton>
         }
+        title={isEdit ? "แก้ไขผู้ใช้งาน" : "เพิ่มผู้ใช้งาน"}
       />
 
       {isRolesLoading || (isEdit && isUserLoading && !user) ? (
@@ -823,23 +326,19 @@ export function ManageUserFormPage() {
         </Card>
       ) : isRolesError ? (
         <ErrorState
-          title="ไม่สามารถโหลดข้อมูลตำแหน่งได้"
-          description="เกิดข้อผิดพลาดระหว่างโหลดตำแหน่งและนโยบายขอบเขตข้อมูล"
+          description="เกิดข้อผิดพลาดระหว่างโหลดกลุ่มสิทธิ์การเข้าถึง"
           onRetry={refetchRoles}
+          title="ไม่สามารถโหลดข้อมูลบทบาทได้"
         />
       ) : isEdit && (isUserError || !user) ? (
         <ErrorState
-          title="ไม่พบผู้ใช้งาน"
           description="ไม่พบข้อมูลผู้ใช้งานที่ต้องการแก้ไข"
-          retryLabel="กลับไปรายการผู้ใช้งาน"
           onRetry={() => void navigate(MANAGE_USERS_PATH)}
+          retryLabel="กลับไปรายการผู้ใช้งาน"
+          title="ไม่พบผู้ใช้งาน"
         />
       ) : (
-        <UserForm
-          activeTab={isEdit ? activeTab : "all"}
-          user={user}
-          rolesCatalog={rolesCatalog}
-        />
+        <UserForm rolesCatalog={rolesCatalog} user={user} />
       )}
     </PageShell>
   );

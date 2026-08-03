@@ -1,26 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Building2,
-  DoorOpen,
-  FileUp,
-  Plus,
-  School,
-  SquarePen,
-  Trash2,
-  Users,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { DoorOpen, Plus, School, SquarePen, Trash2, UserPlus } from "lucide-react";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   Badge,
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
-  SchoolIcon,
-  Card,
-  CardContent,
   Dialog,
   DialogBody,
   DialogContent,
@@ -30,231 +14,126 @@ import {
   FormErrorAlert,
   FormLabel,
   IconButton,
-  useConfirm,
   Input,
-  NumericInput,
   Label,
+  NumericInput,
   Select,
-  Tabs,
+  useConfirm,
 } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  TableCard,
+  TableCardList,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import {
   EmptyState,
   ErrorState,
-  PageShell,
-  PageToolbar,
-  SkeletonStack,
-  SummaryMetrics,
   FilterCombobox,
   FilterSelect,
-  ToolbarFilterGrid,
+  PageShell,
+  PageToolbar,
+  SearchInput,
+  SkeletonTable,
+  ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { RefreshButton } from "../../../components/layout/refresh-button";
-import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { Pagination } from "../../../components/layout/pagination";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
-import { SchoolTermDialog, type SchoolTermFormValues } from "../../attendance/components/SchoolTermDialog";
+import {
+  SchoolTermDialog,
+  type SchoolTermFormValues,
+} from "../../attendance/components/SchoolTermDialog";
 import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import {
-  useClassroomAssignments,
-  useClassroomRoster,
   useCreateHomeroomAssignment,
   useCreateSchoolClassroom,
   useDeleteSchoolClassroom,
-  useSchoolClassroomOptions,
   useSchoolClassrooms,
   useSchoolTeacherOptions,
-  useSchoolTeachers,
   useScopedSchools,
-  useTeacherRosterImport,
   useUpdateSchoolClassroom,
 } from "../hooks/useSchoolStructure";
-import type { SchoolClassroom, ScopedSchool } from "../types/school-structure.types";
+import type { SchoolClassroom } from "../types/school-structure.types";
 
-type StructureTab = "classrooms" | "teachers" | "roster";
-const EMPTY_SCHOOLS: ScopedSchool[] = [];
-const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
-
-function displayStudentName(firstName: string | null, lastName: string | null): string {
-  return [firstName, lastName].filter(Boolean).join(" ") || "ไม่ระบุชื่อ";
-}
-
-function summaryLabels(input: {
-  hasTerm: boolean;
-  hasGrade: boolean;
-  hasClassroom: boolean;
-}): { classroom: string; teacher: string; student: string } {
-  if (input.hasClassroom) {
-    return { classroom: "ห้องที่เลือก", teacher: "ครูในห้อง", student: "นักเรียนในห้อง" };
-  }
-  if (input.hasGrade) {
-    return {
-      classroom: "ห้องในระดับชั้น",
-      teacher: "ครูในระดับชั้น",
-      student: "นักเรียนในระดับชั้น",
-    };
-  }
-  if (input.hasTerm) {
-    return {
-      classroom: "ห้องในภาคเรียน",
-      teacher: "ครูในภาคเรียน",
-      student: "นักเรียนในภาคเรียน",
-    };
-  }
-  return { classroom: "ห้องในโรงเรียน", teacher: "ครูในโรงเรียน", student: "นักเรียนในโรงเรียน" };
-}
-
+/**
+ * Term, classroom and homeroom-teacher setup for a school.
+ *
+ * Deliberately narrow: the teacher roster lives on /manage-teachers and the
+ * student roster on /classrooms/:classroomId, so this page only owns the
+ * structure those pages read.
+ */
 export function SchoolStructurePage() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
+
   const [schoolInput, setSchoolInput] = useState("");
   const [termInput, setTermInput] = useState("");
-  const [classroomInput, setClassroomInput] = useState("");
-  const [provinceFilter, setProvinceFilter] = useState("");
-  const [districtFilter, setDistrictFilter] = useState("");
-  const [subDistrictFilter, setSubDistrictFilter] = useState("");
-  const [classroomGradeFilter, setClassroomGradeFilter] = useState("");
-  const [classroomRoomFilter, setClassroomRoomFilter] = useState("");
-  const [classroomSort, setClassroomSort] = useState<DataTableSortState | undefined>({
+  const [gradeFilter, setGradeFilter] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<DataTableSortState | undefined>({
     key: "grade",
     direction: "asc",
   });
-  const [teacherSort, setTeacherSort] = useState<DataTableSortState | undefined>({
-    key: "name",
-    direction: "asc",
-  });
-  const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
-    key: "name",
-    direction: "asc",
-  });
-  const [classroomPage, setClassroomPage] = useState(1);
-  const [classroomRowsPerPage, setClassroomRowsPerPage] = useState(10);
-  const [teacherPage, setTeacherPage] = useState(1);
-  const [teacherRowsPerPage, setTeacherRowsPerPage] = useState(10);
-  const [rosterPage, setRosterPage] = useState(1);
-  const [rosterRowsPerPage, setRosterRowsPerPage] = useState(20);
-  const [tab, setTab] = useState<StructureTab>("classrooms");
+
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [classroomDialogOpen, setClassroomDialogOpen] = useState(false);
-  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [teacherImportDialogOpen, setTeacherImportDialogOpen] = useState(false);
-  const [teacherImportFile, setTeacherImportFile] = useState<File | null>(null);
+  // Room the homeroom dialog is assigning for; null = dialog closed.
+  const [assigningClassroom, setAssigningClassroom] = useState<SchoolClassroom | null>(null);
   const [gradeLevelId, setGradeLevelId] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [roomName, setRoomName] = useState("");
-  // Room whose data the dialog is editing; null = creating a new room.
+  // Room the classroom dialog is editing; null = creating a new room.
   const [editingClassroom, setEditingClassroom] = useState<SchoolClassroom | null>(null);
   const [teacherMembershipId, setTeacherMembershipId] = useState("");
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
   const schoolsQuery = useScopedSchools();
-  const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
-  const provinces = useMemo(
-    () => [...new Set(schools.map((school) => school.province).filter(Boolean))] as string[],
-    [schools],
-  );
-  const districts = useMemo(
-    () =>
-      [...new Set(
-        schools
-          .filter((school) => !provinceFilter || school.province === provinceFilter)
-          .map((school) => school.district)
-          .filter(Boolean),
-      )] as string[],
-    [provinceFilter, schools],
-  );
-  const subDistricts = useMemo(
-    () =>
-      [...new Set(
-        schools
-          .filter(
-            (school) =>
-              (!provinceFilter || school.province === provinceFilter) &&
-              (!districtFilter || school.district === districtFilter),
-          )
-          .map((school) => school.subDistrict)
-          .filter(Boolean),
-      )] as string[],
-    [districtFilter, provinceFilter, schools],
-  );
-  const availableSchools = useMemo(
-    () =>
-      schools.filter(
-        (school) =>
-          (!provinceFilter || school.province === provinceFilter) &&
-          (!districtFilter || school.district === districtFilter) &&
-          (!subDistrictFilter || school.subDistrict === subDistrictFilter),
-      ),
-    [districtFilter, provinceFilter, schools, subDistrictFilter],
-  );
-  const selectedSchool =
-    availableSchools.find((school) => school.id === Number(schoolInput)) ??
-    (schools.length === 1 ? availableSchools[0] : undefined);
-  const selectedSchoolId = selectedSchool?.id;
-  const displayedProvince = provinceFilter || selectedSchool?.province || "";
-  const displayedDistrict = districtFilter || selectedSchool?.district || "";
-  const displayedSubDistrict = subDistrictFilter || selectedSchool?.subDistrict || "";
-
-  function selectSchool(value: string): void {
-    const school = schools.find((candidate) => candidate.id === Number(value));
-    setSchoolInput(value);
-    setProvinceFilter(school?.province ?? "");
-    setDistrictFilter(school?.district ?? "");
-    setSubDistrictFilter(school?.subDistrict ?? "");
-    setTermInput("");
-    setClassroomInput("");
-    setClassroomGradeFilter("");
-    setClassroomRoomFilter("");
-    setClassroomPage(1);
-    setTeacherPage(1);
-    setRosterPage(1);
-  }
-
-  function clearStructureFilters(): void {
-    setProvinceFilter("");
-    setDistrictFilter("");
-    setSubDistrictFilter("");
-    setSchoolInput("");
-    setTermInput("");
-    setClassroomInput("");
-    setClassroomGradeFilter("");
-    setClassroomRoomFilter("");
-    setClassroomPage(1);
-    setTeacherPage(1);
-    setRosterPage(1);
-  }
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  // Same rule as /classrooms: one school is implied, several must be chosen.
+  const schoolId = schools.length === 1 ? String(schools[0].id) : schoolInput;
+  const selectedSchoolId = Number(schoolId) || null;
+  const multipleSchools = schools.length > 1;
 
   const termsQuery = useQuery({
     queryKey: ["school-structure", "terms", selectedSchoolId],
     queryFn: () => attendanceService.getTerms(selectedSchoolId!),
-    enabled: Boolean(selectedSchoolId),
+    enabled: selectedSchoolId !== null,
   });
-  const terms = termsQuery.data ?? [];
+  const terms = useMemo(() => termsQuery.data ?? [], [termsQuery.data]);
   const selectedTermId = Number(termInput || terms[0]?.id || 0) || undefined;
 
   const gradeLevelsQuery = useQuery({
     queryKey: ["school-structure", "grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
   });
+
   const classroomsQuery = useSchoolClassrooms(
     selectedSchoolId
       ? {
           schoolId: selectedSchoolId,
           termId: selectedTermId,
-          gradeLevelId: Number(classroomGradeFilter) || undefined,
-          classroomId: Number(classroomRoomFilter) || undefined,
-          page: classroomPage,
-          limit: classroomRowsPerPage,
-          sortBy: classroomSort?.key as "room" | "grade" | "students" | undefined,
-          sortDirection: classroomSort?.direction,
+          gradeLevelId: Number(gradeFilter) || undefined,
+          search: search || undefined,
+          page,
+          limit: rowsPerPage,
+          sortBy: sort?.key as "room" | "grade" | "students" | undefined,
+          sortDirection: sort?.direction,
         }
       : null,
   );
@@ -262,70 +141,17 @@ export function SchoolStructurePage() {
     () => classroomsQuery.data?.data ?? [],
     [classroomsQuery.data?.data],
   );
-  const classroomOptionsQuery = useSchoolClassroomOptions(
-    selectedSchoolId
-      ? {
-          schoolId: selectedSchoolId,
-          termId: selectedTermId,
-          gradeLevelId: Number(classroomGradeFilter) || undefined,
-        }
-      : null,
-  );
-  const roomFilterOptions = classroomOptionsQuery.data ?? [];
-  const importClassroomId =
-    classroomRoomFilter ||
-    (roomFilterOptions.length === 1 ? String(roomFilterOptions[0].id) : "");
-  const selectedClassroom = useMemo(
-    () => classrooms.find((room) => room.id === classroomInput) ?? classrooms[0],
-    [classroomInput, classrooms],
-  );
-  const teachersQuery = useSchoolTeachers(
-    selectedSchoolId
-      ? {
-          schoolId: selectedSchoolId,
-          termId: selectedTermId,
-          gradeLevelId: Number(classroomGradeFilter) || undefined,
-          classroomId: Number(classroomRoomFilter) || undefined,
-          assignedToFilteredClassrooms: true,
-          page: teacherPage,
-          limit: teacherRowsPerPage,
-          sortBy: teacherSort?.key as "name" | "status" | undefined,
-          sortDirection: teacherSort?.direction,
-        }
-      : null,
-  );
-  const teachers = teachersQuery.data?.data ?? [];
-  const structureSummary = classroomsQuery.data?.summary;
-  const structureSummaryLabels = summaryLabels({
-    hasTerm: Boolean(selectedTermId),
-    hasGrade: Boolean(classroomGradeFilter),
-    hasClassroom: Boolean(classroomRoomFilter),
-  });
-  const teacherOptionsQuery = useSchoolTeacherOptions(selectedSchoolId);
-  const activeTeachers = teacherOptionsQuery.data ?? [];
-  const assignmentsQuery = useClassroomAssignments(
-    selectedClassroom ? Number(selectedClassroom.id) : undefined,
-  );
-  const rosterQuery = useClassroomRoster(
-    selectedSchoolId
-      ? {
-          schoolId: selectedSchoolId,
-          termId: selectedTermId,
-          gradeLevelId: Number(classroomGradeFilter) || undefined,
-          classroomId: Number(classroomRoomFilter) || undefined,
-          page: rosterPage,
-          limit: rosterRowsPerPage,
-          sortBy: rosterSort?.key as "name" | "status" | undefined,
-          sortDirection: rosterSort?.direction,
-        }
-      : null,
+
+  const teacherOptionsQuery = useSchoolTeacherOptions(selectedSchoolId ?? undefined);
+  const teacherOptions = useMemo(
+    () => teacherOptionsQuery.data ?? [],
+    [teacherOptionsQuery.data],
   );
 
   const createClassroom = useCreateSchoolClassroom();
   const updateClassroom = useUpdateSchoolClassroom();
   const deleteClassroom = useDeleteSchoolClassroom();
   const createAssignment = useCreateHomeroomAssignment();
-  const teacherImport = useTeacherRosterImport();
   const createTerm = useMutation({
     mutationFn: (values: SchoolTermFormValues) =>
       attendanceService.upsertTerm({ ...values, schoolId: selectedSchoolId! }),
@@ -337,12 +163,27 @@ export function SchoolStructurePage() {
     },
   });
 
+  function handleSchoolChange(value: string): void {
+    setSchoolInput(value);
+    setTermInput("");
+    setGradeFilter("");
+    setPage(1);
+  }
+
   function openClassroomDialog(room: SchoolClassroom | null): void {
     setEditingClassroom(room);
     setGradeLevelId(room ? String(room.gradeLevelId) : "");
     setRoomCode(room ? room.roomCode : "");
     setRoomName(room?.roomName ?? "");
+    createClassroom.reset();
+    updateClassroom.reset();
     setClassroomDialogOpen(true);
+  }
+
+  function openAssignmentDialog(room: SchoolClassroom): void {
+    setAssigningClassroom(room);
+    setTeacherMembershipId("");
+    createAssignment.reset();
   }
 
   async function submitClassroom(event: React.FormEvent<HTMLFormElement>) {
@@ -370,6 +211,17 @@ export function SchoolStructurePage() {
     setClassroomDialogOpen(false);
   }
 
+  async function submitAssignment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!assigningClassroom || !teacherMembershipId) return;
+    await createAssignment.mutateAsync({
+      classroomId: Number(assigningClassroom.id),
+      teacherMembershipId: Number(teacherMembershipId),
+    });
+    setTeacherMembershipId("");
+    setAssigningClassroom(null);
+  }
+
   async function handleDeleteClassroom(room: SchoolClassroom): Promise<void> {
     const accepted = await confirm({
       title: "ลบห้องนี้?",
@@ -380,455 +232,263 @@ export function SchoolStructurePage() {
     if (accepted) deleteClassroom.mutate(room.id);
   }
 
-  async function submitAssignment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedClassroom || !teacherMembershipId) return;
-    await createAssignment.mutateAsync({
-      classroomId: Number(selectedClassroom.id),
-      teacherMembershipId: Number(teacherMembershipId),
-    });
-    setTeacherMembershipId("");
-    setAssignmentDialogOpen(false);
-  }
-
-  if (schoolsQuery.isLoading) {
-    return <PageShell><SkeletonStack lines={5} /></PageShell>;
-  }
-  if (schoolsQuery.isError) {
+  function renderRoomActions(room: SchoolClassroom) {
+    const roomLabel = `${room.gradeLabel} ${room.roomName || formatRoomLabel(room.roomCode)}`;
     return (
-      <PageShell>
-        <ErrorState
-          description="ไม่สามารถโหลดโรงเรียนในขอบเขตของคุณได้"
-          onRetry={() => void schoolsQuery.refetch()}
-          title="โหลดโครงสร้างโรงเรียนไม่สำเร็จ"
+      <div className="flex items-center justify-center gap-1">
+        <Button
+          aria-label={`${room.homeroomTeacherName ? "เปลี่ยนครูประจำชั้น" : "กำหนดครูประจำชั้น"} ${roomLabel}`}
+          disabled={teacherOptions.length === 0}
+          icon={UserPlus}
+          onClick={() => openAssignmentDialog(room)}
+          title={teacherOptions.length === 0 ? "ยังไม่มีครูในโรงเรียนนี้" : undefined}
+          variant="outline"
+        >
+          {room.homeroomTeacherName ? "เปลี่ยนครู" : "กำหนดครู"}
+        </Button>
+        <IconButton
+          aria-label={`แก้ไขห้อง ${roomLabel}`}
+          icon={SquarePen}
+          onClick={() => openClassroomDialog(room)}
+          variant="edit"
         />
-      </PageShell>
+        <IconButton
+          aria-label={`ลบห้อง ${roomLabel}`}
+          disabled={room.studentCount > 0 || deleteClassroom.isPending}
+          icon={Trash2}
+          onClick={() => void handleDeleteClassroom(room)}
+          title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined}
+          variant="delete"
+        />
+      </div>
     );
   }
+
+  const isLoadingPage =
+    schoolsQuery.isLoading || (selectedSchoolId !== null && termsQuery.isLoading);
 
   return (
     <PageShell>
       <PageToolbar
         actions={
-          <Button
-            disabled={!selectedSchoolId}
-            icon={Plus}
-            onClick={() => setTermDialogOpen(true)}
-          >
-            เพิ่มภาคเรียน
-          </Button>
-        }
-        description="ตั้งภาคเรียน ห้อง ครูประจำชั้น และตรวจรายชื่อนักเรียนของโรงเรียนที่คุณดูแล"
-        footerActions={(
           <>
-            <RefreshButton onRefresh={() => Promise.all([schoolsQuery.refetch(), classroomsQuery.refetch(), classroomOptionsQuery.refetch(), teachersQuery.refetch(), teacherOptionsQuery.refetch(), assignmentsQuery.refetch(), rosterQuery.refetch()])} updatedAt={Math.max(schoolsQuery.dataUpdatedAt, classroomsQuery.dataUpdatedAt, classroomOptionsQuery.dataUpdatedAt, teachersQuery.dataUpdatedAt, teacherOptionsQuery.dataUpdatedAt, assignmentsQuery.dataUpdatedAt, rosterQuery.dataUpdatedAt)} />
-            <ClearFiltersButton onClear={clearStructureFilters} />
-          </>
-        )}
-        icon={Building2}
-        title="โครงสร้างโรงเรียน"
-      >
-        <ToolbarFilterGrid className="xl:grid-cols-4">
-          <FilterCombobox
-            ariaLabel="กรองตามจังหวัด"
-            onChange={(value) => {
-              setProvinceFilter(value);
-              setDistrictFilter("");
-              setSubDistrictFilter("");
-              setSchoolInput("");
-              setTermInput("");
-              setClassroomInput("");
-              setClassroomPage(1);
-              setTeacherPage(1);
-              setRosterPage(1);
-            }}
-            options={[
-              { value: "", label: "ทุกจังหวัด" },
-              ...provinces.map((province) => ({ value: province, label: province })),
-            ]}
-            placeholder="ค้นหาจังหวัด"
-            value={displayedProvince}
-          />
-          <FilterCombobox
-            ariaLabel="กรองตามอำเภอหรือเขต"
-            disabled={!displayedProvince}
-            onChange={(value) => {
-              setDistrictFilter(value);
-              setSubDistrictFilter("");
-              setSchoolInput("");
-              setTermInput("");
-              setClassroomInput("");
-              setClassroomPage(1);
-              setTeacherPage(1);
-              setRosterPage(1);
-            }}
-            options={[
-              { value: "", label: "ทุกอำเภอ/เขต" },
-              ...districts.map((district) => ({ value: district, label: district })),
-            ]}
-            placeholder="ค้นหาอำเภอ/เขต"
-            value={displayedDistrict}
-          />
-          <FilterCombobox
-            ariaLabel="กรองตามตำบลหรือแขวง"
-            disabled={!displayedDistrict}
-            onChange={(value) => {
-              setSubDistrictFilter(value);
-              setSchoolInput("");
-              setTermInput("");
-              setClassroomInput("");
-              setClassroomPage(1);
-              setTeacherPage(1);
-              setRosterPage(1);
-            }}
-            options={[
-              { value: "", label: "ทุกตำบล/แขวง" },
-              ...subDistricts.map((subDistrict) => ({
-                value: subDistrict,
-                label: subDistrict,
-              })),
-            ]}
-            placeholder="ค้นหาตำบล/แขวง"
-            value={displayedSubDistrict}
-          />
-          <FilterCombobox
-            ariaLabel="เลือกโรงเรียน"
-            onChange={selectSchool}
-            options={[
-              { value: "", label: "เลือกโรงเรียน" },
-              ...availableSchools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-              })),
-            ]}
-            placeholder="ค้นหาโรงเรียน"
-            value={String(selectedSchoolId ?? "")}
-          />
-          <FilterSelect
-              ariaLabel="เลือกภาคเรียน"
-              value={String(selectedTermId ?? "")}
-              onChange={(value) => {
-                setTermInput(value);
-                setClassroomInput("");
-                setClassroomRoomFilter("");
-                setClassroomPage(1);
-                setTeacherPage(1);
-                setRosterPage(1);
-              }}
+            <Button
+              disabled={!selectedSchoolId}
+              icon={Plus}
+              onClick={() => setTermDialogOpen(true)}
+              variant="outline"
             >
-              {terms.length === 0 ? <option value="">ยังไม่มีภาคเรียน</option> : null}
-              {terms.map((term) => (
-                <option key={term.id} value={term.id}>
-                  {formatSchoolTermLabel(term, termStatusCatalog.items)}
-                </option>
-              ))}
-          </FilterSelect>
-          <FilterCombobox
-            ariaLabel="กรองตามระดับชั้น"
-            disabled={!selectedSchoolId}
-            onChange={(value) => {
-              setClassroomGradeFilter(value);
-              setClassroomRoomFilter("");
-              setClassroomInput("");
-              setClassroomPage(1);
-              setTeacherPage(1);
-              setRosterPage(1);
-            }}
-            options={[
-              { value: "", label: "ทุกชั้น" },
-              ...(gradeLevelsQuery.data ?? []).map((grade) => ({
-                value: String(grade.id),
-                label: grade.label,
-              })),
-            ]}
-            placeholder="ค้นหาระดับชั้น"
-            value={classroomGradeFilter}
-          />
-          <FilterCombobox
-            ariaLabel="กรองตามห้องเรียน"
-            disabled={!selectedSchoolId}
-            onChange={(value) => {
-              setClassroomRoomFilter(value);
-              setClassroomInput(value);
-              setClassroomPage(1);
-              setTeacherPage(1);
-              setRosterPage(1);
-            }}
-            options={[
-              { value: "", label: "ทุกห้อง" },
-              ...roomFilterOptions.map((room) => ({
-                value: room.id,
-                label: formatRoomLabel(room.roomCode),
-              })),
-            ]}
-            placeholder="ค้นหาห้องเรียน"
-            value={classroomRoomFilter}
-          />
-        </ToolbarFilterGrid>
-      </PageToolbar>
+              เพิ่มภาคเรียน
+            </Button>
+            <Button
+              disabled={!selectedTermId}
+              icon={Plus}
+              onClick={() => openClassroomDialog(null)}
+              title={!selectedTermId ? "เพิ่มภาคเรียนก่อนจึงจะเพิ่มห้องได้" : undefined}
+            >
+              เพิ่มห้องเรียน
+            </Button>
+          </>
+        }
+        description="ตั้งภาคเรียน เพิ่มหรือแก้ไขห้อง และกำหนดครูประจำชั้นของโรงเรียนที่คุณดูแล"
+        title="จัดการภาคเรียนและห้องเรียน"
+      />
 
-      {schools.length === 0 ? (
-        <EmptyState icon={School} title="ยังไม่มีโรงเรียนที่บัญชีนี้ดูแล" description="ติดต่อผู้ดูแลเพื่อเพิ่มโรงเรียนที่บัญชีนี้รับผิดชอบ" />
+      <ToolbarControls className="mb-8">
+        <SearchInput
+          className="sm:max-w-[560px]"
+          onChange={setSearchInput}
+          placeholder="ค้นหาห้อง"
+          value={searchInput}
+        />
+        {multipleSchools ? (
+          <FilterCombobox
+            ariaLabel="กรองตามโรงเรียน"
+            emptyText="ไม่พบโรงเรียน"
+            onChange={handleSchoolChange}
+            options={schools.map((school) => ({
+              value: String(school.id),
+              label: school.name,
+            }))}
+            placeholder="เลือกโรงเรียน"
+            value={schoolId}
+          />
+        ) : null}
+        <FilterSelect
+          ariaLabel="เลือกภาคเรียน"
+          className="sm:w-[220px]"
+          disabled={!selectedSchoolId || terms.length === 0}
+          onChange={(value) => {
+            setTermInput(value);
+            setPage(1);
+          }}
+          value={String(selectedTermId ?? "")}
+        >
+          {terms.length === 0 ? <option value="">ยังไม่มีภาคเรียน</option> : null}
+          {terms.map((term) => (
+            <option key={term.id} value={term.id}>
+              {formatSchoolTermLabel(term, termStatusCatalog.items)}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterCombobox
+          ariaLabel="กรองตามระดับชั้น"
+          disabled={!selectedSchoolId}
+          emptyText="ไม่พบระดับชั้น"
+          onChange={(value) => {
+            setGradeFilter(value);
+            setPage(1);
+          }}
+          options={[
+            { value: "", label: "ทุกชั้น" },
+            ...(gradeLevelsQuery.data ?? []).map((grade) => ({
+              value: String(grade.id),
+              label: grade.label,
+            })),
+          ]}
+          placeholder="ค้นหาระดับชั้น"
+          value={gradeFilter}
+        />
+      </ToolbarControls>
+
+      <FormErrorAlert error={deleteClassroom.error} fallback="ไม่สามารถลบห้องได้" />
+
+      {schoolsQuery.isError ? (
+        <ErrorState
+          description="ไม่สามารถโหลดโรงเรียนในขอบเขตของคุณได้"
+          onRetry={() => void schoolsQuery.refetch()}
+          title="โหลดข้อมูลโรงเรียนไม่สำเร็จ"
+        />
+      ) : isLoadingPage ? (
+        <SkeletonTable />
+      ) : schools.length === 0 ? (
+        <EmptyState
+          description="ติดต่อผู้ดูแลเพื่อเพิ่มโรงเรียนที่บัญชีนี้รับผิดชอบ"
+          icon={School}
+          title="ยังไม่มีโรงเรียนที่บัญชีนี้ดูแล"
+        />
       ) : !selectedSchoolId ? (
-        <EmptyState icon={School} title="เลือกโรงเรียนเพื่อดูโครงสร้าง" description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อดูห้อง ครู และรายชื่อนักเรียน" />
+        <EmptyState
+          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อจัดการภาคเรียนและห้องเรียน"
+          icon={School}
+          title="เลือกโรงเรียน"
+        />
+      ) : classroomsQuery.isError ? (
+        <ErrorState
+          description="ไม่สามารถโหลดรายการห้องเรียนได้"
+          onRetry={() => void classroomsQuery.refetch()}
+          title="โหลดห้องเรียนไม่สำเร็จ"
+        />
+      ) : classroomsQuery.isLoading ? (
+        <SkeletonTable />
+      ) : classrooms.length === 0 ? (
+        <EmptyState
+          description={
+            search
+              ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูห้องทั้งหมด"
+              : selectedTermId
+                ? "เพิ่มห้องจากระดับชั้นและรหัสห้องเพื่อเริ่มจัดโครงสร้างภาคเรียนนี้"
+                : "เพิ่มภาคเรียนก่อน แล้วจึงเพิ่มห้องเรียนของภาคเรียนนั้น"
+          }
+          icon={DoorOpen}
+          title={search ? "ไม่พบห้องที่ค้นหา" : "ยังไม่มีห้องในภาคเรียนนี้"}
+        />
       ) : (
-        <>
-          <SummaryMetrics
-            className="mb-5"
-            columns={3}
-            items={[
-              {
-                label: structureSummaryLabels.classroom,
-                value: structureSummary?.classroomCount ?? 0,
-                icon: DoorOpen,
-                emphasis: true,
-                onSelect: () => setTab("classrooms"),
-                selected: tab === "classrooms",
-                selectionLabel: "เปิดแท็บห้องเรียน",
-              },
-              {
-                label: structureSummaryLabels.teacher,
-                value: structureSummary?.teacherCount ?? 0,
-                icon: SchoolIcon,
-                tone: "info",
-                onSelect: () => setTab("teachers"),
-                selected: tab === "teachers",
-                selectionLabel: "เปิดแท็บครู",
-              },
-              {
-                label: structureSummaryLabels.student,
-                value: structureSummary?.studentCount ?? 0,
-                icon: Users,
-                tone: "success",
-                onSelect: () => setTab("roster"),
-                selected: tab === "roster",
-                selectionLabel: "เปิดแท็บนักเรียน",
-              },
+        <div className="flex flex-col gap-2">
+          <DataTable
+            columnWidths={[
+              "w-[12%]",
+              "w-[16%]",
+              "w-[10%]",
+              "w-[24%]",
+              "w-[12%]",
+              "w-[26%]",
             ]}
-          />
-
-          <Card className="mb-4">
-            <CardContent className="flex flex-col gap-3 p-4">
-              <Tabs
-                aria-label="ส่วนจัดการโครงสร้าง"
-                value={tab}
-                onChange={(value) => setTab(value as StructureTab)}
-                options={[
-                  { value: "classrooms", label: "ห้องเรียน" },
-                  { value: "teachers", label: "ครู" },
-                  { value: "roster", label: "นักเรียน" },
-                ]}
-              />
-              <div className="flex justify-end">
-                {tab === "classrooms" ? (
-                  <Button icon={Plus} onClick={() => openClassroomDialog(null)} disabled={!selectedTermId}>เพิ่มห้อง</Button>
-                ) : null}
-                {tab === "teachers" ? (
-                  <Button icon={FileUp} variant="outline" onClick={() => setTeacherImportDialogOpen(true)} disabled={!selectedSchoolId}>นำเข้าครู</Button>
-                ) : null}
-                {tab === "roster" ? (
-                  <Button
-                    disabled={!selectedSchoolId || !selectedTermId || !importClassroomId}
-                    icon={FileUp}
-                    onClick={() => navigate(`/import-data?source=school-structure&schoolId=${selectedSchoolId}&schoolTermId=${selectedTermId}&classroomId=${importClassroomId}`)}
-                    title={!importClassroomId ? "เลือกห้องก่อนนำเข้านักเรียน" : undefined}
-                    variant="outline"
+            headings={[
+              { label: "ชั้น", sortKey: "grade" },
+              { label: "ห้อง", sortKey: "room" },
+              { label: "นักเรียน", sortKey: "students" },
+              "ครูประจำชั้น",
+              "สถานะ",
+              { label: "เครื่องมือ", className: "text-center" },
+            ]}
+            minWidthClassName="min-w-[900px]"
+            onSortChange={(next) => {
+              setSort(next);
+              setPage(1);
+            }}
+            sort={sort}
+          >
+            {classrooms.map((room) => (
+              <DataTableRow key={room.id}>
+                <DataTableCell className="font-semibold text-slate-900">
+                  {room.gradeLabel}
+                </DataTableCell>
+                <DataTableCell>
+                  {room.roomName || formatRoomLabel(room.roomCode)}
+                </DataTableCell>
+                <DataTableCell className="tabular-nums">
+                  {room.studentCount}
+                </DataTableCell>
+                <DataTableCell>
+                  {room.homeroomTeacherName ?? (
+                    <span className="text-slate-500">ยังไม่กำหนด</span>
+                  )}
+                </DataTableCell>
+                <DataTableCell>
+                  <Badge
+                    variant={room.classroomStatus === "ACTIVE" ? "success" : "secondary"}
                   >
-                    นำเข้านักเรียน
-                  </Button>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
+                    {room.classroomStatus === "ACTIVE" ? "ใช้งาน" : "ปิดใช้งาน"}
+                  </Badge>
+                </DataTableCell>
+                <DataTableCell>{renderRoomActions(room)}</DataTableCell>
+              </DataTableRow>
+            ))}
+          </DataTable>
 
-          {tab === "classrooms" ? (
-              <div>
-                <FormErrorAlert className="mb-3" error={deleteClassroom.error} fallback="ไม่สามารถลบห้องได้" />
-                {classroomsQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : classroomsQuery.isError ? (
-                  <ErrorState
-                    description="ไม่สามารถโหลดรายการห้องเรียนได้"
-                    onRetry={() => void classroomsQuery.refetch()}
-                    title="โหลดห้องเรียนไม่สำเร็จ"
-                  />
-                ) : classrooms.length === 0 ? (
-                  <EmptyState icon={DoorOpen} title="ยังไม่มีห้องในภาคเรียนนี้" description="เพิ่มห้องจากระดับชั้นและรหัสห้องก่อนนำเข้ารายชื่อนักเรียน" />
-                ) : (
-                  <DataTable
-                    footer={
-                      <div className="bg-slate-50 px-5 pb-4">
-                        <Pagination
-                          onPageChange={setClassroomPage}
-                          onRowsPerPageChange={(value) => {
-                            setClassroomRowsPerPage(value);
-                            setClassroomPage(1);
-                          }}
-                          page={classroomPage}
-                          rowsPerPage={classroomRowsPerPage}
-                          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-                          totalCount={classroomsQuery.data?.meta.totalCount ?? 0}
-                          unitLabel="ห้อง"
-                        />
-                        {selectedClassroom ? (
-                          <div className="mt-3 flex justify-end">
-                            <Button variant="outline" onClick={() => setAssignmentDialogOpen(true)} disabled={activeTeachers.length === 0}>
-                            กำหนดครูประจำชั้น
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
-                    }
-                    headings={[
-                      { label: "ชั้น", sortKey: "grade" },
-                      { label: "ห้อง", sortKey: "room" },
-                      { label: "นักเรียน", sortKey: "students" },
-                      "ครูประจำชั้น",
-                      "",
-                    ]}
-                    minWidthClassName="min-w-[680px]"
-                    onSortChange={(next) => {
-                      setClassroomSort(next);
-                      setClassroomPage(1);
-                    }}
-                    responsive={false}
-                    sort={classroomSort}
-                  >
-                      {classrooms.map((room) => {
-                        const selected = room.id === selectedClassroom?.id;
-                        return (
-                          <DataTableRow key={room.id} className={selected ? "bg-primary-soft/50" : undefined}>
-                            <DataTableCell className="font-semibold text-slate-900">{room.gradeLabel}</DataTableCell>
-                            <DataTableCell>{room.roomName || formatRoomLabel(room.roomCode)}</DataTableCell>
-                            <DataTableCell className="tabular-nums">{room.studentCount}</DataTableCell>
-                            <DataTableCell>{room.homeroomTeacherName ?? <span className="text-slate-500">ยังไม่กำหนด</span>}</DataTableCell>
-                            <DataTableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <IconButton aria-label={`แก้ไข${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} icon={SquarePen} variant="edit" onClick={() => openClassroomDialog(room)} />
-                                <IconButton aria-label={`ลบ${formatRoomLabel(room.roomCode)} ${room.gradeLabel}`} disabled={room.studentCount > 0 || deleteClassroom.isPending} icon={Trash2} variant="delete" title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined} onClick={() => void handleDeleteClassroom(room)} />
-                                <Button size="sm" variant={selected ? "secondary" : "outline"} onClick={() => { setClassroomInput(room.id); setRosterPage(1); }}>เลือก</Button>
-                              </div>
-                            </DataTableCell>
-                          </DataTableRow>
-                        );
-                      })}
-                  </DataTable>
-                )}
-              </div>
-          ) : null}
-
-          {tab === "teachers" ? (
-              teachersQuery.isLoading ? <div className="p-6"><SkeletonStack lines={4} /></div> : teachersQuery.isError ? (
-                <ErrorState
-                  description="ไม่สามารถโหลดรายชื่อครูตามตัวกรองได้"
-                  onRetry={() => void teachersQuery.refetch()}
-                  title="โหลดรายชื่อครูไม่สำเร็จ"
-                />
-              ) : teachers.length === 0 ? (
-                <EmptyState
-                  icon={SchoolIcon}
-                  title="ยังไม่มีครูตามตัวกรองนี้"
-                  description="ยังไม่มีครูที่ได้รับมอบหมายให้ดูแลห้องตามโรงเรียน ภาคเรียน ระดับชั้น และห้องที่เลือก"
-                />
-              ) : (
-                <DataTable
-                  footer={
-                    <div className="bg-slate-50 px-5 pb-4">
-                      <Pagination
-                        onPageChange={setTeacherPage}
-                        onRowsPerPageChange={(value) => {
-                          setTeacherRowsPerPage(value);
-                          setTeacherPage(1);
-                        }}
-                        page={teacherPage}
-                        rowsPerPage={teacherRowsPerPage}
-                        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-                        totalCount={teachersQuery.data?.meta.totalCount ?? 0}
-                        unitLabel="ครู"
-                      />
+          <TableCardList>
+            {classrooms.map((room) => (
+              <TableCard key={room.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-bold text-slate-800">
+                      {room.gradeLabel} {room.roomName || formatRoomLabel(room.roomCode)}
                     </div>
-                  }
-                  headings={[
-                    { label: "ชื่อครู", sortKey: "name" },
-                    { label: "สถานะ", sortKey: "status" },
-                  ]}
-                  minWidthClassName="min-w-[560px]"
-                  onSortChange={(next) => {
-                    setTeacherSort(next);
-                    setTeacherPage(1);
-                  }}
-                  responsive={false}
-                  sort={teacherSort}
-                >
-                  {teachers.map((teacher) => (
-                    <DataTableRow key={teacher.id}>
-                      <DataTableCell><p className="font-semibold text-slate-900">{teacher.displayName}</p><p className="text-xs text-slate-500">{teacher.username}</p></DataTableCell>
-                      <DataTableCell><Badge variant={teacher.membershipStatus === "ACTIVE" ? "success" : "secondary"}>{teacher.membershipStatus === "ACTIVE" ? "ใช้งาน" : "ยุติการใช้งาน"}</Badge></DataTableCell>
-                    </DataTableRow>
-                  ))}
-                </DataTable>
-              )
-          ) : null}
-
-          {tab === "roster" ? (
-              <div>
-                {rosterQuery.isLoading ? <div className="p-6"><SkeletonStack lines={5} /></div> : rosterQuery.isError ? (
-                  <ErrorState
-                    description="ไม่สามารถโหลดรายชื่อนักเรียนตามตัวกรองได้"
-                    onRetry={() => void rosterQuery.refetch()}
-                    title="โหลดรายชื่อนักเรียนไม่สำเร็จ"
-                  />
-                ) : (rosterQuery.data?.data.length ?? 0) === 0 ? (
-                  <EmptyState icon={Users} title="ยังไม่มีนักเรียนตามตัวกรองนี้" description="ตรวจสอบภาคเรียน ระดับชั้น และห้องที่เลือก หรือนำเข้ารายชื่อนักเรียนเพิ่ม" />
-                ) : (
-                  <DataTable
-                    footer={
-                      <div className="bg-slate-50 px-5 pb-4">
-                        <Pagination
-                          onPageChange={setRosterPage}
-                          onRowsPerPageChange={(value) => {
-                            setRosterRowsPerPage(value);
-                            setRosterPage(1);
-                          }}
-                          page={rosterPage}
-                          rowsPerPage={rosterRowsPerPage}
-                          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-                          totalCount={rosterQuery.data?.meta.totalCount ?? 0}
-                          unitLabel="นักเรียน"
-                        />
-                      </div>
-                    }
-                    headings={[
-                      "ลำดับ",
-                      { label: "ชื่อนักเรียน", sortKey: "name" },
-                      "ชั้น",
-                      "ห้อง",
-                      { label: "สถานะ", sortKey: "status" },
-                    ]}
-                    minWidthClassName="min-w-[720px]"
-                    onSortChange={(next) => {
-                      setRosterSort(next);
-                      setRosterPage(1);
-                    }}
-                    responsive={false}
-                    sort={rosterSort}
+                    <div className="truncate text-xs font-semibold text-slate-500">
+                      นักเรียน {room.studentCount} คน
+                    </div>
+                  </div>
+                  <Badge
+                    variant={room.classroomStatus === "ACTIVE" ? "success" : "secondary"}
                   >
-                    {rosterQuery.data?.data.map((student, index) => (
-                      <DataTableRow key={student.studentUuid}>
-                        <DataTableCell className="tabular-nums">{(rosterPage - 1) * rosterRowsPerPage + index + 1}</DataTableCell>
-                        <DataTableCell className="font-medium text-slate-900">{displayStudentName(student.firstName, student.lastName)}</DataTableCell>
-                        <DataTableCell>{student.gradeLabel}</DataTableCell>
-                        <DataTableCell>{formatRoomLabel(student.roomCode)}</DataTableCell>
-                        <DataTableCell>
-                          <Badge variant={student.studentStatusBadgeVariant ?? "secondary"}>
-                            {student.studentStatusLabel ?? "ไม่ระบุสถานะ"}
-                          </Badge>
-                        </DataTableCell>
-                      </DataTableRow>
-                    ))}
-                  </DataTable>
-                )}
-              </div>
-          ) : null}
-        </>
+                    {room.classroomStatus === "ACTIVE" ? "ใช้งาน" : "ปิดใช้งาน"}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex justify-between gap-3 rounded-md bg-slate-50 p-3 text-sm">
+                  <span className="text-slate-500">ครูประจำชั้น</span>
+                  <span className="truncate text-slate-700">
+                    {room.homeroomTeacherName ?? "ยังไม่กำหนด"}
+                  </span>
+                </div>
+                <div className="mt-3">{renderRoomActions(room)}</div>
+              </TableCard>
+            ))}
+          </TableCardList>
+
+          <Pagination
+            onPageChange={setPage}
+            onRowsPerPageChange={(value) => {
+              setRowsPerPage(value);
+              setPage(1);
+            }}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+            totalCount={classroomsQuery.data?.meta.totalCount ?? 0}
+            unitLabel="ห้อง"
+          />
+        </div>
       )}
 
       <SchoolTermDialog
@@ -841,9 +501,14 @@ export function SchoolStructurePage() {
       />
 
       {confirmDialog}
-      <Dialog open={classroomDialogOpen} onOpenChange={setClassroomDialogOpen}>
+
+      <Dialog onOpenChange={setClassroomDialogOpen} open={classroomDialogOpen}>
         <DialogContent onClose={() => setClassroomDialogOpen(false)}>
-          <DialogHeader><DialogTitle>{editingClassroom ? "แก้ไขห้องเรียน" : "เพิ่มห้องเรียน"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>
+              {editingClassroom ? "แก้ไขห้องเรียน" : "เพิ่มห้องเรียน"}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={(event) => void submitClassroom(event)}>
             <DialogBody className="space-y-4">
               <FormErrorAlert
@@ -851,116 +516,145 @@ export function SchoolStructurePage() {
                 fallback={editingClassroom ? "ไม่สามารถแก้ไขห้องได้" : "ไม่สามารถเพิ่มห้องได้"}
               />
               <div>
-                <FormLabel htmlFor="classroom-grade" required>ระดับชั้น</FormLabel>
-                <Select disabled={Boolean(editingClassroom && editingClassroom.studentCount > 0)} id="classroom-grade" required value={gradeLevelId} onChange={(event) => setGradeLevelId(event.target.value)}><option value="">เลือกระดับชั้น</option>{gradeLevelsQuery.data?.map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}</Select>
-                {editingClassroom && editingClassroom.studentCount > 0 ? <p className="mt-1 text-xs leading-5 text-slate-500">ห้องนี้มีนักเรียนแล้ว จึงเปลี่ยนระดับชั้นไม่ได้</p> : null}
+                <FormLabel htmlFor="classroom-grade" required>
+                  ระดับชั้น
+                </FormLabel>
+                <Select
+                  disabled={Boolean(editingClassroom && editingClassroom.studentCount > 0)}
+                  id="classroom-grade"
+                  onChange={(event) => setGradeLevelId(event.target.value)}
+                  required
+                  value={gradeLevelId}
+                >
+                  <option value="">เลือกระดับชั้น</option>
+                  {gradeLevelsQuery.data?.map((grade) => (
+                    <option key={grade.id} value={grade.id}>
+                      {grade.label}
+                    </option>
+                  ))}
+                </Select>
+                {editingClassroom && editingClassroom.studentCount > 0 ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    ห้องนี้มีนักเรียนแล้ว จึงเปลี่ยนระดับชั้นไม่ได้
+                  </p>
+                ) : null}
               </div>
-              <div><FormLabel htmlFor="classroom-code" required>รหัสห้อง</FormLabel><NumericInput id="classroom-code" required maxLength={10} pattern="[1-9][0-9]*" value={roomCode} onChange={(event) => setRoomCode(event.target.value)} placeholder="เช่น 1" /><p className="mt-1 text-xs leading-5 text-slate-500">กรอกเลขห้องในระดับชั้น เช่น ชั้น ป.1 ห้อง 1 ให้กรอก 1</p></div>
-              <div><Label htmlFor="classroom-name">ชื่อห้อง (ถ้ามี)</Label><Input id="classroom-name" maxLength={120} value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="เช่น ห้องวิทยาศาสตร์" /></div>
+              <div>
+                <FormLabel htmlFor="classroom-code" required>
+                  รหัสห้อง
+                </FormLabel>
+                <NumericInput
+                  id="classroom-code"
+                  maxLength={10}
+                  onChange={(event) => setRoomCode(event.target.value)}
+                  pattern="[1-9][0-9]*"
+                  placeholder="เช่น 1"
+                  required
+                  value={roomCode}
+                />
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  กรอกเลขห้องในระดับชั้น เช่น ชั้น ป.1 ห้อง 1 ให้กรอก 1
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="classroom-name">ชื่อห้อง (ถ้ามี)</Label>
+                <Input
+                  id="classroom-name"
+                  maxLength={120}
+                  onChange={(event) => setRoomName(event.target.value)}
+                  placeholder="เช่น ห้องวิทยาศาสตร์"
+                  value={roomName}
+                />
+              </div>
             </DialogBody>
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setClassroomDialogOpen(false)}>ยกเลิก</Button>
-              <Button type="submit" isLoading={createClassroom.isPending || updateClassroom.isPending} loadingText="กำลังบันทึก">บันทึกห้อง</Button>
+              <Button
+                onClick={() => setClassroomDialogOpen(false)}
+                type="button"
+                variant="outline"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                isLoading={createClassroom.isPending || updateClassroom.isPending}
+                loadingText="กำลังบันทึก"
+                type="submit"
+              >
+                บันทึกห้อง
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-        <DialogContent onClose={() => setAssignmentDialogOpen(false)}>
-          <DialogHeader><DialogTitle>กำหนดครูประจำชั้น</DialogTitle></DialogHeader>
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) setAssigningClassroom(null);
+        }}
+        open={Boolean(assigningClassroom)}
+      >
+        <DialogContent onClose={() => setAssigningClassroom(null)}>
+          <DialogHeader>
+            <DialogTitle>
+              {assigningClassroom?.homeroomTeacherName
+                ? "เปลี่ยนครูประจำชั้น"
+                : "กำหนดครูประจำชั้น"}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={(event) => void submitAssignment(event)}>
             <DialogBody className="space-y-4">
-              <FormErrorAlert error={createAssignment.error} fallback="ไม่สามารถกำหนดครูประจำชั้นได้" />
-              <p className="text-sm text-slate-600">{selectedClassroom ? `${selectedClassroom.gradeLabel} / ${formatRoomLabel(selectedClassroom.roomCode)}` : ""}</p>
-              <div><FormLabel htmlFor="homeroom-teacher" required>ครูประจำชั้น</FormLabel><Select id="homeroom-teacher" required value={teacherMembershipId} onChange={(event) => setTeacherMembershipId(event.target.value)}><option value="">เลือกครู</option>{activeTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.displayName}</option>)}</Select></div>
-            </DialogBody>
-            <DialogFooter><Button variant="secondary" onClick={() => setAssignmentDialogOpen(false)}>ยกเลิก</Button><Button type="submit" isLoading={createAssignment.isPending} loadingText="กำลังบันทึก">บันทึกการมอบหมาย</Button></DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={teacherImportDialogOpen}
-        onOpenChange={(open) => {
-          setTeacherImportDialogOpen(open);
-          if (!open) {
-            setTeacherImportFile(null);
-            teacherImport.preview.reset();
-            teacherImport.submit.reset();
-          }
-        }}
-      >
-        <DialogContent onClose={() => setTeacherImportDialogOpen(false)}>
-          <DialogHeader><DialogTitle>นำเข้ารายชื่อครู</DialogTitle></DialogHeader>
-          <DialogBody className="space-y-4">
-            <p className="text-sm leading-6 text-slate-600">
-              ใช้ไฟล์รายชื่อครูที่มีคอลัมน์ <strong>ชื่อผู้ใช้</strong>
-              และคอลัมน์วันที่เริ่มปฏิบัติงาน (YYYY-MM-DD) หากต้องการ
-            </p>
-            <Input
-              accept=".csv,.xlsx"
-              aria-label="ไฟล์รายชื่อครู"
-              type="file"
-              onChange={(event) => {
-                setTeacherImportFile(event.target.files?.[0] ?? null);
-                teacherImport.preview.reset();
-                teacherImport.submit.reset();
-              }}
-            />
-            <FormErrorAlert
-              error={teacherImport.preview.error ?? teacherImport.submit.error}
-              fallback="ไม่สามารถนำเข้ารายชื่อครูได้"
-            />
-            {teacherImport.preview.data ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                  <div><p className="text-slate-500">ทั้งหมด</p><p className="text-lg font-bold tabular-nums">{teacherImport.preview.data.rowsProcessed}</p></div>
-                  <div><p className="text-slate-500">พร้อมเพิ่ม</p><p className="text-lg font-bold text-success-700 tabular-nums">{teacherImport.preview.data.rowsReady}</p></div>
-                  <div><p className="text-slate-500">มีอยู่แล้ว</p><p className="text-lg font-bold tabular-nums">{teacherImport.preview.data.rowsSkipped}</p></div>
-                  <div><p className="text-slate-500">รอตรวจสอบ</p><p className="text-lg font-bold text-warning-700 tabular-nums">{teacherImport.preview.data.rowsToQuarantine}</p></div>
-                </div>
-                <div className="mt-4 max-h-48 divide-y divide-slate-200 overflow-y-auto border-t border-slate-200">
-                  {teacherImport.preview.data.sampleRows.map((row) => (
-                    <div key={row.rowNumber} className="flex items-start justify-between gap-3 py-2 text-sm">
-                      <div><p className="font-medium text-slate-900">{row.displayName === "-" ? row.username : row.displayName}</p><p className="text-slate-500">{row.username}</p></div>
-                      <span className={row.action === "insert" ? "text-success-700" : row.action === "skip" ? "text-slate-500" : "text-warning-700"}>{row.issue ?? (row.action === "skip" ? "มีอยู่แล้ว" : "พร้อมเพิ่ม")}</span>
-                    </div>
+              <FormErrorAlert
+                error={createAssignment.error}
+                fallback="ไม่สามารถกำหนดครูประจำชั้นได้"
+              />
+              <p className="text-sm text-slate-600">
+                {assigningClassroom
+                  ? `${assigningClassroom.gradeLabel} / ${
+                      assigningClassroom.roomName ||
+                      formatRoomLabel(assigningClassroom.roomCode)
+                    }`
+                  : ""}
+                {assigningClassroom?.homeroomTeacherName
+                  ? ` · ปัจจุบัน ${assigningClassroom.homeroomTeacherName}`
+                  : ""}
+              </p>
+              <div>
+                <FormLabel htmlFor="homeroom-teacher" required>
+                  ครูประจำชั้น
+                </FormLabel>
+                <Select
+                  aria-label="ครูประจำชั้น"
+                  id="homeroom-teacher"
+                  onChange={(event) => setTeacherMembershipId(event.target.value)}
+                  required
+                  value={teacherMembershipId}
+                >
+                  <option value="">เลือกครู</option>
+                  {teacherOptions.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.displayName}
+                    </option>
                   ))}
-                </div>
+                </Select>
               </div>
-            ) : null}
-            {teacherImport.submit.data ? (
-              <Alert variant="success">
-                <AlertTitle>นำเข้ารายชื่อครูแล้ว</AlertTitle>
-                <AlertDescription>
-                  เพิ่ม {teacherImport.submit.data.rowsInserted} รายการ · รอตรวจสอบ {teacherImport.submit.data.rowsQuarantined} รายการ
-                </AlertDescription>
-              </Alert>
-            ) : null}
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTeacherImportDialogOpen(false)}>ปิด</Button>
-            {!teacherImport.preview.data ? (
+            </DialogBody>
+            <DialogFooter>
               <Button
-                disabled={!teacherImportFile || !selectedSchoolId}
-                isLoading={teacherImport.preview.isPending}
-                loadingText="กำลังตรวจสอบ"
-                onClick={() => teacherImportFile && selectedSchoolId && teacherImport.preview.mutate({ file: teacherImportFile, schoolId: selectedSchoolId })}
+                onClick={() => setAssigningClassroom(null)}
+                type="button"
+                variant="outline"
               >
-                ตรวจสอบไฟล์
+                ยกเลิก
               </Button>
-            ) : (
               <Button
-                disabled={!teacherImportFile || !selectedSchoolId || Boolean(teacherImport.submit.data)}
-                isLoading={teacherImport.submit.isPending}
-                loadingText="กำลังนำเข้า"
-                onClick={() => teacherImportFile && selectedSchoolId && teacherImport.submit.mutate({ file: teacherImportFile, schoolId: selectedSchoolId })}
+                isLoading={createAssignment.isPending}
+                loadingText="กำลังบันทึก"
+                type="submit"
               >
-                ยืนยันนำเข้า
+                บันทึกการมอบหมาย
               </Button>
-            )}
-          </DialogFooter>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </PageShell>

@@ -31,7 +31,23 @@ export {
 export { DatePicker, type DatePickerProps } from "./date-picker";
 export { DateTimePicker, type DateTimePickerProps } from "./date-time-picker";
 export { Divider, type DividerProps } from "./divider";
+export {
+  DropdownMenu,
+  type DropdownMenuItem,
+  type DropdownMenuProps,
+} from "./dropdown-menu";
+export { MultiSelect, type MultiSelectProps } from "./multi-select";
 export { OtpInput } from "./otp-input";
+export { CropRange, type CropRangeProps } from "./crop-range";
+export {
+  PhotoCropDialog,
+  type PhotoCropDialogProps,
+} from "./photo-crop-dialog";
+export { PhotoPicker, type PhotoPickerProps } from "./photo-picker";
+export {
+  EMPTY_PHOTO_PICKER_VALUE,
+  type PhotoPickerValue,
+} from "./photo-picker-value";
 export {
   Form,
   FormItem,

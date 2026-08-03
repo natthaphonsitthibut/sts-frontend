@@ -42,6 +42,8 @@ export interface ManagedUser {
   phone: string | null;
   email: string | null;
   affiliation: string | null;
+  /** App-served photo path; the endpoint redirects to a short-lived signed URL. */
+  photo_url?: string | null;
   line_id?: string | null;
   address_line?: string | null;
   address_village_no?: string | null;

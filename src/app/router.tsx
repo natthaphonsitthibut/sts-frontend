@@ -6,8 +6,12 @@ import {
   AdminAccessPage,
   AuditLogDetailPage,
   AttendanceCheckInPage,
-  AttendanceLinkDetailPage,
-  AttendanceLinksDashboardPage,
+  MyClassroomsPage,
+  TeacherAttendanceHistoryPage,
+  TeacherAttendanceLinksPage,
+  TeacherClassroomPage,
+  TeacherLinkLayout,
+  TeacherStudentProfilePage,
   AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
@@ -32,6 +36,9 @@ import {
   LockedPage,
   MainPage,
   MasterDataLookupsPage,
+  CurriculumGradesPage,
+  CurriculumSubjectFormPage,
+  CurriculumSubjectsPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
   ManageUserFormPage,
@@ -51,8 +58,10 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TeacherFormPage,
   TeacherObservationDetailPage,
   TeacherObservationReportsPage,
+  TeachersPage,
   HomeVisitRequestDetailPage,
   HomeVisitRequestsPage,
   TimetablePage,
@@ -212,20 +221,9 @@ export const router = createBrowserRouter([
       {
         path: "attendance-links",
         element: protectedElement(
-          <AttendanceLinksDashboardPage />,
-          "attendance-dashboard",
+          <TeacherAttendanceLinksPage />,
+          "manage-teacher-access",
         ),
-      },
-      {
-        path: "attendance-links/history",
-        element: protectedElement(
-          <AttendanceLinksDashboardPage />,
-          "attendance-dashboard",
-        ),
-      },
-      {
-        path: "attendance-links/:linkId",
-        element: protectedElement(<AttendanceLinkDetailPage />, "attendance-dashboard"),
       },
       {
         path: "attendance-operations",
@@ -284,10 +282,6 @@ export const router = createBrowserRouter([
         element: protectedElement(<UserDetailPage />, "manage-users-list"),
       },
       {
-        path: "manage-users/history",
-        element: protectedElement(<ManageUsersPage />, "manage-users-list"),
-      },
-      {
         path: "manage-users/new",
         element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
       },
@@ -298,6 +292,34 @@ export const router = createBrowserRouter([
       {
         path: "manage-users/:id/edit/permissions",
         element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
+      },
+      {
+        path: "curriculum",
+        element: protectedElement(<CurriculumGradesPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId",
+        element: protectedElement(<CurriculumSubjectsPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId/subjects/new",
+        element: protectedElement(<CurriculumSubjectFormPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
+        element: protectedElement(<CurriculumSubjectFormPage />, "manage-curriculum"),
+      },
+      {
+        path: "manage-teachers",
+        element: protectedElement(<TeachersPage />, "manage-teachers"),
+      },
+      {
+        path: "manage-teachers/new",
+        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+      },
+      {
+        path: "manage-teachers/:id/edit",
+        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
       },
       {
         path: "manage-role-groups",
@@ -405,6 +427,25 @@ export const router = createBrowserRouter([
   {
     path: "/task/:token/locked",
     element: withSuspense(<LockedPage />),
+  },
+  {
+    path: "/teacher-access",
+    element: withSuspense(<TeacherLinkLayout />),
+    children: [
+      { index: true, element: withSuspense(<MyClassroomsPage />) },
+      {
+        path: "classes/:assignmentId",
+        element: withSuspense(<TeacherClassroomPage />),
+      },
+      {
+        path: "classes/:assignmentId/students/:studentUuid",
+        element: withSuspense(<TeacherStudentProfilePage />),
+      },
+      {
+        path: "classes/:assignmentId/history",
+        element: withSuspense(<TeacherAttendanceHistoryPage />),
+      },
+    ],
   },
   {
     path: "/apply/field-follower/:code",

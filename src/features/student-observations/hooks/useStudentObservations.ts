@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TeacherAccessGuestCredential } from "../../teacher-access/hooks/useTeacherAccess";
+import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import { studentObservationsService } from "../api/student-observations.service";
 import type {
   CreateFollowUpRequestInput,
@@ -14,6 +14,11 @@ import type {
 
 const KEY = "student-observations";
 
+/** Cache namespace per link, without ever putting the raw token in a key. */
+function guestIdentity(credential: TeacherLinkCredential): string {
+  return credential.token ? credential.token.slice(-8) : "pending";
+}
+
 function guestKey(cacheIdentity: string, studentTermId?: string) {
   return [KEY, "guest", cacheIdentity, studentTermId] as const;
 }
@@ -27,52 +32,52 @@ function managedKey(studentTermId: string, resource: string) {
 }
 
 export function useGuestObservationCatalog(
-  credential: TeacherAccessGuestCredential | null,
+  credential: TeacherLinkCredential,
   enabled: boolean,
 ) {
   return useQuery({
-    queryKey: [KEY, "guest-catalog", credential?.cacheIdentity ?? "pending"],
+    queryKey: [KEY, "guest-catalog", guestIdentity(credential)],
     queryFn: () =>
-      studentObservationsService.getGuestCatalog(credential!.token),
-    enabled: Boolean(enabled && credential?.token),
+      studentObservationsService.getGuestCatalog(credential),
+    enabled: Boolean(enabled && credential.token),
     retry: false,
     gcTime: 0,
   });
 }
 
 export function useGuestStudentObservations(
-  credential: TeacherAccessGuestCredential | null,
+  credential: TeacherLinkCredential,
   assignmentId?: number,
   studentTermId?: string,
 ) {
   return useQuery({
-    queryKey: guestKey(credential?.cacheIdentity ?? "pending", studentTermId),
+    queryKey: guestKey(guestIdentity(credential), studentTermId),
     queryFn: () =>
-      studentObservationsService.listGuestObservations(credential!.token, {
+      studentObservationsService.listGuestObservations(credential, {
         assignmentId: assignmentId!,
         studentTermId: studentTermId!,
       }),
-    enabled: Boolean(credential?.token && assignmentId && studentTermId),
+    enabled: Boolean(credential.token && assignmentId && studentTermId),
     retry: false,
     gcTime: 0,
   });
 }
 
 export function useCreateGuestStudentObservation(
-  credential: TeacherAccessGuestCredential | null,
+  credential: TeacherLinkCredential,
 ) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateStudentObservationInput) =>
       studentObservationsService.createGuestObservation(
-        credential!.token,
+        credential,
         input,
       ),
     gcTime: 0,
     onSuccess: async (observation) => {
       await client.invalidateQueries({
         queryKey: guestKey(
-          credential!.cacheIdentity,
+          guestIdentity(credential),
           observation.studentTermId,
         ),
       });
@@ -81,42 +86,42 @@ export function useCreateGuestStudentObservation(
 }
 
 export function useGuestStudentFollowUps(
-  credential: TeacherAccessGuestCredential | null,
+  credential: TeacherLinkCredential,
   assignmentId?: number,
   studentTermId?: string,
 ) {
   return useQuery({
     queryKey: guestFollowUpKey(
-      credential?.cacheIdentity ?? "pending",
+      guestIdentity(credential),
       studentTermId,
     ),
     queryFn: () =>
-      studentObservationsService.listGuestFollowUps(credential!.token, {
+      studentObservationsService.listGuestFollowUps(credential, {
         assignmentId: assignmentId!,
         studentTermId: studentTermId!,
       }),
-    enabled: Boolean(credential?.token && assignmentId && studentTermId),
+    enabled: Boolean(credential.token && assignmentId && studentTermId),
     retry: false,
     gcTime: 0,
   });
 }
 
 export function useCreateGuestFollowUp(
-  credential: TeacherAccessGuestCredential | null,
+  credential: TeacherLinkCredential,
   studentTermId: string,
 ) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateFollowUpRequestInput) =>
       studentObservationsService.createGuestFollowUp(
-        credential!.token,
+        credential,
         studentTermId,
         input,
       ),
     gcTime: 0,
     onSuccess: async () => {
       await client.invalidateQueries({
-        queryKey: guestFollowUpKey(credential!.cacheIdentity, studentTermId),
+        queryKey: guestFollowUpKey(guestIdentity(credential), studentTermId),
       });
     },
   });

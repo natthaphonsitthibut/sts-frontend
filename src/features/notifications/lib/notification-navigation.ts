@@ -8,9 +8,9 @@ export function getNotificationRoute(notification: NotificationItem): string | n
   }
 
   if (notification.ref_entity === "task") {
-    return notification.ref_id
-      ? `/tasks/${encodeURIComponent(notification.ref_id)}`
-      : "/attendance-links";
+    // Without an id there is no longer a task-link list to fall back to —
+    // per-classroom attendance links were retired.
+    return notification.ref_id ? `/tasks/${encodeURIComponent(notification.ref_id)}` : null;
   }
 
   if (notification.ref_entity === "import") {

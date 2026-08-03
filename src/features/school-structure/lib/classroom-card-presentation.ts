@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { appConfig } from "../../../config/env";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import type { ClassroomCardCoverColor } from "../types/school-structure.types";
 
 export const CLASSROOM_COVER_COLORS: ReadonlyArray<{
@@ -53,16 +53,7 @@ export function classroomCoverImageStyle(input: {
   };
 }
 
+/** @see resolveApiMediaUrl — shared by every app-served image. */
 export function resolveClassroomCoverUrl(path: string | null): string | null {
-  if (!path) return null;
-  const configuredBaseUrl = appConfig.apiBaseUrl.trim();
-  if (!configuredBaseUrl || configuredBaseUrl === "/") return path;
-  try {
-    const baseUrl = configuredBaseUrl.startsWith("http")
-      ? configuredBaseUrl
-      : window.location.origin;
-    return new URL(path, baseUrl).toString();
-  } catch {
-    return path;
-  }
+  return resolveApiMediaUrl(path);
 }
