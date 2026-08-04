@@ -27,9 +27,9 @@ export function ImportDropZone({
 
   if (file) {
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-success-100 text-success-700">
-          <FileSpreadsheet className="size-5" aria-hidden="true" />
+      <div className="flex h-full items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success-100 text-success-700">
+          <FileSpreadsheet className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate font-bold text-slate-800">{file.name}</div>
@@ -50,8 +50,10 @@ export function ImportDropZone({
   return (
     <button
       className={cn(
-        "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-white px-6 py-14 text-center transition-colors",
-        dragOver ? "border-primary bg-surface-sky" : "border-slate-300 hover:border-primary",
+        "flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed bg-white px-6 py-4 text-center transition-colors",
+        dragOver
+          ? "border-primary bg-surface-sky"
+          : "border-slate-300 hover:border-primary",
         disabled && "cursor-not-allowed opacity-60",
       )}
       disabled={disabled}
@@ -70,11 +72,11 @@ export function ImportDropZone({
       }}
       type="button"
     >
-      <Upload className="size-10 text-primary" aria-hidden="true" />
-      <div className="text-base font-bold text-slate-700">
+      <Upload className="size-6 text-primary" aria-hidden="true" />
+      <div className="text-sm font-bold text-slate-700">
         ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์
       </div>
-      <div className="text-sm text-slate-500">รองรับไฟล์ .xlsx, .csv</div>
+      <div className="text-xs text-slate-500">รองรับไฟล์ .xlsx, .csv</div>
       <input
         accept={ACCEPTED}
         className="hidden"

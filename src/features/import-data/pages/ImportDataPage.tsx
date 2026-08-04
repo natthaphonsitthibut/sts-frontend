@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  Upload,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -31,6 +37,7 @@ import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
+import { cn } from "../../../lib/utils";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -52,9 +59,15 @@ import {
   useSubmitImport,
 } from "../hooks/useSubmitImport";
 import {
+  downloadImportTemplate,
+  exampleForField,
+  importTemplateFields,
+} from "../lib/import-template";
+import {
   type AnyImportPreviewResult,
   type CatalogImportPreviewResult,
   type ImportCatalogField,
+  type ImportCatalogTarget,
   type ImportPreviewResult,
   type ImportTarget,
   type QuarantinePageSize,
@@ -492,6 +505,84 @@ function CatalogImportPreviewPanel({
                         {row.issues.join(", ")}
                       </div>
                     ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ImportTemplateReference({ target }: { target: ImportCatalogTarget }) {
+  const [open, setOpen] = useState(false);
+  const fields = importTemplateFields(target);
+  const requiredCount = fields.filter((fieldDef) => fieldDef.required).length;
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <button
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          onClick={() => setOpen((previous) => !previous)}
+          type="button"
+        >
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "size-4 shrink-0 text-slate-400 transition-transform",
+              open && "rotate-180",
+            )}
+          />
+          <span className="min-w-0">
+            <span className="block font-bold text-slate-900">
+              คอลัมน์ที่รองรับสำหรับ “{target.label}”
+            </span>
+            <span className="mt-0.5 block text-sm text-slate-500">
+              {fields.length} คอลัมน์ · บังคับ {requiredCount} คอลัมน์ ·{" "}
+              {open ? "ซ่อนรายละเอียด" : "ดูรายชื่อคอลัมน์และตัวอย่างข้อมูล"}
+            </span>
+          </span>
+        </button>
+        <Button
+          icon={Download}
+          onClick={() => downloadImportTemplate(target)}
+          size="sm"
+          variant="outline"
+        >
+          ดาวน์โหลดไฟล์ตัวอย่าง (.csv)
+        </Button>
+      </div>
+      {open ? (
+        <div className="overflow-x-auto border-t border-slate-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-2">คอลัมน์ (หัวตาราง)</th>
+                <th className="px-4 py-2">ชื่อฟิลด์</th>
+                <th className="px-4 py-2">บังคับ</th>
+                <th className="px-4 py-2">ตัวอย่างข้อมูล</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((fieldDef) => (
+                <tr className="border-t border-slate-100" key={fieldDef.key}>
+                  <td className="px-4 py-2 font-mono text-xs text-slate-700">
+                    {fieldDef.key}
+                  </td>
+                  <td className="px-4 py-2 text-slate-700">{fieldDef.label}</td>
+                  <td className="px-4 py-2">
+                    {fieldDef.required ? (
+                      <Badge variant="warning">บังคับ</Badge>
+                    ) : (
+                      <span className="text-xs text-slate-400">ไม่บังคับ</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-slate-500">
+                    {exampleForField(fieldDef, 0)}
                   </td>
                 </tr>
               ))}
@@ -1045,7 +1136,7 @@ export function ImportDataPage() {
                   </AlertDescription>
                 </Alert>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,300px)_1fr]">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                   <label
                     className="text-sm font-medium text-slate-500"
@@ -1091,25 +1182,6 @@ export function ImportDataPage() {
                     </div>
                   ) : null}
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-sm font-medium text-slate-500">
-                    ไฟล์ที่เลือก
-                  </div>
-                  <div className="mt-1 truncate font-bold text-slate-900">
-                    {file?.name ?? "-"}
-                  </div>
-                </div>
-              </div>
-
-              <Alert className="mt-4">
-                <AlertDescription>
-                  ระบบจะตรวจสอบไฟล์ก่อนนำเข้าจริง
-                  รองรับหัวคอลัมน์มาตรฐานและชื่อทั่วไป
-                  หากจับคู่ไม่ตรงสามารถเลือกคอลัมน์ใหม่แล้วตรวจสอบอีกครั้ง
-                </AlertDescription>
-              </Alert>
-
-              <div className="mt-4">
                 <ImportDropZone
                   disabled={isBusy}
                   file={file}
@@ -1124,6 +1196,18 @@ export function ImportDataPage() {
                   }}
                 />
               </div>
+
+              {selectedTargetDefinition ? (
+                <ImportTemplateReference target={selectedTargetDefinition} />
+              ) : null}
+
+              <Alert className="mt-4">
+                <AlertDescription>
+                  ระบบจะตรวจสอบไฟล์ก่อนนำเข้าจริง
+                  รองรับหัวคอลัมน์มาตรฐานและชื่อทั่วไป
+                  หากจับคู่ไม่ตรงสามารถเลือกคอลัมน์ใหม่แล้วตรวจสอบอีกครั้ง
+                </AlertDescription>
+              </Alert>
 
               {previewImport.isPending ? (
                 <ProgressBar
