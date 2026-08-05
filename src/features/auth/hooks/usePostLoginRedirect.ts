@@ -14,7 +14,11 @@ export function usePostLoginRedirect() {
   const nextRoute = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const next = params.get("next") || "";
-    return next.startsWith("/") ? next : "";
+    const isLoginRoute =
+      next === "/login" ||
+      next === "/admin-access" ||
+      next.startsWith("/login/");
+    return next.startsWith("/") && !isLoginRoute ? next : "";
   }, [location.search]);
 
   return (user: AuthUser): void => {
