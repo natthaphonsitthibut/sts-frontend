@@ -43,13 +43,13 @@ export function ImportQuarantineDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        description={`student-import-quarantine-row-${item.id}`}
+        icon={ClipboardList}
+        navigation={
           <NavButton icon={ArrowLeft} to={-1} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
-        description={`student-import-quarantine-row-${item.id}`}
-        icon={ClipboardList}
         title="รายละเอียดรายการนำเข้า"
       />
 

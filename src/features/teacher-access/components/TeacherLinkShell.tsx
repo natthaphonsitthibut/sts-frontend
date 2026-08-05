@@ -17,13 +17,14 @@ import { PageShell, PageToolbar } from "../../../components/layout/page-primitiv
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { useSidebarUiStore } from "../../../components/layout/sidebar-ui.store";
 import { cn } from "../../../lib/utils";
-import type { MenuItem } from "../../auth/lib/permissions";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 
 interface TeacherLinkShellProps {
   children: ReactNode;
   /** Page-level actions beside the title, like PageToolbar's `actions`. */
   actions?: ReactNode;
+  /** Navigation buttons beside the breadcrumbs, like PageToolbar's `navigation`. */
+  navigation?: ReactNode;
   /** Trail before the current page; the title is always the last crumb. */
   breadcrumb?: Array<{ label: string; to: string; icon?: LucideIcon }>;
   /** Icon beside the page title, matching the authenticated pages. */
@@ -34,37 +35,27 @@ interface TeacherLinkShellProps {
   contentClassName?: string;
 }
 
-/**
- * A teacher link reaches exactly one place — their own classrooms; everything
- * else (roster, attendance, history) is opened from a classroom, so the rail
- * carries a single destination.
- */
-const TEACHER_MENU_ITEMS: MenuItem[] = [
+const TEACHER_MENU_ITEMS = [
   {
     id: "my-classrooms",
     label: "ห้องเรียนของฉัน",
-    iconName: "school-building",
+    iconName: "school-building" as const,
     route: "/teacher-access",
     activeRoutes: ["/teacher-access"],
   },
   {
     id: "my-timetable",
     label: "ตารางสอนของฉัน",
-    iconName: "calendar",
+    iconName: "calendar" as const,
     route: "/teacher-access/timetable",
     activeRoutes: ["/teacher-access/timetable"],
   },
 ];
 
-/**
- * A link's home is its own landing page — `/` needs an account. The crumb
- * carries that page's real name so it matches the title and the rail item,
- * the same way "หน้าหลัก" does inside the authenticated app.
- */
 const TEACHER_HOME_CRUMB = [
   {
     label: "ห้องเรียนของฉัน",
-    to: "/teacher-access",
+    to: "/teacher-access/classes",
     icon: PAGE_ICONS["school-building"],
   },
 ];
@@ -86,13 +77,15 @@ function TeacherSidebarContent({
 }
 
 /**
- * Frame for every teacher-link page. It reuses the app's own header/sidebar
- * primitives so a link looks like the system it belongs to — the difference is
- * what is inside: no permission-driven menu, no notifications, no profile
- * actions, because a link holder has no account.
+ * Guest shell for a teacher who arrived via a magic access grant link. Shares
+ * layout primitives with the authenticated product so a link looks like the
+ * system it belongs to — the difference is what is inside: no
+ * permission-driven menu, no notifications, no profile actions, because a link
+ * holder has no account.
  */
 export function TeacherLinkShell({
   actions,
+  navigation,
   breadcrumb,
   centered = false,
   children,
@@ -143,6 +136,7 @@ export function TeacherLinkShell({
           {title ? (
             <PageToolbar
               actions={actions}
+              navigation={navigation}
               breadcrumbTrail={breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB}
               icon={icon}
               title={title}

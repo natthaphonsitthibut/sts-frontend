@@ -294,27 +294,27 @@ export function StudentDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <>
-            {can("review-cases") && !casesLoading ? (
-              <StudentCaseAction
-                activeCaseCount={activeCases.length}
-                activeCaseId={
-                  activeCases.length > 0 ? Number(activeCases[0].id) : null
-                }
-                mode="button"
-                studentId={studentId}
-                studentName={
-                  `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
-                  "นักเรียน"
-                }
-              />
-            ) : null}
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
-              ย้อนกลับ
-            </NavButton>
-          </>
+          can("review-cases") && !casesLoading ? (
+            <StudentCaseAction
+              activeCaseCount={activeCases.length}
+              activeCaseId={
+                activeCases.length > 0 ? Number(activeCases[0].id) : null
+              }
+              mode="button"
+              studentId={studentId}
+              studentName={
+                `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+                "นักเรียน"
+              }
+            />
+          ) : null
         }
         icon={SchoolIcon}
+        navigation={
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        }
         title="ข้อมูลนักเรียน"
       />
 

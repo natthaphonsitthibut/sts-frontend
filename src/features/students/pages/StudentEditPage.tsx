@@ -311,8 +311,8 @@ export function StudentEditPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={<NavButton icon={ArrowLeft} to={-1} variant="outline">ย้อนกลับ</NavButton>}
         icon={UserRound}
+        navigation={<NavButton icon={ArrowLeft} to={-1} variant="outline">ย้อนกลับ</NavButton>}
         title="แก้ไขข้อมูลนักเรียน"
       />
       {isLoading ? <SkeletonStack lines={8} /> : isError || !student ? (

@@ -374,7 +374,7 @@ export function ManageUserFormPage() {
     <PageShell>
       <PageToolbar
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
-        actions={
+        navigation={
           <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
             ย้อนกลับ
           </NavButton>

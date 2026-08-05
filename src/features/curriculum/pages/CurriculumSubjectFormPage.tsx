@@ -353,12 +353,12 @@ export function CurriculumSubjectFormPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        description="กรอกข้อมูลรายวิชา จัดสรรครูผู้สอน และแนบไฟล์สาระการเรียนรู้"
+        navigation={
           <NavButton icon={ArrowLeft} to={backPath} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
-        description="กรอกข้อมูลรายวิชา จัดสรรครูผู้สอน และแนบไฟล์สาระการเรียนรู้"
         parentBreadcrumb={{
           label: "จัดการข้อมูลหลักสูตร",
           to: CURRICULUM_PATH,

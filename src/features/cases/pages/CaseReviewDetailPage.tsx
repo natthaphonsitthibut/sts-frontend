@@ -140,7 +140,9 @@ export function CaseReviewDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        actions={
+        description="ตรวจผล เหตุผล และข้อมูลที่ใช้ประกอบการพิจารณารอบนี้"
+        icon={ClipboardCheck}
+        navigation={
           <NavButton
             icon={ArrowLeft}
             to={-1}
@@ -149,8 +151,6 @@ export function CaseReviewDetailPage() {
             ย้อนกลับ
           </NavButton>
         }
-        description="ตรวจผล เหตุผล และข้อมูลที่ใช้ประกอบการพิจารณารอบนี้"
-        icon={ClipboardCheck}
         title="รายละเอียดผลการพิจารณา"
       />
 

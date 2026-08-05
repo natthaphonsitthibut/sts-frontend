@@ -101,7 +101,7 @@ export function TaskDetailPage() {
         title="รายละเอียดภารกิจ"
         description={task.task_id}
         actions={
-          <div className="flex flex-nowrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {caseRecord ? (
               <NavButton icon={Eye} to={`/cases/${caseRecord.id}`} variant="outline">
                 ดูรายละเอียดเคส
@@ -114,10 +114,12 @@ export function TaskDetailPage() {
                 invalidateKeys={[["task-chain", taskId]]}
               />
             ) : null}
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
-              ย้อนกลับ
-            </NavButton>
           </div>
+        }
+        navigation={
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
+            ย้อนกลับ
+          </NavButton>
         }
       />
       <div className="space-y-5">

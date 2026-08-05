@@ -237,17 +237,17 @@ export function UserDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <>
-            <NavButton icon={SquarePen} to={`/manage-users/${userId}/edit`}>
-              แก้ไขผู้ใช้งาน
-            </NavButton>
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
-              ย้อนกลับ
-            </NavButton>
-          </>
+          <NavButton icon={SquarePen} to={`/manage-users/${userId}/edit`}>
+            แก้ไขผู้ใช้งาน
+          </NavButton>
         }
         description="ตรวจสอบข้อมูลบัญชี สิทธิ์ และขอบเขตการใช้งาน"
         icon={UserRound}
+        navigation={
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        }
         title="รายละเอียดผู้ใช้งาน"
       />
 

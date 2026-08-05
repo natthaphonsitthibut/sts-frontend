@@ -52,9 +52,9 @@ export function TeacherStudentProfilePage() {
   if (profileQuery.isLoading) {
     return (
       <TeacherLinkShell
-        actions={backAction}
         breadcrumb={breadcrumb}
         icon={PAGE_ICONS["user-graduate"]}
+        navigation={backAction}
         title="ข้อมูลนักเรียน"
       >
         <Card className="mb-5 p-5">
@@ -75,7 +75,7 @@ export function TeacherStudentProfilePage() {
   if (profileQuery.isError) {
     return (
       <TeacherLinkShell
-        actions={backAction}
+        navigation={backAction}
         breadcrumb={breadcrumb}
         icon={PAGE_ICONS["user-graduate"]}
         title="ข้อมูลนักเรียน"
@@ -93,7 +93,7 @@ export function TeacherStudentProfilePage() {
   if (!profile?.student || !profile.summary) {
     return (
       <TeacherLinkShell
-        actions={backAction}
+        navigation={backAction}
         breadcrumb={breadcrumb}
         icon={PAGE_ICONS["user-graduate"]}
         title="ข้อมูลนักเรียน"
@@ -116,7 +116,7 @@ export function TeacherStudentProfilePage() {
 
   return (
     <TeacherLinkShell
-        actions={backAction}
+        navigation={backAction}
         breadcrumb={breadcrumb}
         icon={PAGE_ICONS["user-graduate"]}
         title="ข้อมูลนักเรียน"

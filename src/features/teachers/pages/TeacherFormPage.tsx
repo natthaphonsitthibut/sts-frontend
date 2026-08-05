@@ -233,7 +233,7 @@ export function TeacherFormPage() {
     <PageShell>
       <PageToolbar
         description="กรอกข้อมูลรายละเอียดของคุณครู"
-        actions={
+        navigation={
           <NavButton
             icon={ArrowLeft}
             to={teachersListPath(schoolId)}

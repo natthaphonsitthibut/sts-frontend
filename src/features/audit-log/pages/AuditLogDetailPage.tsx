@@ -42,14 +42,14 @@ export function AuditLogDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        icon={ClipboardList}
-        title="รายละเอียดรายการ"
         description={`audit-log-${entry.id}`}
-        actions={
+        icon={ClipboardList}
+        navigation={
           <NavButton icon={ArrowLeft} to={-1} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
+        title="รายละเอียดรายการ"
       />
       <div className="space-y-5">
         <Card className="rounded-lg p-6">

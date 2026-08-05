@@ -117,18 +117,18 @@ export function CaseDetailPage() {
       <PageToolbar
         description="อ่านรายงานการติดตามและประวัติให้ครบก่อนพิจารณาเคส"
         footerActions={
-          <>
-            {caseRecord.student_id ? (
-              <NavButton icon={UserRound} to={`/students/${caseRecord.student_id}`} variant="outline">
-                ข้อมูลนักเรียน
-              </NavButton>
-            ) : null}
-            <NavButton icon={ArrowLeft} to={-1} variant="outline">
-              ย้อนกลับ
+          caseRecord.student_id ? (
+            <NavButton icon={UserRound} to={`/students/${caseRecord.student_id}`} variant="outline">
+              ข้อมูลนักเรียน
             </NavButton>
-          </>
+          ) : null
         }
         icon={FileText}
+        navigation={
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        }
         title="รายละเอียดเคสติดตามนักเรียน"
       />
 
