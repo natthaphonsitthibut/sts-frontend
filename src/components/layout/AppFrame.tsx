@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { IconButton, SchoolIcon } from "../base";
 import type { MenuItem } from "../../features/auth/lib/permissions";
 import { cn } from "../../lib/utils";
+import { collectMenuRoutes } from "./menu-routes";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { useSidebarUiStore } from "./sidebar-ui.store";
 
@@ -81,6 +82,7 @@ export function SidebarMenuContent({
   items: MenuItem[];
   onNavigate?: () => void;
 }) {
+  const menuRoutes = collectMenuRoutes(items);
   return (
     <div className="flex h-full flex-col bg-white">
       <nav
@@ -101,7 +103,13 @@ export function SidebarMenuContent({
         </div>
         <div className={cn("space-y-0.5", collapsed && "space-y-2")}>
           {items.map((item) => (
-            <SidebarNavItem collapsed={collapsed} item={item} key={item.id} onNavigate={onNavigate} />
+            <SidebarNavItem
+              collapsed={collapsed}
+              item={item}
+              key={item.id}
+              menuRoutes={menuRoutes}
+              onNavigate={onNavigate}
+            />
           ))}
         </div>
       </nav>

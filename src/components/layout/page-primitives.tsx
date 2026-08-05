@@ -52,6 +52,12 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   footerActions?: ReactNode;
   icon?: LucideIcon;
   navigation?: ReactNode;
+  /**
+   * Replaces the default "หน้าหลัก → …" chain, first entry included. Only areas
+   * that do not start at `/` need this — a teacher link's home is its own
+   * landing page, and `/` is not reachable without an account.
+   */
+  breadcrumbTrail?: Array<{ label: string; to: string; icon?: LucideIcon }>;
   parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
   title?: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
@@ -80,6 +86,7 @@ const toolbarToneClasses: Record<
 
 export function PageToolbar({
   actions,
+  breadcrumbTrail,
   children,
   className,
   description,
@@ -107,7 +114,19 @@ export function PageToolbar({
   const ParentBreadcrumbIcon =
     parentBreadcrumb?.icon ?? parentBreadcrumbIdentity?.icon;
   const toolbarTitle = pageIdentity?.title ?? title;
-  const isHomePage = pathname === "/";
+  const homeCrumb = breadcrumbTrail?.[0] ?? {
+    label: "หน้าหลัก",
+    to: "/",
+    icon: PAGE_ICONS.home,
+  };
+  const HomeCrumbIcon = homeCrumb.icon ?? PAGE_ICONS.home;
+  const middleCrumbs = [
+    ...(breadcrumbTrail?.slice(1) ?? []),
+    ...(parentBreadcrumb
+      ? [{ ...parentBreadcrumb, icon: ParentBreadcrumbIcon }]
+      : []),
+  ];
+  const isHomePage = pathname === homeCrumb.to;
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
   return (
@@ -143,11 +162,11 @@ export function PageToolbar({
                   )}
                   aria-current="page"
                 >
-                  <PAGE_ICONS.home
+                  <HomeCrumbIcon
                     className="size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="truncate">หน้าหลัก</span>
+                  <span className="truncate">{homeCrumb.label}</span>
                 </span>
               ) : (
                 <>
@@ -158,34 +177,37 @@ export function PageToolbar({
                         ? "hover:text-white"
                         : "hover:text-content-primary",
                     )}
-                    to="/"
+                    to={homeCrumb.to}
                   >
-                    <PAGE_ICONS.home className="size-4" aria-hidden="true" />
-                    <span>หน้าหลัก</span>
+                    <HomeCrumbIcon className="size-4" aria-hidden="true" />
+                    <span>{homeCrumb.label}</span>
                   </Link>
                   <ChevronRight
                     className="size-4 shrink-0 opacity-60"
                     aria-hidden="true"
                   />
-                  {parentBreadcrumb ? (
-                    <>
-                      <Link
-                        className={cn(
-                          "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                          tone === "primary"
-                            ? "hover:text-white"
-                            : "hover:text-content-primary",
-                        )}
-                        to={parentBreadcrumb.to}
-                      >
-                        {ParentBreadcrumbIcon ? (
-                          <ParentBreadcrumbIcon className="size-4 shrink-0" aria-hidden="true" />
-                        ) : null}
-                        <span className="truncate">{parentBreadcrumb.label}</span>
-                      </Link>
-                      <ChevronRight className="size-4 shrink-0 opacity-60" aria-hidden="true" />
-                    </>
-                  ) : null}
+                  {middleCrumbs.map((crumb) => {
+                    const CrumbIcon = crumb.icon;
+                    return (
+                      <span className="flex min-w-0 items-center gap-2" key={crumb.to}>
+                        <Link
+                          className={cn(
+                            "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            tone === "primary"
+                              ? "hover:text-white"
+                              : "hover:text-content-primary",
+                          )}
+                          to={crumb.to}
+                        >
+                          {CrumbIcon ? (
+                            <CrumbIcon className="size-4 shrink-0" aria-hidden="true" />
+                          ) : null}
+                          <span className="truncate">{crumb.label}</span>
+                        </Link>
+                        <ChevronRight className="size-4 shrink-0 opacity-60" aria-hidden="true" />
+                      </span>
+                    );
+                  })}
                   <span
                     className={cn(
                       "inline-flex min-w-0 items-center gap-1.5 font-semibold",

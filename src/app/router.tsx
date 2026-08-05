@@ -9,9 +9,12 @@ import {
   MyClassroomsPage,
   TeacherAttendanceHistoryPage,
   TeacherAttendanceLinksPage,
+  TeacherLineLinkPage,
+  TeacherLineLinkResultPage,
   TeacherClassroomPage,
   TeacherLinkLayout,
   TeacherStudentProfilePage,
+  TeacherTimetablePage,
   AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
@@ -59,11 +62,8 @@ import {
   TaskDetailPage,
   TaskGuestPage,
   TeacherFormPage,
-  TeacherObservationDetailPage,
-  TeacherObservationReportsPage,
+  TeacherCommentReportsPage,
   TeachersPage,
-  HomeVisitRequestDetailPage,
-  HomeVisitRequestsPage,
   TimetablePage,
   UserDetailPage,
   VisitLinksPage,
@@ -103,32 +103,20 @@ export const router = createBrowserRouter([
         element: protectedElement(<DashboardPage />, "dashboard"),
       },
       {
-        path: "student-risk-report/teacher-reports",
+        path: "student-risk-report/teacher-comments",
         element: protectedElement(
-          <TeacherObservationReportsPage />,
+          <TeacherCommentReportsPage />,
           "manage-student-observations",
         ),
       },
       {
-        path: "student-risk-report/teacher-reports/:observationId",
-        element: protectedElement(
-          <TeacherObservationDetailPage />,
-          "manage-student-observations",
-        ),
+        // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
+        path: "student-risk-report/teacher-reports",
+        element: <LegacyRouteRedirect to="/student-risk-report/teacher-comments" />,
       },
       {
         path: "student-risk-report/home-visit-requests",
-        element: protectedElement(
-          <HomeVisitRequestsPage />,
-          "manage-student-observations",
-        ),
-      },
-      {
-        path: "student-risk-report/home-visit-requests/:requestId",
-        element: protectedElement(
-          <HomeVisitRequestDetailPage />,
-          "manage-student-observations",
-        ),
+        element: <LegacyRouteRedirect to="/student-risk-report" />,
       },
       {
         path: "dashboard",
@@ -143,8 +131,9 @@ export const router = createBrowserRouter([
         element: protectedElement(<ProfilePage />),
       },
       {
+        // Kept as a redirect: the permissions tab folded into /profile itself.
         path: "profile/permissions",
-        element: protectedElement(<ProfilePage />),
+        element: <LegacyRouteRedirect to="/profile" />,
       },
       {
         path: "notifications",
@@ -428,11 +417,26 @@ export const router = createBrowserRouter([
     path: "/task/:token/locked",
     element: withSuspense(<LockedPage />),
   },
+  // Public: a teacher attaching their LINE account proves who they are with an
+  // emailed code, so the URL itself carries no secret and can live in the
+  // official account's rich menu.
+  {
+    path: "/line-link",
+    element: withSuspense(<TeacherLineLinkPage />),
+  },
+  {
+    path: "/line-link/result",
+    element: withSuspense(<TeacherLineLinkResultPage />),
+  },
   {
     path: "/teacher-access",
     element: withSuspense(<TeacherLinkLayout />),
     children: [
       { index: true, element: withSuspense(<MyClassroomsPage />) },
+      {
+        path: "timetable",
+        element: withSuspense(<TeacherTimetablePage />),
+      },
       {
         path: "classes/:assignmentId",
         element: withSuspense(<TeacherClassroomPage />),

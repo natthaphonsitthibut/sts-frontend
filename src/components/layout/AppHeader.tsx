@@ -1,6 +1,6 @@
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
-import { getNameInitials } from "../../lib/person-name";
+import { resolveApiMediaUrl } from "../../lib/media-url";
 import { HeaderProfileMenu } from "./HeaderProfileMenu";
 import { AppBrand, AppHeaderFrame, AppNavigationControls } from "./AppFrame";
 
@@ -16,7 +16,6 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     [user?.FirstName, user?.LastName].filter(Boolean).join(" ").trim() ||
     user?.username ||
     "ผู้ใช้งาน";
-  const initials = getNameInitials(displayName);
 
   return (
     <AppHeaderFrame>
@@ -27,7 +26,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         <HeaderProfileMenu
           canEditProfile={canEditProfile}
           displayName={displayName}
-          initials={initials}
+          photoUrl={resolveApiMediaUrl(user?.photo_url ?? null)}
         />
       </div>
     </AppHeaderFrame>

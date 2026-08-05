@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { IconButton } from "../../../components/base";
 import type { HomeDashboardRiskAreaPoint } from "../types/home-dashboard.types";
 
 const PROVINCE_MAP: Record<string, string> = {
@@ -92,11 +93,11 @@ interface GeoMapSVGProps extends React.SVGProps<SVGSVGElement> {
 
 // Heatmap color scale (defined outside component to satisfy exhaustive-deps)
 const HEATMAP_COLORS = [
-  "#f8fafc", // 0: slate-50
-  "#fecaca", // 1: red-200
-  "#f87171", // 2: red-400
-  "#ef4444", // 3: red-500
-  "#b91c1c", // 4: red-700
+  "var(--color-slate-50)",
+  "var(--color-danger-100)",
+  "var(--color-danger-200)",
+  "var(--color-danger-400)",
+  "var(--color-danger-700)",
 ];
 
 const GeoMapSVG = ({
@@ -396,7 +397,7 @@ const GeoMapSVG = ({
     if (hoveredId === "Songkhla" || hoveredId === "Songkhla (Songkhla Lake)") {
       return `
                 .geo-map path[id="Songkhla"], .geo-map path[id="Songkhla (Songkhla Lake)"] {
-                    fill: var(--color-primary, #0f49bd) !important;
+                    fill: var(--color-primary) !important;
                     stroke: #ffffff !important;
                     stroke-width: 2.5 !important;
                     filter: drop-shadow(0 2px 4px rgba(15, 73, 189, 0.15)) !important;
@@ -410,7 +411,7 @@ const GeoMapSVG = ({
     ) {
       return `
                 .geo-map path[id="Phatthalung"], .geo-map path[id="Phatthalung (Songkhla Lake)"] {
-                    fill: var(--color-primary, #0f49bd) !important;
+                    fill: var(--color-primary) !important;
                     stroke: #ffffff !important;
                     stroke-width: 2.5 !important;
                     filter: drop-shadow(0 2px 4px rgba(15, 73, 189, 0.15)) !important;
@@ -575,7 +576,7 @@ const GeoMapSVG = ({
   }, [data]);
 
   return (
-    <div className="relative h-[700px] w-[auto] bg-white rounded-xl border border-slate-200 p-5 shadow-card transition-shadow hover:shadow-card-hover flex flex-col select-none overflow-hidden">
+    <div className="relative flex h-[520px] w-full select-none flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:h-[620px] xl:h-[700px]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 self-stretch mb-4 z-10">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-primary" />
@@ -605,6 +606,8 @@ const GeoMapSVG = ({
       </div>
       <svg
         ref={svgRef}
+        aria-label="แผนที่ความเสี่ยงรายจังหวัด ใช้รายการจัดอันดับเพื่อเลือกจังหวัดด้วยแป้นพิมพ์"
+        role="img"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 800 1431"
         strokeLinecap="round"
@@ -627,15 +630,15 @@ const GeoMapSVG = ({
       >
         <style>{`
           .geo-map path {
-            fill: #f8fafc;
-            stroke: #cbd5e1;
+            fill: var(--color-slate-50);
+            stroke: var(--color-slate-300);
             stroke-width: 1.5;
             vector-effect: non-scaling-stroke;
             transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
             pointer-events: none; /* Disable interaction for paths without data */
           }
           .geo-map path:hover {
-            fill: #505050ff !important;
+            fill: var(--color-slate-600) !important;
             stroke: #ffffff !important;
             stroke-width: 2.5;
             filter: drop-shadow(0 2px 4px rgba(179, 179, 179, 0.15));
@@ -994,22 +997,22 @@ const GeoMapSVG = ({
 
       {/* Zoom Controls */}
       <div className="absolute bottom-5 right-5 flex flex-col gap-2 z-20">
-        <button
+        <IconButton
+          aria-label="ซูมแผนที่เข้า"
+          icon={ZoomIn}
           onClick={handleZoomIn}
-          className="p-2 bg-white border border-slate-200 shadow-sm rounded-md hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
-          aria-label="Zoom in"
+          size="lg"
           title="ซูมเข้า"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-        <button
+          variant="outline"
+        />
+        <IconButton
+          aria-label="ซูมแผนที่ออก"
+          icon={ZoomOut}
           onClick={handleZoomOut}
-          className="p-2 bg-white border border-slate-200 shadow-sm rounded-md hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
-          aria-label="Zoom out"
+          size="lg"
           title="ซูมออก"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
+          variant="outline"
+        />
       </div>
       {hovered && (
         <div

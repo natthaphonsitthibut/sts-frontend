@@ -104,8 +104,10 @@ export const PAGE_IDENTITIES = {
   "/school-structure": createIdentity("จัดการภาคเรียนและห้องเรียน", "graduation"),
   "/settings": createIdentity("ตั้งค่าระบบ", "settings"),
   "/student-risk-report": createIdentity("ความเสี่ยงจากการมาเรียน", "chart-line"),
-  "/student-risk-report/teacher-reports": createIdentity("ข้อสังเกตจากครู", "clipboard-check"),
-  "/student-risk-report/home-visit-requests": createIdentity("คำขอเยี่ยมบ้าน", "folder-heart"),
+  "/student-risk-report/teacher-comments": createIdentity(
+    "ความคิดเห็นจากคุณครู",
+    "clipboard-check",
+  ),
   "/students": createIdentity("รายชื่อนักเรียน", "user-graduate"),
   "/students/history": createIdentity("รายชื่อนักเรียน", "user-graduate"),
   "/timetable": createIdentity("ตารางสอน", "calendar"),

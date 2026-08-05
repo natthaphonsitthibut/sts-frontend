@@ -206,6 +206,18 @@ export const StudentSelfPage = lazy(() =>
     default: module.StudentSelfPage,
   })),
 );
+export const TeacherLineLinkPage = lazy(() =>
+  import("../features/teacher-line/pages/TeacherLineLinkPage").then((module) => ({
+    default: module.TeacherLineLinkPage,
+  })),
+);
+
+export const TeacherLineLinkResultPage = lazy(() =>
+  import("../features/teacher-line/pages/TeacherLineLinkResultPage").then((module) => ({
+    default: module.TeacherLineLinkResultPage,
+  })),
+);
+
 export const TeacherAttendanceLinksPage = lazy(() =>
   import("../features/teacher-access/pages/TeacherAttendanceLinksPage").then((module) => ({
     default: module.TeacherAttendanceLinksPage,
@@ -236,6 +248,12 @@ export const TeacherStudentProfilePage = lazy(() =>
   })),
 );
 
+export const TeacherTimetablePage = lazy(() =>
+  import("../features/teacher-access/pages/TeacherTimetablePage").then((module) => ({
+    default: module.TeacherTimetablePage,
+  })),
+);
+
 export const TeacherAttendanceHistoryPage = lazy(() =>
   import("../features/teacher-access/pages/TeacherAttendanceHistoryPage").then((module) => ({
     default: module.TeacherAttendanceHistoryPage,
@@ -251,24 +269,9 @@ export const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 );
-export const TeacherObservationReportsPage = lazy(() =>
-  import("../features/student-observations/pages/TeacherObservationReportsPage").then((module) => ({
-    default: module.TeacherObservationReportsPage,
-  })),
-);
-export const TeacherObservationDetailPage = lazy(() =>
-  import("../features/student-observations/pages/TeacherObservationDetailPage").then((module) => ({
-    default: module.TeacherObservationDetailPage,
-  })),
-);
-export const HomeVisitRequestsPage = lazy(() =>
-  import("../features/student-observations/pages/HomeVisitRequestsPage").then((module) => ({
-    default: module.HomeVisitRequestsPage,
-  })),
-);
-export const HomeVisitRequestDetailPage = lazy(() =>
-  import("../features/student-observations/pages/HomeVisitRequestDetailPage").then((module) => ({
-    default: module.HomeVisitRequestDetailPage,
+export const TeacherCommentReportsPage = lazy(() =>
+  import("../features/student-observations/pages/TeacherCommentReportsPage").then((module) => ({
+    default: module.TeacherCommentReportsPage,
   })),
 );
 export const DelegatePage = lazy(() =>

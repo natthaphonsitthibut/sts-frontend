@@ -11,13 +11,14 @@ import { cn } from "../../lib/utils";
 interface HeaderProfileMenuProps {
   canEditProfile: boolean;
   displayName: string;
-  initials: string;
+  /** Already-resolved photo URL; the shared letter fallback shows without one. */
+  photoUrl?: string | null;
 }
 
 export function HeaderProfileMenu({
   canEditProfile,
   displayName,
-  initials,
+  photoUrl,
 }: HeaderProfileMenuProps) {
   const navigate = useNavigate();
   const user = useAuthSessionStore((state) => state.user);
@@ -80,16 +81,18 @@ export function HeaderProfileMenu({
           focusMenuEdge(event.key === "ArrowDown" ? "first" : "last");
         }}
       >
-        {/* The button's own hover/active background would sit fully behind
-            the avatar (both are size-10, matching the bell/menu buttons), so
-            the color feedback lives on the avatar itself instead — same
-            bg-brand-soft → bg-brand-active transition the bell uses. */}
+        {/* The avatar carries the same identity treatment as everywhere else
+            (photo, else the deterministic gradient behind one initial), so the
+            hover/open feedback is a ring rather than a background swap — a
+            gradient or photo would hide a background change entirely. */}
         <Avatar
-          fallback={initials}
           className={cn(
-            "size-10 font-semibold text-primary transition-colors",
-            open ? "bg-brand-active" : "bg-brand-soft group-hover:bg-brand-active",
+            "size-10 transition-shadow",
+            open ? "ring-2 ring-primary" : "group-hover:ring-2 group-hover:ring-primary/30",
           )}
+          gradientName={displayName}
+          imageAlt={displayName}
+          imageUrl={photoUrl ?? null}
         />
       </button>
 
@@ -123,8 +126,10 @@ export function HeaderProfileMenu({
         >
           <div className="flex items-start gap-3 px-3 py-2.5">
             <Avatar
-              fallback={initials}
-              className="size-12 bg-brand-soft font-semibold text-primary"
+              className="size-12"
+              gradientName={displayName}
+              imageAlt={displayName}
+              imageUrl={photoUrl ?? null}
             />
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>

@@ -27,10 +27,28 @@ interface StudentTableProps {
   onSelectAll?: (students: readonly StudentListItem[], selected: boolean) => void;
 }
 
-function StudentIdentity({ student }: { student: StudentListItem }) {
+function StudentIdentity({
+  onOpen,
+  student,
+}: {
+  /** When given, only the avatar opens the profile — the row itself stays inert. */
+  onOpen?: () => void;
+  student: StudentListItem;
+}) {
   return (
     <div className="flex items-center gap-4">
-      <StudentAvatar name={student.name} />
+      {onOpen ? (
+        <button
+          aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
+          className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          onClick={onOpen}
+          type="button"
+        >
+          <StudentAvatar name={student.name} photoUrl={student.photo_url} />
+        </button>
+      ) : (
+        <StudentAvatar name={student.name} photoUrl={student.photo_url} />
+      )}
       <div className="min-w-0">
         <h3 className="truncate font-bold text-slate-800">
           {student.name}
@@ -117,11 +135,7 @@ export function StudentTable({
         sort={sort}
       >
         {sortedRows.map(({ student, index }) => (
-          <DataTableRow
-            key={student.id}
-            className="cursor-pointer"
-            onClick={() => onRowClick(student.id)}
-          >
+          <DataTableRow key={student.id}>
             {selectable ? (
               <DataTableCell>
                 <Checkbox
@@ -139,7 +153,7 @@ export function StudentTable({
               {baseIndex + index + 1}
             </DataTableCell>
             <DataTableCell>
-              <StudentIdentity student={student} />
+              <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </DataTableCell>
             <DataTableCell className="font-semibold text-slate-500">
               {student.school_name || "-"}
@@ -161,22 +175,16 @@ export function StudentTable({
 
       <TableCardList>
         {sortedRows.map(({ student }) => (
-          <TableCard
-            key={student.id}
-            interactive
-            className="flex flex-col gap-3 transition-colors hover:border-slate-300"
-            onClick={() => onRowClick(student.id)}
-          >
+          <TableCard key={student.id} className="flex flex-col gap-3">
             <div className="flex items-start gap-3">
               {selectable ? (
                 <Checkbox
                   aria-label={`เลือก ${student.name}`}
                   checked={selectedIds?.has(student.id) ?? false}
                   onChange={(event) => onSelectRow?.(student, event.currentTarget.checked)}
-                  onClick={(event) => event.stopPropagation()}
                 />
               ) : null}
-              <StudentIdentity student={student} />
+              <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-500">

@@ -4,10 +4,17 @@ import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
 import { LayoutIcon } from "./LayoutIcon";
+import { collectMenuRoutes } from "./menu-routes";
 
 interface SidebarNavItemProps {
   collapsed?: boolean;
   item: MenuItem;
+  /**
+   * Routes of the rail this item is rendered in. Needed for menus outside the
+   * permission-driven registry (the teacher link), whose routes are unknown to
+   * `ALL_MENU_ROUTES` and would otherwise all prefix-match at once.
+   */
+  menuRoutes?: string[];
   onNavigate?: () => void;
 }
 
@@ -53,23 +60,13 @@ function navLinkClassName(
   );
 }
 
-function collectRoutes(items: MenuItem[]): string[] {
-  const routes: string[] = [];
-  for (const entry of items) {
-    if (entry.route) routes.push(entry.route);
-    if (entry.activeRoutes) routes.push(...entry.activeRoutes);
-    if (entry.children) routes.push(...collectRoutes(entry.children));
-  }
-  return routes;
-}
-
 // Computed once from the static menu — every registered route in the app,
 // used to resolve which item "owns" a given URL if two sibling routes ever
 // end up nesting (e.g. a future "/reports" and "/reports/summary" that are
 // separate pages, not a parent/sub-tab pair) — the longer, more specific
 // route wins instead of both lighting up at once. Prefer non-nested sibling
 // paths when adding new routes so this never has to arbitrate in practice.
-const ALL_MENU_ROUTES = collectRoutes(MENU_ITEMS);
+const ALL_MENU_ROUTES = collectMenuRoutes(MENU_ITEMS);
 
 function routeMatchesPathname(route: string, pathname: string): boolean {
   return route === pathname || (route !== "/" && pathname.startsWith(`${route}/`));
@@ -81,9 +78,9 @@ function routeMatchesPathname(route: string, pathname: string): boolean {
  * nest (like the `/field-followers` example above) only ever resolve to one
  * winner instead of both matching independently.
  */
-function findBestMatchingRoute(pathname: string): string | null {
+function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): string | null {
   let best: string | null = null;
-  for (const route of ALL_MENU_ROUTES) {
+  for (const route of [...ALL_MENU_ROUTES, ...extraRoutes]) {
     if (!routeMatchesPathname(route, pathname)) continue;
     if (best === null || route.length > best.length) {
       best = route;
@@ -98,24 +95,26 @@ function findBestMatchingRoute(pathname: string): string | null {
  * Matching goes through `findBestMatchingRoute` so that when two menu
  * routes nest inside each other, only the most specific one is active.
  */
-function isRouteActive(item: MenuItem, pathname: string): boolean {
+function isRouteActive(item: MenuItem, pathname: string, menuRoutes: string[] = []): boolean {
   const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean) as string[];
   if (routes.length === 0) return false;
-  const bestMatch = findBestMatchingRoute(pathname);
+  // `menuRoutes` carries the rail's own routes so a menu outside the
+  // permission-driven registry still gets most-specific-wins arbitration —
+  // without it "/teacher-access" would light up on "/teacher-access/timetable".
+  const bestMatch = findBestMatchingRoute(pathname, menuRoutes);
   if (bestMatch !== null) return routes.includes(bestMatch);
-  // Menus outside the permission-driven registry (the teacher-link rail) have
-  // no entry in ALL_MENU_ROUTES, so fall back to the item's own route.
   return routes.some((route) => routeMatchesPathname(route, pathname));
 }
 
 export function SidebarNavItem({
   collapsed = false,
   item,
+  menuRoutes,
   onNavigate,
 }: SidebarNavItemProps) {
   const location = useLocation();
   const hasActiveChild = Boolean(
-    item.children?.some((child) => isRouteActive(child, location.pathname)),
+    item.children?.some((child) => isRouteActive(child, location.pathname, menuRoutes)),
   );
   const [open, setOpen] = useState(hasActiveChild);
   const expanded = open;
@@ -189,7 +188,7 @@ export function SidebarNavItem({
                   aria-label={collapsed ? child.label : undefined}
                   className={() =>
                     navLinkClassName(
-                      { isActive: isRouteActive(child, location.pathname) },
+                      { isActive: isRouteActive(child, location.pathname, menuRoutes) },
                       collapsed,
                       true,
                     )
@@ -216,8 +215,15 @@ export function SidebarNavItem({
   return (
     <NavLink
       aria-label={collapsed ? item.label : undefined}
-      className={(state) => navLinkClassName(state, collapsed)}
-      end={item.route === "/"}
+      // Active state comes from `isRouteActive`, not NavLink's own prefix
+      // match: a rail whose landing page is a parent path of its other items
+      // ("/teacher-access" vs "/teacher-access/timetable") would light up both.
+      className={() =>
+        navLinkClassName(
+          { isActive: isRouteActive(item, location.pathname, menuRoutes) },
+          collapsed,
+        )
+      }
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       to={item.route || "#"}
