@@ -34,7 +34,7 @@ function UserIdentity({ user }: { user: ManagedUser }) {
         imageAlt={`รูปประจำตัวของ ${displayName}`}
         imageUrl={resolveApiMediaUrl(user.photo_url ?? null)}
       />
-      <span className="truncate font-bold text-slate-800">{displayName}</span>
+      <span className="truncate text-slate-800">{displayName}</span>
     </>
   );
 
@@ -108,7 +108,7 @@ export function UserTable({
       >
         {users.map((user, index) => (
           <DataTableRow key={user.id ?? user.username}>
-            <DataTableCell className="text-center">
+            <DataTableCell>
               {startIndex + index}
             </DataTableCell>
             <DataTableCell>

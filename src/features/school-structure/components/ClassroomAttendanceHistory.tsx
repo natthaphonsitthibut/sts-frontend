@@ -445,10 +445,10 @@ export function ClassroomAttendanceHistory({
       ) : selectedStudent ? (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
-            { label: "วันที่", sortKey: "date", className: "text-center" },
-            { label: "เวลา", sortKey: "time", className: "text-center" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy", className: "text-center" },
+            { label: "ลำดับ" },
+            { label: "วันที่", sortKey: "date" },
+            { label: "เวลา", sortKey: "time" },
+            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
             { label: "สถานะการเข้าเรียน", sortKey: "status", className: "text-center" },
           ]}
           minWidthClassName="min-w-[900px]"
@@ -459,10 +459,10 @@ export function ClassroomAttendanceHistory({
         >
           {studentDaysQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.id}>
-              <DataTableCell className="text-center">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell className="text-center tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
-              <DataTableCell className="text-center tabular-nums">{row.time ?? "-"}</DataTableCell>
-              <DataTableCell className="text-center">{row.recordedBy}</DataTableCell>
+              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
+              <DataTableCell className="tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
+              <DataTableCell className="tabular-nums">{row.time ?? "-"}</DataTableCell>
+              <DataTableCell>{row.recordedBy}</DataTableCell>
               <DataTableCell><AttendanceStatusPills catalog={attendanceStatusCatalog} status={row.status} /></DataTableCell>
             </DataTableRow>
           ))}
@@ -470,9 +470,9 @@ export function ClassroomAttendanceHistory({
       ) : selectedDay ? (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
+            { label: "ลำดับ" },
             { label: "รูปประจำตัว", className: "text-center" },
-            { label: "รหัสประจำตัว", sortKey: "studentNumber", className: "text-center" },
+            { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
             { label: "สถานะการเข้าเรียน", sortKey: "status", className: "text-center" },
           ]}
@@ -484,9 +484,9 @@ export function ClassroomAttendanceHistory({
         >
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
-              <DataTableCell className="text-center">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
+              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
               <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => void navigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} /></button></div></DataTableCell>
-              <DataTableCell className="text-center tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
+              <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
               <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
               <DataTableCell><AttendanceStatusPills catalog={attendanceStatusCatalog} status={summaryStatus(row)} /></DataTableCell>
             </DataTableRow>
@@ -495,13 +495,13 @@ export function ClassroomAttendanceHistory({
       ) : view === "DAILY" ? (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
-            { label: "วันที่", sortKey: "date", className: "text-center" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy", className: "text-center" },
-            { label: "จำนวนที่มา (คน)", sortKey: "present", className: "text-center" },
-            { label: "จำนวนที่สาย (คน)", sortKey: "late", className: "text-center" },
-            { label: "จำนวนที่ลา (คน)", sortKey: "leave", className: "text-center" },
-            { label: "จำนวนที่ขาด (คน)", sortKey: "absent", className: "text-center" },
+            { label: "ลำดับ" },
+            { label: "วันที่", sortKey: "date" },
+            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
+            { label: "จำนวนที่มา (คน)", sortKey: "present" },
+            { label: "จำนวนที่สาย (คน)", sortKey: "late" },
+            { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
+            { label: "จำนวนที่ขาด (คน)", sortKey: "absent" },
             { label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[950px]"
@@ -512,13 +512,13 @@ export function ClassroomAttendanceHistory({
         >
           {dailyQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.date}>
-              <DataTableCell className="text-center">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell className="text-center tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
-              <DataTableCell className="text-center">{row.recordedBy}</DataTableCell>
-              <DataTableCell className="text-center">{row.presentCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.lateCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.leaveCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.absentCount}</DataTableCell>
+              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
+              <DataTableCell className="tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
+              <DataTableCell>{row.recordedBy}</DataTableCell>
+              <DataTableCell>{row.presentCount}</DataTableCell>
+              <DataTableCell>{row.lateCount}</DataTableCell>
+              <DataTableCell>{row.leaveCount}</DataTableCell>
+              <DataTableCell>{row.absentCount}</DataTableCell>
               <DataTableCell><div className="flex justify-center"><IconButton aria-label={`ดูรายละเอียดวันที่ ${formatNumericThaiDate(row.date)}`} icon={History} onClick={() => { setSelectedDay(row.date); setSearch(""); setDate(""); setSort({ key: "name", direction: "asc" }); setPage(1); }} variant="edit" /></div></DataTableCell>
             </DataTableRow>
           ))}
@@ -526,14 +526,14 @@ export function ClassroomAttendanceHistory({
       ) : (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
+            { label: "ลำดับ" },
             { label: "รูปประจำตัว", className: "text-center" },
-            { label: "รหัสประจำตัว", sortKey: "studentNumber", className: "text-center" },
+            { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
-            { label: "จำนวนที่มา (ครั้ง)", sortKey: "present", className: "text-center" },
-            { label: "จำนวนที่สาย (ครั้ง)", sortKey: "late", className: "text-center" },
-            { label: "จำนวนที่ลา (ครั้ง)", sortKey: "leave", className: "text-center" },
-            { label: "จำนวนที่ขาด (ครั้ง)", sortKey: "absent", className: "text-center" },
+            { label: "จำนวนที่มา (ครั้ง)", sortKey: "present" },
+            { label: "จำนวนที่สาย (ครั้ง)", sortKey: "late" },
+            { label: "จำนวนที่ลา (ครั้ง)", sortKey: "leave" },
+            { label: "จำนวนที่ขาด (ครั้ง)", sortKey: "absent" },
             { label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[1100px]"
@@ -544,14 +544,14 @@ export function ClassroomAttendanceHistory({
         >
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
-              <DataTableCell className="text-center">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
+              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
               <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => void navigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} /></button></div></DataTableCell>
-              <DataTableCell className="text-center tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
+              <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
               <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
-              <DataTableCell className="text-center">{row.presentCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.lateCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.leaveCount}</DataTableCell>
-              <DataTableCell className="text-center">{row.absentCount}</DataTableCell>
+              <DataTableCell>{row.presentCount}</DataTableCell>
+              <DataTableCell>{row.lateCount}</DataTableCell>
+              <DataTableCell>{row.leaveCount}</DataTableCell>
+              <DataTableCell>{row.absentCount}</DataTableCell>
               <DataTableCell><div className="flex justify-center"><IconButton aria-label={`ดูประวัติของ ${studentName(row)}`} icon={History} onClick={() => { setSelectedStudent(row); setSort({ key: "date", direction: "desc" }); resetFilters(); }} variant="edit" /></div></DataTableCell>
             </DataTableRow>
           ))}

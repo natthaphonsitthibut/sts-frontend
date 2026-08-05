@@ -108,7 +108,7 @@ export function CaseTable({
         {sortedRows.map((caseRecord) => (
           <DataTableRow key={caseRecord.id}>
             <DataTableCell>
-              <div className="font-bold text-slate-800">
+              <div className="text-slate-800">
                 {caseRecord.student_name}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
@@ -151,7 +151,7 @@ export function CaseTable({
           <TableCard key={caseRecord.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-bold text-slate-800">
+                <div className="text-slate-800">
                   {caseRecord.student_name}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-500">
@@ -169,7 +169,7 @@ export function CaseTable({
             </p>
             {caseRecord.task_id ? (
               <div className="mt-3 text-sm text-slate-600">
-                <span className="font-semibold text-slate-500">ผู้รับลิงก์:</span>{" "}
+                <span className="text-slate-500">ผู้รับลิงก์:</span>{" "}
                 {caseRecord.latest_link_assigned_to || "-"}
               </div>
             ) : null}

@@ -166,8 +166,8 @@ export function StudentStatusesPage() {
           >
             {rows.map((status) => (
               <DataTableRow key={status.code}>
-                <DataTableCell className="font-bold">{status.code}</DataTableCell>
-                <DataTableCell className="font-bold text-slate-800">{status.labelTh}</DataTableCell>
+                <DataTableCell>{status.code}</DataTableCell>
+                <DataTableCell className="text-slate-800">{status.labelTh}</DataTableCell>
                 <DataTableCell>
                   {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}
                 </DataTableCell>
@@ -188,7 +188,7 @@ export function StudentStatusesPage() {
             {rows.map((status) => (
               <TableCard className="space-y-3" key={status.code}>
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="font-bold text-slate-800">{status.labelTh}</p><p className="text-sm text-slate-500">รหัส {status.code} · {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}</p></div>
+                  <div><p className="text-slate-800">{status.labelTh}</p><p className="text-sm text-slate-500">รหัส {status.code} · {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}</p></div>
                   <Button aria-label={`แก้ไข ${status.labelTh}`} icon={Pencil} onClick={() => openEdit(status)} size="sm" variant="outline">แก้ไข</Button>
                 </div>
                 <StatusFlags catalog={flagCatalog.items} status={status} />

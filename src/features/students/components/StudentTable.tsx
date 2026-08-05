@@ -50,7 +50,7 @@ function StudentIdentity({
         <StudentAvatar name={student.name} photoUrl={student.photo_url} />
       )}
       <div className="min-w-0">
-        <h3 className="truncate font-bold text-slate-800">
+        <h3 className="truncate text-slate-800">
           {student.name}
         </h3>
       </div>
@@ -155,13 +155,13 @@ export function StudentTable({
             <DataTableCell>
               <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </DataTableCell>
-            <DataTableCell className="font-semibold text-slate-500">
+            <DataTableCell className="text-slate-500">
               {student.school_name || "-"}
             </DataTableCell>
-            <DataTableCell className="text-center font-bold text-slate-600">
+            <DataTableCell className="text-slate-600">
               {student.grade || "-"}
             </DataTableCell>
-            <DataTableCell className="text-center font-bold text-slate-600">
+            <DataTableCell className="text-slate-600">
               {formatStudentRoom(student.room)}
             </DataTableCell>
             <DataTableCell>
@@ -187,10 +187,10 @@ export function StudentTable({
               <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-slate-500">
+              <span className="text-slate-500">
                 {student.school_name || "-"}
               </span>
-              <span className="font-bold text-slate-600">
+              <span className="text-slate-600">
                 {student.grade || "-"} · {formatStudentRoom(student.room)}
               </span>
             </div>

@@ -153,7 +153,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
         {sortedLinks.map((link) => (
           <DataTableRow key={link.id}>
             <DataTableCell>
-              <div className="font-bold text-slate-800">{getStudentLabel(link)}</div>
+              <div className="text-slate-800">{getStudentLabel(link)}</div>
             </DataTableCell>
             <DataTableCell className="text-sm text-slate-600">
               {link.school_name || link.student_school || "-"}
@@ -190,7 +190,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
           <TableCard key={link.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate font-bold text-slate-800">
+                <div className="truncate text-slate-800">
                   {getStudentLabel(link)}
                 </div>
                 <div className="truncate text-xs text-slate-500">

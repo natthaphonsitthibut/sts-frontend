@@ -230,7 +230,7 @@ export function FieldFollowersReviewPage() {
               const statusMeta = getFieldFollowerStatusMeta(followerStatusCatalog, follower.status);
               return (
                 <DataTableRow key={follower.id}>
-                  <DataTableCell className="font-bold text-slate-900">
+                  <DataTableCell className="text-slate-900">
                     {getFieldFollowerFullName(follower)}
                   </DataTableCell>
                   <DataTableCell>{follower.phone}</DataTableCell>
@@ -265,7 +265,7 @@ export function FieldFollowersReviewPage() {
                 <TableCard className="space-y-3" key={follower.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-bold text-slate-900">
+                      <div className="text-slate-900">
                         {getFieldFollowerFullName(follower)}
                       </div>
                       <div className="text-sm text-slate-500">{follower.phone}</div>

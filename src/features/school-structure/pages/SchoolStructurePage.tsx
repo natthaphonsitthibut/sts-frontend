@@ -427,7 +427,7 @@ export function SchoolStructurePage() {
           >
             {classrooms.map((room) => (
               <DataTableRow key={room.id}>
-                <DataTableCell className="font-semibold text-slate-900">
+                <DataTableCell className="text-slate-900">
                   {room.gradeLabel}
                 </DataTableCell>
                 <DataTableCell>
@@ -458,10 +458,10 @@ export function SchoolStructurePage() {
               <TableCard key={room.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate font-bold text-slate-800">
+                    <div className="truncate text-slate-800">
                       {room.gradeLabel} {room.roomName || formatRoomLabel(room.roomCode)}
                     </div>
-                    <div className="truncate text-xs font-semibold text-slate-500">
+                    <div className="truncate text-xs text-slate-500">
                       นักเรียน {room.studentCount} คน
                     </div>
                   </div>

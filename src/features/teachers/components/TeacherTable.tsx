@@ -118,7 +118,7 @@ export function TeacherTable({
       >
         {teachers.map((teacher, index) => (
           <DataTableRow key={teacher.id}>
-            <DataTableCell className="text-center">
+            <DataTableCell>
               {startIndex + index}
             </DataTableCell>
             <DataTableCell>
@@ -126,7 +126,7 @@ export function TeacherTable({
                 <TeacherAvatarButton onEdit={onEdit} teacher={teacher} />
               </div>
             </DataTableCell>
-            <DataTableCell className="font-bold text-slate-800">
+            <DataTableCell className="text-slate-800">
               {teacher.fullName}
             </DataTableCell>
             <DataTableCell>{teacher.citizenId || "-"}</DataTableCell>
@@ -154,10 +154,10 @@ export function TeacherTable({
               <div className="flex min-w-0 items-center gap-3">
                 <TeacherAvatarButton onEdit={onEdit} teacher={teacher} />
                 <div className="min-w-0">
-                  <div className="truncate font-bold text-slate-800">
+                  <div className="truncate text-slate-800">
                     {teacher.fullName}
                   </div>
-                  <div className="truncate text-xs font-semibold text-slate-500">
+                  <div className="truncate text-xs text-slate-500">
                     {teacher.citizenId || "-"}
                   </div>
                 </div>

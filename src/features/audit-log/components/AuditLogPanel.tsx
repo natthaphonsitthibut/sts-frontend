@@ -216,7 +216,7 @@ function AuditLogTable({
                 </Badge>
               </DataTableCell>
             ) : null}
-            <DataTableCell className="font-semibold text-slate-800">
+            <DataTableCell className="text-slate-800">
               <div className="truncate" title={entry.actorLabel}>
                 {entry.actorLabel}
               </div>
@@ -257,7 +257,7 @@ function AuditLogTable({
                   {formatThaiDateTime(entry.createdAt)}
                 </time>
               </div>
-              <div className="text-sm font-semibold text-slate-900">{entry.actorLabel}</div>
+              <div className="text-sm text-slate-900">{entry.actorLabel}</div>
               {showReferenceColumn ? (
                 <div className="text-sm text-slate-600">
                   {getAuditLogTargetLabel(entry)}

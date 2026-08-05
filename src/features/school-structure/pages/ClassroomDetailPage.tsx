@@ -168,7 +168,7 @@ export function ClassroomDetailPage() {
           ) : (
             <DataTable
               headings={[
-                { label: "ลำดับ", className: "text-center" },
+                { label: "ลำดับ" },
                 { label: "รูปประจำตัว", className: "text-center" },
                 { label: "รหัสประจำตัว", sortKey: "studentNumber" },
                 { label: "ชื่อ-นามสกุล", sortKey: "name" },
@@ -204,7 +204,7 @@ export function ClassroomDetailPage() {
                 const fullName = `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "-";
                 return (
                   <DataTableRow key={student.studentUuid}>
-                        <DataTableCell className="text-center tabular-nums">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
+                        <DataTableCell className="tabular-nums">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
                         <DataTableCell>
                           <div className="flex justify-center">
                             <button

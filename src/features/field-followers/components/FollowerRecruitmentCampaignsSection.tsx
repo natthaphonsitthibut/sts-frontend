@@ -390,7 +390,7 @@ export function FollowerRecruitmentCampaignsSection({
               const catalogItem = findStatusCatalogItem(stateCatalog.items, campaign.status);
               return (
                 <DataTableRow key={campaign.id}>
-                  <DataTableCell className="font-bold text-slate-900">
+                  <DataTableCell className="text-slate-900">
                     {campaign.name}
                   </DataTableCell>
                   <DataTableCell>
@@ -430,7 +430,7 @@ export function FollowerRecruitmentCampaignsSection({
               return (
                 <TableCard className="space-y-3" key={campaign.id}>
                   <div className="flex items-start justify-between gap-3">
-                    <div className="font-bold text-slate-900">{campaign.name}</div>
+                    <div className="text-slate-900">{campaign.name}</div>
                     <Badge className="shrink-0 whitespace-nowrap" variant={catalogItem?.badgeVariant ?? "secondary"}>
                       {catalogItem?.label ?? campaign.status}
                     </Badge>
