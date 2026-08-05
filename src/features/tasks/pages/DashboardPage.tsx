@@ -192,19 +192,23 @@ function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
 
 function StudentCell({ row }: { row: RiskDashboardRow }) {
   return (
-    <Link
-      aria-label={`ดูโปรไฟล์ ${row.studentName}`}
-      className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      onClick={(event) => event.stopPropagation()}
-      to={`/students/${row.studentId}`}
-    >
-      <StudentAvatar name={row.studentName} />
+    <div className="flex min-w-0 items-center gap-3">
+      <Link
+        aria-label={`ดูโปรไฟล์ ${row.studentName}`}
+        className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        to={`/students/${row.studentId}`}
+      >
+        <StudentAvatar
+          className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
+          name={row.studentName}
+        />
+      </Link>
       <div className="min-w-0">
-        <div className="truncate font-bold text-slate-800">
+        <div className="truncate text-slate-800">
           {row.studentName}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -438,10 +442,6 @@ export function DashboardPage() {
     resetPage();
   }
 
-  function openStudent(studentId: string): void {
-    void navigate(`/students/${studentId}`);
-  }
-
   return (
     <PageShell>
       <ListPageToolbar
@@ -584,28 +584,26 @@ export function DashboardPage() {
               {rows.map((row) => (
                 <DataTableRow
                   key={row.studentId}
-                  className="cursor-pointer"
                   data-student-navigation={row.studentId}
-                  onClick={() => openStudent(row.studentId)}
                 >
                   <DataTableCell>
                     <StudentCell row={row} />
                   </DataTableCell>
-                  <DataTableCell className="font-semibold text-slate-600">
+                  <DataTableCell className="text-slate-600">
                     {row.schoolName || "-"}
                   </DataTableCell>
-                  <DataTableCell className="text-center font-bold text-slate-600">
+                  <DataTableCell className="text-slate-600">
                     {row.grade || "-"}
                   </DataTableCell>
-                  <DataTableCell className="text-center font-bold text-slate-600">
+                  <DataTableCell className="text-slate-600">
                     {row.room || "-"}
                   </DataTableCell>
                   <DataTableCell>
                     <div className="space-y-1 text-sm">
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatPercent(row.weightedAttendancePercent)}
                       </div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         ขาดสะสม {formatNumber(row.absentDays)}/
                         {meta?.thresholds.highAbsentDays ?? "-"} วัน · สาย{" "}
                         {formatNumber(row.lateCount)}
@@ -615,16 +613,13 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </DataTableCell>
-                  <DataTableCell className="text-center font-bold text-slate-700">
+                  <DataTableCell className="text-slate-700">
                     {formatNumber(row.openCaseCount)}
                   </DataTableCell>
                   <DataTableCell>
                     <RiskBadge tier={row.riskTier} />
                   </DataTableCell>
-                  <DataTableCell
-                    className="text-right"
-                    onClick={(event) => event.stopPropagation()}
-                  >
+                  <DataTableCell className="text-right">
                     <DashboardRowAction canOpenCases={can("review-cases")} row={row} />
                   </DataTableCell>
                 </DataTableRow>
@@ -652,9 +647,8 @@ export function DashboardPage() {
               {rows.map((row) => (
                 <TableCard
                   key={row.studentId}
-                  className="flex cursor-pointer flex-col gap-3 transition-colors hover:border-slate-300"
+                  className="flex flex-col gap-3"
                   data-student-navigation={row.studentId}
-                  onClick={() => openStudent(row.studentId)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <StudentCell row={row} />
@@ -662,43 +656,43 @@ export function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         การมาเรียน
                       </div>
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatPercent(row.weightedAttendancePercent)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         เคสเปิด
                       </div>
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatNumber(row.openCaseCount)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         ขาดสะสม
                       </div>
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatNumber(row.absentDays)}/
                         {meta?.thresholds.highAbsentDays ?? "-"} วัน
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         สาย
                       </div>
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatNumber(row.lateCount)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs text-slate-500">
                         สายรายวิชา
                       </div>
-                      <div className="font-bold text-slate-800">
+                      <div className="text-slate-800">
                         {formatNumber(row.subjectLateCount)}
                       </div>
                     </div>
