@@ -1,11 +1,4 @@
-import {
-  Activity,
-  AlertCircle,
-  CheckCircle2,
-  ShieldAlert,
-  Siren,
-  type LucideIcon,
-} from "lucide-react";
+import { Activity, CheckCircle2, Siren, type LucideIcon } from "lucide-react";
 import { RISK_TIER_LABELS } from "./student-presentation";
 
 export type RiskTierPresentation = {
@@ -23,18 +16,6 @@ export const RISK_TIER_PRESENTATION: Record<string, RiskTierPresentation> = {
     tone: "danger",
     icon: Siren,
   },
-  MEDIUM: {
-    label: RISK_TIER_LABELS.MEDIUM,
-    badge: "warning",
-    tone: "warning",
-    icon: ShieldAlert,
-  },
-  LOW: {
-    label: RISK_TIER_LABELS.LOW,
-    badge: "default",
-    tone: "info",
-    icon: AlertCircle,
-  },
   WATCH: {
     label: RISK_TIER_LABELS.WATCH,
     badge: "secondary",
@@ -49,11 +30,7 @@ export const RISK_TIER_PRESENTATION: Record<string, RiskTierPresentation> = {
   },
 };
 
-/**
- * Outlined chip classes for roster tables. Deliberately coarser than `tone`:
- * the tiers are slated to collapse to เสี่ยง / เฝ้าระวัง / ปกติ, so every
- * at-risk tier shares one treatment until that consolidation lands.
- */
+/** Outlined chip classes for roster tables — one treatment per tier. */
 const RISK_TIER_CHIP_CLASS: Record<string, string> = {
   NORMAL: "border-success text-success-700",
   WATCH: "border-warning text-warning-700",
@@ -66,10 +43,4 @@ export function getRiskTierChipClass(riskTier: string): string {
 }
 
 /** Canonical dashboard/filter order; severity desc, normal last. */
-export const RISK_TIER_ORDER = [
-  "HIGH",
-  "MEDIUM",
-  "WATCH",
-  "LOW",
-  "NORMAL",
-] as const;
+export const RISK_TIER_ORDER = ["HIGH", "WATCH", "NORMAL"] as const;

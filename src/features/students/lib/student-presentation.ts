@@ -12,9 +12,7 @@ export function formatStudentRoom(room: string | null | undefined): string {
  * both read from here instead of keeping their own copies.
  */
 export const RISK_TIER_LABELS: Record<string, string> = {
-  HIGH: "เสี่ยงสูง",
-  MEDIUM: "เสี่ยงกลาง",
-  LOW: "เสี่ยงต่ำ",
+  HIGH: "เสี่ยง",
   WATCH: "เฝ้าระวัง",
   NORMAL: "ปกติ",
 };

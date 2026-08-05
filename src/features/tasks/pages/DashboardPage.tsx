@@ -169,24 +169,18 @@ function criteriaItems(
   thresholds?: RiskDashboardThresholds,
 ): Array<{ label: string; value: string }> {
   if (!thresholds) return [{ label: "สถานะ", value: "กำลังโหลดเกณฑ์" }];
-  const watchPercent = Math.round(thresholds.watchProgressRatio * 100);
   return [
     {
-      label: "ขาดติดกัน ต่ำ/กลาง/สูง",
-      value: `≥${thresholds.lowConsecutiveAbsentDays}/${thresholds.mediumConsecutiveAbsentDays}/${thresholds.highConsecutiveAbsentDays} วัน`,
-    },
-    { label: "เฝ้าระวัง", value: `≥${watchPercent}% ของเกณฑ์` },
-    {
-      label: "เปอร์เซ็นต์เข้าเรียน",
-      value: `นับสายรวมด้วย: เสี่ยงต่ำ <${thresholds.lowAttendancePercent}% · กลาง <${thresholds.mediumAttendancePercent}% · สูง <${thresholds.highAttendancePercent}%`,
+      label: "เสี่ยง",
+      value: `ขาดสะสม ≥${thresholds.highAbsentDays} วันในเทอม (ไม่ต้องติดกัน นับวันที่ขาดครบทุกคาบ)`,
     },
     {
-      label: "สายเทียบขาด",
-      value: `สาย ${1 / thresholds.lateWeight} ครั้ง = ขาด 1 วัน`,
+      label: "เฝ้าระวัง",
+      value: "มีความคิดเห็นจากคุณครูถึงนักเรียน",
     },
     {
-      label: "สายรายวิชา",
-      value: `≥${thresholds.subjectLateWatchCount} ครั้งใน ${thresholds.subjectLateWindowDays} วัน = เฝ้าระวัง`,
+      label: "ปกติ",
+      value: "ไม่เข้าเกณฑ์เสี่ยงและไม่มีความคิดเห็นจากคุณครู",
     },
   ];
 }
@@ -521,7 +515,8 @@ export function DashboardPage() {
               </div>
             </InfoTooltip>
           </div>
-          <SummaryMetrics centerRows items={summaryItems} />
+          {/* Four cards (ทั้งหมด + three tiers) fit one row exactly. */}
+          <SummaryMetrics columns={4} items={summaryItems} />
         </div>
 
         {activeFilterLabels.length > 0 ? (
@@ -611,9 +606,8 @@ export function DashboardPage() {
                         {formatPercent(row.weightedAttendancePercent)}
                       </div>
                       <div className="text-xs font-semibold text-slate-500">
-                        ขาดติดกัน {row.consecutiveAbsentDays}/
-                        {meta?.thresholds.lowConsecutiveAbsentDays ?? "-"} · ขาด{" "}
-                        {formatNumber(row.absentDays)} · สาย{" "}
+                        ขาดสะสม {formatNumber(row.absentDays)}/
+                        {meta?.thresholds.highAbsentDays ?? "-"} วัน · สาย{" "}
                         {formatNumber(row.lateCount)}
                         {row.subjectLateCount > 0
                           ? ` · สายรายวิชา ${formatNumber(row.subjectLateCount)}`
@@ -685,19 +679,18 @@ export function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-slate-500">
-                        ขาดติดกัน
+                        ขาดสะสม
                       </div>
                       <div className="font-bold text-slate-800">
-                        {row.consecutiveAbsentDays}/
-                        {meta?.thresholds.lowConsecutiveAbsentDays ?? "-"}
+                        {formatNumber(row.absentDays)}/
+                        {meta?.thresholds.highAbsentDays ?? "-"} วัน
                       </div>
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-slate-500">
-                        ขาด/สาย
+                        สาย
                       </div>
                       <div className="font-bold text-slate-800">
-                        {formatNumber(row.absentDays)} /{" "}
                         {formatNumber(row.lateCount)}
                       </div>
                     </div>
@@ -706,8 +699,7 @@ export function DashboardPage() {
                         สายรายวิชา
                       </div>
                       <div className="font-bold text-slate-800">
-                        {formatNumber(row.subjectLateCount)}/
-                        {meta?.thresholds.subjectLateWatchCount ?? "-"}
+                        {formatNumber(row.subjectLateCount)}
                       </div>
                     </div>
                   </div>

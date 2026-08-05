@@ -96,8 +96,6 @@ export interface HomeDashboardTrendPoint {
 
 export interface HomeDashboardRiskDistribution {
   HIGH: number;
-  MEDIUM: number;
-  LOW: number;
   WATCH: number;
   NORMAL: number;
 }

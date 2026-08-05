@@ -1,6 +1,6 @@
 import type { PaginationMeta } from "../../../lib/pagination";
 
-export type RiskDashboardTier = "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
+export type RiskDashboardTier = "HIGH" | "WATCH" | "NORMAL";
 export type RiskDashboardTierFilter = "ALL" | RiskDashboardTier;
 export type RiskDashboardSortBy =
   | "risk"
@@ -36,16 +36,8 @@ export interface RiskDashboardRow {
 }
 
 export interface RiskDashboardThresholds {
-  lowConsecutiveAbsentDays: number;
-  mediumConsecutiveAbsentDays: number;
-  highConsecutiveAbsentDays: number;
-  watchProgressRatio: number;
-  lowAttendancePercent: number;
-  mediumAttendancePercent: number;
-  highAttendancePercent: number;
-  lateWeight: number;
-  subjectLateWindowDays: number;
-  subjectLateWatchCount: number;
+  /** วันขาดสะสมต่อเทอม (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
+  highAbsentDays: number;
 }
 
 export type RiskDashboardSummary = Record<RiskDashboardTier, number>;

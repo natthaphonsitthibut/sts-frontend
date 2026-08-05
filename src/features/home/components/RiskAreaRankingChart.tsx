@@ -29,10 +29,10 @@ export function RiskAreaRankingChart({
           </span>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              นักเรียนเสี่ยงสูง Top 10 {ranking.dimensionLabel}
+              นักเรียนเสี่ยง Top 10 {ranking.dimensionLabel}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              เรียงตามจำนวนระดับ HIGH ในขอบเขตปัจจุบัน กดพื้นที่เพื่อดูระดับถัดไป
+              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน กดพื้นที่เพื่อดูระดับถัดไป
             </p>
           </div>
         </div>
@@ -52,14 +52,14 @@ export function RiskAreaRankingChart({
 
       {ranking.items.length === 0 ? (
         <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-          ไม่พบนักเรียนระดับเสี่ยงสูงในขอบเขตนี้
+          ไม่พบนักเรียนระดับเสี่ยงในขอบเขตนี้
         </div>
       ) : (
         <ol className="mt-5 space-y-3">
           {ranking.items.map((item, index) => (
             <li key={`${ranking.dimension}-${item.key}`}>
               <button
-                aria-label={`${item.label} นักเรียนเสี่ยงสูง ${item.count.toLocaleString("th-TH")} คน ดูระดับถัดไป`}
+                aria-label={`${item.label} นักเรียนเสี่ยง ${item.count.toLocaleString("th-TH")} คน ดูระดับถัดไป`}
                 className="group w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 data-risk-area-item={item.key}
                 onClick={() => onSelect(item.targetFilter)}

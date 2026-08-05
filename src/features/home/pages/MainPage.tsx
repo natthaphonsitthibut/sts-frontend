@@ -284,6 +284,7 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
         return (
           <Link
             key={metric.key}
+            data-home-metric={metric.key}
             to={destination(metric.targetPath, metric.targetQuery)}
             className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
