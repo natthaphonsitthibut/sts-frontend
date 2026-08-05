@@ -123,6 +123,11 @@ export function SidebarNavItem({
     setOpen((value) => !value);
   }
 
+  // The collapsed icon rail never shows nested children — only the active
+  // child itself should read as "active" (via its own NavLink), the parent
+  // group icon stays neutral either way.
+  const childrenVisible = expanded && !collapsed;
+
   if (item.children) {
     return (
       <div>
@@ -135,12 +140,7 @@ export function SidebarNavItem({
           className={cn(
             // justify-center is unconditional for the same glide reason as
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
-            "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition-colors hover:bg-brand-soft",
-            hasActiveChild
-              ? "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary"
-              : open
-                ? "bg-brand-soft text-primary-dark"
-                : "text-slate-600 hover:text-primary-dark",
+            "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
           )}
         >
           <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
@@ -166,10 +166,10 @@ export function SidebarNavItem({
           />
         </button>
         <div
-          aria-hidden={!expanded}
+          aria-hidden={!childrenVisible}
           className={cn(
             "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
-            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            childrenVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
         >
           <div className="overflow-hidden">
@@ -197,7 +197,7 @@ export function SidebarNavItem({
                   onClick={onNavigate}
                   title={collapsed ? child.label : undefined}
                   to={child.route || "#"}
-                  tabIndex={expanded ? undefined : -1}
+                  tabIndex={childrenVisible ? undefined : -1}
                 >
                   <LayoutIcon className="size-4 shrink-0" iconName={child.iconName} />
                   <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
