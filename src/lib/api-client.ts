@@ -51,6 +51,7 @@ export const apiClient = axios.create({
   baseURL: joinBaseUrl(appConfig.apiBaseUrl, appConfig.apiPrefix),
   // Admin identity is a server-signed httpOnly cookie — send it on every request.
   withCredentials: true,
+  timeout: 20_000,
 });
 
 apiClient.interceptors.request.use((config) => {
