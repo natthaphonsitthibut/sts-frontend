@@ -21,6 +21,7 @@ import {
 } from "../../../components/base";
 import {
   ErrorState,
+  FormActions,
   PageShell,
   PageToolbar,
   SkeletonStack,
@@ -73,10 +74,14 @@ function UserForm({
   const saveUser = useSaveUser();
   const isEdit = Boolean(user?.id);
   const [generatedPassword, setGeneratedPassword] = useState("");
-  const [photo, setPhoto] = useState<PhotoPickerValue>(EMPTY_PHOTO_PICKER_VALUE);
+  const [photo, setPhoto] = useState<PhotoPickerValue>(
+    EMPTY_PHOTO_PICKER_VALUE,
+  );
   // Empty on a new account until a role is picked: the role's standard set is
   // the starting point, and the editor shows what was added or removed from it.
-  const [permissions, setPermissions] = useState<string[]>(user?.permissions ?? []);
+  const [permissions, setPermissions] = useState<string[]>(
+    user?.permissions ?? [],
+  );
   const [dataScope, setDataScope] = useState<DataScope>(user?.data_scope ?? {});
   const [showScopeErrors, setShowScopeErrors] = useState(false);
   const { labelOf } = usePermissionCatalog();
@@ -85,8 +90,12 @@ function UserForm({
     resolver: zodResolver(userFormSchema),
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
-  const assignableRoleGroups = rolesCatalog.filter((role) => role.is_assignable);
-  const selectedRoleGroup = rolesCatalog.find((role) => role.name === selectedRole);
+  const assignableRoleGroups = rolesCatalog.filter(
+    (role) => role.is_assignable,
+  );
+  const selectedRoleGroup = rolesCatalog.find(
+    (role) => role.name === selectedRole,
+  );
   const baselinePermissions = selectedRoleGroup?.default_permissions ?? [];
   const scopeError = getScopeValidationError(
     selectedRoleGroup?.scope_mode ?? "global",
@@ -100,7 +109,8 @@ function UserForm({
     // Switching roles restarts from that role's standard set — keeping the old
     // role's custom additions would grant permissions nobody chose.
     const nextBaseline =
-      rolesCatalog.find((entry) => entry.name === role)?.default_permissions ?? [];
+      rolesCatalog.find((entry) => entry.name === role)?.default_permissions ??
+      [];
     setPermissions(nextBaseline);
   }
 
@@ -137,7 +147,12 @@ function UserForm({
     };
 
     saveUser.mutate(
-      { id: user?.id ?? null, payload, photo: photo.file, removePhoto: photo.removed },
+      {
+        id: user?.id ?? null,
+        payload,
+        photo: photo.file,
+        removePhoto: photo.removed,
+      },
       {
         onSuccess: (response) => {
           if (!isEdit && response?.tempPassword) {
@@ -311,21 +326,11 @@ function UserForm({
           ) : null}
         </Card>
 
-        {/* Equal widths: the submit button reserves room for its loading label,
-            so without a shared minimum the two footer buttons end up different
-            sizes. */}
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            className="sm:min-w-[150px]"
-            onClick={goBack}
-            size="lg"
-            type="button"
-            variant="outline"
-          >
+        <FormActions>
+          <Button onClick={goBack} size="lg" type="button" variant="outline">
             ยกเลิก
           </Button>
           <Button
-            className="sm:min-w-[150px]"
             isLoading={saveUser.isPending}
             loadingText="กำลังบันทึก"
             size="lg"
@@ -333,7 +338,7 @@ function UserForm({
           >
             บันทึก
           </Button>
-        </div>
+        </FormActions>
       </Form>
 
       <CredentialDialog

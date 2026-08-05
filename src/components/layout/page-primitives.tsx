@@ -27,7 +27,12 @@ interface PageShellProps extends ComponentProps<"div"> {
   contentClassName?: string;
 }
 
-export function PageShell({ children, className, contentClassName, ...props }: PageShellProps) {
+export function PageShell({
+  children,
+  className,
+  contentClassName,
+  ...props
+}: PageShellProps) {
   return (
     <div
       className={cn(
@@ -108,8 +113,8 @@ export function PageToolbar({
     (typeof title === "string" ? getPageIdentityByTitle(title) : undefined);
   const ToolbarIcon = pageIdentity?.icon ?? Icon;
   const parentBreadcrumbIdentity = parentBreadcrumb
-    ? getPageIdentity(parentBreadcrumb.to) ??
-      getPageIdentityByTitle(parentBreadcrumb.label)
+    ? (getPageIdentity(parentBreadcrumb.to) ??
+      getPageIdentityByTitle(parentBreadcrumb.label))
     : undefined;
   const ParentBreadcrumbIcon =
     parentBreadcrumb?.icon ?? parentBreadcrumbIdentity?.icon;
@@ -189,7 +194,10 @@ export function PageToolbar({
                   {middleCrumbs.map((crumb) => {
                     const CrumbIcon = crumb.icon;
                     return (
-                      <span className="flex min-w-0 items-center gap-2" key={crumb.to}>
+                      <span
+                        className="flex min-w-0 items-center gap-2"
+                        key={crumb.to}
+                      >
                         <Link
                           className={cn(
                             "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -200,18 +208,26 @@ export function PageToolbar({
                           to={crumb.to}
                         >
                           {CrumbIcon ? (
-                            <CrumbIcon className="size-4 shrink-0" aria-hidden="true" />
+                            <CrumbIcon
+                              className="size-4 shrink-0"
+                              aria-hidden="true"
+                            />
                           ) : null}
                           <span className="truncate">{crumb.label}</span>
                         </Link>
-                        <ChevronRight className="size-4 shrink-0 opacity-60" aria-hidden="true" />
+                        <ChevronRight
+                          className="size-4 shrink-0 opacity-60"
+                          aria-hidden="true"
+                        />
                       </span>
                     );
                   })}
                   <span
                     className={cn(
                       "inline-flex min-w-0 items-center gap-1.5 font-semibold",
-                      tone === "primary" ? "text-white" : "text-content-primary",
+                      tone === "primary"
+                        ? "text-white"
+                        : "text-content-primary",
                     )}
                     aria-current="page"
                   >
@@ -395,6 +411,27 @@ export function ToolbarFilterGrid({
     <div
       className={cn(
         "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0 [&>*]:w-full [&>button]:!w-full [&>div>button]:!w-full [&>input]:!w-full [&>select]:!w-full",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Footer row for a full-page form — the cancel/save pair at the bottom.
+ *
+ * The shared minimum width lives here rather than on each button: a submit
+ * button reserves room for its loading label ("กำลังบันทึก"), so a footer whose
+ * buttons size themselves ends up with a cancel button visibly narrower than
+ * save. Call sites pass plain Buttons and stay out of the sizing question.
+ * Mirrors `DialogFooter`, which does the same for dialogs.
+ */
+export function FormActions({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:[&>button]:min-w-[150px]",
         className,
       )}
       {...props}

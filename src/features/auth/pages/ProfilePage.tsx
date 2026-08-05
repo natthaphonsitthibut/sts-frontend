@@ -2,7 +2,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { maskNationalId } from "../../../lib/pii-presentation";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, KeyRound, MapPin, ShieldCheck, SquarePen, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  MapPin,
+  ShieldCheck,
+  SquarePen,
+  UserRound,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
@@ -23,6 +31,7 @@ import {
 } from "../../../components/base";
 import {
   ErrorState,
+  FormActions,
   PageShell,
   PageToolbar,
   SkeletonStack,
@@ -51,7 +60,11 @@ import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal"
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
 
 const profileSchema = z.object({
-  FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ").max(150, "ชื่อยาวเกินไป"),
+  FirstName: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อ")
+    .max(150, "ชื่อยาวเกินไป"),
   LastName: z
     .string()
     .trim()
@@ -66,9 +79,12 @@ const profileSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((value) => value === "" || z.string().email().safeParse(value).success, {
-      message: "รูปแบบอีเมลไม่ถูกต้อง",
-    }),
+    .refine(
+      (value) => value === "" || z.string().email().safeParse(value).success,
+      {
+        message: "รูปแบบอีเมลไม่ถูกต้อง",
+      },
+    ),
   affiliation: z.string().trim().max(255, "หน่วยงานยาวเกินไป"),
   line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
   address_line: z.string().trim().max(255, "ที่อยู่ยาวเกินไป"),
@@ -196,10 +212,16 @@ function ProfileAddressDetailsCard({ user }: { user: AuthUser }) {
         <ProfileDetailItem label="ถนน" value={values.address_street} />
         <ProfileDetailItem label="ซอย" value={values.address_soi} />
         <ProfileDetailItem label="ตรอก" value={values.address_trok} />
-        <ProfileDetailItem label="ตำบล/แขวง" value={values.address_sub_district} />
+        <ProfileDetailItem
+          label="ตำบล/แขวง"
+          value={values.address_sub_district}
+        />
         <ProfileDetailItem label="อำเภอ/เขต" value={values.address_district} />
         <ProfileDetailItem label="จังหวัด" value={values.address_province} />
-        <ProfileDetailItem label="รหัสไปรษณีย์" value={values.address_postal_code} />
+        <ProfileDetailItem
+          label="รหัสไปรษณีย์"
+          value={values.address_postal_code}
+        />
       </div>
       <div className="mt-5 border-t border-slate-200 pt-5">
         <LocationMapPicker
@@ -272,10 +294,14 @@ export function ProfilePage() {
   });
 
   const updatePhoto = useMutation({
-    mutationFn: (input: { photo?: File; remove?: boolean }) => authService.updateMyPhoto(input),
+    mutationFn: (input: { photo?: File; remove?: boolean }) =>
+      authService.updateMyPhoto(input),
     onSuccess: (updatedUser) => {
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedUser);
-      saveSession(updatedUser, { target: storageTarget ?? "local", hasAdminAccess });
+      saveSession(updatedUser, {
+        target: storageTarget ?? "local",
+        hasAdminAccess,
+      });
     },
     throwOnError: false,
   });
@@ -417,13 +443,34 @@ export function ProfilePage() {
                 shape="square"
               />
               <div className="grid h-fit gap-3 sm:grid-cols-2">
-                <ProfileDetailItem label="ชื่อ" value={profileUser.FirstName ?? ""} />
-                <ProfileDetailItem label="นามสกุล" value={profileUser.LastName ?? ""} />
-                <ProfileDetailItem label="อีเมล" value={profileUser.email ?? ""} />
-                <ProfileDetailItem label="เบอร์โทรศัพท์" value={profileUser.phone ?? ""} />
-                <ProfileDetailItem label="หน่วยงาน/สังกัด" value={profileUser.affiliation ?? ""} />
-                <ProfileDetailItem label="ชื่อผู้ใช้งาน" value={profileUser.username} />
-                <ProfileDetailItem label="LINE ID" value={profileUser.line_id ?? ""} />
+                <ProfileDetailItem
+                  label="ชื่อ"
+                  value={profileUser.FirstName ?? ""}
+                />
+                <ProfileDetailItem
+                  label="นามสกุล"
+                  value={profileUser.LastName ?? ""}
+                />
+                <ProfileDetailItem
+                  label="อีเมล"
+                  value={profileUser.email ?? ""}
+                />
+                <ProfileDetailItem
+                  label="เบอร์โทรศัพท์"
+                  value={profileUser.phone ?? ""}
+                />
+                <ProfileDetailItem
+                  label="หน่วยงาน/สังกัด"
+                  value={profileUser.affiliation ?? ""}
+                />
+                <ProfileDetailItem
+                  label="ชื่อผู้ใช้งาน"
+                  value={profileUser.username}
+                />
+                <ProfileDetailItem
+                  label="LINE ID"
+                  value={profileUser.line_id ?? ""}
+                />
                 <div className="sm:col-span-2">
                   <ProfileDetailItem
                     action={
@@ -436,7 +483,7 @@ export function ProfilePage() {
                     label="เลขบัตรประชาชน"
                     value={
                       isNationalIdVisible
-                        ? profileUser.PersonID_Onec ?? ""
+                        ? (profileUser.PersonID_Onec ?? "")
                         : maskNationalId(profileUser.PersonID_Onec)
                     }
                   />
@@ -464,7 +511,10 @@ export function ProfilePage() {
 
           <Card className="p-6">
             <h2 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
-              <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
+              <ShieldCheck
+                className="size-5 text-slate-700"
+                aria-hidden="true"
+              />
               กำหนดสิทธิ์การเข้าถึง
             </h2>
             <RoleGroupSelector
@@ -483,14 +533,21 @@ export function ProfilePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                  <KeyRound className="size-5 text-slate-700" aria-hidden="true" />
+                  <KeyRound
+                    className="size-5 text-slate-700"
+                    aria-hidden="true"
+                  />
                   ความปลอดภัยของบัญชี
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   เปลี่ยนรหัสผ่านผ่านขั้นตอนเฉพาะที่ยืนยันรหัสผ่านปัจจุบันก่อน
                 </p>
               </div>
-              <NavButton className="shrink-0" icon={KeyRound} to="/change-password">
+              <NavButton
+                className="shrink-0"
+                icon={KeyRound}
+                to="/change-password"
+              >
                 เปลี่ยนรหัสผ่าน
               </NavButton>
             </div>
@@ -513,8 +570,13 @@ export function ProfilePage() {
                 the inputs are read-only; nothing moves when editing starts. */}
             <Card className="p-6">
               <div className="mb-6 flex items-center gap-2">
-                <UserRound className="size-5 text-slate-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
+                <UserRound
+                  className="size-5 text-slate-700"
+                  aria-hidden="true"
+                />
+                <h2 className="text-lg font-bold text-slate-800">
+                  ข้อมูลทั่วไป
+                </h2>
               </div>
 
               {updateProfile.isError ? (
@@ -615,7 +677,9 @@ export function ProfilePage() {
                   </FormItem>
 
                   <FormItem className="sm:col-span-2">
-                    <FormLabel htmlFor="PersonID_Onec">เลขบัตรประชาชน</FormLabel>
+                    <FormLabel htmlFor="PersonID_Onec">
+                      เลขบัตรประชาชน
+                    </FormLabel>
                     <div className="flex items-center gap-2">
                       <Input
                         autoComplete="off"
@@ -625,7 +689,7 @@ export function ProfilePage() {
                         readOnly
                         value={
                           isNationalIdVisible
-                            ? profileUser?.PersonID_Onec ?? ""
+                            ? (profileUser?.PersonID_Onec ?? "")
                             : maskNationalId(profileUser?.PersonID_Onec)
                         }
                       />
@@ -679,8 +743,13 @@ export function ProfilePage() {
                 locked — nobody grants themselves a role. */}
             <Card className="p-6">
               <div className="mb-6 flex items-center gap-2">
-                <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-slate-800">กำหนดสิทธิ์การเข้าถึง</h2>
+                <ShieldCheck
+                  className="size-5 text-slate-700"
+                  aria-hidden="true"
+                />
+                <h2 className="text-lg font-bold text-slate-800">
+                  กำหนดสิทธิ์การเข้าถึง
+                </h2>
               </div>
               <RoleGroupSelector
                 disabled
@@ -698,24 +767,28 @@ export function ProfilePage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                    <KeyRound className="size-5 text-slate-700" aria-hidden="true" />
+                    <KeyRound
+                      className="size-5 text-slate-700"
+                      aria-hidden="true"
+                    />
                     ความปลอดภัยของบัญชี
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
                     เปลี่ยนรหัสผ่านผ่านขั้นตอนเฉพาะที่ยืนยันรหัสผ่านปัจจุบันก่อน
                   </p>
                 </div>
-                <NavButton className="shrink-0" icon={KeyRound} to="/change-password">
+                <NavButton
+                  className="shrink-0"
+                  icon={KeyRound}
+                  to="/change-password"
+                >
                   เปลี่ยนรหัสผ่าน
                 </NavButton>
               </div>
             </Card>
 
-            {/* Equal widths so the pair reads as one control group, matching
-                the เพิ่ม/แก้ไขผู้ใช้งาน footer. */}
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <FormActions className="mt-0">
               <Button
-                className="sm:min-w-[150px]"
                 onClick={resetForm}
                 size="lg"
                 type="button"
@@ -724,8 +797,9 @@ export function ProfilePage() {
                 ยกเลิก
               </Button>
               <Button
-                className="sm:min-w-[150px]"
-                disabled={!form.formState.isDirty || geocodeProfileAddress.isPending}
+                disabled={
+                  !form.formState.isDirty || geocodeProfileAddress.isPending
+                }
                 isLoading={updateProfile.isPending}
                 loadingText="กำลังบันทึก"
                 size="lg"
@@ -733,11 +807,10 @@ export function ProfilePage() {
               >
                 บันทึก
               </Button>
-            </div>
+            </FormActions>
           </div>
         </Form>
       )}
-
     </PageShell>
   );
 }

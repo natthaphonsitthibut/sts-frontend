@@ -21,6 +21,7 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import {
   ErrorState,
+  FormActions,
   PageShell,
   PageToolbar,
   SkeletonStack,
@@ -68,7 +69,9 @@ function TeacherForm({
 }) {
   const navigate = useNavigate();
   const saveTeacher = useSaveTeacher();
-  const [photo, setPhoto] = useState<PhotoPickerValue>(EMPTY_PHOTO_PICKER_VALUE);
+  const [photo, setPhoto] = useState<PhotoPickerValue>(
+    EMPTY_PHOTO_PICKER_VALUE,
+  );
   const form = useForm<TeacherFormValues>({
     defaultValues: toDefaults(teacher),
     resolver: zodResolver(teacherFormSchema),
@@ -196,21 +199,11 @@ function TeacherForm({
         </div>
       </Card>
 
-      {/* Equal widths: the submit button reserves room for its loading label,
-          so without a shared minimum the two footer buttons end up different
-          sizes. */}
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button
-          className="sm:min-w-[150px]"
-          onClick={goBack}
-          size="lg"
-          type="button"
-          variant="outline"
-        >
+      <FormActions>
+        <Button onClick={goBack} size="lg" type="button" variant="outline">
           ยกเลิก
         </Button>
         <Button
-          className="sm:min-w-[150px]"
           isLoading={saveTeacher.isPending}
           loadingText="กำลังบันทึก"
           size="lg"
@@ -218,7 +211,7 @@ function TeacherForm({
         >
           บันทึก
         </Button>
-      </div>
+      </FormActions>
     </Form>
   );
 }
@@ -228,11 +221,7 @@ export function TeacherFormPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-  const {
-    data: teacher = null,
-    isLoading,
-    isError,
-  } = useTeacher(id ?? null);
+  const { data: teacher = null, isLoading, isError } = useTeacher(id ?? null);
 
   // On create the school comes from the list page's filter; on edit it rides
   // along with the teacher's membership.
