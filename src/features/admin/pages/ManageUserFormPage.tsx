@@ -30,6 +30,9 @@ import { CredentialDialog } from "../../../components/layout/credential-dialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
+import { getScopeValidationError } from "../../auth/lib/scope-validation";
+import type { DataScope } from "../../auth/lib/permissions";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
@@ -71,6 +74,11 @@ function UserForm({
   const isEdit = Boolean(user?.id);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [photo, setPhoto] = useState<PhotoPickerValue>(EMPTY_PHOTO_PICKER_VALUE);
+  // Empty on a new account until a role is picked: the role's standard set is
+  // the starting point, and the editor shows what was added or removed from it.
+  const [permissions, setPermissions] = useState<string[]>(user?.permissions ?? []);
+  const [dataScope, setDataScope] = useState<DataScope>(user?.data_scope ?? {});
+  const [showScopeErrors, setShowScopeErrors] = useState(false);
   const { labelOf } = usePermissionCatalog();
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
@@ -78,12 +86,33 @@ function UserForm({
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const assignableRoleGroups = rolesCatalog.filter((role) => role.is_assignable);
+  const selectedRoleGroup = rolesCatalog.find((role) => role.name === selectedRole);
+  const baselinePermissions = selectedRoleGroup?.default_permissions ?? [];
+  const scopeError = getScopeValidationError(
+    selectedRoleGroup?.scope_mode ?? "global",
+    dataScope,
+    selectedRoleGroup?.label ?? selectedRole,
+    selectedRoleGroup?.scope_policy,
+  );
+
+  function handleRoleChange(role: string): void {
+    form.setValue("role", role, { shouldValidate: form.formState.isSubmitted });
+    // Switching roles restarts from that role's standard set — keeping the old
+    // role's custom additions would grant permissions nobody chose.
+    const nextBaseline =
+      rolesCatalog.find((entry) => entry.name === role)?.default_permissions ?? [];
+    setPermissions(nextBaseline);
+  }
 
   function goBack(): void {
     void navigate(MANAGE_USERS_PATH);
   }
 
   function handleSubmit(values: UserFormValues): void {
+    if (scopeError) {
+      setShowScopeErrors(true);
+      return;
+    }
     const role = values.role.trim();
     const password = values.password.trim();
     const payload: UserSavePayload = {
@@ -96,10 +125,11 @@ function UserForm({
       PersonID_Onec: user?.PersonID_Onec ?? "",
       role,
       roles: [role],
-      // Empty means "use the role group's standard permission set".
-      permissions: [],
+      // Sent as chosen: the editor starts from the role's standard set, so an
+      // untouched form still posts exactly that set.
+      permissions,
       status: user?.status || "ACTIVE",
-      data_scope: user?.data_scope ?? {},
+      data_scope: dataScope,
       phone: values.phone.trim(),
       email: values.email.trim(),
       affiliation: values.affiliation.trim(),
@@ -253,22 +283,49 @@ function UserForm({
           <RoleGroupSelector
             disabled={saveUser.isPending}
             labelOf={labelOf}
-            onChange={(role) =>
-              form.setValue("role", role, {
-                shouldValidate: form.formState.isSubmitted,
-              })
-            }
+            onChange={handleRoleChange}
             roleGroups={assignableRoleGroups}
             value={selectedRole}
           />
           <FormMessage<UserFormValues> name="role" />
+
+          {/* Add or remove permissions on top of the role's standard set, and
+              set the account's data scope — the same editor the rest of the app
+              uses, so the diff colours and scope rules stay identical. */}
+          {selectedRoleGroup ? (
+            <div className="mt-6">
+              <PermissionScopeEditor
+                baselinePermissions={baselinePermissions}
+                dataScope={dataScope}
+                disabled={saveUser.isPending}
+                onDataScopeChange={setDataScope}
+                onPermissionsChange={setPermissions}
+                permissions={permissions}
+                role={selectedRoleGroup.name}
+                roleLabel={selectedRoleGroup.label}
+                scopeMode={selectedRoleGroup.scope_mode}
+                scopePolicy={selectedRoleGroup.scope_policy}
+                showErrors={showScopeErrors}
+              />
+            </div>
+          ) : null}
         </Card>
 
+        {/* Equal widths: the submit button reserves room for its loading label,
+            so without a shared minimum the two footer buttons end up different
+            sizes. */}
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button onClick={goBack} size="lg" type="button" variant="outline">
+          <Button
+            className="sm:min-w-[150px]"
+            onClick={goBack}
+            size="lg"
+            type="button"
+            variant="outline"
+          >
             ยกเลิก
           </Button>
           <Button
+            className="sm:min-w-[150px]"
             isLoading={saveUser.isPending}
             loadingText="กำลังบันทึก"
             size="lg"

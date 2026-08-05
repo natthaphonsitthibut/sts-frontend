@@ -4,8 +4,13 @@ import { cn } from "../../../lib/utils";
 import { ROLE_LABELS } from "../../auth/lib/permissions";
 import type { RoleDefinition } from "../types/admin.types";
 
+type RoleGroupOption = Pick<
+  RoleDefinition,
+  "name" | "label" | "default_permissions"
+>;
+
 interface RoleGroupSelectorProps {
-  roleGroups: RoleDefinition[];
+  roleGroups: RoleGroupOption[];
   value: string;
   onChange: (roleName: string) => void;
   /** Turns a permission id into its Thai label for the expanded detail. */
