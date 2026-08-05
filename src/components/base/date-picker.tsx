@@ -192,7 +192,7 @@ export function DatePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
-        className="w-full justify-start border-slate-300 bg-white px-3 font-medium text-slate-800 shadow-none hover:border-slate-400 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:ring-primary/20 focus-visible:ring-offset-0 [&>span]:w-full [&>span>span]:w-full"
+        className="w-full justify-start px-3 font-medium [&>span]:w-full [&>span>span]:w-full"
         disabled={disabled}
         icon={CalendarDays}
         id={id}
