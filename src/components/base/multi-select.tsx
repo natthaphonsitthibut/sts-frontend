@@ -1,8 +1,11 @@
-import { useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import type { ComboboxOption } from "./combobox";
+
+/** Same cap as `Combobox`: a long list stays scrollable, not endless. */
+const MAX_VISIBLE = 50;
 
 export interface MultiSelectProps {
   value: string[];
@@ -18,8 +21,10 @@ export interface MultiSelectProps {
 
 /**
  * Chip-style multi picker used where one row owns several references — e.g. the
- * classrooms a teacher covers for a subject. Selected values stay visible as
- * removable chips so a long selection never hides behind a summary count.
+ * teachers and classrooms a subject is taught by. Selected values stay visible
+ * as removable chips so a long selection never hides behind a summary count,
+ * and typing filters the list the way `Combobox` does: a school's teacher list
+ * is far too long to find a name by scrolling.
  */
 export function MultiSelect({
   value,
@@ -33,14 +38,25 @@ export function MultiSelect({
   className,
 }: MultiSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const generatedListId = useId();
   const listId = `${id ?? generatedListId}-listbox`;
   const [open, setOpen] = useState(false);
-  useDismissable(open, containerRef, () => setOpen(false));
+  const [query, setQuery] = useState("");
+  useDismissable(open, containerRef, () => {
+    setOpen(false);
+    setQuery("");
+  });
 
   const selected = options.filter((option) => value.includes(option.value));
+  const term = query.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    const matched = term
+      ? options.filter((option) => option.label.toLowerCase().includes(term))
+      : options;
+    return matched.slice(0, MAX_VISIBLE);
+  }, [options, term]);
 
   function toggle(optionValue: string): void {
     onChange(
@@ -48,6 +64,10 @@ export function MultiSelect({
         ? value.filter((item) => item !== optionValue)
         : [...value, optionValue],
     );
+    // Clear the term but keep the panel open: picking several people in a row
+    // is the normal case, and each one starts from a fresh search.
+    setQuery("");
+    triggerRef.current?.focus();
   }
 
   function focusOption(edge: "first" | "last"): void {
@@ -82,32 +102,37 @@ export function MultiSelect({
             </button>
           </span>
         ))}
-        <button
+        <input
           aria-controls={listId}
           aria-expanded={open}
-          aria-haspopup="listbox"
           aria-label={ariaLabel ?? placeholder}
-          className="min-h-6 min-w-24 flex-1 text-left outline-none"
+          autoComplete="off"
+          className="min-h-6 min-w-24 flex-1 bg-transparent text-left outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
           disabled={disabled}
           id={id}
-          onClick={() => setOpen((current) => !current)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onClick={() => setOpen(true)}
           onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setOpen(false);
+              setQuery("");
+              return;
+            }
             if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
             event.preventDefault();
             setOpen(true);
             focusOption(event.key === "ArrowDown" ? "first" : "last");
           }}
+          placeholder={selected.length === 0 ? placeholder : ""}
           ref={triggerRef}
-          type="button"
-        >
-          {selected.length === 0 ? (
-            <span className="text-slate-500">{placeholder}</span>
-          ) : (
-            <span aria-hidden="true" className="sr-only">
-              เปิดรายการตัวเลือก
-            </span>
-          )}
-        </button>
+          role="combobox"
+          type="text"
+          value={query}
+        />
       </div>
       <ChevronDown
         aria-hidden="true"
@@ -127,6 +152,7 @@ export function MultiSelect({
             if (event.key === "Escape") {
               event.preventDefault();
               setOpen(false);
+              setQuery("");
               triggerRef.current?.focus();
               return;
             }
@@ -147,10 +173,12 @@ export function MultiSelect({
           ref={listRef}
           role="listbox"
         >
-          {options.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500">{emptyText}</li>
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-500">
+              {options.length === 0 ? emptyText : "ไม่พบรายการที่ค้นหา"}
+            </li>
           ) : (
-            options.map((option) => {
+            filtered.map((option) => {
               const isSelected = value.includes(option.value);
               return (
                 <li key={option.value} role="presentation">

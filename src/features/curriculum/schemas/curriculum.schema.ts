@@ -13,12 +13,14 @@ export const EMPTY_CURRICULUM_SUBJECT_FORM: CurriculumSubjectFormValues = {
 };
 
 /** One "จัดสรรครูผู้สอน" block held outside RHF because it is list-shaped. */
+/** One block of "these teachers cover these classrooms" — a subject can be
+ * taught by several teachers in the same room, so both sides are lists. */
 export interface TeacherAssignmentDraft {
   key: string;
-  teacherMembershipId: string;
+  teacherMembershipIds: string[];
   classroomIds: string[];
 }
 
 export function createTeacherAssignmentDraft(index: number): TeacherAssignmentDraft {
-  return { key: `teacher-block-${index}`, teacherMembershipId: "", classroomIds: [] };
+  return { key: `teacher-block-${index}`, teacherMembershipIds: [], classroomIds: [] };
 }

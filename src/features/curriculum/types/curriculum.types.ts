@@ -8,10 +8,10 @@ export interface CurriculumGrade {
   subjectCount: number;
 }
 
-/** One teacher and the classrooms they cover — a "จัดสรรครูผู้สอน" block. */
+/** The teachers covering one set of classrooms — a "จัดสรรครูผู้สอน" block.
+ * Teachers who share the exact same rooms arrive as a single block. */
 export interface CurriculumTeacherBlock {
-  teacherMembershipId: string;
-  teacherName: string;
+  teachers: Array<{ teacherMembershipId: string; teacherName: string }>;
   classrooms: Array<{ id: string; label: string }>;
 }
 
@@ -60,5 +60,5 @@ export interface CurriculumSubjectPayload {
   gradeLevelId: number;
   subjectCode: string;
   subjectName: string;
-  teachers: Array<{ teacherMembershipId: number; classroomIds: number[] }>;
+  teachers: Array<{ teacherMembershipIds: number[]; classroomIds: number[] }>;
 }

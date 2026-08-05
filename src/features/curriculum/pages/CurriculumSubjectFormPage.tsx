@@ -2,11 +2,17 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, BookOpen, Plus, Trash2, Upload, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  Plus,
+  Trash2,
+  Upload,
+  UserRound,
+} from "lucide-react";
 import {
   Button,
   Card,
-  Combobox,
   Form,
   FormErrorAlert,
   FormItem,
@@ -20,6 +26,7 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import {
   ErrorState,
+  FormActions,
   PageShell,
   PageToolbar,
   SkeletonStack,
@@ -30,7 +37,10 @@ import {
   useSchoolTeacherOptions,
 } from "../../school-structure/hooks/useSchoolStructure";
 import { PdfDropzone } from "../components/PdfDropzone";
-import { useCurriculumSubject, useSaveCurriculumSubject } from "../hooks/useCurriculum";
+import {
+  useCurriculumSubject,
+  useSaveCurriculumSubject,
+} from "../hooks/useCurriculum";
 import {
   createTeacherAssignmentDraft,
   curriculumSubjectFormSchema,
@@ -48,7 +58,9 @@ function toDrafts(subject: CurriculumSubject | null): TeacherAssignmentDraft[] {
   }
   return subject.teachers.map((block, index) => ({
     key: `teacher-block-${index}`,
-    teacherMembershipId: block.teacherMembershipId,
+    teacherMembershipIds: block.teachers.map(
+      (teacher) => teacher.teacherMembershipId,
+    ),
     classroomIds: block.classrooms.map((classroom) => classroom.id),
   }));
 }
@@ -67,7 +79,9 @@ function SubjectForm({
   const navigate = useNavigate();
   const saveSubject = useSaveCurriculumSubject();
 
-  const [drafts, setDrafts] = useState<TeacherAssignmentDraft[]>(() => toDrafts(subject));
+  const [drafts, setDrafts] = useState<TeacherAssignmentDraft[]>(() =>
+    toDrafts(subject),
+  );
   const [contentFile, setContentFile] = useState<File | null>(null);
   const [contentRemoved, setContentRemoved] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
@@ -105,20 +119,28 @@ function SubjectForm({
 
   const backPath = `${CURRICULUM_PATH}/${gradeLevelId}?schoolId=${schoolId}`;
 
-  function updateDraft(key: string, patch: Partial<TeacherAssignmentDraft>): void {
+  function updateDraft(
+    key: string,
+    patch: Partial<TeacherAssignmentDraft>,
+  ): void {
     setDrafts((current) =>
-      current.map((draft) => (draft.key === key ? { ...draft, ...patch } : draft)),
+      current.map((draft) =>
+        draft.key === key ? { ...draft, ...patch } : draft,
+      ),
     );
   }
 
   function handleSubmit(values: CurriculumSubjectFormValues): void {
     const filled = drafts.filter(
-      (draft) => draft.teacherMembershipId && draft.classroomIds.length > 0,
+      (draft) =>
+        draft.teacherMembershipIds.length > 0 && draft.classroomIds.length > 0,
     );
     const partiallyFilled = drafts.some(
       (draft) =>
-        (draft.teacherMembershipId && draft.classroomIds.length === 0) ||
-        (!draft.teacherMembershipId && draft.classroomIds.length > 0),
+        (draft.teacherMembershipIds.length > 0 &&
+          draft.classroomIds.length === 0) ||
+        (draft.teacherMembershipIds.length === 0 &&
+          draft.classroomIds.length > 0),
     );
     if (partiallyFilled) {
       setBlockError("แต่ละบล็อกต้องเลือกทั้งครูผู้สอนและห้องเรียนที่รับผิดชอบ");
@@ -136,7 +158,7 @@ function SubjectForm({
           subjectCode: values.subjectCode.trim(),
           subjectName: values.subjectName.trim(),
           teachers: filled.map((draft) => ({
-            teacherMembershipId: Number(draft.teacherMembershipId),
+            teacherMembershipIds: draft.teacherMembershipIds.map(Number),
             classroomIds: draft.classroomIds.map(Number),
           })),
         },
@@ -189,7 +211,9 @@ function SubjectForm({
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <UserRound className="size-5 text-slate-700" aria-hidden="true" />
-            <h2 className="text-lg font-bold text-slate-800">จัดสรรครูผู้สอน</h2>
+            <h2 className="text-lg font-bold text-slate-800">
+              จัดสรรครูผู้สอน
+            </h2>
           </div>
           <Button
             icon={Plus}
@@ -210,17 +234,19 @@ function SubjectForm({
             <div className="flex items-start gap-3" key={draft.key}>
               <div className="flex-1 space-y-4 rounded-xl bg-slate-50 p-4">
                 <div>
-                  <FormLabel htmlFor={`teacher-${draft.key}`}>ครูผู้สอน</FormLabel>
-                  <Combobox
+                  <FormLabel htmlFor={`teacher-${draft.key}`}>
+                    ครูผู้สอน
+                  </FormLabel>
+                  <MultiSelect
                     ariaLabel="ครูผู้สอน"
                     emptyText="ไม่พบครูในโรงเรียนนี้"
                     id={`teacher-${draft.key}`}
                     onChange={(value) =>
-                      updateDraft(draft.key, { teacherMembershipId: value })
+                      updateDraft(draft.key, { teacherMembershipIds: value })
                     }
                     options={teacherOptions}
                     placeholder="ครูผู้สอน"
-                    value={draft.teacherMembershipId}
+                    value={draft.teacherMembershipIds}
                   />
                 </div>
                 <div>
@@ -231,7 +257,9 @@ function SubjectForm({
                     ariaLabel="ห้องเรียนที่รับผิดชอบ"
                     emptyText="ไม่พบห้องเรียนในระดับชั้นนี้"
                     id={`classrooms-${draft.key}`}
-                    onChange={(value) => updateDraft(draft.key, { classroomIds: value })}
+                    onChange={(value) =>
+                      updateDraft(draft.key, { classroomIds: value })
+                    }
                     options={classroomOptions}
                     placeholder="ห้องเรียน"
                     value={draft.classroomIds}
@@ -244,7 +272,9 @@ function SubjectForm({
                 disabled={drafts.length === 1}
                 icon={Trash2}
                 onClick={() =>
-                  setDrafts((current) => current.filter((item) => item.key !== draft.key))
+                  setDrafts((current) =>
+                    current.filter((item) => item.key !== draft.key),
+                  )
                 }
                 variant="delete"
               />
@@ -260,7 +290,9 @@ function SubjectForm({
       <Card className="mt-6 p-6">
         <div className="mb-6 flex items-center gap-2">
           <Upload className="size-5 text-slate-700" aria-hidden="true" />
-          <h2 className="text-lg font-bold text-slate-800">อัปโหลดไฟล์สาระการเรียนรู้</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            อัปโหลดไฟล์สาระการเรียนรู้
+          </h2>
         </div>
         <PdfDropzone
           disabled={saveSubject.isPending}
@@ -273,7 +305,7 @@ function SubjectForm({
         />
       </Card>
 
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <FormActions>
         <Button
           onClick={() => void navigate(backPath)}
           size="lg"
@@ -290,7 +322,7 @@ function SubjectForm({
         >
           บันทึก
         </Button>
-      </div>
+      </FormActions>
     </Form>
   );
 }
@@ -327,7 +359,10 @@ export function CurriculumSubjectFormPage() {
           </NavButton>
         }
         description="กรอกข้อมูลรายวิชา จัดสรรครูผู้สอน และแนบไฟล์สาระการเรียนรู้"
-        parentBreadcrumb={{ label: "จัดการข้อมูลหลักสูตร", to: CURRICULUM_PATH }}
+        parentBreadcrumb={{
+          label: "จัดการข้อมูลหลักสูตร",
+          to: CURRICULUM_PATH,
+        }}
         title={isEdit ? "แก้ไขข้อมูลรายวิชา" : "เพิ่มข้อมูลรายวิชา"}
       />
 
