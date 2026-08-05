@@ -12,7 +12,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Card,
   Combobox,
@@ -21,6 +20,7 @@ import {
   Tabs,
   useConfirm,
 } from "../../../components/base";
+import { cn } from "../../../lib/utils";
 import {
   DataTable,
   DataTableCell,
@@ -67,13 +67,6 @@ const TAB_OPTIONS = [
   { value: "today", label: "เช็คชื่อวันนี้" },
   { value: "history", label: "ประวัติ" },
 ];
-
-const CHECK_IN_MODE_OPTIONS = [
-  { value: "daily", label: "รายวัน" },
-  { value: "subject", label: "รายวิชา" },
-] satisfies Array<{ value: CheckInMode; label: string }>;
-
-type CheckInMode = "daily" | "subject";
 
 function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
@@ -154,7 +147,6 @@ export function AttendanceCheckInPage() {
   );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
-  const [checkInMode, setCheckInMode] = useState<CheckInMode>("daily");
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [observationStudent, setObservationStudent] = useState<AttendanceStudent | null>(null);
   // Defaults to today but stays editable — lets a teacher check in for an
@@ -162,10 +154,9 @@ export function AttendanceCheckInPage() {
   // backend rejects that too.
   const [checkInDate, setCheckInDate] = useState(getTodayIso());
   const isCheckInDateToday = checkInDate === getTodayIso();
-  const selectedSlotIdNumber =
-    checkInMode === "subject" && selectedSlotId ? Number(selectedSlotId) : null;
+  const selectedSlotIdNumber = selectedSlotId ? Number(selectedSlotId) : null;
   const checkIn = useAttendanceCheckInForSession({
-    enabled: checkInMode === "daily" || Boolean(selectedSlotIdNumber),
+    enabled: Boolean(selectedSlotIdNumber),
     timetableSlotId: selectedSlotIdNumber,
     date: checkInDate,
   });
@@ -252,10 +243,7 @@ export function AttendanceCheckInPage() {
   // https://react.dev/learn/you-might-not-need-an-effect — React restarts
   // this render with the new value before anything commits, so `checkIn`
   // below still sees the resolved slot on the same pass.
-  if (
-    checkInMode === "subject" &&
-    !slotsForDate.some((slot) => String(slot.id) === selectedSlotId)
-  ) {
+  if (!slotsForDate.some((slot) => String(slot.id) === selectedSlotId)) {
     const defaultSlot = isCheckInDateToday
       ? findDefaultSlot(slotsForDate, periodTimesQuery.data?.data ?? [])
       : null;
@@ -305,14 +293,6 @@ export function AttendanceCheckInPage() {
   async function handleReopen(reason: string): Promise<void> {
     await reopen(reason);
     setReopenDialogOpen(false);
-  }
-
-  function handleCheckInModeChange(value: string): void {
-    const nextMode = value as CheckInMode;
-    setCheckInMode(nextMode);
-    if (nextMode !== "subject") {
-      setSelectedSlotId("");
-    }
   }
 
   function handleSchoolChange(value: string): void {
@@ -433,22 +413,14 @@ export function AttendanceCheckInPage() {
 
       {tab === "today" ? (
         <Card className="mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-          <Tabs
-            aria-label="รูปแบบเช็คชื่อ"
-            onChange={handleCheckInModeChange}
-            options={CHECK_IN_MODE_OPTIONS}
-            value={checkInMode}
+          <Combobox
+            className="w-full sm:w-[380px]"
+            disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
+            onChange={setSelectedSlotId}
+            options={subjectSlotOptions}
+            placeholder="เลือกคาบรายวิชา"
+            value={selectedSlotId}
           />
-          {checkInMode === "subject" ? (
-            <Combobox
-              className="w-full sm:w-[380px]"
-              disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
-              onChange={setSelectedSlotId}
-              options={subjectSlotOptions}
-              placeholder="เลือกคาบรายวิชา"
-              value={selectedSlotId}
-            />
-          ) : null}
         </Card>
       ) : null}
 
@@ -541,16 +513,8 @@ export function AttendanceCheckInPage() {
             {!canLoadRoster ? (
               <EmptyState
                 icon={ClipboardList}
-                title={
-                  checkInMode === "subject"
-                    ? "เลือกคาบรายวิชาก่อนเช็คชื่อ"
-                    : "พร้อมเริ่มเช็คชื่อหรือยัง?"
-                }
-                description={
-                  checkInMode === "subject"
-                    ? "กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันที่เลือก"
-                    : "กรุณาเลือกโรงเรียน ระดับชั้น และห้อง เพื่อแสดงรายชื่อนักเรียน"
-                }
+                title="เลือกคาบรายวิชาก่อนเช็คชื่อ"
+                description="กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันที่เลือก"
               />
             ) : isRosterError ? (
               <ErrorState
@@ -653,7 +617,7 @@ export function AttendanceCheckInPage() {
             >
               {sortedHistory.map((record) => (
                 <DataTableRow key={record.id}>
-                  <DataTableCell className="font-bold text-slate-800">
+                  <DataTableCell className="text-slate-800">
                     {record.name || "-"}
                   </DataTableCell>
                   <DataTableCell className="text-sm text-slate-600">
@@ -663,19 +627,22 @@ export function AttendanceCheckInPage() {
                     {formatStudentRoom(record.room)}
                   </DataTableCell>
                   <DataTableCell>
-                    <Badge
-                      variant={
-                        getAttendanceStatusPresentation(
-                          record.status,
-                          attendanceStatusCatalog,
-                        ).badgeVariant
-                      }
-                    >
-                      {getAttendanceStatusPresentation(
+                    {(() => {
+                      const meta = getAttendanceStatusPresentation(
                         record.status,
                         attendanceStatusCatalog,
-                      ).label}
-                    </Badge>
+                      );
+                      return (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tabular-nums transition-colors",
+                            meta.displayClass,
+                          )}
+                        >
+                          {meta.label}
+                        </span>
+                      );
+                    })()}
                   </DataTableCell>
                   <DataTableCell className="text-sm text-slate-500">
                     {record.recorded_by || "-"}
