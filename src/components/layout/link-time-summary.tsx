@@ -1,6 +1,9 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Badge, type BadgeProps } from "../base";
-import { formatThaiDateTime, formatThaiTimeRemaining } from "../../lib/date-time";
+import {
+  formatThaiDateTime,
+  formatThaiTimeRemaining,
+} from "../../lib/date-time";
 import { cn } from "../../lib/utils";
 import type { DataTableSortState } from "./data-table";
 
@@ -10,14 +13,18 @@ interface LinkTimeSummaryProps {
   className?: string;
   startLabel?: string;
   variant?: "stacked" | "columns";
+  /** For `variant="columns"`: hide the remaining-time badge when it renders as its own table column. */
+  showRemaining?: boolean;
 }
 
-function getRemainingBadge(
-  expiresAt?: string | null,
-): { label: string; variant: BadgeProps["variant"] } {
+function getRemainingBadge(expiresAt?: string | null): {
+  label: string;
+  variant: BadgeProps["variant"];
+} {
   if (!expiresAt) return { label: "-", variant: "secondary" };
   const expires = new Date(expiresAt);
-  if (Number.isNaN(expires.getTime())) return { label: "-", variant: "secondary" };
+  if (Number.isNaN(expires.getTime()))
+    return { label: "-", variant: "secondary" };
   const remainingMs = expires.getTime() - Date.now();
   if (remainingMs <= 0) return { label: "หมดอายุ", variant: "warning" };
   return {
@@ -26,12 +33,35 @@ function getRemainingBadge(
   };
 }
 
+/** The remaining-time badge alone, for tables where it renders as its own column. */
+export function LinkRemainingBadge({
+  className,
+  expiresAt,
+}: {
+  className?: string;
+  expiresAt?: string | null;
+}) {
+  const remainingBadge = getRemainingBadge(expiresAt);
+  return (
+    <Badge
+      className={cn(
+        "min-w-[96px] shrink-0 justify-center whitespace-nowrap px-2.5",
+        className,
+      )}
+      variant={remainingBadge.variant}
+    >
+      {remainingBadge.label}
+    </Badge>
+  );
+}
+
 export function LinkTimeSummary({
   className,
   expiresAt,
   startLabel = "เริ่ม",
   startsAt,
   variant = "stacked",
+  showRemaining = true,
 }: LinkTimeSummaryProps) {
   const remainingBadge = getRemainingBadge(expiresAt);
   const rows = [
@@ -58,12 +88,7 @@ export function LinkTimeSummary({
             <span className="min-w-0 break-words">{rows[1].value}</span>
           </div>
         </div>
-        <Badge
-          className="min-w-[96px] shrink-0 justify-center whitespace-nowrap px-2.5"
-          variant={remainingBadge.variant}
-        >
-          {remainingBadge.label}
-        </Badge>
+        {showRemaining ? <LinkRemainingBadge expiresAt={expiresAt} /> : null}
       </div>
     );
   }
@@ -164,7 +189,10 @@ export function LinkTimeHeader({
           {renderSortButton(startItem)}
           {renderSortButton(expireItem)}
         </div>
-        {renderSortButton(remainingItem, "min-w-[96px] shrink-0 justify-center")}
+        {renderSortButton(
+          remainingItem,
+          "min-w-[96px] shrink-0 justify-center",
+        )}
       </div>
     </div>
   );
