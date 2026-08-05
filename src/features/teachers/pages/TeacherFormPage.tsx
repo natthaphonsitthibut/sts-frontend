@@ -196,11 +196,21 @@ function TeacherForm({
         </div>
       </Card>
 
+      {/* Equal widths: the submit button reserves room for its loading label,
+          so without a shared minimum the two footer buttons end up different
+          sizes. */}
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button onClick={goBack} size="lg" type="button" variant="outline">
+        <Button
+          className="sm:min-w-[150px]"
+          onClick={goBack}
+          size="lg"
+          type="button"
+          variant="outline"
+        >
           ยกเลิก
         </Button>
         <Button
+          className="sm:min-w-[150px]"
           isLoading={saveTeacher.isPending}
           loadingText="กำลังบันทึก"
           size="lg"
