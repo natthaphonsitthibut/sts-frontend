@@ -38,7 +38,9 @@ export function CopyButton({
 
   return (
     <Button
-      aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
+      // Only name the button when there is no visible label to read: an
+      // aria-label would otherwise replace a more specific one on screen.
+      aria-label={iconOnly ? (copied ? "คัดลอกแล้ว" : "คัดลอก") : undefined}
       className={cn(iconOnly && "px-2", className)}
       icon={copied ? Check : Copy}
       iconClassName={copied ? "text-success" : undefined}

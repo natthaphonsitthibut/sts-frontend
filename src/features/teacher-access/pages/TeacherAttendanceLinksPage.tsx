@@ -18,6 +18,7 @@ import {
   Textarea,
   useConfirm,
 } from "../../../components/base";
+import { CopyButton } from "../../../components/layout/copy-button";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -56,6 +57,14 @@ import type {
 import type { DataTableSortState } from "../../../components/layout/data-table";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance-links"].icon;
+
+/**
+ * One static page for every teacher — the flow identifies them by email + OTP,
+ * so there is no per-teacher token to issue and nothing to generate per row.
+ */
+function buildLineVerificationUrl(): string {
+  return `${window.location.origin}/line-link`;
+}
 
 export function TeacherAttendanceLinksPage() {
   const schoolsQuery = useScopedSchools();
@@ -275,6 +284,14 @@ export function TeacherAttendanceLinksPage() {
       <PageToolbar
         actions={
           <>
+          {lineEnabledQuery.data === true ? (
+            <CopyButton
+              label="คัดลอกลิงก์ยืนยัน LINE"
+              size="md"
+              value={buildLineVerificationUrl()}
+              variant="outline"
+            />
+          ) : null}
           {lineEnabledQuery.data === true ? (
             <Button
               disabled={!selectedTermId || sendOverLine.isPending}
