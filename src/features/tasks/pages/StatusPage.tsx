@@ -75,14 +75,13 @@ export function SuccessPage() {
   const isVisitReport = searchParams.get("type") === "visit";
   // The submitting page hands over the form heading it already rendered; the
   // link is COMPLETED by now, so re-reading the task would no longer return it.
-  const formTitle =
-    typeof (location.state as { formTitle?: unknown } | null)?.formTitle === "string"
-      ? (location.state as { formTitle: string }).formTitle
-      : "";
+  const state = location.state as { formTitle?: unknown; assignedToName?: unknown } | null;
+  const formTitle = typeof state?.formTitle === "string" ? state.formTitle : "";
+  const assignedToName = typeof state?.assignedToName === "string" ? state.assignedToName : "";
 
   if (isVisitReport) {
     return (
-      <GuestPageShell contentClassName="max-w-[656px]">
+      <GuestPageShell contentClassName="max-w-[656px]" profileName={assignedToName}>
         <GuestReceiptCard
           message="ส่งผลการติดตามเพื่อรอผู้รับผิดชอบตรวจสอบแล้ว"
           title={formTitle || "แบบฟอร์มการติดตามนักเรียน"}
