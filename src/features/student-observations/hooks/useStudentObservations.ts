@@ -127,6 +127,17 @@ export function useCreateGuestFollowUp(
   });
 }
 
+export function useTeacherComments(query: {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+}) {
+  return useQuery({
+    queryKey: [KEY, "teacher-comments", query],
+    queryFn: () => studentObservationsService.listTeacherComments(query),
+  });
+}
+
 export function useManagedStudentObservations(studentTermId: string) {
   return useQuery({
     queryKey: managedKey(studentTermId, "observations"),

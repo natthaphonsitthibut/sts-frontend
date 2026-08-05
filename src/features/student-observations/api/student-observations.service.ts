@@ -17,6 +17,7 @@ import type {
   StudentFollowUpRequest,
   StudentObservation,
   StudentObservationSummary,
+  TeacherCommentReport,
   TeacherObservationReport,
   TeacherObservationReportFilters,
   TeacherWatchlistFilters,
@@ -126,6 +127,18 @@ async function createGuestFollowUp(
     );
     return response.data;
   });
+}
+
+async function listTeacherComments(query: {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+}): Promise<PaginatedEnvelope<TeacherCommentReport>> {
+  const response = await apiClient.get<PaginatedEnvelope<TeacherCommentReport>>(
+    "/student-risk-report/teacher-comments",
+    { params: query },
+  );
+  return response.data;
 }
 
 async function listManagedObservations(
@@ -376,6 +389,7 @@ export const studentObservationsService = {
   listHomeVisitRequests,
   getHomeVisitRequest,
   listManagedObservations,
+  listTeacherComments,
   getHumanRiskReview,
   createHumanRiskReview,
   listManagedFollowUps,

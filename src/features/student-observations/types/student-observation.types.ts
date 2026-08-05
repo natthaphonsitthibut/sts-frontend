@@ -147,6 +147,19 @@ export interface ReviewFollowUpRequestInput {
   reason: string;
 }
 
+/** One row of หน้าความคิดเห็นจากคุณครู. */
+export interface TeacherCommentReport {
+  id: string;
+  studentUuid: string;
+  studentName: string;
+  schoolName: string | null;
+  gradeLabel: string | null;
+  roomNo: string | null;
+  comment: string;
+  authorDisplayName: string;
+  commentedAt: string;
+}
+
 export interface TeacherObservationReport {
   reportKind: "FOLLOW_UP_REQUEST" | "OBSERVATION";
   reportId: string;

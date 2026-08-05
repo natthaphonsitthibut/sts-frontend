@@ -31,7 +31,6 @@ import {
 import type {
   ObservationConcernLevel,
 } from "../types/student-observation.types";
-import { GuestFollowUpPanel } from "./GuestFollowUpPanel";
 
 const LEVELS: Array<{
   value: ObservationConcernLevel;
@@ -342,14 +341,6 @@ export function TeacherObservationPanel({
               ))}
             </ol>
           )}
-          {!observationsQuery.isLoading && !observationsQuery.isError ? (
-            <GuestFollowUpPanel
-              assignmentId={assignmentId}
-              credential={credential}
-              observations={observationsQuery.data?.data ?? []}
-              studentTermId={student.studentTermId}
-            />
-          ) : null}
         </CardContent>
       </Card>
     </div>

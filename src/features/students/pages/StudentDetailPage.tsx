@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { CircleAlert, History, MessageSquareText } from "lucide-react";
+import { ArrowLeft, CircleAlert, History, MessageSquareText } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Button, Card, SchoolIcon } from "../../../components/base";
+import { Button, Card, IconButton, SchoolIcon } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -14,6 +14,8 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
+import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
 import { StudentAttendanceCalendar } from "../components/StudentAttendanceCalendar";
 import {
@@ -24,7 +26,7 @@ import { StudentProfileHeader } from "../components/StudentProfileHeader";
 import { useStudent } from "../hooks/useStudent";
 import { useStudentCases } from "../hooks/useStudentCases";
 import { useStudentProfileSummary } from "../hooks/useStudentProfileSummary";
-import type { StudentCase } from "../types/students.types";
+import type { StudentCase, StudentDetail } from "../types/students.types";
 
 function RiskHistoryPanel({
   canViewCaseDetail,
@@ -122,16 +124,40 @@ function RiskHistoryPanel({
   );
 }
 
-function TeacherCommentsPanel({ studentId }: { studentId: string }) {
+function TeacherCommentsPanel({
+  student,
+  studentId,
+}: {
+  student: StudentDetail;
+  studentId: string;
+}) {
   const commentsQuery = useStudentClassroomComments(studentId);
   const comments = commentsQuery.data?.data ?? [];
+  const [commentOpen, setCommentOpen] = useState(false);
+  // student_term.classroom_id decides which roster the comment is filed under;
+  // without it the write has no destination, so the action stays hidden.
+  const classroomId = Number(student.classroom_id ?? 0);
+  const fullName =
+    `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() || "ไม่ระบุชื่อ";
 
   return (
     <Card className="p-5" data-student-teacher-comments>
-      <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-900">
-        <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
-        ความคิดเห็นจากคุณครู
-      </h2>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
+          ความคิดเห็นจากคุณครู
+        </h2>
+        {classroomId ? (
+          <IconButton
+            aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
+            className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
+            icon={MessageSquareText}
+            iconClassName="text-white"
+            onClick={() => setCommentOpen(true)}
+            variant="outline"
+          />
+        ) : null}
+      </div>
       {commentsQuery.isLoading ? (
         <SkeletonStack lines={2} />
       ) : commentsQuery.isError ? (
@@ -169,6 +195,24 @@ function TeacherCommentsPanel({ studentId }: { studentId: string }) {
           ))}
         </ul>
       )}
+
+      <ClassroomStudentCommentDialog
+        classroomId={classroomId}
+        onOpenChange={(open) => {
+          if (!open) setCommentOpen(false);
+        }}
+        student={
+          commentOpen
+            ? {
+                studentUuid: studentId,
+                firstName: student.FirstName_Onec ?? null,
+                lastName: student.LastName_Onec ?? null,
+                studentNumber:
+                  typeof student.student_number === "string" ? student.student_number : null,
+              }
+            : null
+        }
+      />
     </Card>
   );
 }
@@ -188,6 +232,13 @@ export function StudentDetailPage() {
     isError: casesError,
     refetch: refetchCases,
   } = useStudentCases(studentId);
+  const activeCases = useMemo(
+    () =>
+      cases.filter((studentCase) =>
+        ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
+      ),
+    [cases],
+  );
 
   if (isLoading || profileSummaryQuery.isLoading) {
     return (
@@ -241,9 +292,34 @@ export function StudentDetailPage() {
 
   return (
     <PageShell>
-      <PageToolbar icon={SchoolIcon} title="ข้อมูลนักเรียน" />
+      <PageToolbar
+        actions={
+          <>
+            {can("review-cases") && !casesLoading ? (
+              <StudentCaseAction
+                activeCaseCount={activeCases.length}
+                activeCaseId={
+                  activeCases.length > 0 ? Number(activeCases[0].id) : null
+                }
+                mode="button"
+                studentId={studentId}
+                studentName={
+                  `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+                  "นักเรียน"
+                }
+              />
+            ) : null}
+            <NavButton icon={ArrowLeft} to={-1} variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          </>
+        }
+        icon={SchoolIcon}
+        title="ข้อมูลนักเรียน"
+      />
 
       <StudentProfileHeader
+        canEditPhoto={can("edit-students")}
         contactsOpen={contactsOpen}
         key={studentId}
         locationOpen={locationOpen}
@@ -257,7 +333,7 @@ export function StudentDetailPage() {
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
         <div className="space-y-5 lg:col-span-2">
           {can("manage-student-observations") ? (
-            <TeacherCommentsPanel studentId={studentId} />
+            <TeacherCommentsPanel student={student} studentId={studentId} />
           ) : null}
           <RiskHistoryPanel
             canViewCaseDetail={can("review-cases")}

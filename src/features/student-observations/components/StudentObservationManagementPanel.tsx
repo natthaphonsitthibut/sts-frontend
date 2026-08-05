@@ -1,13 +1,10 @@
 import {
   Bot,
   CheckCircle2,
-  ClipboardCheck,
-  ExternalLink,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -22,7 +19,6 @@ import {
   Label,
   Select,
   Textarea,
-  type BadgeProps,
 } from "../../../components/base";
 import { EmptyState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
@@ -32,17 +28,13 @@ import {
   useCreateHumanRiskReview,
   useGenerateObservationSummary,
   useHumanRiskReview,
-  useManagedFollowUps,
   useManagedStudentObservations,
   useObservationSummary,
-  useReviewFollowUp,
   useReviewObservationSummary,
 } from "../hooks/useStudentObservations";
 import type {
-  FollowUpReviewDecision,
   HumanRiskDecision,
   ObservationSourceRef,
-  StudentFollowUpRequest,
   TeacherConcernSignal,
 } from "../types/student-observation.types";
 import { getObservationConcernPresentation } from "../lib/observation-presentation";
@@ -293,190 +285,6 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
   );
 }
 
-function FollowUpReviewItem({
-  request,
-  studentTermId,
-}: {
-  request: StudentFollowUpRequest;
-  studentTermId: string;
-}) {
-  const navigate = useNavigate();
-  const reviewFollowUp = useReviewFollowUp(studentTermId);
-  const [decision, setDecision] =
-    useState<FollowUpReviewDecision>("APPROVED");
-  const [reason, setReason] = useState("");
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!reason.trim()) return;
-    try {
-      await reviewFollowUp.mutateAsync({
-        requestId: request.id,
-        input: {
-          expectedRevision: request.revision,
-          decision,
-          reason: reason.trim(),
-        },
-      });
-    } catch {
-      // Conflict/validation state is rendered inline.
-    }
-  }
-
-  return (
-    <li className="rounded-lg border border-slate-200 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant={request.statusPresentation.badgeVariant as BadgeProps["variant"]}
-        >
-          {request.statusPresentation.labelTh}
-        </Badge>
-        <Badge
-          variant={request.urgency === "URGENT" ? "destructive" : "secondary"}
-        >
-          {request.urgency === "URGENT" ? "เร่งด่วน" : "ปกติ"}
-        </Badge>
-        <span className="text-xs text-slate-500">
-          revision {request.revision}
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-slate-700">{request.reason}</p>
-      <p className="mt-1 text-xs text-slate-500">
-        {request.requestedBy.username} · {formatThaiDateTime(request.createdAt)}{" "}
-        · หลักฐาน {request.sourceObservations.length} รายการ
-      </p>
-
-      {request.status === "PENDING_REVIEW" ? (
-        <form
-          className="mt-3 space-y-3 border-t border-slate-100 pt-3"
-          onSubmit={(event) => void submit(event)}
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor={`follow-up-decision-${request.id}`}>
-                ผลพิจารณา
-              </Label>
-              <Select
-                id={`follow-up-decision-${request.id}`}
-                onChange={(event) =>
-                  setDecision(event.target.value as FollowUpReviewDecision)
-                }
-                value={decision}
-              >
-                <option value="APPROVED">อนุมัติและเปิดเคส</option>
-                <option value="REJECTED">ไม่อนุมัติ</option>
-              </Select>
-            </div>
-            <div>
-              <Label required htmlFor={`follow-up-reason-${request.id}`}>เหตุผล</Label>
-              <Textarea
-                id={`follow-up-reason-${request.id}`}
-                maxLength={1000}
-                onChange={(event) => setReason(event.target.value)}
-                required
-                rows={2}
-                value={reason}
-              />
-            </div>
-          </div>
-          <FormErrorAlert
-            error={reviewFollowUp.error}
-            fallback="บันทึกผลพิจารณาไม่สำเร็จ"
-          />
-          <div className="flex justify-end">
-            <Button
-              disabled={!reason.trim()}
-              isLoading={reviewFollowUp.isPending}
-              loadingText="กำลังบันทึก"
-              size="sm"
-              type="submit"
-            >
-              บันทึกผลพิจารณา
-            </Button>
-          </div>
-        </form>
-      ) : request.review ? (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-          <p>
-            {request.review.reason ?? request.statusPresentation.labelTh} ·{" "}
-            {request.review.reviewedBy.username}
-          </p>
-          {request.assignment ? (
-            <Button
-              className="mt-3"
-              icon={ExternalLink}
-              onClick={() => void navigate(`/tasks/${request.assignment?.taskId}`)}
-              size="sm"
-              variant="outline"
-            >
-              ดูงานที่มอบหมายแล้ว
-            </Button>
-          ) : request.openedCase ? (
-            <Button
-              className="mt-3"
-              icon={ExternalLink}
-              onClick={() => void navigate("/cases")}
-              size="sm"
-            >
-              ไปหน้าเคส
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function FollowUpReviewCard({
-  studentTermId,
-}: {
-  studentTermId: string;
-}) {
-  const followUpsQuery = useManagedFollowUps(studentTermId);
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2">
-          <ClipboardCheck className="size-5 text-primary" aria-hidden="true" />
-          คำขอเยี่ยมบ้านจากครู
-        </CardTitle>
-        <p className="text-sm text-slate-500">
-          ตรวจเหตุผลและหลักฐานก่อนตัดสินใจ เมื่ออนุมัติระบบจะเปิดเคสทันที
-        </p>
-      </CardHeader>
-      <CardContent>
-        {followUpsQuery.isLoading ? (
-          <SkeletonStack lines={4} />
-        ) : followUpsQuery.isError ? (
-          <Alert variant="warning">
-            <AlertTitle>โหลดคำขอเยี่ยมบ้านไม่สำเร็จ</AlertTitle>
-            <Button
-              className="mt-3"
-              onClick={() => void followUpsQuery.refetch()}
-              size="sm"
-              variant="outline"
-            >
-              โหลดใหม่
-            </Button>
-          </Alert>
-        ) : (followUpsQuery.data?.data.length ?? 0) === 0 ? (
-          <EmptyState className="px-5 py-8" title="ยังไม่มีคำขอเยี่ยมบ้านจากครู" />
-        ) : (
-          <ul className="space-y-3">
-            {followUpsQuery.data?.data.map((request) => (
-              <FollowUpReviewItem
-                key={request.id}
-                request={request}
-                studentTermId={studentTermId}
-              />
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 function ObservationSummaryCard({ studentTermId }: { studentTermId: string }) {
   const summaryQuery = useObservationSummary(studentTermId);
   const generateSummary = useGenerateObservationSummary(studentTermId);
@@ -716,7 +524,6 @@ export function StudentObservationManagementPanel({
     <section className="mb-5 space-y-5" aria-label="ทบทวนข้อสังเกตนักเรียน">
       <RiskSignalsCard studentTermId={studentTermId} />
       <div className="grid gap-5 xl:grid-cols-2">
-        <FollowUpReviewCard studentTermId={studentTermId} />
         <ObservationSummaryCard studentTermId={studentTermId} />
       </div>
     </section>
