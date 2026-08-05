@@ -9,13 +9,26 @@ export interface GradeLevelOption {
   label: string;
   category?: string;
 }
-
 export interface SchoolOption {
   id: number;
   name: string;
   province?: string;
   district?: string;
   sub_district?: string;
+}
+
+export interface LocationCatalog {
+  provinces: string[];
+  districts: { province: string; district: string }[];
+  subDistricts: { province: string; district: string; sub_district: string }[];
+}
+
+export interface GetSchoolsParams {
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  searchTerm?: string;
+  limit?: number;
 }
 
 function unwrapData<T>(data: T | DataEnvelope<T>): T {
@@ -27,16 +40,33 @@ function unwrapData<T>(data: T | DataEnvelope<T>): T {
 
 async function getGradeLevels(): Promise<GradeLevelOption[]> {
   const response = await apiClient.get<GradeLevelOption[] | DataEnvelope<GradeLevelOption[]>>(
-    "/api/attendance/grade-levels",
+    "/attendance/grade-levels",
   );
   return unwrapData(response.data) || [];
 }
 
-async function getSchools(): Promise<SchoolOption[]> {
+async function getSchools(params: GetSchoolsParams = {}): Promise<SchoolOption[]> {
   const response = await apiClient.get<SchoolOption[] | DataEnvelope<SchoolOption[]>>(
-    "/api/attendance/schools",
+    "/attendance/schools",
+    {
+      params: {
+        province: params.province || undefined,
+        district: params.district || undefined,
+        subDistrict: params.subDistrict || undefined,
+        searchTerm: params.searchTerm?.trim() || undefined,
+        limit: params.limit ?? undefined,
+      },
+    },
   );
   return unwrapData(response.data) || [];
+}
+
+/** Area catalog only (no student or account data), so guest forms can read it unauthenticated. */
+async function getLocations(): Promise<LocationCatalog> {
+  const response = await apiClient.get<LocationCatalog | DataEnvelope<LocationCatalog>>(
+    "/public/locations",
+  );
+  return unwrapData(response.data) || { provinces: [], districts: [], subDistricts: [] };
 }
 
 async function getRooms(grade: string, schoolId?: string): Promise<string[]> {
@@ -45,7 +75,7 @@ async function getRooms(grade: string, schoolId?: string): Promise<string[]> {
   }
 
   const response = await apiClient.get<string[] | DataEnvelope<string[]>>(
-    "/api/attendance/rooms",
+    "/attendance/rooms",
     {
       params: {
         grade,
@@ -60,4 +90,5 @@ export const attendanceLookupService = {
   getGradeLevels,
   getRooms,
   getSchools,
+  getLocations,
 };

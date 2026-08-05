@@ -1,4 +1,5 @@
-import type { ComponentProps, ReactNode } from "react";
+import { isValidElement, type ComponentProps, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 /**
@@ -8,9 +9,32 @@ import { cn } from "../../lib/utils";
  * Desktop renders a bordered table; mobile is expected to render `TableCardList`.
  */
 
+export type DataTableSortDirection = "asc" | "desc";
+
+export interface DataTableSortState {
+  key: string;
+  direction: DataTableSortDirection;
+}
+
+export interface DataTableHeading {
+  label: ReactNode;
+  sortKey?: string;
+  ariaLabel?: string;
+  colSpan?: number;
+  rowSpan?: number;
+  className?: string;
+}
+
+type DataTableHeadingInput = ReactNode | DataTableHeading;
+
 interface DataTableProps {
   /** Column headings; empty string renders a spacer cell (e.g. an actions column). */
-  headings: ReactNode[];
+  headings: DataTableHeadingInput[];
+  headingRows?: DataTableHeadingInput[][];
+  sort?: DataTableSortState;
+  onSortChange?: (sort: DataTableSortState | undefined) => void;
+  /** When false, sortable headers toggle asc/desc without returning to unsorted. */
+  clearableSort?: boolean;
   /**
    * Per-column Tailwind width classes (e.g. `["w-[22%]", "w-[14%]"]`). When provided,
    * the table switches to a fixed layout so changing cell content (status badges,
@@ -26,6 +50,8 @@ interface DataTableProps {
    * should stay scrollable on every breakpoint.
    */
   responsive?: boolean;
+  /** Breakpoint where the desktop table replaces its paired card list. */
+  responsiveBreakpoint?: "md" | "lg";
   /** `<tr>` rows for the table body. */
   children: ReactNode;
   /** Extra content rendered after the table inside the shell (e.g. empty state). */
@@ -33,21 +59,55 @@ interface DataTableProps {
   className?: string;
 }
 
+function isHeadingConfig(
+  heading: DataTableHeadingInput,
+): heading is DataTableHeading {
+  return (
+    typeof heading === "object" &&
+    heading !== null &&
+    !isValidElement(heading) &&
+    "label" in heading
+  );
+}
+
+function getNextSortState(
+  current: DataTableSortState | undefined,
+  sortKey: string,
+  clearable: boolean,
+): DataTableSortState | undefined {
+  if (current?.key !== sortKey) {
+    return { key: sortKey, direction: "asc" };
+  }
+  if (current.direction === "asc") {
+    return { key: sortKey, direction: "desc" };
+  }
+  return clearable ? undefined : { key: sortKey, direction: "asc" };
+}
+
 export function DataTable({
   children,
   className,
+  clearableSort = true,
   columnWidths,
   footer,
   headings,
+  headingRows,
   minWidthClassName = "min-w-[820px]",
+  onSortChange,
   responsive = true,
+  responsiveBreakpoint = "md",
+  sort,
 }: DataTableProps) {
   const fixedLayout = Boolean(columnWidths);
+  const rows = headingRows ?? [headings];
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.02)]",
-        responsive && "hidden md:block",
+        "overflow-hidden rounded-lg border border-slate-200 bg-white",
+        responsive &&
+          (responsiveBreakpoint === "lg"
+            ? "hidden lg:block"
+            : "hidden md:block"),
         className,
       )}
     >
@@ -59,20 +119,77 @@ export function DataTable({
             minWidthClassName,
           )}
         >
-          <thead>
-            <tr className="bg-muted">
-              {headings.map((heading, index) => (
-                <th
-                  key={index}
-                  className={cn(
-                    "px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500",
-                    columnWidths?.[index],
-                  )}
-                >
-                  {heading}
-                </th>
+          {columnWidths ? (
+            <colgroup>
+              {columnWidths.map((width, index) => (
+                <col className={width} key={index} />
               ))}
-            </tr>
+            </colgroup>
+          ) : null}
+          <thead>
+            {rows.map((headingRow, rowIndex) => (
+              <tr
+                className="border-b border-white/20 bg-primary"
+                key={rowIndex}
+              >
+                {headingRow.map((heading, index) => {
+                  const config = isHeadingConfig(heading)
+                    ? heading
+                    : { label: heading };
+                  const sortKey = config.sortKey;
+                  const isSortable = Boolean(sortKey && onSortChange);
+                  const isActiveSort = Boolean(
+                    sortKey && sort?.key === sortKey,
+                  );
+                  const SortIcon = isActiveSort
+                    ? sort?.direction === "asc"
+                      ? ArrowUp
+                      : ArrowDown
+                    : ArrowUpDown;
+
+                  return (
+                    <th
+                      key={index}
+                      colSpan={config.colSpan}
+                      rowSpan={config.rowSpan}
+                      aria-sort={
+                        isActiveSort
+                          ? sort?.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                      className={cn(
+                        "px-4 py-4 text-sm font-semibold text-white",
+                        !headingRows && columnWidths?.[index],
+                        config.className,
+                      )}
+                    >
+                      {isSortable && sortKey && onSortChange ? (
+                        <button
+                          type="button"
+                          aria-label={config.ariaLabel}
+                          className={cn(
+                            "-mx-1.5 -my-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-white transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary",
+                            isActiveSort && "bg-primary-dark text-white hover:bg-primary-dark",
+                          )}
+                          onClick={() =>
+                            onSortChange(
+                              getNextSortState(sort, sortKey, clearableSort),
+                            )
+                          }
+                        >
+                          <span>{config.label}</span>
+                          <SortIcon className="size-3.5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        config.label
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </thead>
           <tbody>{children}</tbody>
         </table>
@@ -87,7 +204,7 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
   return (
     <tr
       className={cn(
-        "border-t border-slate-100 transition-colors hover:bg-muted",
+        "border-t border-slate-100 transition-colors hover:bg-slate-50",
         className,
       )}
       {...props}
@@ -97,13 +214,35 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
 
 /** A body cell with the shared padding. */
 export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
-  return <td className={cn("px-4 py-4 align-middle", className)} {...props} />;
+  // Fixed row height (content vertically centered) so every row in every table
+  // is the same height regardless of 1-line vs 2-line cell content.
+  return (
+    <td
+      className={cn("h-[60px] px-4 align-middle text-sm text-slate-600", className)}
+      {...props}
+    />
+  );
 }
 
 /** Mobile counterpart wrapper — a vertical stack shown only below `md`. */
-export function TableCardList({ className, ...props }: ComponentProps<"div">) {
+interface TableCardListProps extends ComponentProps<"div"> {
+  desktopBreakpoint?: "md" | "lg";
+}
+
+export function TableCardList({
+  className,
+  desktopBreakpoint = "md",
+  ...props
+}: TableCardListProps) {
   return (
-    <div className={cn("flex flex-col gap-3 md:hidden", className)} {...props} />
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -113,9 +252,13 @@ interface TableCardProps extends ComponentProps<"div"> {
 }
 
 /** A single mobile card mirroring one table row. */
-export function TableCard({ className, interactive, ...props }: TableCardProps) {
+export function TableCard({
+  className,
+  interactive,
+  ...props
+}: TableCardProps) {
   const classes = cn(
-    "rounded-lg border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)]",
+    "rounded-lg border border-slate-200 bg-white p-4",
     className,
   );
   if (interactive) {

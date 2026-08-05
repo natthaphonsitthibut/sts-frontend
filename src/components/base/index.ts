@@ -1,5 +1,7 @@
 export { Alert, AlertDescription, AlertTitle, type AlertProps } from "./alert";
+export { appToast, type AppToastMutationMeta } from "./app-toast";
 export { Avatar, type AvatarProps } from "./avatar";
+export { AvatarPhotoEditor, type AvatarPhotoEditorProps } from "./avatar-photo-editor";
 export { Badge, type BadgeProps } from "./badge";
 export { buttonVariants } from "./button-variants";
 export { Button, type ButtonProps } from "./button";
@@ -12,6 +14,7 @@ export {
   type CardProps,
 } from "./card";
 export { Checkbox, type CheckboxProps } from "./checkbox";
+export { Combobox, type ComboboxOption, type ComboboxProps } from "./combobox";
 export { useConfirm, type ConfirmOptions } from "./confirm-dialog";
 export {
   Dialog,
@@ -24,8 +27,28 @@ export {
   type DialogContentProps,
   type DialogFooterProps,
   type DialogProps,
+  type DialogTitleProps,
 } from "./dialog";
+export { DatePicker, type DatePickerProps } from "./date-picker";
+export { DateTimePicker, type DateTimePickerProps } from "./date-time-picker";
 export { Divider, type DividerProps } from "./divider";
+export {
+  DropdownMenu,
+  type DropdownMenuItem,
+  type DropdownMenuProps,
+} from "./dropdown-menu";
+export { MultiSelect, type MultiSelectProps } from "./multi-select";
+export { OtpInput } from "./otp-input";
+export { CropRange, type CropRangeProps } from "./crop-range";
+export {
+  PhotoCropDialog,
+  type PhotoCropDialogProps,
+} from "./photo-crop-dialog";
+export { PhotoPicker, type PhotoPickerProps } from "./photo-picker";
+export {
+  EMPTY_PHOTO_PICKER_VALUE,
+  type PhotoPickerValue,
+} from "./photo-picker-value";
 export {
   Form,
   FormItem,
@@ -35,13 +58,56 @@ export {
   type FormMessageProps,
   type FormProps,
 } from "./form";
+export { FormErrorAlert } from "./form-error-alert";
+export { registerField } from "./register-field";
 export { IconButton, type IconButtonProps } from "./icon-button";
-export { Input, PasswordInput, type InputProps, type PasswordInputProps } from "./input";
+export { iconButtonVariants } from "./icon-button-variants";
+export { InfoTooltip, type InfoTooltipProps } from "./info-tooltip";
+export {
+  Input,
+  NumericInput,
+  PasswordInput,
+  type InputProps,
+  type NumericInputProps,
+  type PasswordInputProps,
+} from "./input";
 export { Label, type LabelProps } from "./label";
+export {
+  AccountCircleIcon,
+  AddLinkIcon,
+  AssignmentTurnedInIcon,
+  BarChartIcon,
+  CalendarTodayIcon,
+  EditIcon,
+  EqualizerIcon,
+  EventAvailableIcon,
+  FileDownloadIcon,
+  FolderSpecialIcon,
+  GroupIcon,
+  GroupsIcon,
+  HomeIcon,
+  HowToRegIcon,
+  LinkIcon,
+  ManageAccountsIcon,
+  NotificationsIcon,
+  PersonAddIcon,
+  PersonIcon,
+  PlaceIcon,
+  SchoolBuildingIcon,
+  SchoolIcon,
+  SendIcon,
+  SettingsIcon,
+  TableChartIcon,
+  TimelineIcon,
+  UploadFileIcon,
+  VolunteerActivismIcon,
+  VpnKeyIcon,
+} from "./material-icons";
 export { Select, type SelectProps } from "./select";
 export { Skeleton, type SkeletonProps } from "./skeleton";
 export { Tabs, type TabOption } from "./tabs";
 export { Textarea, type TextareaProps } from "./textarea";
+export { TimePicker, type TimePickerProps } from "./time-picker";
 export {
   Sheet,
   SheetHeader,

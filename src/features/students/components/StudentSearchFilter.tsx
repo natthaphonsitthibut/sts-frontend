@@ -1,12 +1,18 @@
+import type { ReactNode } from "react";
 import { Users } from "lucide-react";
 import {
-  CountBadge,
+  FilterCombobox,
   FilterSelect,
-  PageToolbar,
-  SearchInput,
-  ToolbarControls,
+  ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { toRoomOption } from "../../../lib/room-presentation";
+import type { StudentStatusFilterValue } from "../types/students.types";
+
+export interface StudentStatusFilterOption {
+  value: StudentStatusFilterValue;
+  label: string;
+}
 
 interface StudentSearchFilterProps {
   searchQuery: string;
@@ -14,11 +20,21 @@ interface StudentSearchFilterProps {
   grade: string;
   onGradeChange: (value: string) => void;
   gradeOptions: string[];
+  gradeLocked?: boolean;
   room: string;
   onRoomChange: (value: string) => void;
   roomOptions: string[];
-  count: number;
+  roomLocked?: boolean;
+  studentStatusCode: StudentStatusFilterValue;
+  onStudentStatusCodeChange: (value: StudentStatusFilterValue) => void;
+  studentStatusOptions: StudentStatusFilterOption[];
+  isStudentStatusLoading?: boolean;
+  schoolFilters?: ReactNode;
+  navigation?: ReactNode;
+  exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  updatedAt: number;
+  onClearFilters: () => void;
 }
 
 export function StudentSearchFilter({
@@ -27,54 +43,84 @@ export function StudentSearchFilter({
   grade,
   onGradeChange,
   gradeOptions,
+  gradeLocked = false,
   room,
   onRoomChange,
   roomOptions,
-  count,
+  roomLocked = false,
+  studentStatusCode,
+  onStudentStatusCodeChange,
+  studentStatusOptions,
+  isStudentStatusLoading = false,
+  schoolFilters,
+  navigation,
+  exportAction,
   onRefresh,
+  updatedAt,
+  onClearFilters,
 }: StudentSearchFilterProps) {
   return (
-    <PageToolbar
+    <ListPageToolbar
       icon={Users}
-      title="รายชื่อนักเรียนทั้งหมด"
+      title="รายชื่อนักเรียน"
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
-      actions={<RefreshButton onRefresh={onRefresh} />}
-    >
-      <ToolbarControls>
-        <SearchInput
-          onChange={onSearchChange}
-          placeholder="ค้นหาชื่อหรือรหัส..."
-          value={searchQuery}
-        />
+      navigation={navigation}
+      tableActions={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
+          {exportAction}
+        </div>
+      }
+      onClearFilters={onClearFilters}
+      search={{
+        value: searchQuery,
+        onChange: onSearchChange,
+        placeholder: "ค้นหาชื่อนักเรียน...",
+      }}
+      filters={
+        <>
+          {schoolFilters}
 
-        <FilterSelect
-          ariaLabel="กรองตามระดับชั้น"
-          onChange={onGradeChange}
-          value={grade}
-        >
-          <option value="ALL">ทุกระดับชั้น</option>
-          {gradeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </FilterSelect>
+          <FilterCombobox
+            ariaLabel="กรองตามระดับชั้น"
+            disabled={gradeLocked}
+            onChange={onGradeChange}
+            options={[
+              { value: "ALL", label: "ทุกชั้น" },
+              ...gradeOptions.map((option) => ({ value: option, label: option })),
+            ]}
+            placeholder="ค้นหาระดับชั้น"
+            value={grade}
+          />
 
-        <FilterSelect
-          ariaLabel="กรองตามห้อง"
-          onChange={onRoomChange}
-          value={room}
-        >
-          <option value="ALL">ทุกห้อง</option>
-          {roomOptions.map((option) => (
-            <option key={option} value={option}>
-              ห้อง {option}
-            </option>
-          ))}
-        </FilterSelect>
+          <FilterCombobox
+            ariaLabel="กรองตามห้อง"
+            disabled={roomLocked}
+            onChange={onRoomChange}
+            options={[
+              { value: "ALL", label: "ทุกห้อง" },
+              ...roomOptions.map(toRoomOption),
+            ]}
+            placeholder="ค้นหาห้อง"
+            value={room}
+          />
 
-        <CountBadge icon={Users}>{count} คน</CountBadge>
-      </ToolbarControls>
-    </PageToolbar>
+          <FilterSelect
+            ariaLabel="กรองตามสถานะการเรียน"
+            onChange={(value) => onStudentStatusCodeChange(value as StudentStatusFilterValue)}
+            value={studentStatusCode}
+          >
+            {isStudentStatusLoading && studentStatusOptions.length === 0 ? (
+              <option value={studentStatusCode}>กำลังโหลดสถานะ...</option>
+            ) : null}
+            {studentStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </FilterSelect>
+        </>
+      }
+    />
   );
 }

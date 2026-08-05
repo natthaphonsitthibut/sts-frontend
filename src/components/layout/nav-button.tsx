@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, type To } from "react-router-dom";
 import { Button, type ButtonProps } from "../base";
 
 interface NavButtonProps extends Omit<ButtonProps, "onClick"> {
   /** Destination route. */
-  to: string;
+  to: To | number;
 }
 
 /**
@@ -29,7 +29,17 @@ export function NavButton({ isLoading, to, ...props }: NavButtonProps) {
 
   function handleClick(): void {
     setNavigating(true);
-    timerRef.current = window.setTimeout(() => navigate(to), SPIN_BEFORE_NAV_MS);
+    timerRef.current = window.setTimeout(() => {
+      if (typeof to === "number") {
+        navigate(to);
+      } else {
+        navigate(to);
+      }
+      // A numeric history navigation can legitimately be a no-op (for example,
+      // a directly opened detail page). Do not leave the button spinning when
+      // the current route therefore stays mounted.
+      requestAnimationFrame(() => setNavigating(false));
+    }, SPIN_BEFORE_NAV_MS);
   }
 
   return (

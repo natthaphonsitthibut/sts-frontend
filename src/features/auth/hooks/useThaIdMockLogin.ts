@@ -27,6 +27,7 @@ export function useThaIdMockLogin() {
       saveSession(user, { target: "local", hasAdminAccess: true });
       redirectAfterLogin(user);
     },
+    meta: { suppressSuccessToast: true },
   });
 }
 

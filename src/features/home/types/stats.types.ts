@@ -1,4 +1,4 @@
-export interface OverviewHelpStats {
+export interface OverviewCaseTrackingStats {
   waiting: number;
   inProgress: number;
   resolved: number;
@@ -6,9 +6,9 @@ export interface OverviewHelpStats {
 
 export interface OverviewStatsData {
   totalStudents: number;
-  dropoutStudents: number;
+  activeCases: number;
   atRiskStudents: number;
-  helpStats: OverviewHelpStats;
+  caseTrackingStats: OverviewCaseTrackingStats;
 }
 
 export interface OverviewStatsResponse {

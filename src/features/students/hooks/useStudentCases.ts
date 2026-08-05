@@ -9,19 +9,26 @@ const EMPTY_CASES: StudentCase[] = [];
 interface UseStudentCasesResult {
   cases: StudentCase[];
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }
 
 export function useStudentCases(
-  studentName: string | undefined,
+  studentId: string | undefined,
+  enabled = true,
 ): UseStudentCasesResult {
   const result = useQuery({
-    queryKey: [STUDENT_CASES_QUERY_KEY, studentName],
-    queryFn: () => studentsService.getStudentCasesByName(studentName as string),
-    enabled: Boolean(studentName),
+    queryKey: [STUDENT_CASES_QUERY_KEY, studentId],
+    queryFn: () => studentsService.getStudentCasesById(studentId as string),
+    enabled: Boolean(studentId) && enabled,
   });
 
   return {
     cases: result.data ?? EMPTY_CASES,
     isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }

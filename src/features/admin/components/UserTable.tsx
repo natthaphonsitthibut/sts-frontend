@@ -1,89 +1,116 @@
+import { Link } from "react-router-dom";
 import { SquarePen, Trash2 } from "lucide-react";
-import { Badge, IconButton } from "../../../components/base";
+import { Avatar, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import {
-  getUserAvatarGradient,
-  getUserDisplayName,
-  getUserInitial,
-  getUserRoleText,
-} from "../lib/admin-presentation";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
+import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
 
 interface UserTableProps {
   users: ManagedUser[];
+  /** 1-based index of the first row on the current page, for the ลำดับ column. */
+  startIndex: number;
   onEdit: (user: ManagedUser) => void;
-  onDelete: (user: ManagedUser) => void;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const isActive = status === "ACTIVE";
-  return (
-    <Badge variant={isActive ? "success" : "secondary"}>
-      {isActive ? "ใช้งาน" : "ปิดการใช้งาน"}
-    </Badge>
-  );
+  onDeactivate: (user: ManagedUser) => void;
+  deactivatingUserId?: number | null;
+  sort?: DataTableSortState;
+  onSortChange: (sort: DataTableSortState | undefined) => void;
 }
 
 function UserIdentity({ user }: { user: ManagedUser }) {
   const displayName = getUserDisplayName(user);
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-        style={getUserAvatarGradient(displayName)}
-      >
-        {getUserInitial(user)}
-      </div>
-      <div className="min-w-0">
-        <div className="truncate font-bold text-slate-800">{displayName}</div>
-        <div className="truncate text-xs font-semibold text-slate-400">
-          @{user.username}
-        </div>
-      </div>
-    </div>
+  const content = (
+    <>
+      <Avatar
+        className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
+        gradientName={displayName}
+        imageAlt={`รูปประจำตัวของ ${displayName}`}
+        imageUrl={resolveApiMediaUrl(user.photo_url ?? null)}
+      />
+      <span className="truncate font-bold text-slate-800">{displayName}</span>
+    </>
   );
+
+  if (user.id) {
+    return (
+      <Link
+        className="group flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
+        to={`/manage-users/${user.id}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+  return <div className="flex min-w-0 items-center gap-3">{content}</div>;
 }
 
 function RowActions({
   user,
   onEdit,
-  onDelete,
-}: UserTableProps & { user: ManagedUser }) {
+  onDeactivate,
+  deactivatingUserId,
+}: Omit<UserTableProps, "users" | "startIndex" | "sort" | "onSortChange"> & {
+  user: ManagedUser;
+}) {
+  const isDeactivating = deactivatingUserId === (user.id ?? -1);
+  const displayName = getUserDisplayName(user);
   return (
     <div className="flex items-center justify-end gap-1">
       <IconButton
-        aria-label="แก้ไขผู้ใช้งาน"
-        className="text-primary"
+        aria-label={`แก้ไขผู้ใช้งาน ${displayName}`}
+        disabled={isDeactivating}
         icon={SquarePen}
         onClick={() => onEdit(user)}
-        variant="ghost"
+        variant="edit"
       />
       <IconButton
-        aria-label="ลบผู้ใช้งาน"
-        className="text-danger"
+        aria-busy={isDeactivating}
+        aria-label={`ปิดใช้งานผู้ใช้งาน ${displayName}`}
+        disabled={isDeactivating}
         icon={Trash2}
-        onClick={() => onDelete(user)}
-        variant="ghost"
+        onClick={() => onDeactivate(user)}
+        variant="delete"
       />
     </div>
   );
 }
 
-export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
+export function UserTable({
+  users,
+  startIndex,
+  onEdit,
+  onDeactivate,
+  deactivatingUserId,
+  sort,
+  onSortChange,
+}: UserTableProps) {
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        headings={["ผู้ใช้งาน", "ตำแหน่ง", "สังกัด", "สถานะ", ""]}
-        minWidthClassName="min-w-[760px]"
+        headings={[
+          "ลำดับ",
+          { label: "ชื่อ-นามสกุล", sortKey: "name" },
+          { label: "สถานะ", sortKey: "role" },
+          { label: "สังกัด", sortKey: "affiliation" },
+          "เครื่องมือ",
+        ]}
+        columnWidths={["w-[8%]", "w-[30%]", "w-[18%]", "w-[30%]", "w-[14%]"]}
+        minWidthClassName="min-w-[900px]"
+        onSortChange={onSortChange}
+        sort={sort}
       >
-        {users.map((user) => (
+        {users.map((user, index) => (
           <DataTableRow key={user.id ?? user.username}>
+            <DataTableCell className="text-center">
+              {startIndex + index}
+            </DataTableCell>
             <DataTableCell>
               <UserIdentity user={user} />
             </DataTableCell>
@@ -94,14 +121,11 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
               {user.affiliation || "-"}
             </DataTableCell>
             <DataTableCell>
-              <StatusBadge status={user.status} />
-            </DataTableCell>
-            <DataTableCell>
               <RowActions
-                onDelete={onDelete}
+                deactivatingUserId={deactivatingUserId}
+                onDeactivate={onDeactivate}
                 onEdit={onEdit}
                 user={user}
-                users={users}
               />
             </DataTableCell>
           </DataTableRow>
@@ -113,19 +137,25 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
               <UserIdentity user={user} />
-              <StatusBadge status={user.status} />
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <div className="text-sm text-slate-500">
-                {getUserRoleText(user)}
-              </div>
               <RowActions
-                onDelete={onDelete}
+                deactivatingUserId={deactivatingUserId}
+                onDeactivate={onDeactivate}
                 onEdit={onEdit}
                 user={user}
-                users={users}
               />
             </div>
+            <dl className="mt-3 grid grid-cols-1 gap-1 rounded-md bg-slate-50 p-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">สถานะ</dt>
+                <dd className="text-slate-700">{getUserRoleText(user)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">สังกัด</dt>
+                <dd className="truncate text-slate-700">
+                  {user.affiliation || "-"}
+                </dd>
+              </div>
+            </dl>
           </TableCard>
         ))}
       </TableCardList>

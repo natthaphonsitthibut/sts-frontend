@@ -1,28 +1,9 @@
-import type { CSSProperties } from "react";
-import { getLeafMenuItems, MENU_ITEMS } from "../../auth/lib/permissions";
-import type { ManagedUser, RoleScopeMode } from "../types/admin.types";
-
-export const ROLE_SCOPE_MODE_LABELS: Record<RoleScopeMode, string> = {
-  flexible: "ยืดหยุ่น (กำหนดตอนเพิ่มผู้ใช้)",
-  global: "ทั้งระบบ",
-  province: "ระดับจังหวัด",
-  district: "ระดับอำเภอ",
-  sub_district: "ระดับตำบล",
-  school: "ระดับโรงเรียน",
-};
-
-export const USER_STATUS_OPTIONS = [
-  { value: "ACTIVE", label: "ใช้งาน" },
-  { value: "INACTIVE", label: "ปิดการใช้งาน" },
-] as const;
-
-/** Assignable permissions (leaf menu ids + their labels). */
-export function getAssignablePermissions(): Array<{ id: string; label: string }> {
-  return getLeafMenuItems(MENU_ITEMS).map((item) => ({
-    id: item.id,
-    label: item.label,
-  }));
-}
+import type {
+  ManagedUser,
+  AccountLifecycleStatus,
+} from "../types/admin.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 export function getUserDisplayName(user: ManagedUser): string {
   const fullName = [user.FirstName, user.LastName]
@@ -43,31 +24,38 @@ export function getUserRoleText(user: ManagedUser): string {
   return "ไม่มีตำแหน่ง";
 }
 
-const AVATAR_COLOR_PAIRS = [
-  ["#6366f1", "#8b5cf6"],
-  ["#ec4899", "#f43f5e"],
-  ["#14b8a6", "#06b6d4"],
-  ["#f59e0b", "#f97316"],
-  ["#10b981", "#22c55e"],
-  ["#3b82f6", "#0ea5e9"],
-  ["#8b5cf6", "#a855f7"],
-  ["#ef4444", "#f97316"],
-] as const;
+interface AccountLifecycleStatusMeta {
+  label: string;
+  badgeVariant: StatusCatalogItem["badgeVariant"];
+  summaryTone: NonNullable<StatusCatalogItem["summaryTone"]>;
+}
 
-export function getUserAvatarGradient(name: string): CSSProperties {
-  if (!name) {
-    return { background: "#ccc", color: "#fff" };
-  }
-  let hash = 0;
-  for (let index = 0; index < name.length; index += 1) {
-    hash = name.charCodeAt(index) + ((hash << 5) - hash);
-  }
-  const pair =
-    AVATAR_COLOR_PAIRS[Math.abs(hash) % AVATAR_COLOR_PAIRS.length] ??
-    AVATAR_COLOR_PAIRS[0];
+export function getAccountLifecycleStatusMeta(
+  status: AccountLifecycleStatus,
+  catalog: readonly StatusCatalogItem[] = [],
+): AccountLifecycleStatusMeta {
+  const item = findStatusCatalogItem(catalog, status);
   return {
-    background: `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`,
-    color: "white",
-    textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+    label: item?.label ?? status,
+    badgeVariant: item?.badgeVariant ?? "secondary",
+    summaryTone: item?.summaryTone ?? "default",
   };
 }
+
+export function getManagedUserLifecycleStatus(user: ManagedUser): AccountLifecycleStatus {
+  if (user.status !== "ACTIVE") {
+    return "DISABLED";
+  }
+  if (user.must_change_password === true) {
+    const expiresAt = user.temporary_password_expires_at
+      ? new Date(user.temporary_password_expires_at)
+      : null;
+    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      return "TEMP_PASSWORD_EXPIRED";
+    }
+    return "PENDING_FIRST_LOGIN";
+  }
+  return "ACTIVE";
+}
+
+

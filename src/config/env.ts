@@ -18,7 +18,7 @@ function formatHostForUrl(hostname: string): string {
 function resolveApiBaseUrl(): string {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (configuredBaseUrl) {
-    return configuredBaseUrl;
+    return configuredBaseUrl.trim();
   }
 
   if (typeof window === "undefined") {
@@ -33,11 +33,20 @@ function resolveApiBaseUrl(): string {
   return "/";
 }
 
+function resolveApiPrefix(): string {
+  const configuredPrefix = import.meta.env.VITE_API_PREFIX as string | undefined;
+  const prefix = configuredPrefix?.trim() || "/api";
+  return prefix.startsWith("/") ? prefix : `/${prefix}`;
+}
+
 function resolveThaIdMode(): ThaIdMode {
   return import.meta.env.VITE_THAID_MODE === "mock" ? "mock" : "disabled";
 }
 
 export const appConfig = {
   apiBaseUrl: resolveApiBaseUrl(),
+  apiPrefix: resolveApiPrefix(),
+  googleMapsBrowserKey: import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY?.trim() || "",
+  isDevelopment: import.meta.env.DEV,
   thaidMode: resolveThaIdMode(),
 };

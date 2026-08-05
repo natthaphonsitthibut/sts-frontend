@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalEmail, requiredThaiPhone } from "../../../lib/validation";
 
 export const userFormSchema = z.object({
   username: z.string().trim().min(1, "กรุณากรอกชื่อผู้ใช้งาน"),
@@ -10,12 +11,12 @@ export const userFormSchema = z.object({
     }),
   FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
   LastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
-  PersonID_Onec: z.string().trim().min(1, "กรุณากรอกเลขบัตรประชาชน"),
-  phone: z.string().trim(),
-  email: z.string().trim(),
-  affiliation: z.string().trim(),
-  role: z.string().trim().min(1, "กรุณาเลือกตำแหน่ง"),
-  status: z.string().trim().min(1),
+  phone: requiredThaiPhone,
+  email: optionalEmail.refine((value) => value.length > 0, {
+    message: "กรุณากรอกอีเมล",
+  }),
+  affiliation: z.string().trim().min(1, "กรุณากรอกสังกัด"),
+  role: z.string().trim().min(1, "กรุณาเลือกบทบาท"),
 });
 
 export type UserFormValues = z.infer<typeof userFormSchema>;
@@ -25,10 +26,8 @@ export const EMPTY_USER_FORM: UserFormValues = {
   password: "",
   FirstName: "",
   LastName: "",
-  PersonID_Onec: "",
   phone: "",
   email: "",
   affiliation: "",
   role: "",
-  status: "ACTIVE",
 };

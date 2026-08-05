@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ROLE_LABELS } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import type { AuthUser } from "../../auth/types/auth.types";
+import { getNameInitials } from "../../../lib/person-name";
 
 const DEFAULT_DISPLAY_NAME = "ผู้ใช้งาน";
 
@@ -39,13 +40,9 @@ function deriveRoleLabel(user: AuthUser): string {
 }
 
 function deriveInitials(user: AuthUser): string {
-  if (user.FirstName) {
-    return user.FirstName.charAt(0).toUpperCase();
-  }
-  if (user.username) {
-    return user.username.charAt(0).toUpperCase();
-  }
-  return "U";
+  return getNameInitials(
+    [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.username,
+  );
 }
 
 export function useCurrentUserPresentation(): CurrentUserPresentation {

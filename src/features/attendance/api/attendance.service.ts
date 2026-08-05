@@ -1,13 +1,27 @@
 import { apiClient } from "../../../lib/api-client";
+import {
+  DEFAULT_PAGE_SIZE,
+  toPaginationParams,
+} from "../../../lib/pagination";
 import { normalizeAttendanceSelectionStatus } from "../lib/attendance-presentation";
 import type {
-  AttendanceClassSummary,
   AttendanceHistoryRecord,
+  AttendanceReconciliationResponse,
   AttendanceSaveRecord,
   AttendanceSaveResponse,
+  AttendanceSessionKind,
+  AttendanceSessionAnomaliesResponse,
   AttendanceStudent,
   AttendanceStudentQuery,
+  AttendanceSessionContext,
   AttendanceTask,
+  AttendanceTaskLinkStatus,
+  AttendanceTaskListQuery,
+  AttendanceTasksPageResponse,
+  CalendarDayType,
+  SchoolCalendarDay,
+  SchoolTerm,
+  SchoolTermStatus,
 } from "../types/attendance.types";
 
 interface DataEnvelope<T> {
@@ -16,58 +30,169 @@ interface DataEnvelope<T> {
 
 interface AttendanceService {
   getStudents: (query: AttendanceStudentQuery) => Promise<AttendanceStudent[]>;
-  getHistory: (date: string) => Promise<AttendanceHistoryRecord[]>;
+  getHistory: (
+    date: string,
+    schoolId?: string,
+    options?: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null },
+  ) => Promise<AttendanceHistoryRecord[]>;
   getTasks: () => Promise<AttendanceTask[]>;
-  getDailyClassSummaries: (date: string) => Promise<AttendanceClassSummary[]>;
+  getAttendanceTasksPage: (
+    query?: AttendanceTaskListQuery,
+  ) => Promise<AttendanceTasksPageResponse>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
+    options?: { timetableSlotId?: number | null; date?: string },
   ) => Promise<AttendanceSaveResponse>;
+  getSessionContext: (query: {
+    schoolId: string | number;
+    grade: string;
+    room: string | number;
+    date: string;
+    timetableSlotId?: number | null;
+  }) => Promise<AttendanceSessionContext>;
+  reopenSession: (sessionId: string, reason: string) => Promise<AttendanceSessionContext["session"]>;
+  getTerms: (schoolId: string | number) => Promise<SchoolTerm[]>;
+  upsertTerm: (input: {
+    schoolId: number;
+    academicYear: number;
+    semester: number;
+    startsOn: string;
+    endsOn: string;
+    status: SchoolTermStatus;
+  }) => Promise<SchoolTerm>;
+  generateCalendar: (termId: string, schoolDays: number[]) => Promise<SchoolCalendarDay[]>;
+  getCalendar: (termId: string) => Promise<SchoolCalendarDay[]>;
+  updateCalendarDay: (
+    calendarDayId: string,
+    input: { dayType: CalendarDayType; reason?: string },
+  ) => Promise<SchoolCalendarDay>;
+  getReconciliation: (query: {
+    termId: string;
+    date: string;
+    page?: number;
+    limit?: number;
+    gradeLevelId?: number;
+    room?: number;
+  }) => Promise<AttendanceReconciliationResponse>;
+  getReconciliationAnomalies: (query: {
+    termId: string;
+    page?: number;
+    limit?: number;
+    gradeLevelId?: number;
+    room?: number;
+  }) => Promise<AttendanceSessionAnomaliesResponse>;
 }
 
-function matchesClass(
-  record: AttendanceHistoryRecord,
-  task: AttendanceTask,
-): boolean {
-  const gradeMatch = String(record.grade) === String(task.target_grade);
-  const roomMatch = String(record.room) === String(task.target_room);
+const ATTENDANCE_TASK_TYPE = "ATTENDANCE";
+// Must be one of the backend-accepted page sizes (PAGE_SIZES = 10/20/50);
+// getTasks() pages through with this to rebuild the full legacy array.
+const LEGACY_TASK_PAGE_SIZE = 50;
 
-  if (task.target_school_id != null && record.school_id != null) {
-    return (
-      gradeMatch &&
-      roomMatch &&
-      String(record.school_id) === String(task.target_school_id)
-    );
+function isAttendanceTask(task: AttendanceTask): boolean {
+  return task.task_type === ATTENDANCE_TASK_TYPE;
+}
+
+function getTaskLinkState(
+  task: AttendanceTask,
+): Exclude<AttendanceTaskLinkStatus, "ALL"> {
+  // Prefer the server-computed state (it already accounts for opens_at/expiry);
+  // fall back to the local heuristic for legacy payloads without link_state.
+  if (
+    task.link_state === "ACTIVE" ||
+    task.link_state === "LOCKED" ||
+    task.link_state === "EXPIRED" ||
+    task.link_state === "SCHEDULED"
+  ) {
+    return task.link_state;
+  }
+  if (task.active_link_locked) return "LOCKED";
+  if (!task.active_link) return "EXPIRED";
+  return "ACTIVE";
+}
+
+function buildTaskSummary(tasks: AttendanceTask[]) {
+  return {
+    total: tasks.length,
+    active: tasks.filter((task) => getTaskLinkState(task) === "ACTIVE").length,
+    locked: tasks.filter((task) => getTaskLinkState(task) === "LOCKED").length,
+    expired: tasks.filter((task) => getTaskLinkState(task) === "EXPIRED").length,
+    scheduled: tasks.filter((task) => getTaskLinkState(task) === "SCHEDULED").length,
+  };
+}
+
+function filterLegacyTasks(
+  tasks: AttendanceTask[],
+  query: AttendanceTaskListQuery,
+): AttendanceTask[] {
+  const searchTerm = query.searchTerm?.trim().toLowerCase();
+
+  return tasks.filter((task) => {
+    if (!isAttendanceTask(task)) return false;
+    if (query.schoolId && String(task.target_school_id) !== String(query.schoolId)) {
+      return false;
+    }
+    if (query.grade && task.target_grade !== query.grade) {
+      return false;
+    }
+    if (query.room && String(task.target_room) !== String(query.room)) {
+      return false;
+    }
+    if (query.status && query.status !== "ALL" && getTaskLinkState(task) !== query.status) {
+      return false;
+    }
+    if (!searchTerm) return true;
+
+    return [
+      task.target_grade,
+      task.target_room,
+      task.target_school_name,
+      task.link_assigned_to,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(searchTerm);
+  });
+}
+
+function normalizeAttendanceTasksPageResponse(
+  body: AttendanceTask[] | Partial<AttendanceTasksPageResponse> | null | undefined,
+  query: AttendanceTaskListQuery = {},
+): AttendanceTasksPageResponse {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+
+  if (Array.isArray(body)) {
+    const filteredRows = filterLegacyTasks(body, query);
+    const start = (page - 1) * limit;
+    const rows = filteredRows.slice(start, start + limit);
+    return {
+      rows,
+      totalCount: filteredRows.length,
+      page,
+      limit,
+      summary: buildTaskSummary(filteredRows),
+    };
   }
 
-  return gradeMatch && roomMatch;
-}
-
-function summarizeClasses(
-  tasks: AttendanceTask[],
-  history: AttendanceHistoryRecord[],
-): AttendanceClassSummary[] {
-  return tasks.map((task) => {
-    const recordedCount = history.filter((record) =>
-      matchesClass(record, task),
-    ).length;
-
-    return {
-      id: task.task_id,
-      grade: task.target_grade,
-      room: task.target_room,
-      schoolId: task.target_school_id,
-      schoolName: task.target_school_name,
-      recordedCount,
-      status: recordedCount > 0 ? "COMPLETED" : "PENDING",
-    };
-  });
+  const rows = Array.isArray(body?.rows) ? body.rows : [];
+  return {
+    rows,
+    totalCount: body?.totalCount ?? rows.length,
+    page: body?.page ?? page,
+    limit: body?.limit ?? limit,
+    summary: {
+      ...buildTaskSummary(rows),
+      ...body?.summary,
+    },
+  };
 }
 
 async function getStudents(
   query: AttendanceStudentQuery,
 ): Promise<AttendanceStudent[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceStudent[]>>(
-    "/api/attendance/students",
+    "/attendance/students",
     {
       params: {
         grade: query.grade,
@@ -79,15 +204,26 @@ async function getStudents(
   return response.data.data || [];
 }
 
-async function getHistory(date: string): Promise<AttendanceHistoryRecord[]> {
+async function getHistory(
+  date: string,
+  schoolId?: string,
+  options: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null } = {},
+): Promise<AttendanceHistoryRecord[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceHistoryRecord[]>>(
-    "/api/attendance/history",
-    { params: { date } },
+    "/attendance/history",
+    {
+      params: {
+        date,
+        ...(schoolId ? { schoolId } : {}),
+        ...(options.sessionKind ? { sessionKind: options.sessionKind } : {}),
+        ...(options.timetableSlotId ? { timetableSlotId: options.timetableSlotId } : {}),
+      },
+    },
   );
 
   return (response.data.data || []).map((record) => ({
     ...record,
-    id: String(record.PersonID_Onec || record.student_id || record.id || ""),
+    id: String(record.student_id || record.id || ""),
     name: record.name || record.student_name || "",
     status: normalizeAttendanceSelectionStatus(record.status),
     recorded_by: record.RecordedBy || record.recorded_by || "Admin",
@@ -95,25 +231,184 @@ async function getHistory(date: string): Promise<AttendanceHistoryRecord[]> {
 }
 
 async function getTasks(): Promise<AttendanceTask[]> {
-  const response = await apiClient.get<AttendanceTask[]>("/api/attendance/tasks");
-  return (response.data || []).filter(
-    (task) => task.task_type === "ATTENDANCE",
+  const firstPage = await getAttendanceTasksPage({
+    page: 1,
+    limit: LEGACY_TASK_PAGE_SIZE,
+    status: "ALL",
+  });
+  const firstRows = firstPage.rows.filter(isAttendanceTask);
+  const totalPages =
+    firstPage.limit > 0 ? Math.ceil(firstPage.totalCount / firstPage.limit) : 1;
+
+  if (totalPages <= 1) {
+    return firstRows;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      getAttendanceTasksPage({
+        page: index + 2,
+        limit: firstPage.limit,
+        status: "ALL",
+      }),
+    ),
   );
+
+  return [
+    ...firstRows,
+    ...remainingPages.flatMap((page) => page.rows.filter(isAttendanceTask)),
+  ];
 }
 
-async function getDailyClassSummaries(
-  date: string,
-): Promise<AttendanceClassSummary[]> {
-  const [tasks, history] = await Promise.all([getTasks(), getHistory(date)]);
-  return summarizeClasses(tasks, history);
+async function getAttendanceTasksPage(
+  query: AttendanceTaskListQuery = {},
+): Promise<AttendanceTasksPageResponse> {
+  const params: Record<string, string> = toPaginationParams(query);
+  params.status = query.status ?? "ALL";
+
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
+  if (query.schoolId) {
+    params.schoolId = String(query.schoolId);
+  }
+  if (query.grade?.trim()) {
+    params.grade = query.grade.trim();
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
+  }
+
+  const response = await apiClient.get<
+    AttendanceTasksPageResponse | AttendanceTask[]
+  >("/attendance/tasks", { params });
+
+  return normalizeAttendanceTasksPageResponse(response.data, query);
 }
 
 async function saveAttendance(
   records: AttendanceSaveRecord[],
+  options: { timetableSlotId?: number | null; date?: string } = {},
 ): Promise<AttendanceSaveResponse> {
   const response = await apiClient.post<AttendanceSaveResponse>(
-    "/api/attendance",
-    { records },
+    "/attendance",
+    {
+      records,
+      ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
+      ...(options.date ? { date: options.date } : {}),
+    },
+  );
+  return response.data;
+}
+
+async function getSessionContext(query: {
+  schoolId: string | number;
+  grade: string;
+  room: string | number;
+  date: string;
+  timetableSlotId?: number | null;
+}): Promise<AttendanceSessionContext> {
+  const response = await apiClient.get<DataEnvelope<AttendanceSessionContext>>(
+    "/attendance/session",
+    { params: query },
+  );
+  return response.data.data;
+}
+
+async function reopenSession(
+  sessionId: string,
+  reason: string,
+): Promise<AttendanceSessionContext["session"]> {
+  const response = await apiClient.post<
+    DataEnvelope<NonNullable<AttendanceSessionContext["session"]>>
+  >(`/attendance/sessions/${encodeURIComponent(sessionId)}/reopen`, { reason });
+  return response.data.data;
+}
+
+async function getTerms(schoolId: string | number): Promise<SchoolTerm[]> {
+  const response = await apiClient.get<DataEnvelope<SchoolTerm[]>>(
+    "/attendance/terms",
+    { params: { schoolId } },
+  );
+  return response.data.data || [];
+}
+
+async function upsertTerm(input: {
+  schoolId: number;
+  academicYear: number;
+  semester: number;
+  startsOn: string;
+  endsOn: string;
+  status: SchoolTermStatus;
+}): Promise<SchoolTerm> {
+  const response = await apiClient.post<DataEnvelope<SchoolTerm>>(
+    "/attendance/terms",
+    input,
+  );
+  return response.data.data;
+}
+
+async function generateCalendar(
+  termId: string,
+  schoolDays: number[],
+): Promise<SchoolCalendarDay[]> {
+  const response = await apiClient.post<DataEnvelope<SchoolCalendarDay[]>>(
+    `/attendance/terms/${encodeURIComponent(termId)}/calendar/generate`,
+    { schoolDays },
+  );
+  return response.data.data || [];
+}
+
+async function getCalendar(termId: string): Promise<SchoolCalendarDay[]> {
+  const response = await apiClient.get<DataEnvelope<SchoolCalendarDay[]>>(
+    "/attendance/calendar",
+    { params: { termId } },
+  );
+  return response.data.data || [];
+}
+
+async function updateCalendarDay(
+  calendarDayId: string,
+  input: { dayType: CalendarDayType; reason?: string },
+): Promise<SchoolCalendarDay> {
+  const response = await apiClient.patch<DataEnvelope<SchoolCalendarDay>>(
+    `/attendance/calendar-days/${encodeURIComponent(calendarDayId)}`,
+    input,
+  );
+  return response.data.data;
+}
+
+async function getReconciliation(query: {
+  termId: string;
+  date: string;
+  page?: number;
+  limit?: number;
+}): Promise<AttendanceReconciliationResponse> {
+  const response = await apiClient.get<AttendanceReconciliationResponse>(
+    "/attendance/reconciliation",
+    { params: query },
+  );
+  return response.data;
+}
+
+async function getReconciliationAnomalies(query: {
+  termId: string;
+  page?: number;
+  limit?: number;
+}): Promise<AttendanceSessionAnomaliesResponse> {
+  const response = await apiClient.get<AttendanceSessionAnomaliesResponse>(
+    "/attendance/reconciliation/anomalies",
+    { params: query },
   );
   return response.data;
 }
@@ -122,6 +417,15 @@ export const attendanceService: AttendanceService = {
   getStudents,
   getHistory,
   getTasks,
-  getDailyClassSummaries,
+  getAttendanceTasksPage,
   saveAttendance,
+  getSessionContext,
+  reopenSession,
+  getTerms,
+  upsertTerm,
+  generateCalendar,
+  getCalendar,
+  updateCalendarDay,
+  getReconciliation,
+  getReconciliationAnomalies,
 };

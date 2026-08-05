@@ -1,42 +1,87 @@
-import type { CSSProperties } from "react";
-import { Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
-import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import { CalendarOff, Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
+import type {
+  AttendanceSelectionStatus,
+  SchoolTerm,
+  SchoolTermStatus,
+} from "../types/attendance.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+
+const ATTENDANCE_STATUS_CODE = {
+  PRESENT: 1,
+  ABSENT: 2,
+  LATE: 3,
+  LEAVE: 4,
+} as const;
+
+export const SCHOOL_TERM_STATUSES: readonly SchoolTermStatus[] = [
+  "DRAFT",
+  "ACTIVE",
+  "CLOSED",
+];
+
+const SCHOOL_TERM_STATUS_FALLBACK_LABELS: Record<SchoolTermStatus, string> = {
+  DRAFT: "ร่าง",
+  ACTIVE: "เปิดใช้งาน",
+  CLOSED: "ปิดภาคเรียน",
+};
+
+export function getSchoolTermStatusLabel(
+  status: SchoolTermStatus,
+  catalog: readonly StatusCatalogItem[] = [],
+): string {
+  return (
+    findStatusCatalogItem(catalog, status)?.label ??
+    SCHOOL_TERM_STATUS_FALLBACK_LABELS[status]
+  );
+}
+
+export function formatSchoolTermLabel(
+  term: Pick<SchoolTerm, "academicYear" | "semester" | "status">,
+  catalog: readonly StatusCatalogItem[] = [],
+): string {
+  return `${term.academicYear}/${term.semester} · ${getSchoolTermStatusLabel(term.status, catalog)}`;
+}
 
 export function normalizeAttendanceSelectionStatus(
   status: unknown,
 ): AttendanceSelectionStatus {
   if (
-    status === 1 ||
-    status === "1" ||
+    status === ATTENDANCE_STATUS_CODE.PRESENT ||
+    status === String(ATTENDANCE_STATUS_CODE.PRESENT) ||
     status === "P_PRESENT" ||
     status === "PRESENT"
   ) {
     return "P_PRESENT";
   }
   if (
-    status === 2 ||
-    status === "2" ||
+    status === ATTENDANCE_STATUS_CODE.ABSENT ||
+    status === String(ATTENDANCE_STATUS_CODE.ABSENT) ||
     status === "P_ABSENT" ||
     status === "ABSENT"
   ) {
     return "P_ABSENT";
   }
   if (
-    status === 3 ||
-    status === "3" ||
+    status === ATTENDANCE_STATUS_CODE.LATE ||
+    status === String(ATTENDANCE_STATUS_CODE.LATE) ||
     status === "P_LATE" ||
     status === "LATE"
   ) {
     return "P_LATE";
   }
+  if (
+    status === ATTENDANCE_STATUS_CODE.LEAVE ||
+    status === String(ATTENDANCE_STATUS_CODE.LEAVE) ||
+    status === "P_LEAVE" ||
+    status === "LEAVE"
+  ) {
+    return "P_LEAVE";
+  }
   return "NONE";
 }
 
-interface AttendanceStatusMeta {
-  /** Short label used on the inline record buttons. */
-  shortLabel: string;
-  /** Full label used on the read-only history/display chip. */
-  label: string;
+interface AttendanceStatusStyle {
   icon: LucideIcon;
   /** Idle (unselected) record-button classes. */
   idleClass: string;
@@ -44,92 +89,125 @@ interface AttendanceStatusMeta {
   activeClass: string;
   /** Read-only status chip classes. */
   displayClass: string;
+  /** Outlined pill shown when the status is NOT the one a row landed on. */
+  pillIdleClass: string;
+  /** Filled pill marking the status a row actually landed on. */
+  pillActiveClass: string;
 }
 
 // Color tokens copied verbatim from the legacy Quasar AttendancePage styles.
-export const ATTENDANCE_STATUS_META: Record<
+export const ATTENDANCE_STATUS_STYLE: Record<
   AttendanceSelectionStatus,
-  AttendanceStatusMeta
+  AttendanceStatusStyle
 > = {
   P_PRESENT: {
-    shortLabel: "มา",
-    label: "มาเรียน",
     icon: Check,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
       "border-success bg-gradient-to-br from-success-100 to-success-200 text-success-700 shadow-[0_4px_12px_rgba(34,197,94,0.25)]",
     displayClass: "bg-gradient-to-br from-success-100 to-success-200 text-success-700",
+    pillIdleClass: "border-success text-success-700",
+    pillActiveClass: "border-success bg-success text-white",
   },
   P_ABSENT: {
-    shortLabel: "ขาด",
-    label: "ขาด",
     icon: X,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
       "border-danger bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700 shadow-[0_4px_12px_rgba(239,68,68,0.25)]",
     displayClass: "bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700",
+    pillIdleClass: "border-danger text-danger-700",
+    pillActiveClass: "border-danger bg-danger text-white",
   },
   P_LATE: {
-    shortLabel: "สาย",
-    label: "สาย",
     icon: Clock,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
       "border-warning bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700 shadow-[0_4px_12px_rgba(245,158,11,0.25)]",
     displayClass: "bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700",
+    pillIdleClass: "border-warning text-warning-700",
+    pillActiveClass: "border-warning bg-warning text-white",
+  },
+  // "ลา" has no dedicated accent token — the status catalog assigns it the
+  // neutral `secondary` badge, so the button styling follows the slate ramp.
+  P_LEAVE: {
+    icon: CalendarOff,
+    idleClass: "border-slate-200 bg-white text-slate-500",
+    activeClass: "border-slate-400 bg-slate-200 text-slate-700",
+    displayClass: "bg-slate-100 text-slate-700",
+    pillIdleClass: "border-slate-400 text-slate-700",
+    pillActiveClass: "border-slate-500 bg-slate-500 text-white",
   },
   NONE: {
-    shortLabel: "ไม่เช็ค",
-    label: "ไม่ได้เช็คชื่อ",
     icon: HelpCircle,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass: "border-slate-300 bg-slate-100 text-slate-400",
-    displayClass: "bg-slate-100 text-slate-400",
+    activeClass: "border-slate-300 bg-slate-100 text-slate-500",
+    displayClass: "bg-slate-100 text-slate-500",
+    pillIdleClass: "border-slate-200 text-slate-500",
+    pillActiveClass: "border-slate-300 bg-slate-300 text-slate-700",
   },
 };
 
-/** Record-page status buttons in legacy display order: มา / ขาด / สาย. */
+export function getAttendanceStatusPresentation(
+  status: AttendanceSelectionStatus,
+  catalog: readonly StatusCatalogItem[],
+) {
+  const style = ATTENDANCE_STATUS_STYLE[status];
+  const item = findStatusCatalogItem(catalog, status);
+  return {
+    ...style,
+    shortLabel: item?.shortLabel ?? item?.label ?? status,
+    label: item?.label ?? status,
+    badgeVariant: item?.badgeVariant ?? "secondary",
+  };
+}
+
+/** Record-page status buttons in legacy display order: มา / ขาด / สาย / ลา. */
 export const ATTENDANCE_RECORD_STATUSES: AttendanceSelectionStatus[] = [
   "P_PRESENT",
   "P_ABSENT",
   "P_LATE",
+  "P_LEAVE",
 ];
 
-const AVATAR_COLOR_PAIRS = [
-  ["#6366f1", "#8b5cf6"],
-  ["#ec4899", "#f43f5e"],
-  ["#14b8a6", "#06b6d4"],
-  ["#f59e0b", "#f97316"],
-  ["#10b981", "#22c55e"],
-  ["#3b82f6", "#0ea5e9"],
-  ["#8b5cf6", "#a855f7"],
-  ["#ef4444", "#f97316"],
-] as const;
-
-export function getAttendanceAvatarGradient(name: string): CSSProperties {
-  if (!name) {
-    return { background: "#ccc", color: "#fff" };
-  }
-
-  let hash = 0;
-  for (let index = 0; index < name.length; index += 1) {
-    hash = name.charCodeAt(index) + ((hash << 5) - hash);
-  }
-
-  const colorPair =
-    AVATAR_COLOR_PAIRS[Math.abs(hash) % AVATAR_COLOR_PAIRS.length] ??
-    AVATAR_COLOR_PAIRS[0];
-
-  return {
-    background: `linear-gradient(135deg, ${colorPair[0]}, ${colorPair[1]})`,
-    color: "white",
-    textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-  };
+export interface AttendanceCounts {
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
 }
+
+/** Which tally each recordable status feeds; `NONE` is deliberately absent. */
+export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<string, keyof AttendanceCounts> = {
+  P_PRESENT: "present",
+  P_ABSENT: "absent",
+  P_LATE: "late",
+  P_LEAVE: "leave",
+};
+
+/** Tallies selections so every check-in surface reports the same status set. */
+export function countAttendanceStatuses(
+  statuses: readonly AttendanceSelectionStatus[],
+): AttendanceCounts {
+  const counts: AttendanceCounts = { present: 0, absent: 0, late: 0, leave: 0 };
+  for (const status of statuses) {
+    const key = ATTENDANCE_COUNT_KEY_BY_STATUS[status];
+    if (key) counts[key] += 1;
+  }
+  return counts;
+}
+
+
 
 export function getTodayIso(reference: Date = new Date()): string {
   const year = reference.getFullYear();
   const month = String(reference.getMonth() + 1).padStart(2, "0");
   const day = String(reference.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+/** ISO weekday (1=Monday..7=Sunday) for a `YYYY-MM-DD` calendar date string. */
+export function getIsoDayOfWeekFromDateString(dateString: string): number {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const utcDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return utcDay === 0 ? 7 : utcDay;
 }

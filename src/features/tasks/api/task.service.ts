@@ -36,13 +36,13 @@ function createMagicSessionConfig(magicSessionToken?: string) {
 }
 
 async function createTask(payload: TaskCreatePayload): Promise<TaskCreateResponse> {
-  const response = await apiClient.post<TaskCreateResponse>("/api/tasks", payload);
+  const response = await apiClient.post<TaskCreateResponse>("/tasks", payload);
   return response.data;
 }
 
 async function getTaskChain(taskId: string): Promise<TaskChainResponse> {
   const response = await apiClient.get<TaskChainResponse>(
-    `/api/tasks/${encodeURIComponent(taskId)}/chain`,
+    `/tasks/${encodeURIComponent(taskId)}/chain`,
   );
   return response.data;
 }
@@ -52,7 +52,7 @@ async function getTask(
   magicSessionToken?: string,
 ): Promise<TaskAccessTask> {
   const response = await apiClient.get<TaskAccessTask>(
-    `/api/tasks/${encodeURIComponent(token)}`,
+    `/tasks/${encodeURIComponent(token)}`,
     createMagicSessionConfig(magicSessionToken),
   );
   return response.data;
@@ -61,7 +61,7 @@ async function getTask(
 async function getTaskStudents(token: string): Promise<TaskGuestStudent[]> {
   const response = await apiClient.get<
     TaskGuestStudent[] | DataEnvelope<TaskGuestStudent[]>
-  >(`/api/tasks/${encodeURIComponent(token)}/students`);
+  >(`/tasks/${encodeURIComponent(token)}/students`);
   return normalizeArrayResponse(response.data);
 }
 
@@ -71,12 +71,12 @@ async function getTaskHistory(
 ): Promise<TaskHistoryEntry[]> {
   const response = await apiClient.get<
     TaskHistoryEntry[] | DataEnvelope<TaskHistoryEntry[]>
-  >(`/api/tasks/${encodeURIComponent(token)}/history`, { params: { date } });
+  >(`/tasks/${encodeURIComponent(token)}/history`, { params: { date } });
   return normalizeArrayResponse(response.data);
 }
 
 async function requestTaskOtp(token: string): Promise<void> {
-  await apiClient.post(`/api/tasks/${encodeURIComponent(token)}/otp`);
+  await apiClient.post(`/tasks/${encodeURIComponent(token)}/otp`);
 }
 
 async function verifyTaskOtp(
@@ -84,7 +84,7 @@ async function verifyTaskOtp(
   otp: string,
 ): Promise<{ session_token?: string }> {
   const response = await apiClient.post<{ session_token?: string }>(
-    `/api/tasks/${encodeURIComponent(token)}/verify`,
+    `/tasks/${encodeURIComponent(token)}/verify`,
     { otp },
   );
   return response.data;
@@ -93,10 +93,13 @@ async function verifyTaskOtp(
 async function submitTaskAttendance(
   token: string,
   records: Array<{ student_id: string; status: AttendanceTaskStatus }>,
+  timetableSlotId?: number | null,
+  magicSessionToken?: string,
 ): Promise<TaskSubmitResponse> {
   const response = await apiClient.post<TaskSubmitResponse>(
-    `/api/tasks/${encodeURIComponent(token)}/attendance`,
-    { records },
+    `/tasks/${encodeURIComponent(token)}/attendance`,
+    { records, timetable_slot_id: timetableSlotId ?? null },
+    createMagicSessionConfig(magicSessionToken),
   );
   return response.data;
 }
@@ -107,7 +110,7 @@ async function submitTaskReport(
   magicSessionToken?: string,
 ): Promise<TaskSubmitResponse> {
   const response = await apiClient.post<TaskSubmitResponse>(
-    `/api/tasks/${encodeURIComponent(token)}/submit`,
+    `/tasks/${encodeURIComponent(token)}/submit`,
     payload,
     createMagicSessionConfig(magicSessionToken),
   );
@@ -117,10 +120,12 @@ async function submitTaskReport(
 async function delegateTask(
   token: string,
   payload: TaskDelegationPayload,
+  magicSessionToken?: string,
 ): Promise<TaskDelegationResponse> {
   const response = await apiClient.post<TaskDelegationResponse>(
-    `/api/tasks/${encodeURIComponent(token)}/delegate`,
+    `/tasks/${encodeURIComponent(token)}/delegate`,
     payload,
+    createMagicSessionConfig(magicSessionToken),
   );
   return response.data;
 }

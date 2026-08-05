@@ -17,9 +17,9 @@ function toNumber(value: unknown): number {
 function createEmptyOverviewStats(): OverviewStatsData {
   return {
     totalStudents: 0,
-    dropoutStudents: 0,
+    activeCases: 0,
     atRiskStudents: 0,
-    helpStats: {
+    caseTrackingStats: {
       waiting: 0,
       inProgress: 0,
       resolved: 0,
@@ -29,7 +29,7 @@ function createEmptyOverviewStats(): OverviewStatsData {
 
 async function getOverviewStats(): Promise<OverviewStatsData> {
   const response =
-    await apiClient.get<OverviewStatsResponse>("/api/stats/overview");
+    await apiClient.get<OverviewStatsResponse>("/stats/overview");
   const payload = response.data?.data;
 
   if (!payload) {
@@ -38,12 +38,12 @@ async function getOverviewStats(): Promise<OverviewStatsData> {
 
   return {
     totalStudents: toNumber(payload.totalStudents),
-    dropoutStudents: toNumber(payload.dropoutStudents),
+    activeCases: toNumber(payload.activeCases),
     atRiskStudents: toNumber(payload.atRiskStudents),
-    helpStats: {
-      waiting: toNumber(payload.helpStats?.waiting),
-      inProgress: toNumber(payload.helpStats?.inProgress),
-      resolved: toNumber(payload.helpStats?.resolved),
+    caseTrackingStats: {
+      waiting: toNumber(payload.caseTrackingStats?.waiting),
+      inProgress: toNumber(payload.caseTrackingStats?.inProgress),
+      resolved: toNumber(payload.caseTrackingStats?.resolved),
     },
   };
 }

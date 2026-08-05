@@ -1,24 +1,52 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Search } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, Input, Select, Skeleton } from "../base";
+import { ChevronRight, Search } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Combobox,
+  Input,
+  Select,
+  Skeleton,
+  type ComboboxOption,
+} from "../base";
 import { cn } from "../../lib/utils";
+import { ClearFiltersButton } from "./clear-filters-button";
+import {
+  getPageIdentity,
+  getPageIdentityByTitle,
+  PAGE_ICONS,
+} from "./page-identity";
 
-export const PAGE_MAX_WIDTH_CLASS = "max-w-[1100px]";
+export const PAGE_MAX_WIDTH_CLASS = "max-w-[1700px]";
 
 interface PageShellProps extends ComponentProps<"div"> {
-  maxWidthClassName?: string;
+  contentClassName?: string;
 }
 
 export function PageShell({
   children,
   className,
-  maxWidthClassName = PAGE_MAX_WIDTH_CLASS,
+  contentClassName,
   ...props
 }: PageShellProps) {
   return (
-    <div className={cn("min-h-full bg-slate-100 p-6", className)} {...props}>
-      <div className={cn("mx-auto w-full", maxWidthClassName)}>{children}</div>
+    <div
+      className={cn(
+        "min-h-[calc(100vh-4rem)] bg-surface-page px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
+        className,
+      )}
+      {...props}
+    >
+      <div
+        className={cn("mx-auto w-full", PAGE_MAX_WIDTH_CLASS, contentClassName)}
+        data-page-container="authenticated"
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -26,8 +54,17 @@ export function PageShell({
 interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   actions?: ReactNode;
   description?: ReactNode;
+  footerActions?: ReactNode;
   icon?: LucideIcon;
-  title: ReactNode;
+  navigation?: ReactNode;
+  /**
+   * Replaces the default "หน้าหลัก → …" chain, first entry included. Only areas
+   * that do not start at `/` need this — a teacher link's home is its own
+   * landing page, and `/` is not reachable without an account.
+   */
+  breadcrumbTrail?: Array<{ label: string; to: string; icon?: LucideIcon }>;
+  parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
+  title?: ReactNode;
   /** Color only — size/padding/structure stay identical across tones. */
   tone?: "default" | "primary";
 }
@@ -36,23 +73,17 @@ const toolbarToneClasses: Record<
   NonNullable<PageToolbarProps["tone"]>,
   {
     surface: string;
-    icon: string;
-    iconSurface: string;
     title: string;
     description: string;
   }
 > = {
   default: {
-    surface: "border-slate-100 bg-white shadow-card",
-    icon: "text-primary",
-    iconSurface: "bg-surface-sky",
-    title: "text-slate-800",
-    description: "text-slate-500",
+    surface: "bg-transparent",
+    title: "text-content-primary",
+    description: "text-content-secondary",
   },
   primary: {
     surface: "border-primary bg-primary shadow-card",
-    icon: "text-white",
-    iconSurface: "bg-white/15",
     title: "text-white",
     description: "text-white/80",
   },
@@ -60,49 +91,203 @@ const toolbarToneClasses: Record<
 
 export function PageToolbar({
   actions,
+  breadcrumbTrail,
   children,
   className,
   description,
+  footerActions,
   icon: Icon,
+  navigation,
+  parentBreadcrumb,
   title,
   tone = "default",
   ...props
 }: PageToolbarProps) {
+  // Page identity is title-only across the authenticated product. Keep the
+  // legacy prop temporarily so feature pages can be migrated without a broad,
+  // noisy call-site rewrite; descriptions continue to belong in page content.
+  void description;
+  const { pathname } = useLocation();
+  const pageIdentity =
+    getPageIdentity(pathname) ??
+    (typeof title === "string" ? getPageIdentityByTitle(title) : undefined);
+  const ToolbarIcon = pageIdentity?.icon ?? Icon;
+  const parentBreadcrumbIdentity = parentBreadcrumb
+    ? (getPageIdentity(parentBreadcrumb.to) ??
+      getPageIdentityByTitle(parentBreadcrumb.label))
+    : undefined;
+  const ParentBreadcrumbIcon =
+    parentBreadcrumb?.icon ?? parentBreadcrumbIdentity?.icon;
+  const toolbarTitle = pageIdentity?.title ?? title;
+  const homeCrumb = breadcrumbTrail?.[0] ?? {
+    label: "หน้าหลัก",
+    to: "/",
+    icon: PAGE_ICONS.home,
+  };
+  const HomeCrumbIcon = homeCrumb.icon ?? PAGE_ICONS.home;
+  const middleCrumbs = [
+    ...(breadcrumbTrail?.slice(1) ?? []),
+    ...(parentBreadcrumb
+      ? [{ ...parentBreadcrumb, icon: ParentBreadcrumbIcon }]
+      : []),
+  ];
+  const isHomePage = pathname === homeCrumb.to;
   const toneClasses = toolbarToneClasses[tone];
+  const hasAttachedSurface = Boolean(children || footerActions);
   return (
-    <div className="mb-6">
-      {/* Header band — same fixed height on every page (controls live below, so a
-          page with many filters never gets a taller header than one with none). */}
+    <div className={cn("relative z-20", hasAttachedSurface ? "mb-6" : "mb-4")}>
       <section
-        className={cn("overflow-hidden rounded-lg border", toneClasses.surface, className)}
+        className={cn(
+          "overflow-hidden",
+          tone === "primary" && "rounded-lg border",
+          toneClasses.surface,
+          className,
+        )}
         {...props}
       >
-        <div className="flex min-h-24 flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            {Icon ? (
-              <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", toneClasses.iconSurface)}>
-                <Icon className={cn("size-5", toneClasses.icon)} aria-hidden="true" />
+        <div
+          className={cn(
+            "flex flex-col",
+            tone === "primary" ? "min-h-20 p-5" : "py-1",
+          )}
+        >
+          <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
+            <nav
+              aria-label="เส้นทางนำทาง"
+              className={cn(
+                "flex min-h-6 items-center gap-2 text-sm font-medium",
+                tone === "primary" ? "text-white/80" : "text-breadcrumb-muted",
+              )}
+            >
+              {isHomePage ? (
+                <span
+                  className={cn(
+                    "inline-flex min-w-0 items-center gap-1.5 font-semibold",
+                    tone === "primary" ? "text-white" : "text-content-primary",
+                  )}
+                  aria-current="page"
+                >
+                  <HomeCrumbIcon
+                    className="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{homeCrumb.label}</span>
+                </span>
+              ) : (
+                <>
+                  <Link
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                      tone === "primary"
+                        ? "hover:text-white"
+                        : "hover:text-content-primary",
+                    )}
+                    to={homeCrumb.to}
+                  >
+                    <HomeCrumbIcon className="size-4" aria-hidden="true" />
+                    <span>{homeCrumb.label}</span>
+                  </Link>
+                  <ChevronRight
+                    className="size-4 shrink-0 opacity-60"
+                    aria-hidden="true"
+                  />
+                  {middleCrumbs.map((crumb) => {
+                    const CrumbIcon = crumb.icon;
+                    return (
+                      <span
+                        className="flex min-w-0 items-center gap-2"
+                        key={crumb.to}
+                      >
+                        <Link
+                          className={cn(
+                            "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            tone === "primary"
+                              ? "hover:text-white"
+                              : "hover:text-content-primary",
+                          )}
+                          to={crumb.to}
+                        >
+                          {CrumbIcon ? (
+                            <CrumbIcon
+                              className="size-4 shrink-0"
+                              aria-hidden="true"
+                            />
+                          ) : null}
+                          <span className="truncate">{crumb.label}</span>
+                        </Link>
+                        <ChevronRight
+                          className="size-4 shrink-0 opacity-60"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    );
+                  })}
+                  <span
+                    className={cn(
+                      "inline-flex min-w-0 items-center gap-1.5 font-semibold",
+                      tone === "primary"
+                        ? "text-white"
+                        : "text-content-primary",
+                    )}
+                    aria-current="page"
+                  >
+                    {ToolbarIcon ? (
+                      <ToolbarIcon
+                        className="size-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    <span className="truncate">{toolbarTitle}</span>
+                  </span>
+                </>
+              )}
+            </nav>
+            {navigation ? (
+              <div className="flex shrink-0 flex-wrap items-center sm:justify-end">
+                {navigation}
               </div>
             ) : null}
-            <div className="min-w-0">
-              <h1 className={cn("truncate text-xl font-bold", toneClasses.title)}>
-                {title}
-              </h1>
-              {description ? (
-                <p className={cn("mt-1 text-sm", toneClasses.description)}>{description}</p>
-              ) : null}
-            </div>
           </div>
-          {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-              {actions}
+          {/* Fixed row height so the page title sits at the same y whether or not
+              the page has action buttons — otherwise the tallest child (an lg
+              button) shifts the heading down on some pages only. */}
+          <div className="mt-2 flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1
+                className={cn(
+                  "text-xl font-semibold leading-8",
+                  toneClasses.title,
+                )}
+              >
+                {toolbarTitle}
+              </h1>
             </div>
-          ) : null}
+            {actions ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                {actions}
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
-      {children ? (
-        <div className="mt-3 rounded-lg border border-slate-100 bg-white p-4 shadow-card">
-          {children}
+      {hasAttachedSurface ? (
+        <div
+          className={cn(
+            "mt-4 overflow-visible rounded-lg border border-slate-200 bg-white",
+          )}
+        >
+          {children ? <div className="p-4">{children}</div> : null}
+          {footerActions ? (
+            <div
+              className={cn(
+                "rounded-b-lg bg-slate-50 px-4 py-3",
+                !children && "rounded-t-lg",
+                children && "border-t border-slate-200",
+              )}
+            >
+              <TableActionBar>{footerActions}</TableActionBar>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -125,7 +310,7 @@ export function SearchInput({
   return (
     <div className={cn("relative w-full sm:max-w-xs sm:flex-1", className)}>
       <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500"
         aria-hidden="true"
       />
       <Input
@@ -141,6 +326,7 @@ export function SearchInput({
 interface FilterSelectProps {
   ariaLabel: string;
   children: ReactNode;
+  disabled?: boolean;
   onChange: (value: string) => void;
   value: string;
   className?: string;
@@ -150,6 +336,7 @@ export function FilterSelect({
   ariaLabel,
   children,
   className,
+  disabled = false,
   onChange,
   value,
 }: FilterSelectProps) {
@@ -157,6 +344,7 @@ export function FilterSelect({
     <Select
       aria-label={ariaLabel}
       className={cn("sm:w-[180px]", className)}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       value={value}
     >
@@ -165,7 +353,45 @@ export function FilterSelect({
   );
 }
 
-export function ToolbarControls({ className, ...props }: ComponentProps<"div">) {
+interface FilterComboboxProps {
+  ariaLabel: string;
+  disabled?: boolean;
+  emptyText?: string;
+  onChange: (value: string) => void;
+  options: ComboboxOption[];
+  placeholder: string;
+  value: string;
+  className?: string;
+}
+
+export function FilterCombobox({
+  ariaLabel,
+  className,
+  disabled = false,
+  emptyText,
+  onChange,
+  options,
+  placeholder,
+  value,
+}: FilterComboboxProps) {
+  return (
+    <Combobox
+      ariaLabel={ariaLabel}
+      className={cn("w-full sm:w-[180px]", className)}
+      disabled={disabled}
+      emptyText={emptyText}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      value={value}
+    />
+  );
+}
+
+export function ToolbarControls({
+  className,
+  ...props
+}: ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -177,17 +403,136 @@ export function ToolbarControls({ className, ...props }: ComponentProps<"div">) 
   );
 }
 
-interface CountBadgeProps {
-  children: ReactNode;
-  icon?: LucideIcon;
+export function ToolbarFilterGrid({
+  className,
+  ...props
+}: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0 [&>*]:w-full [&>button]:!w-full [&>div>button]:!w-full [&>input]:!w-full [&>select]:!w-full",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
-export function CountBadge({ children, icon: Icon }: CountBadgeProps) {
+/**
+ * Footer row for a full-page form — the cancel/save pair at the bottom.
+ *
+ * The shared minimum width lives here rather than on each button: a submit
+ * button reserves room for its loading label ("กำลังบันทึก"), so a footer whose
+ * buttons size themselves ends up with a cancel button visibly narrower than
+ * save. Call sites pass plain Buttons and stay out of the sizing question.
+ * Mirrors `DialogFooter`, which does the same for dialogs.
+ */
+export function FormActions({ className, ...props }: ComponentProps<"div">) {
   return (
-    <div className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-primary/20 bg-surface-sky px-4 text-sm font-bold text-primary">
-      {Icon ? <Icon className="size-4" aria-hidden="true" /> : null}
-      <span>{children}</span>
-    </div>
+    <div
+      className={cn(
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:[&>button]:min-w-[150px]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function TableActionBar({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-10 flex-wrap items-center justify-end gap-2",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+interface ListToolbarSearch {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}
+
+interface ListPageToolbarBaseProps extends Omit<
+  PageToolbarProps,
+  "children" | "footerActions"
+> {
+  /** Commands acting on the list — rendered below filters and aligned right. */
+  tableActions?: ReactNode;
+}
+
+type ListPageToolbarControlProps =
+  | {
+      search?: undefined;
+      filters?: undefined;
+      onClearFilters?: never;
+    }
+  | {
+      /** Optional search box — rendered first in the controls row. */
+      search?: ListToolbarSearch;
+      /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
+      filters: ReactNode;
+      /** Required whenever list controls exist, so a reset action cannot be omitted. */
+      onClearFilters: () => void;
+    }
+  | {
+      /** Search-only list controls still require the same reset action. */
+      search: ListToolbarSearch;
+      filters?: ReactNode;
+      onClearFilters: () => void;
+    };
+
+type ListPageToolbarProps = ListPageToolbarBaseProps &
+  ListPageToolbarControlProps;
+
+/**
+ * Canonical list-page header: one shell every list page shares so search,
+ * filters and count always render in the same order with identical markup.
+ * Composes the existing primitives (PageToolbar → ToolbarControls →
+ * SearchInput) — not a new layout, just the uniform arrangement.
+ * Inherits the full PageToolbar prop surface (title/description/icon/tone/
+ * actions + section props), so it stays a superset, never a narrowing.
+ */
+export function ListPageToolbar({
+  filters,
+  onClearFilters,
+  search,
+  tableActions,
+  ...toolbarProps
+}: ListPageToolbarProps) {
+  const hasControls = Boolean(search || filters);
+  const showClearFilters = hasControls && Boolean(onClearFilters);
+  const footerActions =
+    tableActions || showClearFilters ? (
+      <>
+        {tableActions}
+        {showClearFilters && onClearFilters ? (
+          <ClearFiltersButton onClear={onClearFilters} />
+        ) : null}
+      </>
+    ) : undefined;
+  return (
+    <PageToolbar {...toolbarProps} footerActions={footerActions}>
+      {hasControls ? (
+        <div className="flex flex-col gap-3">
+          {search ? (
+            <ToolbarControls>
+              <SearchInput
+                className="sm:max-w-md"
+                onChange={search.onChange}
+                placeholder={search.placeholder}
+                value={search.value}
+              />
+            </ToolbarControls>
+          ) : null}
+          {filters ? <ToolbarFilterGrid>{filters}</ToolbarFilterGrid> : null}
+        </div>
+      ) : null}
+    </PageToolbar>
   );
 }
 
@@ -195,88 +540,195 @@ type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
 const summaryToneClasses: Record<
   SummaryTone,
-  { card: string; accent: string; value: string }
+  {
+    surface: string;
+    iconBg: string;
+    iconColor: string;
+  }
 > = {
   default: {
-    card: "border-slate-200 bg-white",
-    accent: "bg-slate-300",
-    value: "text-slate-900",
+    surface: "bg-white",
+    iconBg: "bg-slate-100",
+    iconColor: "text-slate-600",
   },
   success: {
-    card: "border-success-200 bg-white",
-    accent: "bg-success",
-    value: "text-success-700",
+    surface: "bg-white",
+    iconBg: "bg-success-100",
+    iconColor: "text-success-700",
   },
   warning: {
-    card: "border-warning-200 bg-white",
-    accent: "bg-warning",
-    value: "text-warning-700",
+    surface: "bg-white",
+    iconBg: "bg-warning-100",
+    iconColor: "text-warning-700",
   },
   danger: {
-    card: "border-danger-200 bg-white",
-    accent: "bg-danger",
-    value: "text-danger-700",
+    surface: "bg-white",
+    iconBg: "bg-danger-100",
+    iconColor: "text-danger-700",
   },
   info: {
-    card: "border-primary/20 bg-white",
-    accent: "bg-primary",
-    value: "text-primary",
+    surface: "bg-white",
+    iconBg: "bg-brand-soft",
+    iconColor: "text-primary",
   },
 };
+
+interface SummaryMetricComparison {
+  value: ReactNode;
+  description: ReactNode;
+  tone?: SummaryTone;
+}
 
 interface SummaryMetric {
   label: ReactNode;
   value: ReactNode;
   tone?: SummaryTone;
+  icon?: LucideIcon;
+  /** Optional real baseline comparison, for example versus the previous academic year. */
+  comparison?: SummaryMetricComparison;
+  /** The one headline number in the row (usually "ทั้งหมด") reads larger than its siblings. */
+  emphasis?: boolean;
+  /** Turns the whole metric into one accessible filter/action target. */
+  onSelect?: () => void;
+  selected?: boolean;
+  selectionLabel?: string;
 }
 
-/** Column layouts keyed by card count — keeps metric grids consistent system-wide. */
+/** Fixed-column layouts for callers that want an exact grid. */
 const summaryColumnClasses: Record<number, string> = {
   1: "grid-cols-1",
-  2: "grid-cols-1 sm:grid-cols-2",
-  3: "grid-cols-1 sm:grid-cols-3",
-  4: "grid-cols-1 sm:grid-cols-4",
+  2: "grid-cols-2",
+  3: "grid-cols-2 sm:grid-cols-3",
+  4: "grid-cols-2 sm:grid-cols-4",
+  5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
   6: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6",
 };
 
 interface SummaryMetricsProps {
   items: SummaryMetric[];
-  /** Override the column count; defaults to a layout derived from item count. */
+  /** Force an exact column count; otherwise cards auto-fit and fill the row. */
   columns?: keyof typeof summaryColumnClasses;
+  /** Center incomplete rows while keeping the same 2/3-column card width. */
+  centerRows?: boolean;
   className?: string;
 }
 
-export function SummaryMetrics({ className, columns, items }: SummaryMetricsProps) {
-  const resolvedColumns = columns ?? (items.length >= 5 ? 6 : 4);
-  const columnsClass =
-    summaryColumnClasses[resolvedColumns] ?? summaryColumnClasses[4];
+export function SummaryMetrics({
+  centerRows = false,
+  className,
+  columns,
+  items,
+}: SummaryMetricsProps) {
+  // Default: cards auto-fit and stretch to fill the available width, so a row
+  // with few cards never leaves an empty gap on the right and never gets cramped.
+  const columnsClass = columns
+    ? (summaryColumnClasses[columns] ?? summaryColumnClasses[4])
+    : "[grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]";
+  const centeredCardClass =
+    "w-full flex-none sm:w-[calc((100%-0.875rem)/2)] lg:w-[calc((100%-1.75rem)/3)]";
   return (
-    <div className={cn("grid gap-3", columnsClass, className)}>
-      {items.map((item, index) => {
-        const tone = summaryToneClasses[item.tone ?? "default"];
-        return (
-          <div
-            className={cn(
-              "overflow-hidden rounded-lg border shadow-card",
-              tone.card,
-            )}
-            key={index}
-          >
-            <div className={cn("h-1.5", tone.accent)} />
-            <div className="p-4">
-              <div className="text-sm font-medium text-slate-500">{item.label}</div>
-              <div className={cn("mt-1 text-2xl font-bold", tone.value)}>
-                {item.value}
+    <section className={cn("w-full", className)}>
+      <div
+        className={cn(
+          centerRows ? "flex flex-wrap justify-center gap-3.5" : "grid gap-3.5",
+          !centerRows && columnsClass,
+        )}
+      >
+        {items.map((item, index) => {
+          const tone = summaryToneClasses[item.tone ?? "default"];
+          const comparison = item.comparison ?? {
+            value: "—%",
+            description: "ไม่มีข้อมูลเทียบปีการศึกษาที่แล้ว",
+            tone: "default" as const,
+          };
+          const comparisonTone =
+            summaryToneClasses[comparison.tone ?? "default"];
+          const Icon = item.icon;
+          const metricClassName = cn(
+            "relative flex min-h-24 flex-col justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 px-4 py-3.5 text-left shadow-card",
+            centerRows && centeredCardClass,
+            tone.surface,
+            item.onSelect &&
+              "transition-colors hover:border-primary/50 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            item.selected &&
+              "border-primary bg-brand-active ring-1 ring-primary/20",
+          );
+          const content = (
+            <>
+              <div className="flex w-full items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-medium text-slate-600">
+                    {item.label}
+                  </div>
+                  <div
+                    className={cn(
+                      "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
+                      item.emphasis ? "text-3xl" : "text-2xl",
+                    )}
+                    key={String(item.value)}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+                {Icon ? (
+                  <div
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                      tone.iconBg,
+                    )}
+                  >
+                    <Icon
+                      className={cn("size-5", tone.iconColor)}
+                      aria-hidden="true"
+                    />
+                  </div>
+                ) : null}
               </div>
+              <div className="flex w-full min-w-0 items-center gap-1.5 text-xs">
+                <span
+                  className={cn(
+                    "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
+                    comparisonTone.iconBg,
+                    comparisonTone.iconColor,
+                  )}
+                >
+                  {comparison.value}
+                </span>
+                <span className="truncate text-slate-500">
+                  {comparison.description}
+                </span>
+              </div>
+            </>
+          );
+          return item.onSelect ? (
+            <button
+              aria-label={item.selectionLabel}
+              aria-pressed={item.selected}
+              className={metricClassName}
+              data-summary-label={
+                typeof item.label === "string" ? item.label : undefined
+              }
+              key={index}
+              onClick={item.onSelect}
+              type="button"
+            >
+              {content}
+            </button>
+          ) : (
+            <div className={metricClassName} key={index}>
+              {content}
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
-interface ChoiceCardButtonProps extends Omit<ComponentProps<"button">, "title"> {
+interface ChoiceCardButtonProps extends Omit<
+  ComponentProps<"button">,
+  "title"
+> {
   description: ReactNode;
   icon: LucideIcon;
   selected: boolean;
@@ -295,7 +747,7 @@ export function ChoiceCardButton({
   return (
     <button
       className={cn(
-        "rounded-lg border bg-white p-5 text-left shadow-card transition-colors motion-reduce:transition-none",
+        "rounded-lg border bg-white p-5 text-left transition-colors motion-reduce:transition-none",
         selected
           ? "border-primary bg-surface-sky"
           : "border-slate-200 hover:border-primary hover:bg-muted",
@@ -304,7 +756,9 @@ export function ChoiceCardButton({
       type={type}
       {...props}
     >
-      <Icon className="mb-3 size-6 text-primary" aria-hidden="true" />
+      <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-brand-soft ring-1 ring-inset ring-black/[0.03]">
+        <Icon className="size-6 text-primary" aria-hidden="true" />
+      </div>
       <div className="font-bold text-slate-900">{title}</div>
       <div className="mt-1 text-sm text-slate-500">{description}</div>
     </button>
@@ -352,7 +806,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-/** Canonical empty placeholder — dashed surface card, centered. */
+/** Canonical empty placeholder with quiet border-first hierarchy. */
 export function EmptyState({
   action,
   className,
@@ -363,16 +817,20 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-lg border-2 border-dashed border-slate-200 bg-white px-8 py-16 text-center",
+        "rounded-lg border border-slate-200 bg-white px-8 py-12 text-center",
         className,
       )}
     >
       {Icon ? (
-        <Icon className="mx-auto mb-4 size-16 text-muted-foreground" aria-hidden="true" />
+        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-slate-50">
+          <Icon className="size-8 text-muted-foreground" aria-hidden="true" />
+        </div>
       ) : null}
       <h2 className="mb-2 text-lg font-bold text-slate-800">{title}</h2>
       {description ? (
-        <p className="mx-auto max-w-sm text-sm leading-relaxed text-slate-500">{description}</p>
+        <p className="mx-auto max-w-sm text-sm leading-relaxed text-slate-500">
+          {description}
+        </p>
       ) : null}
       {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
     </div>
@@ -400,10 +858,17 @@ export function ErrorState({
       <div className="flex items-start justify-between gap-4">
         <div>
           <AlertTitle>{title}</AlertTitle>
-          {description ? <AlertDescription>{description}</AlertDescription> : null}
+          {description ? (
+            <AlertDescription>{description}</AlertDescription>
+          ) : null}
         </div>
         {onRetry ? (
-          <Button className="shrink-0" onClick={onRetry} size="sm" variant="destructive">
+          <Button
+            className="shrink-0"
+            onClick={onRetry}
+            size="sm"
+            variant="destructive"
+          >
             {retryLabel}
           </Button>
         ) : null}
@@ -452,7 +917,10 @@ export function SkeletonTable({
 }) {
   return (
     <div
-      className={cn("overflow-hidden rounded-lg border border-slate-200 bg-white", className)}
+      className={cn(
+        "overflow-hidden rounded-lg border border-slate-200 bg-white",
+        className,
+      )}
       aria-busy="true"
     >
       <Skeleton className="h-12 w-full rounded-none" />

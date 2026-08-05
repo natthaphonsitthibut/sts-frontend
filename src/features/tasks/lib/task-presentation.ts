@@ -1,32 +1,37 @@
+import type { BadgeProps } from "../../../components/base";
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
+import { isLinkLocked as isTaskLinkLocked } from "../../../lib/link-lock";
 import type { AttendanceTaskStatus } from "../types/task.types";
+import type { TaskChainLink } from "../types/task.types";
+import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 export function formatDateTime(value?: string | null): string {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatThaiDateTime(value);
 }
 
 export function formatDate(value?: string | null): string {
-  if (!value) {
+  return formatThaiDate(value);
+}
+
+export function formatDateTimeRangeAge(
+  startValue?: string | null,
+  endValue?: string | null,
+): string {
+  if (!startValue || !endValue) {
     return "-";
   }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "-";
   }
-  return date.toLocaleDateString("th-TH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
+  if (days > 0) return `${days} วัน`;
+  return `${hours} ชม.`;
 }
 
 export function getTaskTypeLabel(type?: string | null): string {
@@ -36,23 +41,74 @@ export function getTaskTypeLabel(type?: string | null): string {
   return type || "-";
 }
 
-export function getStatusLabel(status?: string | null): string {
-  if (status === "ACTIVE") return "ใช้งานได้";
-  if (status === "LOCKED") return "ถูกล็อก";
-  if (status === "EXPIRED") return "หมดอายุ";
-  if (status === "COMPLETED") return "เสร็จสิ้น";
-  if (status === "OPEN") return "เปิดเคส";
-  if (status === "PENDING_REVIEW") return "รอตรวจ";
-  if (status === "IN_PROGRESS") return "กำลังติดตาม";
-  if (status === "AWAITING_HELP") return "รอช่วยเหลือ";
-  if (status === "RESOLVED") return "ปิดเคส";
-  return status || "-";
+export function getStatusLabel(
+  status: string | null | undefined,
+  catalog: readonly StatusCatalogItem[],
+): string {
+  return findStatusCatalogItem(catalog, status)?.label ?? status ?? "-";
 }
 
-export function getAttendanceStatusLabel(status: AttendanceTaskStatus | string): string {
-  if (status === "P_ABSENT" || status === "2" || status === "ABSENT") return "ขาด";
-  if (status === "P_LATE" || status === "3" || status === "LATE") return "สาย";
-  return "มา";
+export interface TaskLinkDisplayStatus {
+  label: string;
+  variant: BadgeProps["variant"];
+  state: "ACTIVE" | "LOCKED" | "EXPIRED" | "COMPLETED" | "OTHER";
+}
+
+export function getTaskLinkDisplayStatus(
+  link: TaskChainLink,
+  displayCatalog: readonly StatusCatalogItem[],
+  persistedCatalog: readonly StatusCatalogItem[] = [],
+): TaskLinkDisplayStatus {
+  const hasSubmission = Boolean(link.submission?.submitted_at || link.submission);
+  if (link.status === "COMPLETED" || hasSubmission) {
+    const item = findStatusCatalogItem(displayCatalog, "COMPLETED");
+    return {
+      label: item?.label ?? "COMPLETED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "COMPLETED",
+    };
+  }
+  const expiresAt = link.expires_at ? new Date(link.expires_at) : null;
+  if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+    const item = findStatusCatalogItem(displayCatalog, "EXPIRED");
+    return {
+      label: item?.label ?? "EXPIRED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "EXPIRED",
+    };
+  }
+  if (isTaskLinkLocked(link.admin_locked)) {
+    const item = findStatusCatalogItem(displayCatalog, "LOCKED");
+    return {
+      label: item?.label ?? "LOCKED",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "LOCKED",
+    };
+  }
+
+  if (link.status === "ACTIVE") {
+    const item = findStatusCatalogItem(displayCatalog, "ACTIVE");
+    return {
+      label: item?.label ?? "ACTIVE",
+      variant: item?.badgeVariant ?? "secondary",
+      state: "ACTIVE",
+    };
+  }
+
+  const item = findStatusCatalogItem(persistedCatalog, link.status);
+  return {
+    label: item?.label ?? link.status ?? "-",
+    variant: item?.badgeVariant ?? "secondary",
+    state: "OTHER",
+  };
+}
+
+export function getAttendanceStatusItem(
+  status: AttendanceTaskStatus | string,
+  catalog: readonly StatusCatalogItem[],
+): StatusCatalogItem | undefined {
+  const alias = status === "ABSENT" ? "P_ABSENT" : status === "LATE" ? "P_LATE" : status;
+  return findStatusCatalogItem(catalog, alias);
 }
 
 export function buildLineShareUrl(url: string): string {
@@ -63,6 +119,77 @@ export function copyText(value: string): void {
   void navigator.clipboard?.writeText(value);
 }
 
-export function isLinkLocked(value: boolean | number | null | undefined): boolean {
-  return value === true || value === 1;
+/**
+ * Rebuild a backend-issued task link onto the *current* origin (so it works even
+ * when the API returns its own host, e.g. in dev) and drop any legacy `#/` hash
+ * prefix. Keeps the link on our own domain — nothing is sent to a third party.
+ */
+export function normalizeTaskPublicLink(rawLink: string): string {
+  if (!rawLink || typeof window === "undefined") {
+    return rawLink;
+  }
+  try {
+    const url = new URL(rawLink, window.location.origin);
+    const path = url.hash.startsWith("#/") ? url.hash.slice(1) : url.pathname;
+    return `${window.location.origin}${path}${url.search}`;
+  } catch {
+    return rawLink;
+  }
+}
+
+/**
+ * Public link to hand out for a created link. LOGIN links open the magic-login
+ * page (so the holder is signed in with the assigned role); other types open the
+ * guest task page.
+ */
+export function buildTaskResultLink(rawLink: string, isLoginLink: boolean): string {
+  const normalized = normalizeTaskPublicLink(rawLink);
+  return isLoginLink ? normalized.replace("/task/", "/login/magic/") : normalized;
+}
+
+/** Turn a stored (often relative) link into a full shareable URL. */
+export function toAbsoluteUrl(value: string): string {
+  if (!value) {
+    return "";
+  }
+  if (/^https?:\/\//.test(value)) {
+    return value;
+  }
+  if (typeof window === "undefined") {
+    return value;
+  }
+  return `${window.location.origin}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
+// Re-exported from the shared lock module so login + attendance/visit links
+// detect "closed" the same robust way (number 1 / string "1" / boolean true).
+export { isLinkLocked } from "../../../lib/link-lock";
+
+/**
+ * Heading of a home-visit follow-up form: term context plus who the round is
+ * about. Composed from the task payload — every part is omitted when the API
+ * did not return it — so the submitted receipt and the form itself always read
+ * the same line without either one restating the wording.
+ */
+export function buildVisitReportFormTitle(task: {
+  academic_year?: number | string | null;
+  semester?: number | string | null;
+  student_name?: string | null;
+  student_grade?: string | null;
+  student_room?: string | null;
+}): string {
+  const term = [
+    task.academic_year ? `ปีการศึกษา ${task.academic_year}` : null,
+    task.semester ? `ภาคเรียนที่ ${task.semester}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const studentClass = [task.student_grade, task.student_room].filter(Boolean).join("/");
+
+  return [
+    "แบบฟอร์มการติดตามนักเรียน",
+    term ? ` ${term}` : "",
+    task.student_name ? `: ${task.student_name}` : "",
+    studentClass ? ` ${studentClass}` : "",
+  ].join("");
 }

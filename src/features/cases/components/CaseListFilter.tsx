@@ -1,21 +1,25 @@
-import { HeartHandshake } from "lucide-react";
+import type { ReactNode } from "react";
+import { ClipboardList } from "lucide-react";
 import {
-  CountBadge,
   FilterSelect,
-  PageToolbar,
-  SearchInput,
-  ToolbarControls,
+  ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { CASE_STATUS_META, CASE_STATUS_ORDER } from "../lib/case-presentation";
+import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface CaseListFilterProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   status: string;
   onStatusChange: (value: string) => void;
-  count: number;
+  schoolFilters?: ReactNode;
+  navigation?: ReactNode;
+  exportAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  updatedAt: number;
+  onClearFilters: () => void;
+  statuses: readonly StatusCatalogItem[];
+  showStatusFilter?: boolean;
 }
 
 export function CaseListFilter({
@@ -23,38 +27,52 @@ export function CaseListFilter({
   onSearchChange,
   status,
   onStatusChange,
-  count,
+  schoolFilters,
+  navigation,
+  exportAction,
   onRefresh,
+  updatedAt,
+  onClearFilters,
+  statuses,
+  showStatusFilter = true,
 }: CaseListFilterProps) {
   return (
-    <PageToolbar
-      icon={HeartHandshake}
-      title="เคสช่วยเหลือนักเรียน"
-      description="ติดตามและอัปเดตสถานะเคสช่วยเหลือนักเรียน"
-      actions={<RefreshButton onRefresh={onRefresh} />}
-    >
-      <ToolbarControls>
-        <SearchInput
-          onChange={onSearchChange}
-          placeholder="ค้นหาชื่อนักเรียน..."
-          value={searchQuery}
-        />
-
-        <FilterSelect
-          ariaLabel="กรองตามสถานะ"
-          onChange={onStatusChange}
-          value={status}
-        >
-          <option value="ALL">ทั้งหมด</option>
-          {CASE_STATUS_ORDER.map((value) => (
-            <option key={value} value={value}>
-              {CASE_STATUS_META[value].label}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <CountBadge>{count} เคส</CountBadge>
-      </ToolbarControls>
-    </PageToolbar>
+    <ListPageToolbar
+      icon={ClipboardList}
+      title="เคสติดตามนักเรียน"
+      description="ติดตามรายงานแต่ละรอบจนปิดเคส"
+      navigation={navigation}
+      tableActions={
+        <>
+          <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
+          {exportAction}
+        </>
+      }
+      onClearFilters={onClearFilters}
+      search={{
+        value: searchQuery,
+        onChange: onSearchChange,
+        placeholder: "ค้นหาชื่อนักเรียน...",
+      }}
+      filters={
+        <>
+          {schoolFilters}
+          {showStatusFilter ? (
+            <FilterSelect
+              ariaLabel="กรองตามสถานะ"
+              onChange={onStatusChange}
+              value={status}
+            >
+              <option value="ALL">ทั้งหมด</option>
+              {statuses.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </FilterSelect>
+          ) : null}
+        </>
+      }
+    />
   );
 }

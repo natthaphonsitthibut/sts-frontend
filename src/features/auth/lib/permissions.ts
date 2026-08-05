@@ -1,4 +1,7 @@
+import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+
 export interface DataScope {
+  global?: boolean;
   provinces?: string[];
   districts?: string[];
   sub_districts?: string[];
@@ -8,153 +11,145 @@ export interface DataScope {
   own_only?: boolean;
 }
 
+interface DataScopeSchoolLabel {
+  id: number | string;
+  name?: string | null;
+}
+
+interface DataScopeGradeLevelLabel {
+  id: number | string;
+  label?: string | null;
+}
+
 export interface MenuItem {
   id: string;
   label: string;
   iconName?: string;
+  permissionId?: string | string[];
   route?: string;
+  activeRoutes?: string[];
   children?: MenuItem[];
 }
 
 export const GRANT_EXEMPT_PERMISSION_IDS = ["student-self"] as const;
+
+const EXECUTIVE_ALLOWED_PERMISSIONS = ["home"] as const;
 
 export const ROLE_RANKS: Record<string, number> = {
   STUDENT: 1,
   TEACHER: 2,
   EXECUTIVE: 3,
   DIRECTOR: 4,
-  ADMIN_SCHOOL: 5,
-  ADMIN_SUBDISTRICT: 6,
-  ADMIN_DISTRICT: 7,
-  ADMIN_PROVINCE: 8,
-  ADMIN: 9,
-};
-
-export const ROLE_BASELINES: Record<string, string[]> = {
-  ADMIN: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "manage-role-groups",
-    "login-links",
-    "settings",
-    "import-data",
-  ],
-  ADMIN_PROVINCE: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-  ],
-  ADMIN_DISTRICT: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-  ],
-  ADMIN_SUBDISTRICT: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-  ],
-  ADMIN_SCHOOL: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-  ],
-  DIRECTOR: [
-    "home",
-    "dashboard",
-    "students",
-    "create",
-    "attendance",
-    "attendance-dashboard",
-    "manage-users-list",
-    "login-links",
-    "settings",
-  ],
-  EXECUTIVE: ["home", "dashboard", "students", "attendance-dashboard"],
-  TEACHER: ["home", "students", "attendance"],
-  STUDENT: ["home", "student-self"],
+  ADMIN: 5,
 };
 
 export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
-  ADMIN_PROVINCE: "แอดมินระดับจังหวัด",
-  ADMIN_DISTRICT: "แอดมินระดับอำเภอ",
-  ADMIN_SUBDISTRICT: "แอดมินระดับตำบล",
-  ADMIN_SCHOOL: "แอดมินระดับโรงเรียน",
   DIRECTOR: "ผู้อำนวยการ",
   EXECUTIVE: "ผู้บริหาร",
   TEACHER: "คุณครู",
   STUDENT: "นักเรียน",
 };
 
+export function describeDataScopeForDisplay(
+  scope: DataScope | null | undefined,
+  schoolLabels: DataScopeSchoolLabel[] = [],
+  gradeLevelLabels: DataScopeGradeLevelLabel[] = [],
+): string {
+  if (!scope) return "-";
+  if (scope.own_only) return "เฉพาะข้อมูลของตนเอง";
+
+  const parts: string[] = [];
+  if (scope.global) parts.push("ทั้งประเทศ");
+  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
+  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
+  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
+  if (scope.school_ids?.length) {
+    const schoolText =
+      schoolLabels.length > 0
+        ? schoolLabels.map((school) => school.name ?? school.id).join(", ")
+        : scope.school_ids.join(", ");
+    parts.push(`โรงเรียน: ${schoolText}`);
+  }
+  if (scope.grade_levels?.length) {
+    const gradeText =
+      gradeLevelLabels.length > 0
+        ? gradeLevelLabels.map((grade) => grade.label ?? grade.id).join(", ")
+        : scope.grade_levels.join(", ");
+    parts.push(`ระดับชั้น: ${gradeText}`);
+  }
+  if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
+
+  return parts.length > 0 ? parts.join(" · ") : "ยังไม่กำหนดขอบเขต";
+}
+
+const pageMenuItem = (
+  id: string,
+  route: keyof typeof PAGE_IDENTITIES,
+  permissionId?: string | string[],
+): MenuItem => ({
+  id,
+  label: PAGE_IDENTITIES[route].title,
+  iconName: PAGE_IDENTITIES[route].iconName,
+  permissionId,
+  route,
+});
+
 export const MENU_ITEMS: MenuItem[] = [
-  { id: "home", label: "หน้าหลัก", iconName: "home", route: "/" },
+  pageMenuItem("home", "/"),
+  pageMenuItem("dashboard", "/student-risk-report"),
+  pageMenuItem("students", "/students"),
+  pageMenuItem("classrooms", "/classrooms", "manage-school-structure"),
   {
-    id: "dashboard",
-    label: "รายงานนักเรียน",
-    iconName: "chart-line",
-    route: "/dashboard",
+    id: "case-system",
+    label: "งานติดตามเคส",
+    iconName: "folder-heart",
+    children: [
+      {
+        ...pageMenuItem("review-cases", "/cases"),
+      },
+      {
+        ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
+      },
+    ],
   },
+  pageMenuItem("student-self", "/my-attendance"),
+  pageMenuItem("create", "/create"),
   {
-    id: "students",
-    label: "รายชื่อนักเรียน",
-    iconName: "user-graduate",
-    route: "/students",
-  },
-  {
-    id: "student-self",
-    label: "ข้อมูลตัวเอง",
-    iconName: "user-circle",
-    route: "/my-attendance",
-  },
-  { id: "create", label: "สร้างลิงค์", iconName: "link", route: "/create" },
-  {
-    id: "import-data",
-    label: "นำเข้าข้อมูล",
-    iconName: "file-import",
-    route: "/import-data",
+    id: "data-management",
+    label: "จัดการข้อมูล",
+    iconName: "file-spreadsheet",
+    children: [
+      {
+        ...pageMenuItem("manage-school-structure", "/school-structure"),
+      },
+      {
+        ...pageMenuItem("manage-curriculum", "/curriculum"),
+      },
+      {
+        ...pageMenuItem("import-data", "/import-data"),
+      },
+      {
+        ...pageMenuItem("export-data", "/data-exports"),
+      },
+    ],
   },
   {
     id: "attendance-system",
     label: "ระบบเช็คชื่อ",
-    iconName: "clipboard-check",
+    iconName: "calendar-check",
     children: [
       {
-        id: "attendance-dashboard",
-        label: "Dashboard เช็คชื่อ",
-        iconName: "chart-bar",
-        route: "/attendance-dashboard",
+        ...pageMenuItem("attendance", "/attendance"),
       },
       {
-        id: "attendance",
-        label: "เช็คชื่อ",
-        iconName: "edit",
-        route: "/attendance",
+        ...pageMenuItem("manage-teacher-access", "/attendance-links"),
+      },
+      {
+        ...pageMenuItem("attendance-operations", "/attendance-operations", "attendance-dashboard"),
+      },
+      {
+        ...pageMenuItem("timetable", "/timetable", ["home", "student-self"]),
       },
     ],
   },
@@ -164,39 +159,81 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "users-cog",
     children: [
       {
-        id: "manage-users-list",
-        label: "จัดการรายชื่อผู้ใช้งาน",
-        iconName: "users",
-        route: "/manage-users",
+        ...pageMenuItem("manage-users-list", "/manage-users"),
       },
       {
-        id: "manage-role-groups",
-        label: "จัดการกลุ่มผู้ใช้งาน",
-        iconName: "user-tag",
-        route: "/manage-role-groups",
+        ...pageMenuItem("manage-teachers", "/manage-teachers"),
       },
       {
-        id: "login-links",
-        label: "ลิงก์เข้าสู่ระบบ",
-        iconName: "link",
-        route: "/login-links",
+        ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
       },
     ],
   },
   {
-    id: "settings",
-    label: "ตั้งค่าระบบ (Master Data)",
-    iconName: "settings",
-    route: "/settings",
+    id: "recruitment-system",
+    label: "ระบบรับสมัคร",
+    iconName: "users-round",
+    permissionId: "field-monitor",
+    children: [
+      {
+        ...pageMenuItem("field-followers", "/field-followers", "field-monitor"),
+      },
+      {
+        ...pageMenuItem("field-followers-review", "/field-follower-applications", "field-monitor"),
+      },
+    ],
   },
+  pageMenuItem("field-monitor-map", "/field-monitor-map", "field-monitor"),
+  pageMenuItem("settings", "/settings"),
 ];
 
 export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
-  const rolePermissions = roles.flatMap((role) => ROLE_BASELINES[role] ?? []);
-  return Array.from(new Set([...rolePermissions, ...customPermissions]));
+  const isRestrictedExecutive =
+    roles.includes("EXECUTIVE") &&
+    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
+  if (isRestrictedExecutive) {
+    const hasWildcard = customPermissions.some(
+      (permission) => permission === "*" || permission === "ALL",
+    );
+    return hasWildcard
+      ? [...EXECUTIVE_ALLOWED_PERMISSIONS]
+      : customPermissions.filter((permission) =>
+          EXECUTIVE_ALLOWED_PERMISSIONS.includes(
+            permission as (typeof EXECUTIVE_ALLOWED_PERMISSIONS)[number],
+          ),
+        );
+  }
+
+  const roleDefaults = roles.some((role) => role === "ADMIN" || role === "DIRECTOR")
+    ? ["edit-students", "export-data"]
+    : [];
+  return Array.from(new Set([...customPermissions, ...roleDefaults]));
+}
+
+export function isStudentOnlyRole(roles: string[]): boolean {
+  // Any non-STUDENT role (system or custom role group) means a staff session.
+  return roles.length > 0 && roles.every((role) => role === "STUDENT");
+}
+
+interface StudentSelfSessionLike {
+  virtual_login?: boolean;
+  virtual_auth_token?: string;
+  permissions?: string[];
+  data_scope?: DataScope;
+}
+
+export function isStudentSelfSession(
+  user: StudentSelfSessionLike | null | undefined,
+): boolean {
+  return Boolean(
+    user?.virtual_login &&
+      user.virtual_auth_token &&
+      user.permissions?.includes("student-self") &&
+      user.data_scope?.own_only,
+  );
 }
 
 export function hasPermission(
@@ -215,18 +252,23 @@ export function filterMenuItems(
   menuItems: MenuItem[],
   userPermissions: string[],
 ): MenuItem[] {
+  const canAccessItem = (item: MenuItem): boolean => {
+    const requiredPermissions = item.permissionId ?? item.id;
+    return Array.isArray(requiredPermissions)
+      ? requiredPermissions.some((permissionId) => hasPermission(userPermissions, permissionId))
+      : hasPermission(userPermissions, requiredPermissions);
+  };
+
   return menuItems
     .map((item) => {
       if (item.children) {
-        const filteredChildren = item.children.filter((child) =>
-          hasPermission(userPermissions, child.id),
-        );
+        const filteredChildren = item.children.filter(canAccessItem);
         return filteredChildren.length > 0
           ? { ...item, children: filteredChildren }
           : null;
       }
 
-      return hasPermission(userPermissions, item.id) ? item : null;
+      return canAccessItem(item) ? item : null;
     })
     .filter((item): item is MenuItem => item !== null);
 }

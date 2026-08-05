@@ -1,27 +1,126 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
+  PaginationMeta,
   StudentAttendanceCalendarRecord,
   StudentAttendanceSummaryResponse,
+  StudentProfileSummary,
+  StudentSubjectAttendanceRecord,
   StudentCase,
   StudentDetail,
+  StudentFilterOptions,
+  StudentPiiRevealRequest,
+  StudentPiiRevealResponse,
   StudentListItem,
   StudentListQuery,
+  StudentListResult,
+  StudentUpdatePayload,
+  CreatePiiExportRequestPayload,
+  PiiExportDownloadResult,
+  PiiExportRequestListQuery,
+  PiiExportRequestListResult,
+  PiiExportRequestResponse,
+  RejectPiiExportRequestPayload,
 } from "../types/students.types";
 
 interface DataEnvelope<T> {
   data?: T;
+  meta?: PaginationMeta;
 }
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+const STUDENT_ATTENDANCE_STATUS_CODE = {
+  PRESENT: 1,
+  ABSENT: 2,
+  LATE: 3,
+  LEAVE: 4,
+} as const;
+const STUDENT_ATTENDANCE_STATUS_ALIASES = [
+  {
+    normalized: "PRESENT",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.PRESENT,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.PRESENT),
+      "P_PRESENT",
+      "PRESENT",
+    ],
+  },
+  {
+    normalized: "ABSENT",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.ABSENT,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.ABSENT),
+      "P_ABSENT",
+      "ABSENT",
+    ],
+  },
+  {
+    normalized: "LATE",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.LATE,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.LATE),
+      "P_LATE",
+      "LATE",
+    ],
+  },
+  {
+    normalized: "LEAVE",
+    values: [
+      STUDENT_ATTENDANCE_STATUS_CODE.LEAVE,
+      String(STUDENT_ATTENDANCE_STATUS_CODE.LEAVE),
+      "P_LEAVE",
+      "LEAVE",
+    ],
+  },
+] as const;
+
 interface StudentsService {
-  getStudents: (query?: StudentListQuery) => Promise<StudentListItem[]>;
+  getStudents: (query?: StudentListQuery) => Promise<StudentListResult>;
+  getFilterOptions: (
+    query?: Pick<
+      StudentListQuery,
+      | "schoolId"
+      | "province"
+      | "district"
+      | "subDistrict"
+      | "grade"
+      | "studentStatusCode"
+      | "enrollmentState"
+    >,
+  ) => Promise<StudentFilterOptions>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
-  getStudentCasesByName: (studentName: string) => Promise<StudentCase[]>;
+  updateStudentPhoto: (
+    studentId: string,
+    input: { photo?: File; remove?: boolean },
+  ) => Promise<StudentDetail>;
+  revealStudentPii: (
+    studentId: string,
+    payload: StudentPiiRevealRequest,
+  ) => Promise<StudentPiiRevealResponse>;
+  listPiiExportRequests: (
+    query?: PiiExportRequestListQuery,
+  ) => Promise<PiiExportRequestListResult>;
+  createPiiExportRequest: (
+    payload: CreatePiiExportRequestPayload,
+  ) => Promise<PiiExportRequestResponse>;
+  approvePiiExportRequest: (id: string) => Promise<PiiExportRequestResponse>;
+  rejectPiiExportRequest: (
+    payload: RejectPiiExportRequestPayload,
+  ) => Promise<PiiExportRequestResponse>;
+  downloadPiiExportCsv: (token: string) => Promise<PiiExportDownloadResult>;
+  updateStudent: (studentId: string, payload: StudentUpdatePayload) => Promise<StudentDetail>;
+  getStudentCasesById: (studentId: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
   ) => Promise<StudentAttendanceCalendarRecord[]>;
   getStudentAttendanceSummary: (
     studentId: string,
   ) => Promise<StudentAttendanceSummaryResponse>;
+  getStudentProfileSummary: (studentId: string) => Promise<StudentProfileSummary>;
+  getStudentSubjectAttendance: (
+    studentId: string,
+    date: string,
+  ) => Promise<StudentSubjectAttendanceRecord[]>;
 }
 
 function normalizeArrayResponse<T>(
@@ -44,74 +143,242 @@ function buildStudentListParams(
   if (schoolId) {
     params.schoolId = schoolId;
   }
+  const province = query.province?.trim();
+  if (province) {
+    params.province = province;
+  }
+  const district = query.district?.trim();
+  if (district) {
+    params.district = district;
+  }
+  const subDistrict = query.subDistrict?.trim();
+  if (subDistrict) {
+    params.subDistrict = subDistrict;
+  }
   if (query.grade && query.grade !== "ALL") {
     params.grade = query.grade;
   }
   if (query.room && query.room !== "ALL") {
     params.room = query.room;
   }
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+  if (query.enrollmentState) {
+    params.enrollmentState = query.enrollmentState;
+  }
+  if (query.studentStatusCode && query.studentStatusCode !== "ALL") {
+    params.student_status_code = query.studentStatusCode;
+  }
+  if (query.riskTier) {
+    params.riskTier = query.riskTier;
+  }
+  if (typeof query.page === "number") {
+    params.page = String(query.page);
+  }
+  if (typeof query.limit === "number") {
+    params.limit = String(query.limit);
+  }
   return params;
 }
 
 function normalizeAttendanceStatus(status: unknown): string {
-  if (
-    status === 1 ||
-    status === "1" ||
-    status === "P_PRESENT" ||
-    status === "PRESENT"
-  ) {
-    return "PRESENT";
-  }
-  if (
-    status === 2 ||
-    status === "2" ||
-    status === "P_ABSENT" ||
-    status === "ABSENT"
-  ) {
-    return "ABSENT";
-  }
-  if (
-    status === 3 ||
-    status === "3" ||
-    status === "P_LATE" ||
-    status === "LATE"
-  ) {
-    return "LATE";
-  }
-  if (
-    status === 4 ||
-    status === "4" ||
-    status === "P_LEAVE" ||
-    status === "LEAVE"
-  ) {
-    return "LEAVE";
-  }
-  return "UNKNOWN";
+  return (
+    STUDENT_ATTENDANCE_STATUS_ALIASES.find((alias) =>
+      alias.values.some((value) => value === status),
+    )?.normalized ?? "UNKNOWN"
+  );
 }
 
 async function getStudents(
   query: StudentListQuery = {},
-): Promise<StudentListItem[]> {
+): Promise<StudentListResult> {
   const params = buildStudentListParams(query);
   const response = await apiClient.get<
     StudentListItem[] | DataEnvelope<StudentListItem[]>
-  >("/api/students", { params });
-  return normalizeArrayResponse(response.data);
+  >("/students", { params });
+
+  const items = normalizeArrayResponse(response.data);
+  const meta = Array.isArray(response.data) ? undefined : response.data?.meta;
+  const limit = meta?.limit ?? query.limit ?? DEFAULT_LIMIT;
+  const page = meta?.page ?? query.page ?? DEFAULT_PAGE;
+  const totalCount = meta?.totalCount ?? items.length;
+
+  return {
+    items,
+    meta: {
+      page,
+      limit,
+      totalCount,
+      totalPages:
+        meta?.totalPages ?? (limit > 0 ? Math.ceil(totalCount / limit) : 0),
+    },
+  };
+}
+
+async function getFilterOptions(
+  query: Pick<
+    StudentListQuery,
+    | "schoolId"
+    | "province"
+    | "district"
+    | "subDistrict"
+    | "grade"
+    | "studentStatusCode"
+    | "enrollmentState"
+  > = {},
+): Promise<StudentFilterOptions> {
+  const params: Record<string, string> = {};
+  const schoolId = query.schoolId?.trim();
+  if (schoolId) {
+    params.schoolId = schoolId;
+  }
+  const province = query.province?.trim();
+  if (province) {
+    params.province = province;
+  }
+  const district = query.district?.trim();
+  if (district) {
+    params.district = district;
+  }
+  const subDistrict = query.subDistrict?.trim();
+  if (subDistrict) {
+    params.subDistrict = subDistrict;
+  }
+  if (query.grade && query.grade !== "ALL") {
+    params.grade = query.grade;
+  }
+  if (query.enrollmentState) {
+    params.enrollmentState = query.enrollmentState;
+  }
+  if (query.studentStatusCode && query.studentStatusCode !== "ALL") {
+    params.student_status_code = query.studentStatusCode;
+  }
+
+  const response = await apiClient.get<DataEnvelope<StudentFilterOptions>>(
+    "/students/filter-options",
+    { params },
+  );
+
+  return {
+    grades: response.data?.data?.grades ?? [],
+    rooms: response.data?.data?.rooms ?? [],
+  };
 }
 
 async function getStudentById(studentId: string): Promise<StudentDetail> {
-  const response = await apiClient.get<StudentDetail>(
-    `/api/students/${studentId}`,
+  const response = await apiClient.get<StudentDetail>(`/students/${studentId}`);
+  return response.data;
+}
+
+async function revealStudentPii(
+  studentId: string,
+  payload: StudentPiiRevealRequest,
+): Promise<StudentPiiRevealResponse> {
+  const response = await apiClient.post<StudentPiiRevealResponse>(
+    `/students/${studentId}/pii-reveal`,
+    payload,
   );
   return response.data;
 }
 
-async function getStudentCasesByName(
-  studentName: string,
-): Promise<StudentCase[]> {
+function buildPiiExportRequestParams(
+  query: PiiExportRequestListQuery = {},
+): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (query.status) {
+    params.status = query.status;
+  }
+  if (typeof query.page === "number") {
+    params.page = String(query.page);
+  }
+  if (typeof query.limit === "number") {
+    params.limit = String(query.limit);
+  }
+  return params;
+}
+
+async function listPiiExportRequests(
+  query: PiiExportRequestListQuery = {},
+): Promise<PiiExportRequestListResult> {
+  const response = await apiClient.get<PiiExportRequestListResult>(
+    "/students/pii-export-requests",
+    { params: buildPiiExportRequestParams(query) },
+  );
+  return response.data;
+}
+
+async function createPiiExportRequest(
+  payload: CreatePiiExportRequestPayload,
+): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    "/students/pii-export-requests",
+    payload,
+  );
+  return response.data;
+}
+
+async function approvePiiExportRequest(id: string): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    `/students/pii-export-requests/${id}/approve`,
+  );
+  return response.data;
+}
+
+async function rejectPiiExportRequest(
+  payload: RejectPiiExportRequestPayload,
+): Promise<PiiExportRequestResponse> {
+  const response = await apiClient.post<PiiExportRequestResponse>(
+    `/students/pii-export-requests/${payload.id}/reject`,
+    { rejected_reason: payload.rejected_reason },
+  );
+  return response.data;
+}
+
+function getPiiExportFilename(contentDisposition: string | undefined): string {
+  const match = contentDisposition?.match(/filename="?([^"]+)"?/i);
+  return match?.[1] ?? "pii-export.csv";
+}
+
+async function downloadPiiExportCsv(token: string): Promise<PiiExportDownloadResult> {
+  const response = await apiClient.get<Blob>("/students/pii-export-download", {
+    params: { token },
+    responseType: "blob",
+  });
+  return {
+    blob: response.data,
+    filename: getPiiExportFilename(response.headers["content-disposition"]),
+  };
+}
+
+async function updateStudent(
+  studentId: string,
+  payload: StudentUpdatePayload,
+): Promise<StudentDetail> {
+  const response = await apiClient.patch<StudentDetail>(`/students/${studentId}`, payload);
+  return response.data;
+}
+
+/** Upload replaces the photo; passing no file with `remove` clears it. */
+async function updateStudentPhoto(
+  studentId: string,
+  input: { photo?: File; remove?: boolean },
+): Promise<StudentDetail> {
+  const form = new FormData();
+  if (input.photo) form.append("photo", input.photo);
+  if (input.remove) form.append("removePhoto", "true");
+  const response = await apiClient.patch<StudentDetail>(
+    `/students/${encodeURIComponent(studentId)}/photo`,
+    form,
+  );
+  return response.data;
+}
+
+async function getStudentCasesById(studentId: string): Promise<StudentCase[]> {
   const response = await apiClient.get<
     StudentCase[] | DataEnvelope<StudentCase[]>
-  >(`/api/students/cases/by-name/${encodeURIComponent(studentName)}`);
+  >(`/students/${encodeURIComponent(studentId)}/cases`);
   return normalizeArrayResponse(response.data);
 }
 
@@ -121,7 +388,7 @@ async function getStudentAttendance(
   const response = await apiClient.get<
     | StudentAttendanceCalendarRecord[]
     | DataEnvelope<StudentAttendanceCalendarRecord[]>
-  >(`/api/students/attendance/${studentId}`);
+  >(`/students/attendance/${studentId}`);
   return normalizeArrayResponse(response.data);
 }
 
@@ -136,7 +403,9 @@ async function getStudentAttendanceSummary(
     status: normalizeAttendanceStatus(record.status),
   }));
 
-  const stats = summaryRecords.reduce<StudentAttendanceSummaryResponse["stats"]>(
+  const stats = summaryRecords.reduce<
+    StudentAttendanceSummaryResponse["stats"]
+  >(
     (acc, record) => {
       if (record.status === "PRESENT") {
         acc.present += 1;
@@ -154,10 +423,42 @@ async function getStudentAttendanceSummary(
   return { records: summaryRecords, stats };
 }
 
+async function getStudentProfileSummary(studentId: string): Promise<StudentProfileSummary> {
+  const response = await apiClient.get<DataEnvelope<StudentProfileSummary>>(
+    `/students/${encodeURIComponent(studentId)}/profile-summary`,
+  );
+  if (!response.data.data) {
+    throw new Error("Student profile summary response is missing data");
+  }
+  return response.data.data;
+}
+
+async function getStudentSubjectAttendance(
+  studentId: string,
+  date: string,
+): Promise<StudentSubjectAttendanceRecord[]> {
+  const response = await apiClient.get<DataEnvelope<StudentSubjectAttendanceRecord[]>>(
+    `/students/${encodeURIComponent(studentId)}/attendance-subjects`,
+    { params: { date } },
+  );
+  return response.data.data ?? [];
+}
+
 export const studentsService: StudentsService = {
   getStudents,
+  getFilterOptions,
   getStudentById,
-  getStudentCasesByName,
+  revealStudentPii,
+  listPiiExportRequests,
+  createPiiExportRequest,
+  approvePiiExportRequest,
+  rejectPiiExportRequest,
+  downloadPiiExportCsv,
+  updateStudent,
+  updateStudentPhoto,
+  getStudentCasesById,
   getStudentAttendance,
   getStudentAttendanceSummary,
+  getStudentProfileSummary,
+  getStudentSubjectAttendance,
 };

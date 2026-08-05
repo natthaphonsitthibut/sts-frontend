@@ -1,85 +1,86 @@
-import { Lock, SquarePen, Trash2 } from "lucide-react";
-import { Badge, IconButton } from "../../../components/base";
+import { SquarePen, Trash2 } from "lucide-react";
+import { IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
-import { ROLE_SCOPE_MODE_LABELS } from "../lib/admin-presentation";
+import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import { EmptyState } from "../../../components/layout/page-primitives";
 import type { RoleDefinition } from "../types/admin.types";
 
+const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
+
 interface RoleGroupTableProps {
-  roleGroups: RoleDefinition[];
-  onEdit: (roleGroup: RoleDefinition) => void;
+  labelOf: (permission: string) => string;
   onDelete: (roleGroup: RoleDefinition) => void;
+  onEdit: (roleGroup: RoleDefinition) => void;
+  onSortChange: (sort: DataTableSortState | undefined) => void;
+  roleGroups: RoleDefinition[];
+  sort?: DataTableSortState;
 }
 
 export function RoleGroupTable({
-  roleGroups,
-  onEdit,
+  labelOf,
   onDelete,
+  onEdit,
+  onSortChange,
+  roleGroups,
+  sort,
 }: RoleGroupTableProps) {
   return (
     <DataTable
-      headings={["ตำแหน่ง", "ขอบเขตข้อมูล", "สิทธิ์", "ผู้ใช้", ""]}
-      minWidthClassName="min-w-[720px]"
+      columnWidths={["w-[30%]", "w-[55%]", "w-[15%]"]}
+      headings={[
+        { label: "กลุ่มเมนู", sortKey: "group" },
+        { label: "เมนู", sortKey: "menus" },
+        { label: "เครื่องมือ", className: "text-right" },
+      ]}
+      minWidthClassName="min-w-[640px]"
+      onSortChange={onSortChange}
       responsive={false}
+      sort={sort}
       footer={
         roleGroups.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">
-            ยังไม่มีกลุ่มสิทธิ์
-          </div>
+          <EmptyState
+            className="rounded-none border-none shadow-none"
+            description="เพิ่มกลุ่มเมนูแรกเพื่อกำหนดรายการเมนูของโรงเรียนนี้"
+            icon={MENU_GROUPS_ICON}
+            title="ยังไม่มีกลุ่มเมนู"
+          />
         ) : null
       }
     >
-      {roleGroups.map((role) => (
-        <DataTableRow key={role.id ?? role.name}>
-          <DataTableCell>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">
-                {role.label || role.name}
-              </span>
-              {role.is_system ? (
-                <Badge variant="secondary" className="gap-1">
-                  <Lock className="size-3" aria-hidden="true" />
-                  ระบบ
-                </Badge>
-              ) : null}
-            </div>
-            <div className="mt-0.5 text-xs font-semibold text-slate-400">
-              {role.name} · ลำดับ {role.rank}
-            </div>
-          </DataTableCell>
-          <DataTableCell className="text-sm text-slate-600">
-            {ROLE_SCOPE_MODE_LABELS[role.scope_mode] ?? role.scope_mode}
-          </DataTableCell>
-          <DataTableCell className="text-sm font-medium text-slate-500">
-            {role.default_permissions.length} รายการ
-          </DataTableCell>
-          <DataTableCell className="text-sm font-medium text-slate-500">
-            {role.user_count ?? 0}
-          </DataTableCell>
-          <DataTableCell>
-            <div className="flex items-center justify-end gap-1">
-              <IconButton
-                aria-label="แก้ไขกลุ่มสิทธิ์"
-                className="text-primary"
-                icon={SquarePen}
-                onClick={() => onEdit(role)}
-                variant="ghost"
-              />
-              <IconButton
-                aria-label="ลบกลุ่มสิทธิ์"
-                className="text-danger disabled:opacity-40"
-                disabled={role.is_system}
-                icon={Trash2}
-                onClick={() => onDelete(role)}
-                variant="ghost"
-              />
-            </div>
-          </DataTableCell>
-        </DataTableRow>
-      ))}
+      {roleGroups.map((role) => {
+        const menuLabels = role.default_permissions.map(labelOf);
+        return (
+          <DataTableRow key={role.id ?? role.name}>
+            <DataTableCell className="font-semibold text-slate-800">
+              {role.label || role.name}
+            </DataTableCell>
+            <DataTableCell className="whitespace-normal leading-6 text-slate-700">
+              {menuLabels.length > 0 ? menuLabels.join(", ") : "-"}
+            </DataTableCell>
+            <DataTableCell>
+              <div className="flex items-center justify-end gap-1">
+                <IconButton
+                  aria-label={`แก้ไขกลุ่มเมนู ${role.label || role.name}`}
+                  icon={SquarePen}
+                  onClick={() => onEdit(role)}
+                  variant="edit"
+                />
+                <IconButton
+                  aria-label={`ลบกลุ่มเมนู ${role.label || role.name}`}
+                  icon={Trash2}
+                  onClick={() => onDelete(role)}
+                  variant="delete"
+                />
+              </div>
+            </DataTableCell>
+          </DataTableRow>
+        );
+      })}
     </DataTable>
   );
 }

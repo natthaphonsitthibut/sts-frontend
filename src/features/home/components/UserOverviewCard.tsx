@@ -18,7 +18,7 @@ export function UserOverviewCard({
   return (
     <Card className={className}>
       <div className="flex min-h-24 items-center gap-4 p-5">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xl font-bold text-muted-foreground">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-soft text-lg font-bold text-primary shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
           {initials}
         </div>
         <div className="min-w-0">

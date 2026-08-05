@@ -12,8 +12,7 @@ interface UpdateCaseVariables {
 }
 
 /**
- * Updates a case's status by submitting a review action (ASSIST / FORWARD /
- * CLOSE) plus an optional note. The resulting status is resolved server-side.
+ * Updates a case through the configured review actions.
  */
 export function useUpdateCase() {
   const queryClient = useQueryClient();

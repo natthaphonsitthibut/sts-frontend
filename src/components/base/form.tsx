@@ -2,27 +2,60 @@ import type { ComponentProps, ReactNode } from "react";
 import {
   FormProvider,
   useFormContext,
+  type FieldErrors,
   type FieldPath,
   type FieldValues,
   type UseFormReturn,
 } from "react-hook-form";
 import { cn } from "../../lib/utils";
+import { resolveFieldError } from "./field-error";
 import { Label } from "./label";
 
 export interface FormProps<TFieldValues extends FieldValues> {
   children: ReactNode;
   form: UseFormReturn<TFieldValues>;
   onSubmit: (values: TFieldValues) => void | Promise<void>;
+  /**
+   * Called after a failed validation pass, in addition to the shared
+   * scroll-to-first-error behaviour. Pages whose fields can be unmounted at
+   * submit time (tabbed forms) use this to surface errors the scroll cannot
+   * reach — an invisible field silently swallows the submit otherwise.
+   */
+  onInvalid?: (errors: FieldErrors<TFieldValues>) => void;
 }
 
 export function Form<TFieldValues extends FieldValues>({
   children,
   form,
   onSubmit,
+  onInvalid,
 }: FormProps<TFieldValues>) {
+  // On a failed submit, scroll to and focus the first invalid field so the user
+  // is taken straight to what is missing instead of scrolling to find it. Shared
+  // here so every form gets the same behaviour.
+  function scrollToFirstError(errors: FieldErrors<TFieldValues>): void {
+    const firstName = Object.keys(errors)[0];
+    if (!firstName) {
+      return;
+    }
+    const field = document.querySelector(`[name="${firstName}"]`);
+    if (field instanceof HTMLElement) {
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+      field.focus({ preventScroll: true });
+    }
+  }
+
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>{children}</form>
+      <form
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          scrollToFirstError(errors);
+          onInvalid?.(errors);
+        })}
+      >
+        {children}
+      </form>
     </FormProvider>
   );
 }
@@ -36,10 +69,11 @@ export interface FormLabelProps extends ComponentProps<"label"> {
 }
 
 export function FormLabel({ children, required, ...props }: FormLabelProps) {
+  // The asterisk itself lives in the base Label so RHF and plain forms share
+  // one required-marker pattern.
   return (
-    <Label {...props}>
+    <Label required={required} {...props}>
       {children}
-      {required ? <span className="ml-1 text-red-600">*</span> : null}
     </Label>
   );
 }
@@ -58,7 +92,7 @@ export function FormMessage<TFieldValues extends FieldValues>({
     formState: { errors },
   } = useFormContext<TFieldValues>();
 
-  const error = name ? errors[name] : undefined;
+  const error = name ? resolveFieldError(errors, name) : undefined;
   const message = typeof error?.message === "string" ? error.message : "";
 
   // Always render (reserving one line) so toggling the message on/off does not

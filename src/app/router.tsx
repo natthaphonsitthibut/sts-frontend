@@ -4,43 +4,80 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import {
   AdminAccessPage,
+  AuditLogDetailPage,
   AttendanceCheckInPage,
-  AttendanceLinksDashboardPage,
+  MyClassroomsPage,
+  TeacherAttendanceHistoryPage,
+  TeacherAttendanceLinksPage,
+  TeacherLineLinkPage,
+  TeacherLineLinkResultPage,
+  TeacherClassroomPage,
+  TeacherLinkLayout,
+  TeacherStudentProfilePage,
+  TeacherTimetablePage,
+  AttendanceOperationsPage,
   AttendanceRecordPage,
   CasesListPage,
+  CompletedPage,
+  ClassroomsPage,
+  ClassroomDetailPage,
+  CaseDetailPage,
+  CaseReviewDetailPage,
   ChangePasswordPage,
   CreateTaskPage,
+  DataExportsPage,
   DashboardPage,
   DelegatePage,
   ExpiredPage,
+  FieldFollowerApplicationPage,
+  FieldFollowerDetailPage,
+  FieldFollowersReviewPage,
+  FieldMonitorMapPage,
   ForbiddenPage,
   ImportDataPage,
+  ImportQuarantineDetailPage,
   LockedPage,
-  LoginLinkFormPage,
-  LoginLinksPage,
-  MagicLoginPage,
   MainPage,
+  MasterDataLookupsPage,
+  CurriculumGradesPage,
+  CurriculumSubjectFormPage,
+  CurriculumSubjectsPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
   ManageUserFormPage,
   ManageUsersPage,
   NotFoundPage,
+  NotificationsPage,
+  ProfilePage,
   ReportPage,
   RouteSuspense,
+  SchoolStructurePage,
   StudentDetailPage,
+  StudentEditPage,
   StudentListPage,
   StudentSelfPage,
+  StudentStatusesPage,
   SuccessPage,
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TeacherFormPage,
+  TeacherCommentReportsPage,
+  TeachersPage,
+  TimetablePage,
+  UserDetailPage,
+  VisitLinksPage,
 } from "./lazy-pages";
+import {
+  LegacyRouteRedirect,
+  LegacyTaskDetailRedirect,
+} from "./route-redirects";
 
 function withSuspense(children: ReactNode): ReactNode {
   return <RouteSuspense>{children}</RouteSuspense>;
 }
 
-function protectedElement(children: ReactNode, permission?: string): ReactNode {
+function protectedElement(children: ReactNode, permission?: string | string[]): ReactNode {
   return (
     <ProtectedRoute permission={permission}>
       {withSuspense(children)}
@@ -62,20 +99,65 @@ export const router = createBrowserRouter([
         element: protectedElement(<MainPage />, "home"),
       },
       {
-        path: "dashboard",
+        path: "student-risk-report",
         element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
+        path: "student-risk-report/teacher-comments",
+        element: protectedElement(
+          <TeacherCommentReportsPage />,
+          "manage-student-observations",
+        ),
+      },
+      {
+        // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
+        path: "student-risk-report/teacher-reports",
+        element: <LegacyRouteRedirect to="/student-risk-report/teacher-comments" />,
+      },
+      {
+        path: "student-risk-report/home-visit-requests",
+        element: <LegacyRouteRedirect to="/student-risk-report" />,
+      },
+      {
+        path: "dashboard",
+        element: <LegacyRouteRedirect to="/student-risk-report" />,
       },
       {
         path: "change-password",
         element: withSuspense(<ChangePasswordPage />),
       },
       {
+        path: "profile",
+        element: protectedElement(<ProfilePage />),
+      },
+      {
+        // Kept as a redirect: the permissions tab folded into /profile itself.
+        path: "profile/permissions",
+        element: <LegacyRouteRedirect to="/profile" />,
+      },
+      {
+        path: "notifications",
+        element: protectedElement(<NotificationsPage />),
+      },
+      {
         path: "students",
+        element: protectedElement(<StudentListPage />, "students"),
+      },
+      {
+        path: "students/history",
+        element: protectedElement(<StudentListPage />, "students"),
+      },
+      {
+        path: "students/export",
         element: protectedElement(<StudentListPage />, "students"),
       },
       {
         path: "students/:id",
         element: protectedElement(<StudentDetailPage />, "students"),
+      },
+      {
+        path: "students/:id/edit",
+        element: protectedElement(<StudentEditPage />, "edit-students"),
       },
       {
         path: "my-attendance",
@@ -86,7 +168,15 @@ export const router = createBrowserRouter([
         element: protectedElement(<CreateTaskPage />, "create"),
       },
       {
+        path: "create/:type",
+        element: protectedElement(<CreateTaskPage />, "create"),
+      },
+      {
         path: "attendance",
+        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        path: "attendance/history",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
       {
@@ -95,22 +185,90 @@ export const router = createBrowserRouter([
       },
       {
         path: "cases",
-        element: protectedElement(<CasesListPage />, "students"),
+        element: protectedElement(<CasesListPage />, "review-cases"),
       },
       {
-        path: "attendance-dashboard",
+        path: "cases/:caseId",
+        element: protectedElement(<CaseDetailPage />, "review-cases"),
+      },
+      {
+        path: "cases/:caseId/reviews/:reviewId",
+        element: protectedElement(<CaseReviewDetailPage />, "review-cases"),
+      },
+      {
+        path: "cases/history",
+        element: protectedElement(<CasesListPage />, "review-cases"),
+      },
+      {
+        path: "visit-links",
+        element: protectedElement(<VisitLinksPage />, "review-cases"),
+      },
+      {
+        path: "visit-links/history",
+        element: protectedElement(<VisitLinksPage />, "review-cases"),
+      },
+      {
+        path: "attendance-links",
         element: protectedElement(
-          <AttendanceLinksDashboardPage />,
-          "attendance-dashboard",
+          <TeacherAttendanceLinksPage />,
+          "manage-teacher-access",
         ),
       },
       {
+        path: "attendance-operations",
+        element: protectedElement(<AttendanceOperationsPage />, "attendance-dashboard"),
+      },
+      {
+        path: "timetable",
+        element: protectedElement(<TimetablePage />),
+      },
+      {
+        path: "classrooms",
+        element: protectedElement(<ClassroomsPage />, "manage-school-structure"),
+      },
+      {
+        path: "classrooms/:classroomId",
+        element: protectedElement(<ClassroomDetailPage />, "manage-school-structure"),
+      },
+      {
+        path: "school-structure",
+        element: protectedElement(<SchoolStructurePage />, "manage-school-structure"),
+      },
+      {
         path: "import-data",
-        element: protectedElement(<ImportDataPage />, "import-data"),
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
+      },
+      {
+        path: "data-exports",
+        element: protectedElement(<DataExportsPage />, "export-data"),
+      },
+      {
+        path: "data-exports/history",
+        element: protectedElement(<DataExportsPage />, "export-data"),
+      },
+      {
+        path: "import-data/quarantine",
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
+      },
+      {
+        path: "import-data/history",
+        element: protectedElement(<ImportDataPage />, ["import-data", "import-school-roster"]),
+      },
+      {
+        path: "import-data/quarantine/:id",
+        element: protectedElement(<ImportQuarantineDetailPage />, ["import-data", "import-school-roster"]),
       },
       {
         path: "manage-users",
         element: protectedElement(<ManageUsersPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id",
+        element: protectedElement(<UserDetailPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id/permissions",
+        element: protectedElement(<UserDetailPage />, "manage-users-list"),
       },
       {
         path: "manage-users/new",
@@ -119,6 +277,38 @@ export const router = createBrowserRouter([
       {
         path: "manage-users/:id/edit",
         element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
+      },
+      {
+        path: "manage-users/:id/edit/permissions",
+        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
+      },
+      {
+        path: "curriculum",
+        element: protectedElement(<CurriculumGradesPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId",
+        element: protectedElement(<CurriculumSubjectsPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId/subjects/new",
+        element: protectedElement(<CurriculumSubjectFormPage />, "manage-curriculum"),
+      },
+      {
+        path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
+        element: protectedElement(<CurriculumSubjectFormPage />, "manage-curriculum"),
+      },
+      {
+        path: "manage-teachers",
+        element: protectedElement(<TeachersPage />, "manage-teachers"),
+      },
+      {
+        path: "manage-teachers/new",
+        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+      },
+      {
+        path: "manage-teachers/:id/edit",
+        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
       },
       {
         path: "manage-role-groups",
@@ -142,20 +332,60 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "login-links",
-        element: protectedElement(<LoginLinksPage />, "login-links"),
+        path: "field-followers",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
       },
       {
-        path: "login-links/new",
-        element: protectedElement(<LoginLinkFormPage />, "login-links"),
+        path: "field-follower-applications",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers/history",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-follower-applications/history",
+        element: protectedElement(<FieldFollowersReviewPage />, "field-monitor"),
+      },
+      {
+        path: "field-followers-review",
+        element: <LegacyRouteRedirect to="/field-follower-applications" />,
+      },
+      {
+        path: "field-followers-review/history",
+        element: <LegacyRouteRedirect to="/field-follower-applications/history" />,
+      },
+      {
+        path: "field-followers/:id",
+        element: protectedElement(<FieldFollowerDetailPage />, "field-monitor"),
+      },
+      {
+        path: "field-monitor-map",
+        element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
+      },
+      {
+        path: "audit-log/:id",
+        element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
       {
         path: "settings",
         element: protectedElement(<SystemSettingsPage />, "settings"),
       },
       {
-        path: "task-detail/:taskId",
+        path: "settings/student-statuses",
+        element: protectedElement(<StudentStatusesPage />, "settings"),
+      },
+      {
+        path: "settings/master-data-lookups",
+        element: protectedElement(<MasterDataLookupsPage />, "settings"),
+      },
+      {
+        path: "tasks/:taskId",
         element: protectedElement(<TaskDetailPage />, "home"),
+      },
+      {
+        path: "task-detail/:taskId",
+        element: <LegacyTaskDetailRedirect />,
       },
     ],
   },
@@ -176,6 +406,10 @@ export const router = createBrowserRouter([
     element: withSuspense(<SuccessPage />),
   },
   {
+    path: "/task/:token/completed",
+    element: withSuspense(<CompletedPage />),
+  },
+  {
     path: "/task/:token/expired",
     element: withSuspense(<ExpiredPage />),
   },
@@ -183,13 +417,51 @@ export const router = createBrowserRouter([
     path: "/task/:token/locked",
     element: withSuspense(<LockedPage />),
   },
+  // Public: a teacher attaching their LINE account proves who they are with an
+  // emailed code, so the URL itself carries no secret and can live in the
+  // official account's rich menu.
   {
-    path: "/login/magic/:token",
-    element: withSuspense(<MagicLoginPage />),
+    path: "/line-link",
+    element: withSuspense(<TeacherLineLinkPage />),
+  },
+  {
+    path: "/line-link/result",
+    element: withSuspense(<TeacherLineLinkResultPage />),
+  },
+  {
+    path: "/teacher-access",
+    element: withSuspense(<TeacherLinkLayout />),
+    children: [
+      { index: true, element: withSuspense(<MyClassroomsPage />) },
+      {
+        path: "timetable",
+        element: withSuspense(<TeacherTimetablePage />),
+      },
+      {
+        path: "classes/:assignmentId",
+        element: withSuspense(<TeacherClassroomPage />),
+      },
+      {
+        path: "classes/:assignmentId/students/:studentUuid",
+        element: withSuspense(<TeacherStudentProfilePage />),
+      },
+      {
+        path: "classes/:assignmentId/history",
+        element: withSuspense(<TeacherAttendanceHistoryPage />),
+      },
+    ],
+  },
+  {
+    path: "/apply/field-follower/:code",
+    element: withSuspense(<FieldFollowerApplicationPage />),
+  },
+  {
+    path: "/login",
+    element: withSuspense(<AdminAccessPage />),
   },
   {
     path: "/admin-access",
-    element: withSuspense(<AdminAccessPage />),
+    element: <LegacyRouteRedirect to="/login" />,
   },
   {
     path: "/forbidden",

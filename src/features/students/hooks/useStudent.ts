@@ -8,6 +8,7 @@ interface UseStudentResult {
   student: StudentDetail | undefined;
   isLoading: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
 export function useStudent(studentId: string | undefined): UseStudentResult {
@@ -21,5 +22,8 @@ export function useStudent(studentId: string | undefined): UseStudentResult {
     student: result.data,
     isLoading: result.isLoading,
     isError: result.isError,
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }

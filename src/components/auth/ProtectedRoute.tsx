@@ -3,21 +3,21 @@ import { Navigate, useLocation } from "react-router-dom";
 import {
   getEffectivePermissions,
   hasPermission,
+  isStudentSelfSession,
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  permission?: string;
+  permission?: string | string[];
 }
 
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   const location = useLocation();
   const user = useAuthSessionStore((state) => state.user);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
-  const loadSession = useAuthSessionStore((state) => state.loadSession);
 
-  const session = user ? { user, hasAdminAccess } : loadSession();
+  const session = { user, hasAdminAccess };
   const isAuthenticated = Boolean(session.user && session.hasAdminAccess);
   const nextPath = `${location.pathname}${location.search}`;
   const isChangePasswordRoute = location.pathname === "/change-password";
@@ -27,7 +27,7 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
       <Navigate
         replace
         state={{ from: location }}
-        to={`/admin-access?next=${encodeURIComponent(nextPath)}`}
+        to={`/login?next=${encodeURIComponent(nextPath)}`}
       />
     );
   }
@@ -42,7 +42,13 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
       session.user?.permissions || [],
     );
 
-    if (!hasPermission(userPermissions, permission)) {
+    const allowed = Array.isArray(permission)
+      ? permission.some((permissionId) => hasPermission(userPermissions, permissionId))
+      : hasPermission(userPermissions, permission);
+    if (!allowed) {
+      if (isStudentSelfSession(session.user)) {
+        return <Navigate replace to="/my-attendance" />;
+      }
       return <Navigate replace to="/forbidden" />;
     }
   }

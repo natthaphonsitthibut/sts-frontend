@@ -60,7 +60,7 @@ export function useConfirm() {
           ) : null}
         </DialogHeader>
         <DialogFooter>
-          <Button onClick={() => close(false)} variant="ghost">
+          <Button onClick={() => close(false)} variant="outline">
             {state.cancelText ?? "ยกเลิก"}
           </Button>
           <Button onClick={() => close(true)} variant={state.variant ?? "default"}>

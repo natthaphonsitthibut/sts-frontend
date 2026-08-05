@@ -1,28 +1,32 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Save, TriangleAlert } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, ClipboardList, Save, TriangleAlert } from "lucide-react";
+import { useParams } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Card,
 } from "../../../components/base";
 import {
   EmptyState,
+  PAGE_MAX_WIDTH_CLASS,
   PageShell,
   SkeletonStack,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
 import { useAttendanceClassRoster } from "../hooks/useAttendanceClassRoster";
 import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
+import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
+import { countAttendanceStatuses } from "../lib/attendance-presentation";
 
 export function AttendanceRecordPage() {
-  const navigate = useNavigate();
+  const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const { classId } = useParams<{ classId: string }>();
 
   const { task, students, isLoading, isError, notFound } =
@@ -40,18 +44,13 @@ export function AttendanceRecordPage() {
     setSelections((current) => ({ ...current, [studentId]: status }));
   }
 
-  const counts = useMemo(() => {
-    return students.reduce(
-      (acc, student) => {
-        const status = selections[student.id] ?? "P_PRESENT";
-        if (status === "P_PRESENT") acc.present += 1;
-        else if (status === "P_ABSENT") acc.absent += 1;
-        else if (status === "P_LATE") acc.late += 1;
-        return acc;
-      },
-      { present: 0, absent: 0, late: 0 },
-    );
-  }, [students, selections]);
+  const counts = useMemo(
+    () =>
+      countAttendanceStatuses(
+        students.map((student) => selections[student.id] ?? "P_PRESENT"),
+      ),
+    [students, selections],
+  );
 
   function handleSave(): void {
     const records = students.map((student) => ({
@@ -63,7 +62,7 @@ export function AttendanceRecordPage() {
 
   if (isLoading) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <Card className="mb-6 p-6">
           <SkeletonStack lines={2} />
         </Card>
@@ -74,19 +73,19 @@ export function AttendanceRecordPage() {
 
   if (isError || notFound || !task) {
     return (
-      <PageShell maxWidthClassName="max-w-[1000px]">
+      <PageShell>
         <EmptyState
           icon={TriangleAlert}
           title="ไม่พบชั้นเรียนนี้"
           description="ไม่พบข้อมูลชั้นเรียนสำหรับการเช็คชื่อ"
           action={
-            <Button
+            <NavButton
               icon={ArrowLeft}
-              onClick={() => void navigate("/attendance")}
+              to="/attendance"
               variant="outline"
             >
               กลับไปแดชบอร์ด
-            </Button>
+            </NavButton>
           }
         />
       </PageShell>
@@ -96,15 +95,15 @@ export function AttendanceRecordPage() {
   const newCases = submitAttendance.data?.newCases ?? [];
 
   return (
-    <PageShell maxWidthClassName="max-w-[1000px]" className="pb-28">
+    <PageShell className="pb-28">
       <Card className="mb-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Button
+            <NavButton
               aria-label="ย้อนกลับ"
               icon={ArrowLeft}
-              onClick={() => void navigate("/attendance")}
               size="sm"
+              to="/attendance"
               variant="ghost"
             />
             <div>
@@ -117,11 +116,7 @@ export function AttendanceRecordPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Badge variant="success">มา {counts.present}</Badge>
-            <Badge variant="warning">สาย {counts.late}</Badge>
-            <Badge variant="destructive">ขาด {counts.absent}</Badge>
-          </div>
+          <AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />
         </div>
       </Card>
 
@@ -154,7 +149,11 @@ export function AttendanceRecordPage() {
       </div>
 
       {students.length === 0 ? (
-        <EmptyState title="ไม่พบรายชื่อนักเรียนในชั้นเรียนนี้" />
+        <EmptyState
+          description="ชั้นเรียนนี้ยังไม่มีรายชื่อนักเรียนในระบบ"
+          icon={ClipboardList}
+          title="ไม่พบรายชื่อนักเรียนในชั้นเรียนนี้"
+        />
       ) : (
         <AttendanceStudentTable
           onStatusChange={handleStatusChange}
@@ -165,7 +164,7 @@ export function AttendanceRecordPage() {
 
       {students.length > 0 ? (
         <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur lg:left-[260px]">
-          <div className="mx-auto flex w-full max-w-[1000px] items-center justify-end">
+          <div className={`mx-auto flex w-full items-center justify-end ${PAGE_MAX_WIDTH_CLASS}`}>
             <Button
               icon={Save}
               isLoading={submitAttendance.isPending}

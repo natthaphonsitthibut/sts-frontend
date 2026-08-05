@@ -8,44 +8,113 @@
  * Values are the legacy Quasar palette, mapped to semantic names.
  */
 @theme {
-  /* Brand / primary actions */
-  --color-primary: #0f4dc2;
-  --color-primary-dark: #0d43ab;
+  /*
+   * Government Premium Minimal palette.
+   * Token NAMES are unchanged so every existing component/page recolors
+   * automatically — only values are tuned. Blue/navy stays the brand identity;
+   * accent colors are reserved for status only.
+   */
 
-  /* Success — present / positive (green) */
-  --color-success: #16a34a;
-  --color-success-100: #d8f5df;
-  --color-success-200: #a7e8b8;
-  --color-success-700: #116b31;
+  /* Brand / primary actions (blue → navy) */
+  --color-primary: #0f49bd;
+  --color-primary-dark: #0c3993;
+  /* Neutral interactive surface; blue is reserved for the active foreground/border. */
+  --color-primary-soft: #f5f5f5;
+  /* Header identity controls intentionally retain the original brand tint. */
+  --color-brand-soft: #e2e9f7;
+  --color-brand-active: #e7edf8;
 
-  /* Warning — late / caution (amber) */
-  --color-warning: #d97706;
-  --color-warning-100: #fff0bd;
-  --color-warning-200: #ffd66b;
-  --color-warning-700: #8a4b05;
+  /* Neutral content — primary labels/icons are black; supporting copy stays #676767. */
+  --color-content-primary: #111111;
+  --color-content-secondary: #676767;
+  --color-breadcrumb-muted: #737373;
 
-  /* Danger — absent / negative (red) */
-  --color-danger: #dc2626;
-  --color-danger-100: #ffe0df;
-  --color-danger-200: #ffb8b4;
-  --color-danger-400: #df5b57;
-  --color-danger-700: #941b1b;
+  /* Replace Tailwind's blue-cast slate ramp with true neutral grays. */
+  --color-slate-50: #fafafa;
+  --color-slate-100: #f5f5f5;
+  --color-slate-200: #e5e5e5;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #a3a3a3;
+  --color-slate-500: #737373;
+  --color-slate-600: #525252;
+  --color-slate-700: #404040;
+  --color-slate-800: #262626;
+  --color-slate-900: #171717;
+  --color-slate-950: #0a0a0a;
 
-  /* Surface — metric-card tone pastels */
-  --color-surface-emerald: #def4e6;
-  --color-surface-amber: #ffefb4;
-  --color-surface-rose: #ffdfe2;
-  --color-surface-sky: #dbeafe;
-  --color-surface-slate: #e8eef6;
-  --color-surface-cyan: #d6f3ef;
+  /* External channel brand */
+  --color-line: #06c755;
+  --color-line-hover: #05b94d;
+
+  /* Gold — premium accent (status / highlight only) */
+  --color-gold: #b7791f;
+
+  /* Success — present / positive (deep green) */
+  --color-success: #15803d;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-700: #166534;
+
+  /* Warning — late / caution (amber-gold) */
+  --color-warning: #b45309;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-700: #92400e;
+
+  /* Credential actions — yellow-gold, kept distinct from destructive red. */
+  --color-credential: #c38a00;
+  --color-credential-dark: #9f7100;
+
+  /* Row actions — share is teal; view remains a neutral slate action. */
+  --color-share: #0d9488;
+  --color-share-dark: #0f766e;
+  --color-view: #64748b;
+  --color-view-dark: #475569;
+
+  /* Danger — absent / negative (deep red) */
+  --color-danger: #b91c1c;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-400: #ef4444;
+  --color-danger-700: #991b1b;
+
+  /* Surface tints — status/metric accents (muted, premium) */
+  --color-surface-emerald: #dcfce7;
+  --color-surface-amber: #fef3c7;
+  --color-surface-rose: #fee2e2;
+  --color-surface-sky: #f5f5f5;
+  --color-surface-slate: #f5f5f5;
+  --color-surface-cyan: #f5f5f5;
+
+  /* App surfaces — page background กลางทุกหน้า (ตรงกับ mockup) + ฟ้า accent + soft surface */
+  --color-surface-page: rgb(250 250 250);
+  --color-surface-app: #eeeeee;
+  --color-surface-soft: #f5f5f5;
+  --color-login-hero: #e7edf8;
 
   /* Muted — subtle table tint + low-emphasis foreground */
-  --color-muted: #f8fbff;
-  --color-muted-foreground: #b0bec5;
+  --color-muted: rgb(250 250 250);
+  --color-muted-foreground: #676767;
 
-  /* Elevation */
-  --shadow-card: 0 10px 30px rgb(15 23 42 / 0.08);
-  --shadow-card-hover: 0 14px 36px rgb(15 23 42 / 0.12);
+  /* Accessible neutral used when generated avatar identity has no name seed. */
+  --color-avatar-neutral: #64748b;
+
+  /* Radius — slightly softer, professional */
+  --radius-lg: 0.625rem;
+
+  /* Login surfaces — large soft curves per STS mockup */
+  --radius-login-hero: 3rem;
+  --radius-login-brand-mark: 3rem;
+  --radius-login-card: 3.5rem;
+
+  /* Elevation — subtle, layered, premium-minimal */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-card-hover: 0 2px 6px rgb(15 23 42 / 0.08);
+  --shadow-login-brand-mark:
+    inset 0 1px 4px rgb(0 0 0 / 0.25), 0 3px 6px rgb(15 23 42 / 0.1);
+  --shadow-login-surface:
+    inset 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 8px rgb(15 23 42 / 0.14);
+  --drop-shadow-login-icon: 0 4px 4px rgb(0 0 0 / 0.25);
 }
 
 :root {
@@ -57,9 +126,13 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--color-content-primary);
+  background: var(--color-surface-page);
   font-synthesis: none;
+  font-kerning: normal;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -77,14 +150,28 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f8fafc;
+  background: var(--color-surface-page);
+  line-height: 1.5;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+h1,
+h2,
+h3 {
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 #root {
@@ -92,8 +179,40 @@ textarea {
 }
 
 /*
- * Central motion layer — every enter animation in the app references these,
- * so timing/easing stays identical system-wide. Respects reduced-motion.
+ * Existing screens still use Tailwind's slate foreground utilities. Keep
+ * their semantic hierarchy system-wide while removing the blue cast:
+ * slate-400/500 are descriptions, slate-600+ are primary content. Neutral
+ * icons are always primary ink; branded and status icons keep their own
+ * primary/success/warning/danger utilities.
+ */
+.text-slate-400,
+.text-slate-500 {
+  color: var(--color-content-secondary);
+}
+
+.text-slate-600,
+.text-slate-700,
+.text-slate-800,
+.text-slate-900 {
+  color: var(--color-content-primary);
+}
+
+svg.text-slate-300,
+svg.text-slate-400,
+svg.text-slate-500,
+svg.text-slate-600,
+svg.text-slate-700,
+svg.text-slate-800,
+svg.text-slate-900 {
+  color: var(--color-content-primary);
+}
+
+/*
+ * Central motion layer — every enter/exit animation in the app references
+ * these, so timing/easing stays identical system-wide. Respects
+ * reduced-motion. Exit pairs (`*-out`) are driven by components that keep
+ * the element mounted for the animation's duration before unmounting
+ * (see Sheet's closing phase).
  */
 @keyframes overlay-in {
   from {
@@ -124,10 +243,39 @@ textarea {
   }
 }
 
+@keyframes sheet-out-left {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes banner-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes value-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
@@ -145,24 +293,16 @@ textarea {
   .animate-sheet-in-left {
     animation: sheet-in-left 220ms ease-out;
   }
+  .animate-sheet-out-left {
+    animation: sheet-out-left 200ms ease-in forwards;
+  }
+  .animate-overlay-out {
+    animation: overlay-out 200ms ease-in forwards;
+  }
   .animate-banner-in {
     animation: banner-in 180ms ease-out;
   }
-}
-
-.segmented-tabs {
-  grid-template-columns: repeat(var(--tabs-count), minmax(0, 1fr));
-}
-
-.segmented-tabs__indicator {
-  width: calc((100% - 0.5rem) / var(--tabs-count));
-  transform: translateX(calc(var(--tabs-index) * 100%));
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .segmented-tabs__indicator {
-    transition:
-      transform 180ms ease-out,
-      width 180ms ease-out;
+  .animate-value-in {
+    animation: value-in 150ms ease-out;
   }
 }

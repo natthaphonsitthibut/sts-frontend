@@ -1,26 +1,87 @@
 import { apiClient } from "../../../lib/api-client";
+import {
+  normalizePaginatedResponse,
+  toPaginationParams,
+  type PaginatedResult,
+} from "../../../lib/pagination";
 import type {
+  CaseListQuery,
+  CaseDetailResponse,
+  CasePaginationMeta,
   CaseRecord,
+  CaseTrackingOptions,
   CaseReviewPayload,
   CaseReviewResponse,
+  OpenCasePayload,
+  OpenCaseResponse,
+  CaseStats,
 } from "../types/cases.types";
 
 interface CasesService {
-  getCases: () => Promise<CaseRecord[]>;
+  getCases: (query?: CaseListQuery) => Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }>;
+  getCaseStats: () => Promise<CaseStats>;
+  getCase: (caseId: number) => Promise<CaseDetailResponse>;
+  openCase: (payload: OpenCasePayload) => Promise<OpenCaseResponse>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
-   * server-side by a review action (ASSIST / FORWARD / CLOSE) plus an optional
-   * note, via POST /api/cases/:id/review.
+   * server-side by a review action plus an optional
+   * note, via POST /cases/:id/review through apiClient.
    */
   reviewCase: (
     caseId: number,
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
+  getTrackingOptions: () => Promise<CaseTrackingOptions>;
 }
 
-async function getCases(): Promise<CaseRecord[]> {
-  const response = await apiClient.get<CaseRecord[]>("/api/cases");
-  return Array.isArray(response.data) ? response.data : [];
+async function getCases(
+  query: CaseListQuery = {},
+): Promise<PaginatedResult<CaseRecord> & { meta: CasePaginationMeta }> {
+  const params: Record<string, string> = toPaginationParams(query);
+  if (query.status && query.status !== "ALL") {
+    params.status = query.status;
+  }
+  if (query.province?.trim()) {
+    params.province = query.province.trim();
+  }
+  if (query.district?.trim()) {
+    params.district = query.district.trim();
+  }
+  if (query.subDistrict?.trim()) {
+    params.subDistrict = query.subDistrict.trim();
+  }
+  if (query.schoolId?.trim()) {
+    params.schoolId = query.schoolId.trim();
+  }
+  if (query.grade?.trim()) {
+    params.grade = query.grade.trim();
+  }
+  if (query.room?.trim()) {
+    params.room = query.room.trim();
+  }
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
+  const response = await apiClient.get("/cases", { params });
+  return normalizePaginatedResponse<CaseRecord>(response.data, query) as
+    PaginatedResult<CaseRecord> & { meta: CasePaginationMeta };
+}
+
+async function getCaseStats(): Promise<CaseStats> {
+  const response = await apiClient.get<CaseStats>("/stats");
+  return response.data;
+}
+
+async function getCase(caseId: number): Promise<CaseDetailResponse> {
+  const response = await apiClient.get<CaseDetailResponse>(`/cases/${caseId}`);
+  return response.data;
+}
+
+async function openCase(payload: OpenCasePayload): Promise<OpenCaseResponse> {
+  const response = await apiClient.post<OpenCaseResponse>("/cases", payload);
+  return response.data;
 }
 
 async function reviewCase(
@@ -28,13 +89,24 @@ async function reviewCase(
   payload: CaseReviewPayload,
 ): Promise<CaseReviewResponse> {
   const response = await apiClient.post<CaseReviewResponse>(
-    `/api/cases/${caseId}/review`,
+    `/cases/${caseId}/review`,
     payload,
+  );
+  return response.data;
+}
+
+async function getTrackingOptions(): Promise<CaseTrackingOptions> {
+  const response = await apiClient.get<CaseTrackingOptions>(
+    "/public/case-tracking-options",
   );
   return response.data;
 }
 
 export const casesService: CasesService = {
   getCases,
+  getCaseStats,
+  getCase,
+  openCase,
   reviewCase,
+  getTrackingOptions,
 };
