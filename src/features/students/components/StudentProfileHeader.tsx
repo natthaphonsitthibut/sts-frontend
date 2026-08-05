@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import { Award, ClipboardList, GraduationCap, MapPin, PhoneCall, UserRound } from "lucide-react";
-import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import {
   Alert,
   AlertDescription,
+  AvatarPhotoEditor,
   Badge,
   Card,
   IconButton,
 } from "../../../components/base";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -34,6 +36,8 @@ import { StudentPiiRevealDialog } from "./StudentPiiRevealDialog";
 type PiiRevealMode = "reasoned" | "direct";
 
 interface StudentProfileHeaderProps {
+  /** Enables the photo upload affordance; read-only surfaces leave it off. */
+  canEditPhoto?: boolean;
   contactsOpen?: boolean;
   locationOpen?: boolean;
   onOpenContacts?: () => void;
@@ -78,6 +82,7 @@ function toDisplay(value: unknown): string {
 }
 
 export function StudentProfileHeader({
+  canEditPhoto = false,
   contactsOpen = false,
   locationOpen = false,
   onOpenContacts,
@@ -98,6 +103,18 @@ export function StudentProfileHeader({
   const [directRevealing, setDirectRevealing] =
     useState<StudentPiiField | null>(null);
   const [directError, setDirectError] = useState("");
+  const queryClient = useQueryClient();
+  // The photo saves on its own — there is no surrounding form to submit it
+  // with, so the detail query is refreshed once storage points at the new file.
+  const updatePhoto = useMutation({
+    mutationFn: (input: { photo?: File; remove?: boolean }) =>
+      studentsService.updateStudentPhoto(studentId, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["student", studentId] });
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+    throwOnError: false,
+  });
   const fullName =
     `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
     "ไม่ระบุชื่อ";
@@ -216,12 +233,17 @@ export function StudentProfileHeader({
           ข้อมูลนักเรียน
         </h2>
         <div className="mt-4 flex flex-col items-center gap-5 sm:mt-5 sm:gap-6 md:flex-row md:items-start">
-          <div
-            className="flex size-28 shrink-0 items-center justify-center rounded-full text-3xl font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)] sm:size-32 sm:text-4xl"
-            style={getAvatarGradient(fullName)}
-          >
-            {fullName.charAt(0).toUpperCase() || "?"}
-          </div>
+          <AvatarPhotoEditor
+            avatarClassName="shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            className="shrink-0"
+            editable={canEditPhoto}
+            isSubmitting={updatePhoto.isPending}
+            label="รูปประจำตัวนักเรียน"
+            name={fullName}
+            onRemove={() => updatePhoto.mutate({ remove: true })}
+            onSelect={(photo) => updatePhoto.mutate({ photo })}
+            photoUrl={resolveApiMediaUrl(student.photo_url ?? null)}
+          />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">

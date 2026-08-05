@@ -89,6 +89,10 @@ interface StudentsService {
     >,
   ) => Promise<StudentFilterOptions>;
   getStudentById: (studentId: string) => Promise<StudentDetail>;
+  updateStudentPhoto: (
+    studentId: string,
+    input: { photo?: File; remove?: boolean },
+  ) => Promise<StudentDetail>;
   revealStudentPii: (
     studentId: string,
     payload: StudentPiiRevealRequest,
@@ -356,6 +360,21 @@ async function updateStudent(
   return response.data;
 }
 
+/** Upload replaces the photo; passing no file with `remove` clears it. */
+async function updateStudentPhoto(
+  studentId: string,
+  input: { photo?: File; remove?: boolean },
+): Promise<StudentDetail> {
+  const form = new FormData();
+  if (input.photo) form.append("photo", input.photo);
+  if (input.remove) form.append("removePhoto", "true");
+  const response = await apiClient.patch<StudentDetail>(
+    `/students/${encodeURIComponent(studentId)}/photo`,
+    form,
+  );
+  return response.data;
+}
+
 async function getStudentCasesById(studentId: string): Promise<StudentCase[]> {
   const response = await apiClient.get<
     StudentCase[] | DataEnvelope<StudentCase[]>
@@ -436,6 +455,7 @@ export const studentsService: StudentsService = {
   rejectPiiExportRequest,
   downloadPiiExportCsv,
   updateStudent,
+  updateStudentPhoto,
   getStudentCasesById,
   getStudentAttendance,
   getStudentAttendanceSummary,

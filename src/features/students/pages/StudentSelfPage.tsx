@@ -77,6 +77,7 @@ export function StudentSelfPage() {
     <PageShell>
       <div className="space-y-5">
         <StudentProfileHeader
+          canEditPhoto
           key={studentId}
           student={student}
           studentId={studentId}

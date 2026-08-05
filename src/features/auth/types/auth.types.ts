@@ -18,6 +18,8 @@ export interface AuthUser {
   phone?: string | null;
   email?: string | null;
   affiliation?: string | null;
+  /** App-relative photo path (`/api/users/me/photo?v=…`); null when unset. */
+  photo_url?: string | null;
   line_id?: string | null;
   address_line?: string | null;
   address_village_no?: string | null;

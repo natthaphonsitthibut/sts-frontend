@@ -14,6 +14,7 @@ interface AuthService {
   getMyProfile: () => Promise<AuthUser>;
   getUserProfile: (userId: number) => Promise<AuthUser>;
   updateMyProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
+  updateMyPhoto: (input: { photo?: File; remove?: boolean }) => Promise<AuthUser>;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
   loginWithMockThaId: (payload: MockThaIdLoginPayload) => Promise<AuthUser>;
@@ -44,6 +45,15 @@ async function updateMyProfile(
   payload: UpdateProfilePayload,
 ): Promise<AuthUser> {
   const response = await apiClient.patch<AuthUser>("/users/me", payload);
+  return response.data;
+}
+
+/** Upload replaces the photo; passing no file with `remove` clears it. */
+async function updateMyPhoto(input: { photo?: File; remove?: boolean }): Promise<AuthUser> {
+  const form = new FormData();
+  if (input.photo) form.append("photo", input.photo);
+  if (input.remove) form.append("removePhoto", "true");
+  const response = await apiClient.patch<AuthUser>("/users/me/photo", form);
   return response.data;
 }
 
@@ -107,6 +117,7 @@ export const authService: AuthService = {
   loginWithMockThaId,
   requestMagicOtp,
   updateMyProfile,
+  updateMyPhoto,
   verifyMagicLogin,
   verifyMagicOtp,
 };

@@ -1,6 +1,7 @@
 export { Alert, AlertDescription, AlertTitle, type AlertProps } from "./alert";
 export { appToast, type AppToastMutationMeta } from "./app-toast";
 export { Avatar, type AvatarProps } from "./avatar";
+export { AvatarPhotoEditor, type AvatarPhotoEditorProps } from "./avatar-photo-editor";
 export { Badge, type BadgeProps } from "./badge";
 export { buttonVariants } from "./button-variants";
 export { Button, type ButtonProps } from "./button";

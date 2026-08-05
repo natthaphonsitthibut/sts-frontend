@@ -2,6 +2,8 @@ export type StudentEnrollmentState = "current-active" | "all";
 export type StudentStatusFilterValue = "ALL" | string;
 
 export interface StudentListItem {
+  /** App-relative photo path; the letter fallback renders without one. */
+  photo_url?: string | null;
   id: string;
   name: string;
   grade: string;
@@ -26,7 +28,7 @@ export interface StudentListQuery {
   studentStatusCode?: StudentStatusFilterValue;
   enrollmentState?: StudentEnrollmentState;
   /** `AT_RISK` = every tier except NORMAL; a specific tier narrows further. */
-  riskTier?: "AT_RISK" | "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
+  riskTier?: "AT_RISK" | "HIGH" | "WATCH" | "NORMAL";
   page?: number;
   limit?: number;
 }
@@ -49,6 +51,8 @@ export interface StudentFilterOptions {
 }
 
 export interface StudentDetail extends Record<string, unknown> {
+  /** App-relative photo path (`/api/students/:id/photo?v=…`); null when unset. */
+  photo_url?: string | null;
   /** Opaque student UUID — the client-facing identifier after the B1.3 swap. */
   id?: string;
   PersonID_Onec: string;
@@ -68,7 +72,7 @@ export interface StudentDetail extends Record<string, unknown> {
   grade?: string;
   grade_label?: string;
   room?: string;
-  risk_tier?: "HIGH" | "MEDIUM" | "LOW" | "WATCH" | "NORMAL";
+  risk_tier?: "HIGH" | "WATCH" | "NORMAL";
   homeroom_teacher_name?: string | null;
   student_status_label?: string;
   student_status_category?: string;
