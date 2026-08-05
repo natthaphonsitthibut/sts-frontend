@@ -44,6 +44,7 @@ export function TeacherTimetablePage() {
         />
       ) : (
         <TimetableGrid
+          includeConfiguredSchedule
           periodTimes={periodTimes}
           renderSlot={(slot) => (
             <div className="relative min-h-12 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">

@@ -49,11 +49,19 @@ export function useRoomSubjects(filter: RoomFilter | null) {
   });
 }
 
-export function useTimetableTeachers(filter: { schoolId: number; searchTerm?: string } | null) {
+export function useTimetableTeachers(
+  filter: {
+    schoolId: number;
+    searchTerm?: string;
+    subjectId?: number;
+    gradeLevelId?: number;
+    roomNo?: number;
+  } | null,
+) {
   return useQuery({
     queryKey: [TIMETABLE_TEACHERS_QUERY_KEY, filter],
     queryFn: () => timetableService.listTeacherCandidates(filter!),
-    enabled: Boolean(filter),
+    enabled: Boolean(filter && filter.schoolId),
   });
 }
 

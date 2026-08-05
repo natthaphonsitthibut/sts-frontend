@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Clock3, Plus, SquarePen, Trash2 } from "lucide-react";
 import {
@@ -9,7 +9,7 @@ import {
   FormItem,
   FormLabel,
   IconButton,
-  Input,
+  MultiSelect,
   Tabs,
   useConfirm,
 } from "../../../components/base";
@@ -24,7 +24,6 @@ import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
 import { SchoolPeriodTimesDialog } from "../components/SchoolPeriodTimesDialog";
 import { TimetableGrid } from "../components/TimetableGrid";
-import { useCreateSubject, useSubjects } from "../hooks/useSubjects";
 import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
@@ -77,18 +76,25 @@ function AddSlotForm({
   const [subjectId, setSubjectId] = useState(
     editingSlot ? String(editingSlot.subject_id) : "",
   );
-  const [teacherUserId, setTeacherUserId] = useState(
-    editingSlot?.teacher_user_id ? String(editingSlot.teacher_user_id) : "",
-  );
-  const [newSubjectCode, setNewSubjectCode] = useState("");
-  const [newSubjectName, setNewSubjectName] = useState("");
-  const [addingSubject, setAddingSubject] = useState(false);
-  const allSubjectsQuery = useSubjects({ isActive: true });
+  const [teacherMembershipIds, setTeacherMembershipIds] = useState<string[]>(() => {
+    if (editingSlot?.teacher_membership_ids?.length) {
+      return editingSlot.teacher_membership_ids.map(String);
+    }
+    return [];
+  });
   const roomSubjectsQuery = useRoomSubjects(room);
-  const createSubject = useCreateSubject();
   const createSlot = useCreateTimetableSlot();
   const updateSlot = useUpdateTimetableSlot();
-  const teachersQuery = useTimetableTeachers({ schoolId: room.schoolId });
+  const teachersQuery = useTimetableTeachers(
+    subjectId
+      ? {
+          schoolId: room.schoolId,
+          gradeLevelId: room.gradeLevelId,
+          roomNo: room.roomNo,
+          subjectId: Number(subjectId),
+        }
+      : null,
+  );
   const termsQuery = useQuery({
     queryKey: ["timetable-active-term", room.schoolId],
     queryFn: () => attendanceService.getTerms(room.schoolId),
@@ -96,55 +102,44 @@ function AddSlotForm({
   });
   const activeTerm = termsQuery.data?.find((term) => term.status === "ACTIVE");
 
-  const subjectOptions = [
-    ...(allSubjectsQuery.data?.data ?? []).map((subject) => ({
-      value: String(subject.id),
-      label: subject.name_th,
-    })),
-    ...(roomSubjectsQuery.data?.data ?? [])
-      .filter(
-        (subject) =>
-          !(allSubjectsQuery.data?.data ?? []).some((item) => item.id === subject.subject_id),
-      )
-      .map((subject) => ({
-        value: String(subject.subject_id),
-        label: subject.name_th,
-      })),
-  ];
+  const subjectOptions = (roomSubjectsQuery.data?.data ?? []).map((subject) => ({
+    value: String(subject.subject_id),
+    label: `${subject.name_th}${subject.code ? ` (${subject.code})` : ""}`,
+  }));
   const teacherOptions = (teachersQuery.data?.data ?? []).map((teacher) => ({
     value: String(teacher.id),
     label: teacher.display_name,
   }));
+
+  useEffect(() => {
+    if (editingSlot) {
+      if (editingSlot.teacher_membership_ids?.length) {
+        setTeacherMembershipIds(editingSlot.teacher_membership_ids.map(String));
+      } else if (teacherOptions.length > 0) {
+        setTeacherMembershipIds(teacherOptions.map((t) => t.value));
+      }
+    } else if (subjectId && teacherOptions.length > 0 && teacherMembershipIds.length === 0) {
+      setTeacherMembershipIds(teacherOptions.map((t) => t.value));
+    }
+  }, [subjectId, teacherOptions, editingSlot]);
+
   const disableSaveReason = !subjectId
     ? "เลือกวิชาก่อนบันทึก"
-    : !editingSlot && !activeTerm
-      ? "ต้องมีภาคเรียนที่เปิดใช้งานก่อนบันทึกคาบสอน"
-      : "";
-
-  function handleCreateSubject(): void {
-    if (!newSubjectCode.trim() || !newSubjectName.trim()) return;
-    createSubject.mutate(
-      { code: newSubjectCode.trim(), nameTh: newSubjectName.trim() },
-      {
-        onSuccess: (result) => {
-          setSubjectId(String(result.data.id));
-          setNewSubjectCode("");
-          setNewSubjectName("");
-          setAddingSubject(false);
-        },
-      },
-    );
-  }
+    : teacherMembershipIds.length === 0
+      ? "เลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก"
+      : !editingSlot && !activeTerm
+        ? "ต้องมีภาคเรียนที่เปิดใช้งานก่อนบันทึกคาบสอน"
+        : "";
 
   function handleSubmit(): void {
-    if (!subjectId) return;
+    if (!subjectId || teacherMembershipIds.length === 0) return;
     if (editingSlot) {
       updateSlot.mutate(
         {
           id: editingSlot.id,
           payload: {
             subjectId: Number(subjectId),
-            teacherUserId: teacherUserId ? Number(teacherUserId) : null,
+            teacherMembershipIds: teacherMembershipIds.map(Number),
           },
         },
         { onSuccess: onDone },
@@ -162,7 +157,7 @@ function AddSlotForm({
         dayOfWeek: Number(dayOfWeek),
         period: Number(period),
         subjectId: Number(subjectId),
-        teacherUserId: teacherUserId ? Number(teacherUserId) : null,
+        teacherMembershipIds: teacherMembershipIds.map(Number),
       },
       { onSuccess: onDone },
     );
@@ -218,77 +213,38 @@ function AddSlotForm({
           </FormLabel>
           <Combobox
             id="slot-subject"
-            onChange={setSubjectId}
+            onChange={(val) => {
+              setSubjectId(val);
+              setTeacherMembershipIds([]);
+            }}
             options={[{ value: "", label: "เลือกวิชา" }, ...subjectOptions]}
-            placeholder="ค้นหาวิชา"
+            placeholder="ค้นหาวิชาในหลักสูตร"
             value={subjectId}
           />
         </FormItem>
         <FormItem>
-          <FormLabel htmlFor="slot-teacher">ผู้สอน</FormLabel>
-          <Combobox
-            emptyText="ไม่พบผู้สอนในขอบเขตโรงเรียนนี้"
+          <FormLabel htmlFor="slot-teacher" required>
+            ผู้สอน
+          </FormLabel>
+          <MultiSelect
+            ariaLabel="ผู้สอน"
+            disabled={!subjectId}
+            emptyText={!subjectId ? "เลือกวิชาก่อนเพื่อดูผู้สอน" : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"}
             id="slot-teacher"
-            onChange={setTeacherUserId}
-            options={[{ value: "", label: "ยังไม่ระบุผู้สอน" }, ...teacherOptions]}
+            onChange={setTeacherMembershipIds}
+            options={teacherOptions}
             placeholder="เลือกผู้สอน"
-            value={teacherUserId}
+            value={teacherMembershipIds}
           />
         </FormItem>
       </div>
-
-      {addingSubject ? (
-        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[160px_1fr_auto] items-end">
-          {createSubject.isError ? (
-            <Alert className="sm:col-span-3" variant="destructive">
-              <AlertDescription>
-                {getApiErrorMessage(createSubject.error, "เพิ่มวิชาไม่สำเร็จ")}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <FormItem>
-            <FormLabel required>รหัสวิชา</FormLabel>
-            <Input
-              onChange={(event) => setNewSubjectCode(event.target.value)}
-              placeholder="เช่น TH101"
-              value={newSubjectCode}
-            />
-          </FormItem>
-          <FormItem>
-            <FormLabel required>ชื่อวิชา</FormLabel>
-            <Input
-              onChange={(event) => setNewSubjectName(event.target.value)}
-              placeholder="เช่น ภาษาไทย"
-              value={newSubjectName}
-            />
-          </FormItem>
-          <div className="pb-[2px]">
-            <Button
-              disabled={!newSubjectCode.trim() || !newSubjectName.trim()}
-              isLoading={createSubject.isPending}
-              onClick={handleCreateSubject}
-              type="button"
-            >
-              เพิ่มวิชา
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          className="text-sm font-medium text-primary"
-          onClick={() => setAddingSubject(true)}
-          type="button"
-        >
-          + ไม่พบวิชาที่ต้องการ? เพิ่มวิชาใหม่
-        </button>
-      )}
 
       <div className="flex justify-end gap-2">
         <Button onClick={onDone} type="button" variant="outline">
           ยกเลิก
         </Button>
         <Button
-          disabled={(!editingSlot && !activeTerm) || !subjectId}
+          disabled={(!editingSlot && !activeTerm) || !subjectId || teacherMembershipIds.length === 0}
           isLoading={createSlot.isPending || updateSlot.isPending}
           onClick={handleSubmit}
           type="button"

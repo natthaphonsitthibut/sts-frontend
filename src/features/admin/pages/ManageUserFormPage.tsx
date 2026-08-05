@@ -155,7 +155,13 @@ function UserForm({
       },
       {
         onSuccess: (response) => {
-          if (!isEdit && response?.tempPassword) {
+          if (
+            !isEdit &&
+            response &&
+            typeof response === "object" &&
+            "tempPassword" in response &&
+            response.tempPassword
+          ) {
             setGeneratedPassword(response.tempPassword);
             return;
           }

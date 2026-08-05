@@ -37,6 +37,7 @@ export interface TimetableSlot {
   subject_code: string;
   subject_name_th: string;
   teacher_user_id: number | null;
+  teacher_membership_ids?: number[];
   teacher_name: string | null;
 }
 
@@ -60,11 +61,13 @@ export interface CreateTimetableSlotPayload {
   period: number;
   subjectId: number;
   teacherUserId?: number | null;
+  teacherMembershipIds?: number[];
 }
 
 export interface UpdateTimetableSlotPayload {
   subjectId?: number;
   teacherUserId?: number | null;
+  teacherMembershipIds?: number[];
 }
 
 export type SchoolPeriodTimeSource = "GENERATED" | "MANUAL" | "BACKFILL";

@@ -57,10 +57,21 @@ async function getSubjectsForRoom(
 async function listTeacherCandidates(filter: {
   schoolId: number;
   searchTerm?: string;
+  subjectId?: number;
+  gradeLevelId?: number;
+  roomNo?: number;
 }): Promise<{ success: true; data: TimetableTeacherCandidate[] }> {
   const response = await apiClient.get<{ success: true; data: TimetableTeacherCandidate[] }>(
     "/timetable/teachers",
-    { params: { schoolId: filter.schoolId, searchTerm: filter.searchTerm || undefined } },
+    {
+      params: {
+        schoolId: filter.schoolId,
+        searchTerm: filter.searchTerm || undefined,
+        subjectId: filter.subjectId || undefined,
+        gradeLevelId: filter.gradeLevelId || undefined,
+        roomNo: filter.roomNo || undefined,
+      },
+    },
   );
   return response.data;
 }
