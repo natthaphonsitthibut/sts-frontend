@@ -14,7 +14,6 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
-import { formatThaiDate } from "../../../lib/date-time";
 import {
   TEACHER_LINE_STATUS_META,
   TEACHER_LINK_STATUS_META,
@@ -40,11 +39,8 @@ interface TeacherLinkTableProps {
 function LinkStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
   const meta = TEACHER_LINK_STATUS_META[entry.linkStatus];
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex justify-center">
       <LinkStatusBadge label={meta.label} variant={meta.variant} />
-      {entry.linkStatus === "ACTIVE" && entry.expiresAt ? (
-        <span className="text-xs text-slate-500">ถึง {formatThaiDate(entry.expiresAt)}</span>
-      ) : null}
     </div>
   );
 }

@@ -399,6 +399,7 @@ export function TeacherAttendanceLinksPage() {
       </ToolbarControls>
 
       <FormErrorAlert
+        className="mb-4"
         error={issueGrant.error ?? rotateGrant.error ?? grantLink.error ?? sendOverLine.error}
         fallback="ดำเนินการกับลิงก์ไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
