@@ -30,7 +30,7 @@ export interface SchoolClassroomListParams {
   search?: string;
   page: number;
   limit: number;
-  sortBy?: "room" | "grade" | "students";
+  sortBy?: "room" | "grade" | "students" | "homeroomTeacher";
   sortDirection?: "asc" | "desc";
 }
 

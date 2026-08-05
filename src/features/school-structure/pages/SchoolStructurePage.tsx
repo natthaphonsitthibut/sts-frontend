@@ -5,6 +5,7 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   Badge,
   Button,
+  Combobox,
   Dialog,
   DialogBody,
   DialogContent,
@@ -132,7 +133,12 @@ export function SchoolStructurePage() {
           search: search || undefined,
           page,
           limit: rowsPerPage,
-          sortBy: sort?.key as "room" | "grade" | "students" | undefined,
+          sortBy: sort?.key as
+            | "room"
+            | "grade"
+            | "students"
+            | "homeroomTeacher"
+            | undefined,
           sortDirection: sort?.direction,
         }
       : null,
@@ -408,7 +414,7 @@ export function SchoolStructurePage() {
               { label: "ชั้น", sortKey: "grade" },
               { label: "ห้อง", sortKey: "room" },
               { label: "นักเรียน", sortKey: "students" },
-              "ครูประจำชั้น",
+              { label: "ครูประจำชั้น", sortKey: "homeroomTeacher" },
               "สถานะ",
               { label: "เครื่องมือ", className: "text-center" },
             ]}
@@ -622,20 +628,18 @@ export function SchoolStructurePage() {
                 <FormLabel htmlFor="homeroom-teacher" required>
                   ครูประจำชั้น
                 </FormLabel>
-                <Select
-                  aria-label="ครูประจำชั้น"
+                <Combobox
+                  ariaLabel="ครูประจำชั้น"
+                  emptyText="ไม่พบครู"
                   id="homeroom-teacher"
-                  onChange={(event) => setTeacherMembershipId(event.target.value)}
-                  required
+                  onChange={setTeacherMembershipId}
+                  options={teacherOptions.map((teacher) => ({
+                    value: String(teacher.id),
+                    label: teacher.displayName,
+                  }))}
+                  placeholder="ค้นหาชื่อครู"
                   value={teacherMembershipId}
-                >
-                  <option value="">เลือกครู</option>
-                  {teacherOptions.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.displayName}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
             </DialogBody>
             <DialogFooter>
