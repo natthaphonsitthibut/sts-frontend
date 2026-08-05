@@ -18,7 +18,7 @@ export const buttonVariants = cva(
         destructive:
           "border border-transparent bg-danger text-white shadow-sm hover:bg-danger-700",
         contact:
-          "border border-transparent bg-success text-white shadow-sm hover:bg-success-700 hover:shadow",
+          "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         location:
           "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
       },
