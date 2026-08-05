@@ -4,6 +4,9 @@ import type { AttendanceSelectionStatus } from "../../attendance/types/attendanc
 import type { TeacherLinkCredential } from "../store/teacher-link-session.store";
 import type {
   BulkIssueTeacherAccessResult,
+  IssueTeacherAccessGrantsForTermInput,
+  SendTeacherAccessGrantsInput,
+  SendTeacherAccessGrantsResult,
   IssueTeacherAccessGrantInput,
   PaginationMeta,
   TeacherAccessAssignment,
@@ -13,7 +16,9 @@ import type {
   TeacherAccessOtpChallenge,
   TeacherAccessRosterStudent,
   TeacherAttendanceHistoryEntry,
+  TeacherLineFilter,
   TeacherLinkRosterEntry,
+  TeacherScheduleResponse,
   TeacherStudentProfile,
 } from "../types/teacher-access.types";
 
@@ -80,6 +85,7 @@ async function listTeacherRoster(input: {
   schoolId: number;
   schoolTermId: number;
   search?: string;
+  lineStatus?: TeacherLineFilter;
   sortBy?: "name" | "linkStatus";
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -112,10 +118,22 @@ async function issueGrant(input: IssueTeacherAccessGrantInput): Promise<TeacherA
   return response.data.data;
 }
 
-async function issueGrantsForTerm(schoolTermId: number): Promise<BulkIssueTeacherAccessResult> {
+async function issueGrantsForTerm(
+  input: IssueTeacherAccessGrantsForTermInput,
+): Promise<BulkIssueTeacherAccessResult> {
   const response = await apiClient.post<DataEnvelope<BulkIssueTeacherAccessResult>>(
     "/teacher-access-grants/bulk",
-    { schoolTermId },
+    input,
+  );
+  return response.data.data;
+}
+
+async function sendGrantsOverLine(
+  input: SendTeacherAccessGrantsInput,
+): Promise<SendTeacherAccessGrantsResult> {
+  const response = await apiClient.post<DataEnvelope<SendTeacherAccessGrantsResult>>(
+    "/teacher-access-grants/send-line",
+    input,
   );
   return response.data.data;
 }
@@ -270,6 +288,18 @@ async function getStudentProfile(
   });
 }
 
+async function getMySchedule(
+  credential: TeacherLinkCredential,
+): Promise<TeacherScheduleResponse> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<DataEnvelope<TeacherScheduleResponse>>(
+      "/teacher-access/my-schedule",
+      { headers: guestHeaders(credential) },
+    );
+    return response.data.data;
+  });
+}
+
 async function getStudentSubjectAttendance(
   credential: TeacherLinkCredential,
   input: { assignmentId: number; studentUuid: string; date: string },
@@ -377,6 +407,7 @@ export const teacherAccessService = {
   listAssignmentOptions,
   issueGrant,
   issueGrantsForTerm,
+  sendGrantsOverLine,
   getGrantLink,
   revokeGrant,
   rotateGrant,
@@ -388,6 +419,7 @@ export const teacherAccessService = {
   listCompleteAttendanceHistory,
   createStudentComment,
   getClassroomCoverBlob,
+  getMySchedule,
   getStudentProfile,
   getStudentSubjectAttendance,
   recordClassroomExport,

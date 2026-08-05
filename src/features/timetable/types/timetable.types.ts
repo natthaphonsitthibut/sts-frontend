@@ -28,6 +28,8 @@ export interface TimetableSlot {
   school_term_id: string;
   school_id: number;
   grade_level_id: number;
+  /** Thai grade label (e.g. "ม.1"); null when the grade row is missing. */
+  grade_label: string | null;
   room_no: number;
   day_of_week: number;
   period: number;

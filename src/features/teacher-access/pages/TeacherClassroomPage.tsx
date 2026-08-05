@@ -34,7 +34,7 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import { PAGE_ICONS, PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { getThaiDateKey } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import { getAttendanceStatusPresentation } from "../../attendance/lib/attendance-presentation";
@@ -67,6 +67,7 @@ type AttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 type ClassroomTab = "roster" | "attendance";
 
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
+const CLASSROOM_ICON = PAGE_ICONS["school-building"];
 /** Display order of the attendance pills: มา / สาย / ลา / ขาด. */
 const ROSTER_EXPORT_COLUMNS = [
   { key: "order", label: "ลำดับ" },
@@ -182,7 +183,8 @@ export function TeacherClassroomPage() {
 
   return (
     <TeacherLinkShell
-      breadcrumb={[{ label: "หน้าหลัก", to: "/teacher-access" }]}
+      breadcrumb={[{ label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" }]}
+      icon={CLASSROOM_ICON}
       title={
         <>
           ห้อง {classroomLabel}{" "}
@@ -319,7 +321,18 @@ export function TeacherClassroomPage() {
                 <DataTableCell className="text-center tabular-nums">{index + 1}</DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
-                    <StudentAvatar name={fullName} />
+                    <button
+                      aria-label={`เปิดข้อมูลนักเรียน ${fullName}`}
+                      className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      onClick={() =>
+                        void navigate(
+                          `/teacher-access/classes/${assignmentId}/students/${student.studentUuid}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <StudentAvatar name={fullName} />
+                    </button>
                   </div>
                 </DataTableCell>
                 <DataTableCell className="text-center font-medium tabular-nums">

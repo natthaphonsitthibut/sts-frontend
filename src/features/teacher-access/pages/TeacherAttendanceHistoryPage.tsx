@@ -14,6 +14,7 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -93,9 +94,14 @@ export function TeacherAttendanceHistoryPage() {
   return (
     <TeacherLinkShell
       breadcrumb={[
-        { label: "หน้าหลัก", to: "/teacher-access" },
-        { label: `ห้อง ${classroomLabel}`, to: `/teacher-access/classes/${assignmentId}` },
+        { label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" },
+        {
+          label: `ห้อง ${classroomLabel}`,
+          icon: PAGE_ICONS["school-building"],
+          to: `/teacher-access/classes/${assignmentId}`,
+        },
       ]}
+      icon={PAGE_ICONS["calendar-check"]}
       title="ประวัติการเช็คชื่อ"
     >
       <div className="mb-6">

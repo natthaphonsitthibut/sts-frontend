@@ -1,16 +1,23 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { CircleAlert, MessageSquareText, SchoolIcon } from "lucide-react";
-import { Card } from "../../../components/base";
+import { ArrowLeft, CircleAlert, MessageSquareText, SchoolIcon } from "lucide-react";
+import { Card, IconButton } from "../../../components/base";
+import { NavButton } from "../../../components/layout/nav-button";
+import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import {
   EmptyState,
   ErrorState,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { StudentAttendanceCalendar } from "../../students/components/StudentAttendanceCalendar";
 import { StudentProfileHeader } from "../../students/components/StudentProfileHeader";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
-import { useTeacherStudentProfile } from "../hooks/useTeacherAccess";
+import {
+  useCreateTeacherStudentComment,
+  useTeacherStudentProfile,
+} from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 import { assignmentClassLabel } from "../lib/teacher-link-presentation";
 
@@ -25,18 +32,31 @@ export function TeacherStudentProfilePage() {
   const { context } = useTeacherLink();
   const assignment = context.assignments.find((item) => item.id === assignmentId);
   const profileQuery = useTeacherStudentProfile(Number(assignmentId), studentUuid);
+  const [commentOpen, setCommentOpen] = useState(false);
+  const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
 
   const breadcrumb = [
-    { label: "หน้าหลัก", to: "/teacher-access" },
+    { label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" },
     {
       label: `ห้อง ${assignment ? assignmentClassLabel(assignment) : ""}`,
+      icon: PAGE_ICONS["school-building"],
       to: `/teacher-access/classes/${assignmentId}`,
     },
   ];
+  const backAction = (
+    <NavButton icon={ArrowLeft} to={-1} variant="outline">
+      ย้อนกลับ
+    </NavButton>
+  );
 
   if (profileQuery.isLoading) {
     return (
-      <TeacherLinkShell breadcrumb={breadcrumb} title="ข้อมูลนักเรียน">
+      <TeacherLinkShell
+        actions={backAction}
+        breadcrumb={breadcrumb}
+        icon={PAGE_ICONS["user-graduate"]}
+        title="ข้อมูลนักเรียน"
+      >
         <Card className="mb-5 p-5">
           <SkeletonStack lines={3} />
         </Card>
@@ -54,7 +74,12 @@ export function TeacherStudentProfilePage() {
 
   if (profileQuery.isError) {
     return (
-      <TeacherLinkShell breadcrumb={breadcrumb} title="ข้อมูลนักเรียน">
+      <TeacherLinkShell
+        actions={backAction}
+        breadcrumb={breadcrumb}
+        icon={PAGE_ICONS["user-graduate"]}
+        title="ข้อมูลนักเรียน"
+      >
         <ErrorState
           description="เกิดข้อผิดพลาดระหว่างโหลดข้อมูลนักเรียน กรุณาลองใหม่อีกครั้ง"
           onRetry={() => void profileQuery.refetch()}
@@ -67,7 +92,12 @@ export function TeacherStudentProfilePage() {
   const profile = profileQuery.data;
   if (!profile?.student || !profile.summary) {
     return (
-      <TeacherLinkShell breadcrumb={breadcrumb} title="ข้อมูลนักเรียน">
+      <TeacherLinkShell
+        actions={backAction}
+        breadcrumb={breadcrumb}
+        icon={PAGE_ICONS["user-graduate"]}
+        title="ข้อมูลนักเรียน"
+      >
         <EmptyState
           description="ไม่พบข้อมูลนักเรียนคนนี้ในห้องที่ลิงก์ของคุณดูแล"
           icon={CircleAlert}
@@ -78,9 +108,19 @@ export function TeacherStudentProfilePage() {
   }
 
   const observations = profile.observations?.data ?? [];
+  const studentFullName =
+    `${profile.student.FirstName_Onec ?? ""} ${profile.student.LastName_Onec ?? ""}`.trim() ||
+    "ไม่ระบุชื่อ";
+  const studentNumber =
+    typeof profile.student.student_number === "string" ? profile.student.student_number : null;
 
   return (
-    <TeacherLinkShell breadcrumb={breadcrumb} title="ข้อมูลนักเรียน">
+    <TeacherLinkShell
+        actions={backAction}
+        breadcrumb={breadcrumb}
+        icon={PAGE_ICONS["user-graduate"]}
+        title="ข้อมูลนักเรียน"
+      >
       <StudentProfileHeader
         key={studentUuid}
         student={profile.student}
@@ -91,10 +131,22 @@ export function TeacherStudentProfilePage() {
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
         <div className="space-y-5 lg:col-span-2">
           <Card className="p-5">
-            <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-900">
-              <MessageSquareText aria-hidden="true" className="size-4 text-primary" />
-              ความคิดเห็นจากคุณครู
-            </h2>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+                <MessageSquareText aria-hidden="true" className="size-4 text-primary" />
+                ความคิดเห็นจากคุณครู
+              </h2>
+              {assignment ? (
+                <IconButton
+                  aria-label={`เพิ่มความคิดเห็นของ ${studentFullName}`}
+                  className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
+                  icon={MessageSquareText}
+                  iconClassName="text-white"
+                  onClick={() => setCommentOpen(true)}
+                  variant="outline"
+                />
+              ) : null}
+            </div>
             {observations.length === 0 ? (
               <EmptyState
                 className="border-none py-6 shadow-none"
@@ -171,6 +223,29 @@ export function TeacherStudentProfilePage() {
           />
         </div>
       </div>
+
+      <ClassroomStudentCommentDialog
+        classroomId={Number(assignment?.classroomId ?? 0)}
+        isSubmitting={createComment.isPending}
+        onOpenChange={(open) => {
+          if (!open) setCommentOpen(false);
+        }}
+        student={
+          commentOpen
+            ? {
+                studentUuid,
+                firstName: profile.student.FirstName_Onec ?? null,
+                lastName: profile.student.LastName_Onec ?? null,
+                studentNumber,
+              }
+            : null
+        }
+        submitComment={async ({ studentUuid: targetUuid, commentText }) => {
+          await createComment.mutateAsync({ studentUuid: targetUuid, commentText });
+          await profileQuery.refetch();
+        }}
+        submitError={createComment.error}
+      />
     </TeacherLinkShell>
   );
 }

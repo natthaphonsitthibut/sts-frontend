@@ -1,5 +1,9 @@
 import type { StudentObservation } from "../../student-observations/types/student-observation.types";
 import type {
+  SchoolPeriodTime,
+  TimetableSlot,
+} from "../../timetable/types/timetable.types";
+import type {
   StudentCase,
   StudentDetail,
   StudentProfileSummary,
@@ -62,6 +66,11 @@ export interface TeacherAccessGrant {
 }
 
 /** One teacher row of the จัดการลิงก์เช็คชื่อ screen. */
+/** VERIFIED_NOT_REACHABLE = ยืนยันแล้วแต่ลบ/บล็อก OA จึงส่งข้อความไม่ถึง */
+export type TeacherLineStatus = "NOT_VERIFIED" | "VERIFIED" | "VERIFIED_NOT_REACHABLE";
+
+export type TeacherLineFilter = "VERIFIED" | "NOT_VERIFIED" | "REACHABLE";
+
 export interface TeacherLinkRosterEntry {
   teacherMembershipId: string;
   teacherId: string;
@@ -74,6 +83,7 @@ export interface TeacherLinkRosterEntry {
   issuedAt: string | null;
   expiresAt: string | null;
   lastUsedAt: string | null;
+  lineStatus: TeacherLineStatus;
 }
 
 export interface TeacherAccessContext {
@@ -129,6 +139,23 @@ export interface IssueTeacherAccessGrantInput {
   expiresAt?: string;
 }
 
+/** Omit `teacherMembershipIds` to issue for every teacher of the term that still needs a link. */
+export interface IssueTeacherAccessGrantsForTermInput {
+  schoolTermId: number;
+  teacherMembershipIds?: number[];
+}
+
+export interface SendTeacherAccessGrantsInput {
+  schoolTermId: number;
+  deliveryRequestId: string;
+  teacherMembershipIds?: number[];
+}
+
+export interface SendTeacherAccessGrantsResult {
+  sent: number;
+  skipped: Array<{ teacherMembershipId: number; reason: string }>;
+}
+
 export interface BulkIssueTeacherAccessResult {
   issued: number;
   skipped: Array<{ teacherMembershipId: number; reason: string }>;
@@ -139,6 +166,12 @@ export interface PaginationMeta {
   limit: number;
   totalCount: number;
   totalPages: number;
+}
+
+/** ตารางสอนของฉัน through a link: the teacher's own periods plus the bell schedule. */
+export interface TeacherScheduleResponse {
+  slots: TimetableSlot[];
+  periodTimes: SchoolPeriodTime[];
 }
 
 /** Everything the teacher-link student profile screen renders, in one payload. */

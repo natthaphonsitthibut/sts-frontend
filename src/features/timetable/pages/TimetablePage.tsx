@@ -17,7 +17,7 @@ import { EmptyState, PageShell, PageToolbar } from "../../../components/layout/p
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { formatRoomLabel } from "../../../lib/room-presentation";
+import { formatClassLabel, formatRoomLabel } from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -535,7 +535,7 @@ function MyScheduleView({
                       {slot.subject_name_th}
                     </div>
                     <div className="mt-0.5 text-xs leading-4 text-slate-500">
-                      {formatRoomLabel(slot.room_no)}
+                      {formatClassLabel(slot.grade_label, slot.room_no)}
                     </div>
                   </div>
                 )

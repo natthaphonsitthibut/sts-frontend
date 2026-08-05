@@ -116,6 +116,7 @@ export function MyClassroomsPage() {
 
   return (
     <TeacherLinkShell
+      icon={CLASSROOM_ICON}
       subtitle={`ปีการศึกษา ${context.academicYear} ภาคเรียนที่ ${context.semester} · ${context.schoolName}`}
       title="ห้องเรียนของฉัน"
     >

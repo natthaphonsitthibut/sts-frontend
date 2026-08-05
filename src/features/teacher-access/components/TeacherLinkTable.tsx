@@ -1,5 +1,10 @@
 import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff } from "lucide-react";
-import { DropdownMenu, IconButton, type DropdownMenuItem } from "../../../components/base";
+import {
+  Checkbox,
+  DropdownMenu,
+  IconButton,
+  type DropdownMenuItem,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -10,7 +15,10 @@ import {
 } from "../../../components/layout/data-table";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { formatThaiDate } from "../../../lib/date-time";
-import { TEACHER_LINK_STATUS_META } from "../lib/teacher-link-presentation";
+import {
+  TEACHER_LINE_STATUS_META,
+  TEACHER_LINK_STATUS_META,
+} from "../lib/teacher-link-presentation";
 import type { TeacherLinkRosterEntry } from "../types/teacher-access.types";
 
 interface TeacherLinkTableProps {
@@ -18,6 +26,9 @@ interface TeacherLinkTableProps {
   /** 1-based index of the first row on the current page, for the ลำดับ column. */
   startIndex: number;
   busyMembershipId: string | null;
+  selectedIds: ReadonlySet<string>;
+  onSelectRow: (entry: TeacherLinkRosterEntry, selected: boolean) => void;
+  onSelectAll: (entries: readonly TeacherLinkRosterEntry[], selected: boolean) => void;
   onCreate: (entry: TeacherLinkRosterEntry) => void;
   onCopy: (entry: TeacherLinkRosterEntry) => void;
   onRotate: (entry: TeacherLinkRosterEntry) => void;
@@ -34,6 +45,15 @@ function LinkStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
       {entry.linkStatus === "ACTIVE" && entry.expiresAt ? (
         <span className="text-xs text-slate-500">ถึง {formatThaiDate(entry.expiresAt)}</span>
       ) : null}
+    </div>
+  );
+}
+
+function LineStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
+  const meta = TEACHER_LINE_STATUS_META[entry.lineStatus];
+  return (
+    <div className="flex justify-center">
+      <LinkStatusBadge label={meta.label} variant={meta.variant} />
     </div>
   );
 }
@@ -113,26 +133,50 @@ export function TeacherLinkTable({
   entries,
   startIndex,
   busyMembershipId,
+  selectedIds,
+  onSelectRow,
+  onSelectAll,
   sort,
   onSortChange,
   ...handlers
 }: TeacherLinkTableProps) {
+  const allSelected =
+    entries.length > 0 && entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
+
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        columnWidths={["w-[10%]", "w-[40%]", "w-[30%]", "w-[20%]"]}
+        columnWidths={["w-[5%]", "w-[8%]", "w-[29%]", "w-[22%]", "w-[22%]", "w-[14%]"]}
         headings={[
+          {
+            label: (
+              <Checkbox
+                aria-label="เลือกครูทั้งหมดในหน้านี้"
+                checked={allSelected}
+                onChange={(event) => onSelectAll(entries, event.currentTarget.checked)}
+              />
+            ),
+            className: "text-center",
+          },
           { label: "ลำดับ", className: "text-center" },
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
           { label: "สถานะลิงก์", sortKey: "linkStatus", className: "text-center" },
+          { label: "LINE", className: "text-center" },
           { label: "เครื่องมือ", className: "text-center" },
         ]}
-        minWidthClassName="min-w-[760px]"
+        minWidthClassName="min-w-[940px]"
         onSortChange={onSortChange}
         sort={sort}
       >
         {entries.map((entry, index) => (
           <DataTableRow key={entry.teacherMembershipId}>
+            <DataTableCell className="text-center">
+              <Checkbox
+                aria-label={`เลือก ${entry.teacherDisplayName}`}
+                checked={selectedIds.has(entry.teacherMembershipId)}
+                onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+              />
+            </DataTableCell>
             <DataTableCell className="text-center">{startIndex + index}</DataTableCell>
             <DataTableCell className="font-bold text-slate-800">
               {entry.teacherDisplayName}
@@ -144,6 +188,9 @@ export function TeacherLinkTable({
             </DataTableCell>
             <DataTableCell className="text-center">
               <LinkStatus entry={entry} />
+            </DataTableCell>
+            <DataTableCell className="text-center">
+              <LineStatus entry={entry} />
             </DataTableCell>
             <DataTableCell>
               <RowMenu
@@ -160,11 +207,19 @@ export function TeacherLinkTable({
         {entries.map((entry) => (
           <TableCard key={entry.teacherMembershipId}>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-bold text-slate-800">{entry.teacherDisplayName}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {entry.assignmentCount} ห้อง/รายวิชา
-                </p>
+              <div className="flex min-w-0 items-start gap-3">
+                <Checkbox
+                  aria-label={`เลือก ${entry.teacherDisplayName}`}
+                  checked={selectedIds.has(entry.teacherMembershipId)}
+                  className="mt-0.5"
+                  onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-slate-800">{entry.teacherDisplayName}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {entry.assignmentCount} ห้อง/รายวิชา
+                  </p>
+                </div>
               </div>
               <RowMenu
                 busy={busyMembershipId === entry.teacherMembershipId}
@@ -172,9 +227,15 @@ export function TeacherLinkTable({
                 {...handlers}
               />
             </div>
-            <div className="mt-3 flex items-center justify-between rounded-md bg-slate-50 p-3 text-sm">
-              <span className="text-slate-500">สถานะลิงก์</span>
-              <LinkStatus entry={entry} />
+            <div className="mt-3 space-y-2 rounded-md bg-slate-50 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">สถานะลิงก์</span>
+                <LinkStatus entry={entry} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">LINE</span>
+                <LineStatus entry={entry} />
+              </div>
             </div>
           </TableCard>
         ))}

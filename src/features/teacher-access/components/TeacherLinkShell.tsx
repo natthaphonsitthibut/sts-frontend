@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Avatar,
   Sheet,
@@ -14,17 +13,21 @@ import {
   AppNavigationControls,
   SidebarMenuContent,
 } from "../../../components/layout/AppFrame";
-import { PageShell } from "../../../components/layout/page-primitives";
+import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { useSidebarUiStore } from "../../../components/layout/sidebar-ui.store";
-import { getNameInitials } from "../../../lib/person-name";
 import { cn } from "../../../lib/utils";
 import type { MenuItem } from "../../auth/lib/permissions";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 
 interface TeacherLinkShellProps {
   children: ReactNode;
+  /** Page-level actions beside the title, like PageToolbar's `actions`. */
+  actions?: ReactNode;
   /** Trail before the current page; the title is always the last crumb. */
-  breadcrumb?: Array<{ label: string; to: string }>;
+  breadcrumb?: Array<{ label: string; to: string; icon?: LucideIcon }>;
+  /** Icon beside the page title, matching the authenticated pages. */
+  icon?: LucideIcon;
   title?: ReactNode;
   subtitle?: ReactNode;
   centered?: boolean;
@@ -43,6 +46,26 @@ const TEACHER_MENU_ITEMS: MenuItem[] = [
     iconName: "school-building",
     route: "/teacher-access",
     activeRoutes: ["/teacher-access"],
+  },
+  {
+    id: "my-timetable",
+    label: "ตารางสอนของฉัน",
+    iconName: "calendar",
+    route: "/teacher-access/timetable",
+    activeRoutes: ["/teacher-access/timetable"],
+  },
+];
+
+/**
+ * A link's home is its own landing page — `/` needs an account. The crumb
+ * carries that page's real name so it matches the title and the rail item,
+ * the same way "หน้าหลัก" does inside the authenticated app.
+ */
+const TEACHER_HOME_CRUMB = [
+  {
+    label: "ห้องเรียนของฉัน",
+    to: "/teacher-access",
+    icon: PAGE_ICONS["school-building"],
   },
 ];
 
@@ -69,10 +92,12 @@ function TeacherSidebarContent({
  * actions, because a link holder has no account.
  */
 export function TeacherLinkShell({
+  actions,
   breadcrumb,
   centered = false,
   children,
   contentClassName,
+  icon,
   subtitle,
   title,
 }: TeacherLinkShellProps) {
@@ -88,8 +113,8 @@ export function TeacherLinkShell({
           <AppBrand />
           <Avatar
             aria-label={`เข้าใช้งานในชื่อ ${context.teacherDisplayName}`}
-            className="size-10 bg-brand-soft font-semibold text-primary"
-            fallback={getNameInitials(context.teacherDisplayName)}
+            className="size-10"
+            gradientName={context.teacherDisplayName}
           />
         </AppHeaderFrame>
       }
@@ -115,33 +140,18 @@ export function TeacherLinkShell({
         contentClassName={cn(centered && "flex min-h-full items-center justify-center", contentClassName)}
       >
         <div className="w-full">
-          {breadcrumb?.length ? (
-            <nav
-              aria-label="เส้นทางนำทาง"
-              className="mb-2 flex min-h-6 items-center text-sm font-medium text-breadcrumb-muted"
-            >
-              {breadcrumb.map((crumb) => (
-                <span className="flex min-w-0 items-center" key={crumb.to}>
-                  <Link
-                    className="truncate rounded-sm transition-colors outline-none hover:text-content-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    to={crumb.to}
-                  >
-                    {crumb.label}
-                  </Link>
-                  <ChevronRight aria-hidden="true" className="mx-2 size-4 shrink-0 opacity-60" />
-                </span>
-              ))}
-              <span aria-current="page" className="truncate font-semibold text-content-primary">
-                {title}
-              </span>
-            </nav>
-          ) : null}
-
           {title ? (
-            <h1 className="text-xl font-semibold leading-8 text-content-primary">{title}</h1>
+            <PageToolbar
+              actions={actions}
+              breadcrumbTrail={breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB}
+              icon={icon}
+              title={title}
+            />
           ) : null}
-          {subtitle ? <p className="mt-1 text-sm text-content-secondary">{subtitle}</p> : null}
-          <div className={title ? "mt-6" : undefined}>{children}</div>
+          {subtitle ? (
+            <p className="-mt-2 mb-4 text-sm text-content-secondary">{subtitle}</p>
+          ) : null}
+          {children}
         </div>
       </PageShell>
     </AppFrame>

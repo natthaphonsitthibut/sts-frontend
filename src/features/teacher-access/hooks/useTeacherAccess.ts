@@ -4,7 +4,10 @@ import {
   useTeacherLinkSessionStore,
   type TeacherLinkCredential,
 } from "../store/teacher-link-session.store";
-import type { IssueTeacherAccessGrantInput } from "../types/teacher-access.types";
+import type {
+  IssueTeacherAccessGrantInput,
+  TeacherLineFilter,
+} from "../types/teacher-access.types";
 
 const KEY = "teacher-access";
 
@@ -12,6 +15,7 @@ export function useTeacherLinkRoster(input: {
   schoolId?: number;
   schoolTermId?: number;
   search?: string;
+  lineStatus?: TeacherLineFilter;
   sortBy?: "name" | "linkStatus";
   sortOrder?: "asc" | "desc";
   page: number;
@@ -24,6 +28,7 @@ export function useTeacherLinkRoster(input: {
         schoolId: input.schoolId!,
         schoolTermId: input.schoolTermId!,
         search: input.search || undefined,
+        lineStatus: input.lineStatus,
         sortBy: input.sortBy,
         sortOrder: input.sortOrder,
         page: input.page,
@@ -49,7 +54,15 @@ export function useIssueTeacherAccessGrant() {
 export function useIssueTeacherAccessGrantsForTerm() {
   const invalidate = useRosterInvalidation();
   return useMutation({
-    mutationFn: (schoolTermId: number) => teacherAccessService.issueGrantsForTerm(schoolTermId),
+    mutationFn: teacherAccessService.issueGrantsForTerm,
+    onSuccess: invalidate,
+  });
+}
+
+export function useSendTeacherAccessGrantsOverLine() {
+  const invalidate = useRosterInvalidation();
+  return useMutation({
+    mutationFn: teacherAccessService.sendGrantsOverLine,
     onSuccess: invalidate,
   });
 }
@@ -153,6 +166,17 @@ export function useCreateTeacherStudentComment(assignmentId: number) {
         { token, sessionToken },
         { assignmentId, ...input },
       ),
+    gcTime: 0,
+  });
+}
+
+export function useTeacherSchedule() {
+  const token = useTeacherLinkSessionStore((state) => state.token);
+  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  return useQuery({
+    queryKey: [...teacherAccessGuestQueryKey(token), "my-schedule"],
+    queryFn: () => teacherAccessService.getMySchedule({ token, sessionToken }),
+    enabled: Boolean(token),
     gcTime: 0,
   });
 }
