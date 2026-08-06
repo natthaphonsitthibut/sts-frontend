@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Sheet, SheetHeader, SidebarContainer } from "../base";
 import {
   MENU_ITEMS,
@@ -42,16 +43,20 @@ function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) 
 
 export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
+  const [hovered, setHovered] = useState(false);
+  const visuallyCollapsed = collapsed && !hovered;
 
   return (
     <>
       <SidebarContainer
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         className={cn(
           "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-          collapsed ? "w-20" : "w-[260px]",
+          visuallyCollapsed ? "w-20" : "w-[260px]",
         )}
       >
-        <SidebarContent collapsed={collapsed} />
+        <SidebarContent collapsed={visuallyCollapsed} />
       </SidebarContainer>
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
         <SheetHeader heading="ระบบติดตามนักเรียน" onClose={() => onMobileOpenChange(false)} />
