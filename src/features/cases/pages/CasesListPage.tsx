@@ -12,7 +12,6 @@ import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
-  ListPageToolbar,
   PageShell,
   SkeletonTable,
   SummaryMetrics,
@@ -21,11 +20,9 @@ import { Pagination } from "../../../components/layout/pagination";
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { SchoolClassRoomFilter } from "../../attendance/components/SchoolClassRoomFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
-import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
 import { CaseListFilter } from "../components/CaseListFilter";
@@ -85,11 +82,11 @@ export function CasesListPage() {
   );
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(CASE_TAB_ROUTES, "list");
-  const canViewAuditLog = can("audit-log");
+  const canViewHistory = can("review-cases");
   const canViewWatchlist =
     can("review-cases") && can("manage-student-observations");
   const effectiveTab =
-    activeTab === "history" && canViewAuditLog ? "history" : "list";
+    activeTab === "history" && canViewHistory ? "history" : "list";
   const [caseGroup, setCaseGroup] = useState<CaseGroup>("risk");
   const [searchQuery, setSearchQuery] = useState(() =>
     getInitialSearchQuery(location.state),
@@ -263,7 +260,7 @@ export function CasesListPage() {
       {effectiveTab === "list" ? (
         <CaseListFilter
           navigation={
-            canViewAuditLog ? (
+            canViewHistory ? (
               <Tabs
                 aria-label="มุมมองเคสติดตามนักเรียน"
                 onChange={setActiveTab}
@@ -310,7 +307,7 @@ export function CasesListPage() {
           showStatusFilter={caseGroup === "risk"}
         />
       ) : (
-        <ListPageToolbar
+        <CaseListFilter
           navigation={
             <Tabs
               aria-label="มุมมองเคสติดตามนักเรียน"
@@ -322,32 +319,27 @@ export function CasesListPage() {
               value={activeTab}
             />
           }
-          description="ดูประวัติการติดตาม การพิจารณา และการปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
+          onRefresh={refetch}
+          updatedAt={dataUpdatedAt}
           onClearFilters={handleClearFilters}
-          filters={
-            <SchoolAreaSchoolFilter
+          onSearchChange={handleSearchChange}
+          onStatusChange={handleStatusChange}
+          searchQuery={searchQuery}
+          schoolFilters={
+            <SchoolClassRoomFilter
               area={schoolArea}
+              onGradeChange={handleGradeChange}
+              onRoomChange={handleRoomChange}
               onSchoolChange={handleSchoolChange}
-              schoolId={scope.schoolId}
-              schoolLocked={scope.schoolLocked}
+              scope={scope}
             />
           }
-          icon={ClipboardList}
-          title="เคสติดตามนักเรียน"
+          status={status}
+          statuses={statuses}
         />
       )}
 
-      {effectiveTab === "history" ? (
-        <AuditLogPanel
-          description="ดูประวัติการติดตาม การพิจารณา และการปิดเคสย้อนหลังตามขอบเขตสิทธิ์"
-          district={schoolArea.district || undefined}
-          domain="cases"
-          province={schoolArea.province || undefined}
-          schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
-          subDistrict={schoolArea.subDistrict || undefined}
-          title="ประวัติเคสติดตามนักเรียน"
-        />
-      ) : isError || workflowStatuses.isError ? (
+      {isError || workflowStatuses.isError ? (
         <ErrorState
           title="ไม่สามารถโหลดข้อมูลเคสได้"
           description="เกิดข้อผิดพลาดระหว่างโหลดรายการเคส"
@@ -358,6 +350,29 @@ export function CasesListPage() {
         />
       ) : isLoading || workflowStatuses.isLoading ? (
         <SkeletonTable />
+      ) : effectiveTab === "history" ? (
+        <div className="space-y-4">
+          {cases.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="ไม่พบประวัติเคสติดตามนักเรียน"
+              description="ลองปรับตัวกรองสถานะ หรือค้นหาด้วยชื่อนักเรียนอีกครั้ง"
+            />
+          ) : (
+            <>
+              <CaseTable canCreateLinks={false} onCreateLink={openCreateLink} rows={cases} />
+              <Pagination
+                onPageChange={setRiskPage}
+                onRowsPerPageChange={handleRowsPerPageChange}
+                page={riskPage}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                totalCount={totalCount}
+                unitLabel="เคส"
+              />
+            </>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
           <SummaryMetrics
