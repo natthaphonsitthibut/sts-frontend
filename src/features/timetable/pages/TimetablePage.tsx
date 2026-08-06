@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Clock3, Plus, SquarePen, Trash2 } from "lucide-react";
 import {
@@ -82,6 +82,7 @@ function AddSlotForm({
     }
     return [];
   });
+  const [teacherRequired, setTeacherRequired] = useState(false);
   const roomSubjectsQuery = useRoomSubjects(room);
   const createSlot = useCreateTimetableSlot();
   const updateSlot = useUpdateTimetableSlot();
@@ -110,36 +111,30 @@ function AddSlotForm({
     value: String(teacher.id),
     label: teacher.display_name,
   }));
-
-  useEffect(() => {
-    if (editingSlot) {
-      if (editingSlot.teacher_membership_ids?.length) {
-        setTeacherMembershipIds(editingSlot.teacher_membership_ids.map(String));
-      } else if (teacherOptions.length > 0) {
-        setTeacherMembershipIds(teacherOptions.map((t) => t.value));
-      }
-    } else if (subjectId && teacherOptions.length > 0 && teacherMembershipIds.length === 0) {
-      setTeacherMembershipIds(teacherOptions.map((t) => t.value));
-    }
-  }, [subjectId, teacherOptions, editingSlot]);
+  const selectableTeacherIds = new Set(teacherOptions.map((teacher) => teacher.value));
+  const selectedTeacherMembershipIds = teacherMembershipIds.filter((id) =>
+    selectableTeacherIds.has(id),
+  );
 
   const disableSaveReason = !subjectId
     ? "เลือกวิชาก่อนบันทึก"
-    : teacherMembershipIds.length === 0
-      ? "เลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก"
-      : !editingSlot && !activeTerm
-        ? "ต้องมีภาคเรียนที่เปิดใช้งานก่อนบันทึกคาบสอน"
-        : "";
+    : !editingSlot && !activeTerm
+      ? "ต้องมีภาคเรียนที่เปิดใช้งานก่อนบันทึกคาบสอน"
+      : "";
 
   function handleSubmit(): void {
-    if (!subjectId || teacherMembershipIds.length === 0) return;
+    if (!subjectId) return;
+    if (selectedTeacherMembershipIds.length === 0) {
+      setTeacherRequired(true);
+      return;
+    }
     if (editingSlot) {
       updateSlot.mutate(
         {
           id: editingSlot.id,
           payload: {
             subjectId: Number(subjectId),
-            teacherMembershipIds: teacherMembershipIds.map(Number),
+            teacherMembershipIds: selectedTeacherMembershipIds.map(Number),
           },
         },
         { onSuccess: onDone },
@@ -157,7 +152,7 @@ function AddSlotForm({
         dayOfWeek: Number(dayOfWeek),
         period: Number(period),
         subjectId: Number(subjectId),
-        teacherMembershipIds: teacherMembershipIds.map(Number),
+        teacherMembershipIds: selectedTeacherMembershipIds.map(Number),
       },
       { onSuccess: onDone },
     );
@@ -216,6 +211,7 @@ function AddSlotForm({
             onChange={(val) => {
               setSubjectId(val);
               setTeacherMembershipIds([]);
+              setTeacherRequired(false);
             }}
             options={[{ value: "", label: "เลือกวิชา" }, ...subjectOptions]}
             placeholder="ค้นหาวิชาในหลักสูตร"
@@ -231,10 +227,13 @@ function AddSlotForm({
             disabled={!subjectId}
             emptyText={!subjectId ? "เลือกวิชาก่อนเพื่อดูผู้สอน" : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"}
             id="slot-teacher"
-            onChange={setTeacherMembershipIds}
+            onChange={(values) => {
+              setTeacherMembershipIds(values);
+              setTeacherRequired(false);
+            }}
             options={teacherOptions}
             placeholder="เลือกผู้สอน"
-            value={teacherMembershipIds}
+            value={selectedTeacherMembershipIds}
           />
         </FormItem>
       </div>
@@ -244,7 +243,7 @@ function AddSlotForm({
           ยกเลิก
         </Button>
         <Button
-          disabled={(!editingSlot && !activeTerm) || !subjectId || teacherMembershipIds.length === 0}
+          disabled={(!editingSlot && !activeTerm) || !subjectId}
           isLoading={createSlot.isPending || updateSlot.isPending}
           onClick={handleSubmit}
           type="button"
@@ -254,6 +253,11 @@ function AddSlotForm({
       </div>
       {disableSaveReason ? (
         <p className="text-right text-sm font-medium text-slate-500">{disableSaveReason}</p>
+      ) : null}
+      {teacherRequired ? (
+        <p className="text-right text-sm font-medium text-danger" role="alert">
+          กรุณาเลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก
+        </p>
       ) : null}
     </div>
   );
