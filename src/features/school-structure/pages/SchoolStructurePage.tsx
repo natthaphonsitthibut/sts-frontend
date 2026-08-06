@@ -48,6 +48,7 @@ import {
   type SchoolTermFormValues,
 } from "../../attendance/components/SchoolTermDialog";
 import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
+import type { SchoolTerm } from "../../attendance/types/attendance.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import {
@@ -86,6 +87,7 @@ export function SchoolStructurePage() {
   });
 
   const [termDialogOpen, setTermDialogOpen] = useState(false);
+  const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [classroomDialogOpen, setClassroomDialogOpen] = useState(false);
   // Room the homeroom dialog is assigning for; null = dialog closed.
   const [assigningClassroom, setAssigningClassroom] = useState<SchoolClassroom | null>(null);
@@ -118,6 +120,7 @@ export function SchoolStructurePage() {
   });
   const terms = useMemo(() => termsQuery.data ?? [], [termsQuery.data]);
   const selectedTermId = Number(termInput || terms[0]?.id || 0) || undefined;
+  const selectedTerm = terms.find((term) => Number(term.id) === selectedTermId) ?? null;
 
   const gradeLevelsQuery = useQuery({
     queryKey: ["school-structure", "grade-levels"],
@@ -158,16 +161,24 @@ export function SchoolStructurePage() {
   const updateClassroom = useUpdateSchoolClassroom();
   const deleteClassroom = useDeleteSchoolClassroom();
   const createAssignment = useCreateHomeroomAssignment();
-  const createTerm = useMutation({
+  const saveTerm = useMutation({
     mutationFn: (values: SchoolTermFormValues) =>
       attendanceService.upsertTerm({ ...values, schoolId: selectedSchoolId! }),
-    onSuccess: async () => {
+    onSuccess: async (term) => {
       await queryClient.invalidateQueries({
         queryKey: ["school-structure", "terms", selectedSchoolId],
       });
+      setTermInput(term.id);
       setTermDialogOpen(false);
+      setTermDialogTerm(null);
     },
   });
+
+  function openTermDialog(term: SchoolTerm | null): void {
+    saveTerm.reset();
+    setTermDialogTerm(term);
+    setTermDialogOpen(true);
+  }
 
   function handleSchoolChange(value: string): void {
     setSchoolInput(value);
@@ -281,10 +292,19 @@ export function SchoolStructurePage() {
             <Button
               disabled={!selectedSchoolId}
               icon={Plus}
-              onClick={() => setTermDialogOpen(true)}
+              onClick={() => openTermDialog(null)}
               variant="outline"
             >
               เพิ่มภาคเรียน
+            </Button>
+            <Button
+              disabled={!selectedTerm}
+              icon={SquarePen}
+              onClick={() => openTermDialog(selectedTerm)}
+              title={!selectedTerm ? "เลือกภาคเรียนก่อนจึงจะแก้ไขได้" : undefined}
+              variant="outline"
+            >
+              แก้ภาคเรียน
             </Button>
             <Button
               disabled={!selectedTermId}
@@ -498,12 +518,15 @@ export function SchoolStructurePage() {
       )}
 
       <SchoolTermDialog
-        error={createTerm.error}
-        isPending={createTerm.isPending}
-        onClose={() => setTermDialogOpen(false)}
-        onSubmit={(values) => createTerm.mutateAsync(values).then(() => undefined)}
+        error={saveTerm.error}
+        isPending={saveTerm.isPending}
+        onClose={() => {
+          setTermDialogOpen(false);
+          setTermDialogTerm(null);
+        }}
+        onSubmit={(values) => saveTerm.mutateAsync(values).then(() => undefined)}
         open={termDialogOpen}
-        term={null}
+        term={termDialogTerm}
       />
 
       {confirmDialog}
