@@ -84,6 +84,7 @@ export interface CaseRecord {
   student_id?: string | null;
   task_id?: string | null;
   student_name: string;
+  student_photo_url?: string | null;
   student_school?: string | null;
   student_address?: string | null;
   reason?: string | null;

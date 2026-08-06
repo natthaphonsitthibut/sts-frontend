@@ -657,6 +657,19 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
     }
   }
 
+  // A case stores an immutable address snapshot, but the visit form needs the
+  // structured current enrollment fields (house, moo, road and location
+  // cascade) rather than one combined line. Loading the scoped student detail
+  // here also repairs legacy/demo cases whose snapshot predates those fields.
+  useEffect(() => {
+    if (!prefill?.student_id) return;
+    const requestVersion = addressRequestVersionRef.current + 1;
+    addressRequestVersionRef.current = requestVersion;
+    void prefillStudentAddress(prefill.student_id, requestVersion);
+    // Route-state prefill is immutable for this mounted task-type form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.student_id]);
+
   function handleValid(values: CreateTaskFormValues): void {
     if (
       type === "VISIT" &&

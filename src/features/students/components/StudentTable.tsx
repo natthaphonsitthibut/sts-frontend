@@ -155,7 +155,7 @@ export function StudentTable({
             <DataTableCell>
               <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </DataTableCell>
-            <DataTableCell className="text-slate-500">
+            <DataTableCell className="text-slate-600">
               {student.school_name || "-"}
             </DataTableCell>
             <DataTableCell className="text-slate-600">
@@ -187,7 +187,7 @@ export function StudentTable({
               <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">
+              <span className="text-slate-600">
                 {student.school_name || "-"}
               </span>
               <span className="text-slate-600">

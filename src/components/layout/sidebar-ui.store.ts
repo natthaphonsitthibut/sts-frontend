@@ -14,10 +14,11 @@ function isBrowser(): boolean {
 
 function readStoredCollapsed(): boolean {
   if (!isBrowser()) {
-    return false;
+    return true;
   }
 
-  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+  const storedValue = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+  return storedValue === null ? true : storedValue === "true";
 }
 
 function writeStoredCollapsed(collapsed: boolean): void {

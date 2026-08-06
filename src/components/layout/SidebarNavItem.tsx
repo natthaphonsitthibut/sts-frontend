@@ -47,7 +47,7 @@ function navLinkClassName(
   nested = false,
 ): string {
   return cn(
-    "flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
+    "group flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
     // Nested rows glide between full width and the collapsed icon square via
     // px max-width caps (percent↔px can't interpolate; max-w-60 ≥ the real
     // expanded width so it only bites while collapsing). Color transitions
@@ -123,9 +123,8 @@ export function SidebarNavItem({
     setOpen((value) => !value);
   }
 
-  // The collapsed icon rail never shows nested children — only the active
-  // child itself should read as "active" (via its own NavLink), the parent
-  // group icon stays neutral either way.
+  // The collapsed icon rail never shows nested children, so the parent icon
+  // carries the active state whenever one of its children owns the route.
   const childrenVisible = expanded && !collapsed;
 
   if (item.children) {
@@ -140,10 +139,15 @@ export function SidebarNavItem({
           className={cn(
             // justify-center is unconditional for the same glide reason as
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
-            "relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
+            "group relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
+            hasActiveChild &&
+              "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
           )}
         >
-          <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
+          <LayoutIcon
+            className="size-5 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            iconName={item.iconName}
+          />
           {/* `mr-7` reserves the width the absolute chevron overlays (16px
               icon + 12px gap) so truncated text never runs under it; it
               animates away via the label's existing margin transition. */}
@@ -199,7 +203,10 @@ export function SidebarNavItem({
                   to={child.route || "#"}
                   tabIndex={childrenVisible ? undefined : -1}
                 >
-                  <LayoutIcon className="size-4 shrink-0" iconName={child.iconName} />
+                  <LayoutIcon
+                    className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                    iconName={child.iconName}
+                  />
                   <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
                     {child.label}
                   </span>
@@ -228,7 +235,10 @@ export function SidebarNavItem({
       title={collapsed ? item.label : undefined}
       to={item.route || "#"}
     >
-      <LayoutIcon className="size-5 shrink-0" iconName={item.iconName} />
+      <LayoutIcon
+        className="size-5 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        iconName={item.iconName}
+      />
       <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>{item.label}</span>
     </NavLink>
   );

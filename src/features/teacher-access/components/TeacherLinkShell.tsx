@@ -55,7 +55,7 @@ const TEACHER_MENU_ITEMS = [
 const TEACHER_HOME_CRUMB = [
   {
     label: "ห้องเรียนของฉัน",
-    to: "/teacher-access/classes",
+    to: "/teacher-access",
     icon: PAGE_ICONS["school-building"],
   },
 ];
