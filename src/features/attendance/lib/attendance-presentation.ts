@@ -122,20 +122,19 @@ export const ATTENDANCE_STATUS_STYLE: Record<
     icon: Clock,
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass:
-      "border-warning bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700 shadow-[0_4px_12px_rgba(245,158,11,0.25)]",
-    displayClass: "bg-gradient-to-br from-warning-100 to-warning-200 text-warning-700",
-    pillIdleClass: "border-warning text-warning-700",
-    pillActiveClass: "border-warning bg-warning text-white",
+      "border-brand-yellow bg-brand-yellow-bg text-amber-700 shadow-[0_4px_12px_rgba(245,158,11,0.25)]",
+    displayClass: "bg-brand-yellow-bg text-amber-700",
+    pillIdleClass: "border-brand-yellow text-amber-700",
+    pillActiveClass: "border-brand-yellow bg-brand-yellow text-white",
   },
-  // "ลา" has no dedicated accent token — the status catalog assigns it the
-  // neutral `secondary` badge, so the button styling follows the slate ramp.
   P_LEAVE: {
     icon: CalendarOff,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass: "border-slate-400 bg-slate-200 text-slate-700",
-    displayClass: "bg-slate-100 text-slate-700",
-    pillIdleClass: "border-slate-400 text-slate-700",
-    pillActiveClass: "border-slate-500 bg-slate-500 text-white",
+    activeClass:
+      "border-attendance-leave bg-brand-orange-bg text-orange-700 shadow-[0_4px_12px_rgba(245,116,11,0.25)]",
+    displayClass: "bg-brand-orange-bg text-orange-700",
+    pillIdleClass: "border-attendance-leave text-orange-700",
+    pillActiveClass: "border-attendance-leave bg-attendance-leave text-white",
   },
   NONE: {
     icon: HelpCircle,

@@ -11,7 +11,10 @@ export type DismissReason = "outside-press" | "escape";
  */
 export function useDismissable(
   open: boolean,
-  containerRef: RefObject<HTMLElement | null>,
+  // A portaled surface (e.g. a dropdown panel rendered into document.body to
+  // escape a scroll-clipped table) lives outside the trigger's DOM subtree —
+  // pass both refs so a press inside either counts as "inside".
+  containerRef: RefObject<HTMLElement | null> | Array<RefObject<HTMLElement | null>>,
   onDismiss: (reason: DismissReason) => void,
 ): void {
   // Same pattern as Dialog's onOpenChangeRef: keep the latest closure in a
@@ -23,11 +26,12 @@ export function useDismissable(
 
   useEffect(() => {
     if (!open) return;
+    const refs = Array.isArray(containerRef) ? containerRef : [containerRef];
 
     function handlePointerDown(event: MouseEvent | TouchEvent): void {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        onDismissRef.current("outside-press");
-      }
+      const target = event.target as Node;
+      const isInside = refs.some((ref) => ref.current?.contains(target));
+      if (!isInside) onDismissRef.current("outside-press");
     }
 
     function handleKeyDown(event: KeyboardEvent): void {
@@ -42,5 +46,6 @@ export function useDismissable(
       document.removeEventListener("touchstart", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, containerRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable identities; array literals from callers are fine to re-diff by open only
+  }, [open]);
 }

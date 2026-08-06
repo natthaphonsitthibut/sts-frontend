@@ -187,12 +187,12 @@ interface FlowStepProps {
 
 function FlowStep({ active = false, label, number }: FlowStepProps) {
   return (
-    <div className="relative flex flex-col items-center gap-2" data-flow-step={number}>
+    <div className="relative z-10 flex flex-col items-center gap-2" data-flow-step={number}>
       <div
         className={cn(
-          "relative z-10 grid size-9 place-items-center rounded-full border text-sm font-bold",
+          "grid size-9 place-items-center rounded-full border text-sm font-bold",
           active
-            ? "border-primary bg-primary text-white"
+            ? "border-primary bg-primary text-white ring-4 ring-primary/20"
             : "border-slate-300 bg-white text-slate-600",
         )}
       >
@@ -404,7 +404,12 @@ export function ReportPage() {
       // receipt page can no longer read the student/term context from the task.
       void navigate(`/task/${token}/success?type=visit`, {
         replace: true,
-        state: taskQuery.data ? { formTitle: buildVisitReportFormTitle(taskQuery.data) } : undefined,
+        state: taskQuery.data
+          ? {
+              formTitle: buildVisitReportFormTitle(taskQuery.data),
+              assignedToName: taskQuery.data.assigned_to_name,
+            }
+          : undefined,
       });
     },
   });
@@ -507,8 +512,8 @@ export function ReportPage() {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
             <div className="flex min-w-0 gap-3">
               <Avatar
-                className="size-20 bg-primary text-xl text-white"
-                fallback={task.student_name || undefined}
+                className="size-24 text-2xl"
+                gradientName={task.student_name || undefined}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
@@ -680,7 +685,7 @@ export function ReportPage() {
           <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-x-3 gap-y-4 sm:grid-cols-[76px_minmax(0,1fr)] sm:gap-x-5">
             <div className="relative flex items-center justify-center">
               <div
-                className="absolute bottom-[-1rem] left-1/2 top-1/2 w-px -translate-x-1/2 bg-slate-200"
+                className="absolute bottom-[-1rem] left-1/2 top-[calc(50%+3.5rem)] w-px -translate-x-1/2 bg-slate-200"
                 aria-hidden="true"
               />
               <FlowStep label="มอบหมาย" number={1} />
@@ -705,9 +710,9 @@ export function ReportPage() {
                 </div>
             </section>
 
-            <div className="relative flex items-start justify-center pt-[14.5rem]">
+            <div className="relative flex items-center justify-center">
               <div
-                className="absolute left-1/2 top-[-1rem] h-[16.625rem] w-px -translate-x-1/2 bg-slate-200"
+                className="absolute bottom-[calc(50%+3.5rem)] left-1/2 top-[-1rem] w-px -translate-x-1/2 bg-slate-200"
                 aria-hidden="true"
               />
               <FlowStep active label="ติดตาม" number={2} />

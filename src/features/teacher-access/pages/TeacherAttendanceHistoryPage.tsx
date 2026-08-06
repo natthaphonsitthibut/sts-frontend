@@ -183,13 +183,13 @@ export function TeacherAttendanceHistoryPage() {
       ) : (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
-            { label: "วันที่", sortKey: "date", className: "text-center" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy", className: "text-center" },
-            { label: "จำนวนที่มา (คน)", sortKey: "present", className: "text-center" },
-            { label: "จำนวนที่สาย (คน)", sortKey: "late", className: "text-center" },
-            { label: "จำนวนที่ลา (คน)", sortKey: "leave", className: "text-center" },
-            { label: "จำนวนที่ขาด (คน)", sortKey: "absent", className: "text-center" },
+            { label: "ลำดับ" },
+            { label: "วันที่", sortKey: "date" },
+            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
+            { label: "จำนวนที่มา (คน)", sortKey: "present" },
+            { label: "จำนวนที่สาย (คน)", sortKey: "late" },
+            { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
+            { label: "จำนวนที่ขาด (คน)", sortKey: "absent" },
           ]}
           minWidthClassName="min-w-[950px]"
           onSortChange={(nextSort) => {
@@ -217,17 +217,17 @@ export function TeacherAttendanceHistoryPage() {
         >
           {entries.map((entry, index) => (
             <DataTableRow key={entry.sessionId}>
-              <DataTableCell className="text-center tabular-nums">
+              <DataTableCell className="tabular-nums">
                 {(page - 1) * rowsPerPage + index + 1}
               </DataTableCell>
-              <DataTableCell className="text-center tabular-nums">
+              <DataTableCell className="tabular-nums">
                 {formatNumericThaiDate(entry.attendanceDate)}
               </DataTableCell>
-              <DataTableCell className="text-center">{entry.recordedBy || "-"}</DataTableCell>
-              <DataTableCell className="text-center">{entry.presentCount}</DataTableCell>
-              <DataTableCell className="text-center">{entry.lateCount}</DataTableCell>
-              <DataTableCell className="text-center">{entry.leaveCount}</DataTableCell>
-              <DataTableCell className="text-center">{entry.absentCount}</DataTableCell>
+              <DataTableCell>{entry.recordedBy || "-"}</DataTableCell>
+              <DataTableCell>{entry.presentCount}</DataTableCell>
+              <DataTableCell>{entry.lateCount}</DataTableCell>
+              <DataTableCell>{entry.leaveCount}</DataTableCell>
+              <DataTableCell>{entry.absentCount}</DataTableCell>
             </DataTableRow>
           ))}
         </DataTable>

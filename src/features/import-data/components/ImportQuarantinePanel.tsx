@@ -229,7 +229,7 @@ function ImportQuarantineTable({
         {items.map((item) => (
           <DataTableRow key={item.id}>
             <DataTableCell>
-              <div className="font-bold text-slate-900">
+              <div className="text-slate-900">
                 {item.student.firstName} {item.student.lastName}
               </div>
               <div className="mt-1 text-xs text-slate-500">
@@ -280,7 +280,7 @@ function ImportQuarantineTable({
           <TableCard className="space-y-3" key={item.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-bold text-slate-900">
+                <div className="text-slate-900">
                   {item.student.firstName} {item.student.lastName}
                 </div>
                 <div className="text-sm text-slate-500">

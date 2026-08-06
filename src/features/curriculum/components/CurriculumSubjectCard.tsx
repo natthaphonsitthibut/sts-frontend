@@ -109,10 +109,10 @@ export function CurriculumSubjectCard({
               >
                 {pagedCoverage.map((row) => (
                   <DataTableRow key={row.id}>
-                    <DataTableCell className="text-center font-semibold text-slate-800">
+                    <DataTableCell className="text-slate-800">
                       {row.classroomLabel}
                     </DataTableCell>
-                    <DataTableCell className="text-center font-semibold text-slate-800">
+                    <DataTableCell className="text-slate-800">
                       {row.teacherName}
                     </DataTableCell>
                   </DataTableRow>

@@ -56,7 +56,7 @@ export function RoleGroupTable({
         const menuLabels = role.default_permissions.map(labelOf);
         return (
           <DataTableRow key={role.id ?? role.name}>
-            <DataTableCell className="font-semibold text-slate-800">
+            <DataTableCell className="text-slate-800">
               {role.label || role.name}
             </DataTableCell>
             <DataTableCell className="whitespace-normal leading-6 text-slate-700">

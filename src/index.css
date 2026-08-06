@@ -33,7 +33,7 @@
   --color-slate-50: #fafafa;
   --color-slate-100: #f5f5f5;
   --color-slate-200: #e5e5e5;
-  --color-slate-300: #d4d4d4;
+  --color-slate-300: #dddddd;
   --color-slate-400: #a3a3a3;
   --color-slate-500: #737373;
   --color-slate-600: #525252;
@@ -51,7 +51,7 @@
 
   /* Success — present / positive (deep green) */
   --color-success: #15803d;
-  --color-success-100: #dcfce7;
+  --color-success-100: #d9e9e0;
   --color-success-200: #bbf7d0;
   --color-success-700: #166534;
 
@@ -72,11 +72,34 @@
   --color-view-dark: #475569;
 
   /* Danger — absent / negative (deep red) */
-  --color-danger: #b91c1c;
-  --color-danger-100: #fee2e2;
+  --color-danger: #ba1a1a;
+  --color-danger-100: #f5dddd;
   --color-danger-200: #fecaca;
   --color-danger-400: #ef4444;
   --color-danger-700: #991b1b;
+
+  /*
+   * Reference palette — the design team's Figma color library, kept as its
+   * own named set (not folded into Tailwind's built-in amber/orange/purple
+   * scales) so it never silently recolors unrelated features already using
+   * those stock utilities elsewhere in the app. Pull from here first when a
+   * new accent color is needed instead of picking an arbitrary hex.
+   */
+  --color-brand-red-alt: #ec1e1e;
+  --color-brand-orange: #f5740b;
+  --color-brand-orange-bg: #ffe2ca;
+  --color-brand-yellow: #f59e0b;
+  --color-brand-yellow-bg: #fef1db;
+  --color-brand-purple: #7324ce;
+  --color-brand-purple-bg: #e9dcf8;
+  /* An off-black "ink" tone for strong emphasis text/icons — distinct from
+     true black, matches the Figma library's "Black (ไม่จริง)" swatch. */
+  --color-ink: #0f172a;
+
+  /* Attendance "leave" (ลา) — no equivalent semantic tone existed before the
+     reference palette above; aliases brand-orange so there is one source of
+     truth for the exact value. */
+  --color-attendance-leave: var(--color-brand-orange);
 
   /* Surface tints — status/metric accents (muted, premium) */
   --color-surface-emerald: #dcfce7;
@@ -119,8 +142,8 @@
 
 :root {
   font-family:
-    "Prompt",
-    "Inter",
+    "TH Sarabun PSK",
+    "Sarabun",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,

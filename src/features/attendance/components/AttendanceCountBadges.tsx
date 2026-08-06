@@ -1,8 +1,9 @@
-import { Badge } from "../../../components/base";
-import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
+import { cn } from "../../../lib/utils";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+import type { AttendanceSelectionStatus } from "../types/attendance.types";
 import {
   ATTENDANCE_COUNT_KEY_BY_STATUS,
+  getAttendanceStatusPresentation,
   type AttendanceCounts,
 } from "../lib/attendance-presentation";
 
@@ -18,15 +19,18 @@ export function AttendanceCountBadges({
   return (
     <div className="flex flex-wrap gap-2">
       {Object.entries(COUNT_BY_INTERNAL_CODE).map(([code, countKey]) => {
-        const item = findStatusCatalogItem(catalog, code);
+        const status = code as AttendanceSelectionStatus;
+        const meta = getAttendanceStatusPresentation(status, catalog);
         return (
-          <Badge
-            className="min-w-[68px] justify-center"
+          <span
+            className={cn(
+              "inline-flex min-w-[68px] items-center justify-center rounded-full px-3 py-1 text-xs font-bold tabular-nums transition-colors",
+              meta.displayClass,
+            )}
             key={code}
-            variant={item?.badgeVariant ?? "secondary"}
           >
-            {item?.shortLabel ?? item?.label ?? code} {counts[countKey]}
-          </Badge>
+            {meta.shortLabel} {counts[countKey]}
+          </span>
         );
       })}
     </div>

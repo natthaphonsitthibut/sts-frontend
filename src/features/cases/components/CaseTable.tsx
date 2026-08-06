@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
+import {
+  LinkRemainingBadge,
+  LinkTimeSummary,
+} from "../../../components/layout/link-time-summary";
 import {
   DataTable,
   DataTableCell,
@@ -56,11 +59,12 @@ function compareText(a: string | undefined, b: string | undefined): number {
 
 function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
   if (key === "student") return caseRecord.student_name || "";
-  if (key === "reason") return getCaseReason(caseRecord.reason, caseRecord.reason_flagged);
+  if (key === "reason")
+    return getCaseReason(caseRecord.reason, caseRecord.reason_flagged);
   if (key === "assignee") return caseRecord.latest_link_assigned_to || "";
   if (key === "status") return caseRecord.status || "";
-  if (key === "starts") return caseRecord.active_link_created_at || caseRecord.created_at || "";
-  if (key === "expires") return caseRecord.active_link_expires_at || "";
+  if (key === "starts")
+    return caseRecord.active_link_created_at || caseRecord.created_at || "";
   if (key === "remaining") return caseRecord.active_link_expires_at || "";
   return "";
 }
@@ -87,52 +91,62 @@ export function CaseTable({
       <DataTable
         headings={[
           { label: "นักเรียน", sortKey: "student" },
-          { label: "สาเหตุ", sortKey: "reason" },
+          // { label: "สาเหตุ", sortKey: "reason" }, // hidden — viewable via "ดูรายละเอียด"
           { label: "ผู้รับลิงก์", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
-          { label: <LinkTimeHeader onSortChange={setSort} sort={sort} /> },
+          { label: "ช่วงเวลา", sortKey: "starts" },
+          { label: "อายุที่เหลือ", sortKey: "remaining" },
           "",
         ]}
         columnWidths={[
-          "w-[16%]",
+          "w-[20%]",
+          // "w-[20%]", // สาเหตุ
+          "w-[14%]",
+          "w-[14%]",
           "w-[18%]",
-          "w-[13%]",
-          "w-[12%]",
-          "w-[26%]",
-          "w-[15%]",
+          "w-[17%]",
+          "w-[17%]",
         ]}
-        minWidthClassName="min-w-full"
+        minWidthClassName="min-w-[1100px]"
         onSortChange={setSort}
         sort={sort}
       >
         {sortedRows.map((caseRecord) => (
           <DataTableRow key={caseRecord.id}>
             <DataTableCell>
-              <div className="font-bold text-slate-800">
-                {caseRecord.student_name}
-              </div>
+              <div className="text-slate-800">{caseRecord.student_name}</div>
               <div className="mt-0.5 text-xs text-slate-500">
                 {caseRecord.student_school || "-"}
               </div>
             </DataTableCell>
-            <DataTableCell className="text-sm text-slate-600">
+            {/* <DataTableCell className="text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
-            </DataTableCell>
+            </DataTableCell> */}
             <DataTableCell className="text-sm text-slate-600">
               {caseRecord.latest_link_assigned_to || "-"}
             </DataTableCell>
             <DataTableCell>
               <CaseStatusBadge
                 badgeVariant={caseRecord.status_badge_variant}
-                label={caseRecord.display_status_label ?? caseRecord.status_label}
+                label={
+                  caseRecord.display_status_label ?? caseRecord.status_label
+                }
                 status={caseRecord.status}
               />
             </DataTableCell>
             <DataTableCell>
               <LinkTimeSummary
                 expiresAt={caseRecord.active_link_expires_at}
-                startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                startsAt={
+                  caseRecord.active_link_created_at ?? caseRecord.created_at
+                }
                 variant="columns"
+                showRemaining={false}
+              />
+            </DataTableCell>
+            <DataTableCell>
+              <LinkRemainingBadge
+                expiresAt={caseRecord.active_link_expires_at}
               />
             </DataTableCell>
             <DataTableCell className="text-right">
@@ -151,31 +165,33 @@ export function CaseTable({
           <TableCard key={caseRecord.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-bold text-slate-800">
-                  {caseRecord.student_name}
-                </div>
+                <div className="text-slate-800">{caseRecord.student_name}</div>
                 <div className="mt-0.5 text-xs text-slate-500">
                   {caseRecord.student_school || "-"}
                 </div>
               </div>
               <CaseStatusBadge
                 badgeVariant={caseRecord.status_badge_variant}
-                label={caseRecord.display_status_label ?? caseRecord.status_label}
+                label={
+                  caseRecord.display_status_label ?? caseRecord.status_label
+                }
                 status={caseRecord.status}
               />
             </div>
-            <p className="mt-3 text-sm text-slate-600">
+            {/* <p className="mt-3 text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
-            </p>
+            </p> */}
             {caseRecord.task_id ? (
               <div className="mt-3 text-sm text-slate-600">
-                <span className="font-semibold text-slate-500">ผู้รับลิงก์:</span>{" "}
+                <span className="text-slate-500">ผู้รับลิงก์:</span>{" "}
                 {caseRecord.latest_link_assigned_to || "-"}
               </div>
             ) : null}
             <div className="mt-3 rounded-md bg-slate-50 p-3">
               <LinkTimeSummary
-                startsAt={caseRecord.active_link_created_at ?? caseRecord.created_at}
+                startsAt={
+                  caseRecord.active_link_created_at ?? caseRecord.created_at
+                }
                 expiresAt={caseRecord.active_link_expires_at}
               />
             </div>

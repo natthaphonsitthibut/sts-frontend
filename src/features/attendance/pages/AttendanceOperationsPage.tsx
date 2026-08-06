@@ -1206,7 +1206,7 @@ export function AttendanceOperationsPage() {
                   );
                   return (
                     <DataTableRow key={`${row.gradeLevelId}-${row.room}`}>
-                      <DataTableCell className="font-bold">{row.grade}</DataTableCell>
+                      <DataTableCell>{row.grade}</DataTableCell>
                       <DataTableCell>{formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>{row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.recordedCount}</DataTableCell>
@@ -1226,7 +1226,7 @@ export function AttendanceOperationsPage() {
                     <TableCard key={`${row.gradeLevelId}-${row.room}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-base font-bold text-slate-900">
+                          <div className="text-base text-slate-900">
                             {row.grade} / {formatRoomLabel(row.room)}
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
@@ -1366,10 +1366,10 @@ export function AttendanceOperationsPage() {
                   const meta = getCatalogMeta(anomalyCatalog.items, row.anomalyType);
                   return (
                     <DataTableRow key={row.sessionId}>
-                      <DataTableCell className="font-semibold tabular-nums text-slate-800">
+                      <DataTableCell className="tabular-nums text-slate-800">
                         {formatThaiDate(row.date)}
                       </DataTableCell>
-                      <DataTableCell className="font-bold">{row.grade}</DataTableCell>
+                      <DataTableCell>{row.grade}</DataTableCell>
                       <DataTableCell>{formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>
                         <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
@@ -1416,10 +1416,10 @@ export function AttendanceOperationsPage() {
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="font-semibold tabular-nums text-slate-800">
+                            <div className="tabular-nums text-slate-800">
                               {formatThaiDate(row.date)}
                             </div>
-                            <div className="mt-1 text-sm font-bold text-slate-900">
+                            <div className="mt-1 text-sm text-slate-900">
                               {row.grade} / {formatRoomLabel(row.room)}
                             </div>
                           </div>

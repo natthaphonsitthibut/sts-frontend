@@ -300,9 +300,9 @@ export function TeacherClassroomPage() {
       ) : tab === "roster" ? (
         <DataTable
           headings={[
-            { label: "ลำดับ", className: "text-center" },
+            { label: "ลำดับ" },
             { label: "รูปประจำตัว", className: "text-center" },
-            { label: "รหัสประจำตัว", sortKey: "studentNumber", className: "text-center" },
+            { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
             { label: "หมายเหตุ", sortKey: "comment" },
             { label: "สถานะความเสี่ยง", sortKey: "status", className: "text-center" },
@@ -318,7 +318,7 @@ export function TeacherClassroomPage() {
             const tier = student.riskTier ?? "NORMAL";
             return (
               <DataTableRow key={student.studentUuid}>
-                <DataTableCell className="text-center tabular-nums">{index + 1}</DataTableCell>
+                <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
                     <button
@@ -335,7 +335,7 @@ export function TeacherClassroomPage() {
                     </button>
                   </div>
                 </DataTableCell>
-                <DataTableCell className="text-center font-medium tabular-nums">
+                <DataTableCell className="font-medium tabular-nums">
                   {student.studentNumber ?? "-"}
                 </DataTableCell>
                 <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
@@ -397,9 +397,9 @@ export function TeacherClassroomPage() {
           </div>
           <DataTable
             headings={[
-              { label: "ลำดับ", className: "text-center" },
+              { label: "ลำดับ" },
               { label: "รูปประจำตัว", className: "text-center" },
-              { label: "รหัสประจำตัว", sortKey: "studentNumber", className: "text-center" },
+              { label: "รหัสประจำตัว", sortKey: "studentNumber" },
               { label: "ชื่อ-นามสกุล", sortKey: "name" },
               { label: "สถานะการเข้าเรียน", className: "text-center" },
             ]}
@@ -413,13 +413,13 @@ export function TeacherClassroomPage() {
               const current = attendance[student.studentUuid] ?? "P_PRESENT";
               return (
                 <DataTableRow key={student.studentUuid}>
-                  <DataTableCell className="text-center tabular-nums">{index + 1}</DataTableCell>
+                  <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
                   <DataTableCell>
                     <div className="flex justify-center">
                       <StudentAvatar name={fullName} />
                     </div>
                   </DataTableCell>
-                  <DataTableCell className="text-center font-medium tabular-nums">
+                  <DataTableCell className="font-medium tabular-nums">
                     {student.studentNumber ?? "-"}
                   </DataTableCell>
                   <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>

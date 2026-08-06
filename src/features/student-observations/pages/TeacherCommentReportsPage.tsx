@@ -95,7 +95,7 @@ export function TeacherCommentReportsPage() {
             {rows.map((row) => (
               <DataTableRow key={row.id}>
                 <DataTableCell>
-                  <p className="font-bold text-slate-800">{row.studentName}</p>
+                  <p className="text-slate-800">{row.studentName}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     {row.schoolName}
                     {row.gradeLabel ? ` · ${row.gradeLabel}` : ""}
@@ -108,7 +108,7 @@ export function TeacherCommentReportsPage() {
                   </p>
                 </DataTableCell>
                 <DataTableCell>
-                  <p className="font-semibold text-slate-700">{row.authorDisplayName}</p>
+                  <p className="text-slate-700">{row.authorDisplayName}</p>
                   <p className="text-xs text-slate-500">
                     {formatThaiDateTime(row.commentedAt)}
                   </p>

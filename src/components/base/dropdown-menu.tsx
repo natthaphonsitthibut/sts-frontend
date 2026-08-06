@@ -1,4 +1,5 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
@@ -51,11 +52,38 @@ export function DropdownMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  // Portaled to <body> (see below) so a row menu inside a scroll-clipped
+  // table isn't cut off — position is tracked in viewport coordinates.
+  const [coords, setCoords] = useState<{ top: number; left?: number; right?: number } | null>(
+    null,
+  );
 
-  useDismissable(open, rootRef, (reason) => {
+  useDismissable(open, [rootRef, menuRef], (reason) => {
     setOpen(false);
     if (reason === "escape") triggerRef.current?.focus();
   });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function updatePosition(): void {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setCoords(
+        align === "end"
+          ? { top: rect.bottom + 8, right: window.innerWidth - rect.right }
+          : { top: rect.bottom + 8, left: rect.left },
+      );
+    }
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, align]);
 
   function menuItems(): HTMLElement[] {
     return Array.from(
@@ -86,72 +114,75 @@ export function DropdownMenu({
         },
       })}
 
-      {open ? (
-        <div
-          aria-label={ariaLabel}
-          className={cn(
-            "absolute top-full z-50 mt-2 w-max min-w-56 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg",
-            align === "end" ? "right-0" : "left-0",
-          )}
-          id={menuId}
-          onKeyDown={(event) => {
-            if (event.key === "Tab") {
-              setOpen(false);
-              return;
-            }
-            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-            event.preventDefault();
-            const elements = menuItems();
-            if (elements.length === 0) return;
-            if (event.key === "Home" || event.key === "End") {
-              elements[event.key === "Home" ? 0 : elements.length - 1]?.focus();
-              return;
-            }
-            const currentIndex = elements.indexOf(document.activeElement as HTMLElement);
-            const direction = event.key === "ArrowDown" ? 1 : -1;
-            elements[(currentIndex + direction + elements.length) % elements.length]?.focus();
-          }}
-          ref={menuRef}
-          role="menu"
-        >
-          {header ? (
-            <>
-              <div className="px-3 py-2 text-xs text-slate-500">{header}</div>
-              <div className="my-1 border-t border-slate-100" />
-            </>
-          ) : null}
-          {items.map((item) => (
-            <button
-              className={cn(
-                "flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60",
-                item.destructive
-                  ? "text-danger hover:bg-danger-100 focus-visible:ring-danger"
-                  : "hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-primary",
-              )}
-              disabled={item.disabled}
-              key={item.id}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
+      {open && coords
+        ? createPortal(
+            <div
+              aria-label={ariaLabel}
+              className="fixed z-50 w-max min-w-56 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
+              id={menuId}
+              onKeyDown={(event) => {
+                if (event.key === "Tab") {
+                  setOpen(false);
+                  return;
+                }
+                if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const elements = menuItems();
+                if (elements.length === 0) return;
+                if (event.key === "Home" || event.key === "End") {
+                  elements[event.key === "Home" ? 0 : elements.length - 1]?.focus();
+                  return;
+                }
+                const currentIndex = elements.indexOf(document.activeElement as HTMLElement);
+                const direction = event.key === "ArrowDown" ? 1 : -1;
+                elements[(currentIndex + direction + elements.length) % elements.length]?.focus();
               }}
-              role="menuitem"
-              type="button"
+              ref={menuRef}
+              role="menu"
+              style={{ top: coords.top, left: coords.left, right: coords.right }}
             >
-              {item.icon ? (
-                <span
-                  className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full",
-                    item.destructive ? "bg-danger-100 text-danger" : "bg-slate-100 text-slate-500",
-                  )}
-                >
-                  <item.icon aria-hidden="true" className="size-3.5" />
-                </span>
+              {header ? (
+                <>
+                  <div className="px-3 py-2 text-xs text-slate-500">{header}</div>
+                  <div className="my-1 border-t border-slate-100" />
+                </>
               ) : null}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+              {items.map((item) => (
+                <button
+                  className={cn(
+                    "flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60",
+                    item.destructive
+                      ? "text-danger hover:bg-danger-100 focus-visible:ring-danger"
+                      : "hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-primary",
+                  )}
+                  disabled={item.disabled}
+                  key={item.id}
+                  onClick={() => {
+                    setOpen(false);
+                    item.onSelect();
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {item.icon ? (
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-full",
+                        item.destructive
+                          ? "bg-danger-100 text-danger"
+                          : "bg-slate-100 text-slate-500",
+                      )}
+                    >
+                      <item.icon aria-hidden="true" className="size-3.5" />
+                    </span>
+                  ) : null}
+                  {item.label}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

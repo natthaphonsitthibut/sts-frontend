@@ -154,7 +154,7 @@ export function TeacherLinkTable({
             ),
             className: "text-center",
           },
-          { label: "ลำดับ", className: "text-center" },
+          { label: "ลำดับ" },
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
           { label: "สถานะลิงก์", sortKey: "linkStatus", className: "text-center" },
           { label: "LINE", className: "text-center" },
@@ -173,8 +173,8 @@ export function TeacherLinkTable({
                 onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
               />
             </DataTableCell>
-            <DataTableCell className="text-center">{startIndex + index}</DataTableCell>
-            <DataTableCell className="font-bold text-slate-800">
+            <DataTableCell>{startIndex + index}</DataTableCell>
+            <DataTableCell className="text-slate-800">
               {entry.teacherDisplayName}
               {entry.hasEmail ? null : (
                 <p className="mt-1 text-xs font-medium text-warning-700">
@@ -211,7 +211,7 @@ export function TeacherLinkTable({
                   onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-800">{entry.teacherDisplayName}</p>
+                  <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     {entry.assignmentCount} ห้อง/รายวิชา
                   </p>

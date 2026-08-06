@@ -160,7 +160,7 @@ export function DataTable({
                           : undefined
                       }
                       className={cn(
-                        "px-4 py-4 text-sm font-semibold text-white",
+                        "px-4 py-4 text-sm font-normal text-white",
                         !headingRows && columnWidths?.[index],
                         config.className,
                       )}

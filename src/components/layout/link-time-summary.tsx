@@ -1,6 +1,9 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Badge, type BadgeProps } from "../base";
-import { formatThaiDateTime, formatThaiTimeRemaining } from "../../lib/date-time";
+import {
+  formatThaiDateTime,
+  formatThaiTimeRemaining,
+} from "../../lib/date-time";
 import { cn } from "../../lib/utils";
 import type { DataTableSortState } from "./data-table";
 
@@ -10,14 +13,18 @@ interface LinkTimeSummaryProps {
   className?: string;
   startLabel?: string;
   variant?: "stacked" | "columns";
+  /** For `variant="columns"`: hide the remaining-time badge when it renders as its own table column. */
+  showRemaining?: boolean;
 }
 
-function getRemainingBadge(
-  expiresAt?: string | null,
-): { label: string; variant: BadgeProps["variant"] } {
+function getRemainingBadge(expiresAt?: string | null): {
+  label: string;
+  variant: BadgeProps["variant"];
+} {
   if (!expiresAt) return { label: "-", variant: "secondary" };
   const expires = new Date(expiresAt);
-  if (Number.isNaN(expires.getTime())) return { label: "-", variant: "secondary" };
+  if (Number.isNaN(expires.getTime()))
+    return { label: "-", variant: "secondary" };
   const remainingMs = expires.getTime() - Date.now();
   if (remainingMs <= 0) return { label: "หมดอายุ", variant: "warning" };
   return {
@@ -26,12 +33,35 @@ function getRemainingBadge(
   };
 }
 
+/** The remaining-time badge alone, for tables where it renders as its own column. */
+export function LinkRemainingBadge({
+  className,
+  expiresAt,
+}: {
+  className?: string;
+  expiresAt?: string | null;
+}) {
+  const remainingBadge = getRemainingBadge(expiresAt);
+  return (
+    <Badge
+      className={cn(
+        "min-w-[96px] shrink-0 justify-center whitespace-nowrap px-2.5",
+        className,
+      )}
+      variant={remainingBadge.variant}
+    >
+      {remainingBadge.label}
+    </Badge>
+  );
+}
+
 export function LinkTimeSummary({
   className,
   expiresAt,
   startLabel = "เริ่ม",
   startsAt,
   variant = "stacked",
+  showRemaining = true,
 }: LinkTimeSummaryProps) {
   const remainingBadge = getRemainingBadge(expiresAt);
   const rows = [
@@ -50,20 +80,15 @@ export function LinkTimeSummary({
       >
         <div className="min-w-0 space-y-0.5">
           <div className="flex gap-1 font-medium tabular-nums text-slate-700">
-            <span className="w-8 shrink-0 font-semibold text-slate-500">{startLabel}</span>
+            <span className="w-8 shrink-0 text-slate-500">{startLabel}</span>
             <span className="min-w-0 break-words">{rows[0].value}</span>
           </div>
           <div className="flex gap-1 font-medium tabular-nums text-slate-700">
-            <span className="w-8 shrink-0 font-semibold text-slate-500">หมด</span>
+            <span className="w-8 shrink-0 text-slate-500">หมด</span>
             <span className="min-w-0 break-words">{rows[1].value}</span>
           </div>
         </div>
-        <Badge
-          className="min-w-[96px] shrink-0 justify-center whitespace-nowrap px-2.5"
-          variant={remainingBadge.variant}
-        >
-          {remainingBadge.label}
-        </Badge>
+        {showRemaining ? <LinkRemainingBadge expiresAt={expiresAt} /> : null}
       </div>
     );
   }
@@ -77,7 +102,7 @@ export function LinkTimeSummary({
     >
       {rows.map((row) => (
         <div className="contents" key={row.label}>
-          <dt className="font-semibold text-slate-500">{row.label}</dt>
+          <dt className="text-slate-500">{row.label}</dt>
           <dd className="min-w-0 whitespace-normal break-words font-medium tabular-nums text-slate-600">
             {row.label === "อายุที่เหลือ" ? (
               <Badge
@@ -164,7 +189,10 @@ export function LinkTimeHeader({
           {renderSortButton(startItem)}
           {renderSortButton(expireItem)}
         </div>
-        {renderSortButton(remainingItem, "min-w-[96px] shrink-0 justify-center")}
+        {renderSortButton(
+          remainingItem,
+          "min-w-[96px] shrink-0 justify-center",
+        )}
       </div>
     </div>
   );

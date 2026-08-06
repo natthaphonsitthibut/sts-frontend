@@ -2,15 +2,15 @@ import type { CSSProperties } from "react";
 
 // Single avatar palette for every initials avatar in the app (students, staff,
 // attendance rosters). Deterministic per name so an avatar keeps its color.
+// Pairs reference the brand token set (src/index.css @theme) instead of
+// arbitrary hex so the identity palette stays on-brand as those tokens evolve.
 const AVATAR_COLOR_PAIRS = [
-  ["#6366f1", "#8b5cf6"],
-  ["#ec4899", "#f43f5e"],
-  ["#14b8a6", "#06b6d4"],
-  ["#f59e0b", "#f97316"],
-  ["#10b981", "#22c55e"],
-  ["#3b82f6", "#0ea5e9"],
-  ["#8b5cf6", "#a855f7"],
-  ["#ef4444", "#f97316"],
+  ["var(--color-primary)", "var(--color-brand-purple)"],
+  ["var(--color-brand-purple)", "var(--color-brand-red-alt)"],
+  ["var(--color-success)", "var(--color-primary)"],
+  ["var(--color-brand-orange)", "var(--color-brand-red-alt)"],
+  ["var(--color-danger)", "var(--color-brand-orange)"],
+  ["var(--color-primary-dark)", "var(--color-brand-purple)"],
 ] as const;
 
 export function getAvatarGradient(name: string): CSSProperties {

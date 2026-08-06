@@ -270,7 +270,7 @@ export function AttendanceStudentTable({
           {student.name?.[0] || "?"}
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <div className="min-w-0 truncate font-bold text-slate-800">
+          <div className="min-w-0 truncate text-slate-800">
             {student.name}
           </div>
           {trailing}
@@ -526,7 +526,7 @@ export function AttendanceStudentTable({
         >
           {sortedVisibleStudents.map(({ student, rosterNumber }) => (
             <DataTableRow key={student.id}>
-              <DataTableCell className="font-semibold text-slate-500">
+              <DataTableCell className="text-slate-500">
                 {rosterNumber}
               </DataTableCell>
               <DataTableCell>{renderStudentIdentity(student)}</DataTableCell>

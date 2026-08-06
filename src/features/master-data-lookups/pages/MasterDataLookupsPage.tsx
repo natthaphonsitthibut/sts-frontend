@@ -244,8 +244,8 @@ export function MasterDataLookupsPage() {
                     {row.sourceConfig.title}
                   </Badge>
                 </DataTableCell>
-                <DataTableCell className="font-bold">{row.code}</DataTableCell>
-                <DataTableCell className="font-bold text-slate-800">{row.name}</DataTableCell>
+                <DataTableCell>{row.code}</DataTableCell>
+                <DataTableCell className="text-slate-800">{row.name}</DataTableCell>
                 <DataTableCell>
                   <div className="space-y-1 text-sm text-slate-600">
                     {row.sourceConfig?.hasLegalCategory && row.legal_category ? (
@@ -277,7 +277,7 @@ export function MasterDataLookupsPage() {
               <TableCard className="space-y-3" key={`${row.sourceTable}-${row.id}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-bold text-slate-800">{row.name}</p>
+                    <p className="text-slate-800">{row.name}</p>
                     <p className="text-sm text-slate-500">รหัส {row.code}</p>
                     <Badge className="mt-2 whitespace-nowrap" variant="secondary">
                       {row.sourceConfig.title}
