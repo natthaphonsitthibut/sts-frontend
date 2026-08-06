@@ -297,3 +297,19 @@ export function useSaveTeacherAccessAttendance(credential: TeacherLinkCredential
     gcTime: 0,
   });
 }
+
+export function useSeedTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+  return useMutation({
+    mutationFn: (assignmentId: number) =>
+      teacherAccessService.seedDemoAbsences(credential, assignmentId),
+    gcTime: 0,
+  });
+}
+
+export function useClearTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+  return useMutation({
+    mutationFn: (assignmentId: number) =>
+      teacherAccessService.clearDemoAbsences(credential, assignmentId),
+    gcTime: 0,
+  });
+}

@@ -417,6 +417,32 @@ async function saveAttendance(
   });
 }
 
+async function seedDemoAbsences(
+  credential: TeacherLinkCredential,
+  assignmentId: number,
+): Promise<void> {
+  await runGuestRequest(async () => {
+    await apiClient.post(
+      "/teacher-access/attendance-demo-absences",
+      { assignmentId },
+      { headers: guestHeaders(credential) },
+    );
+  });
+}
+
+async function clearDemoAbsences(
+  credential: TeacherLinkCredential,
+  assignmentId: number,
+): Promise<void> {
+  await runGuestRequest(async () => {
+    await apiClient.post(
+      "/teacher-access/attendance-demo-absences/clear",
+      { assignmentId },
+      { headers: guestHeaders(credential) },
+    );
+  });
+}
+
 export const teacherAccessService = {
   listGrants,
   listTeacherRoster,
@@ -442,4 +468,6 @@ export const teacherAccessService = {
   recordClassroomExport,
   updateClassroomCard,
   saveAttendance,
+  seedDemoAbsences,
+  clearDemoAbsences,
 };
