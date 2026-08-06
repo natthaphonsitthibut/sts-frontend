@@ -27,6 +27,7 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { CasePipelineChart } from "../components/CasePipelineChart";
 import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
@@ -92,10 +93,11 @@ function destination(
   return `${path}${buildQuery(query)}`;
 }
 
-function getRiskAreaBackAction(filters: HomeDashboardFilters): {
+function getRiskAreaBackAction(filters: HomeDashboardFilters, schoolLocked: boolean): {
   label: string;
   next: Partial<HomeDashboardFilters>;
 } | null {
+  if (schoolLocked) return null;
   if (filters.schoolId) {
     return {
       label: "กลับไปดูทุกโรงเรียนในพื้นที่",
@@ -149,9 +151,20 @@ function FilterCombobox({
   );
 }
 
+function getLockedSchoolId(schoolIds: number[] | undefined): number | undefined {
+  return schoolIds?.length === 1 ? schoolIds[0] : undefined;
+}
+
 function useDashboardFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const filters = parseFilters(searchParams);
+  const lockedSchoolId = useAuthSessionStore((state) =>
+    getLockedSchoolId(state.user?.data_scope?.school_ids),
+  );
+  const parsedFilters = parseFilters(searchParams);
+  const filters: HomeDashboardFilters = {
+    ...parsedFilters,
+    schoolId: lockedSchoolId ?? parsedFilters.schoolId,
+  };
 
   function updateFilter(next: Partial<HomeDashboardFilters>): void {
     const merged: HomeDashboardFilters = { ...filters, ...next };
@@ -180,20 +193,30 @@ function useDashboardFilters() {
     if ("grade" in next) {
       merged.room = undefined;
     }
+    if (lockedSchoolId) {
+      merged.schoolId = lockedSchoolId;
+    }
     setSearchParams(buildQuery(merged).slice(1), { replace: true });
   }
 
   function reset(): void {
-    setSearchParams("", { replace: true });
+    setSearchParams(
+      buildQuery({
+        period: "30_DAYS",
+        schoolId: lockedSchoolId,
+      }).slice(1),
+      { replace: true },
+    );
   }
 
-  return { filters, reset, updateFilter };
+  return { filters, reset, schoolLocked: lockedSchoolId !== undefined, updateFilter };
 }
 
 function DashboardFilterBar({
   filters,
   options,
   onUpdate,
+  schoolLocked,
 }: {
   filters: HomeDashboardFilters;
   options?: {
@@ -205,6 +228,7 @@ function DashboardFilterBar({
     rooms: HomeDashboardOption[];
   };
   onUpdate: (next: Partial<HomeDashboardFilters>) => void;
+  schoolLocked: boolean;
 }) {
   const safeOptions = options ?? {
     provinces: [],
@@ -222,6 +246,7 @@ function DashboardFilterBar({
         options={safeOptions.provinces}
         value={filters.province}
         onChange={(value) => onUpdate({ province: value || undefined })}
+        disabled={schoolLocked}
       />
       <FilterCombobox
         allLabel="ทุกอำเภอ/เขต"
@@ -229,7 +254,7 @@ function DashboardFilterBar({
         options={safeOptions.districts}
         value={filters.district}
         onChange={(value) => onUpdate({ district: value || undefined })}
-        disabled={!filters.province}
+        disabled={schoolLocked || !filters.province}
       />
       <FilterCombobox
         allLabel="ทุกตำบล/แขวง"
@@ -237,7 +262,7 @@ function DashboardFilterBar({
         options={safeOptions.subDistricts}
         value={filters.subDistrict}
         onChange={(value) => onUpdate({ subDistrict: value || undefined })}
-        disabled={!filters.district}
+        disabled={schoolLocked || !filters.district}
       />
       <FilterCombobox
         allLabel="ทุกโรงเรียน"
@@ -247,6 +272,7 @@ function DashboardFilterBar({
         onChange={(value) =>
           onUpdate({ schoolId: value ? Number(value) : undefined })
         }
+        disabled={schoolLocked}
       />
       <FilterCombobox
         allLabel="ทุกชั้น"
@@ -328,8 +354,8 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
 
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
-  const { filters, reset, updateFilter } = useDashboardFilters();
-  const riskAreaBackAction = getRiskAreaBackAction(filters);
+  const { filters, reset, schoolLocked, updateFilter } = useDashboardFilters();
+  const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
   const {
     summary,
     nationalSummary,
@@ -359,6 +385,7 @@ export function MainPage() {
           filters={filters}
           options={filterOptions?.options}
           onUpdate={updateFilter}
+          schoolLocked={schoolLocked}
         />
       </PageToolbar>
 
@@ -414,8 +441,10 @@ export function MainPage() {
                   : undefined
               }
               focusedProvince={filters.province}
-              onProvinceClick={(provinceName) =>
-                updateFilter({ province: provinceName })
+              onProvinceClick={
+                schoolLocked
+                  ? undefined
+                  : (provinceName) => updateFilter({ province: provinceName })
               }
             />
 
@@ -427,7 +456,9 @@ export function MainPage() {
                     ? () => updateFilter(riskAreaBackAction.next)
                     : undefined
                 }
-                onSelect={(filter) => updateFilter(filter)}
+                onSelect={
+                  schoolLocked ? undefined : (filter) => updateFilter(filter)
+                }
                 ranking={summary.riskAreaRanking}
               />
             ) : null}
