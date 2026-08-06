@@ -10,6 +10,7 @@ import type {
   IssueTeacherAccessGrantInput,
   PaginationMeta,
   TeacherAccessAssignment,
+  TeacherAccessAttendanceSlot,
   TeacherAccessContext,
   TeacherAccessGrant,
   TeacherAccessGrantStatus,
@@ -36,7 +37,7 @@ const SESSION_HEADER = "x-teacher-access-session";
 /** Marks a rejection the guest UI should answer with the OTP form. */
 export class TeacherAccessOtpRequiredError extends Error {
   constructor() {
-    super("OTP_REQUIRED");
+    super("เซสชันยืนยันตัวตนหมดอายุ กรุณายืนยัน OTP ใหม่");
     this.name = "TeacherAccessOtpRequiredError";
   }
 }
@@ -63,7 +64,9 @@ async function runGuestRequest<T>(request: () => Promise<T>): Promise<T> {
     // Deliberately dropped, not forwarded as `cause`: an Axios error keeps the
     // request config, and that config holds the link token. Only the "needs
     // OTP" signal survives, as its own error type.
-    throw otpRequired ? new TeacherAccessOtpRequiredError() : new Error("Teacher access request failed");
+    throw otpRequired
+      ? new TeacherAccessOtpRequiredError()
+      : new Error(getApiErrorMessage(error, "ไม่สามารถดำเนินการผ่านลิงก์ครูได้"));
   }
 }
 
@@ -193,6 +196,19 @@ async function getContext(credential: TeacherLinkCredential): Promise<TeacherAcc
     const response = await apiClient.get<DataEnvelope<TeacherAccessContext>>(
       "/teacher-access/context",
       { headers: guestHeaders(credential) },
+    );
+    return response.data.data;
+  });
+}
+
+async function listAttendanceSlots(
+  credential: TeacherLinkCredential,
+  input: { assignmentId: number; date: string },
+): Promise<TeacherAccessAttendanceSlot[]> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<DataEnvelope<TeacherAccessAttendanceSlot[]>>(
+      "/teacher-access/attendance-slots",
+      { headers: guestHeaders(credential), params: input },
     );
     return response.data.data;
   });
@@ -414,6 +430,7 @@ export const teacherAccessService = {
   requestOtp,
   verifyOtp,
   getContext,
+  listAttendanceSlots,
   getCompleteRoster,
   listAttendanceHistory,
   listCompleteAttendanceHistory,

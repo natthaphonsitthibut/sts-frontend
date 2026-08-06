@@ -18,6 +18,7 @@ import {
   FormErrorAlert,
   IconButton,
   Label,
+  Select,
   Skeleton,
   Tabs,
 } from "../../../components/base";
@@ -53,6 +54,7 @@ import {
   useCreateTeacherStudentComment,
   useRecordTeacherClassroomExport,
   useSaveTeacherAccessAttendance,
+  useTeacherAccessAttendanceSlots,
   useTeacherAccessRoster,
 } from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
@@ -115,6 +117,7 @@ export function TeacherClassroomPage() {
   const [search, setSearch] = useState("");
   const [riskTier, setRiskTier] = useState("");
   const [date, setDate] = useState(getThaiDateKey);
+  const [timetableSlotId, setTimetableSlotId] = useState("");
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [saved, setSaved] = useState(false);
   const [sort, setSort] = useState<DataTableSortState | undefined>({
@@ -129,6 +132,12 @@ export function TeacherClassroomPage() {
   const assignment = context.assignments.find((item) => item.id === assignmentId);
   const rosterQuery = useTeacherAccessRoster(credential, Number(assignmentId) || undefined);
   const saveAttendance = useSaveTeacherAccessAttendance(credential);
+  const attendanceSlotsQuery = useTeacherAccessAttendanceSlots(
+    credential,
+    Number(assignmentId) || undefined,
+    date,
+    assignment?.assignmentKind === "SUBJECT",
+  );
   const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
   const visibleRoster = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -166,12 +175,21 @@ export function TeacherClassroomPage() {
   const canRecordAttendance = assignment.allowedActions.some(
     (action) => action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
   );
+  const attendanceSlots = attendanceSlotsQuery.data ?? [];
+  const requiresPeriodSelection = assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
+  const hasScheduledSubjectSlot =
+    assignment.assignmentKind !== "SUBJECT" || attendanceSlots.length > 0;
+  const selectedTimetableSlotId = requiresPeriodSelection
+    ? Number(timetableSlotId) || undefined
+    : attendanceSlots[0]?.id;
 
   async function submitAttendance(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (roster.length === 0) return;
+    if (!hasScheduledSubjectSlot || (requiresPeriodSelection && !selectedTimetableSlotId)) return;
     await saveAttendance.mutateAsync({
       assignmentId: Number(assignmentId),
+      ...(selectedTimetableSlotId ? { timetableSlotId: selectedTimetableSlotId } : {}),
       date,
       records: roster.map((student) => ({
         studentId: student.studentUuid,
@@ -390,11 +408,46 @@ export function TeacherClassroomPage() {
               max={getThaiDateKey()}
               onChange={(value) => {
                 setDate(value);
+                setTimetableSlotId("");
                 setSaved(false);
               }}
               value={date}
             />
           </div>
+          {assignment.assignmentKind === "SUBJECT" && !attendanceSlotsQuery.isLoading ? (
+            <div className="mb-4 w-[270px] max-w-full">
+              {hasScheduledSubjectSlot ? (
+                requiresPeriodSelection ? (
+                  <>
+                    <Label htmlFor="attendance-period">คาบเรียน</Label>
+                    <Select
+                      id="attendance-period"
+                      onChange={(event) => {
+                        setTimetableSlotId(event.target.value);
+                        setSaved(false);
+                      }}
+                      value={timetableSlotId}
+                    >
+                      <option value="">เลือกคาบเรียน</option>
+                      {attendanceSlots.map((slot) => (
+                        <option key={slot.id} value={String(slot.id)}>
+                          คาบ {slot.period}
+                        </option>
+                      ))}
+                    </Select>
+                  </>
+                ) : (
+                  <Alert>
+                    <AlertDescription>เช็คชื่อคาบ {attendanceSlots[0]?.period}</AlertDescription>
+                  </Alert>
+                )
+              ) : (
+                <Alert variant="warning">
+                  <AlertDescription>คุณไม่มีคาบสอนวิชานี้ในวันที่เลือก</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : null}
           <DataTable
             headings={[
               { label: "ลำดับ" },
@@ -482,7 +535,16 @@ export function TeacherClassroomPage() {
               </Alert>
             ) : null}
             <div className="flex justify-end">
-              <Button isLoading={saveAttendance.isPending} loadingText="กำลังบันทึก" type="submit">
+              <Button
+                disabled={
+                  attendanceSlotsQuery.isLoading ||
+                  !hasScheduledSubjectSlot ||
+                  (requiresPeriodSelection && !selectedTimetableSlotId)
+                }
+                isLoading={saveAttendance.isPending}
+                loadingText="กำลังบันทึก"
+                type="submit"
+              >
                 บันทึกการเช็คชื่อ {roster.length} คน
               </Button>
             </div>

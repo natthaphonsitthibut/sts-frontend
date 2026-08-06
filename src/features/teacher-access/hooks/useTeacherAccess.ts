@@ -123,6 +123,22 @@ export function useTeacherAccessRoster(credential: TeacherLinkCredential, assign
   });
 }
 
+export function useTeacherAccessAttendanceSlots(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  date: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [...teacherAccessGuestQueryKey(credential.token), "attendance-slots", assignmentId, date],
+    queryFn: () =>
+      teacherAccessService.listAttendanceSlots(credential, { assignmentId: assignmentId!, date }),
+    enabled: Boolean(enabled && credential.token && assignmentId && date),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
 export function useTeacherAttendanceHistory(
   credential: TeacherLinkCredential,
   assignmentId: number | undefined,

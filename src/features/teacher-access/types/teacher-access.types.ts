@@ -174,6 +174,11 @@ export interface TeacherScheduleResponse {
   periodTimes: SchoolPeriodTime[];
 }
 
+export interface TeacherAccessAttendanceSlot {
+  id: number;
+  period: number;
+}
+
 /** Everything the teacher-link student profile screen renders, in one payload. */
 export interface TeacherStudentProfile {
   student: StudentDetail;
