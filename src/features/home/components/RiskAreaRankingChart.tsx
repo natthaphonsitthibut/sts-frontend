@@ -8,7 +8,7 @@ import type {
 interface RiskAreaRankingChartProps {
   backLabel?: string;
   onBack?: () => void;
-  onSelect: (filter: Partial<HomeDashboardFilters>) => void;
+  onSelect?: (filter: Partial<HomeDashboardFilters>) => void;
   ranking: HomeDashboardRiskAreaRanking;
 }
 
@@ -59,10 +59,11 @@ export function RiskAreaRankingChart({
           {ranking.items.map((item, index) => (
             <li key={`${ranking.dimension}-${item.key}`}>
               <button
-                aria-label={`${item.label} นักเรียนเสี่ยง ${item.count.toLocaleString("th-TH")} คน ดูระดับถัดไป`}
-                className="group w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`${item.label} นักเรียนเสี่ยง ${item.count.toLocaleString("th-TH")} คน${onSelect ? " ดูระดับถัดไป" : ""}`}
+                className="group w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:hover:bg-transparent"
                 data-risk-area-item={item.key}
-                onClick={() => onSelect(item.targetFilter)}
+                disabled={!onSelect}
+                onClick={() => onSelect?.(item.targetFilter)}
                 type="button"
               >
                 <span className="flex items-center gap-3">
