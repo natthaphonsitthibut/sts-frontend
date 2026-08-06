@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import {
@@ -16,6 +17,7 @@ import {
 } from "../../../components/layout/data-table";
 import { getCaseReason } from "../lib/case-presentation";
 import type { CaseRecord } from "../types/cases.types";
+import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 
 interface CaseTableProps {
@@ -69,6 +71,39 @@ function getCaseSortValue(caseRecord: CaseRecord, key: string): string {
   return "";
 }
 
+function StudentIdentity({ caseRecord }: { caseRecord: CaseRecord }) {
+  const content = (
+    <>
+      <StudentAvatar
+        className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
+        name={caseRecord.student_name}
+        photoUrl={caseRecord.student_photo_url}
+      />
+      <div className="min-w-0">
+        <div className="truncate text-slate-800">{caseRecord.student_name}</div>
+        <div className="mt-0.5 truncate text-xs text-slate-500">
+          {caseRecord.student_school || "-"}
+        </div>
+      </div>
+    </>
+  );
+
+  if (!caseRecord.student_id) {
+    return <div className="flex min-w-0 items-center gap-3">{content}</div>;
+  }
+
+  return (
+    <Link
+      aria-label={`ดูข้อมูลนักเรียน ${caseRecord.student_name}`}
+      className="group flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      title={`ดูข้อมูลนักเรียน ${caseRecord.student_name}`}
+      to={`/students/${caseRecord.student_id}`}
+    >
+      {content}
+    </Link>
+  );
+}
+
 export function CaseTable({
   rows,
   canCreateLinks = true,
@@ -96,7 +131,7 @@ export function CaseTable({
           { label: "สถานะ", sortKey: "status" },
           { label: "ช่วงเวลา", sortKey: "starts" },
           { label: "อายุที่เหลือ", sortKey: "remaining" },
-          "",
+          { label: "เครื่องมือ", className: "text-center" },
         ]}
         columnWidths={[
           "w-[20%]",
@@ -114,10 +149,7 @@ export function CaseTable({
         {sortedRows.map((caseRecord) => (
           <DataTableRow key={caseRecord.id}>
             <DataTableCell>
-              <div className="text-slate-800">{caseRecord.student_name}</div>
-              <div className="mt-0.5 text-xs text-slate-500">
-                {caseRecord.student_school || "-"}
-              </div>
+              <StudentIdentity caseRecord={caseRecord} />
             </DataTableCell>
             {/* <DataTableCell className="text-sm text-slate-600">
               {getCaseReason(caseRecord.reason, caseRecord.reason_flagged)}
@@ -149,7 +181,7 @@ export function CaseTable({
                 expiresAt={caseRecord.active_link_expires_at}
               />
             </DataTableCell>
-            <DataTableCell className="text-right">
+            <DataTableCell className="text-center">
               <CaseAction
                 canCreateLinks={canCreateLinks}
                 caseRecord={caseRecord}
@@ -164,12 +196,7 @@ export function CaseTable({
         {sortedRows.map((caseRecord) => (
           <TableCard key={caseRecord.id}>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-slate-800">{caseRecord.student_name}</div>
-                <div className="mt-0.5 text-xs text-slate-500">
-                  {caseRecord.student_school || "-"}
-                </div>
-              </div>
+              <StudentIdentity caseRecord={caseRecord} />
               <CaseStatusBadge
                 badgeVariant={caseRecord.status_badge_variant}
                 label={
