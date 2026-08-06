@@ -1,5 +1,5 @@
-import { appConfig } from "../../../config/env";
 import { FileText } from "lucide-react";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import type { CaseFollowUpRound } from "../types/cases.types";
 
 interface CaseFollowUpRoundDetailsProps {
@@ -24,18 +24,11 @@ function RoundDetailItem({
   );
 }
 
-function resolveUploadUrl(path: string): string {
-  const configuredBaseUrl = appConfig.apiBaseUrl.trim();
-  if (!configuredBaseUrl || configuredBaseUrl === "/") return path;
-
-  try {
-    const baseUrl = configuredBaseUrl.startsWith("http")
-      ? configuredBaseUrl
-      : window.location.origin;
-    return new URL(path, baseUrl).toString();
-  } catch {
-    return path;
-  }
+function resolveVisitAttachmentUrl(path: string): string {
+  // `FilesController` checks permission and then mints a short-lived signed
+  // storage URL, just like the profile-photo routes. Keep the storage key out
+  // of the public URL and let a fresh guarded request happen after every reload.
+  return resolveApiMediaUrl(`/api${path}`) ?? path;
 }
 
 export function VisitAttachments({ value }: { value: string | null | undefined }) {
@@ -60,7 +53,7 @@ export function VisitAttachments({ value }: { value: string | null | undefined }
       <h4 className="text-sm font-semibold text-slate-700">ไฟล์แนบการติดตาม</h4>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {paths.map((path, index) => {
-          const attachmentUrl = resolveUploadUrl(path);
+          const attachmentUrl = resolveVisitAttachmentUrl(path);
           const isImage = /\.(?:jpe?g|png|webp)$/i.test(path);
           return (
             <a

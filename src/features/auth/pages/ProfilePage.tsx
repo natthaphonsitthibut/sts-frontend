@@ -59,6 +59,12 @@ import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal"
 
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
 
+function withFreshPhotoUrl(user: AuthUser): AuthUser {
+  if (!user.photo_url) return user;
+  const separator = user.photo_url.includes("?") ? "&" : "?";
+  return { ...user, photo_url: `${user.photo_url}${separator}updated=${Date.now()}` };
+}
+
 const profileSchema = z.object({
   FirstName: z
     .string()
@@ -297,8 +303,9 @@ export function ProfilePage() {
     mutationFn: (input: { photo?: File; remove?: boolean }) =>
       authService.updateMyPhoto(input),
     onSuccess: (updatedUser) => {
-      queryClient.setQueryData(PROFILE_QUERY_KEY, updatedUser);
-      saveSession(updatedUser, {
+      const userWithFreshPhoto = withFreshPhotoUrl(updatedUser);
+      queryClient.setQueryData(PROFILE_QUERY_KEY, userWithFreshPhoto);
+      saveSession(userWithFreshPhoto, {
         target: storageTarget ?? "local",
         hasAdminAccess,
       });
