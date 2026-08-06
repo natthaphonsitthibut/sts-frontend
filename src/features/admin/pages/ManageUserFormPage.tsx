@@ -56,6 +56,7 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
     password: "",
     FirstName: user.FirstName ?? "",
     LastName: user.LastName ?? "",
+    PersonID_Onec: user.PersonID_Onec ?? "",
     phone: user.phone ?? "",
     email: user.email ?? "",
     affiliation: user.affiliation ?? "",
@@ -130,9 +131,7 @@ function UserForm({
       username: values.username.trim(),
       FirstName: values.FirstName.trim(),
       LastName: values.LastName.trim(),
-      // Kept from the stored record — the ref form does not collect it, and
-      // sending an empty value would wipe an existing national id.
-      PersonID_Onec: user?.PersonID_Onec ?? "",
+      PersonID_Onec: values.PersonID_Onec.trim(),
       role,
       roles: [role],
       // Sent as chosen: the editor starts from the role's standard set, so an
@@ -253,6 +252,19 @@ function UserForm({
                   {...registerField(form, "phone")}
                 />
                 <FormMessage<UserFormValues> name="phone" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="PersonID_Onec" required>
+                  เลขบัตรประชาชน
+                </FormLabel>
+                <NumericInput
+                  id="PersonID_Onec"
+                  maxLength={13}
+                  placeholder="XXXXXXXXXXXXX"
+                  {...registerField(form, "PersonID_Onec")}
+                />
+                <FormMessage<UserFormValues> name="PersonID_Onec" />
               </FormItem>
 
               <FormItem>
