@@ -123,6 +123,22 @@ export function useTeacherAccessRoster(credential: TeacherLinkCredential, assign
   });
 }
 
+export function useTeacherAccessAttendanceSlots(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  date: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [...teacherAccessGuestQueryKey(credential.token), "attendance-slots", assignmentId, date],
+    queryFn: () =>
+      teacherAccessService.listAttendanceSlots(credential, { assignmentId: assignmentId!, date }),
+    enabled: Boolean(enabled && credential.token && assignmentId && date),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
 export function useTeacherAttendanceHistory(
   credential: TeacherLinkCredential,
   assignmentId: number | undefined,
@@ -278,6 +294,22 @@ export function useSaveTeacherAccessAttendance(credential: TeacherLinkCredential
   return useMutation({
     mutationFn: (input: Parameters<typeof teacherAccessService.saveAttendance>[1]) =>
       teacherAccessService.saveAttendance(credential, input),
+    gcTime: 0,
+  });
+}
+
+export function useSeedTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+  return useMutation({
+    mutationFn: (assignmentId: number) =>
+      teacherAccessService.seedDemoAbsences(credential, assignmentId),
+    gcTime: 0,
+  });
+}
+
+export function useClearTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+  return useMutation({
+    mutationFn: (assignmentId: number) =>
+      teacherAccessService.clearDemoAbsences(credential, assignmentId),
     gcTime: 0,
   });
 }
