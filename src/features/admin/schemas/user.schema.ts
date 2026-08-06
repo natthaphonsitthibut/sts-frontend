@@ -11,6 +11,10 @@ export const userFormSchema = z.object({
     }),
   FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
   LastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
+  PersonID_Onec: z
+    .string()
+    .trim()
+    .regex(/^\d{13}$/, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก"),
   phone: requiredThaiPhone,
   email: optionalEmail.refine((value) => value.length > 0, {
     message: "กรุณากรอกอีเมล",
@@ -26,6 +30,7 @@ export const EMPTY_USER_FORM: UserFormValues = {
   password: "",
   FirstName: "",
   LastName: "",
+  PersonID_Onec: "",
   phone: "",
   email: "",
   affiliation: "",
