@@ -132,6 +132,13 @@ export const MENU_ITEMS: MenuItem[] = [
       {
         ...pageMenuItem("export-data", "/data-exports"),
       },
+      {
+        ...pageMenuItem(
+          "attendance-operations",
+          "/attendance-operations",
+          "attendance-dashboard",
+        ),
+      },
     ],
   },
   {
@@ -144,9 +151,6 @@ export const MENU_ITEMS: MenuItem[] = [
       },
       {
         ...pageMenuItem("manage-teacher-access", "/attendance-links"),
-      },
-      {
-        ...pageMenuItem("attendance-operations", "/attendance-operations", "attendance-dashboard"),
       },
       {
         ...pageMenuItem("timetable", "/timetable", ["home", "student-self"]),
@@ -207,10 +211,7 @@ export function getEffectivePermissions(
         );
   }
 
-  const roleDefaults = roles.some((role) => role === "ADMIN" || role === "DIRECTOR")
-    ? ["edit-students", "export-data"]
-    : [];
-  return Array.from(new Set([...customPermissions, ...roleDefaults]));
+  return Array.from(new Set(customPermissions));
 }
 
 export function isStudentOnlyRole(roles: string[]): boolean {

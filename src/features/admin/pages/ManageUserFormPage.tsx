@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
@@ -67,9 +67,11 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
 function UserForm({
   user,
   rolesCatalog,
+  returnPath,
 }: {
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
+  returnPath: string;
 }) {
   const navigate = useNavigate();
   const saveUser = useSaveUser();
@@ -116,7 +118,7 @@ function UserForm({
   }
 
   function goBack(): void {
-    void navigate(MANAGE_USERS_PATH);
+    void navigate(returnPath);
   }
 
   function handleSubmit(values: UserFormValues): void {
@@ -374,8 +376,13 @@ function UserForm({
 export function ManageUserFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const userId = id ? Number(id) : null;
+  const returnPath =
+    searchParams.get("returnTo") === "/profile"
+      ? "/profile"
+      : MANAGE_USERS_PATH;
   const {
     data: user = null,
     isLoading: isUserLoading,
@@ -393,7 +400,7 @@ export function ManageUserFormPage() {
       <PageToolbar
         description="กรอกข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึง"
         navigation={
-          <NavButton icon={ArrowLeft} to={MANAGE_USERS_PATH} variant="outline">
+          <NavButton icon={ArrowLeft} to={returnPath} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
@@ -418,7 +425,7 @@ export function ManageUserFormPage() {
           title="ไม่พบผู้ใช้งาน"
         />
       ) : (
-        <UserForm rolesCatalog={rolesCatalog} user={user} />
+        <UserForm returnPath={returnPath} rolesCatalog={rolesCatalog} user={user} />
       )}
     </PageShell>
   );

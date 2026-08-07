@@ -141,6 +141,12 @@ async function sendGrantsOverLine(
   return response.data.data;
 }
 
+async function unlinkTeacherLineAccount(teacherMembershipId: string): Promise<void> {
+  await apiClient.post(
+    `/teacher-access-grants/teacher-memberships/${teacherMembershipId}/unlink-line`,
+  );
+}
+
 async function getGrantLink(grantId: string): Promise<string> {
   const response = await apiClient.get<DataEnvelope<{ grantId: string; accessUrl: string }>>(
     `/teacher-access-grants/${grantId}/link`,
@@ -450,6 +456,7 @@ export const teacherAccessService = {
   issueGrant,
   issueGrantsForTerm,
   sendGrantsOverLine,
+  unlinkTeacherLineAccount,
   getGrantLink,
   revokeGrant,
   rotateGrant,

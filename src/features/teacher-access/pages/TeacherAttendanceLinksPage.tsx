@@ -47,6 +47,7 @@ import {
   useRotateTeacherAccessGrant,
   useTeacherAccessGrantLink,
   useTeacherLinkRoster,
+  useUnlinkTeacherLineAccount,
 } from "../hooks/useTeacherAccess";
 import type {
   BulkIssueTeacherAccessResult,
@@ -144,6 +145,7 @@ export function TeacherAttendanceLinksPage() {
   const grantLink = useTeacherAccessGrantLink();
   const revokeGrant = useRevokeTeacherAccessGrant();
   const rotateGrant = useRotateTeacherAccessGrant();
+  const unlinkLine = useUnlinkTeacherLineAccount();
 
   const entries = rosterQuery.data?.data ?? [];
   const meta = rosterQuery.data?.meta;
@@ -157,7 +159,9 @@ export function TeacherAttendanceLinksPage() {
   );
   const busyMembershipId = issueGrant.isPending
     ? String(issueGrant.variables?.teacherMembershipId ?? "")
-    : null;
+    : unlinkLine.isPending
+      ? unlinkLine.variables ?? null
+      : null;
 
   async function createLink(entry: TeacherLinkRosterEntry): Promise<void> {
     if (!selectedTermId) return;
@@ -184,6 +188,18 @@ export function TeacherAttendanceLinksPage() {
     if (!accepted) return;
     const rotated = await rotateGrant.mutateAsync(entry.grantId);
     if (rotated.accessUrl) setSharedUrl(rotated.accessUrl);
+  }
+
+  async function unlinkLineAccount(entry: TeacherLinkRosterEntry): Promise<void> {
+    const accepted = await confirm({
+      title: `ปลดการเชื่อมต่อ LINE ของ ${entry.teacherDisplayName}?`,
+      description:
+        "บัญชี LINE เดิมจะไม่ได้รับลิงก์อีก และครูสามารถยืนยันบัญชี LINE ใหม่ได้ทันที",
+      confirmText: "ปลดการเชื่อมต่อ",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    await unlinkLine.mutateAsync(entry.teacherMembershipId);
   }
 
   /** With no rows ticked the button covers the whole term; with rows ticked, only those. */
@@ -400,7 +416,13 @@ export function TeacherAttendanceLinksPage() {
 
       <FormErrorAlert
         className="mb-4"
-        error={issueGrant.error ?? rotateGrant.error ?? grantLink.error ?? sendOverLine.error}
+        error={
+          issueGrant.error ??
+          rotateGrant.error ??
+          grantLink.error ??
+          sendOverLine.error ??
+          unlinkLine.error
+        }
         fallback="ดำเนินการกับลิงก์ไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
       {bulkResult ? (
@@ -488,6 +510,7 @@ export function TeacherAttendanceLinksPage() {
               revokeGrant.reset();
             }}
             onRotate={(entry) => void rotateLink(entry)}
+            onUnlinkLine={(entry) => void unlinkLineAccount(entry)}
             onSelectAll={selectRows}
             onSelectRow={selectRow}
             onSortChange={(nextSort) => {

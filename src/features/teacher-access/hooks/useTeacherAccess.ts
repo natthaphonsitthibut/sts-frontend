@@ -67,6 +67,14 @@ export function useSendTeacherAccessGrantsOverLine() {
   });
 }
 
+export function useUnlinkTeacherLineAccount() {
+  const invalidate = useRosterInvalidation();
+  return useMutation({
+    mutationFn: teacherAccessService.unlinkTeacherLineAccount,
+    onSuccess: invalidate,
+  });
+}
+
 export function useTeacherAccessGrantLink() {
   return useMutation({ mutationFn: teacherAccessService.getGrantLink });
 }
