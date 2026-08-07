@@ -1,4 +1,4 @@
-import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff } from "lucide-react";
+import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff, Unlink } from "lucide-react";
 import {
   Checkbox,
   DropdownMenu,
@@ -32,6 +32,7 @@ interface TeacherLinkTableProps {
   onCopy: (entry: TeacherLinkRosterEntry) => void;
   onRotate: (entry: TeacherLinkRosterEntry) => void;
   onRevoke: (entry: TeacherLinkRosterEntry) => void;
+  onUnlinkLine: (entry: TeacherLinkRosterEntry) => void;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
 }
@@ -97,12 +98,15 @@ function RowMenu({
   entry,
   busy,
   ...handlers
-}: Pick<TeacherLinkTableProps, "onCreate" | "onCopy" | "onRotate" | "onRevoke"> & {
+}: Pick<
+  TeacherLinkTableProps,
+  "onCreate" | "onCopy" | "onRotate" | "onRevoke" | "onUnlinkLine"
+> & {
   entry: TeacherLinkRosterEntry;
   busy: boolean;
 }) {
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex items-center justify-center gap-1">
       <DropdownMenu
         ariaLabel={`เครื่องมือลิงก์ของ ${entry.teacherDisplayName}`}
         header={
@@ -120,6 +124,19 @@ function RowMenu({
             variant="edit"
           />
         )}
+      />
+      <IconButton
+        aria-busy={busy}
+        aria-label={`ปลดการเชื่อมต่อ LINE ของ ${entry.teacherDisplayName}`}
+        disabled={busy || entry.lineStatus === "NOT_VERIFIED"}
+        icon={Unlink}
+        onClick={() => handlers.onUnlinkLine(entry)}
+        title={
+          entry.lineStatus === "NOT_VERIFIED"
+            ? "ครูคนนี้ยังไม่ได้ยืนยันบัญชี LINE"
+            : `ปลดการเชื่อมต่อ LINE ของ ${entry.teacherDisplayName}`
+        }
+        variant="lock"
       />
     </div>
   );
