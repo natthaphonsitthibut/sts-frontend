@@ -500,7 +500,7 @@ export function ProfilePage() {
                         แก้ไขได้ที่{" "}
                         <Link
                           className="font-semibold text-primary underline-offset-4 hover:underline"
-                          to={`/manage-users/${profileUser.id}/edit`}
+                          to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
                         >
                           หน้าแก้ไขผู้ใช้งาน
                         </Link>
@@ -712,7 +712,7 @@ export function ProfilePage() {
                           แก้ไขได้ที่{" "}
                           <Link
                             className="font-semibold text-primary underline-offset-4 hover:underline"
-                            to={`/manage-users/${profileUser.id}/edit`}
+                            to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
                           >
                             หน้าแก้ไขผู้ใช้งาน
                           </Link>
