@@ -103,7 +103,7 @@ export function TaskDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {caseRecord ? (
-              <NavButton icon={Eye} to={`/cases/${caseRecord.id}`} variant="outline">
+              <NavButton contextual icon={Eye} to={`/cases/${caseRecord.id}`} variant="outline">
                 ดูรายละเอียดเคส
               </NavButton>
             ) : null}

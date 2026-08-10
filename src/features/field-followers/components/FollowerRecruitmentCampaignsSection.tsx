@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { CalendarClock, CheckCircle2, Clock, Link2, Lock, Trash2, UserCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -20,6 +19,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import {
   EmptyState,
   ErrorState,
@@ -139,7 +139,7 @@ export function FollowerRecruitmentCampaignsSection({
   const [caseIdsInput, setCaseIdsInput] = useState("");
   const [assignFollowerIds, setAssignFollowerIds] = useState<Record<string, string>>({});
   const area = useSchoolAreaFilter();
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const query = useFollowerRecruitmentCampaigns();
   const targetsQuery = useFollowerCampaignTargets(selectedCampaignId);
   const applicantsQuery = useFieldFollowers({
@@ -228,7 +228,7 @@ export function FollowerRecruitmentCampaignsSection({
       { targetId, followerId },
       {
         onSuccess: (result) => {
-          void navigate("/create/visit", { state: { prefill: result.data.prefill } });
+          contextualNavigate("/create/visit", { state: { prefill: result.data.prefill } });
         },
       },
     );
@@ -499,7 +499,7 @@ export function FollowerRecruitmentCampaignsSection({
                         </div>
                       </div>
                       <Button
-                        onClick={() => void navigate(`/field-followers/${follower.id}`)}
+                        onClick={() => contextualNavigate(`/field-followers/${follower.id}`)}
                         size="sm"
                         variant="outline"
                       >

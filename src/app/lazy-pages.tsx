@@ -156,11 +156,6 @@ export const FieldFollowerDetailPage = lazy(() =>
     default: module.FieldFollowerDetailPage,
   })),
 );
-export const FieldMonitorMapPage = lazy(() =>
-  import("../features/field-followers/pages/FieldMonitorMapPage").then((module) => ({
-    default: module.FieldMonitorMapPage,
-  })),
-);
 export const TimetablePage = lazy(() =>
   import("../features/timetable/pages/TimetablePage").then((module) => ({
     default: module.TimetablePage,

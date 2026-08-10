@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { CirclePlus, FolderOpen } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -14,6 +13,7 @@ import {
   DialogTitle,
 } from "../../../components/base";
 import { formatThaiDate } from "../../../lib/date-time";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useStudentCases } from "../../students/hooks/useStudentCases";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { OpenCaseDialog } from "./OpenCaseDialog";
@@ -35,7 +35,7 @@ export function StudentCaseAction({
   studentId,
   studentName,
 }: StudentCaseActionProps) {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const [openCaseDialogOpen, setOpenCaseDialogOpen] = useState(false);
   const [caseListDialogOpen, setCaseListDialogOpen] = useState(false);
   const {
@@ -132,7 +132,7 @@ export function StudentCaseAction({
                         className="shrink-0"
                         onClick={() => {
                           setCaseListDialogOpen(false);
-                          navigate(`/cases/${studentCase.id}`);
+                          contextualNavigate(`/cases/${studentCase.id}`);
                         }}
                         size="sm"
                         variant="outline"
@@ -167,7 +167,7 @@ export function StudentCaseAction({
       <OpenCaseDialog
         initialReason={initialReason}
         onOpenChange={setOpenCaseDialogOpen}
-        onOpened={(caseRecord) => void navigate(`/cases/${caseRecord.id}`)}
+        onOpened={(caseRecord) => contextualNavigate(`/cases/${caseRecord.id}`)}
         open={openCaseDialogOpen}
         studentId={studentId}
         studentName={studentName}

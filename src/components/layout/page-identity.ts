@@ -94,7 +94,6 @@ export const PAGE_IDENTITIES = {
   "/field-follower-applications/history": createIdentity("ตรวจสอบใบสมัคร", "user-check"),
   "/field-followers": createIdentity("ลิงก์รับสมัคร", "send"),
   "/field-followers/history": createIdentity("ลิงก์รับสมัคร", "send"),
-  "/field-monitor-map": createIdentity("แผนที่เด็กเสี่ยง", "map-pin"),
   "/import-data": createIdentity("นำเข้าข้อมูล", "file-import"),
   "/import-data/history": createIdentity("นำเข้าข้อมูล", "file-import"),
   "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),

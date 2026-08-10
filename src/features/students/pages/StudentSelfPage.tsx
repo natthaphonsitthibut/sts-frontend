@@ -4,6 +4,7 @@ import {
   EmptyState,
   ErrorState,
   PageShell,
+  PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
@@ -75,6 +76,7 @@ export function StudentSelfPage() {
 
   return (
     <PageShell>
+      <PageToolbar title="ข้อมูลตัวเอง" />
       <div className="space-y-5">
         <StudentProfileHeader
           canEditPhoto

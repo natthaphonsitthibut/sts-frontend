@@ -187,7 +187,6 @@ export const MENU_ITEMS: MenuItem[] = [
       },
     ],
   },
-  pageMenuItem("field-monitor-map", "/field-monitor-map", "field-monitor"),
   pageMenuItem("settings", "/settings"),
 ];
 

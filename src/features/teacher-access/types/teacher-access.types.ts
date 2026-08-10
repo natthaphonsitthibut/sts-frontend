@@ -75,6 +75,7 @@ export interface TeacherLinkRosterEntry {
   teacherMembershipId: string;
   teacherId: string;
   teacherDisplayName: string;
+  photoUrl: string | null;
   hasEmail: boolean;
   assignmentCount: number;
   grantId: string | null;
@@ -104,6 +105,7 @@ export interface TeacherAccessRosterStudent {
   studentTermId: string;
   /** School-owned roster number; null until the school imports one. */
   studentNumber: string | null;
+  hasPhoto: boolean;
   firstName: string | null;
   lastName: string | null;
   studentStatusCode: number | null;

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Eye, RefreshCw, Search, SquarePen, UserCheck, X } from "lucide-react";
 import {
   Alert,
@@ -20,6 +19,7 @@ import {
 } from "../../../components/layout/data-table";
 import { EmptyState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -576,7 +576,7 @@ export function ImportQuarantinePanel({
   rowsPerPage,
   showRetryBanner,
 }: ImportQuarantinePanelProps) {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const [selectedId, setSelectedId] = useState<string>();
   const [selectedCandidateKey, setSelectedCandidateKey] = useState("");
@@ -761,7 +761,7 @@ export function ImportQuarantinePanel({
             setSelectedCandidateKey("");
           }}
           onSortChange={setSort}
-          onViewDetail={(id) => void navigate(`/import-data/quarantine/${id}`)}
+          onViewDetail={(id) => contextualNavigate(`/import-data/quarantine/${id}`)}
           sort={sort}
         />
       ) : null}

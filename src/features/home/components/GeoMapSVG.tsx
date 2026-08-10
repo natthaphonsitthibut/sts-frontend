@@ -139,15 +139,17 @@ const GeoMapSVG = ({
   }
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const interactionRegionRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
   const prevFocusedRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+    const interactionRegion = interactionRegionRef.current;
+    if (!interactionRegion) return;
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       setIsAnimating(false);
       setZoomScale((prev) => {
         const zoomIntensity = 0.15;
@@ -160,9 +162,12 @@ const GeoMapSVG = ({
       });
     };
 
-    svg.addEventListener("wheel", handleWheel, { passive: false });
+    interactionRegion.addEventListener("wheel", handleWheel, {
+      capture: true,
+      passive: false,
+    });
     return () => {
-      svg.removeEventListener("wheel", handleWheel);
+      interactionRegion.removeEventListener("wheel", handleWheel, true);
     };
   }, []);
 
@@ -576,7 +581,11 @@ const GeoMapSVG = ({
   }, [data]);
 
   return (
-    <div className="relative flex h-[520px] w-full select-none flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:h-[620px] xl:h-[700px]">
+    <div
+      ref={interactionRegionRef}
+      className="relative flex h-[520px] w-full select-none flex-col overflow-hidden overscroll-contain rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:h-[620px] xl:h-[700px]"
+      data-home-risk-map-surface
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 self-stretch mb-4 z-10">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-primary" />

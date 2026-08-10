@@ -11,6 +11,7 @@ interface GuestPageShellProps extends ComponentProps<"div"> {
   contentClassName?: string;
   profileName?: string | null;
   showHeader?: boolean;
+  showProfile?: boolean;
 }
 
 export function GuestPageShell({
@@ -22,6 +23,7 @@ export function GuestPageShell({
   contentClassName,
   profileName,
   showHeader = true,
+  showProfile = true,
   ...props
 }: GuestPageShellProps) {
   return (
@@ -41,11 +43,13 @@ export function GuestPageShell({
                 ระบบติดตามผู้เรียน
               </span>
             </div>
-            <Avatar
-              aria-label={profileName ? `ผู้รับมอบหมาย: ${profileName}` : "ผู้รับมอบหมาย"}
-              className="size-10"
-              gradientName={profileName ?? undefined}
-            />
+            {showProfile ? (
+              <Avatar
+                aria-label={profileName ? `ผู้รับมอบหมาย: ${profileName}` : "ผู้รับมอบหมาย"}
+                className="size-10"
+                gradientName={profileName ?? undefined}
+              />
+            ) : null}
           </div>
         </header>
       ) : null}

@@ -16,6 +16,12 @@ import {
 import { cn } from "../../lib/utils";
 import { ClearFiltersButton } from "./clear-filters-button";
 import {
+  getContextualCrumbs,
+  getDefaultParentCrumbs,
+  getNavigationLabel,
+  type NavigationCrumb,
+} from "./navigation-context";
+import {
   getPageIdentity,
   getPageIdentityByTitle,
   PAGE_ICONS,
@@ -107,7 +113,8 @@ export function PageToolbar({
   // legacy prop temporarily so feature pages can be migrated without a broad,
   // noisy call-site rewrite; descriptions continue to belong in page content.
   void description;
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const pageIdentity =
     getPageIdentity(pathname) ??
     (typeof title === "string" ? getPageIdentityByTitle(title) : undefined);
@@ -125,12 +132,32 @@ export function PageToolbar({
     icon: PAGE_ICONS.home,
   };
   const HomeCrumbIcon = homeCrumb.icon ?? PAGE_ICONS.home;
-  const middleCrumbs = [
+  const contextualCrumbs = breadcrumbTrail ? [] : getContextualCrumbs(location);
+  const defaultParentCrumbs =
+    breadcrumbTrail || contextualCrumbs.length > 0 || parentBreadcrumb
+      ? []
+      : getDefaultParentCrumbs(pathname);
+  const rawMiddleCrumbs: Array<NavigationCrumb & { icon?: LucideIcon }> = [
     ...(breadcrumbTrail?.slice(1) ?? []),
-    ...(parentBreadcrumb
+    ...(contextualCrumbs.length > 0 ? contextualCrumbs : []),
+    ...(contextualCrumbs.length === 0 && parentBreadcrumb
       ? [{ ...parentBreadcrumb, icon: ParentBreadcrumbIcon }]
       : []),
+    ...defaultParentCrumbs,
   ];
+  const middleCrumbs = rawMiddleCrumbs
+    .filter((crumb) => crumb.to !== pathname)
+    .map((crumb) => ({
+      ...crumb,
+      icon:
+        crumb.icon ??
+        getPageIdentity(crumb.to)?.icon ??
+        getPageIdentityByTitle(crumb.label)?.icon,
+    }));
+  const currentCrumbLabel =
+    typeof toolbarTitle === "string"
+      ? getNavigationLabel(pathname, toolbarTitle)
+      : toolbarTitle;
   const isHomePage = pathname === homeCrumb.to;
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
@@ -154,8 +181,9 @@ export function PageToolbar({
           <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
             <nav
               aria-label="เส้นทางนำทาง"
+              data-page-breadcrumb
               className={cn(
-                "flex min-h-6 items-center gap-2 text-sm font-medium",
+                "flex min-h-6 min-w-0 items-center gap-2 overflow-x-auto text-sm font-medium",
                 tone === "primary" ? "text-white/80" : "text-breadcrumb-muted",
               )}
             >
@@ -199,6 +227,7 @@ export function PageToolbar({
                         key={crumb.to}
                       >
                         <Link
+                          data-breadcrumb-to={crumb.to}
                           className={cn(
                             "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             tone === "primary"
@@ -223,6 +252,7 @@ export function PageToolbar({
                     );
                   })}
                   <span
+                    data-breadcrumb-current
                     className={cn(
                       "inline-flex min-w-0 items-center gap-1.5 font-semibold",
                       tone === "primary"
@@ -237,7 +267,7 @@ export function PageToolbar({
                         aria-hidden="true"
                       />
                     ) : null}
-                    <span className="truncate">{toolbarTitle}</span>
+                    <span className="truncate">{currentCrumbLabel}</span>
                   </span>
                 </>
               )}

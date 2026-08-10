@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { FormErrorAlert } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -15,6 +14,7 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
@@ -36,7 +36,7 @@ const MANAGE_USERS_ICON = PAGE_IDENTITIES["/manage-users"].icon;
 const NON_STAFF_ROLES = "TEACHER,STUDENT";
 
 export function ManageUsersPage() {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const deactivateAccount = useDeactivateAccount();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,7 +68,7 @@ export function ManageUsersPage() {
 
   function openEdit(user: ManagedUser): void {
     if (user.id == null) return;
-    void navigate(`/manage-users/${user.id}/edit`);
+    contextualNavigate(`/manage-users/${user.id}/edit`);
   }
 
   function handleDeactivate(user: ManagedUser): void {
@@ -88,7 +88,7 @@ export function ManageUsersPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton icon={UserPlus} to="/manage-users/new">
+          <NavButton contextual icon={UserPlus} to="/manage-users/new">
             เพิ่มผู้ใช้งาน
           </NavButton>
         }

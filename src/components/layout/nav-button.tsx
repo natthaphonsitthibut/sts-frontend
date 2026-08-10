@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, type To } from "react-router-dom";
 import { Button, type ButtonProps } from "../base";
+import {
+  useContextualNavigationState,
+  useSafeBackTarget,
+} from "./navigation-context";
 
 interface NavButtonProps extends Omit<ButtonProps, "onClick"> {
   /** Destination route. */
   to: To | number;
+  /** Preserve this page as the source of a detail/create/edit destination. */
+  contextual?: boolean;
 }
 
 /**
@@ -20,8 +26,10 @@ const SPIN_BEFORE_NAV_MS = 400;
  * the page transitions — so changing pages always gives the same loading feedback
  * as the login/refresh buttons.
  */
-export function NavButton({ isLoading, to, ...props }: NavButtonProps) {
+export function NavButton({ contextual = false, isLoading, to, ...props }: NavButtonProps) {
   const navigate = useNavigate();
+  const safeBackTarget = useSafeBackTarget();
+  const contextualState = useContextualNavigationState();
   const [navigating, setNavigating] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
 
@@ -31,9 +39,13 @@ export function NavButton({ isLoading, to, ...props }: NavButtonProps) {
     setNavigating(true);
     timerRef.current = window.setTimeout(() => {
       if (typeof to === "number") {
-        navigate(to);
+        if (to < 0) {
+          navigate(safeBackTarget);
+        } else {
+          navigate(to);
+        }
       } else {
-        navigate(to);
+        navigate(to, contextual ? { state: contextualState } : undefined);
       }
       // A numeric history navigation can legitimately be a no-op (for example,
       // a directly opened detail page). Do not leave the button spinning when

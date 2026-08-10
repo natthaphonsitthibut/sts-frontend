@@ -102,6 +102,7 @@ export interface ClassroomTeacherAssignment {
 export interface ClassroomRosterStudent {
   studentUuid: string;
   studentNumber: string | null;
+  photoUrl: string | null;
   riskTier: string;
   riskSeverity: number;
   teacherComment: string | null;
@@ -158,6 +159,7 @@ export interface ClassroomDailyAttendance {
 export interface ClassroomStudentAttendanceSummary {
   studentUuid: string;
   studentNumber: string | null;
+  photoUrl: string | null;
   firstName: string | null;
   lastName: string | null;
   presentCount: number;

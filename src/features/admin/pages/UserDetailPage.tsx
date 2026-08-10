@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { ArrowLeft, ShieldCheck, SquarePen, UserRound } from "lucide-react";
+import { ArrowLeft, MapPin, ShieldCheck, SquarePen, UserRound } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { AvatarPhotoEditor, Card, CardContent, SchoolIcon } from "../../../components/base";
+import { AvatarPhotoEditor, Button, Card, CardContent, SchoolIcon } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -18,6 +18,7 @@ import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDialog";
+import { UserAddressRevealDialog } from "../components/UserAddressRevealDialog";
 import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
 import { useUserDetail } from "../hooks/useUsers";
 import type { ManagedUserDetail, RoleDefinition } from "../types/admin.types";
@@ -154,6 +155,7 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
 }
 
 function UserDetailContent({ user }: { user: ManagedUserDetail }) {
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const { labelOf } = usePermissionCatalog();
   const canOpenStudentDetail = Boolean(user.student_uuid);
   const roleName = user.role || user.roles?.[0] || "";
@@ -174,6 +176,35 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
   return (
     <div className="space-y-5">
       <UserPersonalInfoCard user={user} />
+
+      <Card className="p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <MapPin className="size-5 text-primary" aria-hidden="true" />
+              <h2 className="text-lg font-bold text-slate-800">ที่อยู่และแผนที่</h2>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              {user.has_profile_location
+                ? "ข้อมูลนี้เป็นข้อมูลส่วนบุคคล ระบบจะบันทึกเหตุผลเมื่อเปิดดู"
+                : "ผู้ใช้งานรายนี้ยังไม่ได้บันทึกที่อยู่หรือพิกัด"}
+            </p>
+          </div>
+          {user.has_profile_location && user.id ? (
+            <Button icon={MapPin} onClick={() => setAddressDialogOpen(true)} variant="outline">
+              ดูที่อยู่และแผนที่
+            </Button>
+          ) : null}
+        </div>
+      </Card>
+
+      {user.id ? (
+        <UserAddressRevealDialog
+          onOpenChange={setAddressDialogOpen}
+          open={addressDialogOpen}
+          userId={user.id}
+        />
+      ) : null}
 
       {/* Same card as the form's กำหนดสิทธิ์การเข้าถึง, locked for viewing. */}
       <Card className="p-6">
@@ -206,6 +237,7 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
             </div>
             <NavButton
               icon={SchoolIcon}
+              contextual
               to={`/students/${user.student_uuid}`}
             >
               เปิดข้อมูลนักเรียน
@@ -237,7 +269,7 @@ export function UserDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton icon={SquarePen} to={`/manage-users/${userId}/edit`}>
+          <NavButton contextual icon={SquarePen} to={`/manage-users/${userId}/edit`}>
             แก้ไขผู้ใช้งาน
           </NavButton>
         }

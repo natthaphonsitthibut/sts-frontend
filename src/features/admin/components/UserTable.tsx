@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { SquarePen, Trash2 } from "lucide-react";
 import { Avatar, IconButton } from "../../../components/base";
 import {
@@ -10,6 +9,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
+import { ContextLink } from "../../../components/layout/context-link";
 import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
 
@@ -40,12 +40,12 @@ function UserIdentity({ user }: { user: ManagedUser }) {
 
   if (user.id) {
     return (
-      <Link
+      <ContextLink
         className="group flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
         to={`/manage-users/${user.id}`}
       >
         {content}
-      </Link>
+      </ContextLink>
     );
   }
   return <div className="flex min-w-0 items-center gap-3">{content}</div>;

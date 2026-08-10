@@ -10,12 +10,14 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { StudentAttendanceCalendar } from "../../students/components/StudentAttendanceCalendar";
 import { StudentProfileHeader } from "../../students/components/StudentProfileHeader";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import {
   useCreateTeacherStudentComment,
+  useTeacherStudentPhoto,
   useTeacherStudentProfile,
 } from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
@@ -32,6 +34,13 @@ export function TeacherStudentProfilePage() {
   const { context } = useTeacherLink();
   const assignment = context.assignments.find((item) => item.id === assignmentId);
   const profileQuery = useTeacherStudentProfile(Number(assignmentId), studentUuid);
+  const profile = profileQuery.data;
+  const photoQuery = useTeacherStudentPhoto(
+    Number(assignmentId) || undefined,
+    studentUuid || undefined,
+    Boolean(profile?.student?.photo_url),
+  );
+  const studentPhotoUrl = useBlobObjectUrl(photoQuery.data);
   const [commentOpen, setCommentOpen] = useState(false);
   const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
 
@@ -89,7 +98,6 @@ export function TeacherStudentProfilePage() {
     );
   }
 
-  const profile = profileQuery.data;
   if (!profile?.student || !profile.summary) {
     return (
       <TeacherLinkShell
@@ -123,7 +131,7 @@ export function TeacherStudentProfilePage() {
       >
       <StudentProfileHeader
         key={studentUuid}
-        student={profile.student}
+        student={{ ...profile.student, photo_url: studentPhotoUrl }}
         studentId={studentUuid}
         summary={profile.summary}
       />

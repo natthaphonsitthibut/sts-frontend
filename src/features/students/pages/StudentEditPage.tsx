@@ -24,6 +24,7 @@ import {
 } from "../../../components/base";
 import { ErrorState, PageShell, PageToolbar, SkeletonStack } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import {
   AddressFormSection,
   type AddressFieldNames,
@@ -207,6 +208,7 @@ function StudentContactSection({
 export function StudentEditPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const safeBackTarget = useSafeBackTarget();
   const { student, isLoading, isError, refetch } = useStudent(id || undefined);
   const updateStudent = useUpdateStudent(id);
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: EMPTY_VALUES });
@@ -305,7 +307,7 @@ export function StudentEditPage() {
       })),
     };
     await updateStudent.mutateAsync(payload);
-    void navigate(-1);
+    void navigate(safeBackTarget);
   }
 
   return (

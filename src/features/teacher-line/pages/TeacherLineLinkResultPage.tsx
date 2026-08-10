@@ -49,7 +49,7 @@ export function TeacherLineLinkResultPage() {
   const copy = OUTCOME_COPY[outcome];
 
   return (
-    <MagicAuthCard title={copy.title}>
+    <MagicAuthCard showProfile={false} title={copy.title}>
       <div className="space-y-4">
         {outcome === "success" ? (
           <Alert variant="success">

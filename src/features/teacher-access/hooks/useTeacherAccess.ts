@@ -261,6 +261,26 @@ export function useTeacherClassroomCover(
   });
 }
 
+export function useTeacherStudentPhoto(
+  assignmentId: number | undefined,
+  studentUuid: string | undefined,
+  hasPhoto: boolean,
+) {
+  const token = useTeacherLinkSessionStore((state) => state.token);
+  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  return useQuery({
+    queryKey: [...teacherAccessGuestQueryKey(token), "student-photo", assignmentId, studentUuid],
+    queryFn: () =>
+      teacherAccessService.getStudentPhotoBlob(
+        { token, sessionToken },
+        { assignmentId: assignmentId!, studentUuid: studentUuid! },
+      ),
+    enabled: Boolean(token && assignmentId && studentUuid && hasPhoto),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useRecordTeacherClassroomExport() {
   const token = useTeacherLinkSessionStore((state) => state.token);
   const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);

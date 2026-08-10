@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { Skeleton } from "../../../components/base";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import { ContextLink } from "../../../components/layout/context-link";
 import {
   EmptyState,
   ErrorState,
@@ -140,7 +141,7 @@ export function CurriculumGradesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {grades.map((grade) => (
-            <Link
+            <ContextLink
               className="flex cursor-pointer items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-150 ease-out hover:scale-[1.01] hover:shadow-md motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               key={grade.gradeLevelId}
               to={`/curriculum/${grade.gradeLevelId}?schoolId=${selectedSchoolId}`}
@@ -156,7 +157,7 @@ export function CurriculumGradesPage() {
                   จำนวน {grade.subjectCount} รายวิชา
                 </span>
               </span>
-            </Link>
+            </ContextLink>
           ))}
         </div>
       )}

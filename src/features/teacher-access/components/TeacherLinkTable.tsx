@@ -1,5 +1,6 @@
 import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff, Unlink } from "lucide-react";
 import {
+  Avatar,
   Checkbox,
   DropdownMenu,
   IconButton,
@@ -14,6 +15,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import {
   TEACHER_LINE_STATUS_META,
   TEACHER_LINK_STATUS_META,
@@ -51,6 +53,38 @@ function LineStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
   return (
     <div className="flex justify-center">
       <LinkStatusBadge label={meta.label} variant={meta.variant} />
+    </div>
+  );
+}
+
+function TeacherIdentity({
+  entry,
+  showAssignmentCount = false,
+}: {
+  entry: TeacherLinkRosterEntry;
+  showAssignmentCount?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar
+        data-teacher-link-avatar
+        gradientName={entry.teacherDisplayName}
+        imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
+        imageUrl={resolveApiMediaUrl(entry.photoUrl)}
+      />
+      <div className="min-w-0">
+        <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
+        {showAssignmentCount ? (
+          <p className="mt-1 text-xs text-slate-500">
+            {entry.assignmentCount} ห้อง/รายวิชา
+          </p>
+        ) : null}
+        {entry.hasEmail ? null : (
+          <p className="mt-1 text-xs font-medium text-warning-700">
+            ยังไม่มีอีเมล — เข้าลิงก์ไม่ได้จนกว่าจะเพิ่มอีเมลให้ครู
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -191,13 +225,8 @@ export function TeacherLinkTable({
               />
             </DataTableCell>
             <DataTableCell>{startIndex + index}</DataTableCell>
-            <DataTableCell className="text-slate-800">
-              {entry.teacherDisplayName}
-              {entry.hasEmail ? null : (
-                <p className="mt-1 text-xs font-medium text-warning-700">
-                  ยังไม่มีอีเมล — เข้าลิงก์ไม่ได้จนกว่าจะเพิ่มอีเมลให้ครู
-                </p>
-              )}
+            <DataTableCell>
+              <TeacherIdentity entry={entry} />
             </DataTableCell>
             <DataTableCell className="text-center">
               <LinkStatus entry={entry} />
@@ -227,12 +256,7 @@ export function TeacherLinkTable({
                   className="mt-0.5"
                   onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
                 />
-                <div className="min-w-0">
-                  <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {entry.assignmentCount} ห้อง/รายวิชา
-                  </p>
-                </div>
+                <TeacherIdentity entry={entry} showAssignmentCount />
               </div>
               <RowMenu
                 busy={busyMembershipId === entry.teacherMembershipId}

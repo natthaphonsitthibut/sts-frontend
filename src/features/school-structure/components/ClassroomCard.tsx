@@ -1,7 +1,7 @@
 import { Check, ImagePlus, MoreVertical, Star } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { IconButton } from "../../../components/base";
+import { ContextLink } from "../../../components/layout/context-link";
 import { cn } from "../../../lib/utils";
 import type { ClassroomCardCoverColor, SchoolClassroom } from "../types/school-structure.types";
 import {
@@ -73,7 +73,7 @@ export function ClassroomCard({
       )}
       data-classroom-card={classroom.id}
     >
-      <Link
+      <ContextLink
         aria-label={`เปิดห้อง ${classroomLabel}`}
         className="absolute inset-0 z-0 rounded-lg outline-none"
         to={to ?? `/classrooms/${encodeURIComponent(classroom.id)}`}

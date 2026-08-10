@@ -20,7 +20,7 @@ import {
   PasswordInput,
   registerField,
 } from "../../../components/base";
-import { PageShell } from "../../../components/layout/page-primitives";
+import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { authService } from "../api/auth.service";
 import {
@@ -91,6 +91,13 @@ export function ChangePasswordPage() {
 
   return (
     <PageShell>
+      <PageToolbar
+        icon={LockKeyhole}
+        parentBreadcrumb={
+          isForcedChange ? undefined : { label: "โปรไฟล์ของฉัน", to: "/profile" }
+        }
+        title="เปลี่ยนรหัสผ่าน"
+      />
       <Card className="mx-auto max-w-[480px] rounded-lg">
         <CardHeader>
           <CardTitle as="h1" className="flex items-center gap-2 text-xl">

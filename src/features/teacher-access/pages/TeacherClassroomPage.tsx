@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle2,
   Download,
   History,
@@ -36,20 +37,22 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { PAGE_ICONS, PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import { NavButton } from "../../../components/layout/nav-button";
 import { getThaiDateKey } from "../../../lib/date-time";
+import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { cn } from "../../../lib/utils";
-import { getAttendanceStatusPresentation } from "../../attendance/lib/attendance-presentation";
+import { AttendanceRosterTable } from "../../attendance/components/AttendanceRosterTable";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { ClassroomTableExportDialog } from "../../school-structure/components/ClassroomTableExportDialog";
-import { StudentAvatar } from "../../students/components/StudentAvatar";
 import {
   getRiskTierChipClass,
   RISK_TIER_ORDER,
   RISK_TIER_PRESENTATION,
 } from "../../students/lib/risk-tier-presentation";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
+import { TeacherAccessStudentAvatar } from "../components/TeacherAccessStudentAvatar";
 import {
   useCreateTeacherStudentComment,
   useClearTeacherAccessDemoAbsences,
@@ -58,6 +61,7 @@ import {
   useSeedTeacherAccessDemoAbsences,
   useTeacherAccessAttendanceSlots,
   useTeacherAccessRoster,
+  useTeacherStudentPhoto,
 } from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 import {
@@ -72,7 +76,6 @@ type ClassroomTab = "roster" | "attendance";
 
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
 const CLASSROOM_ICON = PAGE_ICONS["school-building"];
-/** Display order of the attendance pills: มา / สาย / ลา / ขาด. */
 const ROSTER_EXPORT_COLUMNS = [
   { key: "order", label: "ลำดับ" },
   { key: "studentNumber", label: "รหัสประจำตัว" },
@@ -80,13 +83,6 @@ const ROSTER_EXPORT_COLUMNS = [
   { key: "comment", label: "หมายเหตุ" },
   { key: "status", label: "สถานะความเสี่ยง" },
 ] as const;
-
-const ATTENDANCE_STATUSES: AttendanceStatus[] = [
-  "P_PRESENT",
-  "P_LATE",
-  "P_LEAVE",
-  "P_ABSENT",
-];
 
 function rosterSortValue(student: TeacherAccessRosterStudent, key: string): string {
   if (key === "studentNumber") return student.studentNumber ?? "";
@@ -128,6 +124,12 @@ export function TeacherClassroomPage() {
   });
   const [exportOpen, setExportOpen] = useState(false);
   const [commentStudent, setCommentStudent] = useState<TeacherAccessRosterStudent | null>(null);
+  const commentPhotoQuery = useTeacherStudentPhoto(
+    Number(assignmentId) || undefined,
+    commentStudent?.studentUuid,
+    Boolean(commentStudent?.hasPhoto),
+  );
+  const commentPhotoUrl = useBlobObjectUrl(commentPhotoQuery.data);
   const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
   const recordExport = useRecordTeacherClassroomExport();
 
@@ -207,6 +209,11 @@ export function TeacherClassroomPage() {
     <TeacherLinkShell
       breadcrumb={[{ label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" }]}
       icon={CLASSROOM_ICON}
+      navigation={
+        <NavButton icon={ArrowLeft} to="/teacher-access" variant="outline">
+          ย้อนกลับ
+        </NavButton>
+      }
       title={
         <>
           ห้อง {classroomLabel}{" "}
@@ -353,7 +360,10 @@ export function TeacherClassroomPage() {
                       }
                       type="button"
                     >
-                      <StudentAvatar name={fullName} />
+                      <TeacherAccessStudentAvatar
+                        assignmentId={Number(assignmentId)}
+                        student={student}
+                      />
                     </button>
                   </div>
                 </DataTableCell>
@@ -452,75 +462,27 @@ export function TeacherClassroomPage() {
               )}
             </div>
           ) : null}
-          <DataTable
-            headings={[
-              { label: "ลำดับ" },
-              { label: "รูปประจำตัว", className: "text-center" },
-              { label: "รหัสประจำตัว", sortKey: "studentNumber" },
-              { label: "ชื่อ-นามสกุล", sortKey: "name" },
-              { label: "สถานะการเข้าเรียน", className: "text-center" },
-            ]}
-            minWidthClassName="min-w-[1040px]"
+          <AttendanceRosterTable
+            catalog={attendanceStatusCatalog}
             onSortChange={setSort}
-            responsive={false}
+            onStatusChange={(studentId, status) => {
+              setAttendance((values) => ({ ...values, [studentId]: status }));
+              setSaved(false);
+            }}
+            rows={visibleRoster.map((student) => ({
+              id: student.studentUuid,
+              name: studentDisplayName(student),
+              studentNumber: student.studentNumber,
+              avatar: (
+                <TeacherAccessStudentAvatar
+                  assignmentId={Number(assignmentId)}
+                  student={student}
+                />
+              ),
+            }))}
+            selections={attendance}
             sort={sort}
-          >
-            {visibleRoster.map((student, index) => {
-              const fullName = studentDisplayName(student);
-              const current = attendance[student.studentUuid] ?? "P_PRESENT";
-              return (
-                <DataTableRow key={student.studentUuid}>
-                  <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
-                  <DataTableCell>
-                    <div className="flex justify-center">
-                      <StudentAvatar name={fullName} />
-                    </div>
-                  </DataTableCell>
-                  <DataTableCell className="font-medium tabular-nums">
-                    {student.studentNumber ?? "-"}
-                  </DataTableCell>
-                  <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
-                  <DataTableCell>
-                    <div
-                      aria-label={`สถานะของ ${fullName}`}
-                      className="flex min-w-[340px] justify-center gap-1.5"
-                      role="group"
-                    >
-                      {ATTENDANCE_STATUSES.map((value) => {
-                        const presentation = getAttendanceStatusPresentation(
-                          value,
-                          attendanceStatusCatalog,
-                        );
-                        const selected = current === value;
-                        return (
-                          <button
-                            aria-pressed={selected}
-                            className={cn(
-                              "inline-flex h-9 w-20 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                              selected
-                                ? presentation.pillActiveClass
-                                : `bg-white ${presentation.pillIdleClass}`,
-                            )}
-                            key={value}
-                            onClick={() => {
-                              setAttendance((values) => ({
-                                ...values,
-                                [student.studentUuid]: value,
-                              }));
-                              setSaved(false);
-                            }}
-                            type="button"
-                          >
-                            {presentation.shortLabel}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </DataTableCell>
-                </DataTableRow>
-              );
-            })}
-          </DataTable>
+          />
 
           <div className="mt-4 space-y-3">
             <FormErrorAlert
@@ -610,7 +572,7 @@ export function TeacherClassroomPage() {
         onOpenChange={(open) => {
           if (!open) setCommentStudent(null);
         }}
-        student={commentStudent}
+        student={commentStudent ? { ...commentStudent, photoUrl: commentPhotoUrl } : null}
         submitComment={async ({ studentUuid, commentText }) => {
           await createComment.mutateAsync({ studentUuid, commentText });
           await rosterQuery.refetch();

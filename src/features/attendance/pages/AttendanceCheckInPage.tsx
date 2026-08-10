@@ -1,22 +1,25 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
+  History,
   LockOpen,
-  Save,
   Search,
+  Wrench,
 } from "lucide-react";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
-  Card,
-  Combobox,
   DatePicker,
+  DropdownMenu,
   Input,
+  Label,
+  Select,
   Tabs,
   useConfirm,
 } from "../../../components/base";
@@ -32,17 +35,19 @@ import {
   ErrorState,
   PageShell,
   PageToolbar,
+  SearchInput,
   SkeletonTable,
+  ToolbarControls,
   ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
-import { AttendanceStudentTable } from "../components/AttendanceStudentTable";
+import { AttendanceRosterTable } from "../components/AttendanceRosterTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
 import {
   getAttendanceStatusPresentation,
   getIsoDayOfWeekFromDateString,
 } from "../lib/attendance-presentation";
-import type { AttendanceHistoryRecord, AttendanceStudent } from "../types/attendance.types";
+import type { AttendanceHistoryRecord } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -54,13 +59,10 @@ import {
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
-import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
 import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
-import { usePermissions } from "../../auth/hooks/usePermissions";
-import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
-import { ManagedObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
+import { StudentAvatar } from "../../students/components/StudentAvatar";
 
 
 const TAB_OPTIONS = [
@@ -136,7 +138,7 @@ function findDefaultSlot(
 }
 
 export function AttendanceCheckInPage() {
-  const { can } = usePermissions();
+  const navigate = useNavigate();
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [tab, setTab] = useRouteTab(
     {
@@ -146,9 +148,13 @@ export function AttendanceCheckInPage() {
     "today",
   );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  const [attendanceSearch, setAttendanceSearch] = useState("");
+  const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
+    key: "name",
+    direction: "asc",
+  });
   const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
   const [selectedSlotId, setSelectedSlotId] = useState("");
-  const [observationStudent, setObservationStudent] = useState<AttendanceStudent | null>(null);
   // Defaults to today but stays editable — lets a teacher check in for an
   // earlier date (e.g. catching up after the fact). Never a future date; the
   // backend rejects that too.
@@ -180,9 +186,6 @@ export function AttendanceCheckInPage() {
     students,
     selections,
     setStatus,
-    setAllStatus,
-    undoSelections,
-    canUndoSelections,
     counts,
     canLoadRoster,
     isRosterLoading,
@@ -315,6 +318,30 @@ export function AttendanceCheckInPage() {
     setCheckInDate(value);
   }
 
+  const visibleStudents = useMemo(() => {
+    const keyword = attendanceSearch.trim().toLocaleLowerCase("th-TH");
+    const filtered = students.filter((student) =>
+      !keyword
+        ? true
+        : `${student.name} ${student.student_number ?? ""}`
+            .toLocaleLowerCase("th-TH")
+            .includes(keyword),
+    );
+    if (!attendanceSort) return filtered;
+    return [...filtered].sort((left, right) => {
+      const leftValue =
+        attendanceSort.key === "studentNumber"
+          ? left.student_number ?? ""
+          : left.name;
+      const rightValue =
+        attendanceSort.key === "studentNumber"
+          ? right.student_number ?? ""
+          : right.name;
+      const result = leftValue.localeCompare(rightValue, "th");
+      return attendanceSort.direction === "asc" ? result : -result;
+    });
+  }, [attendanceSearch, attendanceSort, students]);
+
   // History uses the same school/grade/room scope as the today tab — filter the
   // records client-side by the selected class so both tabs behave consistently.
   const scopedHistory = useMemo(
@@ -392,45 +419,96 @@ export function AttendanceCheckInPage() {
             scope={filterScope}
           />
 
-          {tab === "today" ? (
-            <DatePicker
-              ariaLabel="วันที่เช็คชื่อ"
-              className="sm:w-[180px]"
-              max={getTodayIso()}
-              value={checkInDate}
-              onChange={(next) => handleCheckInDateChange(next || getTodayIso())}
-            />
-          ) : (
+          {tab === "history" ? (
             <DatePicker
               ariaLabel="เลือกวันที่"
               className="sm:w-[180px]"
               value={historyDate}
               onChange={setHistoryDate}
             />
-          )}
+          ) : null}
         </ToolbarFilterGrid>
       </PageToolbar>
 
       {tab === "today" ? (
-        <Card className="mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-          <Combobox
-            className="w-full sm:w-[380px]"
-            disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
-            onChange={setSelectedSlotId}
-            options={subjectSlotOptions}
-            placeholder="เลือกคาบรายวิชา"
-            value={selectedSlotId}
+        <ToolbarControls className="mb-5">
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={setAttendanceSearch}
+            placeholder="ค้นหา"
+            value={attendanceSearch}
           />
-        </Card>
+          <DropdownMenu
+            align="start"
+            ariaLabel="เครื่องมือการเช็คชื่อ"
+            items={[
+              {
+                id: "qr",
+                label: "สแกน QR Code เพื่อเช็คชื่อ (เร็ว ๆ นี้)",
+                disabled: true,
+                onSelect: () => undefined,
+              },
+              {
+                id: "delegate",
+                label: "มอบหมายการเช็คชื่อ (เร็ว ๆ นี้)",
+                disabled: true,
+                onSelect: () => undefined,
+              },
+              {
+                id: "import",
+                label: "นำเข้าไฟล์การเช็คชื่อ (เร็ว ๆ นี้)",
+                disabled: true,
+                onSelect: () => undefined,
+              },
+            ]}
+            trigger={(triggerProps) => (
+              <Button {...triggerProps} icon={Wrench} variant="outline">
+                เครื่องมือ
+              </Button>
+            )}
+          />
+          <Button
+            className="sm:ml-auto"
+            icon={History}
+            onClick={() => void navigate("/attendance/history")}
+          >
+            ประวัติการเช็คชื่อ
+          </Button>
+        </ToolbarControls>
       ) : null}
 
       {tab === "today" ? (
-        <>
-          {canLoadRoster && students.length > 0 ? (
-            <div className="mb-3">
-              <AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />
-            </div>
-          ) : null}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          <div className="mb-4 w-[270px] max-w-full">
+            <Label htmlFor="attendance-date">วันที่</Label>
+            <DatePicker
+              ariaLabel="เลือกวันที่เช็คชื่อ"
+              id="attendance-date"
+              max={getTodayIso()}
+              value={checkInDate}
+              onChange={(next) => handleCheckInDateChange(next || getTodayIso())}
+            />
+          </div>
+          <div className="mb-4 w-[270px] max-w-full">
+            <Label htmlFor="attendance-period">คาบเรียน</Label>
+            <Select
+              disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
+              id="attendance-period"
+              onChange={(event) => setSelectedSlotId(event.target.value)}
+              value={selectedSlotId}
+            >
+              {subjectSlotOptions.map((option) => (
+                <option key={option.value || "empty"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
 
           {saveState.isError ? (
             <div className="mb-4">
@@ -529,37 +607,48 @@ export function AttendanceCheckInPage() {
                 title="ไม่พบรายชื่อนักเรียนในห้องนี้"
                 description="ลองเลือกชั้นหรือห้องอื่น"
               />
+            ) : visibleStudents.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="ไม่พบรายชื่อนักเรียน"
+                description="ลองเปลี่ยนคำค้นหา"
+              />
             ) : (
-              <AttendanceStudentTable
-                canUndo={canUndoSelections}
+              <AttendanceRosterTable
+                catalog={attendanceStatusCatalog}
                 disabled={!canEditAttendance || isSessionError}
-                onBulkStatusChange={setAllStatus}
+                onSortChange={setAttendanceSort}
                 onStatusChange={setStatus}
-                onUndo={undoSelections}
+                rows={visibleStudents.map((student) => ({
+                  id: student.id,
+                  name: student.name,
+                  studentNumber: student.student_number,
+                  avatar: (
+                    <StudentAvatar
+                      name={student.name}
+                      photoUrl={student.photo_url}
+                    />
+                  ),
+                }))}
                 selections={selections}
-                students={students}
-                onObserveStudent={
-                  can("student-observations") ? setObservationStudent : undefined
-                }
+                sort={attendanceSort}
               />
             )}
 
             {canLoadRoster && students.length > 0 && canEditAttendance ? (
-              <div className="pointer-events-none sticky bottom-4 z-10 mt-2 flex justify-end">
+              <div className="mt-4 flex justify-end">
                 <Button
-                  className="pointer-events-auto shadow-lg"
-                  icon={Save}
+                  disabled={isSessionError}
                   isLoading={saveState.isPending}
                   loadingText="กำลังบันทึก"
-                  onClick={() => void handleSave()}
-                  size="lg"
+                  type="submit"
                 >
-                  บันทึกข้อมูล
+                  บันทึกการเช็คชื่อ {students.length} คน
                 </Button>
               </div>
             ) : null}
           </div>
-        </>
+        </form>
       ) : history.isError ? (
         <ErrorState
           title="ไม่สามารถโหลดประวัติการเช็คชื่อได้"
@@ -661,19 +750,6 @@ export function AttendanceCheckInPage() {
         onSubmit={handleReopen}
         open={reopenDialogOpen}
       />
-      <ObservationEntryDialog
-        open={observationStudent !== null}
-        title="บันทึกข้อสังเกตจากหน้าเช็คชื่อ"
-        onClose={() => setObservationStudent(null)}
-      >
-        {observationStudent ? (
-          <ManagedObservationEntryPanel
-            studentName={observationStudent.name}
-            studentTermId={observationStudent.id}
-            timetableSlotId={selectedSlotIdNumber ?? undefined}
-          />
-        ) : null}
-      </ObservationEntryDialog>
     </PageShell>
   );
 }

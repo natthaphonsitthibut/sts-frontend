@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 import { buttonVariants, iconButtonVariants } from "../base";
+import { useContextualNavigationState } from "./navigation-context";
 
 export interface DetailLinkButtonProps
   extends Omit<LinkProps, "children">,
@@ -23,9 +24,11 @@ export function DetailLinkButton({
   iconOnly = false,
   variant,
   size = "sm",
+  state,
   children = "ดูรายละเอียด",
   ...props
 }: DetailLinkButtonProps) {
+  const contextualState = useContextualNavigationState(state);
   return (
     <Link
       className={cn(
@@ -35,6 +38,7 @@ export function DetailLinkButton({
         "shrink-0 whitespace-nowrap",
         className,
       )}
+      state={contextualState}
       {...props}
     >
       <Eye className="size-4" aria-hidden="true" />

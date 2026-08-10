@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { ContextLink } from "../../../components/layout/context-link";
 import {
   LinkRemainingBadge,
   LinkTimeSummary,
@@ -93,14 +93,14 @@ function StudentIdentity({ caseRecord }: { caseRecord: CaseRecord }) {
   }
 
   return (
-    <Link
+    <ContextLink
       aria-label={`ดูข้อมูลนักเรียน ${caseRecord.student_name}`}
       className="group flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       title={`ดูข้อมูลนักเรียน ${caseRecord.student_name}`}
       to={`/students/${caseRecord.student_id}`}
     >
       {content}
-    </Link>
+    </ContextLink>
   );
 }
 

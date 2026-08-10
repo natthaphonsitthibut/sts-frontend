@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
 import { LayoutIcon } from "./LayoutIcon";
 import { collectMenuRoutes } from "./menu-routes";
+import { getNavigationContext } from "./navigation-context";
 
 interface SidebarNavItemProps {
   collapsed?: boolean;
@@ -113,11 +114,19 @@ export function SidebarNavItem({
   onNavigate,
 }: SidebarNavItemProps) {
   const location = useLocation();
+  const navigationContext = getNavigationContext(location.state);
+  const contextualMenuRoute = navigationContext?.menuRoute;
+  const activePathname = navigationContext && contextualMenuRoute === null
+    ? ""
+    : contextualMenuRoute &&
+        (menuRoutes ?? []).some((route) => routeMatchesPathname(route, contextualMenuRoute))
+      ? contextualMenuRoute
+      : location.pathname;
   const hasActiveChild = Boolean(
-    item.children?.some((child) => isRouteActive(child, location.pathname, menuRoutes)),
+    item.children?.some((child) => isRouteActive(child, activePathname, menuRoutes)),
   );
   const [open, setOpen] = useState(hasActiveChild);
-  const expanded = open;
+  const expanded = open || hasActiveChild;
 
   function handleGroupToggle(): void {
     setOpen((value) => !value);
@@ -187,31 +196,33 @@ export function SidebarNavItem({
                 collapsed ? "border-slate-200/80 pl-2" : "border-slate-200 pl-4",
               )}
             >
-              {item.children.map((child) => (
-                <NavLink
-                  aria-label={collapsed ? child.label : undefined}
-                  className={() =>
-                    navLinkClassName(
-                      { isActive: isRouteActive(child, location.pathname, menuRoutes) },
+              {item.children.map((child) => {
+                const childIsActive = isRouteActive(child, activePathname, menuRoutes);
+                return (
+                  <Link
+                    aria-current={childIsActive ? "page" : undefined}
+                    aria-label={collapsed ? child.label : undefined}
+                    className={navLinkClassName(
+                      { isActive: childIsActive },
                       collapsed,
                       true,
-                    )
-                  }
-                  key={child.id}
-                  onClick={onNavigate}
-                  title={collapsed ? child.label : undefined}
-                  to={child.route || "#"}
-                  tabIndex={childrenVisible ? undefined : -1}
-                >
-                  <LayoutIcon
-                    className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                    iconName={child.iconName}
-                  />
-                  <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
-                    {child.label}
-                  </span>
-                </NavLink>
-              ))}
+                    )}
+                    key={child.id}
+                    onClick={onNavigate}
+                    title={collapsed ? child.label : undefined}
+                    to={child.route || "#"}
+                    tabIndex={childrenVisible ? undefined : -1}
+                  >
+                    <LayoutIcon
+                      className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                      iconName={child.iconName}
+                    />
+                    <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
+                      {child.label}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -219,18 +230,15 @@ export function SidebarNavItem({
     );
   }
 
+  const itemIsActive = isRouteActive(item, activePathname, menuRoutes);
   return (
-    <NavLink
+    <Link
+      aria-current={itemIsActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
-      // Active state comes from `isRouteActive`, not NavLink's own prefix
+      // Active state comes from `isRouteActive`, not router prefix matching:
       // match: a rail whose landing page is a parent path of its other items
       // ("/teacher-access" vs "/teacher-access/timetable") would light up both.
-      className={() =>
-        navLinkClassName(
-          { isActive: isRouteActive(item, location.pathname, menuRoutes) },
-          collapsed,
-        )
-      }
+      className={navLinkClassName({ isActive: itemIsActive }, collapsed)}
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       to={item.route || "#"}
@@ -240,6 +248,6 @@ export function SidebarNavItem({
         iconName={item.iconName}
       />
       <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>{item.label}</span>
-    </NavLink>
+    </Link>
   );
 }

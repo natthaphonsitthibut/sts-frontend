@@ -386,6 +386,20 @@ async function getClassroomCoverBlob(
   });
 }
 
+async function getStudentPhotoBlob(
+  credential: TeacherLinkCredential,
+  input: { assignmentId: number; studentUuid: string },
+): Promise<Blob> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<Blob>("/teacher-access/student-photo", {
+      headers: guestHeaders(credential),
+      params: input,
+      responseType: "blob",
+    });
+    return response.data;
+  });
+}
+
 async function recordClassroomExport(
   credential: TeacherLinkCredential,
   input: {
@@ -469,6 +483,7 @@ export const teacherAccessService = {
   listCompleteAttendanceHistory,
   createStudentComment,
   getClassroomCoverBlob,
+  getStudentPhotoBlob,
   getMySchedule,
   getStudentProfile,
   getStudentSubjectAttendance,

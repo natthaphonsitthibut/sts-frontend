@@ -267,6 +267,7 @@ export function CaseReviewDetailPage() {
             </div>
             {caseRecord.student_id ? (
               <NavButton
+                contextual
                 icon={UserRound}
                 to={`/students/${caseRecord.student_id}`}
                 variant="outline"

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useState, type ReactNode } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
   Alert,
@@ -37,6 +37,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { ContextLink } from "../../../components/layout/context-link";
 import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import {
@@ -498,12 +499,12 @@ export function ProfilePage() {
                     {can("manage-users-list") && profileUser.id ? (
                       <>
                         แก้ไขได้ที่{" "}
-                        <Link
+                        <ContextLink
                           className="font-semibold text-primary underline-offset-4 hover:underline"
                           to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
                         >
                           หน้าแก้ไขผู้ใช้งาน
-                        </Link>
+                        </ContextLink>
                       </>
                     ) : (
                       "แก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข"
@@ -710,12 +711,12 @@ export function ProfilePage() {
                       {can("manage-users-list") && profileUser?.id ? (
                         <>
                           แก้ไขได้ที่{" "}
-                          <Link
+                          <ContextLink
                             className="font-semibold text-primary underline-offset-4 hover:underline"
                             to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
                           >
                             หน้าแก้ไขผู้ใช้งาน
-                          </Link>
+                          </ContextLink>
                         </>
                       ) : (
                         "แก้ไขไม่ได้ด้วยตนเอง — ติดต่อผู้ดูแลระบบหากต้องแก้ไข"

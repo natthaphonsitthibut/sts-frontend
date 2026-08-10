@@ -15,6 +15,7 @@ export type RiskDashboardSortDirection = "asc" | "desc";
 export interface RiskDashboardRow {
   studentId: string;
   studentName: string;
+  studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
   grade: string | null;

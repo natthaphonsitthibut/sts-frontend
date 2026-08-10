@@ -1,6 +1,6 @@
 import { Download, MessageSquareText, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button, IconButton, Skeleton, Tabs } from "../../../components/base";
 import {
   DataTable,
@@ -18,6 +18,7 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import {
   PAGE_ICONS,
   PAGE_IDENTITIES,
@@ -43,7 +44,7 @@ const CLASSROOM_ICON = PAGE_ICONS["users-round"];
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
 
 export function ClassroomDetailPage() {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const { can } = usePermissions();
   const { classroomId = "" } = useParams();
   const [tab, setTab] = useState<DetailTab>("roster");
@@ -210,10 +211,10 @@ export function ClassroomDetailPage() {
                             <button
                               aria-label={`เปิดข้อมูลนักเรียน ${fullName}`}
                               className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                              onClick={() => void navigate(`/students/${student.studentUuid}`)}
+                              onClick={() => contextualNavigate(`/students/${student.studentUuid}`)}
                               type="button"
                             >
-                              <StudentAvatar name={fullName} />
+                              <StudentAvatar name={fullName} photoUrl={student.photoUrl} />
                             </button>
                           </div>
                         </DataTableCell>
@@ -234,7 +235,7 @@ export function ClassroomDetailPage() {
                             <IconButton
                               aria-label={`ดูข้อมูล ${fullName}`}
                               icon={UserRound}
-                              onClick={() => void navigate(`/students/${student.studentUuid}`)}
+                              onClick={() => contextualNavigate(`/students/${student.studentUuid}`)}
                               variant="edit"
                             />
                             <IconButton

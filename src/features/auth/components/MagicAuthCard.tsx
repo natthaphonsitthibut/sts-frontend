@@ -6,6 +6,7 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 interface MagicAuthCardProps {
   title: string;
   subtitle?: string;
+  showProfile?: boolean;
   children: ReactNode;
 }
 
@@ -18,10 +19,11 @@ interface MagicAuthCardProps {
 export function MagicAuthCard({
   title,
   subtitle,
+  showProfile = true,
   children,
 }: MagicAuthCardProps) {
   return (
-    <GuestPageShell centered contentClassName="max-w-[460px]">
+    <GuestPageShell centered contentClassName="max-w-[460px]" showProfile={showProfile}>
       <Card className="rounded-lg">
         <CardContent className="p-6">
           <div className="mb-5 text-center">

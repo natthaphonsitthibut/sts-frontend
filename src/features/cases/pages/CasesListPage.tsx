@@ -17,6 +17,7 @@ import {
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
@@ -75,6 +76,7 @@ function getInitialSearchQuery(state: unknown): string {
 
 export function CasesListPage() {
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const location = useLocation();
   const initialQuery = useMemo(
     () => new URLSearchParams(location.search),
@@ -240,7 +242,7 @@ export function CasesListPage() {
   }
 
   function openCreateLink(caseRecord: CaseRecord): void {
-    void navigate("/create/visit", {
+    contextualNavigate("/create/visit", {
       state: {
         prefill: {
           existing_case_id: String(caseRecord.id),

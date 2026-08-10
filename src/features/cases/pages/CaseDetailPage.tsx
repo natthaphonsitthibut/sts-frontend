@@ -10,7 +10,7 @@ import {
   Siren,
   UserRound,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button, Card } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
@@ -21,6 +21,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseFollowUpRoundDetails } from "../components/CaseFollowUpRoundDetails";
@@ -40,7 +41,7 @@ function DetailItem({ label, value }: { label: string; value: string | null | un
 
 export function CaseDetailPage() {
   const { can } = usePermissions();
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const { caseId: caseIdParam } = useParams<{ caseId: string }>();
   const caseId = Number(caseIdParam);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -107,7 +108,7 @@ export function CaseDetailPage() {
     );
   };
   const createFollowUpRound = () =>
-    void navigate("/create/visit", { state: { prefill: visitPrefill } });
+    contextualNavigate("/create/visit", { state: { prefill: visitPrefill } });
   const handleReviewed = () => {
     void detailQuery.refetch();
   };
@@ -118,7 +119,7 @@ export function CaseDetailPage() {
         description="อ่านรายงานการติดตามและประวัติให้ครบก่อนพิจารณาเคส"
         footerActions={
           caseRecord.student_id ? (
-            <NavButton icon={UserRound} to={`/students/${caseRecord.student_id}`} variant="outline">
+            <NavButton contextual icon={UserRound} to={`/students/${caseRecord.student_id}`} variant="outline">
               ข้อมูลนักเรียน
             </NavButton>
           ) : null
@@ -229,7 +230,7 @@ export function CaseDetailPage() {
                       <span>ผู้รับผิดชอบ: {round.initial_assignee || "-"}</span>
                     </div>
                   </div>
-                  <NavButton icon={Eye} to={`/tasks/${round.task_id}`} variant="outline">
+                  <NavButton contextual icon={Eye} to={`/tasks/${round.task_id}`} variant="outline">
                     ดูภารกิจ
                   </NavButton>
                 </div>

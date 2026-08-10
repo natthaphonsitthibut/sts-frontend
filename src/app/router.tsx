@@ -32,7 +32,6 @@ import {
   FieldFollowerApplicationPage,
   FieldFollowerDetailPage,
   FieldFollowersReviewPage,
-  FieldMonitorMapPage,
   ForbiddenPage,
   ImportDataPage,
   ImportQuarantineDetailPage,
@@ -358,10 +357,6 @@ export const router = createBrowserRouter([
       {
         path: "field-followers/:id",
         element: protectedElement(<FieldFollowerDetailPage />, "field-monitor"),
-      },
-      {
-        path: "field-monitor-map",
-        element: protectedElement(<FieldMonitorMapPage />, "field-monitor"),
       },
       {
         path: "audit-log/:id",

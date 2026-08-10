@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FileDown,
   LayoutDashboard,
@@ -18,6 +18,7 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
+import { ContextLink } from "../../../components/layout/context-link";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { formatRoomLabel } from "../../../lib/room-presentation";
@@ -193,7 +194,7 @@ function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
 function StudentCell({ row }: { row: RiskDashboardRow }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <Link
+      <ContextLink
         aria-label={`ดูโปรไฟล์ ${row.studentName}`}
         className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         to={`/students/${row.studentId}`}
@@ -201,8 +202,9 @@ function StudentCell({ row }: { row: RiskDashboardRow }) {
         <StudentAvatar
           className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
           name={row.studentName}
+          photoUrl={row.studentPhotoUrl}
         />
-      </Link>
+      </ContextLink>
       <div className="min-w-0">
         <div className="truncate text-slate-800">
           {row.studentName}

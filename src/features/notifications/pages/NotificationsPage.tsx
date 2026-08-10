@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
@@ -11,6 +10,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { NotificationListItem } from "../components/NotificationListItem";
@@ -24,7 +24,7 @@ import { getNotificationRoute } from "../lib/notification-navigation";
 import type { NotificationItem } from "../types/notifications.types";
 
 export function NotificationsPage() {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const hasMarkedSeen = useRef(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
@@ -65,7 +65,7 @@ export function NotificationsPage() {
     }
     const route = getNotificationRoute(notification);
     if (route) {
-      void navigate(route);
+      contextualNavigate(route);
     }
   }
 

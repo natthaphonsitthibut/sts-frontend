@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarCheck, Download, FileSpreadsheet, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Download, FileSpreadsheet, UserRoundCheck } from "lucide-react";
 import { Button, DatePicker, Skeleton, Tabs } from "../../../components/base";
 import {
   DataTable,
@@ -16,6 +16,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { NavButton } from "../../../components/layout/nav-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { ClassroomTableExportDialog } from "../../school-structure/components/ClassroomTableExportDialog";
@@ -102,6 +103,15 @@ export function TeacherAttendanceHistoryPage() {
         },
       ]}
       icon={PAGE_ICONS["calendar-check"]}
+      navigation={
+        <NavButton
+          icon={ArrowLeft}
+          to={`/teacher-access/classes/${assignmentId}`}
+          variant="outline"
+        >
+          ย้อนกลับ
+        </NavButton>
+      }
       title="ประวัติการเช็คชื่อ"
     >
       <div className="mb-6">
