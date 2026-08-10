@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { EmptyState, SearchInput } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  SearchInput,
+} from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { ClassroomCard } from "../../school-structure/components/ClassroomCard";
 import { ClassroomCardDialog } from "../../school-structure/components/ClassroomCardDialog";
@@ -29,7 +32,12 @@ const CLASSROOM_ICON = PAGE_ICONS["school-building"];
  */
 function toCardClassroom(
   assignment: TeacherAccessAssignment,
-  context: { schoolId: number; schoolTermId: string; academicYear: number; semester: number },
+  context: {
+    schoolId: number;
+    schoolTermId: string;
+    academicYear: number;
+    semester: number;
+  },
   coverImageUrl: string | null,
 ): SchoolClassroom {
   return {
@@ -66,7 +74,12 @@ function TeacherClassroomCard({
   onCustomize,
 }: {
   assignment: TeacherAccessAssignment;
-  context: { schoolId: number; schoolTermId: string; academicYear: number; semester: number };
+  context: {
+    schoolId: number;
+    schoolTermId: string;
+    academicYear: number;
+    semester: number;
+  };
   onCustomize: (classroom: SchoolClassroom) => void;
 }) {
   const updateCover = useUpdateTeacherClassroomCover();
@@ -75,7 +88,9 @@ function TeacherClassroomCard({
     assignment.classroomId,
     assignment.hasCoverImage,
   );
-  const coverImageUrl = useBlobObjectUrl(assignment.hasCoverImage ? coverQuery.data : undefined);
+  const coverImageUrl = useBlobObjectUrl(
+    assignment.hasCoverImage ? coverQuery.data : undefined,
+  );
   const classroom = toCardClassroom(assignment, context, coverImageUrl);
 
   return (
@@ -84,13 +99,16 @@ function TeacherClassroomCard({
       colorPending={updateCover.isPending}
       favoritePending={false}
       onColorChange={(_classroom, cardCoverColor) =>
-        updateCover.mutate({ assignmentId: Number(assignment.id), cardCoverColor })
+        updateCover.mutate({
+          assignmentId: Number(assignment.id),
+          cardCoverColor,
+        })
       }
       onCustomize={onCustomize}
       onFavoriteChange={() => undefined}
       showFavorite={false}
       subtitle={assignmentSubjectLabel(assignment)}
-      to={`/teacher-access/classes/${assignment.id}`}
+      to={`/teacher-access/classes/${assignment.id}/roster`}
     />
   );
 }
@@ -144,7 +162,9 @@ export function MyClassroomsPage() {
               assignment={assignment}
               context={context}
               key={assignment.id}
-              onCustomize={(classroom) => setCustomizing({ assignment, classroom })}
+              onCustomize={(classroom) =>
+                setCustomizing({ assignment, classroom })
+              }
             />
           ))}
         </div>

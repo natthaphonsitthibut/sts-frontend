@@ -1,4 +1,13 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
+import { usePermissions } from "../features/auth/hooks/usePermissions";
+import { useAuthSessionStore } from "../features/auth/store/auth-session.store";
+
+function suffixWithoutLegacyTab(search: string, hash: string): string {
+  const query = new URLSearchParams(search);
+  query.delete("tab");
+  const serialized = query.toString();
+  return `${serialized ? `?${serialized}` : ""}${hash}`;
+}
 
 export function LegacyRouteRedirect({ to }: { to: string }) {
   const location = useLocation();
@@ -18,6 +27,55 @@ export function LegacyTaskDetailRedirect() {
           ? `/tasks/${encodeURIComponent(taskId)}${location.search}${location.hash}`
           : "/"
       }
+    />
+  );
+}
+
+export function TeacherClassroomDefaultRedirect() {
+  const location = useLocation();
+  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const legacyTab = new URLSearchParams(location.search).get("tab");
+  const tab = legacyTab === "attendance" ? "attendance" : "roster";
+  return (
+    <Navigate
+      replace
+      to={`/teacher-access/classes/${encodeURIComponent(assignmentId ?? "")}/${tab}${suffixWithoutLegacyTab(location.search, location.hash)}`}
+    />
+  );
+}
+
+export function TeacherHistoryDefaultRedirect() {
+  const location = useLocation();
+  const { assignmentId } = useParams<{ assignmentId: string }>();
+  return (
+    <Navigate
+      replace
+      to={`/teacher-access/classes/${encodeURIComponent(assignmentId ?? "")}/history/attendance${location.search}${location.hash}`}
+    />
+  );
+}
+
+export function ClassroomDefaultRedirect() {
+  const location = useLocation();
+  const { classroomId } = useParams<{ classroomId: string }>();
+  return (
+    <Navigate
+      replace
+      to={`/classrooms/${encodeURIComponent(classroomId ?? "")}/roster${location.search}${location.hash}`}
+    />
+  );
+}
+
+export function TimetableDefaultRedirect() {
+  const location = useLocation();
+  const { can } = usePermissions();
+  const currentUser = useAuthSessionStore((state) => state.user);
+  const isStudent = currentUser?.roles?.includes("STUDENT") === true;
+  const tab = !isStudent && can("manage-timetable") ? "rooms" : "mine";
+  return (
+    <Navigate
+      replace
+      to={`/timetable/${tab}${location.search}${location.hash}`}
     />
   );
 }

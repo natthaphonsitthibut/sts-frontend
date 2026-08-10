@@ -47,10 +47,15 @@ function isBearerCredentialPath(pathname: string): boolean {
 }
 
 function routeMatchesPathname(route: string, pathname: string): boolean {
-  return route === pathname || (route !== "/" && pathname.startsWith(`${route}/`));
+  return (
+    route === pathname || (route !== "/" && pathname.startsWith(`${route}/`))
+  );
 }
 
-function findBestMatchingRoute(pathname: string, routes: readonly string[]): string | null {
+function findBestMatchingRoute(
+  pathname: string,
+  routes: readonly string[],
+): string | null {
   return routes.reduce<string | null>((best, route) => {
     if (!routeMatchesPathname(route, pathname)) return best;
     return best === null || route.length > best.length ? route : best;
@@ -72,6 +77,8 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/attendance/history": "ประวัติการเช็คชื่อ",
+  "/cases/risk": "เคสติดตาม",
+  "/cases/watchlist": "เคสติดตาม",
   "/cases/history": "ประวัติเคสติดตาม",
   "/create/attendance": "สร้างลิงก์เช็คชื่อ",
   "/create/recruitment": "สร้างลิงก์รับสมัคร",
@@ -88,7 +95,10 @@ const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/visit-links/history": "ประวัติลิงก์ลงพื้นที่",
 };
 
-export function getNavigationLabel(pathname: string, fallback?: string): string {
+export function getNavigationLabel(
+  pathname: string,
+  fallback?: string,
+): string {
   const exactLabel = EXACT_ROUTE_LABELS[pathname];
   if (exactLabel) return exactLabel;
   if (/^\/students\/[^/]+\/edit$/.test(pathname)) return "แก้ไขข้อมูลนักเรียน";
@@ -97,7 +107,8 @@ export function getNavigationLabel(pathname: string, fallback?: string): string 
     return "รายละเอียดผลการพิจารณา";
   }
   if (/^\/cases\/[^/]+$/.test(pathname)) return "รายละเอียดเคส";
-  if (/^\/attendance\/record\/[^/]+$/.test(pathname)) return "บันทึกการเช็คชื่อ";
+  if (/^\/attendance\/record\/[^/]+$/.test(pathname))
+    return "บันทึกการเช็คชื่อ";
   if (/^\/classrooms\/[^/]+$/.test(pathname)) return "รายละเอียดห้องเรียน";
   if (/^\/import-data\/quarantine\/[^/]+$/.test(pathname)) {
     return "รายละเอียดรายการนำเข้า";
@@ -109,15 +120,18 @@ export function getNavigationLabel(pathname: string, fallback?: string): string 
   if (/^\/manage-users\/[^/]+(?:\/permissions)?$/.test(pathname)) {
     return "รายละเอียดผู้ใช้งาน";
   }
-  if (/^\/curriculum\/[^/]+\/subjects\/new$/.test(pathname)) return "เพิ่มรายวิชา";
+  if (/^\/curriculum\/[^/]+\/subjects\/new$/.test(pathname))
+    return "เพิ่มรายวิชา";
   if (/^\/curriculum\/[^/]+\/subjects\/[^/]+\/edit$/.test(pathname)) {
     return "แก้ไขรายวิชา";
   }
   if (/^\/curriculum\/[^/]+$/.test(pathname)) return "รายวิชาในระดับชั้น";
   if (pathname === "/manage-teachers/new") return "เพิ่มข้อมูลคุณครู";
-  if (/^\/manage-teachers\/[^/]+\/edit$/.test(pathname)) return "แก้ไขข้อมูลคุณครู";
+  if (/^\/manage-teachers\/[^/]+\/edit$/.test(pathname))
+    return "แก้ไขข้อมูลคุณครู";
   if (pathname === "/manage-role-groups/new") return "เพิ่มกลุ่มเมนู";
-  if (/^\/manage-role-groups\/[^/]+\/edit$/.test(pathname)) return "แก้ไขกลุ่มเมนู";
+  if (/^\/manage-role-groups\/[^/]+\/edit$/.test(pathname))
+    return "แก้ไขกลุ่มเมนู";
   if (/^\/field-followers\/[^/]+$/.test(pathname)) return "รายละเอียดใบสมัคร";
   if (/^\/audit-log\/[^/]+$/.test(pathname)) return "รายละเอียดบันทึกการใช้งาน";
   if (/^\/tasks\/[^/]+$/.test(pathname)) return "รายละเอียดภารกิจ";
@@ -138,7 +152,9 @@ function identityCrumb(route: string): NavigationCrumb {
 }
 
 function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
-  const importQuarantine = /^\/import-data\/quarantine\/([^/]+)$/.exec(pathname);
+  const importQuarantine = /^\/import-data\/quarantine\/([^/]+)$/.exec(
+    pathname,
+  );
   if (importQuarantine) {
     return [
       identityCrumb("/import-data"),
@@ -148,15 +164,23 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
 
   const studentEdit = /^\/students\/([^/]+)\/edit$/.exec(pathname);
   if (studentEdit) {
-    return [identityCrumb("/students"), { label: "ข้อมูลนักเรียน", to: `/students/${studentEdit[1]}` }];
+    return [
+      identityCrumb("/students"),
+      { label: "ข้อมูลนักเรียน", to: `/students/${studentEdit[1]}` },
+    ];
   }
 
   const caseReview = /^\/cases\/([^/]+)\/reviews\/[^/]+$/.exec(pathname);
   if (caseReview) {
-    return [identityCrumb("/cases"), { label: "รายละเอียดเคส", to: `/cases/${caseReview[1]}` }];
+    return [
+      identityCrumb("/cases"),
+      { label: "รายละเอียดเคส", to: `/cases/${caseReview[1]}` },
+    ];
   }
 
-  const userEdit = /^\/manage-users\/([^/]+)\/edit(?:\/permissions)?$/.exec(pathname);
+  const userEdit = /^\/manage-users\/([^/]+)\/edit(?:\/permissions)?$/.exec(
+    pathname,
+  );
   if (userEdit) {
     return [
       identityCrumb("/manage-users"),
@@ -164,21 +188,31 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
     ];
   }
 
-  const curriculumSubject = /^\/curriculum\/([^/]+)\/subjects\/(?:new|[^/]+\/edit)$/.exec(pathname);
+  const curriculumSubject =
+    /^\/curriculum\/([^/]+)\/subjects\/(?:new|[^/]+\/edit)$/.exec(pathname);
   if (curriculumSubject) {
     return [
       identityCrumb("/curriculum"),
-      { label: "รายวิชาในระดับชั้น", to: `/curriculum/${curriculumSubject[1]}` },
+      {
+        label: "รายวิชาในระดับชั้น",
+        to: `/curriculum/${curriculumSubject[1]}`,
+      },
     ];
   }
 
-  const teacherStudent = /^\/teacher-access\/classes\/([^/]+)\/students\/[^/]+$/.exec(pathname);
-  const teacherHistory = /^\/teacher-access\/classes\/([^/]+)\/history$/.exec(pathname);
+  const teacherStudent =
+    /^\/teacher-access\/classes\/([^/]+)\/students\/[^/]+$/.exec(pathname);
+  const teacherHistory = /^\/teacher-access\/classes\/([^/]+)\/history$/.exec(
+    pathname,
+  );
   const assignmentId = teacherStudent?.[1] ?? teacherHistory?.[1];
   if (assignmentId) {
     return [
       { label: "ห้องเรียนของฉัน", to: "/teacher-access" },
-      { label: "ห้องเรียน", to: `/teacher-access/classes/${assignmentId}` },
+      {
+        label: "ห้องเรียน",
+        to: `/teacher-access/classes/${assignmentId}/roster`,
+      },
     ];
   }
 
@@ -199,25 +233,33 @@ export function getDefaultParentCrumbs(pathname: string): NavigationCrumb[] {
 function sanitizeCrumb(value: unknown): NavigationCrumb | null {
   if (!isStateRecord(value)) return null;
   const { label, to } = value;
-  if (typeof label !== "string" || !label.trim() || !isSafeAppPath(to)) return null;
+  if (typeof label !== "string" || !label.trim() || !isSafeAppPath(to))
+    return null;
   return { label: label.trim(), to };
 }
 
-export function getNavigationContext(state: unknown): AppNavigationContext | null {
+export function getNavigationContext(
+  state: unknown,
+): AppNavigationContext | null {
   if (!isStateRecord(state)) return null;
   const value = state[NAVIGATION_CONTEXT_KEY];
-  if (!isStateRecord(value) || !isSafeAppPath(value.backTo) || !Array.isArray(value.trail)) {
+  if (
+    !isStateRecord(value) ||
+    !isSafeAppPath(value.backTo) ||
+    !Array.isArray(value.trail)
+  ) {
     return null;
   }
   const trail = value.trail
     .map(sanitizeCrumb)
     .filter((crumb): crumb is NavigationCrumb => crumb !== null)
     .slice(-MAX_TRAIL_LENGTH);
-  const menuRoute = value.menuRoute === null
-    ? null
-    : isSafeAppPath(value.menuRoute)
-      ? value.menuRoute
-      : null;
+  const menuRoute =
+    value.menuRoute === null
+      ? null
+      : isSafeAppPath(value.menuRoute)
+        ? value.menuRoute
+        : null;
   return { backTo: value.backTo, menuRoute, trail };
 }
 
@@ -270,22 +312,32 @@ export function getContextualCrumbs(location: Location): NavigationCrumb[] {
 
 export function getSafeBackTarget(location: Location): To {
   const contextualBack = getNavigationContext(location.state)?.backTo;
-  if (contextualBack && contextualBack !== currentAppPath(location)) return contextualBack;
+  if (contextualBack && contextualBack !== currentAppPath(location))
+    return contextualBack;
 
   const studentEdit = /^\/students\/([^/]+)\/edit$/.exec(location.pathname);
   if (studentEdit) return `/students/${studentEdit[1]}`;
-  const userEdit = /^\/manage-users\/([^/]+)\/edit(?:\/permissions)?$/.exec(location.pathname);
+  const userEdit = /^\/manage-users\/([^/]+)\/edit(?:\/permissions)?$/.exec(
+    location.pathname,
+  );
   if (userEdit) return `/manage-users/${userEdit[1]}`;
-  const caseReview = /^\/cases\/([^/]+)\/reviews\/[^/]+$/.exec(location.pathname);
+  const caseReview = /^\/cases\/([^/]+)\/reviews\/[^/]+$/.exec(
+    location.pathname,
+  );
   if (caseReview) return `/cases/${caseReview[1]}`;
-  const teacherChild = /^\/teacher-access\/classes\/([^/]+)\/(?:students\/[^/]+|history)$/.exec(location.pathname);
+  const teacherChild =
+    /^\/teacher-access\/classes\/([^/]+)\/(?:students\/[^/]+|history)$/.exec(
+      location.pathname,
+    );
   if (teacherChild) return `/teacher-access/classes/${teacherChild[1]}`;
 
   const parents = getDefaultParentCrumbs(location.pathname);
   return parents.at(-1)?.to ?? "/";
 }
 
-export function useContextualNavigationState(existingState?: unknown): StateRecord | unknown {
+export function useContextualNavigationState(
+  existingState?: unknown,
+): StateRecord | unknown {
   const location = useLocation();
   return createContextualNavigationState(location, existingState);
 }

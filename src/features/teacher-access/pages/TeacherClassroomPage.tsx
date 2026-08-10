@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -36,10 +36,14 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { PAGE_ICONS, PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import {
+  PAGE_ICONS,
+  PAGE_IDENTITIES,
+} from "../../../components/layout/page-identity";
 import { NavButton } from "../../../components/layout/nav-button";
 import { getThaiDateKey } from "../../../lib/date-time";
 import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { cn } from "../../../lib/utils";
 import { AttendanceRosterTable } from "../../attendance/components/AttendanceRosterTable";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
@@ -72,8 +76,6 @@ import {
 import type { TeacherAccessRosterStudent } from "../types/teacher-access.types";
 
 type AttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
-type ClassroomTab = "roster" | "attendance";
-
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
 const CLASSROOM_ICON = PAGE_ICONS["school-building"];
 const ROSTER_EXPORT_COLUMNS = [
@@ -84,7 +86,10 @@ const ROSTER_EXPORT_COLUMNS = [
   { key: "status", label: "สถานะความเสี่ยง" },
 ] as const;
 
-function rosterSortValue(student: TeacherAccessRosterStudent, key: string): string {
+function rosterSortValue(
+  student: TeacherAccessRosterStudent,
+  key: string,
+): string {
   if (key === "studentNumber") return student.studentNumber ?? "";
   if (key === "name") return studentDisplayName(student);
   if (key === "comment") return student.teacherComment ?? "";
@@ -103,38 +108,62 @@ function rosterSortValue(student: TeacherAccessRosterStudent, key: string): stri
 export function TeacherClassroomPage() {
   const navigate = useNavigate();
   const { assignmentId = "" } = useParams();
-  const [searchParams] = useSearchParams();
   const { credential, context } = useTeacherLink();
   // The link has no session, so colours come from the public catalog endpoint —
   // the authenticated one would 401 and silently fall back to default styling.
   const attendanceStatusCatalog = usePublicAttendanceStatusCatalog().data ?? [];
-  // The เช็คชื่อ rail item deep-links straight into the attendance tab.
-  const [tab, setTab] = useState<ClassroomTab>(
-    searchParams.get("tab") === "attendance" ? "attendance" : "roster",
+  const [tab, setTab] = useRouteTab(
+    {
+      roster: `/teacher-access/classes/${assignmentId}/roster`,
+      attendance: `/teacher-access/classes/${assignmentId}/attendance`,
+    },
+    "roster",
   );
   const [search, setSearch] = useState("");
   const [riskTier, setRiskTier] = useState("");
   const [date, setDate] = useState(getThaiDateKey);
   const [timetableSlotId, setTimetableSlotId] = useState("");
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [attendance, setAttendance] = useState<
+    Record<string, AttendanceStatus>
+  >({});
   const [saved, setSaved] = useState(false);
   const [sort, setSort] = useState<DataTableSortState | undefined>({
     key: "name",
     direction: "asc",
   });
   const [exportOpen, setExportOpen] = useState(false);
-  const [commentStudent, setCommentStudent] = useState<TeacherAccessRosterStudent | null>(null);
+  const [commentStudent, setCommentStudent] =
+    useState<TeacherAccessRosterStudent | null>(null);
   const commentPhotoQuery = useTeacherStudentPhoto(
     Number(assignmentId) || undefined,
     commentStudent?.studentUuid,
     Boolean(commentStudent?.hasPhoto),
   );
   const commentPhotoUrl = useBlobObjectUrl(commentPhotoQuery.data);
-  const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
+  const createComment = useCreateTeacherStudentComment(
+    Number(assignmentId) || 0,
+  );
   const recordExport = useRecordTeacherClassroomExport();
 
-  const assignment = context.assignments.find((item) => item.id === assignmentId);
-  const rosterQuery = useTeacherAccessRoster(credential, Number(assignmentId) || undefined);
+  const assignment = context.assignments.find(
+    (item) => item.id === assignmentId,
+  );
+  const canRecordAttendance =
+    assignment?.allowedActions.some(
+      (action) =>
+        action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
+    ) ?? false;
+  useEffect(() => {
+    if (assignment && tab === "attendance" && !canRecordAttendance) {
+      void navigate(`/teacher-access/classes/${assignmentId}/roster`, {
+        replace: true,
+      });
+    }
+  }, [assignment, assignmentId, canRecordAttendance, navigate, tab]);
+  const rosterQuery = useTeacherAccessRoster(
+    credential,
+    Number(assignmentId) || undefined,
+  );
   const saveAttendance = useSaveTeacherAccessAttendance(credential);
   const seedDemoAbsences = useSeedTeacherAccessDemoAbsences(credential);
   const clearDemoAbsences = useClearTeacherAccessDemoAbsences(credential);
@@ -153,7 +182,8 @@ export function TeacherClassroomPage() {
         `${studentDisplayName(student)} ${student.studentNumber ?? ""}`
           .toLowerCase()
           .includes(term);
-      const matchesTier = !riskTier || (student.riskTier ?? "NORMAL") === riskTier;
+      const matchesTier =
+        !riskTier || (student.riskTier ?? "NORMAL") === riskTier;
       return matchesSearch && matchesTier;
     });
     if (!sort) return filtered;
@@ -178,24 +208,30 @@ export function TeacherClassroomPage() {
   }
 
   const classroomLabel = assignmentClassLabel(assignment);
-  const canRecordAttendance = assignment.allowedActions.some(
-    (action) => action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
-  );
   const attendanceSlots = attendanceSlotsQuery.data ?? [];
-  const requiresPeriodSelection = assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
+  const requiresPeriodSelection =
+    assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
   const hasScheduledSubjectSlot =
     assignment.assignmentKind !== "SUBJECT" || attendanceSlots.length > 0;
   const selectedTimetableSlotId = requiresPeriodSelection
     ? Number(timetableSlotId) || undefined
     : attendanceSlots[0]?.id;
 
-  async function submitAttendance(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  async function submitAttendance(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
     if (roster.length === 0) return;
-    if (!hasScheduledSubjectSlot || (requiresPeriodSelection && !selectedTimetableSlotId)) return;
+    if (
+      !hasScheduledSubjectSlot ||
+      (requiresPeriodSelection && !selectedTimetableSlotId)
+    )
+      return;
     await saveAttendance.mutateAsync({
       assignmentId: Number(assignmentId),
-      ...(selectedTimetableSlotId ? { timetableSlotId: selectedTimetableSlotId } : {}),
+      ...(selectedTimetableSlotId
+        ? { timetableSlotId: selectedTimetableSlotId }
+        : {}),
       date,
       records: roster.map((student) => ({
         studentId: student.studentUuid,
@@ -207,7 +243,13 @@ export function TeacherClassroomPage() {
 
   return (
     <TeacherLinkShell
-      breadcrumb={[{ label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" }]}
+      breadcrumb={[
+        {
+          label: "ห้องเรียนของฉัน",
+          icon: PAGE_ICONS["school-building"],
+          to: "/teacher-access",
+        },
+      ]}
       icon={CLASSROOM_ICON}
       navigation={
         <NavButton icon={ArrowLeft} to="/teacher-access" variant="outline">
@@ -227,10 +269,12 @@ export function TeacherClassroomPage() {
         <Tabs
           aria-label="ข้อมูลห้องเรียน"
           className="flex w-full"
-          onChange={(value) => setTab(value as ClassroomTab)}
+          onChange={setTab}
           options={[
             { value: "roster", label: "รายชื่อ" },
-            ...(canRecordAttendance ? [{ value: "attendance", label: "เช็คชื่อ" }] : []),
+            ...(canRecordAttendance
+              ? [{ value: "attendance", label: "เช็คชื่อ" }]
+              : []),
           ]}
           value={tab}
         />
@@ -300,7 +344,11 @@ export function TeacherClassroomPage() {
             <Button
               className="sm:ml-auto"
               icon={History}
-              onClick={() => void navigate(`/teacher-access/classes/${assignmentId}/history`)}
+              onClick={() =>
+                void navigate(
+                  `/teacher-access/classes/${assignmentId}/history/attendance`,
+                )
+              }
             >
               ประวัติการเช็คชื่อ
             </Button>
@@ -334,7 +382,11 @@ export function TeacherClassroomPage() {
             { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
             { label: "หมายเหตุ", sortKey: "comment" },
-            { label: "สถานะความเสี่ยง", sortKey: "status", className: "text-center" },
+            {
+              label: "สถานะความเสี่ยง",
+              sortKey: "status",
+              className: "text-center",
+            },
             { label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[1040px]"
@@ -347,7 +399,9 @@ export function TeacherClassroomPage() {
             const tier = student.riskTier ?? "NORMAL";
             return (
               <DataTableRow key={student.studentUuid}>
-                <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
+                <DataTableCell className="tabular-nums">
+                  {index + 1}
+                </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
                     <button
@@ -370,7 +424,9 @@ export function TeacherClassroomPage() {
                 <DataTableCell className="font-medium tabular-nums">
                   {student.studentNumber ?? "-"}
                 </DataTableCell>
-                <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
+                <DataTableCell className="font-medium text-slate-900">
+                  {fullName}
+                </DataTableCell>
                 <DataTableCell className="max-w-[360px] text-slate-700">
                   {student.teacherComment?.trim() || "-"}
                 </DataTableCell>
@@ -428,7 +484,8 @@ export function TeacherClassroomPage() {
               value={date}
             />
           </div>
-          {assignment.assignmentKind === "SUBJECT" && !attendanceSlotsQuery.isLoading ? (
+          {assignment.assignmentKind === "SUBJECT" &&
+          !attendanceSlotsQuery.isLoading ? (
             <div className="mb-4 w-[270px] max-w-full">
               {hasScheduledSubjectSlot ? (
                 requiresPeriodSelection ? (
@@ -452,12 +509,16 @@ export function TeacherClassroomPage() {
                   </>
                 ) : (
                   <Alert>
-                    <AlertDescription>เช็คชื่อคาบ {attendanceSlots[0]?.period}</AlertDescription>
+                    <AlertDescription>
+                      เช็คชื่อคาบ {attendanceSlots[0]?.period}
+                    </AlertDescription>
                   </Alert>
                 )
               ) : (
                 <Alert variant="warning">
-                  <AlertDescription>คุณไม่มีคาบสอนวิชานี้ในวันที่เลือก</AlertDescription>
+                  <AlertDescription>
+                    คุณไม่มีคาบสอนวิชานี้ในวันที่เลือก
+                  </AlertDescription>
                 </Alert>
               )}
             </div>
@@ -489,10 +550,12 @@ export function TeacherClassroomPage() {
               error={saveAttendance.error}
               fallback="ไม่สามารถบันทึกการเช็คชื่อได้"
             />
-            <FormErrorAlert
-              error={seedDemoAbsences.error ?? clearDemoAbsences.error}
-              fallback="ไม่สามารถจัดการประวัติเช็คชื่อสาธิตได้"
-            />
+            {context.demoAttendanceActionsEnabled ? (
+              <FormErrorAlert
+                error={seedDemoAbsences.error ?? clearDemoAbsences.error}
+                fallback="ไม่สามารถจัดการประวัติเช็คชื่อสาธิตได้"
+              />
+            ) : null}
             {saved ? (
               <Alert variant="success">
                 <AlertTitle className="flex items-center gap-2">
@@ -504,7 +567,8 @@ export function TeacherClassroomPage() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {clearDemoAbsences.isSuccess ? (
+            {context.demoAttendanceActionsEnabled &&
+            clearDemoAbsences.isSuccess ? (
               <Alert variant="success">
                 <AlertTitle>ล้างประวัติเช็กชื่อแล้ว</AlertTitle>
                 <AlertDescription>
@@ -512,43 +576,54 @@ export function TeacherClassroomPage() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {seedDemoAbsences.isSuccess ? (
+            {context.demoAttendanceActionsEnabled &&
+            seedDemoAbsences.isSuccess ? (
               <Alert variant="success">
                 <AlertTitle>สร้างประวัติขาดเรียนแล้ว</AlertTitle>
                 <AlertDescription>
-                  นักเรียน 3 คนแรกถูกบันทึกเป็นขาดเรียนย้อนหลังในวันชุดเดียวกับปุ่มล้าง
+                  นักเรียน 3
+                  คนแรกถูกบันทึกเป็นขาดเรียนย้อนหลังในวันชุดเดียวกับปุ่มล้าง
                 </AlertDescription>
               </Alert>
             ) : null}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                disabled={clearDemoAbsences.isPending || seedDemoAbsences.isPending}
-                isLoading={clearDemoAbsences.isPending}
-                loadingText="กำลังล้างข้อมูล"
-                onClick={() => {
-                  clearDemoAbsences.reset();
-                  seedDemoAbsences.reset();
-                  clearDemoAbsences.mutate(Number(assignmentId));
-                }}
-                type="button"
-                variant="outline"
-              >
-                ล้างประวัติเช็คชื่อ 3 วันล่าสุด
-              </Button>
-              <Button
-                disabled={seedDemoAbsences.isPending || clearDemoAbsences.isPending}
-                isLoading={seedDemoAbsences.isPending}
-                loadingText="กำลังสร้างข้อมูล"
-                onClick={() => {
-                  clearDemoAbsences.reset();
-                  seedDemoAbsences.reset();
-                  seedDemoAbsences.mutate(Number(assignmentId));
-                }}
-                type="button"
-                variant="outline"
-              >
-                สร้างขาด 3 คนย้อนหลัง 3 วัน
-              </Button>
+              {context.demoAttendanceActionsEnabled &&
+              assignment?.assignmentKind === "SUBJECT" ? (
+                <>
+                  <Button
+                    disabled={
+                      clearDemoAbsences.isPending || seedDemoAbsences.isPending
+                    }
+                    isLoading={clearDemoAbsences.isPending}
+                    loadingText="กำลังล้างข้อมูล"
+                    onClick={() => {
+                      clearDemoAbsences.reset();
+                      seedDemoAbsences.reset();
+                      clearDemoAbsences.mutate(Number(assignmentId));
+                    }}
+                    type="button"
+                    variant="outline"
+                  >
+                    ล้างประวัติเช็คชื่อ 3 วันล่าสุด
+                  </Button>
+                  <Button
+                    disabled={
+                      seedDemoAbsences.isPending || clearDemoAbsences.isPending
+                    }
+                    isLoading={seedDemoAbsences.isPending}
+                    loadingText="กำลังสร้างข้อมูล"
+                    onClick={() => {
+                      clearDemoAbsences.reset();
+                      seedDemoAbsences.reset();
+                      seedDemoAbsences.mutate(Number(assignmentId));
+                    }}
+                    type="button"
+                    variant="outline"
+                  >
+                    สร้างขาด 3 คนย้อนหลัง 3 วัน
+                  </Button>
+                </>
+              ) : null}
               <Button
                 disabled={
                   attendanceSlotsQuery.isLoading ||
@@ -572,7 +647,11 @@ export function TeacherClassroomPage() {
         onOpenChange={(open) => {
           if (!open) setCommentStudent(null);
         }}
-        student={commentStudent ? { ...commentStudent, photoUrl: commentPhotoUrl } : null}
+        student={
+          commentStudent
+            ? { ...commentStudent, photoUrl: commentPhotoUrl }
+            : null
+        }
         submitComment={async ({ studentUuid, commentText }) => {
           await createComment.mutateAsync({ studentUuid, commentText });
           await rosterQuery.refetch();
@@ -598,7 +677,9 @@ export function TeacherClassroomPage() {
               studentNumber: student.studentNumber ?? "-",
               name: studentDisplayName(student),
               comment: student.teacherComment?.trim() || "-",
-              status: RISK_TIER_PRESENTATION[student.riskTier ?? "NORMAL"]?.label ?? "-",
+              status:
+                RISK_TIER_PRESENTATION[student.riskTier ?? "NORMAL"]?.label ??
+                "-",
             })),
           )
         }

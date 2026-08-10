@@ -1,6 +1,9 @@
 import { CalendarClock } from "lucide-react";
 import { Skeleton } from "../../../components/base";
-import { EmptyState, ErrorState } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  ErrorState,
+} from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { formatClassLabel } from "../../../lib/room-presentation";
 import { TimetableGrid } from "../../timetable/components/TimetableGrid";
@@ -48,7 +51,10 @@ export function TeacherTimetablePage() {
           periodTimes={periodTimes}
           renderSlot={(slot) => (
             <div className="relative min-h-12 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary/60" />
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-1 bg-primary/60"
+              />
               <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
                 {slot.subject_name_th}
               </div>

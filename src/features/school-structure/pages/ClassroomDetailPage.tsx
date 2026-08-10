@@ -24,6 +24,7 @@ import {
   PAGE_IDENTITIES,
 } from "../../../components/layout/page-identity";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -35,10 +36,11 @@ import {
 import { ClassroomAttendanceHistory } from "../components/ClassroomAttendanceHistory";
 import { ClassroomRosterExportDialog } from "../components/ClassroomRosterExportDialog";
 import { ClassroomStudentCommentDialog } from "../components/ClassroomStudentCommentDialog";
-import { useClassroomRoster, useSchoolClassroom } from "../hooks/useSchoolStructure";
+import {
+  useClassroomRoster,
+  useSchoolClassroom,
+} from "../hooks/useSchoolStructure";
 import type { ClassroomRosterStudent } from "../types/school-structure.types";
-
-type DetailTab = "roster" | "history";
 
 const CLASSROOM_ICON = PAGE_ICONS["users-round"];
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
@@ -47,14 +49,24 @@ export function ClassroomDetailPage() {
   const contextualNavigate = useContextualNavigate();
   const { can } = usePermissions();
   const { classroomId = "" } = useParams();
-  const [tab, setTab] = useState<DetailTab>("roster");
+  const [tab, setTab] = useRouteTab(
+    {
+      roster: `/classrooms/${classroomId}/roster`,
+      history: `/classrooms/${classroomId}/history`,
+    },
+    "roster",
+  );
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({ key: "name", direction: "asc" });
+  const [sort, setSort] = useState<DataTableSortState | undefined>({
+    key: "name",
+    direction: "asc",
+  });
   const [exportOpen, setExportOpen] = useState(false);
-  const [commentStudent, setCommentStudent] = useState<ClassroomRosterStudent | null>(null);
+  const [commentStudent, setCommentStudent] =
+    useState<ClassroomRosterStudent | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const classroomQuery = useSchoolClassroom(classroomId || null);
   const classroom = classroomQuery.data;
@@ -66,12 +78,20 @@ export function ClassroomDetailPage() {
           riskTier: status || undefined,
           page,
           limit: rowsPerPage,
-          sortBy: sort?.key as "studentNumber" | "name" | "comment" | "status" | undefined,
+          sortBy: sort?.key as
+            | "studentNumber"
+            | "name"
+            | "comment"
+            | "status"
+            | undefined,
           sortDirection: sort?.direction,
         }
       : null,
   );
-  const roster = useMemo(() => rosterQuery.data?.data ?? [], [rosterQuery.data?.data]);
+  const roster = useMemo(
+    () => rosterQuery.data?.data ?? [],
+    [rosterQuery.data?.data],
+  );
   const visibleRoster = roster;
 
   if (classroomQuery.isLoading) {
@@ -95,7 +115,8 @@ export function ClassroomDetailPage() {
   }
 
   const classroomLabel = `${classroom.gradeLabel}/${classroom.roomCode}`;
-  const teacherName = classroom.homeroomTeacherName || "ยังไม่ได้กำหนดครูประจำชั้น";
+  const teacherName =
+    classroom.homeroomTeacherName || "ยังไม่ได้กำหนดครูประจำชั้น";
 
   return (
     <PageShell>
@@ -108,7 +129,7 @@ export function ClassroomDetailPage() {
         <Tabs
           aria-label="ข้อมูลห้องเรียน"
           className="flex w-full"
-          onChange={(value) => setTab(value as DetailTab)}
+          onChange={setTab}
           options={[
             { value: "roster", label: "รายชื่อนักเรียน" },
             { value: "history", label: "ประวัติการเช็คชื่อ" },
@@ -139,7 +160,9 @@ export function ClassroomDetailPage() {
             >
               <option value="">สถานะทั้งหมด</option>
               {RISK_TIER_ORDER.map((value) => (
-                <option key={value} value={value}>{RISK_TIER_PRESENTATION[value].label}</option>
+                <option key={value} value={value}>
+                  {RISK_TIER_PRESENTATION[value].label}
+                </option>
               ))}
             </FilterSelect>
             {can("export-data") ? (
@@ -174,7 +197,11 @@ export function ClassroomDetailPage() {
                 { label: "รหัสประจำตัว", sortKey: "studentNumber" },
                 { label: "ชื่อ-นามสกุล", sortKey: "name" },
                 { label: "หมายเหตุ", sortKey: "comment" },
-                { label: "สถานะนักเรียน", sortKey: "status", className: "text-center" },
+                {
+                  label: "สถานะนักเรียน",
+                  sortKey: "status",
+                  className: "text-center",
+                },
                 { label: "เครื่องมือ", className: "text-center" },
               ]}
               minWidthClassName="min-w-[1200px]"
@@ -202,52 +229,74 @@ export function ClassroomDetailPage() {
               }
             >
               {visibleRoster.map((student, index) => {
-                const fullName = `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "-";
+                const fullName =
+                  `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() ||
+                  "-";
                 return (
                   <DataTableRow key={student.studentUuid}>
-                        <DataTableCell className="tabular-nums">{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-                        <DataTableCell>
-                          <div className="flex justify-center">
-                            <button
-                              aria-label={`เปิดข้อมูลนักเรียน ${fullName}`}
-                              className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                              onClick={() => contextualNavigate(`/students/${student.studentUuid}`)}
-                              type="button"
-                            >
-                              <StudentAvatar name={fullName} photoUrl={student.photoUrl} />
-                            </button>
-                          </div>
-                        </DataTableCell>
-                        <DataTableCell className="font-medium tabular-nums">{student.studentNumber ?? "-"}</DataTableCell>
-                        <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
-                        <DataTableCell className="max-w-[360px] text-slate-700">
-                          {student.teacherComment?.trim() || "-"}
-                        </DataTableCell>
-                        <DataTableCell className="text-center">
-                          <div className="flex justify-center">
-                            <span className={`inline-flex h-9 w-32 shrink-0 items-center justify-center rounded-full border bg-white px-3 text-sm font-medium ${getRiskTierChipClass(student.riskTier)}`}>
-                              {RISK_TIER_PRESENTATION[student.riskTier]?.label ?? student.riskTier}
-                            </span>
-                          </div>
-                        </DataTableCell>
-                        <DataTableCell>
-                          <div className="flex justify-center gap-2">
-                            <IconButton
-                              aria-label={`ดูข้อมูล ${fullName}`}
-                              icon={UserRound}
-                              onClick={() => contextualNavigate(`/students/${student.studentUuid}`)}
-                              variant="edit"
-                            />
-                            <IconButton
-                              aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
-                              className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
-                              icon={MessageSquareText}
-                              iconClassName="text-white"
-                              onClick={() => setCommentStudent(student)}
-                              variant="outline"
-                            />
-                          </div>
-                        </DataTableCell>
+                    <DataTableCell className="tabular-nums">
+                      {(page - 1) * rowsPerPage + index + 1}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <div className="flex justify-center">
+                        <button
+                          aria-label={`เปิดข้อมูลนักเรียน ${fullName}`}
+                          className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          onClick={() =>
+                            contextualNavigate(
+                              `/students/${student.studentUuid}`,
+                            )
+                          }
+                          type="button"
+                        >
+                          <StudentAvatar
+                            name={fullName}
+                            photoUrl={student.photoUrl}
+                          />
+                        </button>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell className="font-medium tabular-nums">
+                      {student.studentNumber ?? "-"}
+                    </DataTableCell>
+                    <DataTableCell className="font-medium text-slate-900">
+                      {fullName}
+                    </DataTableCell>
+                    <DataTableCell className="max-w-[360px] text-slate-700">
+                      {student.teacherComment?.trim() || "-"}
+                    </DataTableCell>
+                    <DataTableCell className="text-center">
+                      <div className="flex justify-center">
+                        <span
+                          className={`inline-flex h-9 w-32 shrink-0 items-center justify-center rounded-full border bg-white px-3 text-sm font-medium ${getRiskTierChipClass(student.riskTier)}`}
+                        >
+                          {RISK_TIER_PRESENTATION[student.riskTier]?.label ??
+                            student.riskTier}
+                        </span>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <div className="flex justify-center gap-2">
+                        <IconButton
+                          aria-label={`ดูข้อมูล ${fullName}`}
+                          icon={UserRound}
+                          onClick={() =>
+                            contextualNavigate(
+                              `/students/${student.studentUuid}`,
+                            )
+                          }
+                          variant="edit"
+                        />
+                        <IconButton
+                          aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
+                          className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
+                          icon={MessageSquareText}
+                          iconClassName="text-white"
+                          onClick={() => setCommentStudent(student)}
+                          variant="outline"
+                        />
+                      </div>
+                    </DataTableCell>
                   </DataTableRow>
                 );
               })}
@@ -267,7 +316,14 @@ export function ClassroomDetailPage() {
         open={exportOpen}
         riskTier={status || undefined}
         search={debouncedSearch || undefined}
-        sortBy={sort?.key as "studentNumber" | "name" | "comment" | "status" | undefined}
+        sortBy={
+          sort?.key as
+            | "studentNumber"
+            | "name"
+            | "comment"
+            | "status"
+            | undefined
+        }
         sortDirection={sort?.direction}
       />
       <ClassroomStudentCommentDialog

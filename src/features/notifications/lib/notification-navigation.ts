@@ -1,16 +1,20 @@
 import type { NotificationItem } from "../types/notifications.types";
 
-export function getNotificationRoute(notification: NotificationItem): string | null {
+export function getNotificationRoute(
+  notification: NotificationItem,
+): string | null {
   if (notification.ref_entity === "case") {
     return notification.ref_id
       ? `/cases/${encodeURIComponent(notification.ref_id)}`
-      : "/cases";
+      : "/cases/risk";
   }
 
   if (notification.ref_entity === "task") {
     // Without an id there is no longer a task-link list to fall back to —
     // per-classroom attendance links were retired.
-    return notification.ref_id ? `/tasks/${encodeURIComponent(notification.ref_id)}` : null;
+    return notification.ref_id
+      ? `/tasks/${encodeURIComponent(notification.ref_id)}`
+      : null;
   }
 
   if (notification.ref_entity === "import") {

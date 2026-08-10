@@ -15,6 +15,7 @@ import type { ManagedUser } from "../types/admin.types";
 
 interface UserTableProps {
   users: ManagedUser[];
+  currentUserId: number | null;
   /** 1-based index of the first row on the current page, for the ลำดับ column. */
   startIndex: number;
   onEdit: (user: ManagedUser) => void;
@@ -24,7 +25,13 @@ interface UserTableProps {
   onSortChange: (sort: DataTableSortState | undefined) => void;
 }
 
-function UserIdentity({ user }: { user: ManagedUser }) {
+function UserIdentity({
+  user,
+  currentUserId,
+}: {
+  user: ManagedUser;
+  currentUserId: number | null;
+}) {
   const displayName = getUserDisplayName(user);
   const content = (
     <>
@@ -34,7 +41,14 @@ function UserIdentity({ user }: { user: ManagedUser }) {
         imageAlt={`รูปประจำตัวของ ${displayName}`}
         imageUrl={resolveApiMediaUrl(user.photo_url ?? null)}
       />
-      <span className="truncate text-slate-800">{displayName}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-slate-800">{displayName}</span>
+        {user.teacher_membership_attention_required ? (
+          <span className="block text-xs font-medium text-warning-700">
+            ไม่มีสถานะครูที่ใช้งานอยู่
+          </span>
+        ) : null}
+      </span>
     </>
   );
 
@@ -42,7 +56,7 @@ function UserIdentity({ user }: { user: ManagedUser }) {
     return (
       <ContextLink
         className="group flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
-        to={`/manage-users/${user.id}`}
+        to={user.id === currentUserId ? "/profile" : `/manage-users/${user.id}`}
       >
         {content}
       </ContextLink>
@@ -56,7 +70,10 @@ function RowActions({
   onEdit,
   onDeactivate,
   deactivatingUserId,
-}: Omit<UserTableProps, "users" | "startIndex" | "sort" | "onSortChange"> & {
+}: Omit<
+  UserTableProps,
+  "users" | "startIndex" | "sort" | "onSortChange" | "currentUserId"
+> & {
   user: ManagedUser;
 }) {
   const isDeactivating = deactivatingUserId === (user.id ?? -1);
@@ -88,6 +105,7 @@ export function UserTable({
   onEdit,
   onDeactivate,
   deactivatingUserId,
+  currentUserId,
   sort,
   onSortChange,
 }: UserTableProps) {
@@ -108,11 +126,9 @@ export function UserTable({
       >
         {users.map((user, index) => (
           <DataTableRow key={user.id ?? user.username}>
+            <DataTableCell>{startIndex + index}</DataTableCell>
             <DataTableCell>
-              {startIndex + index}
-            </DataTableCell>
-            <DataTableCell>
-              <UserIdentity user={user} />
+              <UserIdentity currentUserId={currentUserId} user={user} />
             </DataTableCell>
             <DataTableCell className="text-sm font-medium text-slate-600">
               {getUserRoleText(user)}
@@ -136,7 +152,7 @@ export function UserTable({
         {users.map((user) => (
           <TableCard key={user.id ?? user.username}>
             <div className="flex items-start justify-between gap-3">
-              <UserIdentity user={user} />
+              <UserIdentity currentUserId={currentUserId} user={user} />
               <RowActions
                 deactivatingUserId={deactivatingUserId}
                 onDeactivate={onDeactivate}

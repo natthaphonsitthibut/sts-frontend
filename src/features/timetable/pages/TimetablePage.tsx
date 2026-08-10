@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Clock3, Plus, SquarePen, Trash2 } from "lucide-react";
 import {
@@ -13,11 +13,19 @@ import {
   Tabs,
   useConfirm,
 } from "../../../components/base";
-import { EmptyState, PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  PageShell,
+  PageToolbar,
+} from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { formatClassLabel, formatRoomLabel } from "../../../lib/room-presentation";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import {
+  formatClassLabel,
+  formatRoomLabel,
+} from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../../attendance/api/attendance.service";
@@ -37,20 +45,26 @@ import {
 import { DAY_LABELS } from "../lib/period-times";
 import type { SchoolPeriodTime, TimetableSlot } from "../types/timetable.types";
 
-const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({ value, label }));
+const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 /** Fallback period count before the school has generated any bell schedule at all. */
 const DEFAULT_PERIOD_COUNT = 8;
 
 /** Period choices come from the school's actual bell schedule, not a hardcoded cap. */
 function getPeriodOptions(periodTimes: SchoolPeriodTime[]) {
-  const configured = Array.from(new Set(periodTimes.map((row) => row.period))).sort(
-    (a, b) => a - b,
-  );
+  const configured = Array.from(
+    new Set(periodTimes.map((row) => row.period)),
+  ).sort((a, b) => a - b);
   const periods =
     configured.length > 0
       ? configured
       : Array.from({ length: DEFAULT_PERIOD_COUNT }, (_, index) => index + 1);
-  return periods.map((value) => ({ value: String(value), label: `คาบ ${value}` }));
+  return periods.map((value) => ({
+    value: String(value),
+    label: `คาบ ${value}`,
+  }));
 }
 
 function AddSlotForm({
@@ -71,17 +85,21 @@ function AddSlotForm({
   const [dayOfWeek, setDayOfWeek] = useState(
     String(editingSlot?.day_of_week ?? initialDayOfWeek ?? 1),
   );
-  const [period, setPeriod] = useState(String(editingSlot?.period ?? initialPeriod ?? 1));
+  const [period, setPeriod] = useState(
+    String(editingSlot?.period ?? initialPeriod ?? 1),
+  );
   const periodOptions = getPeriodOptions(periodTimes);
   const [subjectId, setSubjectId] = useState(
     editingSlot ? String(editingSlot.subject_id) : "",
   );
-  const [teacherMembershipIds, setTeacherMembershipIds] = useState<string[]>(() => {
-    if (editingSlot?.teacher_membership_ids?.length) {
-      return editingSlot.teacher_membership_ids.map(String);
-    }
-    return [];
-  });
+  const [teacherMembershipIds, setTeacherMembershipIds] = useState<string[]>(
+    () => {
+      if (editingSlot?.teacher_membership_ids?.length) {
+        return editingSlot.teacher_membership_ids.map(String);
+      }
+      return [];
+    },
+  );
   const [teacherRequired, setTeacherRequired] = useState(false);
   const roomSubjectsQuery = useRoomSubjects(room);
   const createSlot = useCreateTimetableSlot();
@@ -103,15 +121,19 @@ function AddSlotForm({
   });
   const activeTerm = termsQuery.data?.find((term) => term.status === "ACTIVE");
 
-  const subjectOptions = (roomSubjectsQuery.data?.data ?? []).map((subject) => ({
-    value: String(subject.subject_id),
-    label: `${subject.name_th}${subject.code ? ` (${subject.code})` : ""}`,
-  }));
+  const subjectOptions = (roomSubjectsQuery.data?.data ?? []).map(
+    (subject) => ({
+      value: String(subject.subject_id),
+      label: `${subject.name_th}${subject.code ? ` (${subject.code})` : ""}`,
+    }),
+  );
   const teacherOptions = (teachersQuery.data?.data ?? []).map((teacher) => ({
     value: String(teacher.id),
     label: teacher.display_name,
   }));
-  const selectableTeacherIds = new Set(teacherOptions.map((teacher) => teacher.value));
+  const selectableTeacherIds = new Set(
+    teacherOptions.map((teacher) => teacher.value),
+  );
   const selectedTeacherMembershipIds = teacherMembershipIds.filter((id) =>
     selectableTeacherIds.has(id),
   );
@@ -162,7 +184,9 @@ function AddSlotForm({
     <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
       {!editingSlot && !termsQuery.isLoading && !activeTerm ? (
         <Alert variant="warning">
-          <AlertDescription>โรงเรียนนี้ยังไม่มีภาคเรียนที่เปิดใช้งาน</AlertDescription>
+          <AlertDescription>
+            โรงเรียนนี้ยังไม่มีภาคเรียนที่เปิดใช้งาน
+          </AlertDescription>
         </Alert>
       ) : null}
       {createSlot.isError || updateSlot.isError ? (
@@ -225,7 +249,11 @@ function AddSlotForm({
           <MultiSelect
             ariaLabel="ผู้สอน"
             disabled={!subjectId}
-            emptyText={!subjectId ? "เลือกวิชาก่อนเพื่อดูผู้สอน" : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"}
+            emptyText={
+              !subjectId
+                ? "เลือกวิชาก่อนเพื่อดูผู้สอน"
+                : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"
+            }
             id="slot-teacher"
             onChange={(values) => {
               setTeacherMembershipIds(values);
@@ -252,7 +280,9 @@ function AddSlotForm({
         </Button>
       </div>
       {disableSaveReason ? (
-        <p className="text-right text-sm font-medium text-slate-500">{disableSaveReason}</p>
+        <p className="text-right text-sm font-medium text-slate-500">
+          {disableSaveReason}
+        </p>
       ) : null}
       {teacherRequired ? (
         <p className="text-right text-sm font-medium text-danger" role="alert">
@@ -265,9 +295,10 @@ function AddSlotForm({
 
 function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   const [adding, setAdding] = useState(false);
-  const [addPrefill, setAddPrefill] = useState<{ dayOfWeek: number; period: number } | null>(
-    null,
-  );
+  const [addPrefill, setAddPrefill] = useState<{
+    dayOfWeek: number;
+    period: number;
+  } | null>(null);
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const slotsQuery = useTimetableSlots(room);
   const periodTimesQuery = usePeriodTimes(room?.schoolId ?? null);
@@ -308,12 +339,21 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
           {/* Section header */}
           <div className="flex items-center justify-between px-5 py-4">
             <h3 className="text-sm font-extrabold text-slate-900">
-              ตารางสอน — {room.schoolName} {room.gradeLevelLabel} {formatRoomLabel(room.roomNo)}
+              ตารางสอน — {room.schoolName} {room.gradeLevelLabel}{" "}
+              {formatRoomLabel(room.roomNo)}
             </h3>
             <div className="flex items-center gap-2">
               <RefreshButton
-                onRefresh={() => Promise.all([slotsQuery.refetch(), periodTimesQuery.refetch()])}
-                updatedAt={Math.max(slotsQuery.dataUpdatedAt, periodTimesQuery.dataUpdatedAt)}
+                onRefresh={() =>
+                  Promise.all([
+                    slotsQuery.refetch(),
+                    periodTimesQuery.refetch(),
+                  ])
+                }
+                updatedAt={Math.max(
+                  slotsQuery.dataUpdatedAt,
+                  periodTimesQuery.dataUpdatedAt,
+                )}
               />
               {!adding && !isEditing ? (
                 <Button
@@ -335,7 +375,11 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
               <AddSlotForm
                 initialDayOfWeek={addPrefill?.dayOfWeek}
                 initialPeriod={addPrefill?.period}
-                key={addPrefill ? `${addPrefill.dayOfWeek}-${addPrefill.period}` : "new"}
+                key={
+                  addPrefill
+                    ? `${addPrefill.dayOfWeek}-${addPrefill.period}`
+                    : "new"
+                }
                 onDone={handleAddDone}
                 periodTimes={periodTimes}
                 room={room}
@@ -359,7 +403,10 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
             <div className="border-t border-slate-200 px-5 py-4">
               <Alert variant="destructive">
                 <AlertDescription>
-                  {getApiErrorMessage(slotsQuery.error, "โหลดตารางสอนไม่สำเร็จ")}
+                  {getApiErrorMessage(
+                    slotsQuery.error,
+                    "โหลดตารางสอนไม่สำเร็จ",
+                  )}
                 </AlertDescription>
               </Alert>
             </div>
@@ -442,7 +489,11 @@ function MyScheduleView({
   const mineQuery = useMySchedule({ mine: true });
   const roomQuery = useMySchedule(
     room
-      ? { schoolId: room.schoolId, gradeLevelId: room.gradeLevelId, roomNo: room.roomNo }
+      ? {
+          schoolId: room.schoolId,
+          gradeLevelId: room.gradeLevelId,
+          roomNo: room.roomNo,
+        }
       : {},
   );
   const activeQuery = mode === "mine" ? mineQuery : roomQuery;
@@ -450,7 +501,8 @@ function MyScheduleView({
   // "mine" has no single selected room to read schoolId from — fall back to
   // the first returned slot's school (a teacher's periods are, in practice,
   // within one school).
-  const periodTimesSchoolId = mode === "room" ? (room?.schoolId ?? null) : (slots[0]?.school_id ?? null);
+  const periodTimesSchoolId =
+    mode === "room" ? (room?.schoolId ?? null) : (slots[0]?.school_id ?? null);
   const periodTimesQuery = usePeriodTimes(periodTimesSchoolId);
 
   return (
@@ -478,7 +530,9 @@ function MyScheduleView({
               : "ห้องนี้ยังไม่มีตารางสอนในระบบ"
           }
           icon={CalendarClock}
-          title={mode === "mine" ? "คุณยังไม่มีตารางสอน" : "ห้องนี้ยังไม่มีตารางสอน"}
+          title={
+            mode === "mine" ? "คุณยังไม่มีตารางสอน" : "ห้องนี้ยังไม่มีตารางสอน"
+          }
         />
       ) : (
         <TimetableGrid
@@ -514,10 +568,19 @@ export function TimetablePage() {
   const currentUser = useAuthSessionStore((state) => state.user);
   const isStudent = currentUser?.roles?.includes("STUDENT") === true;
   const isManager = can("manage-timetable");
-  const [mode, setMode] = useState<"mine" | "room">("mine");
+  const [routeMode, setMode] = useRouteTab(
+    { mine: "/timetable/mine", room: "/timetable/rooms" },
+    "mine",
+  );
+  const mode = isManager ? "room" : isStudent ? "mine" : routeMode;
   const [room, setRoom] = useState<RoomSelection | null>(null);
   const [roomPickerKey, setRoomPickerKey] = useState(0);
   const [periodTimesDialogOpen, setPeriodTimesDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (isManager && routeMode !== "room") setMode("room");
+    if (isStudent && routeMode !== "mine") setMode("mine");
+  }, [isManager, isStudent, routeMode, setMode]);
 
   return (
     <PageShell>
@@ -537,8 +600,8 @@ export function TimetablePage() {
           isStudent
             ? "ดูตารางเรียนของคุณตามชั้นและห้องปัจจุบัน"
             : isManager
-            ? "เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
-            : "ดูตารางเรียน/ตารางสอนตามสิทธิ์ของคุณ"
+              ? "เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
+              : "ดูตารางเรียน/ตารางสอนตามสิทธิ์ของคุณ"
         }
         icon={CalendarClock}
         title={isStudent ? "ตารางเรียน" : "ตารางสอน"}
@@ -566,7 +629,9 @@ export function TimetablePage() {
               ]}
               value={mode}
             />
-            {mode === "room" ? <RoomPicker key={roomPickerKey} onChange={setRoom} /> : null}
+            {mode === "room" ? (
+              <RoomPicker key={roomPickerKey} onChange={setRoom} />
+            ) : null}
           </div>
         )}
       </PageToolbar>

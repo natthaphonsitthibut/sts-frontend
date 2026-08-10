@@ -17,6 +17,7 @@ import { Pagination } from "../../../components/layout/pagination";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
 import { UserTable } from "../components/UserTable";
 import type { DataTableSortState } from "../../../components/layout/data-table";
@@ -37,6 +38,7 @@ const NON_STAFF_ROLES = "TEACHER,STUDENT";
 
 export function ManageUsersPage() {
   const contextualNavigate = useContextualNavigate();
+  const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
   const deactivateAccount = useDeactivateAccount();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,7 +70,11 @@ export function ManageUsersPage() {
 
   function openEdit(user: ManagedUser): void {
     if (user.id == null) return;
-    contextualNavigate(`/manage-users/${user.id}/edit`);
+    contextualNavigate(
+      user.id === currentUserId
+        ? `/manage-users/${user.id}/edit?returnTo=%2Fprofile`
+        : `/manage-users/${user.id}/edit`,
+    );
   }
 
   function handleDeactivate(user: ManagedUser): void {
@@ -131,6 +137,7 @@ export function ManageUsersPage() {
       ) : (
         <>
           <UserTable
+            currentUserId={currentUserId}
             deactivatingUserId={
               deactivateAccount.isPending
                 ? deactivateAccount.variables?.id

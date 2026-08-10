@@ -1,8 +1,20 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { ArrowLeft, MapPin, ShieldCheck, SquarePen, UserRound } from "lucide-react";
-import { useParams } from "react-router-dom";
-import { AvatarPhotoEditor, Button, Card, CardContent, SchoolIcon } from "../../../components/base";
+import {
+  ArrowLeft,
+  MapPin,
+  ShieldCheck,
+  SquarePen,
+  UserRound,
+} from "lucide-react";
+import { Navigate, useParams } from "react-router-dom";
+import {
+  AvatarPhotoEditor,
+  Button,
+  Card,
+  CardContent,
+  SchoolIcon,
+} from "../../../components/base";
 import {
   ErrorState,
   PageShell,
@@ -15,6 +27,7 @@ import { maskNationalId } from "../../../lib/pii-presentation";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDialog";
@@ -70,13 +83,8 @@ function DetailItem({
 
 function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
   const [nationalIdDialogOpen, setNationalIdDialogOpen] = useState(false);
-  const {
-    hide,
-    reveal,
-    showCached,
-    values,
-    visibleFields,
-  } = useTimedSensitiveReveal<"nationalId">(`user:${user.id}`);
+  const { hide, reveal, showCached, values, visibleFields } =
+    useTimedSensitiveReveal<"nationalId">(`user:${user.id}`);
   const revealedNationalId = values.nationalId;
   const isNationalIdVisible =
     visibleFields.nationalId === true && revealedNationalId !== undefined;
@@ -112,29 +120,29 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
           />
 
           <div className="grid h-fit gap-3 sm:grid-cols-2">
-          <DetailItem label="ชื่อ" value={text(user.FirstName)} />
-          <DetailItem label="นามสกุล" value={text(user.LastName)} />
-          <DetailItem label="อีเมล" value={text(user.email)} />
-          <DetailItem label="เบอร์โทรศัพท์" value={text(user.phone)} />
-          <DetailItem
-            label="หน่วยงาน/สังกัด"
-            value={text(user.affiliation)}
-          />
-          <DetailItem label="ชื่อผู้ใช้งาน" value={text(user.username)} />
-          <DetailItem label="LINE ID" value={text(user.line_id)} />
-          <div className="sm:col-span-2">
+            <DetailItem label="ชื่อ" value={text(user.FirstName)} />
+            <DetailItem label="นามสกุล" value={text(user.LastName)} />
+            <DetailItem label="อีเมล" value={text(user.email)} />
+            <DetailItem label="เบอร์โทรศัพท์" value={text(user.phone)} />
             <DetailItem
-              action={
-                <SensitiveValueToggleButton
-                  isVisible={isNationalIdVisible}
-                  label="เลขบัตร"
-                  onClick={toggleNationalId}
-                />
-              }
-              label="เลขบัตรประชาชน"
-              value={text(displayedNationalId)}
+              label="หน่วยงาน/สังกัด"
+              value={text(user.affiliation)}
             />
-          </div>
+            <DetailItem label="ชื่อผู้ใช้งาน" value={text(user.username)} />
+            <DetailItem label="LINE ID" value={text(user.line_id)} />
+            <div className="sm:col-span-2">
+              <DetailItem
+                action={
+                  <SensitiveValueToggleButton
+                    isVisible={isNationalIdVisible}
+                    label="เลขบัตร"
+                    onClick={toggleNationalId}
+                  />
+                }
+                label="เลขบัตรประชาชน"
+                value={text(displayedNationalId)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -182,7 +190,9 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
           <div>
             <div className="flex items-center gap-2">
               <MapPin className="size-5 text-primary" aria-hidden="true" />
-              <h2 className="text-lg font-bold text-slate-800">ที่อยู่และแผนที่</h2>
+              <h2 className="text-lg font-bold text-slate-800">
+                ที่อยู่และแผนที่
+              </h2>
             </div>
             <p className="mt-2 text-sm text-slate-500">
               {user.has_profile_location
@@ -191,7 +201,11 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
             </p>
           </div>
           {user.has_profile_location && user.id ? (
-            <Button icon={MapPin} onClick={() => setAddressDialogOpen(true)} variant="outline">
+            <Button
+              icon={MapPin}
+              onClick={() => setAddressDialogOpen(true)}
+              variant="outline"
+            >
               ดูที่อยู่และแผนที่
             </Button>
           ) : null}
@@ -210,7 +224,9 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
       <Card className="p-6">
         <div className="mb-6 flex items-center gap-2">
           <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
-          <h2 className="text-lg font-bold text-slate-800">กำหนดสิทธิ์การเข้าถึง</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            กำหนดสิทธิ์การเข้าถึง
+          </h2>
         </div>
         <RoleGroupSelector
           disabled
@@ -252,7 +268,11 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
 export function UserDetailPage() {
   const { id: rawId } = useParams();
   const userId = parseUserId(rawId);
-  const query = useUserDetail(userId);
+  const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
+  const isOwnProfile = userId !== null && userId === currentUserId;
+  const query = useUserDetail(isOwnProfile ? null : userId);
+
+  if (isOwnProfile) return <Navigate replace to="/profile" />;
 
   if (userId === null) {
     return (
@@ -269,7 +289,11 @@ export function UserDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton contextual icon={SquarePen} to={`/manage-users/${userId}/edit`}>
+          <NavButton
+            contextual
+            icon={SquarePen}
+            to={`/manage-users/${userId}/edit`}
+          >
             แก้ไขผู้ใช้งาน
           </NavButton>
         }

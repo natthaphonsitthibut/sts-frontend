@@ -61,9 +61,12 @@ export function describeDataScopeForDisplay(
 
   const parts: string[] = [];
   if (scope.global) parts.push("ทั้งประเทศ");
-  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
-  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
-  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
+  if (scope.provinces?.length)
+    parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
+  if (scope.districts?.length)
+    parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
+  if (scope.sub_districts?.length)
+    parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
   if (scope.school_ids?.length) {
     const schoolText =
       schoolLabels.length > 0
@@ -106,7 +109,7 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "folder-heart",
     children: [
       {
-        ...pageMenuItem("review-cases", "/cases"),
+        ...pageMenuItem("review-cases", "/cases/risk"),
       },
       {
         ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
@@ -183,7 +186,11 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("field-followers", "/field-followers", "field-monitor"),
       },
       {
-        ...pageMenuItem("field-followers-review", "/field-follower-applications", "field-monitor"),
+        ...pageMenuItem(
+          "field-followers-review",
+          "/field-follower-applications",
+          "field-monitor",
+        ),
       },
     ],
   },
@@ -230,9 +237,9 @@ export function isStudentSelfSession(
 ): boolean {
   return Boolean(
     user?.virtual_login &&
-      user.virtual_auth_token &&
-      user.permissions?.includes("student-self") &&
-      user.data_scope?.own_only,
+    user.virtual_auth_token &&
+    user.permissions?.includes("student-self") &&
+    user.data_scope?.own_only,
   );
 }
 
@@ -255,7 +262,9 @@ export function filterMenuItems(
   const canAccessItem = (item: MenuItem): boolean => {
     const requiredPermissions = item.permissionId ?? item.id;
     return Array.isArray(requiredPermissions)
-      ? requiredPermissions.some((permissionId) => hasPermission(userPermissions, permissionId))
+      ? requiredPermissions.some((permissionId) =>
+          hasPermission(userPermissions, permissionId),
+        )
       : hasPermission(userPermissions, requiredPermissions);
   };
 
@@ -290,7 +299,9 @@ export function getFirstAccessibleRoute(userPermissions: string[]): string {
   return "/forbidden";
 }
 
-export function getLeafMenuItems(menuItems: MenuItem[] = MENU_ITEMS): MenuItem[] {
+export function getLeafMenuItems(
+  menuItems: MenuItem[] = MENU_ITEMS,
+): MenuItem[] {
   return menuItems.flatMap((item) =>
     item.children && item.children.length > 0
       ? getLeafMenuItems(item.children)

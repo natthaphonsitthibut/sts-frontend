@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Bell, CheckCheck } from "lucide-react";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -26,17 +27,27 @@ import type { NotificationItem } from "../types/notifications.types";
 export function NotificationsPage() {
   const contextualNavigate = useContextualNavigate();
   const hasMarkedSeen = useRef(false);
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = searchParams.get("status");
+  const unreadOnly = status === "unread";
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications({
-    unreadOnly,
-    page,
-    limit: rowsPerPage,
-  });
+  const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications(
+    {
+      unreadOnly,
+      page,
+      limit: rowsPerPage,
+    },
+  );
   const markAllSeen = useMarkAllSeen();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
+
+  useEffect(() => {
+    if (status !== "all" && status !== "unread") {
+      setSearchParams({ status: "all" }, { replace: true });
+    }
+  }, [setSearchParams, status]);
 
   const notifications = data?.rows ?? [];
   const unreadCount = data?.unreadCount ?? 0;
@@ -50,7 +61,7 @@ export function NotificationsPage() {
   }, [data, markAllSeen]);
 
   function handleFilterChange(value: string): void {
-    setUnreadOnly(value === "unread");
+    setSearchParams({ status: value === "unread" ? "unread" : "all" });
     setPage(1);
   }
 
@@ -96,24 +107,27 @@ export function NotificationsPage() {
               { value: "all", label: "ทั้งหมด" },
               {
                 value: "unread",
-                label: unreadCount > 0 ? `ยังไม่อ่าน (${unreadCount})` : "ยังไม่อ่าน",
+                label:
+                  unreadCount > 0
+                    ? `ยังไม่อ่าน (${unreadCount})`
+                    : "ยังไม่อ่าน",
               },
             ]}
             value={unreadOnly ? "unread" : "all"}
           />
         }
         description="รายการเหตุการณ์สำคัญตามขอบเขตข้อมูลและสิทธิ์ของบัญชีนี้"
-        footerActions={(
+        footerActions={
           <>
             <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
             <ClearFiltersButton
               onClear={() => {
-                setUnreadOnly(false);
+                setSearchParams({ status: "all" });
                 setPage(1);
               }}
             />
           </>
-        )}
+        }
         icon={Bell}
         title="การแจ้งเตือน"
       />
@@ -136,7 +150,11 @@ export function NotificationsPage() {
               : "เมื่อมีเหตุการณ์ที่เกี่ยวข้อง รายการจะแสดงที่หน้านี้"
           }
           icon={Bell}
-          title={unreadOnly ? "ไม่มีการแจ้งเตือนที่ยังไม่อ่าน" : "ยังไม่มีการแจ้งเตือน"}
+          title={
+            unreadOnly
+              ? "ไม่มีการแจ้งเตือนที่ยังไม่อ่าน"
+              : "ยังไม่มีการแจ้งเตือน"
+          }
         />
       ) : (
         <div className="space-y-4">

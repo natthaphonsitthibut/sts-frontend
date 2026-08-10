@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -49,11 +49,14 @@ const SUMMARY_STATUS_CODES = [
 ] as const;
 
 const CASE_TAB_ROUTES = {
-  list: "/cases",
+  list: "/cases/risk",
   history: "/cases/history",
 } as const;
 
-type CaseGroup = "risk" | "watchlist";
+const CASE_GROUP_ROUTES = {
+  risk: "/cases/risk",
+  watchlist: "/cases/watchlist",
+} as const;
 
 function getFallbackCaseStatusCounts(
   cases: readonly CaseRecord[],
@@ -89,7 +92,7 @@ export function CasesListPage() {
     can("review-cases") && can("manage-student-observations");
   const effectiveTab =
     activeTab === "history" && canViewHistory ? "history" : "list";
-  const [caseGroup, setCaseGroup] = useState<CaseGroup>("risk");
+  const [caseGroup, setCaseGroup] = useRouteTab(CASE_GROUP_ROUTES, "risk");
   const [searchQuery, setSearchQuery] = useState(() =>
     getInitialSearchQuery(location.state),
   );
@@ -99,6 +102,11 @@ export function CasesListPage() {
   const [riskPage, setRiskPage] = useState(1);
   const [watchlistPage, setWatchlistPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  useEffect(() => {
+    if (caseGroup === "watchlist" && !canViewWatchlist) {
+      void navigate("/cases/risk", { replace: true });
+    }
+  }, [canViewWatchlist, caseGroup, navigate]);
   const schoolArea = useSchoolAreaFilter({
     province: initialQuery.get("province") || undefined,
     district: initialQuery.get("district") || undefined,
@@ -228,9 +236,11 @@ export function CasesListPage() {
   function handleCaseGroupChange(value: string): void {
     if (value === "watchlist" && canViewWatchlist) {
       setCaseGroup("watchlist");
+      setWatchlistPage(1);
       return;
     }
     setCaseGroup("risk");
+    setRiskPage(1);
   }
 
   async function refreshActiveList(): Promise<void> {
@@ -362,7 +372,11 @@ export function CasesListPage() {
             />
           ) : (
             <>
-              <CaseTable canCreateLinks={false} onCreateLink={openCreateLink} rows={cases} />
+              <CaseTable
+                canCreateLinks={false}
+                onCreateLink={openCreateLink}
+                rows={cases}
+              />
               <Pagination
                 onPageChange={setRiskPage}
                 onRowsPerPageChange={handleRowsPerPageChange}

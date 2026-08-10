@@ -84,6 +84,8 @@ export const PAGE_IDENTITIES = {
   "/attendance-links": createIdentity("จัดการลิงก์เช็คชื่อ", "link"),
   "/attendance-operations": createIdentity("ความครบถ้วน", "calendar-check"),
   "/cases": createIdentity("เคสติดตาม", "clipboard-check"),
+  "/cases/risk": createIdentity("เคสติดตาม", "clipboard-check"),
+  "/cases/watchlist": createIdentity("เคสติดตาม", "clipboard-check"),
   "/cases/history": createIdentity("เคสติดตาม", "clipboard-check"),
   "/classrooms": createIdentity("ห้องเรียนทั้งหมด", "school-building"),
   "/create": createIdentity("สร้างลิงก์", "link-plus"),
@@ -110,6 +112,8 @@ export const PAGE_IDENTITIES = {
   "/students": createIdentity("รายชื่อนักเรียน", "user-graduate"),
   "/students/history": createIdentity("รายชื่อนักเรียน", "user-graduate"),
   "/timetable": createIdentity("ตารางสอน", "calendar"),
+  "/timetable/mine": createIdentity("ตารางสอน", "calendar"),
+  "/timetable/rooms": createIdentity("ตารางสอน", "calendar"),
   "/visit-links": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
   "/visit-links/history": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
 } as const satisfies Record<string, PageIdentity>;

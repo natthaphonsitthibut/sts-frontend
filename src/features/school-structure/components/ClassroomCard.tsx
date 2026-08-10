@@ -3,7 +3,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { IconButton } from "../../../components/base";
 import { ContextLink } from "../../../components/layout/context-link";
 import { cn } from "../../../lib/utils";
-import type { ClassroomCardCoverColor, SchoolClassroom } from "../types/school-structure.types";
+import type {
+  ClassroomCardCoverColor,
+  SchoolClassroom,
+} from "../types/school-structure.types";
 import {
   CLASSROOM_COVER_COLORS,
   classroomCoverImageStyle,
@@ -15,7 +18,10 @@ interface ClassroomCardProps {
   classroom: SchoolClassroom;
   colorPending: boolean;
   favoritePending: boolean;
-  onColorChange: (classroom: SchoolClassroom, color: ClassroomCardCoverColor) => void;
+  onColorChange: (
+    classroom: SchoolClassroom,
+    color: ClassroomCardCoverColor,
+  ) => void;
   onCustomize: (classroom: SchoolClassroom) => void;
   onFavoriteChange: (classroom: SchoolClassroom, isFavorite: boolean) => void;
   /** Second line under the room label; defaults to the homeroom teacher. */
@@ -52,7 +58,8 @@ export function ClassroomCard({
   useEffect(() => {
     if (!paletteOpen) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!paletteRef.current?.contains(event.target as Node)) setPaletteOpen(false);
+      if (!paletteRef.current?.contains(event.target as Node))
+        setPaletteOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setPaletteOpen(false);
@@ -76,7 +83,7 @@ export function ClassroomCard({
       <ContextLink
         aria-label={`เปิดห้อง ${classroomLabel}`}
         className="absolute inset-0 z-0 rounded-lg outline-none"
-        to={to ?? `/classrooms/${encodeURIComponent(classroom.id)}`}
+        to={to ?? `/classrooms/${encodeURIComponent(classroom.id)}/roster`}
       />
       <div
         className="pointer-events-none relative flex aspect-[16/7] items-center justify-center overflow-hidden rounded-t-lg"
@@ -107,7 +114,9 @@ export function ClassroomCard({
             className="pointer-events-auto absolute right-1.5 top-1.5 z-10 size-8 rounded border-0 bg-slate-700/55 text-white shadow-none hover:bg-slate-800/70 hover:text-white"
             disabled={favoritePending}
             icon={Star}
-            iconClassName={cn(classroom.isFavorite && "fill-amber-300 text-amber-300")}
+            iconClassName={cn(
+              classroom.isFavorite && "fill-amber-300 text-amber-300",
+            )}
             onClick={() => {
               onFavoriteChange(classroom, !classroom.isFavorite);
             }}
@@ -117,11 +126,17 @@ export function ClassroomCard({
       </div>
 
       <div className="pointer-events-none relative min-h-32 rounded-b-lg p-3.5 pr-12">
-        <h2 className="text-xl font-semibold leading-7 text-slate-900">{classroomLabel}</h2>
+        <h2 className="text-xl font-semibold leading-7 text-slate-900">
+          {classroomLabel}
+        </h2>
         <p className="mt-1.5 line-clamp-2 text-sm text-slate-700">
-          {subtitle ?? `ครูประจำชั้น: ${classroom.homeroomTeacherName || "ยังไม่ได้กำหนด"}`}
+          {subtitle ??
+            `ครูประจำชั้น: ${classroom.homeroomTeacherName || "ยังไม่ได้กำหนด"}`}
         </p>
-        <div className="pointer-events-auto absolute bottom-2 right-2 z-10" ref={paletteRef}>
+        <div
+          className="pointer-events-auto absolute bottom-2 right-2 z-10"
+          ref={paletteRef}
+        >
           <IconButton
             aria-controls={paletteId}
             aria-expanded={paletteOpen}
@@ -145,7 +160,9 @@ export function ClassroomCard({
               )}
               id={paletteId}
             >
-              <p className="mb-2 text-sm font-semibold text-slate-900">เลือกสี</p>
+              <p className="mb-2 text-sm font-semibold text-slate-900">
+                เลือกสี
+              </p>
               <div className="grid grid-cols-8 gap-2">
                 {CLASSROOM_COVER_COLORS.map((color) => {
                   const selected = color.value === classroom.cardCoverColor;
@@ -164,7 +181,10 @@ export function ClassroomCard({
                       type="button"
                     >
                       {selected ? (
-                        <Check className="absolute inset-1 size-5 text-white" aria-hidden="true" />
+                        <Check
+                          className="absolute inset-1 size-5 text-white"
+                          aria-hidden="true"
+                        />
                       ) : null}
                     </button>
                   );
