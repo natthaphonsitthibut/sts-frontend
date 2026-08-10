@@ -1,4 +1,12 @@
-import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff, Unlink } from "lucide-react";
+import {
+  ClipboardCopy,
+  Link2,
+  MessageCircle,
+  RefreshCw,
+  Settings,
+  ShieldOff,
+  Unlink,
+} from "lucide-react";
 import {
   Avatar,
   Checkbox,
@@ -29,12 +37,17 @@ interface TeacherLinkTableProps {
   busyMembershipId: string | null;
   selectedIds: ReadonlySet<string>;
   onSelectRow: (entry: TeacherLinkRosterEntry, selected: boolean) => void;
-  onSelectAll: (entries: readonly TeacherLinkRosterEntry[], selected: boolean) => void;
+  onSelectAll: (
+    entries: readonly TeacherLinkRosterEntry[],
+    selected: boolean,
+  ) => void;
   onCreate: (entry: TeacherLinkRosterEntry) => void;
   onCopy: (entry: TeacherLinkRosterEntry) => void;
   onRotate: (entry: TeacherLinkRosterEntry) => void;
   onRevoke: (entry: TeacherLinkRosterEntry) => void;
   onUnlinkLine: (entry: TeacherLinkRosterEntry) => void;
+  onIssueLineInvitation: (entry: TeacherLinkRosterEntry) => void;
+  onRevokeLineInvitation: (entry: TeacherLinkRosterEntry) => void;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
 }
@@ -50,9 +63,27 @@ function LinkStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
 
 function LineStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
   const meta = TEACHER_LINE_STATUS_META[entry.lineStatus];
+  const invitationLabel =
+    entry.lineInvitationStatus === "ACTIVE" && entry.lineInvitationExpiresAt
+      ? `ลิงก์ยืนยันใช้ได้ถึง ${new Date(
+          entry.lineInvitationExpiresAt,
+        ).toLocaleString("th-TH", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })}`
+      : entry.lineInvitationStatus === "CONSUMED"
+        ? "ใช้ลิงก์ยืนยันแล้ว"
+        : entry.lineInvitationStatus === "EXPIRED"
+          ? "ลิงก์ยืนยันหมดอายุ"
+          : entry.lineInvitationStatus === "REVOKED"
+            ? "ลิงก์ยืนยันถูกยกเลิก"
+            : null;
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center justify-center gap-1">
       <LinkStatusBadge label={meta.label} variant={meta.variant} />
+      {invitationLabel ? (
+        <span className="text-xs text-slate-500">{invitationLabel}</span>
+      ) : null}
     </div>
   );
 }
@@ -91,41 +122,72 @@ function TeacherIdentity({
 
 function rowActions(
   entry: TeacherLinkRosterEntry,
-  handlers: Pick<TeacherLinkTableProps, "onCreate" | "onCopy" | "onRotate" | "onRevoke">,
+  handlers: Pick<
+    TeacherLinkTableProps,
+    | "onCreate"
+    | "onCopy"
+    | "onRotate"
+    | "onRevoke"
+    | "onIssueLineInvitation"
+    | "onRevokeLineInvitation"
+  >,
 ): DropdownMenuItem[] {
-  if (entry.linkStatus === "ACTIVE") {
-    return [
-      {
-        id: "copy",
-        label: entry.canCopyLink ? "คัดลอกลิงก์" : "ลิงก์เดิมคัดลอกไม่ได้ ต้องออกใหม่",
-        icon: ClipboardCopy,
-        disabled: !entry.canCopyLink,
-        onSelect: () => handlers.onCopy(entry),
-      },
-      {
-        id: "rotate",
-        label: "ออกลิงก์ใหม่แทนลิงก์เดิม",
-        icon: RefreshCw,
-        onSelect: () => handlers.onRotate(entry),
-      },
-      {
-        id: "revoke",
-        label: "เพิกถอนลิงก์",
-        icon: ShieldOff,
-        destructive: true,
-        onSelect: () => handlers.onRevoke(entry),
-      },
-    ];
+  const grantActions: DropdownMenuItem[] =
+    entry.linkStatus === "ACTIVE"
+      ? [
+          {
+            id: "copy",
+            label: entry.canCopyLink
+              ? "คัดลอกลิงก์"
+              : "ลิงก์เดิมคัดลอกไม่ได้ ต้องออกใหม่",
+            icon: ClipboardCopy,
+            disabled: !entry.canCopyLink,
+            onSelect: () => handlers.onCopy(entry),
+          },
+          {
+            id: "rotate",
+            label: "ออกลิงก์ใหม่แทนลิงก์เดิม",
+            icon: RefreshCw,
+            onSelect: () => handlers.onRotate(entry),
+          },
+          {
+            id: "revoke",
+            label: "เพิกถอนลิงก์",
+            icon: ShieldOff,
+            destructive: true,
+            onSelect: () => handlers.onRevoke(entry),
+          },
+        ]
+      : [
+          {
+            id: "create",
+            label: "สร้างลิงก์เช็คชื่อ",
+            icon: Link2,
+            disabled: entry.assignmentCount === 0,
+            onSelect: () => handlers.onCreate(entry),
+          },
+        ];
+  if (entry.lineStatus !== "NOT_VERIFIED") return grantActions;
+  grantActions.push({
+    id: "issue-line-invitation",
+    label:
+      entry.lineInvitationStatus === "ACTIVE"
+        ? "ออกลิงก์ยืนยัน LINE ใหม่"
+        : "ออกลิงก์ยืนยัน LINE",
+    icon: MessageCircle,
+    disabled: !entry.hasEmail,
+    onSelect: () => handlers.onIssueLineInvitation(entry),
+  });
+  if (entry.lineInvitationStatus === "ACTIVE") {
+    grantActions.push({
+      id: "revoke-line-invitation",
+      label: "ยกเลิกลิงก์ยืนยัน LINE",
+      icon: ShieldOff,
+      destructive: true,
+      onSelect: () => handlers.onRevokeLineInvitation(entry),
+    });
   }
-  return [
-    {
-      id: "create",
-      label: "สร้างลิงก์เช็คชื่อ",
-      icon: Link2,
-      disabled: entry.assignmentCount === 0,
-      onSelect: () => handlers.onCreate(entry),
-    },
-  ];
+  return grantActions;
 }
 
 function RowMenu({
@@ -134,7 +196,13 @@ function RowMenu({
   ...handlers
 }: Pick<
   TeacherLinkTableProps,
-  "onCreate" | "onCopy" | "onRotate" | "onRevoke" | "onUnlinkLine"
+  | "onCreate"
+  | "onCopy"
+  | "onRotate"
+  | "onRevoke"
+  | "onUnlinkLine"
+  | "onIssueLineInvitation"
+  | "onRevokeLineInvitation"
 > & {
   entry: TeacherLinkRosterEntry;
   busy: boolean;
@@ -188,26 +256,40 @@ export function TeacherLinkTable({
   ...handlers
 }: TeacherLinkTableProps) {
   const allSelected =
-    entries.length > 0 && entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
+    entries.length > 0 &&
+    entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
 
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        columnWidths={["w-[5%]", "w-[8%]", "w-[29%]", "w-[22%]", "w-[22%]", "w-[14%]"]}
+        columnWidths={[
+          "w-[5%]",
+          "w-[8%]",
+          "w-[29%]",
+          "w-[22%]",
+          "w-[22%]",
+          "w-[14%]",
+        ]}
         headings={[
           {
             label: (
               <Checkbox
                 aria-label="เลือกครูทั้งหมดในหน้านี้"
                 checked={allSelected}
-                onChange={(event) => onSelectAll(entries, event.currentTarget.checked)}
+                onChange={(event) =>
+                  onSelectAll(entries, event.currentTarget.checked)
+                }
               />
             ),
             className: "text-center",
           },
           { label: "ลำดับ" },
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
-          { label: "สถานะลิงก์", sortKey: "linkStatus", className: "text-center" },
+          {
+            label: "สถานะลิงก์",
+            sortKey: "linkStatus",
+            className: "text-center",
+          },
           { label: "LINE", className: "text-center" },
           { label: "เครื่องมือ", className: "text-center" },
         ]}
@@ -221,7 +303,9 @@ export function TeacherLinkTable({
               <Checkbox
                 aria-label={`เลือก ${entry.teacherDisplayName}`}
                 checked={selectedIds.has(entry.teacherMembershipId)}
-                onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+                onChange={(event) =>
+                  onSelectRow(entry, event.currentTarget.checked)
+                }
               />
             </DataTableCell>
             <DataTableCell>{startIndex + index}</DataTableCell>
@@ -254,7 +338,9 @@ export function TeacherLinkTable({
                   aria-label={`เลือก ${entry.teacherDisplayName}`}
                   checked={selectedIds.has(entry.teacherMembershipId)}
                   className="mt-0.5"
-                  onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+                  onChange={(event) =>
+                    onSelectRow(entry, event.currentTarget.checked)
+                  }
                 />
                 <TeacherIdentity entry={entry} showAssignmentCount />
               </div>

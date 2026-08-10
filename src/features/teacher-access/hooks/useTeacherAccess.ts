@@ -40,13 +40,15 @@ export function useTeacherLinkRoster(input: {
 
 function useRosterInvalidation() {
   const client = useQueryClient();
-  return async () => client.invalidateQueries({ queryKey: [KEY, "teacher-roster"] });
+  return async () =>
+    client.invalidateQueries({ queryKey: [KEY, "teacher-roster"] });
 }
 
 export function useIssueTeacherAccessGrant() {
   const invalidate = useRosterInvalidation();
   return useMutation({
-    mutationFn: (input: IssueTeacherAccessGrantInput) => teacherAccessService.issueGrant(input),
+    mutationFn: (input: IssueTeacherAccessGrantInput) =>
+      teacherAccessService.issueGrant(input),
     onSuccess: invalidate,
   });
 }
@@ -71,6 +73,22 @@ export function useUnlinkTeacherLineAccount() {
   const invalidate = useRosterInvalidation();
   return useMutation({
     mutationFn: teacherAccessService.unlinkTeacherLineAccount,
+    onSuccess: invalidate,
+  });
+}
+
+export function useIssueTeacherLineInvitation() {
+  const invalidate = useRosterInvalidation();
+  return useMutation({
+    mutationFn: teacherAccessService.issueTeacherLineInvitation,
+    onSuccess: invalidate,
+  });
+}
+
+export function useRevokeTeacherLineInvitation() {
+  const invalidate = useRosterInvalidation();
+  return useMutation({
+    mutationFn: teacherAccessService.revokeTeacherLineInvitation,
     onSuccess: invalidate,
   });
 }
@@ -102,7 +120,11 @@ export const teacherAccessGuestQueryKey = (token: string) =>
 
 export function useTeacherAccessContext(credential: TeacherLinkCredential) {
   return useQuery({
-    queryKey: [...teacherAccessGuestQueryKey(credential.token), "context", credential.sessionToken],
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "context",
+      credential.sessionToken,
+    ],
     queryFn: () => teacherAccessService.getContext(credential),
     enabled: Boolean(credential.token),
     retry: false,
@@ -111,7 +133,9 @@ export function useTeacherAccessContext(credential: TeacherLinkCredential) {
 }
 
 export function useRequestTeacherAccessOtp() {
-  return useMutation({ mutationFn: (token: string) => teacherAccessService.requestOtp(token) });
+  return useMutation({
+    mutationFn: (token: string) => teacherAccessService.requestOtp(token),
+  });
 }
 
 export function useVerifyTeacherAccessOtp() {
@@ -121,10 +145,18 @@ export function useVerifyTeacherAccessOtp() {
   });
 }
 
-export function useTeacherAccessRoster(credential: TeacherLinkCredential, assignmentId?: number) {
+export function useTeacherAccessRoster(
+  credential: TeacherLinkCredential,
+  assignmentId?: number,
+) {
   return useQuery({
-    queryKey: [...teacherAccessGuestQueryKey(credential.token), "roster", assignmentId],
-    queryFn: () => teacherAccessService.getCompleteRoster(credential, assignmentId!),
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "roster",
+      assignmentId,
+    ],
+    queryFn: () =>
+      teacherAccessService.getCompleteRoster(credential, assignmentId!),
     enabled: Boolean(credential.token && assignmentId),
     retry: false,
     gcTime: 0,
@@ -138,9 +170,17 @@ export function useTeacherAccessAttendanceSlots(
   enabled: boolean,
 ) {
   return useQuery({
-    queryKey: [...teacherAccessGuestQueryKey(credential.token), "attendance-slots", assignmentId, date],
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-slots",
+      assignmentId,
+      date,
+    ],
     queryFn: () =>
-      teacherAccessService.listAttendanceSlots(credential, { assignmentId: assignmentId!, date }),
+      teacherAccessService.listAttendanceSlots(credential, {
+        assignmentId: assignmentId!,
+        date,
+      }),
     enabled: Boolean(enabled && credential.token && assignmentId && date),
     retry: false,
     gcTime: 0,
@@ -183,7 +223,9 @@ export function useTeacherAttendanceHistory(
 
 export function useCreateTeacherStudentComment(assignmentId: number) {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useMutation({
     mutationFn: (input: { studentUuid: string; commentText: string }) =>
       teacherAccessService.createStudentComment(
@@ -196,7 +238,9 @@ export function useCreateTeacherStudentComment(assignmentId: number) {
 
 export function useTeacherSchedule() {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useQuery({
     queryKey: [...teacherAccessGuestQueryKey(token), "my-schedule"],
     queryFn: () => teacherAccessService.getMySchedule({ token, sessionToken }),
@@ -205,13 +249,26 @@ export function useTeacherSchedule() {
   });
 }
 
-export function useTeacherStudentProfile(assignmentId: number, studentUuid: string) {
+export function useTeacherStudentProfile(
+  assignmentId: number,
+  studentUuid: string,
+) {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useQuery({
-    queryKey: [...teacherAccessGuestQueryKey(token), "student-profile", assignmentId, studentUuid],
+    queryKey: [
+      ...teacherAccessGuestQueryKey(token),
+      "student-profile",
+      assignmentId,
+      studentUuid,
+    ],
     queryFn: () =>
-      teacherAccessService.getStudentProfile({ token, sessionToken }, { assignmentId, studentUuid }),
+      teacherAccessService.getStudentProfile(
+        { token, sessionToken },
+        { assignmentId, studentUuid },
+      ),
     enabled: Boolean(token && assignmentId && studentUuid),
     retry: false,
     gcTime: 0,
@@ -224,7 +281,9 @@ export function useTeacherStudentSubjectAttendance(
   date: string | undefined,
 ) {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useQuery({
     queryKey: [
       ...teacherAccessGuestQueryKey(token),
@@ -250,11 +309,16 @@ export function useTeacherClassroomCover(
   hasCoverImage: boolean,
 ) {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useQuery({
     queryKey: [...teacherAccessGuestQueryKey(token), "cover", classroomId],
     queryFn: () =>
-      teacherAccessService.getClassroomCoverBlob({ token, sessionToken }, assignmentId),
+      teacherAccessService.getClassroomCoverBlob(
+        { token, sessionToken },
+        assignmentId,
+      ),
     enabled: Boolean(token && hasCoverImage),
     retry: false,
     staleTime: 5 * 60 * 1000,
@@ -267,9 +331,16 @@ export function useTeacherStudentPhoto(
   hasPhoto: boolean,
 ) {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useQuery({
-    queryKey: [...teacherAccessGuestQueryKey(token), "student-photo", assignmentId, studentUuid],
+    queryKey: [
+      ...teacherAccessGuestQueryKey(token),
+      "student-photo",
+      assignmentId,
+      studentUuid,
+    ],
     queryFn: () =>
       teacherAccessService.getStudentPhotoBlob(
         { token, sessionToken },
@@ -283,7 +354,9 @@ export function useTeacherStudentPhoto(
 
 export function useRecordTeacherClassroomExport() {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useMutation({
     mutationFn: (input: {
       assignmentId: number;
@@ -292,7 +365,11 @@ export function useRecordTeacherClassroomExport() {
       columns: string[];
       dateFrom?: string;
       dateTo?: string;
-    }) => teacherAccessService.recordClassroomExport({ token, sessionToken }, input),
+    }) =>
+      teacherAccessService.recordClassroomExport(
+        { token, sessionToken },
+        input,
+      ),
     gcTime: 0,
   });
 }
@@ -300,9 +377,13 @@ export function useRecordTeacherClassroomExport() {
 export function useUpdateTeacherClassroomCover() {
   const client = useQueryClient();
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   return useMutation({
-    mutationFn: (input: Parameters<typeof teacherAccessService.updateClassroomCard>[1]) =>
+    mutationFn: (
+      input: Parameters<typeof teacherAccessService.updateClassroomCard>[1],
+    ) =>
       teacherAccessService.updateClassroomCard({ token, sessionToken }, input),
     onSuccess: async () => {
       await Promise.all([
@@ -318,15 +399,20 @@ export function useUpdateTeacherClassroomCover() {
   });
 }
 
-export function useSaveTeacherAccessAttendance(credential: TeacherLinkCredential) {
+export function useSaveTeacherAccessAttendance(
+  credential: TeacherLinkCredential,
+) {
   return useMutation({
-    mutationFn: (input: Parameters<typeof teacherAccessService.saveAttendance>[1]) =>
-      teacherAccessService.saveAttendance(credential, input),
+    mutationFn: (
+      input: Parameters<typeof teacherAccessService.saveAttendance>[1],
+    ) => teacherAccessService.saveAttendance(credential, input),
     gcTime: 0,
   });
 }
 
-export function useSeedTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+export function useSeedTeacherAccessDemoAbsences(
+  credential: TeacherLinkCredential,
+) {
   return useMutation({
     mutationFn: (assignmentId: number) =>
       teacherAccessService.seedDemoAbsences(credential, assignmentId),
@@ -334,7 +420,9 @@ export function useSeedTeacherAccessDemoAbsences(credential: TeacherLinkCredenti
   });
 }
 
-export function useClearTeacherAccessDemoAbsences(credential: TeacherLinkCredential) {
+export function useClearTeacherAccessDemoAbsences(
+  credential: TeacherLinkCredential,
+) {
   return useMutation({
     mutationFn: (assignmentId: number) =>
       teacherAccessService.clearDemoAbsences(credential, assignmentId),

@@ -18,7 +18,6 @@ import {
   Textarea,
   useConfirm,
 } from "../../../components/base";
-import { CopyButton } from "../../../components/layout/copy-button";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -41,9 +40,11 @@ import { TeacherLinkTable } from "../components/TeacherLinkTable";
 import { summarizeSkipReasons } from "../lib/teacher-link-presentation";
 import {
   useIssueTeacherAccessGrant,
+  useIssueTeacherLineInvitation,
   useSendTeacherAccessGrantsOverLine,
   useIssueTeacherAccessGrantsForTerm,
   useRevokeTeacherAccessGrant,
+  useRevokeTeacherLineInvitation,
   useRotateTeacherAccessGrant,
   useTeacherAccessGrantLink,
   useTeacherLinkRoster,
@@ -58,14 +59,6 @@ import type {
 import type { DataTableSortState } from "../../../components/layout/data-table";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance-links"].icon;
-
-/**
- * One static page for every teacher — the flow identifies them by email + OTP,
- * so there is no per-teacher token to issue and nothing to generate per row.
- */
-function buildLineVerificationUrl(): string {
-  return `${window.location.origin}/line-link`;
-}
 
 export function TeacherAttendanceLinksPage() {
   const schoolsQuery = useScopedSchools();
@@ -83,11 +76,17 @@ export function TeacherAttendanceLinksPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<TeacherLinkRosterEntry | null>(null);
+  const [revokeTarget, setRevokeTarget] =
+    useState<TeacherLinkRosterEntry | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
-  const [bulkResult, setBulkResult] = useState<BulkIssueTeacherAccessResult | null>(null);
-  const [sendResult, setSendResult] = useState<SendTeacherAccessGrantsResult | null>(null);
-  const lineDeliveryRequestRef = useRef<{ signature: string; id: string } | null>(null);
+  const [bulkResult, setBulkResult] =
+    useState<BulkIssueTeacherAccessResult | null>(null);
+  const [sendResult, setSendResult] =
+    useState<SendTeacherAccessGrantsResult | null>(null);
+  const lineDeliveryRequestRef = useRef<{
+    signature: string;
+    id: string;
+  } | null>(null);
   const [selectedByMembershipId, setSelectedByMembershipId] = useState<
     Map<string, TeacherLinkRosterEntry>
   >(new Map());
@@ -116,14 +115,19 @@ export function TeacherAttendanceLinksPage() {
   const selectedTermId = Number(selectedTerm?.id) || undefined;
 
   const academicYears = useMemo(
-    () => [...new Set(terms.map((term) => term.academicYear))].sort((a, b) => b - a),
+    () =>
+      [...new Set(terms.map((term) => term.academicYear))].sort(
+        (a, b) => b - a,
+      ),
     [terms],
   );
   const semesters = useMemo(
     () =>
       [
         ...new Set(
-          terms.filter((term) => term.academicYear === academicYear).map((term) => term.semester),
+          terms
+            .filter((term) => term.academicYear === academicYear)
+            .map((term) => term.semester),
         ),
       ].sort((a, b) => a - b),
     [terms, academicYear],
@@ -146,6 +150,8 @@ export function TeacherAttendanceLinksPage() {
   const revokeGrant = useRevokeTeacherAccessGrant();
   const rotateGrant = useRotateTeacherAccessGrant();
   const unlinkLine = useUnlinkTeacherLineAccount();
+  const issueLineInvitation = useIssueTeacherLineInvitation();
+  const revokeLineInvitation = useRevokeTeacherLineInvitation();
 
   const entries = rosterQuery.data?.data ?? [];
   const meta = rosterQuery.data?.meta;
@@ -160,8 +166,12 @@ export function TeacherAttendanceLinksPage() {
   const busyMembershipId = issueGrant.isPending
     ? String(issueGrant.variables?.teacherMembershipId ?? "")
     : unlinkLine.isPending
-      ? unlinkLine.variables ?? null
-      : null;
+      ? (unlinkLine.variables ?? null)
+      : issueLineInvitation.isPending
+        ? (issueLineInvitation.variables ?? null)
+        : revokeLineInvitation.isPending
+          ? (revokeLineInvitation.variables ?? null)
+          : null;
 
   async function createLink(entry: TeacherLinkRosterEntry): Promise<void> {
     if (!selectedTermId) return;
@@ -181,7 +191,8 @@ export function TeacherAttendanceLinksPage() {
     if (!entry.grantId) return;
     const accepted = await confirm({
       title: `ออกลิงก์ใหม่ให้ ${entry.teacherDisplayName}?`,
-      description: "ลิงก์เดิมจะใช้ไม่ได้ทันที ต้องส่งลิงก์ใหม่ให้ครูหลังดำเนินการ",
+      description:
+        "ลิงก์เดิมจะใช้ไม่ได้ทันที ต้องส่งลิงก์ใหม่ให้ครูหลังดำเนินการ",
       confirmText: "ออกลิงก์ใหม่",
       variant: "destructive",
     });
@@ -190,7 +201,9 @@ export function TeacherAttendanceLinksPage() {
     if (rotated.accessUrl) setSharedUrl(rotated.accessUrl);
   }
 
-  async function unlinkLineAccount(entry: TeacherLinkRosterEntry): Promise<void> {
+  async function unlinkLineAccount(
+    entry: TeacherLinkRosterEntry,
+  ): Promise<void> {
     const accepted = await confirm({
       title: `ปลดการเชื่อมต่อ LINE ของ ${entry.teacherDisplayName}?`,
       description:
@@ -200,6 +213,39 @@ export function TeacherAttendanceLinksPage() {
     });
     if (!accepted) return;
     await unlinkLine.mutateAsync(entry.teacherMembershipId);
+  }
+
+  async function issueLineInvitationLink(
+    entry: TeacherLinkRosterEntry,
+  ): Promise<void> {
+    const rotating = entry.lineInvitationStatus === "ACTIVE";
+    const accepted = await confirm({
+      title: `${rotating ? "ออกลิงก์ใหม่" : "ออกลิงก์ยืนยัน LINE"}ให้ ${entry.teacherDisplayName}?`,
+      description: rotating
+        ? "ลิงก์ยืนยันเดิมจะใช้ไม่ได้ทันที ลิงก์ใหม่มีอายุ 24 ชั่วโมงและใช้ได้ครั้งเดียว"
+        : "ลิงก์มีอายุ 24 ชั่วโมง ใช้ได้ครั้งเดียว และครูต้องยืนยัน OTP ทางอีเมลก่อนเชื่อม LINE",
+      confirmText: rotating ? "ออกลิงก์ใหม่" : "ออกลิงก์",
+      variant: rotating ? "destructive" : "default",
+    });
+    if (!accepted) return;
+    const invitation = await issueLineInvitation.mutateAsync(
+      entry.teacherMembershipId,
+    );
+    setSharedUrl(invitation.url);
+  }
+
+  async function revokeLineInvitationLink(
+    entry: TeacherLinkRosterEntry,
+  ): Promise<void> {
+    const accepted = await confirm({
+      title: `ยกเลิกลิงก์ยืนยัน LINE ของ ${entry.teacherDisplayName}?`,
+      description:
+        "ลิงก์ที่ส่งไปแล้วจะใช้ไม่ได้ทันที แต่ไม่กระทบบัญชี LINE ที่เชื่อมสำเร็จแล้ว",
+      confirmText: "ยกเลิกลิงก์",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    await revokeLineInvitation.mutateAsync(entry.teacherMembershipId);
   }
 
   /** With no rows ticked the button covers the whole term; with rows ticked, only those. */
@@ -243,17 +289,19 @@ export function TeacherAttendanceLinksPage() {
     if (!accepted) return;
     setBulkResult(null);
     const teacherMembershipIds = picked
-      ? selectedEntries.map((entry) => Number(entry.teacherMembershipId)).sort((a, b) => a - b)
+      ? selectedEntries
+          .map((entry) => Number(entry.teacherMembershipId))
+          .sort((a, b) => a - b)
       : undefined;
     const signature = `${selectedTermId}:${teacherMembershipIds?.join(",") ?? "all"}`;
     if (lineDeliveryRequestRef.current?.signature !== signature) {
       lineDeliveryRequestRef.current = { signature, id: crypto.randomUUID() };
     }
     const result = await sendOverLine.mutateAsync({
-        schoolTermId: selectedTermId,
-        deliveryRequestId: lineDeliveryRequestRef.current.id,
-        teacherMembershipIds,
-      });
+      schoolTermId: selectedTermId,
+      deliveryRequestId: lineDeliveryRequestRef.current.id,
+      teacherMembershipIds,
+    });
     lineDeliveryRequestRef.current = null;
     setSendResult(result);
     clearSelection();
@@ -272,7 +320,10 @@ export function TeacherAttendanceLinksPage() {
     });
   }
 
-  function selectRows(rows: readonly TeacherLinkRosterEntry[], selected: boolean): void {
+  function selectRows(
+    rows: readonly TeacherLinkRosterEntry[],
+    selected: boolean,
+  ): void {
     setSelectedByMembershipId((current) => {
       const next = new Map(current);
       for (const entry of rows) {
@@ -300,39 +351,31 @@ export function TeacherAttendanceLinksPage() {
       <PageToolbar
         actions={
           <>
-          {lineEnabledQuery.data === true ? (
-            <CopyButton
-              label="คัดลอกลิงก์ยืนยัน LINE"
-              size="md"
-              value={buildLineVerificationUrl()}
-              variant="outline"
-            />
-          ) : null}
-          {lineEnabledQuery.data === true ? (
+            {lineEnabledQuery.data === true ? (
+              <Button
+                disabled={!selectedTermId || sendOverLine.isPending}
+                icon={MessageCircle}
+                isLoading={sendOverLine.isPending}
+                loadingText="กำลังส่ง"
+                onClick={() => void sendLinksOverLine()}
+                variant="outline"
+              >
+                {selectedEntries.length > 0
+                  ? `ส่งทาง LINE (${selectedEntries.length})`
+                  : "ส่งลิงก์ทาง LINE"}
+              </Button>
+            ) : null}
             <Button
-              disabled={!selectedTermId || sendOverLine.isPending}
-              icon={MessageCircle}
-              isLoading={sendOverLine.isPending}
-              loadingText="กำลังส่ง"
-              onClick={() => void sendLinksOverLine()}
-              variant="outline"
+              disabled={!selectedTermId || issueForTerm.isPending}
+              icon={Plus}
+              isLoading={issueForTerm.isPending}
+              loadingText="กำลังสร้างลิงก์"
+              onClick={() => void issueLinks()}
             >
               {selectedEntries.length > 0
-                ? `ส่งทาง LINE (${selectedEntries.length})`
-                : "ส่งลิงก์ทาง LINE"}
+                ? `สร้างลิงก์ที่เลือก (${selectedEntries.length})`
+                : "สร้างลิงก์เช็คชื่อ"}
             </Button>
-          ) : null}
-          <Button
-            disabled={!selectedTermId || issueForTerm.isPending}
-            icon={Plus}
-            isLoading={issueForTerm.isPending}
-            loadingText="กำลังสร้างลิงก์"
-            onClick={() => void issueLinks()}
-          >
-            {selectedEntries.length > 0
-              ? `สร้างลิงก์ที่เลือก (${selectedEntries.length})`
-              : "สร้างลิงก์เช็คชื่อ"}
-          </Button>
           </>
         }
         description="ออกลิงก์เช็คชื่อให้ครูรายคน อายุลิงก์เท่ากับหนึ่งภาคเรียน"
@@ -360,7 +403,10 @@ export function TeacherAttendanceLinksPage() {
               setPage(1);
               clearSelection();
             }}
-            options={schools.map((school) => ({ value: String(school.id), label: school.name }))}
+            options={schools.map((school) => ({
+              value: String(school.id),
+              label: school.name,
+            }))}
             placeholder="เลือกโรงเรียน"
             value={schoolId}
           />
@@ -375,7 +421,10 @@ export function TeacherAttendanceLinksPage() {
             setPage(1);
             clearSelection();
           }}
-          options={academicYears.map((year) => ({ value: String(year), label: String(year) }))}
+          options={academicYears.map((year) => ({
+            value: String(year),
+            label: String(year),
+          }))}
           placeholder="ปีการศึกษา"
           value={academicYear ? String(academicYear) : ""}
         />
@@ -421,12 +470,17 @@ export function TeacherAttendanceLinksPage() {
           rotateGrant.error ??
           grantLink.error ??
           sendOverLine.error ??
-          unlinkLine.error
+          unlinkLine.error ??
+          issueLineInvitation.error ??
+          revokeLineInvitation.error
         }
         fallback="ดำเนินการกับลิงก์ไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
       {bulkResult ? (
-        <Alert className="mb-4" variant={bulkResult.issued > 0 ? "success" : "warning"}>
+        <Alert
+          className="mb-4"
+          variant={bulkResult.issued > 0 ? "success" : "warning"}
+        >
           <AlertTitle>สร้างลิงก์ {bulkResult.issued} รายการ</AlertTitle>
           <AlertDescription>
             {bulkResult.skipped.length === 0
@@ -437,7 +491,10 @@ export function TeacherAttendanceLinksPage() {
       ) : null}
 
       {sendResult ? (
-        <Alert className="mb-4" variant={sendResult.sent > 0 ? "success" : "warning"}>
+        <Alert
+          className="mb-4"
+          variant={sendResult.sent > 0 ? "success" : "warning"}
+        >
           <AlertTitle>ส่งลิงก์ทาง LINE สำเร็จ {sendResult.sent} คน</AlertTitle>
           <AlertDescription>
             {sendResult.skipped.length === 0
@@ -457,7 +514,8 @@ export function TeacherAttendanceLinksPage() {
           }}
           title="ไม่สามารถโหลดข้อมูลได้"
         />
-      ) : schoolsQuery.isLoading || (selectedSchoolId && termsQuery.isLoading) ? (
+      ) : schoolsQuery.isLoading ||
+        (selectedSchoolId && termsQuery.isLoading) ? (
         <SkeletonTable />
       ) : schools.length === 0 ? (
         <EmptyState
@@ -482,7 +540,9 @@ export function TeacherAttendanceLinksPage() {
       ) : entries.length === 0 ? (
         <EmptyState
           description={
-            search ? "ลองเปลี่ยนคำค้นหา" : "เพิ่มครูและกำหนดห้องหรือรายวิชาในภาคเรียนนี้ก่อน"
+            search
+              ? "ลองเปลี่ยนคำค้นหา"
+              : "เพิ่มครูและกำหนดห้องหรือรายวิชาในภาคเรียนนี้ก่อน"
           }
           icon={PAGE_ICON}
           title={search ? "ไม่พบครูที่ค้นหา" : "ยังไม่มีครูในภาคเรียนนี้"}
@@ -494,7 +554,12 @@ export function TeacherAttendanceLinksPage() {
               <p className="text-sm font-semibold text-slate-700">
                 เลือกครู {selectedEntries.length} คน
               </p>
-              <Button icon={X} onClick={clearSelection} size="sm" variant="outline">
+              <Button
+                icon={X}
+                onClick={clearSelection}
+                size="sm"
+                variant="outline"
+              >
                 ยกเลิกการเลือก
               </Button>
             </div>
@@ -504,12 +569,18 @@ export function TeacherAttendanceLinksPage() {
             entries={entries}
             onCopy={(entry) => void copyLink(entry)}
             onCreate={(entry) => void createLink(entry)}
+            onIssueLineInvitation={(entry) =>
+              void issueLineInvitationLink(entry)
+            }
             onRevoke={(entry) => {
               setRevokeTarget(entry);
               setRevokeReason("");
               revokeGrant.reset();
             }}
             onRotate={(entry) => void rotateLink(entry)}
+            onRevokeLineInvitation={(entry) =>
+              void revokeLineInvitationLink(entry)
+            }
             onUnlinkLine={(entry) => void unlinkLineAccount(entry)}
             onSelectAll={selectRows}
             onSelectRow={selectRow}
@@ -552,11 +623,18 @@ export function TeacherAttendanceLinksPage() {
       >
         <DialogContent onClose={() => setRevokeTarget(null)}>
           <DialogHeader>
-            <DialogTitle>เพิกถอนลิงก์ของ {revokeTarget?.teacherDisplayName}</DialogTitle>
-            <DialogDescription>ครูจะเข้าใช้งานผ่านลิงก์นี้ไม่ได้ทันที</DialogDescription>
+            <DialogTitle>
+              เพิกถอนลิงก์ของ {revokeTarget?.teacherDisplayName}
+            </DialogTitle>
+            <DialogDescription>
+              ครูจะเข้าใช้งานผ่านลิงก์นี้ไม่ได้ทันที
+            </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-3">
-            <FormErrorAlert error={revokeGrant.error} fallback="ไม่สามารถเพิกถอนลิงก์ได้" />
+            <FormErrorAlert
+              error={revokeGrant.error}
+              fallback="ไม่สามารถเพิกถอนลิงก์ได้"
+            />
             <div>
               <Label htmlFor="revoke-reason" required>
                 เหตุผล

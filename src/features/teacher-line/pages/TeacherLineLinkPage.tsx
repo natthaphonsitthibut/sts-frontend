@@ -1,7 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MessageCircle } from "lucide-react";
 import { useState } from "react";
-import { Alert, AlertDescription, Button, Input, Label } from "../../../components/base";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  Label,
+} from "../../../components/base";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { teacherLineService } from "../api/teacher-line.service";
@@ -18,20 +24,24 @@ export function TeacherLineLinkPage() {
   const [step, setStep] = useState<Step>("EMAIL");
   const [email, setEmail] = useState("");
   const [notice, setNotice] = useState("");
-  const [binding, setBinding] = useState<{ bindingToken: string; teacherName: string } | null>(
-    null,
-  );
+  const [binding, setBinding] = useState<{
+    bindingToken: string;
+    teacherName: string;
+  } | null>(null);
 
   const enabledQuery = useQuery({
     queryKey: ["line-link", "status"],
     queryFn: teacherLineService.isEnabled,
   });
   const requestOtp = useMutation({ mutationFn: teacherLineService.requestOtp });
-  const startAuthorization = useMutation({ mutationFn: teacherLineService.startAuthorization });
+  const startAuthorization = useMutation({
+    mutationFn: teacherLineService.startAuthorization,
+  });
 
   async function openLineAuthorization(bindingToken: string): Promise<void> {
     try {
-      const authorizationUrl = await startAuthorization.mutateAsync(bindingToken);
+      const authorizationUrl =
+        await startAuthorization.mutateAsync(bindingToken);
       window.location.assign(authorizationUrl);
     } catch {
       // React Query retains the error and the alert below explains the retry.
@@ -50,7 +60,10 @@ export function TeacherLineLinkPage() {
   if (enabledQuery.isPending) {
     return (
       <MagicAuthCard subtitle="กำลังตรวจสอบบริการ…" title="เชื่อมบัญชี LINE">
-        <div aria-hidden="true" className="h-11 animate-pulse rounded-lg bg-slate-100" />
+        <div
+          aria-hidden="true"
+          className="h-11 animate-pulse rounded-lg bg-slate-100"
+        />
       </MagicAuthCard>
     );
   }
@@ -60,7 +73,8 @@ export function TeacherLineLinkPage() {
       <MagicAuthCard title="เชื่อมบัญชี LINE">
         <Alert variant="warning">
           <AlertDescription>
-            ระบบเชื่อมบัญชี LINE ยังไม่เปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบของโรงเรียน
+            ระบบเชื่อมบัญชี LINE ยังไม่เปิดใช้งาน
+            กรุณาติดต่อผู้ดูแลระบบของโรงเรียน
           </AlertDescription>
         </Alert>
       </MagicAuthCard>
@@ -111,7 +125,9 @@ export function TeacherLineLinkPage() {
               setNotice(await requestOtp.mutateAsync(email.trim()));
             }}
             onVerifyOtp={async (code) => {
-              setBinding(await teacherLineService.verifyOtp(email.trim(), code));
+              setBinding(
+                await teacherLineService.verifyOtp(email.trim(), code),
+              );
               setStep("CONNECT");
             }}
           />

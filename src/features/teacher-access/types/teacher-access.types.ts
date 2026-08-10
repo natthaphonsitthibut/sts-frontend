@@ -13,7 +13,11 @@ export type TeacherAccessCapability =
   | "HOMEROOM_ATTENDANCE"
   | "SUBJECT_ATTENDANCE"
   | "TEACHER_OBSERVATION";
-export type TeacherAccessGrantStatus = "ACTIVE" | "REVOKED" | "EXPIRED" | "SUSPENDED";
+export type TeacherAccessGrantStatus =
+  | "ACTIVE"
+  | "REVOKED"
+  | "EXPIRED"
+  | "SUSPENDED";
 /** Roster rows also cover teachers who have no link yet. */
 export type TeacherLinkStatus = TeacherAccessGrantStatus | "NOT_CREATED";
 
@@ -67,9 +71,18 @@ export interface TeacherAccessGrant {
 
 /** One teacher row of the จัดการลิงก์เช็คชื่อ screen. */
 /** VERIFIED_NOT_REACHABLE = ยืนยันแล้วแต่ลบ/บล็อก OA จึงส่งข้อความไม่ถึง */
-export type TeacherLineStatus = "NOT_VERIFIED" | "VERIFIED" | "VERIFIED_NOT_REACHABLE";
+export type TeacherLineStatus =
+  | "NOT_VERIFIED"
+  | "VERIFIED"
+  | "VERIFIED_NOT_REACHABLE";
 
 export type TeacherLineFilter = "VERIFIED" | "NOT_VERIFIED" | "REACHABLE";
+export type TeacherLineInvitationStatus =
+  | "NOT_ISSUED"
+  | "ACTIVE"
+  | "CONSUMED"
+  | "EXPIRED"
+  | "REVOKED";
 
 export interface TeacherLinkRosterEntry {
   teacherMembershipId: string;
@@ -85,6 +98,15 @@ export interface TeacherLinkRosterEntry {
   expiresAt: string | null;
   lastUsedAt: string | null;
   lineStatus: TeacherLineStatus;
+  lineInvitationId: string | null;
+  lineInvitationStatus: TeacherLineInvitationStatus;
+  lineInvitationExpiresAt: string | null;
+}
+
+export interface TeacherLineInvitationIssueResult {
+  id: string;
+  url: string;
+  expiresAt: string;
 }
 
 export interface TeacherAccessContext {
@@ -95,6 +117,7 @@ export interface TeacherAccessContext {
   schoolTermId: string;
   academicYear: number;
   semester: number;
+  demoAttendanceActionsEnabled: boolean;
   capabilities: TeacherAccessCapability[];
   assignments: TeacherAccessAssignment[];
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
-import { ErrorState, SkeletonCards } from "../../../components/layout/page-primitives";
+import {
+  ErrorState,
+  SkeletonCards,
+} from "../../../components/layout/page-primitives";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { TeacherAccessOtpRequiredError } from "../api/teacher-access.service";
@@ -39,9 +42,13 @@ function consumeFragmentToken(): string {
  */
 export function TeacherLinkLayout() {
   const token = useTeacherLinkSessionStore((state) => state.token);
-  const sessionToken = useTeacherLinkSessionStore((state) => state.sessionToken);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
   const setToken = useTeacherLinkSessionStore((state) => state.setToken);
-  const setSessionToken = useTeacherLinkSessionStore((state) => state.setSessionToken);
+  const setSessionToken = useTeacherLinkSessionStore(
+    (state) => state.setSessionToken,
+  );
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
 
   useEffect(() => {

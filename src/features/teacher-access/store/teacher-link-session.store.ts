@@ -23,7 +23,8 @@ function readStored(): TeacherLinkCredential {
     const parsed = JSON.parse(raw) as Partial<TeacherLinkCredential>;
     return {
       token: typeof parsed.token === "string" ? parsed.token : "",
-      sessionToken: typeof parsed.sessionToken === "string" ? parsed.sessionToken : null,
+      sessionToken:
+        typeof parsed.sessionToken === "string" ? parsed.sessionToken : null,
     };
   } catch {
     return { token: "", sessionToken: null };
@@ -45,20 +46,22 @@ function persist(credential: TeacherLinkCredential): void {
  * page's state. sessionStorage keeps it to the tab that opened the link and
  * drops it when that tab closes; the URL fragment is cleared immediately.
  */
-export const useTeacherLinkSessionStore = create<TeacherLinkSessionState>((set, get) => ({
-  ...readStored(),
-  setToken: (token) => {
-    // A different link replaces any previously verified session.
-    const sessionToken = get().token === token ? get().sessionToken : null;
-    persist({ token, sessionToken });
-    set({ token, sessionToken });
-  },
-  setSessionToken: (sessionToken) => {
-    persist({ token: get().token, sessionToken });
-    set({ sessionToken });
-  },
-  clear: () => {
-    persist({ token: "", sessionToken: null });
-    set({ token: "", sessionToken: null });
-  },
-}));
+export const useTeacherLinkSessionStore = create<TeacherLinkSessionState>(
+  (set, get) => ({
+    ...readStored(),
+    setToken: (token) => {
+      // A different link replaces any previously verified session.
+      const sessionToken = get().token === token ? get().sessionToken : null;
+      persist({ token, sessionToken });
+      set({ token, sessionToken });
+    },
+    setSessionToken: (sessionToken) => {
+      persist({ token: get().token, sessionToken });
+      set({ sessionToken });
+    },
+    clear: () => {
+      persist({ token: "", sessionToken: null });
+      set({ token: "", sessionToken: null });
+    },
+  }),
+);

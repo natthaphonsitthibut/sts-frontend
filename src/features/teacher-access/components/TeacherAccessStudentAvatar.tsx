@@ -21,5 +21,7 @@ export function TeacherAccessStudentAvatar({
   );
   const photoUrl = useBlobObjectUrl(photoQuery.data);
 
-  return <StudentAvatar name={studentDisplayName(student)} photoUrl={photoUrl} />;
+  return (
+    <StudentAvatar name={studentDisplayName(student)} photoUrl={photoUrl} />
+  );
 }
