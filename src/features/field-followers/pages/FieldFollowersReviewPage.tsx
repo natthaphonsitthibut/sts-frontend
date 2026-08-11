@@ -216,7 +216,7 @@ export function FieldFollowersReviewPage() {
               { label: "พื้นที่", sortKey: "area" },
               { label: "สถานะ", sortKey: "status" },
               { label: "วันที่สมัคร", sortKey: "createdAt" },
-              "",
+              "เครื่องมือ",
             ]}
             minWidthClassName="min-w-full"
             onSortChange={(nextSort) => {

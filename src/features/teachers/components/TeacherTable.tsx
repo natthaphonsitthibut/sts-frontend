@@ -100,7 +100,7 @@ export function TeacherTable({
           { label: "เบอร์โทรศัพท์", sortKey: "phone" },
           { label: "ไอดีไลน์", sortKey: "lineId" },
           { label: "อีเมล", sortKey: "email" },
-          "",
+          "เครื่องมือ",
         ]}
         columnWidths={[
           "w-[7%]",

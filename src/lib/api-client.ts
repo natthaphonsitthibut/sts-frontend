@@ -102,6 +102,7 @@ apiClient.interceptors.response.use(
       const onPublicLinkPage =
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
+        window.location.pathname.startsWith("/araid") ||
         window.location.pathname === "/teacher-access" ||
         window.location.pathname.startsWith("/apply/");
 

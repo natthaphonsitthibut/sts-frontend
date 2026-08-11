@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
-import { Avatar, SchoolIcon } from "../base";
+import { Avatar } from "../base";
 import { cn } from "../../lib/utils";
+import { AppBrand } from "./AppFrame";
 
 const GUEST_PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
@@ -37,12 +38,7 @@ export function GuestPageShell({
       {showHeader ? (
         <header className="h-16 border-b border-slate-200 bg-white">
           <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <SchoolIcon className="size-7 shrink-0 text-primary" aria-hidden="true" />
-              <span className="truncate text-xl font-bold text-primary">
-                ระบบติดตามผู้เรียน
-              </span>
-            </div>
+            <AppBrand className="max-w-xs sm:max-w-sm" label="ระบบติดตามผู้เรียน" />
             {showProfile ? (
               <Avatar
                 aria-label={profileName ? `ผู้รับมอบหมาย: ${profileName}` : "ผู้รับมอบหมาย"}

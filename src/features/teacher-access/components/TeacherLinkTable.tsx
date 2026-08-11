@@ -7,9 +7,15 @@ import {
   ShieldOff,
   Unlink,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Avatar,
   Checkbox,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   IconButton,
   type DropdownMenuItem,
@@ -90,19 +96,41 @@ function LineStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
 
 function TeacherIdentity({
   entry,
+  onPreviewPhoto,
   showAssignmentCount = false,
 }: {
   entry: TeacherLinkRosterEntry;
+  onPreviewPhoto?: (entry: TeacherLinkRosterEntry) => void;
   showAssignmentCount?: boolean;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <Avatar
-        data-teacher-link-avatar
-        gradientName={entry.teacherDisplayName}
-        imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
-        imageUrl={resolveApiMediaUrl(entry.photoUrl)}
-      />
+      {entry.photoUrl && onPreviewPhoto ? (
+        <button
+          aria-label={`ดูรูปประจำตัวของ ${entry.teacherDisplayName}`}
+          className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPreviewPhoto(entry);
+          }}
+          title={`ดูรูปประจำตัวของ ${entry.teacherDisplayName}`}
+          type="button"
+        >
+          <Avatar
+            data-teacher-link-avatar
+            gradientName={entry.teacherDisplayName}
+            imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
+            imageUrl={resolveApiMediaUrl(entry.photoUrl)}
+          />
+        </button>
+      ) : (
+        <Avatar
+          data-teacher-link-avatar
+          gradientName={entry.teacherDisplayName}
+          imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
+          imageUrl={resolveApiMediaUrl(entry.photoUrl)}
+        />
+      )}
       <div className="min-w-0">
         <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
         {showAssignmentCount ? (
@@ -112,7 +140,7 @@ function TeacherIdentity({
         ) : null}
         {entry.hasEmail ? null : (
           <p className="mt-1 text-xs font-medium text-warning-700">
-            ยังไม่มีอีเมล — เข้าลิงก์ไม่ได้จนกว่าจะเพิ่มอีเมลให้ครู
+            ยังไม่มีอีเมล — ต้องยืนยันผ่าน AraID หรือเพิ่มอีเมลก่อนเข้าใช้
           </p>
         )}
       </div>
@@ -255,6 +283,8 @@ export function TeacherLinkTable({
   onSortChange,
   ...handlers
 }: TeacherLinkTableProps) {
+  const [photoPreview, setPhotoPreview] = useState<TeacherLinkRosterEntry | null>(null);
+  const photoPreviewUrl = resolveApiMediaUrl(photoPreview?.photoUrl ?? null);
   const allSelected =
     entries.length > 0 &&
     entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
@@ -310,7 +340,7 @@ export function TeacherLinkTable({
             </DataTableCell>
             <DataTableCell>{startIndex + index}</DataTableCell>
             <DataTableCell>
-              <TeacherIdentity entry={entry} />
+              <TeacherIdentity entry={entry} onPreviewPhoto={setPhotoPreview} />
             </DataTableCell>
             <DataTableCell className="text-center">
               <LinkStatus entry={entry} />
@@ -342,7 +372,11 @@ export function TeacherLinkTable({
                     onSelectRow(entry, event.currentTarget.checked)
                   }
                 />
-                <TeacherIdentity entry={entry} showAssignmentCount />
+                <TeacherIdentity
+                  entry={entry}
+                  onPreviewPhoto={setPhotoPreview}
+                  showAssignmentCount
+                />
               </div>
               <RowMenu
                 busy={busyMembershipId === entry.teacherMembershipId}
@@ -363,6 +397,23 @@ export function TeacherLinkTable({
           </TableCard>
         ))}
       </TableCardList>
+
+      <Dialog onOpenChange={(open) => !open && setPhotoPreview(null)} open={Boolean(photoPreview)}>
+        <DialogContent onClose={() => setPhotoPreview(null)}>
+          <DialogHeader>
+            <DialogTitle>รูปประจำตัว {photoPreview?.teacherDisplayName}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {photoPreview && photoPreviewUrl ? (
+              <img
+                alt={`รูปประจำตัวของ ${photoPreview.teacherDisplayName}`}
+                className="mx-auto max-h-[70dvh] w-full rounded-lg object-contain"
+                src={photoPreviewUrl}
+              />
+            ) : null}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

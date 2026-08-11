@@ -5,6 +5,10 @@ import { EmptyState, ErrorState, SkeletonStack } from "../../../components/layou
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import { useTeacherStudentSubjectAttendance } from "../../teacher-access/hooks/useTeacherAccess";
+import {
+  ATTENDANCE_STATUS_STYLE,
+  normalizeAttendanceSelectionStatus,
+} from "../../attendance/lib/attendance-presentation";
 import { useStudentSubjectAttendance } from "../hooks/useStudentProfileSummary";
 import type {
   StudentProfileAttendanceDay,
@@ -40,11 +44,11 @@ function parseIsoDate(value: string | null | undefined): string | null {
 function statusDayClass(category: StudentProfileAttendanceDay["attendanceCategory"] | undefined): string {
   switch (category) {
     case "ALL_PERIODS":
-      return "bg-success-100 text-success-700 hover:bg-success-100";
+      return "bg-success-100 text-success hover:bg-success-100";
     case "SOME_PERIODS":
-      return "bg-warning-100 text-warning-700 hover:bg-warning-100";
+      return "bg-brand-orange-bg text-brand-orange hover:bg-brand-orange-bg";
     case "NO_PERIODS":
-      return "bg-danger-100 text-danger-700 hover:bg-danger-100";
+      return "bg-danger-100 text-danger hover:bg-danger-100";
     default:
       return "text-slate-800 hover:bg-slate-100";
   }
@@ -53,11 +57,27 @@ function statusDayClass(category: StudentProfileAttendanceDay["attendanceCategor
 const ATTENDANCE_LEGEND: Array<{
   badgeVariant: BadgeProps["variant"];
   category: StudentProfileAttendanceDay["attendanceCategory"];
+  className: string;
   label: string;
 }> = [
-  { badgeVariant: "success", category: "ALL_PERIODS", label: "เข้าทุกคาบ" },
-  { badgeVariant: "warning", category: "SOME_PERIODS", label: "เข้าบางคาบ" },
-  { badgeVariant: "destructive", category: "NO_PERIODS", label: "ไม่เข้าเรียน" },
+  {
+    badgeVariant: "success",
+    category: "ALL_PERIODS",
+    className: "bg-success-100 text-success",
+    label: "เข้าทุกคาบ",
+  },
+  {
+    badgeVariant: "warning",
+    category: "SOME_PERIODS",
+    className: "bg-brand-orange-bg text-brand-orange",
+    label: "เข้าบางคาบ",
+  },
+  {
+    badgeVariant: "destructive",
+    category: "NO_PERIODS",
+    className: "bg-danger-100 text-danger",
+    label: "ไม่เข้าเรียน",
+  },
 ];
 
 interface StudentAttendanceCalendarProps {
@@ -229,7 +249,11 @@ export function StudentAttendanceCalendar({
         {summary.attendance.days.length > 0 ? (
           <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
             {ATTENDANCE_LEGEND.map((item) => (
-              <Badge key={item.category} variant={item.badgeVariant}>
+              <Badge
+                className={item.className}
+                key={item.category}
+                variant={item.badgeVariant}
+              >
                 <span className="mr-1.5 size-2 rounded-full bg-current" aria-hidden="true" />
                 {item.label}
               </Badge>
@@ -258,27 +282,35 @@ export function StudentAttendanceCalendar({
           />
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
-            {subjectQuery.data.map((record) => (
-              <li
-                className="flex items-center justify-between gap-4 py-3 text-sm"
-                key={`${record.date}-${record.period}`}
-              >
-                <div className="min-w-0">
-                  <div className="font-semibold text-slate-900">
-                    {record.subjectName ?? record.subjectCode ?? `คาบที่ ${record.period}`}
+            {subjectQuery.data.map((record) => {
+              const status = normalizeAttendanceSelectionStatus(
+                record.statusInternalCode || record.statusCode,
+              );
+              return (
+                <li
+                  className="flex items-center justify-between gap-4 py-3 text-sm"
+                  key={`${record.date}-${record.period}`}
+                >
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900">
+                      {record.subjectName ?? record.subjectCode ?? `คาบที่ ${record.period}`}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-500">
+                      คาบที่ {record.period} · บันทึกเมื่อ {formatThaiDateTime(record.recordedAt)}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-500">
+                      ผู้เช็คชื่อ {record.recordedBy ?? "-"}
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    คาบที่ {record.period} · บันทึกเมื่อ {formatThaiDateTime(record.recordedAt)}
-                  </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    ผู้เช็คชื่อ {record.recordedBy ?? "-"}
-                  </div>
-                </div>
-                <Badge variant={record.statusBadgeVariant as BadgeProps["variant"]}>
-                  {record.statusLabel}
-                </Badge>
-              </li>
-            ))}
+                  <Badge
+                    className={ATTENDANCE_STATUS_STYLE[status].displayClass}
+                    variant={record.statusBadgeVariant as BadgeProps["variant"]}
+                  >
+                    {record.statusLabel}
+                  </Badge>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

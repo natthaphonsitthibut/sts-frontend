@@ -9,7 +9,7 @@ import {
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 import { cn } from "../../lib/utils";
-import { SidebarMenuContent } from "./AppFrame";
+import { AppBrand, SidebarMenuContent } from "./AppFrame";
 import { useSidebarUiStore } from "./sidebar-ui.store";
 
 interface AppSidebarProps {
@@ -48,18 +48,33 @@ export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) 
 
   return (
     <>
-      <SidebarContainer
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+      <div
         className={cn(
-          "transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          "hidden h-full shrink-0 transition-[width] duration-300 ease-out motion-reduce:transition-none lg:block",
           visuallyCollapsed ? "w-20" : "w-[260px]",
         )}
       >
-        <SidebarContent collapsed={visuallyCollapsed} />
-      </SidebarContainer>
+        <SidebarContainer
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={cn(
+            "h-full overflow-x-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none",
+            visuallyCollapsed ? "w-20" : "w-[260px]",
+          )}
+        >
+          <SidebarContent collapsed={visuallyCollapsed} />
+        </SidebarContainer>
+      </div>
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
-        <SheetHeader heading="ระบบติดตามนักเรียน" onClose={() => onMobileOpenChange(false)} />
+        <SheetHeader
+          heading={
+            <AppBrand
+              className="max-w-52"
+              onClick={() => onMobileOpenChange(false)}
+            />
+          }
+          onClose={() => onMobileOpenChange(false)}
+        />
         <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
       </Sheet>
     </>

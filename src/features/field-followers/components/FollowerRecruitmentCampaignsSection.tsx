@@ -381,7 +381,7 @@ export function FollowerRecruitmentCampaignsSection({
               { label: "เข้าชม", className: "whitespace-nowrap" },
               { label: "สมัครแล้ว", className: "whitespace-nowrap" },
               { label: "สร้างเมื่อ", className: "whitespace-nowrap" },
-              "",
+              "เครื่องมือ",
             ]}
             minWidthClassName="min-w-full"
             responsiveBreakpoint="lg"

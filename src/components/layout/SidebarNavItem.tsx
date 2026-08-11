@@ -29,7 +29,7 @@ interface SidebarNavItemProps {
  */
 function navLabelClassName(collapsed: boolean): string {
   return cn(
-    "truncate transition-[opacity,max-width,margin] duration-200 ease-out motion-reduce:transition-none",
+    "truncate transition-[opacity,max-width,margin] duration-300 ease-out motion-reduce:transition-none",
     collapsed ? "-ml-3 max-w-0 opacity-0" : "max-w-48 opacity-100",
   );
 }
@@ -54,7 +54,7 @@ function navLinkClassName(
     // expanded width so it only bites while collapsing). Color transitions
     // ride along because conflicting transition-property utilities merge.
     nested &&
-      "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none",
+      "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-300 ease-out motion-reduce:transition-none",
     collapsed && nested && "max-w-10",
     // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง
     isActive && "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
@@ -126,11 +126,15 @@ export function SidebarNavItem({
   const hasActiveChild = Boolean(
     item.children?.some((child) => isRouteActive(child, activePathname, menuRoutes)),
   );
-  const [open, setOpen] = useState(hasActiveChild);
-  const expanded = open || hasActiveChild;
+  // `null` means follow the route-derived default. Once the user toggles the
+  // group, their explicit choice wins — including collapsing an active group.
+  // The parent active treatment remains route-derived and is therefore still
+  // visible on the collapsed icon rail.
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const expanded = manualExpanded ?? hasActiveChild;
 
   function handleGroupToggle(): void {
-    setOpen((value) => !value);
+    setManualExpanded(!expanded);
   }
 
   // The collapsed icon rail never shows nested children, so the parent icon
@@ -142,6 +146,7 @@ export function SidebarNavItem({
       <div>
         <button
           type="button"
+          aria-current={collapsed && hasActiveChild ? "page" : undefined}
           aria-expanded={expanded}
           aria-label={collapsed ? item.label : undefined}
           onClick={handleGroupToggle}
@@ -172,7 +177,7 @@ export function SidebarNavItem({
           <ChevronDown
             aria-hidden="true"
             className={cn(
-              "absolute transition-[top,right,width,height,color,transform] duration-200 ease-out motion-reduce:transition-none",
+              "absolute transition-[top,right,width,height,color,transform] duration-300 ease-out motion-reduce:transition-none",
               collapsed ? "right-1 top-6 size-3" : "right-3 top-3 size-4",
               expanded && "rotate-180",
               collapsed && expanded ? "text-primary" : "text-slate-500",
@@ -182,7 +187,7 @@ export function SidebarNavItem({
         <div
           aria-hidden={!childrenVisible}
           className={cn(
-            "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+            "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
             childrenVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
         >
@@ -193,7 +198,7 @@ export function SidebarNavItem({
                 plus `aria-hidden`/`tabIndex` already cover paint and a11y. */}
             <div
               className={cn(
-                "space-y-0.5 border-l py-1 transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+                "space-y-0.5 border-l py-1 transition-[padding] duration-300 ease-out motion-reduce:transition-none",
                 collapsed ? "border-slate-200/80 pl-2" : "border-slate-200 pl-4",
               )}
             >

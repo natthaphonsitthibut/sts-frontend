@@ -109,6 +109,18 @@ export interface TeacherLineInvitationIssueResult {
   expiresAt: string;
 }
 
+export interface TeacherLineGroupInvitationSummary {
+  id: string;
+  schoolId: number;
+  schoolName: string;
+  url: string;
+  startsAt: string;
+  expiresAt: string;
+  status: "PENDING" | "ACTIVE";
+}
+
+export type TeacherLineGroupInvitationIssueResult = TeacherLineGroupInvitationSummary;
+
 export interface TeacherAccessContext {
   grantId: string;
   teacherDisplayName: string;
@@ -117,7 +129,6 @@ export interface TeacherAccessContext {
   schoolTermId: string;
   academicYear: number;
   semester: number;
-  demoAttendanceActionsEnabled: boolean;
   capabilities: TeacherAccessCapability[];
   assignments: TeacherAccessAssignment[];
 }
@@ -157,6 +168,19 @@ export interface TeacherAccessOtpChallenge {
   maskedEmail: string;
   expiresAt: string;
 }
+
+export interface TeacherAccessAraIdChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+}
+
+export type TeacherAccessAraIdChallengeStatus =
+  | { status: "PENDING"; sessionToken?: never }
+  | { status: "IN_PROGRESS"; expiresAt: string; sessionToken?: never }
+  | { status: "APPROVED"; sessionToken: string };
 
 export interface IssueTeacherAccessGrantInput {
   teacherMembershipId: number;

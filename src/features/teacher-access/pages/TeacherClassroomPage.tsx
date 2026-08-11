@@ -13,6 +13,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   DatePicker,
   DropdownMenu,
@@ -44,14 +45,12 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { getThaiDateKey } from "../../../lib/date-time";
 import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { cn } from "../../../lib/utils";
 import { AttendanceRosterTable } from "../../attendance/components/AttendanceRosterTable";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { ClassroomTableExportDialog } from "../../school-structure/components/ClassroomTableExportDialog";
 import {
-  getRiskTierChipClass,
   RISK_TIER_ORDER,
   RISK_TIER_PRESENTATION,
 } from "../../students/lib/risk-tier-presentation";
@@ -59,10 +58,8 @@ import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import { TeacherAccessStudentAvatar } from "../components/TeacherAccessStudentAvatar";
 import {
   useCreateTeacherStudentComment,
-  useClearTeacherAccessDemoAbsences,
   useRecordTeacherClassroomExport,
   useSaveTeacherAccessAttendance,
-  useSeedTeacherAccessDemoAbsences,
   useTeacherAccessAttendanceSlots,
   useTeacherAccessRoster,
   useTeacherStudentPhoto,
@@ -165,8 +162,6 @@ export function TeacherClassroomPage() {
     Number(assignmentId) || undefined,
   );
   const saveAttendance = useSaveTeacherAccessAttendance(credential);
-  const seedDemoAbsences = useSeedTeacherAccessDemoAbsences(credential);
-  const clearDemoAbsences = useClearTeacherAccessDemoAbsences(credential);
   const attendanceSlotsQuery = useTeacherAccessAttendanceSlots(
     credential,
     Number(assignmentId) || undefined,
@@ -432,14 +427,14 @@ export function TeacherClassroomPage() {
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
-                    <span
-                      className={cn(
-                        "inline-flex h-9 w-32 shrink-0 items-center justify-center rounded-full border bg-white px-3 text-sm font-medium",
-                        getRiskTierChipClass(tier),
-                      )}
+                    <Badge
+                      data-student-risk-tier={tier}
+                      variant={
+                        RISK_TIER_PRESENTATION[tier]?.badge ?? "destructive"
+                      }
                     >
                       {RISK_TIER_PRESENTATION[tier]?.label ?? tier}
-                    </span>
+                    </Badge>
                   </div>
                 </DataTableCell>
                 <DataTableCell>
@@ -456,11 +451,9 @@ export function TeacherClassroomPage() {
                     />
                     <IconButton
                       aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
-                      className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                       icon={MessageSquareText}
-                      iconClassName="text-white"
                       onClick={() => setCommentStudent(student)}
-                      variant="outline"
+                      variant="comment"
                     />
                   </div>
                 </DataTableCell>
@@ -550,12 +543,6 @@ export function TeacherClassroomPage() {
               error={saveAttendance.error}
               fallback="ไม่สามารถบันทึกการเช็คชื่อได้"
             />
-            {context.demoAttendanceActionsEnabled ? (
-              <FormErrorAlert
-                error={seedDemoAbsences.error ?? clearDemoAbsences.error}
-                fallback="ไม่สามารถจัดการประวัติเช็คชื่อสาธิตได้"
-              />
-            ) : null}
             {saved ? (
               <Alert variant="success">
                 <AlertTitle className="flex items-center gap-2">
@@ -567,63 +554,7 @@ export function TeacherClassroomPage() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {context.demoAttendanceActionsEnabled &&
-            clearDemoAbsences.isSuccess ? (
-              <Alert variant="success">
-                <AlertTitle>ล้างประวัติเช็กชื่อแล้ว</AlertTitle>
-                <AlertDescription>
-                  ล้างเฉพาะข้อมูล 3 วันล่าสุดที่สร้างจากปุ่มสาธิตเรียบร้อยแล้ว
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {context.demoAttendanceActionsEnabled &&
-            seedDemoAbsences.isSuccess ? (
-              <Alert variant="success">
-                <AlertTitle>สร้างประวัติขาดเรียนแล้ว</AlertTitle>
-                <AlertDescription>
-                  นักเรียน 3
-                  คนแรกถูกบันทึกเป็นขาดเรียนย้อนหลังในวันชุดเดียวกับปุ่มล้าง
-                </AlertDescription>
-              </Alert>
-            ) : null}
             <div className="flex flex-wrap justify-end gap-2">
-              {context.demoAttendanceActionsEnabled &&
-              assignment?.assignmentKind === "SUBJECT" ? (
-                <>
-                  <Button
-                    disabled={
-                      clearDemoAbsences.isPending || seedDemoAbsences.isPending
-                    }
-                    isLoading={clearDemoAbsences.isPending}
-                    loadingText="กำลังล้างข้อมูล"
-                    onClick={() => {
-                      clearDemoAbsences.reset();
-                      seedDemoAbsences.reset();
-                      clearDemoAbsences.mutate(Number(assignmentId));
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    ล้างประวัติเช็คชื่อ 3 วันล่าสุด
-                  </Button>
-                  <Button
-                    disabled={
-                      seedDemoAbsences.isPending || clearDemoAbsences.isPending
-                    }
-                    isLoading={seedDemoAbsences.isPending}
-                    loadingText="กำลังสร้างข้อมูล"
-                    onClick={() => {
-                      clearDemoAbsences.reset();
-                      seedDemoAbsences.reset();
-                      seedDemoAbsences.mutate(Number(assignmentId));
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    สร้างขาด 3 คนย้อนหลัง 3 วัน
-                  </Button>
-                </>
-              ) : null}
               <Button
                 disabled={
                   attendanceSlotsQuery.isLoading ||

@@ -19,6 +19,7 @@ export function CaseStatusBadge({
   return (
     <Badge
       className="max-w-full justify-center whitespace-normal break-words px-2 text-center leading-4"
+      data-case-status={status}
       variant={badgeVariant ?? item?.badgeVariant ?? "secondary"}
     >
       {label || item?.label || status || "-"}

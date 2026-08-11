@@ -2,8 +2,17 @@ import type { ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
+import { AraIdDocumentBrand } from "../features/araid/components/AraIdDocumentBrand";
 import {
   AdminAccessPage,
+  AraIdSplashPage,
+  AraIdLoginPage,
+  AraIdPinPage,
+  AraIdHomePage,
+  AraIdDocumentsPage,
+  AraIdSettingsPage,
+  AraIdManagePage,
+  AraIdAuthorizePage,
   AuditLogDetailPage,
   AttendanceCheckInPage,
   MyClassroomsPage,
@@ -11,6 +20,8 @@ import {
   TeacherAttendanceLinksPage,
   TeacherLineInvitationPage,
   TeacherLineLinkPage,
+  TeacherLineAraIdChallengePage,
+  TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
   TeacherClassroomPage,
   TeacherLinkLayout,
@@ -510,6 +521,14 @@ export const router = createBrowserRouter([
     element: withSuspense(<TeacherLineLinkPage />),
   },
   {
+    path: "/line-link/araid-authorize",
+    element: withSuspense(<TeacherLineAraIdAuthorizePage />),
+  },
+  {
+    path: "/line-link/araid",
+    element: withSuspense(<TeacherLineAraIdChallengePage />),
+  },
+  {
     path: "/line-link/invite",
     element: withSuspense(<TeacherLineInvitationPage />),
   },
@@ -563,6 +582,48 @@ export const router = createBrowserRouter([
   {
     path: "/apply/field-follower/:code",
     element: withSuspense(<FieldFollowerApplicationPage />),
+  },
+  {
+    path: "/araid",
+    element: <AraIdDocumentBrand />,
+    children: [
+      {
+        index: true,
+        element: withSuspense(<AraIdSplashPage />),
+      },
+      {
+        path: "login",
+        element: withSuspense(<AraIdLoginPage />),
+      },
+      {
+        path: "pin",
+        element: withSuspense(<AraIdPinPage />),
+      },
+      {
+        path: "home",
+        element: withSuspense(<AraIdHomePage />),
+      },
+      {
+        path: "documents",
+        element: withSuspense(<AraIdDocumentsPage />),
+      },
+      {
+        path: "settings",
+        element: withSuspense(<AraIdSettingsPage />),
+      },
+      {
+        path: "manage",
+        element: (
+          <ProtectedRoute role="ADMIN">
+            {withSuspense(<AraIdManagePage />)}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "authorize",
+        element: withSuspense(<AraIdAuthorizePage />),
+      },
+    ],
   },
   {
     path: "/login",

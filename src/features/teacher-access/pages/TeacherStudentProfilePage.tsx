@@ -168,11 +168,9 @@ export function TeacherStudentProfilePage() {
               {assignment ? (
                 <IconButton
                   aria-label={`เพิ่มความคิดเห็นของ ${studentFullName}`}
-                  className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                   icon={MessageSquareText}
-                  iconClassName="text-white"
                   onClick={() => setCommentOpen(true)}
-                  variant="outline"
+                  variant="comment"
                 />
               ) : null}
             </div>

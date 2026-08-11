@@ -28,7 +28,7 @@ export interface DataTableHeading {
 type DataTableHeadingInput = ReactNode | DataTableHeading;
 
 interface DataTableProps {
-  /** Column headings; empty string renders a spacer cell (e.g. an actions column). */
+  /** Column headings; an empty label is normalized to the shared action heading. */
   headings: DataTableHeadingInput[];
   headingRows?: DataTableHeadingInput[][];
   sort?: DataTableSortState;
@@ -102,6 +102,7 @@ export function DataTable({
   const rows = headingRows ?? [headings];
   return (
     <div
+      data-slot="data-table"
       className={cn(
         "overflow-hidden rounded-lg border border-slate-200 bg-white",
         responsive &&
@@ -136,6 +137,11 @@ export function DataTable({
                   const config = isHeadingConfig(heading)
                     ? heading
                     : { label: heading };
+                  const isActionHeading =
+                    config.label === "" || config.label === "เครื่องมือ";
+                  const headingLabel = isActionHeading
+                    ? "เครื่องมือ"
+                    : config.label;
                   const sortKey = config.sortKey;
                   const isSortable = Boolean(sortKey && onSortChange);
                   const isActiveSort = Boolean(
@@ -161,6 +167,7 @@ export function DataTable({
                       }
                       className={cn(
                         "px-4 py-4 text-sm font-normal text-white",
+                        isActionHeading && "text-center",
                         !headingRows && columnWidths?.[index],
                         config.className,
                       )}
@@ -179,11 +186,11 @@ export function DataTable({
                             )
                           }
                         >
-                          <span>{config.label}</span>
+                          <span>{headingLabel}</span>
                           <SortIcon className="size-3.5" aria-hidden="true" />
                         </button>
                       ) : (
-                        config.label
+                        headingLabel
                       )}
                     </th>
                   );
@@ -236,6 +243,7 @@ export function TableCardList({
 }: TableCardListProps) {
   return (
     <div
+      data-slot="table-card-list"
       className={cn(
         "flex flex-col gap-3",
         desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden",

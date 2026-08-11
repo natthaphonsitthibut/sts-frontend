@@ -1,7 +1,5 @@
-import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { DatePicker } from "./date-picker";
-import { IconButton } from "./icon-button";
 import { TimePicker } from "./time-picker";
 
 export interface DateTimePickerProps {
@@ -63,10 +61,15 @@ export function DateTimePicker({
   }
 
   return (
-    <div className={cn("relative flex items-center gap-2", className)}>
+    <div
+      className={cn(
+        "relative grid grid-cols-2 items-center gap-2",
+        className,
+      )}
+    >
       <DatePicker
         ariaLabel={`${ariaLabel} — วันที่`}
-        className="flex-1"
+        className="min-w-0"
         disabled={disabled}
         id={id}
         max={maxDate || undefined}
@@ -76,17 +79,10 @@ export function DateTimePicker({
       />
       <TimePicker
         ariaLabel={`${ariaLabel} — เวลา`}
+        className="min-w-0"
         onChange={handleTimeChange}
         value={time || "00:00"}
       />
-      {value ? (
-        <IconButton
-          aria-label={`ล้าง${ariaLabel}`}
-          icon={X}
-          onClick={() => onChange("")}
-          variant="ghost"
-        />
-      ) : null}
     </div>
   );
 }

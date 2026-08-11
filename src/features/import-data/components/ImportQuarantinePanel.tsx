@@ -110,7 +110,7 @@ function ImportQuarantineActions({
 }: ImportQuarantineActionsProps) {
   if (item.status !== "PENDING") {
     return (
-      <div className="flex flex-nowrap justify-end">
+      <div className="flex flex-nowrap justify-end gap-2">
         <Button
           className={PRIMARY_ACTION_CLASS}
           icon={Eye}
@@ -118,6 +118,9 @@ function ImportQuarantineActions({
           variant="outline"
         >
           ดูรายละเอียด
+        </Button>
+        <Button disabled icon={X} variant="destructive">
+          ปฏิเสธ
         </Button>
       </div>
     );
@@ -219,7 +222,7 @@ function ImportQuarantineTable({
           { label: "สาเหตุ", sortKey: "reason", ariaLabel: "เรียงตามสาเหตุ" },
           { label: "ปี/เทอม", sortKey: "term", ariaLabel: "เรียงตามปีและเทอม" },
           { label: "สถานะ", sortKey: "status", ariaLabel: "เรียงตามสถานะ" },
-          { label: "", className: "text-right" },
+          { label: "เครื่องมือ", className: "text-right" },
         ]}
         minWidthClassName="min-w-full"
         onSortChange={onSortChange}

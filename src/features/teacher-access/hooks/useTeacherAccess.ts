@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { teacherAccessService } from "../api/teacher-access.service";
 import {
   useTeacherLinkSessionStore,
@@ -85,6 +86,63 @@ export function useIssueTeacherLineInvitation() {
   });
 }
 
+export function useTeacherLineGroupInvitation(schoolId?: number) {
+  const query = useQuery({
+    queryKey: [KEY, "line-group-invitation", schoolId],
+    queryFn: () => teacherAccessService.getTeacherLineGroupInvitation(schoolId!),
+    enabled: Boolean(schoolId),
+  });
+  const expiresAt = query.data?.expiresAt;
+  const refetch = query.refetch;
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    let timer: number | undefined;
+    const refreshAtExpiry = (): void => {
+      const remainingMs = new Date(expiresAt).getTime() - Date.now();
+      if (remainingMs <= 0) {
+        void refetch();
+        return;
+      }
+      timer = window.setTimeout(
+        refreshAtExpiry,
+        Math.min(remainingMs + 100, 86_400_000),
+      );
+    };
+    refreshAtExpiry();
+    return () => window.clearTimeout(timer);
+  }, [expiresAt, refetch]);
+
+  return query;
+}
+
+export function useIssueTeacherLineGroupInvitation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: teacherAccessService.issueTeacherLineGroupInvitation,
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: [KEY, "line-group-invitation"] }),
+  });
+}
+
+export function useUpdateTeacherLineGroupInvitation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: teacherAccessService.updateTeacherLineGroupInvitation,
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: [KEY, "line-group-invitation"] }),
+  });
+}
+
+export function useRevokeTeacherLineGroupInvitation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: teacherAccessService.revokeTeacherLineGroupInvitation,
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: [KEY, "line-group-invitation"] }),
+  });
+}
+
 export function useRevokeTeacherLineInvitation() {
   const invalidate = useRosterInvalidation();
   return useMutation({
@@ -135,6 +193,7 @@ export function useTeacherAccessContext(credential: TeacherLinkCredential) {
 export function useRequestTeacherAccessOtp() {
   return useMutation({
     mutationFn: (token: string) => teacherAccessService.requestOtp(token),
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -142,6 +201,47 @@ export function useVerifyTeacherAccessOtp() {
   return useMutation({
     mutationFn: ({ token, otp }: { token: string; otp: string }) =>
       teacherAccessService.verifyOtp(token, otp),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useVerifyTeacherAccessAraId() {
+  return useMutation({
+    mutationFn: (token: string) => teacherAccessService.verifyAraId(token),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useCreateTeacherAccessAraIdChallenge() {
+  return useMutation({
+    mutationFn: teacherAccessService.createAraIdChallenge,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useApproveTeacherAccessAraIdChallenge() {
+  return useMutation({
+    mutationFn: teacherAccessService.approveAraIdChallenge,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useBeginTeacherAccessAraIdChallenge() {
+  return useMutation({
+    mutationFn: teacherAccessService.beginAraIdChallenge,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useTeacherAccessAraIdChallengeStatus(challengeToken: string) {
+  return useQuery({
+    queryKey: [KEY, "araid-challenge", challengeToken.slice(-8)],
+    queryFn: () => teacherAccessService.pollAraIdChallenge(challengeToken),
+    enabled: Boolean(challengeToken),
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.status === "APPROVED" ? false : 1_500,
+    gcTime: 0,
   });
 }
 
@@ -406,26 +506,6 @@ export function useSaveTeacherAccessAttendance(
     mutationFn: (
       input: Parameters<typeof teacherAccessService.saveAttendance>[1],
     ) => teacherAccessService.saveAttendance(credential, input),
-    gcTime: 0,
-  });
-}
-
-export function useSeedTeacherAccessDemoAbsences(
-  credential: TeacherLinkCredential,
-) {
-  return useMutation({
-    mutationFn: (assignmentId: number) =>
-      teacherAccessService.seedDemoAbsences(credential, assignmentId),
-    gcTime: 0,
-  });
-}
-
-export function useClearTeacherAccessDemoAbsences(
-  credential: TeacherLinkCredential,
-) {
-  return useMutation({
-    mutationFn: (assignmentId: number) =>
-      teacherAccessService.clearDemoAbsences(credential, assignmentId),
     gcTime: 0,
   });
 }

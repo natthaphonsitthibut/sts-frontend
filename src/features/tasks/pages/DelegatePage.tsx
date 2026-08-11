@@ -246,7 +246,7 @@ export function DelegatePage() {
                   <FormMessage<DelegateFormValues> name="note" />
                 </FormItem>
 
-                <section className="rounded-lg border border-primary/40 bg-[#edf4ff] p-4">
+                <section className="rounded-lg border border-primary/40 bg-brand-active p-4">
                   <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <CalendarClock className="size-4.5 text-primary" aria-hidden="true" />
                     วันและเวลาหมดอายุของลิงก์ใหม่

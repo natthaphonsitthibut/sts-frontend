@@ -13,6 +13,7 @@ interface StatusPageProps {
   note?: ReactNode;
   primaryLabel?: string;
   primaryTo?: string;
+  showProfile?: boolean;
   title: string;
   tone: StatusTone;
 }
@@ -37,13 +38,14 @@ export function StatusPage({
   note,
   primaryLabel = "กลับหน้าหลัก",
   primaryTo = "/",
+  showProfile = true,
   title,
   tone,
 }: StatusPageProps) {
   const Icon = toneIcon[tone];
 
   return (
-    <GuestPageShell centered contentClassName="max-w-[520px]">
+    <GuestPageShell centered contentClassName="max-w-[520px]" showProfile={showProfile}>
       <Card className="rounded-lg">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <div className={`mb-4 rounded-full p-4 ${toneClass[tone]}`}>
@@ -141,6 +143,7 @@ export function ForbiddenPage() {
     <StatusPage
       code="403"
       message="คุณไม่มีสิทธิ์ในการเข้าถึงหน้านี้ หากต้องการเข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ"
+      showProfile={false}
       title="ไม่มีสิทธิ์เข้าถึง"
       tone="danger"
     />
@@ -152,6 +155,7 @@ export function NotFoundPage() {
     <StatusPage
       code="404"
       message="หน้าที่คุณค้นหาอาจถูกลบ ย้าย หรือไม่พร้อมใช้งานในเส้นทางนี้แล้ว"
+      showProfile={false}
       title="ไม่พบหน้านี้"
       tone="neutral"
     />

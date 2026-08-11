@@ -14,6 +14,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   DatePicker,
   DropdownMenu,
@@ -23,7 +24,6 @@ import {
   Tabs,
   useConfirm,
 } from "../../../components/base";
-import { cn } from "../../../lib/utils";
 import {
   DataTable,
   DataTableCell,
@@ -722,14 +722,9 @@ export function AttendanceCheckInPage() {
                         attendanceStatusCatalog,
                       );
                       return (
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tabular-nums transition-colors",
-                            meta.displayClass,
-                          )}
-                        >
+                        <Badge variant={meta.badgeVariant}>
                           {meta.label}
-                        </span>
+                        </Badge>
                       );
                     })()}
                   </DataTableCell>

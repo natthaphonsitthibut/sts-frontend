@@ -11,6 +11,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
 } from "../../../components/base";
 import { formatThaiDate } from "../../../lib/date-time";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
@@ -22,6 +23,7 @@ interface StudentCaseActionProps {
   activeCaseCount: number;
   activeCaseId: number | null;
   initialReason?: string;
+  disabled?: boolean;
   mode?: "icon" | "button";
   studentId: string;
   studentName: string;
@@ -31,6 +33,7 @@ export function StudentCaseAction({
   activeCaseCount,
   activeCaseId,
   initialReason,
+  disabled = false,
   mode = "icon",
   studentId,
   studentName,
@@ -60,18 +63,28 @@ export function StudentCaseAction({
       : "ดูเคสที่กำลังติดตาม";
     return (
       <>
-        <Button
-          aria-label={label}
-          className={mode === "icon" ? "size-9 shrink-0 px-0" : undefined}
-          icon={FolderOpen}
-          iconClassName={mode === "icon" ? "text-primary" : undefined}
-          onClick={() => setCaseListDialogOpen(true)}
-          size={mode === "icon" ? "sm" : "md"}
-          title={label}
-          variant="outline"
-        >
-          {mode === "button" ? (multipleCases ? "ดูรายการเคส" : "ดูเคส") : null}
-        </Button>
+        {mode === "icon" ? (
+          <IconButton
+            aria-label={label}
+            disabled={disabled}
+            icon={FolderOpen}
+            onClick={() => setCaseListDialogOpen(true)}
+            title={label}
+            variant="edit"
+          />
+        ) : (
+          <Button
+            aria-label={label}
+            disabled={disabled}
+            icon={FolderOpen}
+            onClick={() => setCaseListDialogOpen(true)}
+            size="md"
+            title={label}
+            variant="outline"
+          >
+            {multipleCases ? "ดูรายการเคส" : "ดูเคส"}
+          </Button>
+        )}
         <Dialog open={caseListDialogOpen} onOpenChange={setCaseListDialogOpen}>
           <DialogContent
             className="w-[min(92vw,620px)] text-left"
@@ -152,18 +165,27 @@ export function StudentCaseAction({
 
   return (
     <>
-      <Button
-        aria-label="เปิดเคสติดตามนักเรียน"
-        className={mode === "icon" ? "size-9 shrink-0 px-0" : undefined}
-        icon={CirclePlus}
-        iconClassName={mode === "icon" ? "text-success-700" : undefined}
-        onClick={() => setOpenCaseDialogOpen(true)}
-        size={mode === "icon" ? "sm" : "md"}
-        title="เปิดเคสติดตามนักเรียน"
-        variant={mode === "icon" ? "outline" : "default"}
-      >
-        {mode === "button" ? "เปิดเคส" : null}
-      </Button>
+      {mode === "icon" ? (
+        <IconButton
+          aria-label="เปิดเคสติดตามนักเรียน"
+          disabled={disabled}
+          icon={CirclePlus}
+          onClick={() => setOpenCaseDialogOpen(true)}
+          title="เปิดเคสติดตามนักเรียน"
+          variant="contact"
+        />
+      ) : (
+        <Button
+          aria-label="เปิดเคสติดตามนักเรียน"
+          disabled={disabled}
+          icon={CirclePlus}
+          onClick={() => setOpenCaseDialogOpen(true)}
+          size="md"
+          title="เปิดเคสติดตามนักเรียน"
+        >
+          เปิดเคส
+        </Button>
+      )}
       <OpenCaseDialog
         initialReason={initialReason}
         onOpenChange={setOpenCaseDialogOpen}

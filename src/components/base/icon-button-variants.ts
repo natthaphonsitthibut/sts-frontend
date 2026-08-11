@@ -21,14 +21,15 @@ export const iconButtonVariants = cva(
         default:
           "border border-slate-300 bg-white text-primary-dark hover:border-slate-400 hover:bg-primary-soft",
         edit: solid("bg-primary hover:bg-primary-dark"),
-        delete: solid("bg-danger-400 hover:bg-danger-700"),
+        delete: solid("bg-brand-red-alt hover:bg-danger"),
         credential: solid("bg-credential hover:bg-credential-dark"),
         share: solid("bg-share hover:bg-share-dark"),
         view: solid("bg-view hover:bg-view-dark"),
         contact: solid("bg-success hover:bg-success-700"),
         location: solid("bg-primary hover:bg-primary-dark"),
+        comment: solid("bg-ink hover:bg-slate-800"),
         /** Closing a link — destructive, so it reads in the danger tone. */
-        lock: solid("bg-danger-400 hover:bg-danger-700"),
+        lock: solid("bg-brand-red-alt hover:bg-danger"),
         /** Re-opening a closed link — restorative, so it reads in the success tone. */
         unlock: solid("bg-success hover:bg-success-700"),
         secondary:

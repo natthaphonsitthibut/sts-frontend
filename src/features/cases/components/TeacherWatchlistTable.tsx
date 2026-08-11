@@ -35,7 +35,7 @@ export function TeacherWatchlistTable({ rows }: TeacherWatchlistTableProps) {
           "ความคิดเห็นล่าสุด",
           "ผู้บันทึก / เวลา",
           "ประวัติ",
-          "",
+          "เครื่องมือ",
         ]}
         columnWidths={["w-[24%]", "w-[34%]", "w-[22%]", "w-[8%]", "w-[12%]"]}
         minWidthClassName="min-w-[900px]"

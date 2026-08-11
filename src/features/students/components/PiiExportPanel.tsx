@@ -533,7 +533,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
           <Badge variant="secondary">{requests.length.toLocaleString("th-TH")} รายการ</Badge>
         </div>
         <DataTable
-          headings={["เวลา", "ผู้ขอ", "สถานะ", "เหตุผล", "จำนวน", "หมดอายุ/ดาวน์โหลด", ""]}
+          headings={["เวลา", "ผู้ขอ", "สถานะ", "เหตุผล", "จำนวน", "หมดอายุ/ดาวน์โหลด", "เครื่องมือ"]}
           minWidthClassName="min-w-[1040px]"
           responsive={false}
         >
@@ -570,31 +570,37 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
                   <div>{request.downloaded_at ? formatThaiDateTime(request.downloaded_at) : formatThaiTimeRemaining(request.download_expires_at)}</div>
                 </DataTableCell>
                 <DataTableCell className="text-right">
-                  {request.status === "PENDING" && isAdmin && request.requester_user_id !== user?.id ? (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        icon={CheckCircle2}
-                        isLoading={approveMutation.isPending}
-                        onClick={() => void handleApprove(request)}
-                        size="sm"
-                      >
-                        อนุมัติ
-                      </Button>
-                      <Button
-                        icon={XCircle}
-                        onClick={() => {
-                          setRejectReason("");
-                          setRejectTarget(request);
-                        }}
-                        size="sm"
-                        variant="outline"
-                      >
-                        ปฏิเสธ
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-500">-</span>
-                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      disabled={
+                        request.status !== "PENDING" ||
+                        !isAdmin ||
+                        request.requester_user_id === user?.id
+                      }
+                      icon={CheckCircle2}
+                      isLoading={approveMutation.isPending}
+                      onClick={() => void handleApprove(request)}
+                      size="sm"
+                    >
+                      อนุมัติ
+                    </Button>
+                    <Button
+                      disabled={
+                        request.status !== "PENDING" ||
+                        !isAdmin ||
+                        request.requester_user_id === user?.id
+                      }
+                      icon={XCircle}
+                      onClick={() => {
+                        setRejectReason("");
+                        setRejectTarget(request);
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      ปฏิเสธ
+                    </Button>
+                  </div>
                 </DataTableCell>
               </DataTableRow>
             ))

@@ -68,6 +68,7 @@ export interface TaskAccessTask {
   expires_at?: string | null;
   created_at?: string | null;
   status?: string;
+  case_status?: string | null;
   reason?: string;
   subject?: string | null;
   target_grade?: string | null;

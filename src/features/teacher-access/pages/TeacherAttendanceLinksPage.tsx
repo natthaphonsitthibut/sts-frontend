@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Plus, X } from "lucide-react";
+import { CalendarClock, Link2, MessageCircle, Pencil, Plus, Share2, ShieldOff, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  DateTimePicker,
   Dialog,
   DialogBody,
   DialogContent,
@@ -14,7 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
   FormErrorAlert,
+  IconButton,
   Label,
+  NumericInput,
+  Select,
+  TimePicker,
   Textarea,
   useConfirm,
 } from "../../../components/base";
@@ -41,6 +46,8 @@ import { summarizeSkipReasons } from "../lib/teacher-link-presentation";
 import {
   useIssueTeacherAccessGrant,
   useIssueTeacherLineInvitation,
+  useIssueTeacherLineGroupInvitation,
+  useRevokeTeacherLineGroupInvitation,
   useSendTeacherAccessGrantsOverLine,
   useIssueTeacherAccessGrantsForTerm,
   useRevokeTeacherAccessGrant,
@@ -48,17 +55,106 @@ import {
   useRotateTeacherAccessGrant,
   useTeacherAccessGrantLink,
   useTeacherLinkRoster,
+  useTeacherLineGroupInvitation,
+  useUpdateTeacherLineGroupInvitation,
   useUnlinkTeacherLineAccount,
 } from "../hooks/useTeacherAccess";
 import type {
   BulkIssueTeacherAccessResult,
   SendTeacherAccessGrantsResult,
   TeacherLineFilter,
+  TeacherLineGroupInvitationIssueResult,
   TeacherLinkRosterEntry,
 } from "../types/teacher-access.types";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance-links"].icon;
+
+function toLocalDateTimeValue(date: Date): string {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+type LinkDurationUnit = "DAYS" | "WEEKS" | "MONTHS";
+
+interface LineGroupScheduleDraft {
+  duration: string;
+  durationHours: string;
+  durationMinutes: string;
+  durationUnit: LinkDurationUnit;
+  expiresAt: string;
+  startsAt: string;
+}
+
+function addLinkDuration(
+  start: Date,
+  amount: number,
+  unit: LinkDurationUnit,
+  hours = 0,
+  minutes = 0,
+): Date {
+  const result = new Date(start);
+  if (unit === "DAYS") result.setTime(result.getTime() + amount * 86_400_000);
+  else if (unit === "WEEKS") result.setTime(result.getTime() + amount * 7 * 86_400_000);
+  else result.setMonth(result.getMonth() + amount);
+  result.setTime(result.getTime() + hours * 3_600_000 + minutes * 60_000);
+  return result;
+}
+
+function durationBetween(
+  start: Date,
+  end: Date,
+  unit: LinkDurationUnit,
+): { amount: number; hours: number; minutes: number } {
+  const differenceMs = Math.max(0, end.getTime() - start.getTime());
+  let amount: number;
+  let remainderMs: number;
+  if (unit === "MONTHS") {
+    amount = 0;
+    let cursor = new Date(start);
+    while (amount < 12) {
+      const next = addLinkDuration(start, amount + 1, "MONTHS");
+      if (next > end) break;
+      amount += 1;
+      cursor = next;
+    }
+    remainderMs = end.getTime() - cursor.getTime();
+  } else {
+    const unitMs = unit === "DAYS" ? 86_400_000 : 7 * 86_400_000;
+    amount = Math.floor(differenceMs / unitMs);
+    remainderMs = differenceMs - amount * unitMs;
+  }
+  const hours = Math.floor(remainderMs / 3_600_000);
+  const minutes = Math.floor((remainderMs % 3_600_000) / 60_000);
+  return { amount, hours, minutes };
+}
+
+function inferDuration(
+  start: Date,
+  end: Date,
+): { unit: LinkDurationUnit; amount: number; hours: number; minutes: number } {
+  const monthDuration = durationBetween(start, end, "MONTHS");
+  if (monthDuration.amount > 0 && monthDuration.hours < 24) {
+    return { unit: "MONTHS", ...monthDuration };
+  }
+  const weekDuration = durationBetween(start, end, "WEEKS");
+  if (weekDuration.amount > 0 && weekDuration.hours < 24) {
+    return { unit: "WEEKS", ...weekDuration };
+  }
+  return { unit: "DAYS", ...durationBetween(start, end, "DAYS") };
+}
+
+function createInitialLineGroupSchedule(): LineGroupScheduleDraft {
+  const startsAt = new Date();
+  return {
+    duration: "1",
+    durationHours: "0",
+    durationMinutes: "0",
+    durationUnit: "WEEKS",
+    expiresAt: toLocalDateTimeValue(addLinkDuration(startsAt, 1, "WEEKS")),
+    startsAt: toLocalDateTimeValue(startsAt),
+  };
+}
 
 export function TeacherAttendanceLinksPage() {
   const schoolsQuery = useScopedSchools();
@@ -76,6 +172,28 @@ export function TeacherAttendanceLinksPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  const [sharedLineGroup, setSharedLineGroup] =
+    useState<TeacherLineGroupInvitationIssueResult | null>(null);
+  const [lineGroupDialogOpen, setLineGroupDialogOpen] = useState(false);
+  const [lineGroupDialogMode, setLineGroupDialogMode] = useState<"CREATE" | "EDIT">("CREATE");
+  const [initialLineGroupSchedule] = useState(createInitialLineGroupSchedule);
+  const [lineGroupStartsAt, setLineGroupStartsAt] = useState(
+    initialLineGroupSchedule.startsAt,
+  );
+  const [lineGroupExpiresAt, setLineGroupExpiresAt] = useState(
+    initialLineGroupSchedule.expiresAt,
+  );
+  const [lineGroupDuration, setLineGroupDuration] = useState(
+    initialLineGroupSchedule.duration,
+  );
+  const [lineGroupDurationHours, setLineGroupDurationHours] = useState(
+    initialLineGroupSchedule.durationHours,
+  );
+  const [lineGroupDurationMinutes, setLineGroupDurationMinutes] = useState(
+    initialLineGroupSchedule.durationMinutes,
+  );
+  const [lineGroupDurationUnit, setLineGroupDurationUnit] =
+    useState<LinkDurationUnit>(initialLineGroupSchedule.durationUnit);
   const [revokeTarget, setRevokeTarget] =
     useState<TeacherLinkRosterEntry | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
@@ -91,6 +209,40 @@ export function TeacherAttendanceLinksPage() {
     Map<string, TeacherLinkRosterEntry>
   >(new Map());
   const { confirm, dialog: confirmDialog } = useConfirm();
+
+  function resetLineGroupSchedule(): void {
+    const schedule = createInitialLineGroupSchedule();
+    setLineGroupStartsAt(schedule.startsAt);
+    setLineGroupExpiresAt(schedule.expiresAt);
+    setLineGroupDuration(schedule.duration);
+    setLineGroupDurationHours(schedule.durationHours);
+    setLineGroupDurationMinutes(schedule.durationMinutes);
+    setLineGroupDurationUnit(schedule.durationUnit);
+  }
+
+  function openLineGroupDialog(): void {
+    resetLineGroupSchedule();
+    issueLineGroupInvitation.reset();
+    setLineGroupDialogMode("CREATE");
+    setLineGroupDialogOpen(true);
+  }
+
+  function openLineGroupEditDialog(): void {
+    const invitation = lineGroupInvitation.data;
+    if (!invitation) return;
+    const startsAt = new Date(invitation.startsAt);
+    const expiresAt = new Date(invitation.expiresAt);
+    const duration = inferDuration(startsAt, expiresAt);
+    setLineGroupStartsAt(toLocalDateTimeValue(startsAt));
+    setLineGroupExpiresAt(toLocalDateTimeValue(expiresAt));
+    setLineGroupDuration(String(duration.amount));
+    setLineGroupDurationHours(String(duration.hours));
+    setLineGroupDurationMinutes(String(duration.minutes));
+    setLineGroupDurationUnit(duration.unit);
+    updateLineGroupInvitation.reset();
+    setLineGroupDialogMode("EDIT");
+    setLineGroupDialogOpen(true);
+  }
   const search = useDebouncedValue(searchInput.trim(), 350);
 
   const multipleSchools = schools.length > 1;
@@ -152,6 +304,29 @@ export function TeacherAttendanceLinksPage() {
   const unlinkLine = useUnlinkTeacherLineAccount();
   const issueLineInvitation = useIssueTeacherLineInvitation();
   const revokeLineInvitation = useRevokeTeacherLineInvitation();
+  const lineGroupInvitation = useTeacherLineGroupInvitation(selectedSchoolId);
+  const issueLineGroupInvitation = useIssueTeacherLineGroupInvitation();
+  const updateLineGroupInvitation = useUpdateTeacherLineGroupInvitation();
+  const revokeLineGroupInvitation = useRevokeTeacherLineGroupInvitation();
+
+  const lineGroupStartTime = new Date(lineGroupStartsAt).getTime();
+  const lineGroupExpiryTime = new Date(lineGroupExpiresAt).getTime();
+  const lineGroupDurationAmount = Number(lineGroupDuration);
+  const lineGroupAdditionalHours = Number(lineGroupDurationHours);
+  const lineGroupAdditionalMinutes = Number(lineGroupDurationMinutes);
+  const lineGroupScheduleIsValid =
+    Number.isFinite(lineGroupStartTime) &&
+    Number.isFinite(lineGroupExpiryTime) &&
+    lineGroupExpiryTime > lineGroupStartTime &&
+    Number.isInteger(lineGroupDurationAmount) &&
+    lineGroupDurationAmount >= 0 &&
+    Number.isInteger(lineGroupAdditionalHours) &&
+    lineGroupAdditionalHours >= 0 &&
+    lineGroupAdditionalHours <= 23 &&
+    Number.isInteger(lineGroupAdditionalMinutes) &&
+    lineGroupAdditionalMinutes >= 0 &&
+    lineGroupAdditionalMinutes <= 59 &&
+    lineGroupDurationAmount + lineGroupAdditionalHours + lineGroupAdditionalMinutes > 0;
 
   const entries = rosterQuery.data?.data ?? [];
   const meta = rosterQuery.data?.meta;
@@ -179,11 +354,13 @@ export function TeacherAttendanceLinksPage() {
       teacherMembershipId: Number(entry.teacherMembershipId),
       schoolTermId: selectedTermId,
     });
+    setSharedLineGroup(null);
     if (grant.accessUrl) setSharedUrl(grant.accessUrl);
   }
 
   async function copyLink(entry: TeacherLinkRosterEntry): Promise<void> {
     if (!entry.grantId) return;
+    setSharedLineGroup(null);
     setSharedUrl(await grantLink.mutateAsync(entry.grantId));
   }
 
@@ -198,7 +375,75 @@ export function TeacherAttendanceLinksPage() {
     });
     if (!accepted) return;
     const rotated = await rotateGrant.mutateAsync(entry.grantId);
+    setSharedLineGroup(null);
     if (rotated.accessUrl) setSharedUrl(rotated.accessUrl);
+  }
+
+  async function createLineGroupInvitation(): Promise<void> {
+    if (!selectedSchoolId || lineGroupInvitation.data) return;
+    const startsAt = new Date(lineGroupStartsAt);
+    const duration = Number(lineGroupDuration);
+    const durationHours = Number(lineGroupDurationHours);
+    const durationMinutes = Number(lineGroupDurationMinutes);
+    const expiresAt = new Date(lineGroupExpiresAt);
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      !Number.isFinite(expiresAt.getTime()) ||
+      expiresAt <= startsAt ||
+      !Number.isInteger(duration) || duration < 0 ||
+      !Number.isInteger(durationHours) || durationHours < 0 || durationHours > 23 ||
+      !Number.isInteger(durationMinutes) || durationMinutes < 0 || durationMinutes > 59 ||
+      duration + durationHours + durationMinutes <= 0
+    ) {
+      return;
+    }
+    const result = await issueLineGroupInvitation.mutateAsync({
+      schoolId: selectedSchoolId,
+      startsAt: startsAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    });
+    setLineGroupDialogOpen(false);
+    setSharedLineGroup(result);
+    setSharedUrl(result.url);
+  }
+
+  async function updateActiveLineGroupInvitation(): Promise<void> {
+    const invitation = lineGroupInvitation.data;
+    if (!selectedSchoolId || !invitation) return;
+    const startsAt = new Date(lineGroupStartsAt);
+    const expiresAt = new Date(lineGroupExpiresAt);
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      !Number.isFinite(expiresAt.getTime()) ||
+      expiresAt <= startsAt
+    ) return;
+    const result = await updateLineGroupInvitation.mutateAsync({
+      invitationId: invitation.id,
+      schoolId: selectedSchoolId,
+      startsAt: startsAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    });
+    setLineGroupDialogOpen(false);
+    setSharedLineGroup(result);
+  }
+
+  async function closeLineGroupInvitation(): Promise<void> {
+    const active = lineGroupInvitation.data;
+    if (!active) return;
+    const accepted = await confirm({
+      title: "ปิดลิงก์ยืนยัน LINE?",
+      description: "ลิงก์ที่ส่งลงกลุ่มไว้จะใช้ขอ OTP ไม่ได้ทันที",
+      confirmText: "ปิดลิงก์",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    if (!selectedSchoolId) return;
+    await revokeLineGroupInvitation.mutateAsync({
+      invitationId: active.id,
+      schoolId: selectedSchoolId,
+    });
+    setSharedLineGroup(null);
+    setSharedUrl(null);
   }
 
   async function unlinkLineAccount(
@@ -353,6 +598,28 @@ export function TeacherAttendanceLinksPage() {
           <>
             {lineEnabledQuery.data === true ? (
               <Button
+                disabled={
+                  !selectedSchoolId ||
+                  lineGroupInvitation.isPending ||
+                  lineGroupInvitation.isError ||
+                  Boolean(lineGroupInvitation.data)
+                }
+                icon={Link2}
+                onClick={openLineGroupDialog}
+                title={
+                  !selectedSchoolId
+                    ? "กรุณาเลือกโรงเรียนก่อน"
+                    : lineGroupInvitation.data
+                      ? "โรงเรียนนี้มีลิงก์ที่ใช้งานอยู่แล้ว"
+                      : undefined
+                }
+                variant="outline"
+              >
+                สร้างลิงก์ยืนยัน LINE
+              </Button>
+            ) : null}
+            {lineEnabledQuery.data === true ? (
+              <Button
                 disabled={!selectedTermId || sendOverLine.isPending}
                 icon={MessageCircle}
                 isLoading={sendOverLine.isPending}
@@ -382,6 +649,58 @@ export function TeacherAttendanceLinksPage() {
         icon={PAGE_ICON}
         title="จัดการลิงก์เช็คชื่อ"
       />
+      {lineGroupInvitation.data ? (
+        <Alert className="mb-4" variant="success">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <AlertTitle>
+                ลิงก์ยืนยัน LINE กลาง{
+                  lineGroupInvitation.data.status === "PENDING" ? " (รอเวลาเริ่ม)" : " เปิดใช้งาน"
+                }
+              </AlertTitle>
+              <AlertDescription>
+                {lineGroupInvitation.data.schoolName} · {" "}
+                เริ่ม {new Date(lineGroupInvitation.data.startsAt).toLocaleString("th-TH", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })} · หมดอายุ {new Date(lineGroupInvitation.data.expiresAt).toLocaleString("th-TH", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </AlertDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <IconButton
+                aria-label="แชร์ลิงก์ยืนยัน LINE"
+                icon={Share2}
+                onClick={() => {
+                  const invitation = lineGroupInvitation.data;
+                  if (!invitation) return;
+                  setSharedLineGroup(invitation);
+                  setSharedUrl(invitation.url);
+                }}
+                title="แชร์ลิงก์"
+                variant="share"
+              />
+              <IconButton
+                aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
+                icon={Pencil}
+                onClick={openLineGroupEditDialog}
+                title="แก้ไขวันเวลา"
+                variant="edit"
+              />
+              <IconButton
+                aria-label="ปิดลิงก์ยืนยัน LINE"
+                disabled={revokeLineGroupInvitation.isPending}
+                icon={ShieldOff}
+                onClick={() => void closeLineGroupInvitation()}
+                title="ปิดลิงก์"
+                variant="lock"
+              />
+            </div>
+          </div>
+        </Alert>
+      ) : null}
       <ToolbarControls className="mb-8">
         <SearchInput
           className="sm:max-w-[420px]"
@@ -440,7 +759,6 @@ export function TeacherAttendanceLinksPage() {
             { value: "", label: "ทุกสถานะ LINE" },
             { value: "VERIFIED", label: "ยืนยัน LINE แล้ว" },
             { value: "NOT_VERIFIED", label: "ยังไม่ยืนยัน LINE" },
-            { value: "REACHABLE", label: "ส่งข้อความได้" },
           ]}
           placeholder="สถานะ LINE"
           value={lineStatusInput}
@@ -608,12 +926,221 @@ export function TeacherAttendanceLinksPage() {
       )}
 
       <LinkShareDialog
+        description={
+          sharedLineGroup ? (
+            <span>
+              ใช้ได้ตั้งแต่ {new Date(sharedLineGroup.startsAt).toLocaleString("th-TH", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })} · หมดอายุ {new Date(sharedLineGroup.expiresAt).toLocaleString("th-TH", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </span>
+          ) : undefined
+        }
         link={sharedUrl ?? ""}
         onOpenChange={(open) => {
           if (!open) setSharedUrl(null);
         }}
         open={Boolean(sharedUrl)}
+        title={sharedLineGroup ? "แชร์ลิงก์ยืนยัน LINE" : undefined}
       />
+
+      <Dialog
+        onOpenChange={(open) => {
+          if (open) resetLineGroupSchedule();
+          setLineGroupDialogOpen(open);
+        }}
+        open={lineGroupDialogOpen}
+      >
+        <DialogContent className="max-w-xl" onClose={() => setLineGroupDialogOpen(false)}>
+          <DialogHeader>
+            <DialogTitle icon={CalendarClock}>
+              {lineGroupDialogMode === "EDIT"
+                ? "แก้ไขอายุลิงก์ยืนยัน LINE"
+                : "กำหนดอายุลิงก์ยืนยัน LINE"}
+            </DialogTitle>
+            <DialogDescription>
+              ลิงก์นี้ใช้สำหรับ {lineGroupInvitation.data?.schoolName ?? schools.find(
+                (school) => school.id === selectedSchoolId,
+              )?.name ?? "โรงเรียนที่เลือก"} โดยครูเลือกยืนยันผ่าน AraID หรือ OTP ทางอีเมลได้
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <FormErrorAlert
+              error={
+                lineGroupDialogMode === "EDIT"
+                  ? updateLineGroupInvitation.error
+                  : issueLineGroupInvitation.error
+              }
+              fallback={
+                lineGroupDialogMode === "EDIT"
+                  ? "แก้ไขลิงก์ยืนยัน LINE ไม่สำเร็จ"
+                  : "สร้างลิงก์ยืนยัน LINE ไม่สำเร็จ"
+              }
+            />
+            <div>
+              <Label required>วันและเวลาเริ่ม</Label>
+              <DateTimePicker
+                ariaLabel="วันและเวลาเริ่ม"
+                onChange={(value) => {
+                  setLineGroupStartsAt(value);
+                  const start = new Date(value);
+                  const duration = Number(lineGroupDuration);
+                  if (Number.isFinite(start.getTime()) && duration >= 0) {
+                    setLineGroupExpiresAt(
+                      toLocalDateTimeValue(
+                        addLinkDuration(
+                          start,
+                          duration,
+                          lineGroupDurationUnit,
+                          Number(lineGroupDurationHours),
+                          Number(lineGroupDurationMinutes),
+                        ),
+                      ),
+                    );
+                  }
+                }}
+                value={lineGroupStartsAt}
+              />
+            </div>
+            <div>
+              <Label required>วันและเวลาหมดอายุ</Label>
+              <DateTimePicker
+                ariaLabel="วันและเวลาหมดอายุ"
+                min={lineGroupStartsAt}
+                onChange={(value) => {
+                  setLineGroupExpiresAt(value);
+                  const start = new Date(lineGroupStartsAt);
+                  const end = new Date(value);
+                  if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime())) {
+                    const duration = inferDuration(start, end);
+                    setLineGroupDurationUnit(duration.unit);
+                    setLineGroupDuration(String(duration.amount));
+                    setLineGroupDurationHours(String(duration.hours));
+                    setLineGroupDurationMinutes(String(duration.minutes));
+                  }
+                }}
+                value={lineGroupExpiresAt}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="line-group-duration" required>ระยะเวลา</Label>
+                <NumericInput
+                  id="line-group-duration"
+                  min={0}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setLineGroupDuration(value);
+                    const amount = Number(value);
+                    const start = new Date(lineGroupStartsAt);
+                    if (amount >= 0 && Number.isFinite(start.getTime())) {
+                      setLineGroupExpiresAt(
+                        toLocalDateTimeValue(
+                          addLinkDuration(
+                            start,
+                            amount,
+                            lineGroupDurationUnit,
+                            Number(lineGroupDurationHours),
+                            Number(lineGroupDurationMinutes),
+                          ),
+                        ),
+                      );
+                    }
+                  }}
+                  step="1"
+                  value={lineGroupDuration}
+                />
+              </div>
+              <div>
+                <Label htmlFor="line-group-duration-unit" required>หน่วย</Label>
+                <Select
+                  id="line-group-duration-unit"
+                  onChange={(event) => {
+                    const unit = event.target.value as LinkDurationUnit;
+                    setLineGroupDurationUnit(unit);
+                    const start = new Date(lineGroupStartsAt);
+                    if (Number.isFinite(start.getTime())) {
+                      setLineGroupExpiresAt(
+                        toLocalDateTimeValue(
+                          addLinkDuration(
+                            start,
+                            Number(lineGroupDuration),
+                            unit,
+                            Number(lineGroupDurationHours),
+                            Number(lineGroupDurationMinutes),
+                          ),
+                        ),
+                      );
+                    }
+                  }}
+                  value={lineGroupDurationUnit}
+                >
+                  <option value="DAYS">วัน</option>
+                  <option value="WEEKS">สัปดาห์</option>
+                  <option value="MONTHS">เดือน</option>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <div>
+                <Label required>เวลาเพิ่มเติม (ชั่วโมง:นาที)</Label>
+                <TimePicker
+                  ariaLabel="ระยะเวลาเพิ่มเติม ชั่วโมงและนาที"
+                  onChange={(value) => {
+                    const [hours = "0", minutes = "0"] = value.split(":");
+                    setLineGroupDurationHours(String(Number(hours)));
+                    setLineGroupDurationMinutes(String(Number(minutes)));
+                    const start = new Date(lineGroupStartsAt);
+                    if (Number.isFinite(start.getTime())) {
+                      setLineGroupExpiresAt(
+                        toLocalDateTimeValue(
+                          addLinkDuration(
+                            start,
+                            Number(lineGroupDuration),
+                            lineGroupDurationUnit,
+                            Number(hours),
+                            Number(minutes),
+                          ),
+                        ),
+                      );
+                    }
+                  }}
+                  value={`${lineGroupDurationHours.padStart(2, "0")}:${lineGroupDurationMinutes.padStart(2, "0")}`}
+                />
+              </div>
+            </div>
+            {!lineGroupScheduleIsValid ? (
+              <p className="text-sm text-danger" role="alert">
+                วันหมดอายุต้องอยู่หลังวันเริ่ม และระยะเวลาต้องมากกว่า 0
+              </p>
+            ) : null}
+          </DialogBody>
+          <DialogFooter className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:grid sm:[&>button]:min-w-0 [&>button]:h-10 [&>button]:w-full">
+            <Button onClick={() => setLineGroupDialogOpen(false)} variant="outline">
+              ยกเลิก
+            </Button>
+            <Button
+              disabled={!lineGroupScheduleIsValid}
+              isLoading={
+                lineGroupDialogMode === "EDIT"
+                  ? updateLineGroupInvitation.isPending
+                  : issueLineGroupInvitation.isPending
+              }
+              loadingText={lineGroupDialogMode === "EDIT" ? "กำลังบันทึก" : "กำลังสร้าง"}
+              onClick={() => void (
+                lineGroupDialogMode === "EDIT"
+                  ? updateActiveLineGroupInvitation()
+                  : createLineGroupInvitation()
+              )}
+            >
+              {lineGroupDialogMode === "EDIT" ? "บันทึก" : "สร้างลิงก์"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         onOpenChange={(open) => {

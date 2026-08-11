@@ -25,6 +25,7 @@ export function IconButton({
   return (
     <button
       className={cn(iconButtonVariants({ variant, size }), className)}
+      data-slot="icon-button"
       type={type}
       {...props}
     >

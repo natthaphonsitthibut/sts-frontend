@@ -47,6 +47,7 @@ import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
+import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
@@ -495,6 +496,7 @@ export function ReportPage() {
   const homeVisitExceptions = trackingOptionsQuery.data?.homeVisitExceptions ?? [];
   const hasHomeCoordinates = task.student_lat != null && task.student_lng != null;
   const contactChannels = getContactChannels(task);
+  const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
 
   return (
     <GuestPageShell
@@ -678,7 +680,8 @@ export function ReportPage() {
               ขั้นตอนการติดตาม
             </div>
             <div className="text-xs font-semibold text-slate-600">
-              สถานะการติดตาม: <span className="text-primary">รอติดตาม</span>
+              สถานะการติดตาม:{" "}
+              <span className={trackingStatus.textClassName}>{trackingStatus.label}</span>
             </div>
           </div>
 
@@ -717,7 +720,7 @@ export function ReportPage() {
               />
               <FlowStep active label="ติดตาม" number={2} />
             </div>
-            <section className="min-w-0 rounded-lg border border-primary/60 bg-[#edf4ff] p-4">
+            <section className="min-w-0 rounded-lg border border-primary/60 bg-brand-active p-4">
                 <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
                   <div className="space-y-4">
                     <FormErrorAlert

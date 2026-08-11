@@ -6,6 +6,46 @@ export const AdminAccessPage = lazy(() =>
     default: module.AdminAccessPage,
   })),
 );
+export const AraIdSplashPage = lazy(() =>
+  import("../features/araid/pages/AraIdSplashPage").then((module) => ({
+    default: module.AraIdSplashPage,
+  })),
+);
+export const AraIdLoginPage = lazy(() =>
+  import("../features/araid/pages/AraIdLoginPage").then((module) => ({
+    default: module.AraIdLoginPage,
+  })),
+);
+export const AraIdPinPage = lazy(() =>
+  import("../features/araid/pages/AraIdPinPage").then((module) => ({
+    default: module.AraIdPinPage,
+  })),
+);
+export const AraIdHomePage = lazy(() =>
+  import("../features/araid/pages/AraIdHomePage").then((module) => ({
+    default: module.AraIdHomePage,
+  })),
+);
+export const AraIdDocumentsPage = lazy(() =>
+  import("../features/araid/pages/AraIdDocumentsPage").then((module) => ({
+    default: module.AraIdDocumentsPage,
+  })),
+);
+export const AraIdSettingsPage = lazy(() =>
+  import("../features/araid/pages/AraIdSettingsPage").then((module) => ({
+    default: module.AraIdSettingsPage,
+  })),
+);
+export const AraIdManagePage = lazy(() =>
+  import("../features/araid/pages/AraIdManagePage").then((module) => ({
+    default: module.AraIdManagePage,
+  })),
+);
+export const AraIdAuthorizePage = lazy(() =>
+  import("../features/araid/pages/AraIdAuthorizePage").then((module) => ({
+    default: module.AraIdAuthorizePage,
+  })),
+);
 export const AuditLogDetailPage = lazy(() =>
   import("../features/audit-log/pages/AuditLogDetailPage").then((module) => ({
     default: module.AuditLogDetailPage,
@@ -238,6 +278,17 @@ export const TeacherLineLinkPage = lazy(() =>
     (module) => ({
       default: module.TeacherLineLinkPage,
     }),
+  ),
+);
+export const TeacherLineAraIdAuthorizePage = lazy(() =>
+  import("../features/teacher-line/pages/TeacherLineAraIdAuthorizePage").then(
+    (module) => ({ default: module.TeacherLineAraIdAuthorizePage }),
+  ),
+);
+
+export const TeacherLineAraIdChallengePage = lazy(() =>
+  import("../features/teacher-line/pages/TeacherLineAraIdChallengePage").then(
+    (module) => ({ default: module.TeacherLineAraIdChallengePage }),
   ),
 );
 

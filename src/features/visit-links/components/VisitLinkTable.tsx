@@ -10,7 +10,6 @@ import {
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkLockToggleButton } from "../../../components/layout/link-lock-toggle-button";
-import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
 import { LinkTimeHeader, LinkTimeSummary } from "../../../components/layout/link-time-summary";
 import { VISIT_LINKS_QUERY_KEY } from "../hooks/useVisitLinks";
@@ -80,6 +79,7 @@ function LinkActions({ compact = false, link }: { compact?: boolean; link: Visit
   const linkState = getVisitLinkState(link);
   const canToggleLink = linkState !== "EXPIRED";
   const detailPath = `/tasks/${link.task_id}`;
+  const fullActionClassName = "h-10 w-[112px]";
 
   return (
     <div
@@ -89,22 +89,26 @@ function LinkActions({ compact = false, link }: { compact?: boolean; link: Visit
           : "flex flex-wrap items-center justify-end gap-2"
       }
     >
-      {link.magic_link && compact ? (
-        <LinkShareButton compact link={link.magic_link} />
-      ) : null}
+      <LinkShareButton
+        className={compact ? undefined : fullActionClassName}
+        compact={compact}
+        disabled={!link.magic_link}
+        link={link.magic_link}
+      />
       <DetailLinkButton
         aria-label="ดูรายละเอียดงาน"
+        className={compact ? undefined : fullActionClassName}
         iconOnly={compact}
         to={detailPath}
       />
-      {canToggleLink ? (
-        <LinkLockToggleButton
-          iconOnly={compact}
-          invalidateKeys={[[VISIT_LINKS_QUERY_KEY]]}
-          linkId={link.id}
-          locked={locked}
-        />
-      ) : null}
+      <LinkLockToggleButton
+        className={compact ? undefined : fullActionClassName}
+        disabled={!canToggleLink}
+        iconOnly={compact}
+        invalidateKeys={[[VISIT_LINKS_QUERY_KEY]]}
+        linkId={link.id}
+        locked={locked}
+      />
     </div>
   );
 }
@@ -134,7 +138,7 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
           { label: "ผู้รับมอบหมาย", sortKey: "assignee" },
           { label: "สถานะ", sortKey: "status" },
           { label: <LinkTimeHeader onSortChange={setSort} sort={sort} startLabel="เปิด" /> },
-          "",
+          { label: "เครื่องมือ", className: "text-center" },
         ]}
         columnWidths={[
           "w-[14%]",
@@ -209,9 +213,6 @@ export function VisitLinkTable({ links }: VisitLinkTableProps) {
             <div className="mt-3 text-sm font-medium text-slate-600">
               ผู้รับมอบหมาย: {link.assigned_to_name || "-"}
             </div>
-            {link.magic_link ? (
-              <LinkShareActions className="mt-4" link={link.magic_link} />
-            ) : null}
             <div className="mt-4">
               <LinkActions link={link} />
             </div>

@@ -11,9 +11,42 @@ export interface TeacherLineInvitationSummary {
   expiresAt: string;
 }
 
+export interface TeacherLineGroupInvitationSummary {
+  schoolId: number;
+  schoolName: string;
+  startsAt: string;
+  expiresAt: string;
+  status: "PENDING" | "ACTIVE";
+}
+
+export interface TeacherLineAraIdChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+  schoolName: string;
+  status: "PENDING" | "CLAIMED" | "APPROVED";
+}
+
+async function resolveGroupInvitation(
+  token: string,
+): Promise<TeacherLineGroupInvitationSummary> {
+  return invitationPost(
+    "/line/link/group-invitation/resolve",
+    { token },
+    "ลิงก์ยืนยัน LINE ไม่ถูกต้องหรือหมดอายุแล้ว",
+  );
+}
+
 async function invitationPost<T>(
   path: string,
-  body: { token: string; code?: string },
+  body: {
+    token?: string;
+    challengeToken?: string;
+    code?: string;
+    email?: string;
+  },
   fallback: string,
 ): Promise<T> {
   try {
@@ -57,30 +90,83 @@ async function verifyInvitationOtp(
 }
 
 /** Identical whether or not the address belongs to a teacher, by design. */
-async function requestOtp(email: string): Promise<string> {
-  const response = await apiClient.post<DataEnvelope<{ message: string }>>(
+async function requestOtp(token: string, email: string): Promise<string> {
+  const result = await invitationPost<{ message: string }>(
     "/line/link/otp/request",
-    { email },
+    { token, email },
+    "ส่งรหัส OTP ไม่สำเร็จ",
   );
-  return response.data.data.message;
+  return result.message;
 }
 
 async function verifyOtp(
+  token: string,
   email: string,
   code: string,
 ): Promise<{ bindingToken: string; teacherName: string }> {
-  try {
-    const response = await apiClient.post<
-      DataEnvelope<{ bindingToken: string; teacherName: string }>
-    >("/line/link/otp/verify", { email, code });
-    return response.data.data;
-  } catch (error) {
-    const message = getApiErrorMessage(error, "ยืนยันรหัสไม่สำเร็จ");
-    // Keeps the reason (wrong / expired / locked) but drops the Axios error,
-    // whose request config still holds the code the person just typed.
-    // eslint-disable-next-line preserve-caught-error
-    throw new Error(message);
-  }
+  return invitationPost(
+    "/line/link/otp/verify",
+    { token, email, code },
+    "ยืนยันรหัสไม่สำเร็จ",
+  );
+}
+
+async function verifyAraId(
+  token: string,
+): Promise<{ bindingToken: string; teacherName: string }> {
+  return invitationPost(
+    "/line/link/araid/verify",
+    { token },
+    "ยืนยันตัวตนผ่าน AraID ไม่สำเร็จ",
+  );
+}
+
+async function createAraIdChallenge(token: string): Promise<TeacherLineAraIdChallenge> {
+  return invitationPost(
+    "/line/link/araid/challenge",
+    { token },
+    "สร้างคำขอยืนยันผ่าน AraID ไม่สำเร็จ",
+  );
+}
+
+async function getAraIdChallenge(
+  challengeToken: string,
+): Promise<TeacherLineAraIdChallenge> {
+  return invitationPost(
+    "/line/link/araid/challenge/details",
+    { challengeToken },
+    "คำขอยืนยันผ่าน AraID ไม่ถูกต้องหรือหมดอายุแล้ว",
+  );
+}
+
+async function beginAraIdChallenge(
+  challengeToken: string,
+): Promise<{ expiresAt: string }> {
+  return invitationPost(
+    "/line/link/araid/challenge/begin",
+    { challengeToken },
+    "คำขอยืนยันผ่าน AraID ถูกใช้หรือหมดอายุแล้ว",
+  );
+}
+
+async function approveAraIdChallenge(): Promise<void> {
+  await invitationPost(
+    "/line/link/araid/challenge/approve",
+    {},
+    "อนุมัติคำขอ AraID ไม่สำเร็จ",
+  );
+}
+
+async function pollAraIdChallenge(challengeToken: string): Promise<
+  | { status: "PENDING" }
+  | { status: "IN_PROGRESS"; expiresAt: string }
+  | { status: "APPROVED"; bindingToken: string; teacherName: string }
+> {
+  return invitationPost(
+    "/line/link/araid/challenge/status",
+    { challengeToken },
+    "ตรวจสอบสถานะ AraID ไม่สำเร็จ",
+  );
 }
 
 async function isEnabled(): Promise<boolean> {
@@ -100,6 +186,13 @@ async function startAuthorization(bindingToken: string): Promise<string> {
 }
 
 export const teacherLineService = {
+  resolveGroupInvitation,
+  createAraIdChallenge,
+  getAraIdChallenge,
+  beginAraIdChallenge,
+  approveAraIdChallenge,
+  pollAraIdChallenge,
+  verifyAraId,
   resolveInvitation,
   requestInvitationOtp,
   verifyInvitationOtp,

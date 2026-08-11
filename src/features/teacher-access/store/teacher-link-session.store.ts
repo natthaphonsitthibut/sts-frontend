@@ -5,7 +5,7 @@ const STORAGE_KEY = "sts_teacher_link_session";
 export interface TeacherLinkCredential {
   /** Raw link token, taken from the URL fragment once and kept tab-scoped. */
   token: string;
-  /** OTP-verified session token; absent until the teacher passes the code. */
+  /** Verified session token; absent until the teacher passes AraID or email OTP. */
   sessionToken: string | null;
 }
 

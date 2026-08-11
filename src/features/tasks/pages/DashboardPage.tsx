@@ -188,7 +188,11 @@ function criteriaItems(
 
 function RiskBadge({ tier }: { tier: RiskDashboardTier }) {
   const presentation = RISK_TIER_PRESENTATION[tier];
-  return <Badge variant={presentation.badge}>{presentation.label}</Badge>;
+  return (
+    <Badge data-student-risk-tier={tier} variant={presentation.badge}>
+      {presentation.label}
+    </Badge>
+  );
 }
 
 function StudentCell({ row }: { row: RiskDashboardRow }) {
@@ -235,15 +239,14 @@ function DashboardRowAction({
 }) {
   return (
     <div className="flex items-center justify-end gap-2">
-      {canOpenCases ? (
-        <StudentCaseAction
-          activeCaseCount={row.openCaseCount}
-          activeCaseId={row.latestOpenCaseId}
-          initialReason={getSuggestedCaseReason(row)}
-          studentId={row.studentId}
-          studentName={row.studentName}
-        />
-      ) : null}
+      <StudentCaseAction
+        activeCaseCount={row.openCaseCount}
+        activeCaseId={row.latestOpenCaseId}
+        disabled={!canOpenCases}
+        initialReason={getSuggestedCaseReason(row)}
+        studentId={row.studentId}
+        studentName={row.studentName}
+      />
       <DetailLinkButton
         aria-label="ดูรายละเอียดนักเรียน"
         iconOnly
@@ -577,7 +580,7 @@ export function DashboardPage() {
                 { label: "การมาเรียน", sortKey: "attendance" },
                 { label: "เคสเปิด", sortKey: "openCases" },
                 { label: "ระดับ", sortKey: "risk" },
-                "",
+                "เครื่องมือ",
               ]}
               minWidthClassName="min-w-full"
               onSortChange={handleSortChange}

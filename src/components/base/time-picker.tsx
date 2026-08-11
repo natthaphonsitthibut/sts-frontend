@@ -47,7 +47,7 @@ export function TimePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
-        className="w-full justify-start px-3 font-medium [&>span]:w-full [&>span>span]:w-full"
+        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 [&>span]:w-full [&>span>span]:w-full"
         disabled={disabled}
         icon={Clock}
         id={id}

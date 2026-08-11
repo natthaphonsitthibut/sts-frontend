@@ -1,7 +1,7 @@
 import { Download, MessageSquareText, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Button, IconButton, Skeleton, Tabs } from "../../../components/base";
+import { Badge, Button, IconButton, Skeleton, Tabs } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -29,7 +29,6 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import {
-  getRiskTierChipClass,
   RISK_TIER_ORDER,
   RISK_TIER_PRESENTATION,
 } from "../../students/lib/risk-tier-presentation";
@@ -267,12 +266,16 @@ export function ClassroomDetailPage() {
                     </DataTableCell>
                     <DataTableCell className="text-center">
                       <div className="flex justify-center">
-                        <span
-                          className={`inline-flex h-9 w-32 shrink-0 items-center justify-center rounded-full border bg-white px-3 text-sm font-medium ${getRiskTierChipClass(student.riskTier)}`}
+                        <Badge
+                          data-student-risk-tier={student.riskTier}
+                          variant={
+                            RISK_TIER_PRESENTATION[student.riskTier]?.badge ??
+                            "destructive"
+                          }
                         >
                           {RISK_TIER_PRESENTATION[student.riskTier]?.label ??
                             student.riskTier}
-                        </span>
+                        </Badge>
                       </div>
                     </DataTableCell>
                     <DataTableCell>
@@ -289,11 +292,9 @@ export function ClassroomDetailPage() {
                         />
                         <IconButton
                           aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
-                          className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                           icon={MessageSquareText}
-                          iconClassName="text-white"
                           onClick={() => setCommentStudent(student)}
-                          variant="outline"
+                          variant="comment"
                         />
                       </div>
                     </DataTableCell>

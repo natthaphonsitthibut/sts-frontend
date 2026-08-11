@@ -10,6 +10,8 @@ import type {
   IssueTeacherAccessGrantInput,
   PaginationMeta,
   TeacherAccessAssignment,
+  TeacherAccessAraIdChallenge,
+  TeacherAccessAraIdChallengeStatus,
   TeacherAccessAttendanceSlot,
   TeacherAccessContext,
   TeacherAccessGrant,
@@ -18,6 +20,8 @@ import type {
   TeacherAccessRosterStudent,
   TeacherAttendanceHistoryEntry,
   TeacherLineFilter,
+  TeacherLineGroupInvitationIssueResult,
+  TeacherLineGroupInvitationSummary,
   TeacherLineInvitationIssueResult,
   TeacherLinkRosterEntry,
   TeacherScheduleResponse,
@@ -34,12 +38,13 @@ interface PaginatedEnvelope<T> extends DataEnvelope<T[]> {
 
 const TOKEN_HEADER = "x-teacher-access-token";
 const SESSION_HEADER = "x-teacher-access-session";
+const ARAID_CHALLENGE_HEADER = "x-teacher-access-araid-challenge";
 
-/** Marks a rejection the guest UI should answer with the OTP form. */
-export class TeacherAccessOtpRequiredError extends Error {
+/** Marks a rejection the guest UI should answer with the identity-verification choices. */
+export class TeacherAccessVerificationRequiredError extends Error {
   constructor() {
-    super("เซสชันยืนยันตัวตนหมดอายุ กรุณายืนยัน OTP ใหม่");
-    this.name = "TeacherAccessOtpRequiredError";
+    super("เซสชันยืนยันตัวตนหมดอายุ กรุณายืนยันตัวตนใหม่");
+    this.name = "TeacherAccessVerificationRequiredError";
   }
 }
 
@@ -71,7 +76,7 @@ async function runGuestRequest<T>(request: () => Promise<T>): Promise<T> {
     // request config, and that config holds the link token. Only the "needs
     // OTP" signal survives, as its own error type.
     throw otpRequired
-      ? new TeacherAccessOtpRequiredError()
+      ? new TeacherAccessVerificationRequiredError()
       : new Error(
           getApiErrorMessage(error, "ไม่สามารถดำเนินการผ่านลิงก์ครูได้"),
         );
@@ -129,6 +134,53 @@ async function issueTeacherLineInvitation(
     `/teacher-access-grants/teacher-memberships/${teacherMembershipId}/line-invitation`,
   );
   return response.data.data;
+}
+
+async function issueTeacherLineGroupInvitation(input: {
+  schoolId: number;
+  startsAt: string;
+  expiresAt: string;
+}): Promise<TeacherLineGroupInvitationIssueResult> {
+  const response = await apiClient.post<
+    DataEnvelope<TeacherLineGroupInvitationIssueResult>
+  >("/teacher-access-grants/line-group-invitation", input);
+  return response.data.data;
+}
+
+async function getTeacherLineGroupInvitation(
+  schoolId: number,
+): Promise<TeacherLineGroupInvitationSummary | null> {
+  const response = await apiClient.get<
+    DataEnvelope<TeacherLineGroupInvitationSummary | null>
+  >("/teacher-access-grants/line-group-invitation", { params: { schoolId } });
+  return response.data.data;
+}
+
+async function updateTeacherLineGroupInvitation(input: {
+  invitationId: string;
+  schoolId: number;
+  startsAt: string;
+  expiresAt: string;
+}): Promise<TeacherLineGroupInvitationIssueResult> {
+  const response = await apiClient.patch<
+    DataEnvelope<TeacherLineGroupInvitationIssueResult>
+  >(`/teacher-access-grants/line-group-invitation/${input.invitationId}`, {
+    startsAt: input.startsAt,
+    expiresAt: input.expiresAt,
+    schoolId: input.schoolId,
+  });
+  return response.data.data;
+}
+
+async function revokeTeacherLineGroupInvitation(input: {
+  invitationId: string;
+  schoolId: number;
+}): Promise<void> {
+  await apiClient.post(
+    `/teacher-access-grants/line-group-invitation/${input.invitationId}/revoke`,
+    undefined,
+    { params: { schoolId: input.schoolId } },
+  );
 }
 
 async function revokeTeacherLineInvitation(
@@ -227,6 +279,79 @@ async function verifyOtp(token: string, otp: string): Promise<string> {
     // error object, whose request config still holds the link token.
     // eslint-disable-next-line preserve-caught-error
     throw new Error(message);
+  }
+}
+
+async function verifyAraId(token: string): Promise<string> {
+  try {
+    const response = await apiClient.post<
+      DataEnvelope<{ sessionToken: string }>
+    >("/teacher-access/araid/verify", undefined, {
+      headers: { [TOKEN_HEADER]: token },
+    });
+    return response.data.data.sessionToken;
+  } catch (error) {
+    const message = getApiErrorMessage(
+      error,
+      "ยืนยันตัวตนผ่าน AraID ไม่สำเร็จ",
+    );
+    // Drop the Axios error because its request config contains the private link token.
+    // eslint-disable-next-line preserve-caught-error
+    throw new Error(message);
+  }
+}
+
+async function createAraIdChallenge(token: string): Promise<TeacherAccessAraIdChallenge> {
+  try {
+    const response = await apiClient.post<DataEnvelope<TeacherAccessAraIdChallenge>>(
+      "/teacher-access/araid/challenge",
+      undefined,
+      { headers: { [TOKEN_HEADER]: token } },
+    );
+    return response.data.data;
+  } catch (error) {
+    // Drop Axios config because it contains the raw teacher-link credential.
+    // eslint-disable-next-line preserve-caught-error
+    throw new Error(getApiErrorMessage(error, "สร้างคำขอยืนยัน AraID ไม่สำเร็จ"));
+  }
+}
+
+async function pollAraIdChallenge(
+  challengeToken: string,
+): Promise<TeacherAccessAraIdChallengeStatus> {
+  try {
+    const response = await apiClient.post<DataEnvelope<TeacherAccessAraIdChallengeStatus>>(
+      "/teacher-access/araid/challenge/status",
+      undefined,
+      { headers: { [ARAID_CHALLENGE_HEADER]: challengeToken } },
+    );
+    return response.data.data;
+  } catch (error) {
+    // eslint-disable-next-line preserve-caught-error
+    throw new Error(getApiErrorMessage(error, "คำขอยืนยัน AraID หมดอายุแล้ว"));
+  }
+}
+
+async function beginAraIdChallenge(challengeToken: string): Promise<{ expiresAt: string }> {
+  try {
+    const response = await apiClient.post<DataEnvelope<{ expiresAt: string }>>(
+      "/teacher-access/araid/challenge/begin",
+      undefined,
+      { headers: { [ARAID_CHALLENGE_HEADER]: challengeToken } },
+    );
+    return response.data.data;
+  } catch (error) {
+    // eslint-disable-next-line preserve-caught-error
+    throw new Error(getApiErrorMessage(error, "คำขอยืนยัน AraID ถูกใช้หรือหมดอายุแล้ว"));
+  }
+}
+
+async function approveAraIdChallenge(): Promise<void> {
+  try {
+    await apiClient.post("/teacher-access/araid/challenge/approve");
+  } catch (error) {
+    // eslint-disable-next-line preserve-caught-error
+    throw new Error(getApiErrorMessage(error, "ยืนยันคำขอ AraID ไม่สำเร็จ"));
   }
 }
 
@@ -496,32 +621,6 @@ async function saveAttendance(
   });
 }
 
-async function seedDemoAbsences(
-  credential: TeacherLinkCredential,
-  assignmentId: number,
-): Promise<void> {
-  await runGuestRequest(async () => {
-    await apiClient.post(
-      "/teacher-access/attendance-demo-absences",
-      { assignmentId },
-      { headers: guestHeaders(credential) },
-    );
-  });
-}
-
-async function clearDemoAbsences(
-  credential: TeacherLinkCredential,
-  assignmentId: number,
-): Promise<void> {
-  await runGuestRequest(async () => {
-    await apiClient.post(
-      "/teacher-access/attendance-demo-absences/clear",
-      { assignmentId },
-      { headers: guestHeaders(credential) },
-    );
-  });
-}
-
 export const teacherAccessService = {
   listGrants,
   listTeacherRoster,
@@ -531,12 +630,21 @@ export const teacherAccessService = {
   sendGrantsOverLine,
   unlinkTeacherLineAccount,
   issueTeacherLineInvitation,
+  issueTeacherLineGroupInvitation,
+  getTeacherLineGroupInvitation,
+  updateTeacherLineGroupInvitation,
+  revokeTeacherLineGroupInvitation,
   revokeTeacherLineInvitation,
   getGrantLink,
   revokeGrant,
   rotateGrant,
   requestOtp,
   verifyOtp,
+  verifyAraId,
+  createAraIdChallenge,
+  beginAraIdChallenge,
+  pollAraIdChallenge,
+  approveAraIdChallenge,
   getContext,
   listAttendanceSlots,
   getCompleteRoster,
@@ -551,6 +659,4 @@ export const teacherAccessService = {
   recordClassroomExport,
   updateClassroomCard,
   saveAttendance,
-  seedDemoAbsences,
-  clearDemoAbsences,
 };
