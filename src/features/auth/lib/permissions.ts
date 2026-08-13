@@ -109,9 +109,6 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "folder-heart",
     children: [
       {
-        ...pageMenuItem("review-cases", "/cases/risk"),
-      },
-      {
         ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
       },
     ],

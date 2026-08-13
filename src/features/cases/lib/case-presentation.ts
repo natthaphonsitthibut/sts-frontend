@@ -1,8 +1,19 @@
 import { formatThaiDateTime } from "../../../lib/date-time";
 import type { KnownCaseStatus } from "../types/cases.types";
 
+type CasePresentationTone =
+  | "default"
+  | "success"
+  | "warning"
+  | "orange"
+  | "purple"
+  | "danger"
+  | "info";
+
 interface CaseTrackingStatusPresentation {
+  badgeClassName: string;
   label: string;
+  summaryTone: CasePresentationTone;
   textClassName: string;
 }
 
@@ -11,29 +22,41 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
   CaseTrackingStatusPresentation
 > = {
   OPEN: {
+    badgeClassName: "border border-brand-yellow !bg-white text-brand-yellow",
     label: "รอมอบหมาย",
+    summaryTone: "orange",
     textClassName: "text-brand-yellow",
   },
   IN_PROGRESS: {
+    badgeClassName: "border border-brand-purple !bg-white text-brand-purple",
     label: "รอติดตาม",
+    summaryTone: "purple",
     textClassName: "text-brand-purple",
   },
   PENDING_REVIEW: {
+    badgeClassName: "border border-primary !bg-white text-primary",
     label: "รอพิจารณา",
+    summaryTone: "info",
     textClassName: "text-primary",
   },
   STUDENT_NOT_FOUND: {
+    badgeClassName: "border border-danger !bg-white text-danger",
     label: "ไม่พบนักเรียน",
+    summaryTone: "danger",
     textClassName: "text-danger",
   },
   RESOLVED: {
+    badgeClassName: "border border-success !bg-white text-success",
     label: "เสร็จสิ้น - ปิดเคส",
+    summaryTone: "success",
     textClassName: "text-success",
   },
 };
 
 const UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION: CaseTrackingStatusPresentation = {
+  badgeClassName: "border border-slate-300 !bg-white text-slate-600",
   label: "ไม่ระบุสถานะ",
+  summaryTone: "default",
   textClassName: "text-slate-500",
 };
 
@@ -52,4 +75,10 @@ export function getCaseReason(reason?: string | null, fallback?: string | null):
 
 export function formatCaseDate(value: string): string {
   return formatThaiDateTime(value);
+}
+
+export function isFollowUpLinkExpired(assignmentEndsAt?: string | null): boolean {
+  if (!assignmentEndsAt) return false;
+  const expiresAt = new Date(assignmentEndsAt);
+  return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now();
 }

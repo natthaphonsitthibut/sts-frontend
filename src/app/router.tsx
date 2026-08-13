@@ -29,7 +29,6 @@ import {
   TeacherTimetablePage,
   AttendanceOperationsPage,
   AttendanceRecordPage,
-  CasesListPage,
   CompletedPage,
   ClassroomsPage,
   ClassroomDetailPage,
@@ -81,6 +80,7 @@ import {
 } from "./lazy-pages";
 import {
   ClassroomDefaultRedirect,
+  LegacyCasesRedirect,
   LegacyRouteRedirect,
   LegacyTaskDetailRedirect,
   TeacherClassroomDefaultRedirect,
@@ -118,6 +118,14 @@ export const router = createBrowserRouter([
       },
       {
         path: "student-risk-report",
+        element: <LegacyRouteRedirect to="/student-risk-report/risk" />,
+      },
+      {
+        path: "student-risk-report/risk",
+        element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
+        path: "student-risk-report/watchlist",
         element: protectedElement(<DashboardPage />, "dashboard"),
       },
       {
@@ -205,15 +213,19 @@ export const router = createBrowserRouter([
       },
       {
         path: "cases",
-        element: <LegacyRouteRedirect to="/cases/risk" />,
+        element: <LegacyCasesRedirect />,
       },
       {
         path: "cases/risk",
-        element: protectedElement(<CasesListPage />, "review-cases"),
+        element: <LegacyCasesRedirect />,
       },
       {
         path: "cases/watchlist",
-        element: protectedElement(<CasesListPage />, "review-cases"),
+        element: <LegacyCasesRedirect />,
+      },
+      {
+        path: "cases/history",
+        element: <LegacyCasesRedirect />,
       },
       {
         path: "cases/:caseId",
@@ -222,10 +234,6 @@ export const router = createBrowserRouter([
       {
         path: "cases/:caseId/reviews/:reviewId",
         element: protectedElement(<CaseReviewDetailPage />, "review-cases"),
-      },
-      {
-        path: "cases/history",
-        element: protectedElement(<CasesListPage />, "review-cases"),
       },
       {
         path: "visit-links",

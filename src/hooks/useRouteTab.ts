@@ -22,10 +22,10 @@ export function useRouteTab<const R extends Readonly<Record<string, string>>>(
       if (!(value in routes)) return;
       const nextPath = routes[value as keyof R];
       if (normalizePath(nextPath) !== currentPath) {
-        void navigate(nextPath);
+        void navigate({ pathname: nextPath, search: location.search });
       }
     },
-    [currentPath, navigate, routes],
+    [currentPath, location.search, navigate, routes],
   );
 
   return [activeTab, setActiveTab] as const;

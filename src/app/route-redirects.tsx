@@ -15,6 +15,28 @@ export function LegacyRouteRedirect({ to }: { to: string }) {
   return <Navigate replace to={`${to}${location.search}${location.hash}`} />;
 }
 
+export function LegacyCasesRedirect() {
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const legacyStatus = query.get("status");
+  if (legacyStatus && !query.has("caseStatus")) {
+    query.set("caseStatus", legacyStatus);
+  }
+  query.delete("status");
+
+  const isWatchlist = location.pathname.endsWith("/watchlist");
+  if (location.pathname.endsWith("/history") && !query.has("caseStatus")) {
+    query.set("caseStatus", "RESOLVED");
+  }
+  const serialized = query.toString();
+  return (
+    <Navigate
+      replace
+      to={`${isWatchlist ? "/student-risk-report/watchlist" : "/student-risk-report/risk"}${serialized ? `?${serialized}` : ""}${location.hash}`}
+    />
+  );
+}
+
 export function LegacyTaskDetailRedirect() {
   const location = useLocation();
   const { taskId } = useParams<{ taskId: string }>();

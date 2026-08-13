@@ -1,5 +1,3 @@
-import type { PaginationMeta } from "../../../lib/pagination";
-
 export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
@@ -15,8 +13,6 @@ export type CaseBadgeVariant =
   | "destructive"
   | "success"
   | "warning";
-
-export type CaseSummaryTone = "default" | "success" | "warning" | "danger" | "info";
 
 export type CaseReviewAction = "REFER_AGENCY" | "CLOSE";
 export type CaseResolutionOutcome = string;
@@ -46,6 +42,9 @@ export interface CaseFollowUpRound {
   task_status: string;
   created_at: string;
   initial_assignee?: string | null;
+  assignment_starts_at?: string | null;
+  assignment_ends_at?: string | null;
+  assignment_note?: string | null;
   link_count: number;
   submitted_at?: string | null;
   visited_at?: string | null;
@@ -87,6 +86,10 @@ export interface CaseRecord {
   student_photo_url?: string | null;
   student_school?: string | null;
   student_address?: string | null;
+  student_phone?: string | null;
+  student_lat?: number | null;
+  student_lng?: number | null;
+  teacher_comment?: string | null;
   reason?: string | null;
   reason_flagged?: string | null;
   status: CaseStatus;
@@ -95,7 +98,6 @@ export interface CaseRecord {
   completion_outcome_label?: string | null;
   display_status_label?: string | null;
   status_badge_variant?: CaseBadgeVariant | null;
-  status_summary_tone?: CaseSummaryTone | null;
   created_at: string;
   active_link_id?: string | null;
   active_link_created_at?: string | null;
@@ -126,38 +128,6 @@ export interface CaseDetailResponse {
 
 export interface OpenCaseResponse extends CaseDetailResponse {
   created: boolean;
-}
-
-export interface CaseListQuery {
-  status?: string;
-  province?: string;
-  district?: string;
-  subDistrict?: string;
-  schoolId?: string;
-  grade?: string;
-  room?: string;
-  searchTerm?: string;
-  page?: number;
-  limit?: number;
-}
-
-export type CaseStatusCounts = Record<KnownCaseStatus, number>;
-
-export interface CasePaginationMeta extends PaginationMeta {
-  statusCounts?: Partial<CaseStatusCounts>;
-}
-
-/** Scope-aware case counts from `GET /stats` through apiClient. */
-export interface CaseStats {
-  total: number;
-  atRiskStudents?: number;
-  open: number;
-  inProgress: number;
-  resolved: number;
-  today: number;
-  pendingReview: number;
-  activeLinks?: number;
-  statusCounts?: Partial<Record<CaseStatus, number>>;
 }
 
 export interface CaseReviewRecord {

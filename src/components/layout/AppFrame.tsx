@@ -104,21 +104,11 @@ export function SidebarMenuContent({
     <div className="flex h-full flex-col bg-white">
       <nav
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-2",
+          "min-h-0 flex-1 overflow-y-auto px-2 py-4",
           "transition-[padding] duration-300 ease-out motion-reduce:transition-none",
-          collapsed ? "pt-2 pb-4" : "py-4",
         )}
       >
-        <div
-          className={cn(
-            "truncate overflow-hidden px-3 text-xs font-semibold text-slate-500",
-            "transition-[opacity,max-width,max-height,margin] duration-300 ease-out motion-reduce:transition-none",
-            collapsed ? "max-h-0 max-w-0 opacity-0" : "mb-2 max-h-9 max-w-48 opacity-100",
-          )}
-        >
-          เมนู
-        </div>
-        <div className={cn("space-y-0.5", collapsed && "space-y-2")}>
+        <div className="space-y-0.5">
           {items.map((item) => (
             <SidebarNavItem
               collapsed={collapsed}

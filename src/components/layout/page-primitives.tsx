@@ -17,6 +17,7 @@ import { cn } from "../../lib/utils";
 import { ClearFiltersButton } from "./clear-filters-button";
 import {
   getContextualCrumbs,
+  createBreadcrumbNavigationState,
   getDefaultParentCrumbs,
   getNavigationLabel,
   type NavigationCrumb,
@@ -145,19 +146,31 @@ export function PageToolbar({
       : []),
     ...defaultParentCrumbs,
   ];
+  const currentCrumbLabel =
+    typeof toolbarTitle === "string"
+      ? getNavigationLabel(pathname, toolbarTitle)
+      : toolbarTitle;
   const middleCrumbs = rawMiddleCrumbs
-    .filter((crumb) => crumb.to !== pathname)
+    .filter(
+      (crumb) =>
+        crumb.to !== pathname &&
+        !(typeof currentCrumbLabel === "string" && crumb.label === currentCrumbLabel),
+    )
     .map((crumb) => ({
       ...crumb,
       icon:
         crumb.icon ??
         getPageIdentity(crumb.to)?.icon ??
         getPageIdentityByTitle(crumb.label)?.icon,
-    }));
-  const currentCrumbLabel =
-    typeof toolbarTitle === "string"
-      ? getNavigationLabel(pathname, toolbarTitle)
-      : toolbarTitle;
+    }))
+    .reduce<Array<NavigationCrumb & { icon?: LucideIcon }>>((crumbs, crumb) => {
+      const duplicateIndex = crumbs.findIndex(
+        (existing) => existing.to === crumb.to || existing.label === crumb.label,
+      );
+      if (duplicateIndex >= 0) crumbs.splice(duplicateIndex, 1);
+      crumbs.push(crumb);
+      return crumbs;
+    }, []);
   const isHomePage = pathname === homeCrumb.to;
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
@@ -234,6 +247,7 @@ export function PageToolbar({
                               ? "hover:text-white"
                               : "hover:text-content-primary",
                           )}
+                          state={createBreadcrumbNavigationState(location, crumb.to)}
                           to={crumb.to}
                         >
                           {CrumbIcon ? (
@@ -566,7 +580,14 @@ export function ListPageToolbar({
   );
 }
 
-type SummaryTone = "default" | "success" | "warning" | "danger" | "info";
+type SummaryTone =
+  | "default"
+  | "success"
+  | "warning"
+  | "orange"
+  | "danger"
+  | "info"
+  | "purple";
 
 const summaryToneClasses: Record<
   SummaryTone,
@@ -591,15 +612,25 @@ const summaryToneClasses: Record<
     iconBg: "bg-warning-100",
     iconColor: "text-warning-700",
   },
+  orange: {
+    surface: "bg-white",
+    iconBg: "bg-brand-yellow-bg",
+    iconColor: "text-brand-yellow",
+  },
   danger: {
     surface: "bg-white",
     iconBg: "bg-danger-100",
-    iconColor: "text-danger-700",
+    iconColor: "text-danger",
   },
   info: {
     surface: "bg-white",
     iconBg: "bg-brand-soft",
     iconColor: "text-primary",
+  },
+  purple: {
+    surface: "bg-white",
+    iconBg: "bg-brand-purple-bg",
+    iconColor: "text-brand-purple",
   },
 };
 
@@ -611,11 +642,15 @@ interface SummaryMetricComparison {
 
 interface SummaryMetric {
   label: ReactNode;
+  /** Optional label treatment for a feature-specific summary row. */
+  labelClassName?: string;
   value: ReactNode;
   tone?: SummaryTone;
   icon?: LucideIcon;
   /** Optional real baseline comparison, for example versus the previous academic year. */
   comparison?: SummaryMetricComparison;
+  /** Use for compact status totals that have no meaningful baseline. */
+  hideComparison?: boolean;
   /** The one headline number in the row (usually "ทั้งหมด") reads larger than its siblings. */
   emphasis?: boolean;
   /** Turns the whole metric into one accessible filter/action target. */
@@ -686,20 +721,36 @@ export function SummaryMetrics({
           const content = (
             <>
               <div className="flex w-full items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-medium text-slate-600">
-                    {item.label}
-                  </div>
+                {item.hideComparison ? (
                   <div
                     className={cn(
-                      "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
-                      item.emphasis ? "text-3xl" : "text-2xl",
+                      "min-w-0 truncate text-xs font-medium text-slate-600",
+                      item.labelClassName,
                     )}
-                    key={String(item.value)}
                   >
-                    {item.value}
+                    {item.label}
                   </div>
-                </div>
+                ) : (
+                  <div className="min-w-0">
+                    <div
+                      className={cn(
+                        "truncate text-xs font-medium text-slate-600",
+                        item.labelClassName,
+                      )}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      className={cn(
+                        "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
+                        item.emphasis ? "text-3xl" : "text-2xl",
+                      )}
+                      key={String(item.value)}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                )}
                 {Icon ? (
                   <div
                     className={cn(
@@ -714,20 +765,33 @@ export function SummaryMetrics({
                   </div>
                 ) : null}
               </div>
-              <div className="flex w-full min-w-0 items-center gap-1.5 text-xs">
-                <span
+              {item.hideComparison ? (
+                <div
                   className={cn(
-                    "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
-                    comparisonTone.iconBg,
-                    comparisonTone.iconColor,
+                    "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
+                    item.emphasis ? "text-3xl" : "text-2xl",
                   )}
+                  key={String(item.value)}
                 >
-                  {comparison.value}
-                </span>
-                <span className="truncate text-slate-500">
-                  {comparison.description}
-                </span>
-              </div>
+                  {item.value}
+                </div>
+              ) : null}
+              {!item.hideComparison ? (
+                <div className="flex w-full min-w-0 items-center gap-1.5 text-xs">
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
+                      comparisonTone.iconBg,
+                      comparisonTone.iconColor,
+                    )}
+                  >
+                    {comparison.value}
+                  </span>
+                  <span className="truncate text-slate-500">
+                    {comparison.description}
+                  </span>
+                </div>
+              ) : null}
             </>
           );
           return item.onSelect ? (

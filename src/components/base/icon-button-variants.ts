@@ -24,7 +24,7 @@ export const iconButtonVariants = cva(
         delete: solid("bg-brand-red-alt hover:bg-danger"),
         credential: solid("bg-credential hover:bg-credential-dark"),
         share: solid("bg-share hover:bg-share-dark"),
-        view: solid("bg-view hover:bg-view-dark"),
+        view: solid("bg-primary hover:bg-primary-dark"),
         contact: solid("bg-success hover:bg-success-700"),
         location: solid("bg-primary hover:bg-primary-dark"),
         comment: solid("bg-ink hover:bg-slate-800"),

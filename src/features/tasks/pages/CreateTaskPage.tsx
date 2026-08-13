@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { FilePlus2, Link2, MapPin, Plus, UserPlus, UserRoundCheck } from "lucide-react";
+import {
+  ClipboardList,
+  FilePlus2,
+  History,
+  Link2,
+  MapPin,
+  Plus,
+  UserPlus,
+  UserRound,
+  UserRoundCheck,
+} from "lucide-react";
 import { z } from "zod";
 import {
   Alert,
@@ -40,16 +50,10 @@ import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { LinkShareActions } from "../../../components/layout/link-share-actions";
 import { cn } from "../../../lib/utils";
 import { taskService } from "../api/task.service";
-import { geoService } from "../api/geo.service";
-import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { useCreateFollowerRecruitmentCampaign } from "../../field-followers/hooks/useFollowerRecruitmentCampaigns";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { StudentPicker, type SelectedStudent } from "../components/StudentPicker";
-import {
-  AddressFormSection,
-  type AddressFieldNames,
-} from "../../../components/address/AddressFormSection";
 import {
   addressTextValue,
   joinAddressParts,
@@ -57,6 +61,7 @@ import {
   stripAddressPrefix,
 } from "../../../components/address/address-format";
 import { studentsService } from "../../students/api/students.service";
+import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { usePeriodTimes, useRoomSubjects, useTimetableSlots } from "../../timetable/hooks/useTimetable";
 import {
   DAY_LABELS,
@@ -163,9 +168,10 @@ function dateRangeIncludesDayOfWeek(start: Date, end: Date, dayOfWeek: number): 
 const createTaskSchema = z
   .object({
     task_type: z.enum(["VISIT", "ATTENDANCE"]),
-    assigned_to_first_name: z.string().trim().min(1, "กรุณากรอกชื่อผู้รับมอบหมาย"),
-    assigned_to_last_name: z.string().trim().min(1, "กรุณากรอกนามสกุลผู้รับมอบหมาย"),
+    assigned_to_first_name: z.string().trim(),
+    assigned_to_last_name: z.string().trim(),
     assigned_to_email: z.string().trim(),
+    assigned_teacher_user_id: z.string().trim(),
     role: z.string().trim(),
     student_name: z.string().trim(),
     student_first_name: z.string().trim(),
@@ -202,8 +208,15 @@ const createTaskSchema = z
     assignment_end_time: z.string().trim(),
   })
   .superRefine((values, ctx) => {
-    // Every link type needs a contactable assignee email.
-    if (!values.assigned_to_email) {
+    if (values.task_type === "VISIT") {
+      if (!values.assigned_teacher_user_id) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["assigned_teacher_user_id"],
+          message: "กรุณาเลือกครูผู้รับมอบหมาย",
+        });
+      }
+    } else if (!values.assigned_to_email) {
       ctx.addIssue({
         code: "custom",
         path: ["assigned_to_email"],
@@ -328,20 +341,6 @@ const recruitmentCampaignSchema = z
 
 type RecruitmentCampaignFormValues = z.infer<typeof recruitmentCampaignSchema>;
 
-const VISIT_ADDRESS_NAMES: AddressFieldNames<CreateTaskFormValues> = {
-  houseNo: "address_house_no",
-  moo: "address_village_no",
-  street: "address_street",
-  soi: "address_soi",
-  trok: "address_trok",
-  province: "address_province",
-  district: "address_district",
-  subDistrict: "address_sub_district",
-  postalCode: "postal_code",
-  latitude: "address_latitude",
-  longitude: "address_longitude",
-};
-
 /** Pre-fill passed from the case dashboard's "สร้างลิงก์" action (a flagged student). */
 interface VisitPrefill {
   existing_case_id?: string | number;
@@ -369,6 +368,7 @@ function makeDefaults(type: ActiveTaskType): CreateTaskFormValues {
     assigned_to_first_name: "",
     assigned_to_last_name: "",
     assigned_to_email: "",
+    assigned_teacher_user_id: "",
     role: "",
     student_name: "",
     student_first_name: "",
@@ -431,8 +431,7 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
       : null,
   );
   // Guards the async student-detail fetch in prefill so a stale response cannot
-  // overwrite a newer student selection. Coordinates now live in the form and
-  // are auto-resolved by AddressFormSection.
+  // overwrite a newer student selection.
   const addressRequestVersionRef = useRef(0);
   const assigneeNameParts = (prefill?.assigned_to_name ?? "").trim().split(/\s+/).filter(Boolean);
 
@@ -469,11 +468,30 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
     control: form.control,
     name: "assignment_end_time",
   });
-  const locationQuery = useQuery({
-    queryKey: ["task-create-locations"],
-    queryFn: attendanceLookupService.getLocations,
-    enabled: type === "VISIT",
+  const selectedTeacherUserId = useWatch({
+    control: form.control,
+    name: "assigned_teacher_user_id",
   });
+  const visitAssigneesQuery = useQuery({
+    queryKey: ["visit-assignees", selectedStudent?.personId],
+    queryFn: () => taskService.getVisitAssignees(selectedStudent!.personId!),
+    enabled: type === "VISIT" && Boolean(selectedStudent?.personId),
+  });
+  const visitAssignees = useMemo(
+    () => visitAssigneesQuery.data ?? [],
+    [visitAssigneesQuery.data],
+  );
+  useEffect(() => {
+    if (type !== "VISIT" || visitAssignees.length === 0) return;
+    const currentIsAvailable = visitAssignees.some(
+      (teacher) => String(teacher.teacherUserId) === selectedTeacherUserId,
+    );
+    if (currentIsAvailable) return;
+    const defaultTeacher = visitAssignees.find((teacher) => teacher.isHomeroom) ?? visitAssignees[0];
+    form.setValue("assigned_teacher_user_id", String(defaultTeacher.teacherUserId), {
+      shouldValidate: form.formState.isSubmitted,
+    });
+  }, [form, selectedTeacherUserId, type, visitAssignees]);
   const roomSubjectsFilter =
     type === "ATTENDANCE" && scope.schoolId && scope.gradeLevelId && scope.room
       ? {
@@ -545,22 +563,6 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
     onSuccess: setResult,
     throwOnError: false,
   });
-  const geocodeAddress = useMutation({
-    mutationFn: (address: string) => geoService.geocodeAddress(address),
-    onSuccess: (result) => {
-      if (!result) {
-        return;
-      }
-      form.setValue("address_latitude", result.lat, { shouldDirty: true });
-      form.setValue("address_longitude", result.lng, { shouldDirty: true });
-      if (result.postalCode) {
-        form.setValue("postal_code", result.postalCode, {
-          shouldValidate: form.formState.isSubmitted,
-        });
-      }
-    },
-    throwOnError: false,
-  });
 
   function startNewTask(): void {
     addressRequestVersionRef.current += 1;
@@ -574,6 +576,9 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
     const requestVersion = addressRequestVersionRef.current + 1;
     addressRequestVersionRef.current = requestVersion;
     setSelectedStudent(next);
+    form.setValue("assigned_teacher_user_id", "", {
+      shouldValidate: form.formState.isSubmitted,
+    });
     form.setValue("student_name", next?.name ?? "", {
       shouldValidate: form.formState.isSubmitted,
     });
@@ -649,7 +654,7 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
       form.setValue("address_district", district);
       form.setValue("address_sub_district", subDistrict);
       form.setValue("postal_code", storedPostalCode);
-      // Clear any stale pin so AddressFormSection auto-geocodes the new address.
+      // Clear any stale pin so the new address snapshot is not mixed with old data.
       form.setValue("address_latitude", null);
       form.setValue("address_longitude", null);
     } catch {
@@ -744,6 +749,9 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
         ]) || values.student_address;
 
       Object.assign(payload, {
+        assigned_teacher_user_id: values.assigned_teacher_user_id
+          ? Number(values.assigned_teacher_user_id)
+          : null,
         student_name: studentName,
         student_first_name: values.student_first_name || null,
         student_last_name: values.student_last_name || null,
@@ -817,6 +825,195 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
     );
   }
 
+  if (type === "VISIT") {
+    const selectedTeacher = visitAssignees.find(
+      (teacher) => String(teacher.teacherUserId) === selectedTeacherUserId,
+    );
+
+    return (
+      <Form form={form} onSubmit={handleValid}>
+        <div className="space-y-5">
+          <Card className="p-5" id="create-task-detail">
+            <div className="mb-5 flex items-center gap-2 text-base font-bold text-slate-900">
+              <UserRound className="size-5 text-primary" aria-hidden="true" />
+              ข้อมูลนักเรียน
+            </div>
+            <FormErrorAlert
+              error={createTask.error}
+              fallback="สร้างลิงก์ไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+            />
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <FormItem>
+                <FormLabel required>นักเรียน</FormLabel>
+                <StudentPicker
+                  disabled={createTask.isPending}
+                  onChange={handleStudentChange}
+                  value={selectedStudent}
+                />
+                <FormMessage<CreateTaskFormValues> name="student_name" />
+                <FormMessage<CreateTaskFormValues> name="student_school" />
+              </FormItem>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <UserRound className="size-6" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-slate-900">
+                      {selectedStudent?.name || "เลือกนักเรียนเพื่อเริ่มติดตาม"}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-slate-500">
+                      {selectedStudent?.school || "ระบบจะแสดงเฉพาะครูของโรงเรียนนี้"}
+                    </p>
+                  </div>
+                </div>
+                <FormItem className="mt-4">
+                  <FormLabel htmlFor="reason_flagged" required>
+                    หมายเหตุ
+                  </FormLabel>
+                  <Textarea
+                    id="reason_flagged"
+                    placeholder="คำอธิบายเพิ่มเติม"
+                    rows={3}
+                    {...registerField(form, "reason_flagged")}
+                  />
+                  <FormMessage<CreateTaskFormValues> name="reason_flagged" />
+                </FormItem>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+                <ClipboardList className="size-5 text-primary" aria-hidden="true" />
+                ขั้นตอนการติดตาม
+              </div>
+              <span className="text-sm font-semibold text-slate-700">
+                สถานะการติดตาม: <span className={getCaseTrackingStatusPresentation("OPEN").textClassName}>รอมอบหมาย</span>
+              </span>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[112px_minmax(0,1fr)]">
+              <div className="flex items-center gap-3 lg:flex-col lg:items-center lg:pt-12">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-white shadow-sm">
+                  1
+                </span>
+                <span className="font-bold text-slate-800">มอบหมาย</span>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <FormItem>
+                    <FormLabel htmlFor="assignment-start-date" required>วันที่เริ่ม</FormLabel>
+                    <DatePicker
+                      ariaLabel="วันที่เริ่มงาน"
+                      id="assignment-start-date"
+                      onChange={(value) =>
+                        form.setValue("assignment_start_date", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      value={assignmentStartDate}
+                    />
+                    <FormMessage<CreateTaskFormValues> name="assignment_start_date" />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel htmlFor="assignment-start-time" required>เวลาเริ่ม</FormLabel>
+                    <TimePicker
+                      ariaLabel="เวลาเริ่มงาน"
+                      id="assignment-start-time"
+                      onChange={(value) =>
+                        form.setValue("assignment_start_time", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      value={assignmentStartTime}
+                    />
+                    <FormMessage<CreateTaskFormValues> name="assignment_start_time" />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel htmlFor="assignment-end-date" required>วันที่สิ้นสุด</FormLabel>
+                    <DatePicker
+                      ariaLabel="วันที่สิ้นสุดงาน"
+                      id="assignment-end-date"
+                      onChange={(value) =>
+                        form.setValue("assignment_end_date", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      value={assignmentEndDate}
+                    />
+                    <FormMessage<CreateTaskFormValues> name="assignment_end_date" />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel htmlFor="assignment-end-time" required>เวลาสิ้นสุด</FormLabel>
+                    <TimePicker
+                      ariaLabel="เวลาสิ้นสุดงาน"
+                      id="assignment-end-time"
+                      onChange={(value) =>
+                        form.setValue("assignment_end_time", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      value={assignmentEndTime}
+                    />
+                    <FormMessage<CreateTaskFormValues> name="assignment_end_time" />
+                  </FormItem>
+                  <FormItem className="md:col-span-2">
+                    <FormLabel required>ครูผู้รับมอบหมาย</FormLabel>
+                    <Combobox
+                      disabled={!selectedStudent?.personId || visitAssigneesQuery.isLoading}
+                      emptyText="ไม่พบครูที่พร้อมรับมอบหมายในโรงเรียนนี้"
+                      onChange={(value) =>
+                        form.setValue("assigned_teacher_user_id", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      options={visitAssignees.map((teacher) => ({
+                        value: String(teacher.teacherUserId),
+                        label: `${teacher.displayName}${teacher.isHomeroom ? " (ครูประจำชั้น)" : ""}`,
+                      }))}
+                      placeholder={
+                        selectedStudent?.personId
+                          ? "เลือกครูผู้รับมอบหมาย"
+                          : "เลือกนักเรียนก่อน"
+                      }
+                      value={selectedTeacherUserId}
+                    />
+                    <FormMessage<CreateTaskFormValues> name="assigned_teacher_user_id" />
+                    {selectedTeacher?.isHomeroom ? (
+                      <p className="text-xs text-primary">เลือกครูประจำชั้นเป็นค่าเริ่มต้น</p>
+                    ) : null}
+                  </FormItem>
+                  <div className="md:col-span-2 flex items-end rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                    <History className="mr-2 size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                    ลิงก์จะส่งให้ครูที่เลือก และเปิดใช้งานภายในช่วงเวลานี้
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button
+              isLoading={createTask.isPending}
+              loadingText="กำลังสร้าง"
+              size="lg"
+              type="submit"
+            >
+              สร้างลิงก์
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  }
+
   return (
     <Form form={form} onSubmit={handleValid}>
       <Card id="create-task-detail">
@@ -868,48 +1065,6 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
               <FormMessage<CreateTaskFormValues> name="assigned_to_email" />
             </FormItem>
           </div>
-
-          {type === "VISIT" ? (
-            <div className="space-y-4">
-              <FormItem>
-                <FormLabel required>นักเรียน</FormLabel>
-                <StudentPicker
-                  disabled={createTask.isPending}
-                  onChange={handleStudentChange}
-                  value={selectedStudent}
-                />
-                <FormMessage<CreateTaskFormValues> name="student_name" />
-                <FormMessage<CreateTaskFormValues> name="student_school" />
-              </FormItem>
-
-              <AddressFormSection
-                autoGeocode={false}
-                catalog={locationQuery.data}
-                disabled={createTask.isPending}
-                form={form}
-                geocodeError={geocodeAddress.isError ? (
-                  <FormErrorAlert
-                    error={geocodeAddress.error}
-                    fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาตรวจสอบที่อยู่หรือปักหมุดบนแผนที่"
-                  />
-                ) : null}
-                isGeocoding={geocodeAddress.isPending}
-                names={VISIT_ADDRESS_NAMES}
-                onGeocode={async (address) => Boolean(await geocodeAddress.mutateAsync(address))}
-                showPlaceholders
-                title="ที่อยู่บ้านนักเรียน"
-              />
-
-              <FormItem>
-                <FormLabel htmlFor="reason_flagged" required>
-                  สาเหตุ
-                </FormLabel>
-                <Input id="reason_flagged" {...registerField(form, "reason_flagged")} />
-                <FormMessage<CreateTaskFormValues> name="reason_flagged" />
-              </FormItem>
-
-            </div>
-          ) : null}
 
           {type === "ATTENDANCE" ? (
             <div className="space-y-4">
@@ -1134,89 +1289,7 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
               </p>
             </div>
           ) : null}
-
-
-          {type === "VISIT" ? (
-            <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">ช่วงเวลามอบหมายงาน</h3>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  ผู้รับมอบหมายจะเปิดแบบฟอร์มได้ตั้งแต่เวลาเริ่มจนถึงเวลาสิ้นสุด
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <FormItem>
-                  <FormLabel htmlFor="assignment-start-date" required>
-                    วันที่เริ่ม
-                  </FormLabel>
-                  <DatePicker
-                    ariaLabel="วันที่เริ่มงาน"
-                    id="assignment-start-date"
-                    onChange={(value) =>
-                      form.setValue("assignment_start_date", value, {
-                        shouldDirty: true,
-                        shouldValidate: form.formState.isSubmitted,
-                      })
-                    }
-                    value={assignmentStartDate}
-                  />
-                  <FormMessage<CreateTaskFormValues> name="assignment_start_date" />
-                </FormItem>
-                <FormItem>
-                  <FormLabel htmlFor="assignment-start-time" required>
-                    เวลาเริ่ม
-                  </FormLabel>
-                  <TimePicker
-                    ariaLabel="เวลาเริ่มงาน"
-                    id="assignment-start-time"
-                    onChange={(value) =>
-                      form.setValue("assignment_start_time", value, {
-                        shouldDirty: true,
-                        shouldValidate: form.formState.isSubmitted,
-                      })
-                    }
-                    value={assignmentStartTime}
-                  />
-                  <FormMessage<CreateTaskFormValues> name="assignment_start_time" />
-                </FormItem>
-                <FormItem>
-                  <FormLabel htmlFor="assignment-end-date" required>
-                    วันที่สิ้นสุด
-                  </FormLabel>
-                  <DatePicker
-                    ariaLabel="วันที่สิ้นสุดงาน"
-                    id="assignment-end-date"
-                    onChange={(value) =>
-                      form.setValue("assignment_end_date", value, {
-                        shouldDirty: true,
-                        shouldValidate: form.formState.isSubmitted,
-                      })
-                    }
-                    value={assignmentEndDate}
-                  />
-                  <FormMessage<CreateTaskFormValues> name="assignment_end_date" />
-                </FormItem>
-                <FormItem>
-                  <FormLabel htmlFor="assignment-end-time" required>
-                    เวลาสิ้นสุด
-                  </FormLabel>
-                  <TimePicker
-                    ariaLabel="เวลาสิ้นสุดงาน"
-                    id="assignment-end-time"
-                    onChange={(value) =>
-                      form.setValue("assignment_end_time", value, {
-                        shouldDirty: true,
-                        shouldValidate: form.formState.isSubmitted,
-                      })
-                    }
-                    value={assignmentEndTime}
-                  />
-                  <FormMessage<CreateTaskFormValues> name="assignment_end_time" />
-                </FormItem>
-              </div>
-            </div>
-          ) : (
-            <>
+          <>
               <div className="grid gap-x-4 sm:grid-cols-[1fr_160px]">
                 <FormItem>
                   <FormLabel htmlFor="expires_value" required>
@@ -1264,8 +1337,7 @@ function CreateTaskTypeForm({ type }: { type: ActiveTaskType }) {
                 </p>
                 <FormMessage<CreateTaskFormValues> name="opens_at" />
               </FormItem>
-            </>
-          )}
+          </>
 
           <div className="flex justify-end">
             <Button
@@ -1462,6 +1534,18 @@ export function CreateTaskPage() {
   function chooseType(next: CreateLinkType): void {
     // Clicking the already-selected type again deselects it (back to chooser).
     void navigate(activeType === next ? "/create" : `/create/${TYPE_TO_PATH[next]}`);
+  }
+
+  if (activeType === "VISIT") {
+    return (
+      <PageShell>
+        <PageToolbar
+          icon={ClipboardList}
+          title="ติดตามนักเรียน"
+        />
+        <CreateTaskTypeForm type="VISIT" />
+      </PageShell>
+    );
   }
 
   return (

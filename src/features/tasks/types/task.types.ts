@@ -13,6 +13,7 @@ export interface TaskCreatePayload {
   assigned_to_last_name: string;
   assigned_to_email?: string | null;
   assigned_to_phone?: string | null;
+  assigned_teacher_user_id?: number | null;
   expires_value: number;
   expires_unit: TaskDurationUnit;
   /** ISO datetime the link becomes usable; omit/null = opens immediately. */
@@ -43,6 +44,7 @@ export interface TaskCreatePayload {
   permissions?: string[];
   data_scope?: DataScope;
   existing_case_id?: string | null;
+  assignment_note?: string | null;
   follow_up_request_id?: string | null;
   source_field_follower_id?: string | number | null;
   campaign_target_id?: string | number | null;
@@ -55,6 +57,12 @@ export interface TaskCreateResponse {
   expires_at: string;
   follow_up_request_id?: string | null;
   reused?: boolean;
+}
+
+export interface VisitAssignee {
+  teacherUserId: number;
+  displayName: string;
+  isHomeroom: boolean;
 }
 
 export interface TaskAccessTask {
@@ -95,6 +103,7 @@ export interface TaskAccessTask {
   postal_code?: string | null;
   reason_flagged?: string | null;
   delegation_note?: string | null;
+  assignment_note?: string | null;
   student_lat?: number | null;
   student_lng?: number | null;
   academic_year?: number | string | null;

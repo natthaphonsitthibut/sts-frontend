@@ -48,6 +48,8 @@ export function SchoolClassRoomFilter({
         schoolEmptyLabel={emptyOptionLabels?.school}
         schoolId={scope.schoolId}
         schoolLocked={scope.schoolLocked}
+        hideArea={scope.schoolLocked}
+        hideSchool={scope.schoolLocked}
       />
       <Combobox
         disabled={disabled || !scope.schoolId || scope.gradeLocked}

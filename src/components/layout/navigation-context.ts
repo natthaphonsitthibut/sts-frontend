@@ -77,9 +77,6 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/attendance/history": "ประวัติการเช็คชื่อ",
-  "/cases/risk": "เคสติดตาม",
-  "/cases/watchlist": "เคสติดตาม",
-  "/cases/history": "ประวัติเคสติดตาม",
   "/create/attendance": "สร้างลิงก์เช็คชื่อ",
   "/create/recruitment": "สร้างลิงก์รับสมัคร",
   "/create/visit": "สร้างลิงก์ลงพื้นที่",
@@ -106,7 +103,7 @@ export function getNavigationLabel(
   if (/^\/cases\/[^/]+\/reviews\/[^/]+$/.test(pathname)) {
     return "รายละเอียดผลการพิจารณา";
   }
-  if (/^\/cases\/[^/]+$/.test(pathname)) return "รายละเอียดเคส";
+  if (/^\/cases\/[^/]+$/.test(pathname)) return "ติดตามนักเรียน";
   if (/^\/attendance\/record\/[^/]+$/.test(pathname))
     return "บันทึกการเช็คชื่อ";
   if (/^\/classrooms\/[^/]+$/.test(pathname)) return "รายละเอียดห้องเรียน";
@@ -152,6 +149,19 @@ function identityCrumb(route: string): NavigationCrumb {
 }
 
 function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
+  const caseDetail = /^\/cases\/[^/]+$/.exec(pathname);
+  if (caseDetail) {
+    // A case detail is opened from the student-status report. Keep that
+    // origin even for a direct reload so its child student profile retains
+    // the same report → case breadcrumb/back chain.
+    return [
+      {
+        label: "รายงานสถานะนักเรียน",
+        to: "/student-risk-report/risk",
+      },
+    ];
+  }
+
   const importQuarantine = /^\/import-data\/quarantine\/([^/]+)$/.exec(
     pathname,
   );
@@ -173,8 +183,8 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
   const caseReview = /^\/cases\/([^/]+)\/reviews\/[^/]+$/.exec(pathname);
   if (caseReview) {
     return [
-      identityCrumb("/cases"),
-      { label: "รายละเอียดเคส", to: `/cases/${caseReview[1]}` },
+      { label: "รายงานสถานะนักเรียน", to: "/student-risk-report/risk" },
+      { label: "ติดตามนักเรียน", to: `/cases/${caseReview[1]}` },
     ];
   }
 
@@ -270,7 +280,12 @@ function currentAppPath(location: Location): string {
 function dedupeTrail(trail: NavigationCrumb[]): NavigationCrumb[] {
   const result: NavigationCrumb[] = [];
   for (const crumb of trail) {
-    const existingIndex = result.findIndex((item) => item.to === crumb.to);
+    // A list/detail flow can add the same semantic page twice: once as the
+    // menu parent and once as the filtered source URL. Keep the latter so a
+    // back action restores its query filters instead of showing duplicate text.
+    const existingIndex = result.findIndex(
+      (item) => item.to === crumb.to || item.label === crumb.label,
+    );
     if (existingIndex >= 0) result.splice(existingIndex, 1);
     result.push(crumb);
   }
@@ -303,6 +318,33 @@ export function createContextualNavigationState(
   return {
     ...(isStateRecord(existingState) ? existingState : {}),
     [NAVIGATION_CONTEXT_KEY]: context,
+  };
+}
+
+/**
+ * Breadcrumb links move back through an existing trail. Unlike a normal
+ * detail link, they must not append the current page to that trail; doing so
+ * loses the filtered report URL after a profile → case → report round trip.
+ */
+export function createBreadcrumbNavigationState(
+  location: Location,
+  destination: string,
+): StateRecord | undefined {
+  const inherited = getNavigationContext(location.state);
+  if (!inherited) return undefined;
+
+  const destinationIndex = inherited.trail.findIndex(
+    (crumb) => crumb.to === destination,
+  );
+  if (destinationIndex < 0) return undefined;
+
+  const trail = inherited.trail.slice(0, destinationIndex);
+  return {
+    [NAVIGATION_CONTEXT_KEY]: {
+      backTo: trail.at(-1)?.to ?? "/",
+      menuRoute: inherited.menuRoute,
+      trail,
+    } satisfies AppNavigationContext,
   };
 }
 

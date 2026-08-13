@@ -70,7 +70,6 @@ function navLinkClassName(
 const ALL_MENU_ROUTES = collectMenuRoutes(MENU_ITEMS);
 
 function routeMatchesPathname(route: string, pathname: string): boolean {
-  if (route === "/cases/risk" && pathname.startsWith("/cases/")) return true;
   return route === pathname || (route !== "/" && pathname.startsWith(`${route}/`));
 }
 

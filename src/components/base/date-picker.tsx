@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -15,7 +15,8 @@ export interface DatePickerProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
-  popoverPlacement?: "bottom" | "top";
+  "aria-invalid"?: boolean;
+  popoverPlacement?: "auto" | "bottom" | "top";
 }
 
 const THAI_MONTH_NAMES = [
@@ -37,6 +38,10 @@ const WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 const BUDDHIST_ERA_OFFSET = 543;
 type CalendarView = "day" | "month" | "year";
 
+const CALENDAR_POPOVER_HEIGHT = 340;
+const CALENDAR_POPOVER_WIDTH = 288;
+const VIEWPORT_GUTTER = 8;
+
 interface DateParts {
   year: number;
   month: number;
@@ -54,8 +59,18 @@ function parseIso(value: string): DateParts | null {
 }
 
 function getTodayParts(): DateParts {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+    })
+      .formatToParts(new Date())
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  return { year: parts.year, month: parts.month - 1, day: parts.day };
 }
 
 /** Display Thai Buddhist Era while keeping the transport value as Gregorian YYYY-MM-DD. */
@@ -104,6 +119,7 @@ function isYearOutOfRange(year: number, min?: string, max?: string): boolean {
  */
 export function DatePicker({
   ariaLabel,
+  "aria-invalid": ariaInvalid,
   className,
   disabled = false,
   id,
@@ -111,11 +127,12 @@ export function DatePicker({
   min,
   onChange,
   placeholder = "เลือกวันที่",
-  popoverPlacement = "bottom",
+  popoverPlacement = "auto",
   value,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [calendarView, setCalendarView] = useState<CalendarView>("day");
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = parseIso(value);
   const [view, setView] = useState<{ year: number; month: number }>(() => {
@@ -124,6 +141,17 @@ export function DatePicker({
   });
 
   useDismissable(open, containerRef, () => setOpen(false));
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [open]);
 
   function shiftMonth(delta: number): void {
     setView((current) => {
@@ -167,6 +195,32 @@ export function DatePicker({
     setOpen(false);
   }
 
+  function openCalendar(): void {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) {
+      setOpen(true);
+      return;
+    }
+
+    const roomBelow = window.innerHeight - rect.bottom;
+    const roomAbove = rect.top;
+    const opensAbove =
+      popoverPlacement === "top" ||
+      (popoverPlacement === "auto" && roomBelow < CALENDAR_POPOVER_HEIGHT && roomAbove > roomBelow);
+    const idealTop = opensAbove ? rect.top - CALENDAR_POPOVER_HEIGHT - 4 : rect.bottom + 4;
+    setPopoverStyle({
+      left: Math.min(
+        Math.max(VIEWPORT_GUTTER, rect.left),
+        Math.max(VIEWPORT_GUTTER, window.innerWidth - CALENDAR_POPOVER_WIDTH - VIEWPORT_GUTTER),
+      ),
+      top: Math.min(
+        Math.max(VIEWPORT_GUTTER, idealTop),
+        Math.max(VIEWPORT_GUTTER, window.innerHeight - CALENDAR_POPOVER_HEIGHT - VIEWPORT_GUTTER),
+      ),
+    });
+    setOpen(true);
+  }
+
   const leadingBlanks = firstWeekday(view.year, view.month);
   const totalDays = daysInMonth(view.year, view.month);
   const todayIso = toIso(getTodayParts());
@@ -192,20 +246,20 @@ export function DatePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
-        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 [&>span]:w-full [&>span>span]:w-full"
+        aria-invalid={ariaInvalid}
+        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20 [&>span]:w-full [&>span>span]:w-full"
         disabled={disabled}
         icon={CalendarDays}
         id={id}
         onClick={() => {
-          setOpen((current) => {
-            const next = !current;
-            if (next) {
-              const base = selected ?? getTodayParts();
-              setView({ year: base.year, month: base.month });
-              setCalendarView("day");
-            }
-            return next;
-          });
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          const base = selected ?? getTodayParts();
+          setView({ year: base.year, month: base.month });
+          setCalendarView("day");
+          openCalendar();
         }}
         type="button"
         variant="outline"
@@ -223,10 +277,10 @@ export function DatePicker({
         <div
           aria-label="เลือกวันที่"
           className={cn(
-            "absolute left-0 z-50 w-72 rounded-lg border border-slate-200 bg-white p-3 shadow-lg",
-            popoverPlacement === "top" ? "bottom-11" : "top-11",
+            "fixed z-50 max-h-[calc(100vh-1rem)] w-[min(18rem,calc(100vw-1rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg",
           )}
           role="dialog"
+          style={popoverStyle}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <IconButton

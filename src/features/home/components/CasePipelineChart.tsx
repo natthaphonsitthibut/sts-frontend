@@ -28,14 +28,14 @@ function buildCasePath(
   filters: HomeDashboardFilters,
   status: string,
 ): string {
-  const params = new URLSearchParams({ status });
+  const params = new URLSearchParams({ caseStatus: status });
   if (filters.province) params.set("province", filters.province);
   if (filters.district) params.set("district", filters.district);
   if (filters.subDistrict) params.set("subDistrict", filters.subDistrict);
   if (filters.schoolId) params.set("schoolId", String(filters.schoolId));
   if (filters.grade) params.set("grade", filters.grade);
   if (filters.room) params.set("room", filters.room);
-  return `/cases?${params.toString()}`;
+  return `/student-risk-report/risk?${params.toString()}`;
 }
 
 export function CasePipelineChart({

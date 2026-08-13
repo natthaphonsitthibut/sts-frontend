@@ -31,8 +31,16 @@ function resolveVisitAttachmentUrl(path: string): string {
   return resolveApiMediaUrl(`/api${path}`) ?? path;
 }
 
-export function VisitAttachments({ value }: { value: string | null | undefined }) {
-  if (!value) return null;
+export function VisitAttachments({
+  emptyLabel,
+  value,
+}: {
+  emptyLabel?: string;
+  value: string | null | undefined;
+}) {
+  if (!value) {
+    return emptyLabel ? <p className="text-sm text-slate-500">{emptyLabel}</p> : null;
+  }
 
   let paths: string[] = [];
   try {
@@ -46,7 +54,9 @@ export function VisitAttachments({ value }: { value: string | null | undefined }
     paths = [];
   }
 
-  if (paths.length === 0) return null;
+  if (paths.length === 0) {
+    return emptyLabel ? <p className="text-sm text-slate-500">{emptyLabel}</p> : null;
+  }
 
   return (
     <div className="mt-4">

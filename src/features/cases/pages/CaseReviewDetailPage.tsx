@@ -68,7 +68,7 @@ export function CaseReviewDetailPage() {
       <PageShell>
         <EmptyState
           action={
-            <NavButton to="/cases/risk" variant="outline">
+            <NavButton to="/student-risk-report/risk" variant="outline">
               กลับรายการเคส
             </NavButton>
           }

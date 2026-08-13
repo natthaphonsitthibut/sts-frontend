@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Button,
-  Combobox,
   Dialog,
   DialogBody,
   DialogContent,
@@ -23,6 +22,7 @@ import type {
 
 interface CaseStatusUpdateDialogProps {
   caseRecord: CaseRecord | null;
+  presetAction: CaseReviewAction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdated?: (action: CaseReviewAction) => void;
@@ -30,6 +30,7 @@ interface CaseStatusUpdateDialogProps {
 
 export function CaseStatusUpdateDialog({
   caseRecord,
+  presetAction,
   open,
   onOpenChange,
   onUpdated,
@@ -37,50 +38,41 @@ export function CaseStatusUpdateDialog({
   const { can } = usePermissions();
   const optionsQuery = useCaseTrackingOptions();
   const updateCase = useUpdateCase();
-  const [action, setAction] = useState("");
   const [note, setNote] = useState("");
 
   function closeDialog(): void {
-    setAction("");
     setNote("");
     updateCase.reset();
     onOpenChange(false);
   }
 
-  const allowedActions = useMemo(
-    () =>
-      (optionsQuery.data?.reviewActions ?? []).filter(
-        (option) =>
-          can("review-cases") &&
-          Boolean(option.requiredPermission) &&
-          can(option.requiredPermission || ""),
-      ),
-    [can, optionsQuery.data?.reviewActions],
+  const selectedAction = (optionsQuery.data?.reviewActions ?? []).find(
+    (option) => option.code === presetAction,
   );
-
-  const selectedAction =
-    allowedActions.find((option) => option.code === action) ?? allowedActions[0];
+  const hasPermission =
+    Boolean(selectedAction) && can("review-cases") && can(selectedAction?.requiredPermission || "");
   const submitDisabled =
     !caseRecord ||
+    !presetAction ||
     !selectedAction ||
+    !hasPermission ||
     !note.trim() ||
     optionsQuery.isLoading;
 
   function handleSubmit(): void {
-    if (submitDisabled || !caseRecord || !selectedAction) return;
-    const reviewAction = selectedAction.code as CaseReviewAction;
+    if (submitDisabled || !caseRecord || !presetAction) return;
     updateCase.mutate(
       {
         caseId: caseRecord.id,
         payload: {
-          review_action: reviewAction,
+          review_action: presetAction,
           review_note: note.trim(),
           resolution_outcome: null,
         },
       },
       {
         onSuccess: () => {
-          onUpdated?.(reviewAction);
+          onUpdated?.(presetAction);
           closeDialog();
         },
       },
@@ -94,7 +86,7 @@ export function CaseStatusUpdateDialog({
         onClose={closeDialog}
       >
         <DialogHeader>
-          <DialogTitle>พิจารณาผลการติดตาม</DialogTitle>
+          <DialogTitle>{selectedAction?.label || "พิจารณาผลการติดตาม"}</DialogTitle>
           <DialogDescription>
             {caseRecord
               ? `${caseRecord.student_name} · ${caseRecord.student_school || "-"}`
@@ -109,23 +101,7 @@ export function CaseStatusUpdateDialog({
               fallback="ไม่สามารถบันทึกผลการพิจารณาได้ กรุณาลองอีกครั้ง"
             />
 
-            <div className="space-y-2">
-              <Label htmlFor="case-action">ผลการพิจารณา</Label>
-              <Combobox
-                disabled={optionsQuery.isLoading}
-                id="case-action"
-                onChange={setAction}
-                options={allowedActions.map((option) => ({
-                  value: option.code,
-                  label: option.label,
-                }))}
-                placeholder="เลือกผลการพิจารณา"
-                searchable={false}
-                value={selectedAction?.code ?? ""}
-              />
-            </div>
-
-            {!optionsQuery.isLoading && allowedActions.length === 0 ? (
+            {!optionsQuery.isLoading && !hasPermission ? (
               <p className="text-sm font-medium text-danger-700">
                 บัญชีนี้ไม่มีสิทธิ์พิจารณาเคส
               </p>
