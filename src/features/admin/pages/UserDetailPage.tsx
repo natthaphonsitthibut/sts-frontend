@@ -13,6 +13,7 @@ import {
   Button,
   Card,
   CardContent,
+  PersonIcon,
   SchoolIcon,
 } from "../../../components/base";
 import {
@@ -104,7 +105,7 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
   return (
     <Card className="p-6">
       <div className="mb-6 flex items-center gap-2">
-        <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+        <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
         <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
       </div>
       <div className="space-y-3">

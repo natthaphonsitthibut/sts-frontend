@@ -27,6 +27,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  PersonIcon,
   registerField,
 } from "../../../components/base";
 import {
@@ -439,7 +440,7 @@ export function ProfilePage() {
 
           <Card className="p-6">
             <h2 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
-              <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+              <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
               ข้อมูลทั่วไป
             </h2>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
@@ -578,7 +579,7 @@ export function ProfilePage() {
                 the inputs are read-only; nothing moves when editing starts. */}
             <Card className="p-6">
               <div className="mb-6 flex items-center gap-2">
-                <UserRound
+                <PersonIcon
                   className="size-5 text-slate-700"
                   aria-hidden="true"
                 />

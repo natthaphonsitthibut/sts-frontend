@@ -76,8 +76,8 @@ function routeMatchesPathname(route: string, pathname: string): boolean {
 /**
  * The most specific (longest) registered route that matches this pathname —
  * either exactly or as a real sub-route. Sibling pages whose paths happen to
- * nest (like the `/field-followers` example above) only ever resolve to one
- * winner instead of both matching independently.
+ * nest only ever resolve to one winner instead of both matching
+ * independently.
  */
 function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): string | null {
   let best: string | null = null;

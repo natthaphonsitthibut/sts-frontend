@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, UserRound } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import {
   Button,
   Card,
@@ -14,6 +14,7 @@ import {
   FormMessage,
   Input,
   NumericInput,
+  PersonIcon,
   PhotoPicker,
   registerField,
   type PhotoPickerValue,
@@ -105,7 +106,7 @@ function TeacherForm({
     <Form form={form} onSubmit={handleSubmit}>
       <Card className="p-6">
         <div className="mb-6 flex items-center gap-2">
-          <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+          <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
           <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
         </div>
 

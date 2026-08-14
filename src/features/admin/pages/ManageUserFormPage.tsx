@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, type To } from "react-router-d
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
-import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
@@ -16,6 +16,7 @@ import {
   Input,
   NumericInput,
   PasswordInput,
+  PersonIcon,
   PhotoPicker,
   registerField,
   type PhotoPickerValue,
@@ -253,7 +254,7 @@ function UserForm({
       <Form form={form} onSubmit={handleSubmit}>
         <Card className="p-6">
           <div className="mb-6 flex items-center gap-2">
-            <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+            <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
             <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
           </div>
 

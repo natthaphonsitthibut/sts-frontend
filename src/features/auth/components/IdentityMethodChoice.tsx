@@ -21,11 +21,11 @@ export function IdentityMethodChoice({
         onClick={onChooseAraId}
         type="button"
       >
-        <span className="flex size-14 items-center justify-center overflow-hidden rounded-xl bg-araid-brand">
-          <img alt="" className="size-12 object-contain" src="/branding/araid-logo.png" />
+        <span className="flex size-14 items-center justify-center">
+          <img alt="" className="size-14 rounded-xl object-cover" src="/branding/araid-logo.png" />
         </span>
         <span className="mt-4 block font-bold text-slate-900">AraID</span>
-        <span className="mt-1 block text-sm leading-5 text-slate-500">
+        <span className="mt-1 block min-h-10 text-sm leading-5 text-slate-500">
           {araIdDescription}
         </span>
       </button>
@@ -39,7 +39,7 @@ export function IdentityMethodChoice({
           <img alt="" className="h-7 w-9" src="/brand-icons/gmail.svg" />
         </span>
         <span className="mt-4 block font-bold text-slate-900">อีเมล</span>
-        <span className="mt-1 block text-sm leading-5 text-slate-500">
+        <span className="mt-1 block min-h-10 text-sm leading-5 text-slate-500">
           {emailDescription}
         </span>
       </button>
