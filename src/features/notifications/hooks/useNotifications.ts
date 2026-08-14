@@ -1,27 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "../api/notifications.service";
+import type { NotificationReadStatus } from "../types/notifications.types";
 
 export const NOTIFICATIONS_QUERY_KEY = "notifications";
 
 const POLL_INTERVAL_MS = 30_000;
 
 export function useNotifications(options: {
-  unreadOnly: boolean;
+  enabled?: boolean;
+  status?: NotificationReadStatus;
   page?: number;
   limit?: number;
+  refetchInterval?: number | false;
 }) {
+  const status = options.status ?? "all";
+
   return useQuery({
     queryKey: [
       NOTIFICATIONS_QUERY_KEY,
-      { unread: options.unreadOnly, page: options.page ?? 1, limit: options.limit ?? 10 },
+      { status, page: options.page ?? 1, limit: options.limit ?? 10 },
     ],
     queryFn: () =>
       notificationsService.getNotifications({
-        unread: options.unreadOnly,
+        status,
         page: options.page,
         limit: options.limit ?? 10,
       }),
-    refetchInterval: POLL_INTERVAL_MS,
+    enabled: options.enabled ?? true,
+    refetchOnMount: "always",
+    refetchInterval: options.refetchInterval ?? POLL_INTERVAL_MS,
   });
 }
 
@@ -41,11 +48,11 @@ export function useMarkAllSeen() {
   });
 }
 
-export function useMarkRead() {
+export function useMarkRead(options: { invalidateOnSuccess?: boolean } = {}) {
   const invalidate = useInvalidateNotifications();
   return useMutation({
     mutationFn: notificationsService.markRead,
-    onSuccess: invalidate,
+    onSuccess: options.invalidateOnSuccess === false ? undefined : invalidate,
     meta: { suppressSuccessToast: true },
   });
 }
@@ -56,5 +63,14 @@ export function useMarkAllRead() {
     mutationFn: notificationsService.markAllRead,
     onSuccess: invalidate,
     meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useDeleteAllRead() {
+  const invalidate = useInvalidateNotifications();
+  return useMutation({
+    mutationFn: notificationsService.deleteAllRead,
+    onSuccess: invalidate,
+    meta: { successMessage: "ลบรายการที่อ่านแล้ว" },
   });
 }

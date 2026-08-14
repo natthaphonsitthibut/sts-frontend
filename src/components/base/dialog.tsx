@@ -138,12 +138,14 @@ export function DialogHeader({ className, ...props }: ComponentProps<"div">) {
 
 export interface DialogTitleProps extends ComponentProps<"h2"> {
   icon?: LucideIcon;
+  iconClassName?: string;
 }
 
 export function DialogTitle({
   children,
   className,
   icon: Icon,
+  iconClassName,
   ...props
 }: DialogTitleProps) {
   return (
@@ -154,7 +156,9 @@ export function DialogTitle({
       )}
       {...props}
     >
-      {Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null}
+      {Icon ? (
+        <Icon className={cn("size-4 shrink-0", iconClassName)} aria-hidden="true" />
+      ) : null}
       <span>{children}</span>
     </h2>
   );
