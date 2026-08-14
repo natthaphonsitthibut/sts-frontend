@@ -55,7 +55,7 @@ const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
   success: "bg-success-100 text-success-700",
   warning: "bg-warning-100 text-warning-700",
   danger: "bg-danger-100 text-danger-700",
-  info: "bg-brand-soft text-primary-dark",
+  info: "bg-brand-soft text-primary",
 };
 
 function parseFilters(searchParams: URLSearchParams): HomeDashboardFilters {
@@ -326,14 +326,14 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
             key={metric.key}
             data-home-metric={metric.key}
             to={destination(metric.targetPath, metric.targetQuery)}
-            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-left shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-600">
+                <div className="truncate text-base font-normal text-content-secondary">
                   {metric.label}
                 </div>
-                <div className="text-2xl font-bold leading-tight tabular-nums text-slate-950">
+                <div className="animate-value-in text-3xl font-bold leading-tight tabular-nums text-slate-950">
                   {metric.value.toLocaleString("th-TH")}
                 </div>
               </div>

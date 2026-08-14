@@ -26,7 +26,7 @@ export function TrackingStepsCard({
           ขั้นตอนการติดตาม
         </h2>
         <span className="text-sm font-semibold text-slate-700">
-          สถานะการติดตาม:{" "}
+          สถานะการติดตาม :{" "}
           {statusContent ?? (
             <span className={statusClassName}>{statusLabel}</span>
           )}
