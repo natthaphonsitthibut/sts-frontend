@@ -69,10 +69,12 @@ export function AppBrand({
   className,
   label = "ระบบติดตามนักเรียน",
   onClick,
+  to = "/",
 }: {
   className?: string;
   label?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
+  to?: string;
 }) {
   return (
     <Link
@@ -82,7 +84,7 @@ export function AppBrand({
         className,
       )}
       onClick={onClick}
-      to="/"
+      to={to}
     >
       <StsLogo aria-hidden="true" className="size-9 shrink-0" />
       <span className="truncate text-xl font-bold text-primary">{label}</span>

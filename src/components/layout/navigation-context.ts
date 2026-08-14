@@ -73,6 +73,8 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 }
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
+  "/attendance/roster": "เช็คชื่อ",
+  "/attendance/check-in": "เช็คชื่อ",
   "/attendance/history": "ประวัติการเช็คชื่อ",
   "/data-exports/history": "ประวัติการส่งออก",
   "/import-data/history": "ประวัติการนำเข้า",
@@ -81,7 +83,6 @@ const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/settings/student-statuses": "สถานะนักเรียน",
   "/students/export": "ส่งออกข้อมูลนักเรียน",
   "/students/history": "ประวัติรายชื่อนักเรียน",
-  "/visit-links/history": "ประวัติลิงก์ลงพื้นที่",
 };
 
 export function getNavigationLabel(
@@ -295,9 +296,12 @@ export function createContextualNavigationState(
     label: getNavigationLabel(location.pathname),
     to: sourcePath,
   };
+  const isAttendanceTab =
+    location.pathname === "/attendance/roster" ||
+    location.pathname === "/attendance/check-in";
   const trail = dedupeTrail([
     ...(inherited?.trail ?? getDefaultParentCrumbs(location.pathname)),
-    sourceCrumb,
+    ...(isAttendanceTab ? [] : [sourceCrumb]),
   ]);
   const context: AppNavigationContext = {
     backTo: sourcePath,

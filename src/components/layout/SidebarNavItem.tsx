@@ -92,7 +92,7 @@ function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): st
 
 /**
  * A nested menu item stays active on its own sub-routes too (e.g. a page
- * with tabs like "/attendance-links/history"), not just its exact path.
+ * with tabs like "/login-links/history"), not just its exact path.
  * Matching goes through `findBestMatchingRoute` so that when two menu
  * routes nest inside each other, only the most specific one is active.
  */

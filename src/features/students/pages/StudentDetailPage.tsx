@@ -16,6 +16,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
@@ -235,6 +236,7 @@ function TeacherCommentsPanel({
 
 export function StudentDetailPage() {
   const { can } = usePermissions();
+  const safeBackTarget = useSafeBackTarget();
   const { id } = useParams<{ id: string }>();
   const studentId = id?.trim();
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -308,7 +310,7 @@ export function StudentDetailPage() {
           title="ไม่พบข้อมูลนักเรียน"
           description="ไม่พบข้อมูลนักเรียนระเบียนหรือรหัสนี้ในระบบ"
           action={
-            <NavButton to={-1} variant="outline">
+            <NavButton to={safeBackTarget} variant="outline">
               ย้อนกลับ
             </NavButton>
           }
@@ -327,6 +329,7 @@ export function StudentDetailPage() {
               activeCaseId={
                 activeCases.length > 0 ? Number(activeCases[0].id) : null
               }
+              className="min-w-28"
               mode="button"
               studentId={studentId}
               studentName={
@@ -338,7 +341,12 @@ export function StudentDetailPage() {
         }
         icon={SchoolIcon}
         navigation={
-          <NavButton icon={ArrowLeft} to={-1} variant="outline">
+          <NavButton
+            className="min-w-28"
+            icon={ArrowLeft}
+            to={safeBackTarget}
+            variant="outline"
+          >
             ย้อนกลับ
           </NavButton>
         }

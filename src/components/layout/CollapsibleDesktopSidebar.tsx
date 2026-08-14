@@ -16,7 +16,8 @@ export function CollapsibleDesktopSidebar({
   children,
 }: CollapsibleDesktopSidebarProps) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
-  const [hovered, setHovered] = useState(false);
+  const hovered = useSidebarUiStore((state) => state.desktopSidebarHovered);
+  const setHovered = useSidebarUiStore((state) => state.setDesktopSidebarHovered);
   const [focusedWithin, setFocusedWithin] = useState(false);
   const visuallyCollapsed = collapsed && !hovered && !focusedWithin;
 

@@ -107,8 +107,6 @@ export const PAGE_IDENTITIES = {
   "/timetable": createIdentity("ตารางสอน", "calendar"),
   "/timetable/mine": createIdentity("ตารางสอน", "calendar"),
   "/timetable/rooms": createIdentity("ตารางสอน", "calendar"),
-  "/visit-links": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
-  "/visit-links/history": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
 } as const satisfies Record<string, PageIdentity>;
 
 export function getPageIdentity(pathname: string): PageIdentity | undefined {
