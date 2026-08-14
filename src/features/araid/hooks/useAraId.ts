@@ -32,6 +32,15 @@ export function useAraIdLogout() {
   });
 }
 
+export function useAraIdReauthenticate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: araIdService.reauthenticate,
+    meta: { suppressSuccessToast: true },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARAID_SESSION_QUERY_KEY }),
+  });
+}
+
 export function useAraIdRecords(query: AraIdRecordListQuery) {
   return useQuery({
     queryKey: [...ARAID_RECORDS_QUERY_KEY, query],
@@ -41,7 +50,10 @@ export function useAraIdRecords(query: AraIdRecordListQuery) {
 }
 
 export function useAraIdRecordDetail() {
-  return useMutation({ mutationFn: araIdService.getRecord });
+  return useMutation({
+    mutationFn: araIdService.getRecord,
+    meta: { suppressSuccessToast: true },
+  });
 }
 
 export function useCreateAraIdRecord() {

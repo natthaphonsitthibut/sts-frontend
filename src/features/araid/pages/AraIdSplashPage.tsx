@@ -3,9 +3,20 @@ import { useNavigate } from "react-router-dom";
 import splashIllustration from "../assets/araid-splash-illustration.png";
 import { AraIdSplashBackground } from "../components/AraIdSplashBackground";
 import { AraIdWordmark } from "../components/AraIdWordmark";
+import { useAraIdSession } from "../hooks/useAraId";
 
 export function AraIdSplashPage() {
   const navigate = useNavigate();
+  const session = useAraIdSession();
+  const isSignedIn = Boolean(session.data);
+
+  function start(): void {
+    if (session.isPending) return;
+    void navigate(
+      isSignedIn ? "/araid/pin" : "/araid/login",
+      isSignedIn ? { state: { reauthenticate: true } } : undefined,
+    );
+  }
 
   return (
     <main className="flex min-h-dvh justify-center overflow-hidden bg-araid-brand-deep">
@@ -36,10 +47,18 @@ export function AraIdSplashPage() {
 
         <button
           type="button"
-          onClick={() => void navigate("/araid/login")}
+          aria-busy={session.isPending}
+          disabled={session.isPending}
+          onClick={start}
           className="absolute inset-x-[6.5%] bottom-[5.8%] z-10 flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/10  px-6 py-2.5 text-sm font-semibold text-white araid-splash-action transition-[filter,transform] duration-150 ease-out hover:brightness-105 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:inset-x-1/2 sm:bottom-[5%] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:text-base"
         >
-          <span>เริ่มต้น</span>
+          <span>
+            {session.isPending
+              ? "กำลังตรวจสอบ…"
+              : isSignedIn
+                ? "ยืนยัน PIN"
+                : "เริ่มต้น"}
+          </span>
           <ChevronRight
             aria-hidden="true"
             className="size-5"

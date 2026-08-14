@@ -236,3 +236,22 @@ export interface TeacherStudentProfile {
   attendance: unknown;
   observations: { data: StudentObservation[] };
 }
+
+/** Round state plus the marks already stored, for prefill and submit locking. */
+export interface TeacherAccessAttendanceSession {
+  expectedRosterCount: number;
+  session: {
+    id: string;
+    status: "OPEN" | "SUBMITTED" | "REOPENED" | "VOIDED";
+    revision: number;
+    expectedRosterCount: number;
+    recordedCount: number;
+    submittedAt: string | null;
+    correctionReason: string | null;
+  } | null;
+  marks: Array<{
+    studentUuid: string;
+    status: import("../../attendance/types/attendance.types").AttendanceSelectionStatus;
+    markedAt: string | null;
+  }>;
+}

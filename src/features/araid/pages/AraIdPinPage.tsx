@@ -3,7 +3,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "../../../lib/utils";
 import { AraIdWordmark } from "../components/AraIdWordmark";
-import { useAraIdLogin } from "../hooks/useAraId";
+import { useAraIdLogin, useAraIdReauthenticate } from "../hooks/useAraId";
 
 const KEYS = [
   "1",
@@ -44,8 +44,10 @@ export function AraIdPinPage() {
       | "LINE_LINK_QR"
       | "TEACHER_ACCESS"
       | "TEACHER_ACCESS_QR";
+    reauthenticate?: boolean;
   } | null;
   const identityNumber = routeState?.identityNumber;
+  const reauthenticate = Boolean(routeState?.reauthenticate);
   const verifiesTeacherAccess =
     routeState?.verificationIntent === "TEACHER_ACCESS" &&
     routeState.returnTo === "/teacher-access";
@@ -65,18 +67,23 @@ export function AraIdPinPage() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const login = useAraIdLogin();
+  const reauthenticateMutation = useAraIdReauthenticate();
 
-  if (!identityNumber || !/^\d{13}$/.test(identityNumber)) {
+  if (!reauthenticate && (!identityNumber || !/^\d{13}$/.test(identityNumber))) {
     return <Navigate to="/araid/login" replace />;
   }
-  const validIdentityNumber = identityNumber;
+  const validIdentityNumber = identityNumber ?? "";
 
   async function submit(nextPin: string) {
     try {
-      await login.mutateAsync({
-        identityNumber: validIdentityNumber,
-        pin: nextPin,
-      });
+      if (reauthenticate) {
+        await reauthenticateMutation.mutateAsync(nextPin);
+      } else {
+        await login.mutateAsync({
+          identityNumber: validIdentityNumber,
+          pin: nextPin,
+        });
+      }
       void navigate(
         verifiesTeacherAccess
           ? "/teacher-access"
@@ -92,7 +99,7 @@ export function AraIdPinPage() {
         state: verifiesTeacherAccess
           ? { araIdVerificationComplete: true }
           : verifiesTeacherAccessQr
-            ? { challengeToken: routeState?.challengeToken }
+            ? { challengeToken: routeState?.challengeToken, araIdPinVerified: true }
             : verifiesLineLink
               ? { araIdVerificationComplete: true }
               : verifiesLineLinkQr
@@ -107,7 +114,7 @@ export function AraIdPinPage() {
   }
 
   function press(key: (typeof KEYS)[number]) {
-    if (login.isPending) return;
+    if (login.isPending || reauthenticateMutation.isPending) return;
     setError("");
     if (key === "delete") {
       setPin((current) => current.slice(0, -1));
@@ -161,10 +168,10 @@ export function AraIdPinPage() {
 
           <div className="mt-3 flex w-full flex-col items-center lg:mt-4">
             <h1 className="text-sm font-semibold leading-tight text-araid-brand-deep lg:text-[clamp(1.25rem,1.5vw,1.5rem)]">
-              ยืนยันรหัสผ่าน
+              {reauthenticate ? "ยืนยัน PIN เพื่อดำเนินการต่อ" : "ยืนยันรหัสผ่าน"}
             </h1>
             <p className="mt-1 text-[0.6875rem] font-normal text-slate-500 lg:mt-1.5 lg:text-sm">
-              กรุณากรอก PIN 8 หลัก
+              กรุณากรอก PIN AraID 8 หลัก
             </p>
 
             <div

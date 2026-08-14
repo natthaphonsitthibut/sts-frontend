@@ -19,7 +19,10 @@ function readChallengeToken(): string {
 export function AraIdAuthorizePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const routeState = location.state as { challengeToken?: string } | null;
+  const routeState = location.state as {
+    challengeToken?: string;
+    araIdPinVerified?: boolean;
+  } | null;
   const [challengeToken] = useState(() => routeState?.challengeToken ?? readChallengeToken());
   const [completed, setCompleted] = useState(false);
   const attempted = useRef(false);
@@ -46,12 +49,33 @@ export function AraIdAuthorizePage() {
       });
       return;
     }
+    if (!routeState?.araIdPinVerified) {
+      attempted.current = true;
+      void navigate("/araid/pin", {
+        replace: true,
+        state: {
+          challengeToken,
+          returnTo: "/araid/authorize",
+          verificationIntent: "TEACHER_ACCESS_QR",
+          reauthenticate: true,
+        },
+      });
+      return;
+    }
     attempted.current = true;
     void approve
       .mutateAsync()
       .then(() => setCompleted(true))
       .catch(() => undefined);
-  }, [approve, begin, challengeToken, navigate, session.isError, session.isPending]);
+  }, [
+    approve,
+    begin,
+    challengeToken,
+    navigate,
+    routeState?.araIdPinVerified,
+    session.isError,
+    session.isPending,
+  ]);
 
   return (
     <main className="grid min-h-dvh place-items-center bg-araid-brand px-5 py-10 font-araid">

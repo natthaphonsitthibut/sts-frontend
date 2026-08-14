@@ -23,6 +23,7 @@ import {
   Select,
   Skeleton,
   Tabs,
+  useConfirm,
 } from "../../../components/base";
 import {
   DataTable,
@@ -30,6 +31,7 @@ import {
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import {
   EmptyState,
   ErrorState,
@@ -45,7 +47,13 @@ import { NavButton } from "../../../components/layout/nav-button";
 import { getThaiDateKey } from "../../../lib/date-time";
 import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { AttendanceCountBadges } from "../../attendance/components/AttendanceCountBadges";
+import { AttendanceMarkToolbar } from "../../attendance/components/AttendanceMarkToolbar";
 import { AttendanceRosterTable } from "../../attendance/components/AttendanceRosterTable";
+import { useAttendanceMarks } from "../../attendance/hooks/useAttendanceMarks";
+import { countAttendanceStatuses } from "../../attendance/lib/attendance-presentation";
+import { getAttendanceSaveConfirm } from "../../attendance/lib/attendance-save-confirm";
+import { teacherAccessService } from "../api/teacher-access.service";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
@@ -56,10 +64,12 @@ import {
 } from "../../students/lib/risk-tier-presentation";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import { TeacherAccessStudentAvatar } from "../components/TeacherAccessStudentAvatar";
+import { StudentCommentCell } from "../../students/components/StudentCommentCell";
 import {
   useCreateTeacherStudentComment,
   useRecordTeacherClassroomExport,
   useSaveTeacherAccessAttendance,
+  useTeacherAccessAttendanceSession,
   useTeacherAccessAttendanceSlots,
   useTeacherAccessRoster,
   useTeacherStudentPhoto,
@@ -118,6 +128,7 @@ function sortRoster(
  */
 export function TeacherClassroomPage() {
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const { assignmentId = "" } = useParams();
   const { credential, context } = useTeacherLink();
   // The link has no session, so colours come from the public catalog endpoint —
@@ -134,12 +145,9 @@ export function TeacherClassroomPage() {
   const [riskTier, setRiskTier] = useState("");
   const [date, setDate] = useState(getThaiDateKey);
   const [timetableSlotId, setTimetableSlotId] = useState("");
-  const [attendance, setAttendance] = useState<
-    Record<string, AttendanceStatus>
-  >({});
   const [saved, setSaved] = useState(false);
   const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
-    key: "name",
+    key: "studentNumber",
     direction: "asc",
   });
   const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
@@ -180,6 +188,7 @@ export function TeacherClassroomPage() {
     Number(assignmentId) || undefined,
   );
   const saveAttendance = useSaveTeacherAccessAttendance(credential);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const attendanceSlotsQuery = useTeacherAccessAttendanceSlots(
     credential,
     Number(assignmentId) || undefined,
@@ -208,6 +217,71 @@ export function TeacherClassroomPage() {
     return sortRoster(filteredRoster, attendanceSort);
   }, [attendanceSort, filteredRoster]);
 
+  const attendanceSlots = attendanceSlotsQuery.data ?? [];
+  const requiresPeriodSelection =
+    assignment?.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
+  const hasScheduledSubjectSlot =
+    assignment?.assignmentKind !== "SUBJECT" || attendanceSlots.length > 0;
+  const selectedTimetableSlotId = requiresPeriodSelection
+    ? Number(timetableSlotId) || undefined
+    : attendanceSlots[0]?.id;
+
+  const sessionQuery = useTeacherAccessAttendanceSession(
+    credential,
+    {
+      assignmentId: Number(assignmentId) || undefined,
+      date,
+      ...(selectedTimetableSlotId ? { timetableSlotId: selectedTimetableSlotId } : {}),
+    },
+    canRecordAttendance && tab === "attendance" && hasScheduledSubjectSlot,
+  );
+  const session = sessionQuery.data?.session ?? null;
+  const canEditAttendance = session?.status !== "SUBMITTED";
+
+  const rosterIds = roster.map((student) => student.studentUuid);
+  const serverMarks = Object.fromEntries(
+    (sessionQuery.data?.marks ?? [])
+      .filter((mark) => mark.status !== "NONE")
+      .map((mark) => [
+        mark.studentUuid,
+        {
+          status: mark.status as AttendanceStatus,
+          markedAt: mark.markedAt ?? "",
+        },
+      ]),
+  );
+
+  const marks = useAttendanceMarks({
+    serverMarks,
+    rosterIds,
+    sessionKey: `teacher-link:${assignmentId}:${date}:${selectedTimetableSlotId ?? "daily"}`,
+    transport: {
+      saveMarks: async (batch) => {
+        await teacherAccessService.saveAttendanceMarks(credential, {
+          assignmentId: Number(assignmentId),
+          ...(selectedTimetableSlotId
+            ? { timetableSlotId: selectedTimetableSlotId }
+            : {}),
+          date,
+          records: batch
+            .filter((entry) => entry.mark !== null)
+            .map(({ studentId, mark }) => ({
+              studentId,
+              status: mark!.status,
+              markedAt: mark!.markedAt || null,
+            })),
+          clearedStudentIds: batch
+            .filter((entry) => entry.mark === null)
+            .map((entry) => entry.studentId),
+        });
+      },
+    },
+    enabled: canEditAttendance,
+  });
+  const counts = countAttendanceStatuses(
+    rosterIds.map((studentId) => marks.marks[studentId]?.status ?? "NONE"),
+  );
+
   if (!assignment) {
     return (
       <TeacherLinkShell centered contentClassName="max-w-lg">
@@ -220,25 +294,24 @@ export function TeacherClassroomPage() {
   }
 
   const classroomLabel = assignmentClassLabel(assignment);
-  const attendanceSlots = attendanceSlotsQuery.data ?? [];
-  const requiresPeriodSelection =
-    assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
-  const hasScheduledSubjectSlot =
-    assignment.assignmentKind !== "SUBJECT" || attendanceSlots.length > 0;
-  const selectedTimetableSlotId = requiresPeriodSelection
-    ? Number(timetableSlotId) || undefined
-    : attendanceSlots[0]?.id;
 
   async function submitAttendance(
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (roster.length === 0) return;
+    if (roster.length === 0 || !canEditAttendance || marks.unmarkedCount > 0) return;
     if (
       !hasScheduledSubjectSlot ||
       (requiresPeriodSelection && !selectedTimetableSlotId)
     )
       return;
+
+    const confirmed = await confirm(getAttendanceSaveConfirm(counts));
+    if (!confirmed) return;
+
+    // Flush pending taps first so the submitted round matches what the teacher
+    // sees on screen, not just what happened to reach the server already.
+    await marks.flush();
     await saveAttendance.mutateAsync({
       assignmentId: Number(assignmentId),
       ...(selectedTimetableSlotId
@@ -247,9 +320,12 @@ export function TeacherClassroomPage() {
       date,
       records: roster.map((student) => ({
         studentId: student.studentUuid,
-        status: attendance[student.studentUuid] ?? "P_PRESENT",
+        status: marks.marks[student.studentUuid].status,
+        markedAt: marks.marks[student.studentUuid].markedAt || null,
       })),
     });
+    marks.reset();
+    await sessionQuery.refetch();
     setSaved(true);
   }
 
@@ -439,8 +515,8 @@ export function TeacherClassroomPage() {
                 <DataTableCell className="font-medium text-slate-900">
                   {fullName}
                 </DataTableCell>
-                <DataTableCell className="max-w-[360px] text-slate-700">
-                  {student.teacherComment?.trim() || "-"}
+                <DataTableCell className="max-w-[360px]">
+                  <StudentCommentCell comment={student.teacherComment} />
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
@@ -533,11 +609,40 @@ export function TeacherClassroomPage() {
               )}
             </div>
           ) : null}
+          {session?.status === "SUBMITTED" ? (
+            <Alert className="mb-4">
+              <AlertTitle>ส่งการเช็คชื่อแล้ว</AlertTitle>
+              <AlertDescription>
+                Revision {session.revision} · บันทึกแล้ว {session.recordedCount} คน
+                — ต้องติดต่อเจ้าหน้าที่โรงเรียนเพื่อเปิดแก้ไข
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="mb-4">
+            <AttendanceCountBadges
+              catalog={attendanceStatusCatalog}
+              counts={counts}
+            />
+          </div>
+          <AttendanceMarkToolbar
+            autosaveState={marks.autosaveState}
+            canUndo={marks.canUndo}
+            failureMessage={marks.failureMessage}
+            disabled={!canEditAttendance}
+            lastSavedAt={marks.lastSavedAt}
+            markedCount={marks.markedCount}
+            onMarkRemainingPresent={marks.markRemainingPresent}
+            onRetrySave={() => void marks.flush()}
+            onUndo={marks.undo}
+            totalCount={roster.length}
+            unmarkedCount={marks.unmarkedCount}
+          />
           <AttendanceRosterTable
             catalog={attendanceStatusCatalog}
+            disabled={!canEditAttendance}
             onSortChange={setAttendanceSort}
             onStatusChange={(studentId, status) => {
-              setAttendance((values) => ({ ...values, [studentId]: status }));
+              marks.setStatus(studentId, status);
               setSaved(false);
             }}
             rows={visibleAttendanceRoster.map((student) => ({
@@ -545,13 +650,29 @@ export function TeacherClassroomPage() {
               name: studentDisplayName(student),
               studentNumber: student.studentNumber,
               avatar: (
-                <TeacherAccessStudentAvatar
-                  assignmentId={Number(assignmentId)}
-                  student={student}
-                />
+                <button
+                  aria-label={`เปิดข้อมูลนักเรียน ${studentDisplayName(student)}`}
+                  className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() =>
+                    void contextualNavigate(
+                      `/teacher-access/classes/${assignmentId}/students/${student.studentUuid}`,
+                    )
+                  }
+                  type="button"
+                >
+                  <TeacherAccessStudentAvatar
+                    assignmentId={Number(assignmentId)}
+                    student={student}
+                  />
+                </button>
               ),
             }))}
-            selections={attendance}
+            selections={Object.fromEntries(
+              Object.entries(marks.marks).map(([studentId, mark]) => [
+                studentId,
+                mark.status,
+              ]),
+            )}
             sort={attendanceSort}
           />
 
@@ -567,28 +688,36 @@ export function TeacherClassroomPage() {
                   บันทึกเรียบร้อย
                 </AlertTitle>
                 <AlertDescription>
-                  ระบบบันทึกสถานะของนักเรียน {roster.length} คนแล้ว
+                  ส่งการเช็คชื่อของนักเรียน {roster.length} คนแล้ว
                 </AlertDescription>
               </Alert>
             ) : null}
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-col items-end gap-1">
               <Button
                 disabled={
                   attendanceSlotsQuery.isLoading ||
                   !hasScheduledSubjectSlot ||
+                  !canEditAttendance ||
+                  marks.unmarkedCount > 0 ||
                   (requiresPeriodSelection && !selectedTimetableSlotId)
                 }
                 isLoading={saveAttendance.isPending}
-                loadingText="กำลังบันทึก"
+                loadingText="กำลังส่ง"
                 type="submit"
               >
-                บันทึกการเช็คชื่อ {roster.length} คน
+                ส่งเช็คชื่อ {roster.length} คน
               </Button>
+              {marks.unmarkedCount > 0 ? (
+                <p className="text-sm text-slate-500">
+                  เหลืออีก {marks.unmarkedCount} คนที่ยังไม่เช็ค
+                </p>
+              ) : null}
             </div>
           </div>
         </form>
       )}
 
+      {confirmDialog}
       <ClassroomStudentCommentDialog
         classroomId={Number(assignment.classroomId)}
         isSubmitting={createComment.isPending}

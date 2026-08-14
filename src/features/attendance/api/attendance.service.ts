@@ -1,12 +1,9 @@
 import { apiClient } from "../../../lib/api-client";
-import {
-  DEFAULT_PAGE_SIZE,
-  toPaginationParams,
-} from "../../../lib/pagination";
 import { normalizeAttendanceSelectionStatus } from "../lib/attendance-presentation";
 import type {
   AttendanceHistoryRecord,
   AttendanceReconciliationResponse,
+  AttendanceMarksSaveResponse,
   AttendanceSaveRecord,
   AttendanceSaveResponse,
   AttendanceSessionKind,
@@ -14,10 +11,6 @@ import type {
   AttendanceStudent,
   AttendanceStudentQuery,
   AttendanceSessionContext,
-  AttendanceTask,
-  AttendanceTaskLinkStatus,
-  AttendanceTaskListQuery,
-  AttendanceTasksPageResponse,
   CalendarDayType,
   SchoolCalendarDay,
   SchoolTerm,
@@ -35,14 +28,18 @@ interface AttendanceService {
     schoolId?: string,
     options?: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null },
   ) => Promise<AttendanceHistoryRecord[]>;
-  getTasks: () => Promise<AttendanceTask[]>;
-  getAttendanceTasksPage: (
-    query?: AttendanceTaskListQuery,
-  ) => Promise<AttendanceTasksPageResponse>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
     options?: { timetableSlotId?: number | null; date?: string },
   ) => Promise<AttendanceSaveResponse>;
+  saveAttendanceMarks: (
+    records: AttendanceSaveRecord[],
+    options?: {
+      timetableSlotId?: number | null;
+      date?: string;
+      clearedStudentIds?: string[];
+    },
+  ) => Promise<AttendanceMarksSaveResponse>;
   getSessionContext: (query: {
     schoolId: string | number;
     grade: string;
@@ -81,111 +78,6 @@ interface AttendanceService {
     gradeLevelId?: number;
     room?: number;
   }) => Promise<AttendanceSessionAnomaliesResponse>;
-}
-
-const ATTENDANCE_TASK_TYPE = "ATTENDANCE";
-// Must be one of the backend-accepted page sizes (PAGE_SIZES = 10/20/50);
-// getTasks() pages through with this to rebuild the full legacy array.
-const LEGACY_TASK_PAGE_SIZE = 50;
-
-function isAttendanceTask(task: AttendanceTask): boolean {
-  return task.task_type === ATTENDANCE_TASK_TYPE;
-}
-
-function getTaskLinkState(
-  task: AttendanceTask,
-): Exclude<AttendanceTaskLinkStatus, "ALL"> {
-  // Prefer the server-computed state (it already accounts for opens_at/expiry);
-  // fall back to the local heuristic for legacy payloads without link_state.
-  if (
-    task.link_state === "ACTIVE" ||
-    task.link_state === "LOCKED" ||
-    task.link_state === "EXPIRED" ||
-    task.link_state === "SCHEDULED"
-  ) {
-    return task.link_state;
-  }
-  if (task.active_link_locked) return "LOCKED";
-  if (!task.active_link) return "EXPIRED";
-  return "ACTIVE";
-}
-
-function buildTaskSummary(tasks: AttendanceTask[]) {
-  return {
-    total: tasks.length,
-    active: tasks.filter((task) => getTaskLinkState(task) === "ACTIVE").length,
-    locked: tasks.filter((task) => getTaskLinkState(task) === "LOCKED").length,
-    expired: tasks.filter((task) => getTaskLinkState(task) === "EXPIRED").length,
-    scheduled: tasks.filter((task) => getTaskLinkState(task) === "SCHEDULED").length,
-  };
-}
-
-function filterLegacyTasks(
-  tasks: AttendanceTask[],
-  query: AttendanceTaskListQuery,
-): AttendanceTask[] {
-  const searchTerm = query.searchTerm?.trim().toLowerCase();
-
-  return tasks.filter((task) => {
-    if (!isAttendanceTask(task)) return false;
-    if (query.schoolId && String(task.target_school_id) !== String(query.schoolId)) {
-      return false;
-    }
-    if (query.grade && task.target_grade !== query.grade) {
-      return false;
-    }
-    if (query.room && String(task.target_room) !== String(query.room)) {
-      return false;
-    }
-    if (query.status && query.status !== "ALL" && getTaskLinkState(task) !== query.status) {
-      return false;
-    }
-    if (!searchTerm) return true;
-
-    return [
-      task.target_grade,
-      task.target_room,
-      task.target_school_name,
-      task.link_assigned_to,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-      .includes(searchTerm);
-  });
-}
-
-function normalizeAttendanceTasksPageResponse(
-  body: AttendanceTask[] | Partial<AttendanceTasksPageResponse> | null | undefined,
-  query: AttendanceTaskListQuery = {},
-): AttendanceTasksPageResponse {
-  const page = query.page ?? 1;
-  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
-
-  if (Array.isArray(body)) {
-    const filteredRows = filterLegacyTasks(body, query);
-    const start = (page - 1) * limit;
-    const rows = filteredRows.slice(start, start + limit);
-    return {
-      rows,
-      totalCount: filteredRows.length,
-      page,
-      limit,
-      summary: buildTaskSummary(filteredRows),
-    };
-  }
-
-  const rows = Array.isArray(body?.rows) ? body.rows : [];
-  return {
-    rows,
-    totalCount: body?.totalCount ?? rows.length,
-    page: body?.page ?? page,
-    limit: body?.limit ?? limit,
-    summary: {
-      ...buildTaskSummary(rows),
-      ...body?.summary,
-    },
-  };
 }
 
 async function getStudents(
@@ -230,72 +122,6 @@ async function getHistory(
   }));
 }
 
-async function getTasks(): Promise<AttendanceTask[]> {
-  const firstPage = await getAttendanceTasksPage({
-    page: 1,
-    limit: LEGACY_TASK_PAGE_SIZE,
-    status: "ALL",
-  });
-  const firstRows = firstPage.rows.filter(isAttendanceTask);
-  const totalPages =
-    firstPage.limit > 0 ? Math.ceil(firstPage.totalCount / firstPage.limit) : 1;
-
-  if (totalPages <= 1) {
-    return firstRows;
-  }
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: totalPages - 1 }, (_, index) =>
-      getAttendanceTasksPage({
-        page: index + 2,
-        limit: firstPage.limit,
-        status: "ALL",
-      }),
-    ),
-  );
-
-  return [
-    ...firstRows,
-    ...remainingPages.flatMap((page) => page.rows.filter(isAttendanceTask)),
-  ];
-}
-
-async function getAttendanceTasksPage(
-  query: AttendanceTaskListQuery = {},
-): Promise<AttendanceTasksPageResponse> {
-  const params: Record<string, string> = toPaginationParams(query);
-  params.status = query.status ?? "ALL";
-
-  const searchTerm = query.searchTerm?.trim();
-  if (searchTerm) {
-    params.searchTerm = searchTerm;
-  }
-  if (query.province?.trim()) {
-    params.province = query.province.trim();
-  }
-  if (query.district?.trim()) {
-    params.district = query.district.trim();
-  }
-  if (query.subDistrict?.trim()) {
-    params.subDistrict = query.subDistrict.trim();
-  }
-  if (query.schoolId) {
-    params.schoolId = String(query.schoolId);
-  }
-  if (query.grade?.trim()) {
-    params.grade = query.grade.trim();
-  }
-  if (query.room?.trim()) {
-    params.room = query.room.trim();
-  }
-
-  const response = await apiClient.get<
-    AttendanceTasksPageResponse | AttendanceTask[]
-  >("/attendance/tasks", { params });
-
-  return normalizeAttendanceTasksPageResponse(response.data, query);
-}
-
 async function saveAttendance(
   records: AttendanceSaveRecord[],
   options: { timetableSlotId?: number | null; date?: string } = {},
@@ -308,6 +134,29 @@ async function saveAttendance(
       ...(options.date ? { date: options.date } : {}),
     },
   );
+  return response.data;
+}
+
+/**
+ * Autosave for a check-in in progress: sends only the students marked since the
+ * last flush and leaves the round open. `saveAttendance` is what closes it.
+ */
+async function saveAttendanceMarks(
+  records: AttendanceSaveRecord[],
+  options: {
+    timetableSlotId?: number | null;
+    date?: string;
+    clearedStudentIds?: string[];
+  } = {},
+): Promise<AttendanceMarksSaveResponse> {
+  const response = await apiClient.post<AttendanceMarksSaveResponse>("/attendance/marks", {
+    records,
+    ...(options.clearedStudentIds?.length
+      ? { cleared_student_ids: options.clearedStudentIds }
+      : {}),
+    ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
+    ...(options.date ? { date: options.date } : {}),
+  });
   return response.data;
 }
 
@@ -416,9 +265,8 @@ async function getReconciliationAnomalies(query: {
 export const attendanceService: AttendanceService = {
   getStudents,
   getHistory,
-  getTasks,
-  getAttendanceTasksPage,
   saveAttendance,
+  saveAttendanceMarks,
   getSessionContext,
   reopenSession,
   getTerms,

@@ -169,6 +169,8 @@ export interface AttendanceCounts {
   absent: number;
   late: number;
   leave: number;
+  /** Students with no status yet — the tally that gates submitting. */
+  unmarked: number;
 }
 
 /** Which tally each recordable status feeds; `NONE` is deliberately absent. */
@@ -183,10 +185,17 @@ export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<string, keyof AttendanceCoun
 export function countAttendanceStatuses(
   statuses: readonly AttendanceSelectionStatus[],
 ): AttendanceCounts {
-  const counts: AttendanceCounts = { present: 0, absent: 0, late: 0, leave: 0 };
+  const counts: AttendanceCounts = {
+    present: 0,
+    absent: 0,
+    late: 0,
+    leave: 0,
+    unmarked: 0,
+  };
   for (const status of statuses) {
     const key = ATTENDANCE_COUNT_KEY_BY_STATUS[status];
     if (key) counts[key] += 1;
+    else counts.unmarked += 1;
   }
   return counts;
 }

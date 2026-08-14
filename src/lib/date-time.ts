@@ -53,6 +53,14 @@ export function formatThaiTimeWithSeconds(value?: string | Date | null): string 
   return `${thaiTimeWithSecondsFormatter.format(date)} น.`;
 }
 
+/** Clock time only (`HH:mm`) in the canonical Thailand timezone. */
+export function formatThaiTime(value?: string | Date | null): string {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return thaiTimeFormatter.format(date);
+}
+
 export function formatThaiDate(value?: string | Date | null): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);

@@ -76,6 +76,10 @@ async function getSessionProfile(): Promise<AraIdSessionProfile> {
   return response.data.data;
 }
 
+async function reauthenticate(pin: string): Promise<void> {
+  await apiClient.post("/araid/session/reauthenticate", { pin });
+}
+
 async function logout(): Promise<void> {
   await apiClient.post("/araid/session/logout");
 }
@@ -87,6 +91,7 @@ export const araIdService = {
   updateRecord,
   updateRecordStatus,
   login,
+  reauthenticate,
   getSessionProfile,
   logout,
 };

@@ -24,6 +24,7 @@ import {
   useConfirm,
 } from "../../../components/base";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
 import {
@@ -39,6 +40,7 @@ import {
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { teacherLineService } from "../../teacher-line/api/teacher-line.service";
 import { TeacherLinkTable } from "../components/TeacherLinkTable";
@@ -157,6 +159,9 @@ function createInitialLineGroupSchedule(): LineGroupScheduleDraft {
 }
 
 export function TeacherAttendanceLinksPage() {
+  const contextualNavigate = useContextualNavigate();
+  const { can } = usePermissions();
+  const canManageTeachers = can("manage-teachers");
   const schoolsQuery = useScopedSchools();
   const lineEnabledQuery = useQuery({
     queryKey: ["line-link", "status"],
@@ -889,6 +894,12 @@ export function TeacherAttendanceLinksPage() {
             onCreate={(entry) => void createLink(entry)}
             onIssueLineInvitation={(entry) =>
               void issueLineInvitationLink(entry)
+            }
+            onOpenProfile={
+              canManageTeachers
+                ? (entry) =>
+                    contextualNavigate(`/manage-teachers/${entry.teacherId}/edit`)
+                : undefined
             }
             onRevoke={(entry) => {
               setRevokeTarget(entry);

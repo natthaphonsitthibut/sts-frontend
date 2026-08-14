@@ -26,6 +26,7 @@ import type {
   TeacherLinkRosterEntry,
   TeacherScheduleResponse,
   TeacherStudentProfile,
+  TeacherAccessAttendanceSession,
 } from "../types/teacher-access.types";
 
 interface DataEnvelope<T> {
@@ -48,6 +49,21 @@ export class TeacherAccessVerificationRequiredError extends Error {
   }
 }
 
+/**
+ * A guest-link failure with the HTTP status preserved but the Axios error (and
+ * the link token inside its request config) dropped. Callers need the status to
+ * tell a retryable outage apart from a permanent rejection.
+ */
+export class TeacherAccessRequestError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "TeacherAccessRequestError";
+    this.status = status;
+  }
+}
+
 function guestHeaders(
   credential: TeacherLinkCredential,
 ): Record<string, string> {
@@ -59,12 +75,14 @@ function guestHeaders(
     : { [TOKEN_HEADER]: credential.token };
 }
 
+function responseStatus(error: unknown): number | undefined {
+  return typeof error === "object" && error !== null
+    ? (error as { response?: { status?: number } }).response?.status
+    : undefined;
+}
+
 function isUnauthorized(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { response?: { status?: number } }).response?.status === 401
-  );
+  return responseStatus(error) === 401;
 }
 
 async function runGuestRequest<T>(request: () => Promise<T>): Promise<T> {
@@ -77,8 +95,9 @@ async function runGuestRequest<T>(request: () => Promise<T>): Promise<T> {
     // OTP" signal survives, as its own error type.
     throw otpRequired
       ? new TeacherAccessVerificationRequiredError()
-      : new Error(
+      : new TeacherAccessRequestError(
           getApiErrorMessage(error, "ไม่สามารถดำเนินการผ่านลิงก์ครูได้"),
+          responseStatus(error),
         );
   }
 }
@@ -277,25 +296,6 @@ async function verifyOtp(token: string, otp: string): Promise<string> {
     const message = getApiErrorMessage(error, "ยืนยันรหัส OTP ไม่สำเร็จ");
     // Keeps the backend's reason (wrong / expired / locked) but drops the Axios
     // error object, whose request config still holds the link token.
-    // eslint-disable-next-line preserve-caught-error
-    throw new Error(message);
-  }
-}
-
-async function verifyAraId(token: string): Promise<string> {
-  try {
-    const response = await apiClient.post<
-      DataEnvelope<{ sessionToken: string }>
-    >("/teacher-access/araid/verify", undefined, {
-      headers: { [TOKEN_HEADER]: token },
-    });
-    return response.data.data.sessionToken;
-  } catch (error) {
-    const message = getApiErrorMessage(
-      error,
-      "ยืนยันตัวตนผ่าน AraID ไม่สำเร็จ",
-    );
-    // Drop the Axios error because its request config contains the private link token.
     // eslint-disable-next-line preserve-caught-error
     throw new Error(message);
   }
@@ -602,22 +602,52 @@ async function recordClassroomExport(
   });
 }
 
+interface TeacherAccessAttendanceInput {
+  assignmentId: number;
+  timetableSlotId?: number;
+  date: string;
+  records: Array<{
+    studentId: string;
+    status: Exclude<AttendanceSelectionStatus, "NONE">;
+    markedAt?: string | null;
+  }>;
+  /** Students whose mark was taken back; their stored row is deleted. */
+  clearedStudentIds?: string[];
+}
+
 async function saveAttendance(
   credential: TeacherLinkCredential,
-  input: {
-    assignmentId: number;
-    timetableSlotId?: number;
-    date: string;
-    records: Array<{
-      studentId: string;
-      status: Exclude<AttendanceSelectionStatus, "NONE">;
-    }>;
-  },
+  input: TeacherAccessAttendanceInput,
 ): Promise<void> {
   await runGuestRequest(async () => {
     await apiClient.post("/teacher-access/attendance", input, {
       headers: guestHeaders(credential),
     });
+  });
+}
+
+/** Autosave for a check-in in progress; may carry only part of the class. */
+async function saveAttendanceMarks(
+  credential: TeacherLinkCredential,
+  input: TeacherAccessAttendanceInput,
+): Promise<void> {
+  await runGuestRequest(async () => {
+    await apiClient.post("/teacher-access/attendance-marks", input, {
+      headers: guestHeaders(credential),
+    });
+  });
+}
+
+async function getAttendanceSession(
+  credential: TeacherLinkCredential,
+  query: { assignmentId: number; date: string; timetableSlotId?: number },
+): Promise<TeacherAccessAttendanceSession> {
+  return await runGuestRequest(async () => {
+    const response = await apiClient.get<{ data: TeacherAccessAttendanceSession }>(
+      "/teacher-access/attendance-session",
+      { headers: guestHeaders(credential), params: query },
+    );
+    return response.data.data;
   });
 }
 
@@ -640,7 +670,6 @@ export const teacherAccessService = {
   rotateGrant,
   requestOtp,
   verifyOtp,
-  verifyAraId,
   createAraIdChallenge,
   beginAraIdChallenge,
   pollAraIdChallenge,
@@ -659,4 +688,6 @@ export const teacherAccessService = {
   recordClassroomExport,
   updateClassroomCard,
   saveAttendance,
+  saveAttendanceMarks,
+  getAttendanceSession,
 };

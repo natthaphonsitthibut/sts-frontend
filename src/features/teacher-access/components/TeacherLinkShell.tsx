@@ -106,7 +106,7 @@ export function TeacherLinkShell({
           <AppNavigationControls
             onMobileMenuClick={() => setMobileSidebarOpen(true)}
           />
-          <AppBrand className="flex-1" />
+          <AppBrand className="flex-1" to="/teacher-access" />
           <Avatar
             aria-label={`เข้าใช้งานในชื่อ ${context.teacherDisplayName}`}
             className="size-10"
@@ -125,6 +125,7 @@ export function TeacherLinkShell({
                 <AppBrand
                   className="max-w-52"
                   onClick={() => setMobileSidebarOpen(false)}
+                  to="/teacher-access"
                 />
               }
               onClose={() => setMobileSidebarOpen(false)}

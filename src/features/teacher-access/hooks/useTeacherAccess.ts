@@ -152,7 +152,10 @@ export function useRevokeTeacherLineInvitation() {
 }
 
 export function useTeacherAccessGrantLink() {
-  return useMutation({ mutationFn: teacherAccessService.getGrantLink });
+  return useMutation({
+    mutationFn: teacherAccessService.getGrantLink,
+    meta: { suppressSuccessToast: true },
+  });
 }
 
 export function useRevokeTeacherAccessGrant() {
@@ -201,13 +204,6 @@ export function useVerifyTeacherAccessOtp() {
   return useMutation({
     mutationFn: ({ token, otp }: { token: string; otp: string }) =>
       teacherAccessService.verifyOtp(token, otp),
-    meta: { suppressSuccessToast: true },
-  });
-}
-
-export function useVerifyTeacherAccessAraId() {
-  return useMutation({
-    mutationFn: (token: string) => teacherAccessService.verifyAraId(token),
     meta: { suppressSuccessToast: true },
   });
 }
@@ -506,6 +502,36 @@ export function useSaveTeacherAccessAttendance(
     mutationFn: (
       input: Parameters<typeof teacherAccessService.saveAttendance>[1],
     ) => teacherAccessService.saveAttendance(credential, input),
+    gcTime: 0,
+  });
+}
+
+/**
+ * Round state for the teacher-link check-in: which marks are already stored and
+ * whether the round is still open. Without it the link page could not prefill
+ * earlier work or stop a second submit.
+ */
+export function useTeacherAccessAttendanceSession(
+  credential: TeacherLinkCredential,
+  query: { assignmentId?: number; date: string; timetableSlotId?: number },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-session",
+      query.assignmentId,
+      query.date,
+      query.timetableSlotId ?? "none",
+    ],
+    queryFn: () =>
+      teacherAccessService.getAttendanceSession(credential, {
+        assignmentId: query.assignmentId as number,
+        date: query.date,
+        ...(query.timetableSlotId ? { timetableSlotId: query.timetableSlotId } : {}),
+      }),
+    enabled: Boolean(enabled && credential.token && query.assignmentId),
+    retry: false,
     gcTime: 0,
   });
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type { GradeLevelOption } from "../../tasks/api/attendance-lookup.service";
@@ -10,12 +10,13 @@ import {
   getTodayIso,
 } from "../lib/attendance-presentation";
 import { useSchoolAreaFilter } from "./useSchoolAreaFilter";
+import { useAttendanceMarks } from "./useAttendanceMarks";
 import type {
+  AttendanceMark,
   AttendanceSaveRecord,
   AttendanceSelectionStatus,
 } from "../types/attendance.types";
 
-const DEFAULT_STATUS: AttendanceSelectionStatus = "P_PRESENT";
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
 const EMPTY_ROOMS: string[] = [];
 const EMPTY_STUDENTS: Awaited<
@@ -62,14 +63,6 @@ export function useAttendanceCheckInForSession({
   const [schoolInput, setSchoolInput] = useState("");
   const [gradeInput, setGradeInput] = useState("");
   const [roomInput, setRoomInput] = useState("");
-  const [selections, setSelections] = useState<
-    Record<string, AttendanceSelectionStatus>
-  >({});
-  const [previousSelections, setPreviousSelections] = useState<Record<
-    string,
-    AttendanceSelectionStatus
-  > | null>(null);
-
   // Effective filters: locked dimensions come straight from scope; unlocked
   // ones from user input. No effects, no stored-then-synced state.
   const lockedGradeLabel = useMemo(
@@ -147,6 +140,10 @@ export function useAttendanceCheckInForSession({
     enabled: canLoadRoster,
   });
 
+  // The mutations are declared before the marks hook exists, so the reset is
+  // reached through a ref rather than reordering the hook graph.
+  const marksResetRef = useRef<(() => void) | null>(null);
+
   const saveMutation = useMutation({
     mutationFn: (records: AttendanceSaveRecord[]) =>
       attendanceService.saveAttendance(records, {
@@ -154,8 +151,7 @@ export function useAttendanceCheckInForSession({
         date: attendanceDate,
       }),
     onSuccess: async () => {
-      setSelections({});
-      setPreviousSelections(null);
+      marksResetRef.current?.();
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: [
@@ -186,8 +182,7 @@ export function useAttendanceCheckInForSession({
       return attendanceService.reopenSession(sessionId, reason);
     },
     onSuccess: async () => {
-      setSelections({});
-      setPreviousSelections(null);
+      marksResetRef.current?.();
       await queryClient.invalidateQueries({
         queryKey: [
           "attendance-session",
@@ -202,99 +197,104 @@ export function useAttendanceCheckInForSession({
   });
 
   const students = studentsQuery.data ?? EMPTY_STUDENTS;
-  const existingSelections = useMemo(
-    () =>
-      (existingAttendanceQuery.data ?? []).reduce<
-        Record<string, AttendanceSelectionStatus>
-      >((next, record) => {
-        if (record.id) next[record.id] = record.status;
-        return next;
-      }, {}),
-    [existingAttendanceQuery.data],
-  );
-  const effectiveSelections = useMemo(
-    () => ({ ...existingSelections, ...selections }),
-    [existingSelections, selections],
-  );
+  const rosterIds = useMemo(() => students.map((student) => student.id), [students]);
   const session = sessionQuery.data?.session ?? null;
   const canEditAttendance = session?.status !== "SUBMITTED";
-  const counts = useMemo(
+
+  // Marks already stored for this round, so reopening the page shows what was
+  // checked earlier instead of an empty roster.
+  const serverMarks = useMemo(
     () =>
-      countAttendanceStatuses(
-        students.map(
-          (student) => effectiveSelections[student.id] ?? DEFAULT_STATUS,
-        ),
-      ),
-    [students, effectiveSelections],
-  );
-
-  function setStatus(
-    studentId: string,
-    status: AttendanceSelectionStatus,
-  ): void {
-    if (!canEditAttendance) return;
-    setPreviousSelections(effectiveSelections);
-    setSelections((current) => ({ ...current, [studentId]: status }));
-  }
-
-  function setAllStatus(status: AttendanceSelectionStatus): void {
-    if (!students.length || !canEditAttendance) {
-      return;
-    }
-
-    setPreviousSelections(effectiveSelections);
-    setSelections(
-      students.reduce<Record<string, AttendanceSelectionStatus>>(
-        (next, student) => {
-          next[student.id] = status;
+      (existingAttendanceQuery.data ?? []).reduce<Record<string, AttendanceMark>>(
+        (next, record) => {
+          if (record.id && record.status !== "NONE") {
+            next[record.id] = {
+              status: record.status,
+              markedAt: record.marked_at ?? "",
+            };
+          }
           return next;
         },
         {},
       ),
-    );
-  }
+    [existingAttendanceQuery.data],
+  );
 
-  function undoSelections(): void {
-    if (!previousSelections) {
-      return;
-    }
+  const sessionMarksKey = `${schoolId}:${grade}:${room}:${attendanceDate}:${sessionKey}`;
+  const transport = useMemo(
+    () => ({
+      saveMarks: async (batch: Array<{ studentId: string; mark: AttendanceMark | null }>) => {
+        await attendanceService.saveAttendanceMarks(
+          batch
+            .filter((entry) => entry.mark !== null)
+            .map(({ studentId, mark }) => ({
+              student_id: studentId,
+              status: (mark as AttendanceMark).status,
+              marked_at: (mark as AttendanceMark).markedAt || null,
+            })),
+          {
+            timetableSlotId,
+            date: attendanceDate,
+            clearedStudentIds: batch
+              .filter((entry) => entry.mark === null)
+              .map((entry) => entry.studentId),
+          },
+        );
+      },
+    }),
+    [attendanceDate, timetableSlotId],
+  );
 
-    setSelections(previousSelections);
-    setPreviousSelections(null);
-  }
+  const marksState = useAttendanceMarks({
+    serverMarks,
+    rosterIds,
+    sessionKey: sessionMarksKey,
+    transport,
+    enabled: canEditAttendance,
+  });
 
-  // Changing the class resets unlocked downstream fields + marks.
+  const selections = marksState.marks;
+  useEffect(() => {
+    marksResetRef.current = marksState.reset;
+  }, [marksState.reset]);
+  const counts = useMemo(
+    () =>
+      countAttendanceStatuses(
+        rosterIds.map((studentId) => selections[studentId]?.status ?? "NONE"),
+      ),
+    [rosterIds, selections],
+  );
+
+  // Changing the class resets the downstream fields; the marks hook flushes and
+  // resets itself off the session key, so pending taps are never dropped here.
   function setSchoolId(value: string): void {
     setSchoolInput(value);
     setRoomInput("");
-    setSelections({});
-    setPreviousSelections(null);
   }
 
   function setGrade(value: string): void {
     setGradeInput(value);
     setRoomInput("");
-    setSelections({});
-    setPreviousSelections(null);
   }
 
   function setRoom(value: string): void {
     setRoomInput(value);
-    setSelections({});
-    setPreviousSelections(null);
   }
 
-  function save(): void {
-    if (!students.length || !canEditAttendance) {
+  /** Closes the round. Every pending tap is flushed first so nothing is lost. */
+  const save = useCallback(async (): Promise<void> => {
+    if (!rosterIds.length || !canEditAttendance || marksState.unmarkedCount > 0) {
       return;
     }
-    saveMutation.mutate(
-      students.map((student) => ({
-        student_id: student.id,
-        status: effectiveSelections[student.id] ?? DEFAULT_STATUS,
+    await marksState.flush();
+    await saveMutation.mutateAsync(
+      rosterIds.map((studentId) => ({
+        student_id: studentId,
+        status: selections[studentId].status,
+        marked_at: selections[studentId].markedAt || null,
       })),
     );
-  }
+  }, [canEditAttendance, marksState, rosterIds, saveMutation, selections]);
 
   return {
     scope,
@@ -308,11 +308,23 @@ export function useAttendanceCheckInForSession({
     setGrade,
     setRoom,
     students,
-    selections: effectiveSelections,
-    setStatus,
-    setAllStatus,
-    undoSelections,
-    canUndoSelections: Boolean(previousSelections),
+    selections: useMemo(
+      () =>
+        Object.fromEntries(
+          Object.entries(selections).map(([studentId, mark]) => [studentId, mark.status]),
+        ) as Record<string, AttendanceSelectionStatus>,
+      [selections],
+    ),
+    setStatus: marksState.setStatus,
+    markRemainingPresent: marksState.markRemainingPresent,
+    undoSelections: marksState.undo,
+    canUndoSelections: marksState.canUndo,
+    unmarkedCount: marksState.unmarkedCount,
+    markedCount: marksState.markedCount,
+    autosaveState: marksState.autosaveState,
+    autosaveFailureMessage: marksState.failureMessage,
+    lastSavedAt: marksState.lastSavedAt,
+    flushMarks: marksState.flush,
     counts,
     canLoadRoster,
     isRosterLoading: studentsQuery.isLoading && canLoadRoster,

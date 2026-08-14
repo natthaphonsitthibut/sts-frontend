@@ -8,12 +8,19 @@ export type AttendanceSelectionStatus =
 export interface AttendanceStudent {
   id: string;
   name: string;
+  first_name?: string | null;
+  last_name?: string | null;
   grade: string;
   room: string;
   school_id?: string | number;
+  /** Needed to file a homeroom comment against the right classroom. */
+  classroom_id?: number | string | null;
   school_name?: string;
   student_number?: string | null;
   photo_url?: string | null;
+  risk_tier?: string | null;
+  /** Latest homeroom note, shown as หมายเหตุ. */
+  teacher_comment?: string | null;
   total_late?: number | string;
   total_absent?: number | string;
 }
@@ -37,11 +44,27 @@ export interface AttendanceHistoryRecord {
   student_name?: string;
   recorded_by?: string;
   RecordedBy?: string;
+  /** When the teacher tapped this status; null for rows recorded before it existed. */
+  marked_at?: string | null;
 }
 
 export interface AttendanceSaveRecord {
   student_id: string;
   status: AttendanceSelectionStatus;
+  /** When the teacher tapped this status, ISO 8601; server clamps it. */
+  marked_at?: string | null;
+}
+
+/** One student's mark held locally while a check-in is in progress. */
+export interface AttendanceMark {
+  status: Exclude<AttendanceSelectionStatus, "NONE">;
+  markedAt: string;
+}
+
+export interface AttendanceMarksSaveResponse {
+  session: { id: string; status: AttendanceSessionStatus; revision: number };
+  expectedRosterCount: number;
+  recordedCount: number;
 }
 
 export interface AttendanceAutoCase {
@@ -170,80 +193,4 @@ export interface AttendanceSessionAnomaliesResponse {
     outOfTerm: number;
     missingCalendarDay: number;
   };
-}
-
-export interface AttendanceTask {
-  task_id: string;
-  task_type: string;
-  target_grade: string;
-  target_room: string;
-  target_school_id: string | number | null;
-  target_school_name: string | null;
-  link_assigned_to: string | null;
-  link_assigned_to_email?: string | null;
-  active_link: string | null;
-  active_link_created_at?: string | null;
-  active_link_expires_at?: string | null;
-  active_link_locked: boolean;
-  active_link_id: string | null;
-  link_state?: Exclude<AttendanceTaskLinkStatus, "ALL"> | null;
-  attendance_session_id?: string | null;
-  attendance_session_status?: AttendanceSessionStatus | null;
-  attendance_expected_roster_count?: number | string | null;
-  attendance_recorded_count?: number | string | null;
-  attendance_check_status?: "COMPLETED" | "NOT_CHECKED" | null;
-  created_at: string;
-}
-
-export type AttendanceTaskLinkStatus =
-  | "ALL"
-  | "ACTIVE"
-  | "LOCKED"
-  | "EXPIRED"
-  | "SCHEDULED";
-
-export interface AttendanceTaskListQuery {
-  page?: number;
-  limit?: number;
-  searchTerm?: string;
-  status?: AttendanceTaskLinkStatus;
-  province?: string;
-  district?: string;
-  subDistrict?: string;
-  schoolId?: string | number;
-  grade?: string;
-  room?: string;
-}
-
-export interface AttendanceTaskSummary {
-  total: number;
-  active: number;
-  locked: number;
-  expired: number;
-  scheduled: number;
-}
-
-export interface AttendanceTasksPageResponse {
-  rows: AttendanceTask[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  summary: AttendanceTaskSummary;
-}
-
-export type AttendanceClassStatus = "COMPLETED" | "PENDING";
-
-/**
- * Derived per-class view for a given date. The legacy backend exposes no single
- * "class summary" endpoint, so this is composed client-side from the attendance
- * task list + that date's history records.
- */
-export interface AttendanceClassSummary {
-  id: string;
-  grade: string;
-  room: string;
-  schoolId: string | number | null;
-  schoolName: string | null;
-  recordedCount: number;
-  status: AttendanceClassStatus;
 }

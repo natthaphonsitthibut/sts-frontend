@@ -111,16 +111,6 @@ async function verifyOtp(
   );
 }
 
-async function verifyAraId(
-  token: string,
-): Promise<{ bindingToken: string; teacherName: string }> {
-  return invitationPost(
-    "/line/link/araid/verify",
-    { token },
-    "ยืนยันตัวตนผ่าน AraID ไม่สำเร็จ",
-  );
-}
-
 async function createAraIdChallenge(token: string): Promise<TeacherLineAraIdChallenge> {
   return invitationPost(
     "/line/link/araid/challenge",
@@ -192,7 +182,6 @@ export const teacherLineService = {
   beginAraIdChallenge,
   approveAraIdChallenge,
   pollAraIdChallenge,
-  verifyAraId,
   resolveInvitation,
   requestInvitationOtp,
   verifyInvitationOtp,

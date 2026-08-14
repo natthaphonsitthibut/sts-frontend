@@ -7,7 +7,9 @@ import {
   ClipboardList,
   History,
   LockOpen,
+  MessageSquareText,
   Search,
+  UserRound,
   Wrench,
 } from "lucide-react";
 import {
@@ -16,6 +18,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  IconButton,
   DatePicker,
   DropdownMenu,
   Input,
@@ -30,6 +33,7 @@ import {
   DataTableRow,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import {
   EmptyState,
   ErrorState,
@@ -40,6 +44,7 @@ import {
   ToolbarControls,
   ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
+import { AttendanceMarkToolbar } from "../components/AttendanceMarkToolbar";
 import { AttendanceRosterTable } from "../components/AttendanceRosterTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
@@ -72,9 +77,22 @@ import type {
   TimetableSlot,
 } from "../../timetable/types/timetable.types";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
+import { StudentCommentCell } from "../../students/components/StudentCommentCell";
+import { RISK_TIER_PRESENTATION } from "../../students/lib/risk-tier-presentation";
+import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
+import { useCreateClassroomStudentComment } from "../../school-structure/hooks/useSchoolStructure";
 
 function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
+}
+
+function rosterSortValue(student: AttendanceStudent, key: string): string {
+  if (key === "studentNumber") return student.student_number ?? "";
+  if (key === "comment") return student.teacher_comment ?? "";
+  if (key === "status") {
+    return RISK_TIER_PRESENTATION[student.risk_tier ?? "NORMAL"]?.label ?? "";
+  }
+  return student.name;
 }
 
 function sortAttendanceStudents(
@@ -83,11 +101,10 @@ function sortAttendanceStudents(
 ): AttendanceStudent[] {
   if (!sort) return [...students];
   return [...students].sort((left, right) => {
-    const leftValue =
-      sort.key === "studentNumber" ? (left.student_number ?? "") : left.name;
-    const rightValue =
-      sort.key === "studentNumber" ? (right.student_number ?? "") : right.name;
-    const result = leftValue.localeCompare(rightValue, "th");
+    const result = rosterSortValue(left, sort.key).localeCompare(
+      rosterSortValue(right, sort.key),
+      "th",
+    );
     return sort.direction === "asc" ? result : -result;
   });
 }
@@ -162,6 +179,7 @@ function findDefaultSlot(
 
 export function AttendanceCheckInPage() {
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [tab, setTab] = useRouteTab(
     {
@@ -172,6 +190,10 @@ export function AttendanceCheckInPage() {
     "roster",
   );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  const [commentStudent, setCommentStudent] = useState<AttendanceStudent | null>(
+    null,
+  );
+  const createClassroomComment = useCreateClassroomStudentComment();
   const [attendanceSearch, setAttendanceSearch] = useState("");
   const [attendanceSort, setAttendanceSort] = useState<
     DataTableSortState | undefined
@@ -180,7 +202,7 @@ export function AttendanceCheckInPage() {
     direction: "asc",
   });
   const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
-    key: "name",
+    key: "studentNumber",
     direction: "asc",
   });
   const [historySort, setHistorySort] = useState<
@@ -225,6 +247,15 @@ export function AttendanceCheckInPage() {
     refetchRoster,
     save,
     saveState,
+    markRemainingPresent,
+    undoSelections,
+    canUndoSelections,
+    unmarkedCount,
+    markedCount,
+    autosaveState,
+    autosaveFailureMessage,
+    lastSavedAt,
+    flushMarks,
     sessionContext,
     isSessionLoading,
     isSessionError,
@@ -311,7 +342,12 @@ export function AttendanceCheckInPage() {
   );
 
   async function handleSave(): Promise<void> {
-    if (!students.length || saveState.isPending || !canEditAttendance) {
+    if (
+      !students.length ||
+      saveState.isPending ||
+      !canEditAttendance ||
+      unmarkedCount > 0
+    ) {
       return;
     }
 
@@ -320,7 +356,7 @@ export function AttendanceCheckInPage() {
       return;
     }
 
-    save();
+    await save();
   }
 
   async function handleReopen(reason: string): Promise<void> {
@@ -417,7 +453,7 @@ export function AttendanceCheckInPage() {
     <PageShell className="pb-6">
       <PageToolbar
         icon={ClipboardCheck}
-        title="เช็คชื่อมาเรียน"
+        title="เช็คชื่อ"
         description="บันทึกการมาเรียนประจำวันของนักเรียนในแต่ละห้อง"
       >
         <ToolbarFilterGrid>
@@ -546,8 +582,15 @@ export function AttendanceCheckInPage() {
                 { label: "รูปประจำตัว", className: "text-center" },
                 { label: "รหัสประจำตัว", sortKey: "studentNumber" },
                 { label: "ชื่อ-นามสกุล", sortKey: "name" },
+                { label: "หมายเหตุ", sortKey: "comment" },
+                {
+                  label: "สถานะความเสี่ยง",
+                  sortKey: "status",
+                  className: "text-center",
+                },
+                { label: "เครื่องมือ", className: "text-center" },
               ]}
-              minWidthClassName="min-w-[720px]"
+              minWidthClassName="min-w-[1040px]"
               onSortChange={setRosterSort}
               responsive={false}
               sort={rosterSort}
@@ -559,10 +602,17 @@ export function AttendanceCheckInPage() {
                   </DataTableCell>
                   <DataTableCell>
                     <div className="flex justify-center">
-                      <StudentAvatar
-                        name={student.name}
-                        photoUrl={student.photo_url}
-                      />
+                      <button
+                        aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
+                        className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        onClick={() => void contextualNavigate(`/students/${student.id}`)}
+                        type="button"
+                      >
+                        <StudentAvatar
+                          name={student.name}
+                          photoUrl={student.photo_url}
+                        />
+                      </button>
                     </div>
                   </DataTableCell>
                   <DataTableCell className="font-medium tabular-nums">
@@ -570,6 +620,42 @@ export function AttendanceCheckInPage() {
                   </DataTableCell>
                   <DataTableCell className="font-medium text-slate-900">
                     {student.name}
+                  </DataTableCell>
+                  <DataTableCell className="max-w-[360px]">
+                    <StudentCommentCell comment={student.teacher_comment} />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <div className="flex justify-center">
+                      {(() => {
+                        const tier = student.risk_tier ?? "NORMAL";
+                        return (
+                          <Badge
+                            data-student-risk-tier={tier}
+                            variant={
+                              RISK_TIER_PRESENTATION[tier]?.badge ?? "destructive"
+                            }
+                          >
+                            {RISK_TIER_PRESENTATION[tier]?.label ?? tier}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell>
+                    <div className="flex justify-center gap-2">
+                      <IconButton
+                        aria-label={`ดูข้อมูล ${student.name}`}
+                        icon={UserRound}
+                        onClick={() => void contextualNavigate(`/students/${student.id}`)}
+                        variant="edit"
+                      />
+                      <IconButton
+                        aria-label={`เพิ่มความคิดเห็นของ ${student.name}`}
+                        icon={MessageSquareText}
+                        onClick={() => setCommentStudent(student)}
+                        variant="comment"
+                      />
+                    </div>
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -636,7 +722,7 @@ export function AttendanceCheckInPage() {
                     aria-hidden="true"
                   />
                   <div>
-                    <AlertTitle>บันทึกการเช็คชื่อเรียบร้อยแล้ว</AlertTitle>
+                    <AlertTitle>ส่งการเช็คชื่อเรียบร้อยแล้ว</AlertTitle>
                     {newCases.length > 0 ? (
                       <AlertDescription className="max-h-16 overflow-auto">
                         ระบบสร้างเคสติดตามอัตโนมัติ {newCases.length} รายการ:{" "}
@@ -727,8 +813,22 @@ export function AttendanceCheckInPage() {
                 description="ลองเปลี่ยนคำค้นหา"
               />
             ) : (
-              <AttendanceRosterTable
-                catalog={attendanceStatusCatalog}
+              <>
+                <AttendanceMarkToolbar
+                  autosaveState={autosaveState}
+                  canUndo={canUndoSelections}
+                  failureMessage={autosaveFailureMessage}
+                  disabled={!canEditAttendance || isSessionError}
+                  lastSavedAt={lastSavedAt}
+                  markedCount={markedCount}
+                  onMarkRemainingPresent={markRemainingPresent}
+                  onRetrySave={() => void flushMarks()}
+                  onUndo={undoSelections}
+                  totalCount={students.length}
+                  unmarkedCount={unmarkedCount}
+                />
+                <AttendanceRosterTable
+                  catalog={attendanceStatusCatalog}
                 disabled={!canEditAttendance || isSessionError}
                 onSortChange={setAttendanceSort}
                 onStatusChange={setStatus}
@@ -737,27 +837,40 @@ export function AttendanceCheckInPage() {
                   name: student.name,
                   studentNumber: student.student_number,
                   avatar: (
-                    <StudentAvatar
-                      name={student.name}
-                      photoUrl={student.photo_url}
-                    />
+                    <button
+                      aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
+                      className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      onClick={() => void contextualNavigate(`/students/${student.id}`)}
+                      type="button"
+                    >
+                      <StudentAvatar
+                        name={student.name}
+                        photoUrl={student.photo_url}
+                      />
+                    </button>
                   ),
                 }))}
-                selections={selections}
-                sort={attendanceSort}
-              />
+                  selections={selections}
+                  sort={attendanceSort}
+                />
+              </>
             )}
 
             {canLoadRoster && students.length > 0 && canEditAttendance ? (
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex flex-col items-end gap-1">
                 <Button
-                  disabled={isSessionError}
+                  disabled={isSessionError || unmarkedCount > 0}
                   isLoading={saveState.isPending}
-                  loadingText="กำลังบันทึก"
+                  loadingText="กำลังส่ง"
                   type="submit"
                 >
-                  บันทึกการเช็คชื่อ {students.length} คน
+                  ส่งเช็คชื่อ {students.length} คน
                 </Button>
+                {unmarkedCount > 0 ? (
+                  <p className="text-sm text-content-secondary">
+                    เหลืออีก {unmarkedCount} คนที่ยังไม่เช็ค
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -849,6 +962,31 @@ export function AttendanceCheckInPage() {
         </div>
       )}
       {confirmDialog}
+      {/* Same dialog the classroom and teacher-link pages use, so a comment
+          filed from the roster lands in classroom_student_comments identically. */}
+      <ClassroomStudentCommentDialog
+        classroomId={Number(commentStudent?.classroom_id ?? 0)}
+        onOpenChange={(open) => {
+          if (!open) setCommentStudent(null);
+        }}
+        submitComment={async (input) => {
+          await createClassroomComment.mutateAsync(input);
+          // หมายเหตุ is served by the roster query, so refresh it or the new
+          // note would only appear after a manual reload.
+          await refetchRoster();
+        }}
+        student={
+          commentStudent
+            ? {
+                studentUuid: commentStudent.id,
+                firstName: commentStudent.first_name ?? commentStudent.name,
+                lastName: commentStudent.last_name ?? "",
+                studentNumber: commentStudent.student_number ?? null,
+                photoUrl: commentStudent.photo_url,
+              }
+            : null
+        }
+      />
       <AttendanceReopenDialog
         error={reopenState.error}
         isPending={reopenState.isPending}

@@ -64,9 +64,16 @@ export function AttendanceRosterTable({
       sort={sort}
     >
       {rows.map((student, index) => {
-        const current = selections[student.id] ?? "P_PRESENT";
+        // No default on purpose: an untouched student has no status, so
+        // "ยังไม่เช็ค" stays visibly different from "มา" and submit can be
+        // blocked until the class is actually complete.
+        const current = selections[student.id] ?? "NONE";
+        const isUnmarked = current === "NONE";
         return (
-          <DataTableRow key={student.id}>
+          // Exposes the mark as data rather than leaving it inferable only from
+          // pill styling — the badge text is always in the DOM (hidden when
+          // marked) so it cannot be used to detect state.
+          <DataTableRow data-attendance-mark={current} key={student.id}>
             <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
             <DataTableCell>
               <div className="flex justify-center">{student.avatar}</div>
@@ -75,11 +82,26 @@ export function AttendanceRosterTable({
               {student.studentNumber ?? "-"}
             </DataTableCell>
             <DataTableCell className="font-medium text-slate-900">
-              {student.name}
+              {/* justify-between pins the badge to the cell's right edge so it
+                  lines up down the column instead of drifting with each name's
+                  length. It is always rendered and only hidden, because removing
+                  it on every tap would resize the column and shift the table. */}
+              <span className="flex items-center justify-between gap-3">
+                {student.name}
+                <span
+                  aria-hidden={!isUnmarked}
+                  className={cn(
+                    "shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500",
+                    isUnmarked ? "" : "invisible",
+                  )}
+                >
+                  ยังไม่เช็ค
+                </span>
+              </span>
             </DataTableCell>
             <DataTableCell>
               <div
-                aria-label={`สถานะของ ${student.name}`}
+                aria-label={`สถานะของ ${student.name}${isUnmarked ? " — ยังไม่เช็ค" : ""}`}
                 className="flex min-w-[340px] justify-center gap-1.5"
                 role="group"
               >

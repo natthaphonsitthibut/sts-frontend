@@ -2,7 +2,7 @@ import { Lock, LockOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, IconButton, useConfirm } from "../base";
 import { cn } from "../../lib/utils";
-import { visitLinksService } from "../../features/visit-links/api/visit-links.service";
+import { taskService } from "../../features/tasks/api/task.service";
 import { getLinkLockConfirm, isLinkLocked } from "../../lib/link-lock";
 
 export interface LinkLockToggleButtonProps {
@@ -37,7 +37,7 @@ export function LinkLockToggleButton({
 
   const mutation = useMutation({
     mutationFn: () =>
-      visitLinksService.setLinkAdminLock(linkId, {
+      taskService.setTaskLinkAdminLock(linkId, {
         action: isLocked ? "unlock" : "lock",
         reason: isLocked
           ? "เปิดลิงก์อีกครั้งโดยผู้ดูแลระบบ"

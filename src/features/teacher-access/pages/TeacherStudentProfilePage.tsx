@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Card, IconButton } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import {
   EmptyState,
@@ -36,6 +37,7 @@ import { assignmentClassLabel } from "../lib/teacher-link-presentation";
  */
 
 export function TeacherStudentProfilePage() {
+  const safeBackTarget = useSafeBackTarget();
   const { assignmentId = "", studentUuid = "" } = useParams();
   const { context } = useTeacherLink();
   const assignment = context.assignments.find(
@@ -70,7 +72,7 @@ export function TeacherStudentProfilePage() {
     },
   ];
   const backAction = (
-    <NavButton icon={ArrowLeft} to={-1} variant="outline">
+    <NavButton icon={ArrowLeft} to={safeBackTarget} variant="outline">
       ย้อนกลับ
     </NavButton>
   );
