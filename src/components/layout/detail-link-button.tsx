@@ -1,15 +1,18 @@
 import type { ReactNode } from "react";
 import { Link, type LinkProps } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Eye, type LucideIcon } from "lucide-react";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 import { buttonVariants, iconButtonVariants } from "../base";
+import { useContextualNavigationState } from "./navigation-context";
 
 export interface DetailLinkButtonProps
   extends Omit<LinkProps, "children">,
     Pick<VariantProps<typeof buttonVariants>, "variant" | "size"> {
   children?: ReactNode;
   iconOnly?: boolean;
+  icon?: LucideIcon;
+  iconClassName?: string;
 }
 
 /**
@@ -20,12 +23,16 @@ export interface DetailLinkButtonProps
  */
 export function DetailLinkButton({
   className,
+  icon: Icon = Eye,
+  iconClassName,
   iconOnly = false,
   variant,
   size = "sm",
+  state,
   children = "ดูรายละเอียด",
   ...props
 }: DetailLinkButtonProps) {
+  const contextualState = useContextualNavigationState(state);
   return (
     <Link
       className={cn(
@@ -35,9 +42,10 @@ export function DetailLinkButton({
         "shrink-0 whitespace-nowrap",
         className,
       )}
+      state={contextualState}
       {...props}
     >
-      <Eye className="size-4" aria-hidden="true" />
+      <Icon className={cn("size-4", iconClassName)} aria-hidden="true" />
       {iconOnly ? null : children}
     </Link>
   );

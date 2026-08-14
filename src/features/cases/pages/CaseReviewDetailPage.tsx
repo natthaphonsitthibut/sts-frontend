@@ -22,10 +22,7 @@ import { CaseFollowUpRoundDetails } from "../components/CaseFollowUpRoundDetails
 import { CaseStatusBadge } from "../components/CaseStatusBadge";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
-import type {
-  CaseFollowUpRound,
-  CaseReviewRecord,
-} from "../types/cases.types";
+import type { CaseFollowUpRound, CaseReviewRecord } from "../types/cases.types";
 
 function DetailItem({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -48,7 +45,8 @@ function findLatestSubmittedRoundBeforeReview(
   return rounds.reduce<CaseFollowUpRound | null>((latest, round) => {
     if (!round.submitted_at) return latest;
     const submittedAt = Date.parse(round.submitted_at);
-    if (!Number.isFinite(submittedAt) || submittedAt > reviewedAt) return latest;
+    if (!Number.isFinite(submittedAt) || submittedAt > reviewedAt)
+      return latest;
     if (!latest?.submitted_at) return round;
     return Date.parse(latest.submitted_at) < submittedAt ? round : latest;
   }, null);
@@ -60,7 +58,8 @@ export function CaseReviewDetailPage() {
     reviewId: string;
   }>();
   const caseId = Number(caseIdParam);
-  const validCaseId = Number.isInteger(caseId) && caseId > 0 ? caseId : undefined;
+  const validCaseId =
+    Number.isInteger(caseId) && caseId > 0 ? caseId : undefined;
   const detailQuery = useCaseDetail(validCaseId);
   const trackingOptionsQuery = useCaseTrackingOptions();
 
@@ -68,7 +67,11 @@ export function CaseReviewDetailPage() {
     return (
       <PageShell>
         <EmptyState
-          action={<NavButton to="/cases" variant="outline">กลับรายการเคส</NavButton>}
+          action={
+            <NavButton to="/student-risk-report/risk" variant="outline">
+              กลับรายการเคส
+            </NavButton>
+          }
           description="กรุณาเปิดรายละเอียดผลการพิจารณาจากรายการเคส"
           icon={FileText}
           title="รหัสเคสไม่ถูกต้อง"
@@ -80,7 +83,9 @@ export function CaseReviewDetailPage() {
   if (detailQuery.isLoading) {
     return (
       <PageShell>
-        <Card className="p-5"><SkeletonStack lines={7} /></Card>
+        <Card className="p-5">
+          <SkeletonStack lines={7} />
+        </Card>
       </PageShell>
     );
   }
@@ -121,16 +126,23 @@ export function CaseReviewDetailPage() {
     if (!code) return null;
     const options = trackingOptionsQuery.data;
     return (
-      options?.followUpDecisions.find((option) => option.code === code)?.label ??
+      options?.followUpDecisions.find((option) => option.code === code)
+        ?.label ??
       options?.reviewActions.find((option) => option.code === code)?.label ??
-      options?.resolutionOutcomes.find((option) => option.code === code)?.label ??
+      options?.resolutionOutcomes.find((option) => option.code === code)
+        ?.label ??
       code
     );
   };
   const followUpRounds = caseRecord.follow_up_rounds ?? [];
-  const supportingRound = findLatestSubmittedRoundBeforeReview(followUpRounds, review);
+  const supportingRound = findLatestSubmittedRoundBeforeReview(
+    followUpRounds,
+    review,
+  );
   const supportingRoundNumber = supportingRound
-    ? followUpRounds.findIndex((round) => round.task_id === supportingRound.task_id) + 1
+    ? followUpRounds.findIndex(
+        (round) => round.task_id === supportingRound.task_id,
+      ) + 1
     : null;
   const reviewSummary =
     review.review_summary && review.review_summary !== review.review_note
@@ -143,11 +155,7 @@ export function CaseReviewDetailPage() {
         description="ตรวจผล เหตุผล และข้อมูลที่ใช้ประกอบการพิจารณารอบนี้"
         icon={ClipboardCheck}
         navigation={
-          <NavButton
-            icon={ArrowLeft}
-            to={-1}
-            variant="outline"
-          >
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
@@ -163,7 +171,9 @@ export function CaseReviewDetailPage() {
                 {optionLabel(review.review_action)}
               </h2>
             </div>
-            <Badge variant={review.review_action === "CLOSE" ? "success" : "default"}>
+            <Badge
+              variant={review.review_action === "CLOSE" ? "success" : "default"}
+            >
               {optionLabel(review.review_action)}
             </Badge>
           </div>
@@ -183,7 +193,9 @@ export function CaseReviewDetailPage() {
               value={
                 <CaseStatusBadge
                   badgeVariant={caseRecord.status_badge_variant}
-                  label={caseRecord.display_status_label ?? caseRecord.status_label}
+                  label={
+                    caseRecord.display_status_label ?? caseRecord.status_label
+                  }
                   status={caseRecord.status}
                 />
               }
@@ -202,7 +214,9 @@ export function CaseReviewDetailPage() {
           </p>
           {reviewSummary ? (
             <>
-              <h3 className="mt-5 text-sm font-bold text-slate-800">สรุปข้อมูลประกอบ</h3>
+              <h3 className="mt-5 text-sm font-bold text-slate-800">
+                สรุปข้อมูลประกอบ
+              </h3>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                 {reviewSummary}
               </p>
@@ -220,7 +234,8 @@ export function CaseReviewDetailPage() {
               รายงานล่าสุดก่อนการพิจารณา
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              ใช้ลำดับเวลาช่วยค้นหารายงานที่เกี่ยวข้อง เนื่องจากข้อมูลเดิมไม่ได้ผูกผลพิจารณากับรอบติดตามโดยตรง
+              ใช้ลำดับเวลาช่วยค้นหารายงานที่เกี่ยวข้อง
+              เนื่องจากข้อมูลเดิมไม่ได้ผูกผลพิจารณากับรอบติดตามโดยตรง
             </p>
           </div>
 
@@ -235,10 +250,13 @@ export function CaseReviewDetailPage() {
                     <span className="inline-flex items-center gap-1">
                       <CalendarDays className="size-3.5" />
                       {formatThaiDateTime(
-                        supportingRound.submitted_at || supportingRound.created_at,
+                        supportingRound.submitted_at ||
+                          supportingRound.created_at,
                       )}
                     </span>
-                    <span>ผู้รับผิดชอบ: {supportingRound.initial_assignee || "-"}</span>
+                    <span>
+                      ผู้รับผิดชอบ: {supportingRound.initial_assignee || "-"}
+                    </span>
                   </div>
                 </div>
                 <DetailLinkButton to={`/tasks/${supportingRound.task_id}`}>
@@ -260,13 +278,16 @@ export function CaseReviewDetailPage() {
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">บริบทของเคส</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                บริบทของเคส
+              </h2>
               <p className="mt-1 text-sm text-slate-500">
                 ข้อมูลตั้งต้นเพื่อทบทวนว่าการพิจารณาเกิดขึ้นกับเคสใด
               </p>
             </div>
             {caseRecord.student_id ? (
               <NavButton
+                contextual
                 icon={UserRound}
                 to={`/students/${caseRecord.student_id}`}
                 variant="outline"
@@ -277,8 +298,14 @@ export function CaseReviewDetailPage() {
           </div>
           <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DetailItem label="นักเรียน" value={caseRecord.student_name} />
-            <DetailItem label="โรงเรียน" value={caseRecord.student_school || "-"} />
-            <DetailItem label="วันที่เปิดเคส" value={formatThaiDate(caseRecord.created_at)} />
+            <DetailItem
+              label="โรงเรียน"
+              value={caseRecord.student_school || "-"}
+            />
+            <DetailItem
+              label="วันที่เปิดเคส"
+              value={formatThaiDate(caseRecord.created_at)}
+            />
             <DetailItem label="รหัสเคส" value={String(caseRecord.id)} />
           </dl>
           <div className="mt-4 rounded-lg bg-slate-50 px-4 py-3">

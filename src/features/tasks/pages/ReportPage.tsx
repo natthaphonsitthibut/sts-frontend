@@ -1,27 +1,14 @@
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import {
-  CalendarDays,
-  Check,
-  ClipboardList,
-  Clock,
-  History,
-  LocateFixed,
-  MapPin,
-  PhoneCall,
-  Save,
-  TriangleAlert,
-  UserRoundCheck,
-} from "lucide-react";
+import { Check, LocateFixed, MapPin, PhoneCall, Save } from "lucide-react";
 import { z } from "zod";
 import {
   Avatar,
   Button,
   Card,
-  CardContent,
   Combobox,
   DatePicker,
   Dialog,
@@ -39,20 +26,24 @@ import {
   Textarea,
   TimePicker,
 } from "../../../components/base";
+import { AssignmentSummary } from "../../../components/layout/assignment-summary";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
-import { SkeletonStack } from "../../../components/layout/page-primitives";
-import { cn } from "../../../lib/utils";
+import { PAGE_MAX_WIDTH_CLASS, SkeletonStack } from "../../../components/layout/page-primitives";
+import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import { TrackingStep, TrackingStepsCard } from "../../../components/layout/tracking-step";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
-import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
-import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
+import { formatRoomLabel } from "../../../lib/room-presentation";
+import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
+import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { buildVisitReportFormTitle } from "../lib/task-presentation";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
+import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
 import {
   deleteVisitReportDraft,
   loadVisitReportDraft,
@@ -63,7 +54,7 @@ const reportSchema = z
   .object({
     visitedDate: z.string().trim().min(1, "กรุณาเลือกวันที่ลงพื้นที่"),
     visitedTime: z.string().regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
-    assessmentCode: z.string().trim().min(1, "กรุณาเลือกผลประเมินหลังลงพื้นที่"),
+    assessmentCode: z.string().trim().min(1, "กรุณาเลือกผลการติดตาม"),
     causeDetail: z.string().trim(),
     homeVisitExceptionCode: z.string().trim(),
     updatedAddressLine: z.string().trim(),
@@ -81,20 +72,7 @@ const reportSchema = z
       });
     }
     if (values.homeVisitExceptionCode !== "ADDRESS_CHANGED") return;
-
-    const requiredAddressFields: Array<
-      [
-        keyof Pick<
-          typeof values,
-          | "updatedAddressLine"
-          | "updatedAddressProvince"
-          | "updatedAddressDistrict"
-          | "updatedAddressSubDistrict"
-          | "updatedPostalCode"
-        >,
-        string,
-      ]
-    > = [
+    const requiredAddressFields: Array<[keyof typeof values, string]> = [
       ["updatedAddressLine", "กรุณากรอกที่อยู่ใหม่"],
       ["updatedAddressProvince", "กรุณากรอกจังหวัด"],
       ["updatedAddressDistrict", "กรุณากรอกอำเภอ/เขต"],
@@ -102,9 +80,7 @@ const reportSchema = z
       ["updatedPostalCode", "กรุณากรอกรหัสไปรษณีย์"],
     ];
     requiredAddressFields.forEach(([field, message]) => {
-      if (!values[field]) {
-        context.addIssue({ code: "custom", message, path: [field] });
-      }
+      if (!values[field]) context.addIssue({ code: "custom", message, path: [field] });
     });
     if (values.updatedPostalCode && !/^\d{5}$/.test(values.updatedPostalCode)) {
       context.addIssue({
@@ -134,13 +110,6 @@ function parseDateTimeParts(value?: string | null): { date: string; time: string
   return { date: formatThaiDate(parsed), time: local.time };
 }
 
-function formatHistoryDate(value?: string | null): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return formatThaiDateTime(parsed);
-}
-
 function getContactRelationLabel(
   contact: NonNullable<ReturnType<typeof getContactChannels>[number]>,
 ): string {
@@ -161,69 +130,21 @@ function getContactChannels(task: {
   return task.contact_channels ?? [];
 }
 
-interface ReadOnlyFieldProps {
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  label: string;
-  value: string;
-}
-
-function ReadOnlyField({ icon: Icon, label, value }: ReadOnlyFieldProps) {
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-semibold text-slate-600">{label}</div>
-      <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700">
-        <Icon className="size-4 shrink-0 text-slate-500" aria-hidden />
-        <span className="truncate tabular-nums">{value}</span>
-      </div>
-    </div>
-  );
-}
-
-interface FlowStepProps {
-  active?: boolean;
-  label: string;
-  number: number;
-}
-
-function FlowStep({ active = false, label, number }: FlowStepProps) {
-  return (
-    <div className="relative z-10 flex flex-col items-center gap-2" data-flow-step={number}>
-      <div
-        className={cn(
-          "grid size-9 place-items-center rounded-full border text-sm font-bold",
-          active
-            ? "border-primary bg-primary text-white ring-4 ring-primary/20"
-            : "border-slate-300 bg-white text-slate-600",
-        )}
-      >
-        {number}
-      </div>
-      <span className={cn("text-xs font-semibold", active ? "text-slate-900" : "text-slate-600")}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
 export function ReportPage() {
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
-  const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
   const initialVisit = useMemo(() => getLocalDateTimeParts(), []);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">(
-    "idle",
-  );
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [photos, setPhotos] = useState<File[]>([]);
   const [mapOpen, setMapOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [draftError, setDraftError] = useState("");
-  const [draftNotice, setDraftNotice] = useState("");
 
   const form = useForm<ReportFormValues>({
     defaultValues: {
@@ -247,26 +168,11 @@ export function ReportPage() {
     control: form.control,
     name: "homeVisitExceptionCode",
   });
-  const updatedAddressProvince = useWatch({
-    control: form.control,
-    name: "updatedAddressProvince",
-  });
-  const updatedAddressDistrict = useWatch({
-    control: form.control,
-    name: "updatedAddressDistrict",
-  });
-  const updatedAddressSubDistrict = useWatch({
-    control: form.control,
-    name: "updatedAddressSubDistrict",
-  });
-  const updatedAddressLine = useWatch({
-    control: form.control,
-    name: "updatedAddressLine",
-  });
-  const updatedPostalCode = useWatch({
-    control: form.control,
-    name: "updatedPostalCode",
-  });
+  const updatedAddressProvince = useWatch({ control: form.control, name: "updatedAddressProvince" });
+  const updatedAddressDistrict = useWatch({ control: form.control, name: "updatedAddressDistrict" });
+  const updatedAddressSubDistrict = useWatch({ control: form.control, name: "updatedAddressSubDistrict" });
+  const updatedAddressLine = useWatch({ control: form.control, name: "updatedAddressLine" });
+  const updatedPostalCode = useWatch({ control: form.control, name: "updatedPostalCode" });
   const draftFormValues = useWatch({ control: form.control });
 
   const taskQuery = useQuery({
@@ -282,33 +188,16 @@ export function ReportPage() {
     enabled: homeVisitExceptionCode === "ADDRESS_CHANGED",
     staleTime: 30 * 60 * 1000,
   });
-  const locationCatalog = locationCatalogQuery.data ?? {
-    provinces: [],
-    districts: [],
-    subDistricts: [],
-  };
-  const provinceOptions = locationCatalog.provinces.map((province) => ({
-    label: province,
-    value: province,
-  }));
-  const districtOptions = Array.from(
-    new Set(
-      locationCatalog.districts
-        .filter((entry) => entry.province === updatedAddressProvince)
-        .map((entry) => entry.district),
-    ),
-  ).map((district) => ({ label: district, value: district }));
-  const subDistrictOptions = Array.from(
-    new Set(
-      locationCatalog.subDistricts
-        .filter(
-          (entry) =>
-            entry.province === updatedAddressProvince &&
-            entry.district === updatedAddressDistrict,
-        )
-        .map((entry) => entry.sub_district),
-    ),
-  ).map((subDistrict) => ({ label: subDistrict, value: subDistrict }));
+  const locationCatalog = locationCatalogQuery.data ?? { provinces: [], districts: [], subDistricts: [] };
+  const provinceOptions = locationCatalog.provinces.map((province) => ({ label: province, value: province }));
+  const districtOptions = Array.from(new Set(locationCatalog.districts
+    .filter((entry) => entry.province === updatedAddressProvince)
+    .map((entry) => entry.district)))
+    .map((district) => ({ label: district, value: district }));
+  const subDistrictOptions = Array.from(new Set(locationCatalog.subDistricts
+    .filter((entry) => entry.province === updatedAddressProvince && entry.district === updatedAddressDistrict)
+    .map((entry) => entry.sub_district)))
+    .map((subDistrict) => ({ label: subDistrict, value: subDistrict }));
 
   useEffect(() => {
     const status = taskQuery.error as {
@@ -414,23 +303,6 @@ export function ReportPage() {
     },
   });
 
-  async function handleSaveDraft(): Promise<void> {
-    try {
-      const updatedAt = await saveVisitReportDraft({
-        token,
-        formValues: form.getValues(),
-        latitude: lat,
-        longitude: lng,
-        files: photos,
-      });
-      setDraftSavedAt(updatedAt);
-      setDraftError("");
-      setDraftNotice("บันทึกฉบับร่างแล้ว");
-    } catch {
-      setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม");
-    }
-  }
-
   function handleUseCurrentLocation(): void {
     if (!navigator.geolocation) {
       setLocationStatus("error");
@@ -450,7 +322,7 @@ export function ReportPage() {
 
   if (taskQuery.isLoading) {
     return (
-      <GuestPageShell contentClassName="max-w-[1120px]">
+      <GuestPageShell contentClassName={PAGE_MAX_WIDTH_CLASS}>
         <Card className="rounded-lg p-6">
           <SkeletonStack lines={8} />
         </Card>
@@ -470,131 +342,44 @@ export function ReportPage() {
 
   const task = taskQuery.data;
   if (task.auth_required) {
-    return (
-      <MagicAuthCard title="ยืนยันตัวตน" subtitle={task.assigned_to_name || "แบบฟอร์มติดตามนักเรียน"}>
-        <OtpVerifyPanel
-          onRequestOtp={() => taskService.requestTaskOtp(token)}
-          onVerifyOtp={async (otp) => {
-            const response = await taskService.verifyTaskOtp(token, otp);
-            if (!response.session_token) {
-              throw new Error("รหัส OTP ไม่ถูกต้องหรือหมดอายุ");
-            }
-            writeMagicToken(token, response.session_token, "local");
-            setSessionToken(response.session_token);
-          }}
-        />
-      </MagicAuthCard>
-    );
+    return <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />;
   }
 
   const assignmentStart = parseDateTimeParts(task.opens_at || task.created_at);
   const assignmentEnd = parseDateTimeParts(task.expires_at);
-  const studentClass = [task.student_grade, task.student_room].filter(Boolean).join("/");
   const formTitle = buildVisitReportFormTitle(task);
   const history = task.follow_up_history ?? [];
   const homeVisitExceptions = trackingOptionsQuery.data?.homeVisitExceptions ?? [];
-  const hasHomeCoordinates = task.student_lat != null && task.student_lng != null;
   const contactChannels = getContactChannels(task);
+  const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
 
   return (
     <GuestPageShell
-      contentClassName="max-w-[1120px] space-y-4"
+      contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
       profileName={task.assigned_to_name}
     >
       <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">{formTitle}</h1>
 
-      <Card className="rounded-lg border-slate-200 shadow-sm">
-        <CardContent className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800">
-            <UserRoundCheck className="size-4.5" aria-hidden="true" />
-            ข้อมูลนักเรียน
-          </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-            <div className="flex min-w-0 gap-3">
-              <Avatar
-                className="size-24 text-2xl"
-                gradientName={task.student_name || undefined}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-base font-semibold text-slate-900">
-                      {task.student_name || "-"} {studentClass || ""}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-600">{task.student_school || "-"}</div>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <IconButton
-                      aria-label="ดูเบอร์ติดต่อนักเรียนและผู้ปกครอง"
-                      icon={PhoneCall}
-                      onClick={() => setContactsOpen(true)}
-                      title="ดูเบอร์ติดต่อ"
-                      variant="contact"
-                    />
-                    <IconButton
-                      aria-label="ดูพิกัดบ้านนักเรียน"
-                      icon={MapPin}
-                      onClick={() => setMapOpen(true)}
-                      title={hasHomeCoordinates ? "ดูพิกัดบ้านนักเรียน" : "ยังไม่มีพิกัดบ้าน"}
-                      variant="location"
-                    />
-                  </div>
-                </div>
-                <div className="mt-2 min-h-20 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                  <div className="flex items-center gap-1.5 font-semibold text-danger-700">
-                    <TriangleAlert className="size-3.5" aria-hidden="true" />
-                    สาเหตุที่ต้องติดตาม
-                  </div>
-                  <p className="mt-0.5 whitespace-pre-wrap leading-5">
-                    {task.reason_flagged || "ยังไม่มีรายละเอียดสาเหตุ"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <section
-              aria-labelledby="follow-up-history-title"
-              className="flex h-full min-h-32 flex-col"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <History className="size-4.5 text-slate-700" aria-hidden="true" />
-                <h2 className="text-sm font-bold text-slate-800" id="follow-up-history-title">
-                  ประวัติการติดตาม
-                </h2>
-              </div>
-              {history.length > 0 ? (
-                <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                  {history.map((item, index) => (
-                    <li
-                      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700"
-                      key={`${item.submitted_at ?? index}:${item.assigned_to_name ?? index}`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-semibold">
-                          ผู้ติดตาม: {item.assigned_to_name || "-"}
-                        </span>
-                        <span className="tabular-nums text-slate-500">
-                          {formatHistoryDate(item.visited_at || item.submitted_at)}
-                        </span>
-                      </div>
-                      {item.exception_label ? (
-                        <div className="mt-1 font-semibold text-primary-dark">
-                          {item.exception_label}
-                        </div>
-                      ) : null}
-                      <p className="mt-1 line-clamp-2">{item.cause_detail || "ไม่มีคำอธิบาย"}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="flex min-h-20 flex-1 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-3 py-5 text-center text-sm text-slate-500">
-                  ยังไม่มีประวัติการติดตามก่อนหน้า
-                </div>
-              )}
-            </section>
-          </div>
-        </CardContent>
-      </Card>
+      <StudentTrackingCard
+        avatar={<Avatar className="size-28 shrink-0 text-3xl" gradientName={task.student_name || undefined} />}
+        historyItems={history.map((item, index) => ({
+          id: `${item.submitted_at ?? index}:${item.assigned_to_name ?? index}`,
+          assignee: item.assigned_to_name || "-",
+          at: item.visited_at || item.submitted_at,
+          reason: task.reason_flagged || "-",
+          note: item.cause_detail || "ไม่มีคำอธิบาย",
+        }))}
+        name={task.student_name || "-"}
+        noteLabel="สาเหตุที่ต้องติดตาม"
+        noteValue={task.reason_flagged || "ยังไม่มีรายละเอียดสาเหตุ"}
+        onOpenContacts={() => setContactsOpen(true)}
+        onOpenLocation={() => setMapOpen(true)}
+        schoolLine={`${task.student_school || "-"}${
+          task.student_grade || task.student_room
+            ? ` · ${[task.student_grade, task.student_room ? formatRoomLabel(task.student_room) : null].filter(Boolean).join(" ")}`
+            : ""
+        }`}
+      />
 
       <Dialog onOpenChange={setMapOpen} open={mapOpen}>
         <DialogContent className="max-w-5xl" onClose={() => setMapOpen(false)}>
@@ -670,408 +455,316 @@ export function ReportPage() {
         </DialogContent>
       </Dialog>
 
-      <Card className="rounded-lg border-slate-200 shadow-sm">
-        <CardContent className="p-4 sm:p-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-              <ClipboardList className="size-4.5" aria-hidden="true" />
-              ขั้นตอนการติดตาม
-            </div>
-            <div className="text-xs font-semibold text-slate-600">
-              สถานะการติดตาม: <span className="text-primary">รอติดตาม</span>
-            </div>
-          </div>
+      <TrackingStepsCard statusClassName={trackingStatus.textClassName} statusLabel={trackingStatus.label}>
+        <TrackingStep connectNext number={1} title="มอบหมาย">
+          <AssignmentSummary
+            assigneeLabel={task.assigned_to_name || "-"}
+            endsAtLabel={assignmentEnd.time}
+            endsOnLabel={assignmentEnd.date}
+            note={task.assignment_note || ""}
+            startsAtLabel={assignmentStart.time}
+            startsOnLabel={assignmentStart.date}
+          />
+        </TrackingStep>
 
-          <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-x-3 gap-y-4 sm:grid-cols-[76px_minmax(0,1fr)] sm:gap-x-5">
-            <div className="relative flex items-center justify-center">
-              <div
-                className="absolute bottom-[-1rem] left-1/2 top-[calc(50%+3.5rem)] w-px -translate-x-1/2 bg-slate-200"
-                aria-hidden="true"
+        <TrackingStep active connectPrev number={2} title="สาเหตุ">
+          <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
+            <div className="space-y-4">
+              <FormErrorAlert
+                error={trackingOptionsQuery.error ?? submitReport.error}
+                fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
               />
-              <FlowStep label="มอบหมาย" number={1} />
-            </div>
-            <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <ReadOnlyField icon={CalendarDays} label="วันที่เริ่ม" value={assignmentStart.date} />
-                  <ReadOnlyField icon={Clock} label="เวลาเริ่ม" value={assignmentStart.time} />
-                  <ReadOnlyField
-                    icon={UserRoundCheck}
-                    label="ผู้รับมอบหมาย"
-                    value={task.assigned_to_name || "-"}
-                  />
-                  <ReadOnlyField icon={CalendarDays} label="วันที่สิ้นสุด" value={assignmentEnd.date} />
-                  <ReadOnlyField icon={Clock} label="เวลาสิ้นสุด" value={assignmentEnd.time} />
-                  <div className="md:col-span-1">
-                    <div className="mb-1 text-xs font-semibold text-slate-600">ที่อยู่ปัจจุบัน</div>
-                    <div className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                      {task.student_address || "-"}
-                    </div>
+
+              <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                <div
+                  className="grid h-full gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]"
+                  data-visit-report-fields
+                >
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormItem>
+                      <FormLabel htmlFor="visited-date" required>
+                        วันที่ลงพื้นที่
+                      </FormLabel>
+                      <DatePicker
+                        ariaLabel="วันที่ลงพื้นที่"
+                        id="visited-date"
+                        onChange={(value) =>
+                          form.setValue("visitedDate", value, {
+                            shouldDirty: true,
+                            shouldValidate: form.formState.isSubmitted,
+                          })
+                        }
+                        value={visitedDate}
+                      />
+                      <FormMessage<ReportFormValues> name="visitedDate" />
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel htmlFor="visited-time" required>
+                        เวลาที่ลงพื้นที่
+                      </FormLabel>
+                      <TimePicker
+                        ariaLabel="เวลาที่ลงพื้นที่"
+                        id="visited-time"
+                        onChange={(value) =>
+                          form.setValue("visitedTime", value, {
+                            shouldDirty: true,
+                            shouldValidate: form.formState.isSubmitted,
+                          })
+                        }
+                        value={visitedTime}
+                      />
+                      <FormMessage<ReportFormValues> name="visitedTime" />
+                    </FormItem>
                   </div>
-                </div>
-            </section>
 
-            <div className="relative flex items-center justify-center">
-              <div
-                className="absolute bottom-[calc(50%+3.5rem)] left-1/2 top-[-1rem] w-px -translate-x-1/2 bg-slate-200"
-                aria-hidden="true"
-              />
-              <FlowStep active label="ติดตาม" number={2} />
-            </div>
-            <section className="min-w-0 rounded-lg border border-primary/60 bg-[#edf4ff] p-4">
-                <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
-                  <div className="space-y-4">
-                    <FormErrorAlert
-                      error={trackingOptionsQuery.error ?? submitReport.error}
-                      fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+                  <FormItem>
+                    <FormLabel htmlFor="follow-up-assessment" required>
+                      ผลการติดตาม
+                    </FormLabel>
+                    <Combobox
+                      aria-invalid={form.formState.errors.assessmentCode ? true : undefined}
+                      id="follow-up-assessment"
+                      name="assessmentCode"
+                      onChange={(value) =>
+                        form.setValue("assessmentCode", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      options={[
+                        { value: "", label: "เลือกผลการติดตาม" },
+                        ...(trackingOptionsQuery.data?.homeVisitAssessments ?? []).map(
+                          (option) => ({
+                            value: option.code,
+                            label: option.label,
+                          }),
+                        ),
+                      ]}
+                      searchable={false}
+                      value={assessmentCode}
                     />
+                    <FormMessage<ReportFormValues> name="assessmentCode" />
+                  </FormItem>
 
-                    <div className="grid items-stretch gap-4 lg:grid-cols-2">
-                      <div className="grid h-full gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <FormItem>
-                            <FormLabel htmlFor="visited-date" required>
-                              วันที่ลงพื้นที่
-                            </FormLabel>
-                            <DatePicker
-                              ariaLabel="วันที่ลงพื้นที่"
-                              id="visited-date"
-                              onChange={(value) =>
-                                form.setValue("visitedDate", value, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                })
-                              }
-                              value={visitedDate}
-                            />
-                            <FormMessage<ReportFormValues> name="visitedDate" />
-                          </FormItem>
-                          <FormItem>
-                            <FormLabel htmlFor="visited-time" required>
-                              เวลาที่ลงพื้นที่
-                            </FormLabel>
-                            <TimePicker
-                              ariaLabel="เวลาที่ลงพื้นที่"
-                              id="visited-time"
-                              onChange={(value) =>
-                                form.setValue("visitedTime", value, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                })
-                              }
-                              value={visitedTime}
-                            />
-                            <FormMessage<ReportFormValues> name="visitedTime" />
-                          </FormItem>
-                        </div>
+                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-2 space-y-0">
+                    <FormLabel
+                      htmlFor="cause-detail"
+                      required={homeVisitExceptionCode === "STUDENT_NOT_FOUND"}
+                    >
+                      คำอธิบายเพิ่มเติม
+                    </FormLabel>
+                    <Textarea
+                      className="h-full min-h-28 resize-none overflow-y-auto bg-white"
+                      id="cause-detail"
+                      placeholder={
+                        homeVisitExceptionCode === "STUDENT_NOT_FOUND"
+                          ? "ระบุบริเวณที่ตรวจสอบ บุคคลที่สอบถาม และแนวทางติดตามครั้งถัดไป"
+                          : "บันทึกรายละเอียดจากการลงพื้นที่"
+                      }
+                      {...registerField(form, "causeDetail")}
+                    />
+                    <FormMessage<ReportFormValues> name="causeDetail" />
+                  </FormItem>
+                </div>
 
-                        <FormItem>
-                          <FormLabel htmlFor="follow-up-assessment" required>
-                            ผลประเมินหลังลงพื้นที่
-                          </FormLabel>
-                          <Combobox
-                            aria-invalid={form.formState.errors.assessmentCode ? true : undefined}
-                            id="follow-up-assessment"
-                            name="assessmentCode"
-                            onChange={(value) =>
-                              form.setValue("assessmentCode", value, {
-                                shouldDirty: true,
-                                shouldValidate: form.formState.isSubmitted,
-                              })
-                            }
-                            options={[
-                              { value: "", label: "เลือกผลประเมินหลังลงพื้นที่" },
-                              ...(trackingOptionsQuery.data?.homeVisitAssessments ?? []).map(
-                                (option) => ({
-                                value: option.code,
-                                label: option.label,
-                                }),
-                              ),
-                            ]}
-                            searchable={false}
-                            value={assessmentCode}
-                          />
-                          <FormMessage<ReportFormValues> name="assessmentCode" />
-                        </FormItem>
+                <div
+                  className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto]"
+                  data-visit-report-upload
+                >
+                  <FormLabel className="mb-1.5">แนบไฟล์</FormLabel>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <VisitPhotoUpload files={photos} onChange={setPhotos} />
+                  </div>
+                  <div className="mt-2 min-h-5" aria-hidden="true" />
+                </div>
+              </div>
 
-                        <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-2 space-y-0">
-                          <FormLabel
-                            htmlFor="cause-detail"
-                            required={homeVisitExceptionCode === "STUDENT_NOT_FOUND"}
-                          >
-                            คำอธิบายเพิ่มเติม
-                          </FormLabel>
-                          <Textarea
-                            className="h-full min-h-28 bg-white"
-                            id="cause-detail"
-                            placeholder={
-                              homeVisitExceptionCode === "STUDENT_NOT_FOUND"
-                                ? "ระบุบริเวณที่ตรวจสอบ บุคคลที่สอบถาม และแนวทางติดตามครั้งถัดไป"
-                                : "บันทึกรายละเอียดจากการลงพื้นที่"
-                            }
-                            {...registerField(form, "causeDetail")}
-                          />
-                          <FormMessage<ReportFormValues> name="causeDetail" />
-                        </FormItem>
-                      </div>
+              <div className="border-t border-primary/20 pt-3">
+                <fieldset
+                  className="flex flex-wrap items-center gap-x-6 gap-y-2"
+                  data-home-visit-exceptions
+                >
+                  <legend className="sr-only">กรณีพิเศษที่พบ</legend>
+                  <span className="mr-1 text-xs font-semibold text-slate-700" aria-hidden="true">
+                    กรณีพิเศษ:
+                  </span>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+                    <input
+                      checked={!homeVisitExceptionCode}
+                      className="size-4 accent-primary"
+                      name="home-visit-exception"
+                      onChange={() =>
+                        form.setValue("homeVisitExceptionCode", "", {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      type="radio"
+                    />
+                    ไม่มีกรณีพิเศษ
+                  </label>
+                  {homeVisitExceptions.map((option) => (
+                    <label
+                      className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
+                      key={option.code}
+                    >
+                      <input
+                        checked={homeVisitExceptionCode === option.code}
+                        className="size-4 accent-primary"
+                        name="home-visit-exception"
+                        onChange={() =>
+                          form.setValue("homeVisitExceptionCode", option.code, {
+                            shouldDirty: true,
+                            shouldValidate: form.formState.isSubmitted,
+                          })
+                        }
+                        type="radio"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </fieldset>
+              </div>
 
-                      <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto]">
-                        <FormLabel className="mb-1.5">แนบไฟล์</FormLabel>
-                        <div className="min-h-52">
-                          <VisitPhotoUpload
-                            className="h-full"
-                            dropzoneClassName="h-full min-h-52"
-                            files={photos}
-                            onChange={setPhotos}
-                          />
-                        </div>
-                        <div className="mt-2 min-h-5" aria-hidden="true" />
-                      </div>
-                    </div>
-
-                    <div className="border-t border-primary/20 pt-3">
-                      <fieldset
-                        className="flex flex-wrap items-center gap-x-6 gap-y-2"
-                        data-home-visit-exceptions
-                      >
-                        <legend className="sr-only">กรณีพิเศษที่พบ</legend>
-                        <span className="mr-1 text-xs font-semibold text-slate-700" aria-hidden="true">
-                          กรณีพิเศษ:
-                        </span>
-                        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
-                          <input
-                            checked={!homeVisitExceptionCode}
-                            className="size-4 accent-primary"
-                            name="home-visit-exception"
-                            onChange={() =>
-                              form.setValue("homeVisitExceptionCode", "", {
-                                shouldDirty: true,
-                                shouldValidate: form.formState.isSubmitted,
-                              })
-                            }
-                            type="radio"
-                          />
-                          ไม่มีกรณีพิเศษ
-                        </label>
-                        {homeVisitExceptions.map((option) => (
-                          <label
-                            className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
-                            key={option.code}
-                          >
-                            <input
-                              checked={homeVisitExceptionCode === option.code}
-                              className="size-4 accent-primary"
-                              name="home-visit-exception"
-                              onChange={() =>
-                                form.setValue("homeVisitExceptionCode", option.code, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                })
-                              }
-                              type="radio"
-                            />
-                            {option.label}
-                          </label>
-                        ))}
-                      </fieldset>
-                    </div>
-
-                    {homeVisitExceptionCode === "ADDRESS_CHANGED" ? (
-                      <div className="space-y-3">
-                        <div className="grid items-stretch gap-4 lg:h-[180px] lg:grid-cols-2">
-                          <FormItem className="flex h-full flex-col gap-2 space-y-0">
-                          <FormLabel htmlFor="updated-address-line" required>
-                            ที่อยู่ใหม่
-                          </FormLabel>
-                          <Textarea
-                            className="min-h-36 flex-1 bg-white lg:min-h-0"
-                            id="updated-address-line"
-                            placeholder="บ้านเลขที่ หมู่ ถนน ซอย หรือรายละเอียดจุดสังเกต"
-                            {...registerField(form, "updatedAddressLine")}
-                          />
-                          <FormMessage<ReportFormValues> name="updatedAddressLine" />
-                          </FormItem>
-                          <div className="grid h-full gap-3 sm:grid-cols-2 sm:grid-rows-2">
-                          <FormItem className="grid grid-rows-[auto_2.5rem_auto] gap-2 space-y-0">
-                            <FormLabel htmlFor="updated-address-province" required>
-                              จังหวัด
-                            </FormLabel>
-                            <Combobox
-                              aria-invalid={
-                                form.formState.errors.updatedAddressProvince ? true : undefined
-                              }
-                              disabled={locationCatalogQuery.isLoading}
-                              id="updated-address-province"
-                              name="updatedAddressProvince"
-                              onChange={(value) => {
-                                form.setValue("updatedAddressProvince", value, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                });
-                                form.setValue("updatedAddressDistrict", "", {
-                                  shouldDirty: true,
-                                });
-                                form.setValue("updatedAddressSubDistrict", "", {
-                                  shouldDirty: true,
-                                });
-                              }}
-                              options={provinceOptions}
-                              placeholder="เลือกจังหวัด"
-                              value={updatedAddressProvince}
-                            />
-                            <FormMessage<ReportFormValues> name="updatedAddressProvince" />
-                          </FormItem>
-                          <FormItem className="grid grid-rows-[auto_2.5rem_auto] gap-2 space-y-0">
-                            <FormLabel htmlFor="updated-address-district" required>
-                              อำเภอ/เขต
-                            </FormLabel>
-                            <Combobox
-                              aria-invalid={
-                                form.formState.errors.updatedAddressDistrict ? true : undefined
-                              }
-                              disabled={!updatedAddressProvince || locationCatalogQuery.isLoading}
-                              id="updated-address-district"
-                              name="updatedAddressDistrict"
-                              onChange={(value) => {
-                                form.setValue("updatedAddressDistrict", value, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                });
-                                form.setValue("updatedAddressSubDistrict", "", {
-                                  shouldDirty: true,
-                                });
-                              }}
-                              options={districtOptions}
-                              placeholder="เลือกอำเภอ/เขต"
-                              value={updatedAddressDistrict}
-                            />
-                            <FormMessage<ReportFormValues> name="updatedAddressDistrict" />
-                          </FormItem>
-                          <FormItem className="grid grid-rows-[auto_2.5rem_auto] gap-2 space-y-0">
-                            <FormLabel htmlFor="updated-address-sub-district" required>
-                              ตำบล/แขวง
-                            </FormLabel>
-                            <Combobox
-                              aria-invalid={
-                                form.formState.errors.updatedAddressSubDistrict ? true : undefined
-                              }
-                              disabled={!updatedAddressDistrict || locationCatalogQuery.isLoading}
-                              id="updated-address-sub-district"
-                              name="updatedAddressSubDistrict"
-                              onChange={(value) =>
-                                form.setValue("updatedAddressSubDistrict", value, {
-                                  shouldDirty: true,
-                                  shouldValidate: form.formState.isSubmitted,
-                                })
-                              }
-                              options={subDistrictOptions}
-                              placeholder="เลือกตำบล/แขวง"
-                              value={updatedAddressSubDistrict}
-                            />
-                            <FormMessage<ReportFormValues> name="updatedAddressSubDistrict" />
-                          </FormItem>
-                          <FormItem className="grid grid-rows-[auto_2.5rem_auto] gap-2 space-y-0">
-                            <FormLabel htmlFor="updated-postal-code" required>
-                              รหัสไปรษณีย์
-                            </FormLabel>
-                            <Input
-                              className="bg-white"
-                              id="updated-postal-code"
-                              inputMode="numeric"
-                              maxLength={5}
-                              {...registerField(form, "updatedPostalCode")}
-                            />
-                            <FormMessage<ReportFormValues> name="updatedPostalCode" />
-                          </FormItem>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-end gap-3">
-                          {locationStatus === "success" ? (
-                            <p className="flex items-center gap-1.5 text-xs font-medium text-success-700">
-                              <Check className="size-4" aria-hidden="true" />
-                              ระบุพิกัดแล้ว — จะบันทึกพร้อมผลการติดตาม
-                            </p>
-                          ) : null}
-                          {locationStatus === "error" ? (
-                            <p className="text-xs font-medium text-danger-700" role="alert">
-                              ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS แล้วลองอีกครั้ง
-                            </p>
-                          ) : null}
-                          <Button
-                            icon={LocateFixed}
-                            isLoading={locationStatus === "loading"}
-                            loadingText="กำลังอ่านตำแหน่ง"
-                            onClick={handleUseCurrentLocation}
-                            size="sm"
-                            type="button"
-                            variant="location"
-                          >
-                            ระบุตำแหน่งที่อยู่ใหม่
-                          </Button>
-                        </div>
-                        <VisitMapPreview
-                          address={[
-                            updatedAddressLine,
-                            updatedAddressSubDistrict,
-                            updatedAddressDistrict,
-                            updatedAddressProvince,
-                            updatedPostalCode,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          className="bg-white p-3"
-                          editable
-                          emptyDescription="กดบนแผนที่หรือใช้ตำแหน่งปัจจุบันเพื่อวางหมุดที่อยู่ใหม่"
-                          emptyTitle="ยังไม่ได้ระบุพิกัดใหม่"
-                          lat={lat}
-                          lng={lng}
-                          mapClassName="min-h-64"
-                          markerLabel="ที่อยู่ใหม่"
-                          onCoordinateChange={(coordinates) => {
-                            setLat(String(coordinates.lat));
-                            setLng(String(coordinates.lng));
-                            setLocationStatus("success");
+              {homeVisitExceptionCode === "ADDRESS_CHANGED" ? (
+                <div className="space-y-4">
+                  <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                    <FormItem className="flex flex-col gap-2 space-y-0">
+                      <FormLabel htmlFor="updated-address-line" required>ที่อยู่ใหม่</FormLabel>
+                      <Textarea
+                        className="min-h-36 flex-1 bg-white"
+                        id="updated-address-line"
+                        placeholder="บ้านเลขที่ หมู่ ถนน ซอย หรือรายละเอียดจุดสังเกต"
+                        {...registerField(form, "updatedAddressLine")}
+                      />
+                      <FormMessage<ReportFormValues> name="updatedAddressLine" />
+                    </FormItem>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FormItem>
+                        <FormLabel htmlFor="updated-address-province" required>จังหวัด</FormLabel>
+                        <Combobox
+                          aria-invalid={form.formState.errors.updatedAddressProvince ? true : undefined}
+                          disabled={locationCatalogQuery.isLoading}
+                          id="updated-address-province"
+                          onChange={(value) => {
+                            form.setValue("updatedAddressProvince", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+                            form.setValue("updatedAddressDistrict", "", { shouldDirty: true });
+                            form.setValue("updatedAddressSubDistrict", "", { shouldDirty: true });
                           }}
-                          title="พิกัดที่อยู่ใหม่"
+                          options={provinceOptions}
+                          placeholder="เลือกจังหวัด"
+                          value={updatedAddressProvince}
                         />
-                        {locationCatalogQuery.isError ? (
-                          <FormErrorAlert
-                            error={locationCatalogQuery.error}
-                            fallback="ไม่สามารถโหลดรายการจังหวัดและอำเภอได้ กรุณาลองใหม่"
-                          />
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-3">
-                      <div className="text-xs text-slate-500">
-                        <p>ฉบับร่างอยู่เฉพาะ browser/device นี้ และยังไม่ถือว่าส่งรายงาน</p>
-                        {draftError ? <p className="mt-1 text-danger-700">{draftError}</p> : null}
-                        {draftNotice ? <p className="mt-1 text-success-700">{draftNotice}</p> : null}
-                        {!draftError && draftSavedAt ? (
-                          <p className="mt-1">บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}</p>
-                        ) : null}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button onClick={() => void handleSaveDraft()} type="button" variant="outline">
-                          บันทึกฉบับร่าง
-                        </Button>
-                      <Button
-                        disabled={trackingOptionsQuery.isLoading}
-                        icon={Save}
-                        isLoading={submitReport.isPending}
-                        loadingText="กำลังบันทึก"
-                        type="submit"
-                      >
-                        บันทึกข้อมูล
-                      </Button>
-                      </div>
+                        <FormMessage<ReportFormValues> name="updatedAddressProvince" />
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel htmlFor="updated-address-district" required>อำเภอ/เขต</FormLabel>
+                        <Combobox
+                          aria-invalid={form.formState.errors.updatedAddressDistrict ? true : undefined}
+                          disabled={!updatedAddressProvince || locationCatalogQuery.isLoading}
+                          id="updated-address-district"
+                          onChange={(value) => {
+                            form.setValue("updatedAddressDistrict", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+                            form.setValue("updatedAddressSubDistrict", "", { shouldDirty: true });
+                          }}
+                          options={districtOptions}
+                          placeholder="เลือกอำเภอ/เขต"
+                          value={updatedAddressDistrict}
+                        />
+                        <FormMessage<ReportFormValues> name="updatedAddressDistrict" />
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel htmlFor="updated-address-sub-district" required>ตำบล/แขวง</FormLabel>
+                        <Combobox
+                          aria-invalid={form.formState.errors.updatedAddressSubDistrict ? true : undefined}
+                          disabled={!updatedAddressDistrict || locationCatalogQuery.isLoading}
+                          id="updated-address-sub-district"
+                          onChange={(value) => form.setValue("updatedAddressSubDistrict", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted })}
+                          options={subDistrictOptions}
+                          placeholder="เลือกตำบล/แขวง"
+                          value={updatedAddressSubDistrict}
+                        />
+                        <FormMessage<ReportFormValues> name="updatedAddressSubDistrict" />
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel htmlFor="updated-postal-code" required>รหัสไปรษณีย์</FormLabel>
+                        <Input
+                          className="bg-white"
+                          id="updated-postal-code"
+                          inputMode="numeric"
+                          maxLength={5}
+                          {...registerField(form, "updatedPostalCode")}
+                        />
+                        <FormMessage<ReportFormValues> name="updatedPostalCode" />
+                      </FormItem>
                     </div>
                   </div>
-                </Form>
-            </section>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {locationStatus === "success" ? (
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-success-700">
+                        <Check className="size-4" aria-hidden="true" />ระบุพิกัดแล้ว — จะบันทึกพร้อมผลการติดตาม
+                      </p>
+                    ) : null}
+                    {locationStatus === "error" ? (
+                      <p className="text-xs font-medium text-danger-700" role="alert">ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS แล้วลองอีกครั้ง</p>
+                    ) : null}
+                    <Button
+                      icon={LocateFixed}
+                      isLoading={locationStatus === "loading"}
+                      loadingText="กำลังอ่านตำแหน่ง"
+                      onClick={handleUseCurrentLocation}
+                      size="sm"
+                      type="button"
+                      variant="location"
+                    >ระบุตำแหน่งที่อยู่ใหม่</Button>
+                  </div>
+                  <VisitMapPreview
+                    address={[updatedAddressLine, updatedAddressSubDistrict, updatedAddressDistrict, updatedAddressProvince, updatedPostalCode].filter(Boolean).join(" ")}
+                    className="bg-white p-3"
+                    editable
+                    emptyDescription="กดบนแผนที่หรือใช้ตำแหน่งปัจจุบันเพื่อวางหมุดที่อยู่ใหม่"
+                    emptyTitle="ยังไม่ได้ระบุพิกัดใหม่"
+                    lat={lat}
+                    lng={lng}
+                    mapClassName="min-h-64"
+                    markerLabel="ที่อยู่ใหม่"
+                    onCoordinateChange={(coordinates) => {
+                      setLat(String(coordinates.lat));
+                      setLng(String(coordinates.lng));
+                      setLocationStatus("success");
+                    }}
+                    title="พิกัดที่อยู่ใหม่"
+                  />
+                  {locationCatalogQuery.isError ? (
+                    <FormErrorAlert error={locationCatalogQuery.error} fallback="ไม่สามารถโหลดรายการจังหวัดและอำเภอได้ กรุณาลองใหม่" />
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-3">
+                <div className="text-xs text-slate-500">
+                  <p>ฉบับร่างอยู่เฉพาะ browser/device นี้ และยังไม่ถือว่าส่งรายงาน</p>
+                  {draftError ? <p className="mt-1 text-danger-700">{draftError}</p> : null}
+                  {!draftError && draftSavedAt ? (
+                    <p className="mt-1">บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}</p>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={trackingOptionsQuery.isLoading}
+                    icon={Save}
+                    isLoading={submitReport.isPending}
+                    loadingText="กำลังบันทึก"
+                    type="submit"
+                  >
+                    บันทึกข้อมูล
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Form>
+        </TrackingStep>
+      </TrackingStepsCard>
     </GuestPageShell>
   );
 }

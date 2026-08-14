@@ -15,6 +15,8 @@ interface SchoolAreaSchoolFilterProps {
   schoolInputId?: string;
   schoolEmptyText?: string;
   schoolEmptyLabel?: string;
+  /** Hide the geographical cascade together with the school selector. */
+  hideArea?: boolean;
   hideSchool?: boolean;
 }
 
@@ -39,6 +41,7 @@ export function SchoolAreaSchoolFilter({
   schoolLocked = false,
   schoolPlaceholder = "ค้นหาโรงเรียน",
   schoolInputId,
+  hideArea = false,
   hideSchool = false,
 }: SchoolAreaSchoolFilterProps) {
   function clearSchool(): void {
@@ -71,7 +74,7 @@ export function SchoolAreaSchoolFilter({
 
   return (
     <>
-      <Combobox
+      {!hideArea ? <Combobox
         disabled={disabled || schoolLocked}
         onChange={(next) => {
           area.setProvince(next);
@@ -83,8 +86,8 @@ export function SchoolAreaSchoolFilter({
         options={toOptions(area.provinces, "ทุกจังหวัด")}
         placeholder="ค้นหาจังหวัด"
         value={area.province}
-      />
-      <Combobox
+      /> : null}
+      {!hideArea ? <Combobox
         disabled={disabled || schoolLocked || !area.province}
         onChange={(next) => {
           area.setDistrict(next);
@@ -95,8 +98,8 @@ export function SchoolAreaSchoolFilter({
         options={toOptions(area.districts, "ทุกอำเภอ/เขต")}
         placeholder="ค้นหาอำเภอ/เขต"
         value={area.district}
-      />
-      <Combobox
+      /> : null}
+      {!hideArea ? <Combobox
         disabled={disabled || schoolLocked || !area.district}
         onChange={(next) => {
           area.setSubDistrict(next);
@@ -106,7 +109,7 @@ export function SchoolAreaSchoolFilter({
         options={toOptions(area.subDistricts, "ทุกตำบล/แขวง")}
         placeholder="ค้นหาตำบล/แขวง"
         value={area.subDistrict}
-      />
+      /> : null}
       {!hideSchool ? (
         <Combobox
           ariaLabel={schoolPlaceholder}

@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "smoke:branding-browser": "node scripts/smoke-branding-browser.mjs",
+    "smoke:same-origin-api-browser": "VITE_API_BASE_URL= vite build --logLevel warn && node scripts/smoke-same-origin-api-browser.mjs",
     "commitlint": "commitlint --edit",
     "prepare": "husky"
   },

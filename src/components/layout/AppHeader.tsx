@@ -20,7 +20,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   return (
     <AppHeaderFrame>
       <AppNavigationControls onMobileMenuClick={onMenuClick} />
-      <AppBrand />
+      <AppBrand className="flex-1" />
       <div className="flex items-center gap-3">
         {canEditProfile ? <NotificationBell /> : null}
         <HeaderProfileMenu

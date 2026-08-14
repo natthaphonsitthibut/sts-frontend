@@ -4,7 +4,6 @@ import {
   Avatar,
   Sheet,
   SheetHeader,
-  SidebarContainer,
 } from "../../../components/base";
 import {
   AppBrand,
@@ -13,9 +12,12 @@ import {
   AppNavigationControls,
   SidebarMenuContent,
 } from "../../../components/layout/AppFrame";
-import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import {
+  PageShell,
+  PageToolbar,
+} from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
-import { useSidebarUiStore } from "../../../components/layout/sidebar-ui.store";
+import { CollapsibleDesktopSidebar } from "../../../components/layout/CollapsibleDesktopSidebar";
 import { cn } from "../../../lib/utils";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 
@@ -96,14 +98,15 @@ export function TeacherLinkShell({
 }: TeacherLinkShellProps) {
   const { context } = useTeacherLink();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const collapsed = useSidebarUiStore((state) => state.collapsed);
 
   return (
     <AppFrame
       header={
         <AppHeaderFrame>
-          <AppNavigationControls onMobileMenuClick={() => setMobileSidebarOpen(true)} />
-          <AppBrand />
+          <AppNavigationControls
+            onMobileMenuClick={() => setMobileSidebarOpen(true)}
+          />
+          <AppBrand className="flex-1" />
           <Avatar
             aria-label={`เข้าใช้งานในชื่อ ${context.teacherDisplayName}`}
             className="size-10"
@@ -113,37 +116,49 @@ export function TeacherLinkShell({
       }
       sidebar={
         <>
-          <SidebarContainer
-            className={cn(
-              "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-              collapsed ? "w-20" : "w-[260px]",
-            )}
-          >
-            <TeacherSidebarContent collapsed={collapsed} />
-          </SidebarContainer>
+          <CollapsibleDesktopSidebar>
+            {(collapsed) => <TeacherSidebarContent collapsed={collapsed} />}
+          </CollapsibleDesktopSidebar>
           <Sheet onOpenChange={setMobileSidebarOpen} open={mobileSidebarOpen}>
-            <SheetHeader heading="ระบบติดตามนักเรียน" onClose={() => setMobileSidebarOpen(false)} />
-            <TeacherSidebarContent onNavigate={() => setMobileSidebarOpen(false)} />
+            <SheetHeader
+              heading={
+                <AppBrand
+                  className="max-w-52"
+                  onClick={() => setMobileSidebarOpen(false)}
+                />
+              }
+              onClose={() => setMobileSidebarOpen(false)}
+            />
+            <TeacherSidebarContent
+              onNavigate={() => setMobileSidebarOpen(false)}
+            />
           </Sheet>
         </>
       }
     >
       <PageShell
         className={cn(centered && "flex items-center")}
-        contentClassName={cn(centered && "flex min-h-full items-center justify-center", contentClassName)}
+        contentClassName={cn(
+          centered && "flex min-h-full items-center justify-center",
+          contentClassName,
+        )}
       >
         <div className="w-full">
           {title ? (
             <PageToolbar
               actions={actions}
               navigation={navigation}
-              breadcrumbTrail={breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB}
+              breadcrumbTrail={
+                breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB
+              }
               icon={icon}
               title={title}
             />
           ) : null}
           {subtitle ? (
-            <p className="-mt-2 mb-4 text-sm text-content-secondary">{subtitle}</p>
+            <p className="-mt-2 mb-4 text-sm text-content-secondary">
+              {subtitle}
+            </p>
           ) : null}
           {children}
         </div>

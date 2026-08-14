@@ -15,8 +15,6 @@ import {
 } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
-import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
-import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { getAttendanceSaveConfirm } from "../../attendance/lib/attendance-save-confirm";
 import { taskService } from "../api/task.service";
@@ -32,6 +30,7 @@ import { countAttendanceStatuses } from "../../attendance/lib/attendance-present
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ObservationEntryDialog } from "../../student-observations/components/ObservationEntryDialog";
 import { TaskLinkObservationEntryPanel } from "../../student-observations/components/ObservationEntryPanel";
+import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
 
 const DAY_LABELS: Record<number, string> = {
   1: "จันทร์",
@@ -49,7 +48,6 @@ export function TaskGuestPage() {
   const navigate = useNavigate();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
-  const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() =>
     readMagicToken(token, "local"),
   );
@@ -160,24 +158,7 @@ export function TaskGuestPage() {
   // verifies the same way. Once OTP passes, the session refetches the task and
   // the real content (below) renders.
   if (task.auth_required) {
-    return (
-      <MagicAuthCard
-        title="ยืนยันตัวตน"
-        subtitle={task.assigned_to_name || getTaskTypeLabel(task.type)}
-      >
-        <OtpVerifyPanel
-          onRequestOtp={() => taskService.requestTaskOtp(token)}
-          onVerifyOtp={async (otp) => {
-            const response = await taskService.verifyTaskOtp(token, otp);
-            if (!response.session_token) {
-              throw new Error("รหัส OTP ไม่ถูกต้องหรือหมดอายุ");
-            }
-            writeMagicToken(token, response.session_token, "local");
-            setSessionToken(response.session_token);
-          }}
-        />
-      </MagicAuthCard>
-    );
+    return <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />;
   }
 
   if (task.type === "VISIT") {

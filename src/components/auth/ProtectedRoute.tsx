@@ -10,9 +10,10 @@ import { useAuthSessionStore } from "../../features/auth/store/auth-session.stor
 interface ProtectedRouteProps {
   children: ReactNode;
   permission?: string | string[];
+  role?: string | string[];
 }
 
-export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, permission, role }: ProtectedRouteProps) {
   const location = useLocation();
   const user = useAuthSessionStore((state) => state.user);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
@@ -51,6 +52,12 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
       }
       return <Navigate replace to="/forbidden" />;
     }
+  }
+
+  if (role) {
+    const acceptedRoles = Array.isArray(role) ? role : [role];
+    const allowed = acceptedRoles.some((roleId) => session.user?.roles.includes(roleId));
+    if (!allowed) return <Navigate replace to="/forbidden" />;
   }
 
   return children;

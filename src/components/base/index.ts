@@ -105,6 +105,7 @@ export {
 } from "./material-icons";
 export { Select, type SelectProps } from "./select";
 export { Skeleton, type SkeletonProps } from "./skeleton";
+export { StsLogo, type StsLogoProps } from "./sts-logo";
 export { Tabs, type TabOption } from "./tabs";
 export { Textarea, type TextareaProps } from "./textarea";
 export { TimePicker, type TimePickerProps } from "./time-picker";

@@ -95,7 +95,7 @@ interface AttendanceStatusStyle {
   pillActiveClass: string;
 }
 
-// Color tokens copied verbatim from the legacy Quasar AttendancePage styles.
+// Attendance colors are composed only from the shared Figma palette tokens.
 export const ATTENDANCE_STATUS_STYLE: Record<
   AttendanceSelectionStatus,
   AttendanceStatusStyle
@@ -103,37 +103,33 @@ export const ATTENDANCE_STATUS_STYLE: Record<
   P_PRESENT: {
     icon: Check,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass:
-      "border-success bg-gradient-to-br from-success-100 to-success-200 text-success-700 shadow-[0_4px_12px_rgba(34,197,94,0.25)]",
-    displayClass: "bg-gradient-to-br from-success-100 to-success-200 text-success-700",
-    pillIdleClass: "border-success text-success-700",
+    activeClass: "border-success bg-success-100 text-success shadow-sm",
+    displayClass: "bg-success-100 text-success",
+    pillIdleClass: "border-success text-success",
     pillActiveClass: "border-success bg-success text-white",
   },
   P_ABSENT: {
     icon: X,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass:
-      "border-danger bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700 shadow-[0_4px_12px_rgba(239,68,68,0.25)]",
-    displayClass: "bg-gradient-to-br from-danger-100 to-danger-200 text-danger-700",
-    pillIdleClass: "border-danger text-danger-700",
+    activeClass: "border-danger bg-danger-100 text-danger shadow-sm",
+    displayClass: "bg-danger-100 text-danger",
+    pillIdleClass: "border-danger text-danger",
     pillActiveClass: "border-danger bg-danger text-white",
   },
   P_LATE: {
     icon: Clock,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass:
-      "border-brand-yellow bg-brand-yellow-bg text-amber-700 shadow-[0_4px_12px_rgba(245,158,11,0.25)]",
-    displayClass: "bg-brand-yellow-bg text-amber-700",
-    pillIdleClass: "border-brand-yellow text-amber-700",
+    activeClass: "border-brand-yellow bg-brand-yellow-bg text-brand-yellow shadow-sm",
+    displayClass: "bg-brand-yellow-bg text-brand-yellow",
+    pillIdleClass: "border-brand-yellow text-brand-yellow",
     pillActiveClass: "border-brand-yellow bg-brand-yellow text-white",
   },
   P_LEAVE: {
     icon: CalendarOff,
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass:
-      "border-attendance-leave bg-brand-orange-bg text-orange-700 shadow-[0_4px_12px_rgba(245,116,11,0.25)]",
-    displayClass: "bg-brand-orange-bg text-orange-700",
-    pillIdleClass: "border-attendance-leave text-orange-700",
+    activeClass: "border-attendance-leave bg-brand-orange-bg text-brand-orange shadow-sm",
+    displayClass: "bg-brand-orange-bg text-brand-orange",
+    pillIdleClass: "border-attendance-leave text-brand-orange",
     pillActiveClass: "border-attendance-leave bg-attendance-leave text-white",
   },
   NONE: {

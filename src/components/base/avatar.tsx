@@ -1,4 +1,4 @@
-import type { ComponentProps, CSSProperties } from "react";
+import { useState, type ComponentProps, type CSSProperties } from "react";
 import { UserRound } from "lucide-react";
 import { getAvatarGradient } from "../../lib/avatar-gradient";
 import { cn } from "../../lib/utils";
@@ -25,9 +25,11 @@ export function Avatar({
   style,
   ...props
 }: AvatarProps) {
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const activeImageUrl = imageUrl && imageUrl !== failedImageUrl ? imageUrl : null;
   // Opt in by presence, not truthiness: an empty name still resolves to the
   // palette's neutral colour rather than falling back to the plain grey chip.
-  const useGradient = !imageUrl && gradientName !== undefined;
+  const useGradient = !activeImageUrl && gradientName !== undefined;
   const initial = fallback ?? gradientName?.charAt(0) ?? "";
   const gradientStyle: CSSProperties | undefined = useGradient
     ? getAvatarGradient(gradientName!)
@@ -43,11 +45,13 @@ export function Avatar({
       style={gradientStyle ? { ...gradientStyle, ...style } : style}
       {...props}
     >
-      {imageUrl ? (
+      {activeImageUrl ? (
         <img
           alt={imageAlt}
           className="h-full w-full object-cover"
-          src={imageUrl}
+          data-avatar-image
+          onError={() => setFailedImageUrl(activeImageUrl)}
+          src={activeImageUrl}
         />
       ) : (
         <span className="flex h-full w-full items-center justify-center">

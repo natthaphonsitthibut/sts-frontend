@@ -9,18 +9,23 @@ export type RiskDashboardSortBy =
   | "grade"
   | "room"
   | "attendance"
-  | "openCases";
+  | "openCases"
+  | "updatedAt";
 export type RiskDashboardSortDirection = "asc" | "desc";
 
 export interface RiskDashboardRow {
   studentId: string;
   studentName: string;
+  studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
   grade: string | null;
   room: string | null;
   consecutiveAbsentDays: number;
+  /** Operational count since the most recently resolved case, if any. */
   absentDays: number;
+  termAbsentDays: number;
+  absenceResetAfterDate: string | null;
   lateCount: number;
   subjectLateCount: number;
   schoolDayCount: number;
@@ -32,11 +37,15 @@ export interface RiskDashboardRow {
   latestOpenCaseId: number | null;
   latestOpenCaseReason: string | null;
   latestOpenTaskId: string | null;
+  latestCaseId: number | null;
+  latestCaseStatus: string | null;
   latestCaseAt: string | null;
+  latestCaseMagicLink: string | null;
+  teacherComment: string | null;
 }
 
 export interface RiskDashboardThresholds {
-  /** วันขาดสะสมต่อเทอม (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
+  /** วันขาดหลังปิดเคสล่าสุด (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
   highAbsentDays: number;
 }
 
@@ -44,6 +53,10 @@ export type RiskDashboardSummary = Record<RiskDashboardTier, number>;
 
 export interface RiskDashboardMeta extends PaginationMeta {
   summary: RiskDashboardSummary;
+  caseStatusSummary: Record<
+    "OPEN" | "IN_PROGRESS" | "PENDING_REVIEW" | "STUDENT_NOT_FOUND",
+    number
+  >;
   thresholds: RiskDashboardThresholds;
 }
 
@@ -53,11 +66,15 @@ export interface RiskDashboardResult {
 }
 
 export interface RiskDashboardQuery {
+  studentGroup?: "RISK" | "WATCHLIST";
   riskTier?: RiskDashboardTierFilter;
   province?: string;
   district?: string;
   subDistrict?: string;
   schoolId?: string;
+  academicYear?: number;
+  semester?: number;
+  caseStatus?: "OPEN" | "IN_PROGRESS" | "PENDING_REVIEW" | "STUDENT_NOT_FOUND" | "RESOLVED";
   grade?: string;
   room?: string;
   searchTerm?: string;

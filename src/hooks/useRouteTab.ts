@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 function normalizePath(path: string): string {
@@ -12,17 +13,20 @@ export function useRouteTab<const R extends Readonly<Record<string, string>>>(
   const navigate = useNavigate();
   const currentPath = normalizePath(location.pathname);
   const activeTab =
-    (Object.entries(routes).find(([, path]) => normalizePath(String(path)) === currentPath)?.[0] as
-      | (keyof R & string)
-      | undefined) ?? defaultTab;
+    (Object.entries(routes).find(
+      ([, path]) => normalizePath(String(path)) === currentPath,
+    )?.[0] as (keyof R & string) | undefined) ?? defaultTab;
 
-  function setActiveTab(value: string): void {
-    if (!(value in routes)) return;
-    const nextPath = routes[value as keyof R];
-    if (normalizePath(nextPath) !== currentPath) {
-      void navigate(nextPath);
-    }
-  }
+  const setActiveTab = useCallback(
+    (value: string): void => {
+      if (!(value in routes)) return;
+      const nextPath = routes[value as keyof R];
+      if (normalizePath(nextPath) !== currentPath) {
+        void navigate({ pathname: nextPath, search: location.search });
+      }
+    },
+    [currentPath, location.search, navigate, routes],
+  );
 
   return [activeTab, setActiveTab] as const;
 }

@@ -12,6 +12,7 @@ export interface LinkLockToggleButtonProps {
   /** Query keys to refresh after toggling (detail page + its dashboard list). */
   invalidateKeys?: readonly unknown[][];
   className?: string;
+  disabled?: boolean;
   iconOnly?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function LinkLockToggleButton({
   locked,
   invalidateKeys,
   className,
+  disabled = false,
   iconOnly = false,
 }: LinkLockToggleButtonProps) {
   const isLocked = isLinkLocked(locked);
@@ -49,6 +51,7 @@ export function LinkLockToggleButton({
   });
 
   async function handleClick(): Promise<void> {
+    if (disabled) return;
     const confirmed = await confirm(getLinkLockConfirm(isLocked));
     if (!confirmed) {
       return;
@@ -67,7 +70,7 @@ export function LinkLockToggleButton({
         <IconButton
           aria-label={label}
           className={className}
-          disabled={mutation.isPending}
+          disabled={disabled || mutation.isPending}
           icon={isLocked ? LockOpen : Lock}
           onClick={() => void handleClick()}
           variant={isLocked ? "unlock" : "lock"}
@@ -76,6 +79,7 @@ export function LinkLockToggleButton({
         <Button
           aria-label={label}
           className={cn("min-w-[112px]", className)}
+          disabled={disabled}
           icon={isLocked ? LockOpen : Lock}
           isLoading={mutation.isPending}
           onClick={() => void handleClick()}

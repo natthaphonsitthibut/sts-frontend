@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle2,
   Download,
   History,
@@ -12,6 +13,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   DatePicker,
   DropdownMenu,
@@ -35,29 +37,32 @@ import {
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
-import { PAGE_ICONS, PAGE_IDENTITIES } from "../../../components/layout/page-identity";
+import {
+  PAGE_ICONS,
+  PAGE_IDENTITIES,
+} from "../../../components/layout/page-identity";
+import { NavButton } from "../../../components/layout/nav-button";
 import { getThaiDateKey } from "../../../lib/date-time";
-import { cn } from "../../../lib/utils";
-import { getAttendanceStatusPresentation } from "../../attendance/lib/attendance-presentation";
+import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
+import { useRouteTab } from "../../../hooks/useRouteTab";
+import { AttendanceRosterTable } from "../../attendance/components/AttendanceRosterTable";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { usePublicAttendanceStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { ClassroomTableExportDialog } from "../../school-structure/components/ClassroomTableExportDialog";
-import { StudentAvatar } from "../../students/components/StudentAvatar";
 import {
-  getRiskTierChipClass,
   RISK_TIER_ORDER,
   RISK_TIER_PRESENTATION,
 } from "../../students/lib/risk-tier-presentation";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
+import { TeacherAccessStudentAvatar } from "../components/TeacherAccessStudentAvatar";
 import {
   useCreateTeacherStudentComment,
-  useClearTeacherAccessDemoAbsences,
   useRecordTeacherClassroomExport,
   useSaveTeacherAccessAttendance,
-  useSeedTeacherAccessDemoAbsences,
   useTeacherAccessAttendanceSlots,
   useTeacherAccessRoster,
+  useTeacherStudentPhoto,
 } from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 import {
@@ -68,11 +73,8 @@ import {
 import type { TeacherAccessRosterStudent } from "../types/teacher-access.types";
 
 type AttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
-type ClassroomTab = "roster" | "attendance";
-
 const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
 const CLASSROOM_ICON = PAGE_ICONS["school-building"];
-/** Display order of the attendance pills: มา / สาย / ลา / ขาด. */
 const ROSTER_EXPORT_COLUMNS = [
   { key: "order", label: "ลำดับ" },
   { key: "studentNumber", label: "รหัสประจำตัว" },
@@ -81,14 +83,10 @@ const ROSTER_EXPORT_COLUMNS = [
   { key: "status", label: "สถานะความเสี่ยง" },
 ] as const;
 
-const ATTENDANCE_STATUSES: AttendanceStatus[] = [
-  "P_PRESENT",
-  "P_LATE",
-  "P_LEAVE",
-  "P_ABSENT",
-];
-
-function rosterSortValue(student: TeacherAccessRosterStudent, key: string): string {
+function rosterSortValue(
+  student: TeacherAccessRosterStudent,
+  key: string,
+): string {
   if (key === "studentNumber") return student.studentNumber ?? "";
   if (key === "name") return studentDisplayName(student);
   if (key === "comment") return student.teacherComment ?? "";
@@ -96,6 +94,20 @@ function rosterSortValue(student: TeacherAccessRosterStudent, key: string): stri
     return RISK_TIER_PRESENTATION[student.riskTier ?? "NORMAL"]?.label ?? "";
   }
   return "";
+}
+
+function sortRoster(
+  students: readonly TeacherAccessRosterStudent[],
+  sort: DataTableSortState | undefined,
+): TeacherAccessRosterStudent[] {
+  if (!sort) return [...students];
+  return [...students].sort((a, b) => {
+    const result = rosterSortValue(a, sort.key).localeCompare(
+      rosterSortValue(b, sort.key),
+      "th",
+    );
+    return sort.direction === "asc" ? result : -result;
+  });
 }
 
 /**
@@ -107,35 +119,67 @@ function rosterSortValue(student: TeacherAccessRosterStudent, key: string): stri
 export function TeacherClassroomPage() {
   const navigate = useNavigate();
   const { assignmentId = "" } = useParams();
-  const [searchParams] = useSearchParams();
   const { credential, context } = useTeacherLink();
   // The link has no session, so colours come from the public catalog endpoint —
   // the authenticated one would 401 and silently fall back to default styling.
   const attendanceStatusCatalog = usePublicAttendanceStatusCatalog().data ?? [];
-  // The เช็คชื่อ rail item deep-links straight into the attendance tab.
-  const [tab, setTab] = useState<ClassroomTab>(
-    searchParams.get("tab") === "attendance" ? "attendance" : "roster",
+  const [tab, setTab] = useRouteTab(
+    {
+      roster: `/teacher-access/classes/${assignmentId}/roster`,
+      attendance: `/teacher-access/classes/${assignmentId}/attendance`,
+    },
+    "roster",
   );
   const [search, setSearch] = useState("");
   const [riskTier, setRiskTier] = useState("");
   const [date, setDate] = useState(getThaiDateKey);
   const [timetableSlotId, setTimetableSlotId] = useState("");
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [attendance, setAttendance] = useState<
+    Record<string, AttendanceStatus>
+  >({});
   const [saved, setSaved] = useState(false);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
     key: "name",
     direction: "asc",
   });
+  const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
+    key: "studentNumber",
+    direction: "asc",
+  });
   const [exportOpen, setExportOpen] = useState(false);
-  const [commentStudent, setCommentStudent] = useState<TeacherAccessRosterStudent | null>(null);
-  const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
+  const [commentStudent, setCommentStudent] =
+    useState<TeacherAccessRosterStudent | null>(null);
+  const commentPhotoQuery = useTeacherStudentPhoto(
+    Number(assignmentId) || undefined,
+    commentStudent?.studentUuid,
+    Boolean(commentStudent?.hasPhoto),
+  );
+  const commentPhotoUrl = useBlobObjectUrl(commentPhotoQuery.data);
+  const createComment = useCreateTeacherStudentComment(
+    Number(assignmentId) || 0,
+  );
   const recordExport = useRecordTeacherClassroomExport();
 
-  const assignment = context.assignments.find((item) => item.id === assignmentId);
-  const rosterQuery = useTeacherAccessRoster(credential, Number(assignmentId) || undefined);
+  const assignment = context.assignments.find(
+    (item) => item.id === assignmentId,
+  );
+  const canRecordAttendance =
+    assignment?.allowedActions.some(
+      (action) =>
+        action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
+    ) ?? false;
+  useEffect(() => {
+    if (assignment && tab === "attendance" && !canRecordAttendance) {
+      void navigate(`/teacher-access/classes/${assignmentId}/roster`, {
+        replace: true,
+      });
+    }
+  }, [assignment, assignmentId, canRecordAttendance, navigate, tab]);
+  const rosterQuery = useTeacherAccessRoster(
+    credential,
+    Number(assignmentId) || undefined,
+  );
   const saveAttendance = useSaveTeacherAccessAttendance(credential);
-  const seedDemoAbsences = useSeedTeacherAccessDemoAbsences(credential);
-  const clearDemoAbsences = useClearTeacherAccessDemoAbsences(credential);
   const attendanceSlotsQuery = useTeacherAccessAttendanceSlots(
     credential,
     Number(assignmentId) || undefined,
@@ -143,26 +187,26 @@ export function TeacherClassroomPage() {
     assignment?.assignmentKind === "SUBJECT",
   );
   const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
-  const visibleRoster = useMemo(() => {
+  const filteredRoster = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = roster.filter((student) => {
+    return roster.filter((student) => {
       const matchesSearch =
         !term ||
         `${studentDisplayName(student)} ${student.studentNumber ?? ""}`
           .toLowerCase()
           .includes(term);
-      const matchesTier = !riskTier || (student.riskTier ?? "NORMAL") === riskTier;
+      const matchesTier =
+        !riskTier || (student.riskTier ?? "NORMAL") === riskTier;
       return matchesSearch && matchesTier;
     });
-    if (!sort) return filtered;
-    return [...filtered].sort((a, b) => {
-      const result = rosterSortValue(a, sort.key).localeCompare(
-        rosterSortValue(b, sort.key),
-        "th",
-      );
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [roster, riskTier, search, sort]);
+  }, [roster, riskTier, search]);
+  const visibleRoster = useMemo(
+    () => sortRoster(filteredRoster, rosterSort),
+    [filteredRoster, rosterSort],
+  );
+  const visibleAttendanceRoster = useMemo(() => {
+    return sortRoster(filteredRoster, attendanceSort);
+  }, [attendanceSort, filteredRoster]);
 
   if (!assignment) {
     return (
@@ -176,24 +220,30 @@ export function TeacherClassroomPage() {
   }
 
   const classroomLabel = assignmentClassLabel(assignment);
-  const canRecordAttendance = assignment.allowedActions.some(
-    (action) => action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
-  );
   const attendanceSlots = attendanceSlotsQuery.data ?? [];
-  const requiresPeriodSelection = assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
+  const requiresPeriodSelection =
+    assignment.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
   const hasScheduledSubjectSlot =
     assignment.assignmentKind !== "SUBJECT" || attendanceSlots.length > 0;
   const selectedTimetableSlotId = requiresPeriodSelection
     ? Number(timetableSlotId) || undefined
     : attendanceSlots[0]?.id;
 
-  async function submitAttendance(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  async function submitAttendance(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
     if (roster.length === 0) return;
-    if (!hasScheduledSubjectSlot || (requiresPeriodSelection && !selectedTimetableSlotId)) return;
+    if (
+      !hasScheduledSubjectSlot ||
+      (requiresPeriodSelection && !selectedTimetableSlotId)
+    )
+      return;
     await saveAttendance.mutateAsync({
       assignmentId: Number(assignmentId),
-      ...(selectedTimetableSlotId ? { timetableSlotId: selectedTimetableSlotId } : {}),
+      ...(selectedTimetableSlotId
+        ? { timetableSlotId: selectedTimetableSlotId }
+        : {}),
       date,
       records: roster.map((student) => ({
         studentId: student.studentUuid,
@@ -205,8 +255,19 @@ export function TeacherClassroomPage() {
 
   return (
     <TeacherLinkShell
-      breadcrumb={[{ label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" }]}
+      breadcrumb={[
+        {
+          label: "ห้องเรียนของฉัน",
+          icon: PAGE_ICONS["school-building"],
+          to: "/teacher-access",
+        },
+      ]}
       icon={CLASSROOM_ICON}
+      navigation={
+        <NavButton icon={ArrowLeft} to="/teacher-access" variant="outline">
+          ย้อนกลับ
+        </NavButton>
+      }
       title={
         <>
           ห้อง {classroomLabel}{" "}
@@ -220,10 +281,12 @@ export function TeacherClassroomPage() {
         <Tabs
           aria-label="ข้อมูลห้องเรียน"
           className="flex w-full"
-          onChange={(value) => setTab(value as ClassroomTab)}
+          onChange={setTab}
           options={[
             { value: "roster", label: "รายชื่อ" },
-            ...(canRecordAttendance ? [{ value: "attendance", label: "เช็คชื่อ" }] : []),
+            ...(canRecordAttendance
+              ? [{ value: "attendance", label: "เช็คชื่อ" }]
+              : []),
           ]}
           value={tab}
         />
@@ -293,7 +356,11 @@ export function TeacherClassroomPage() {
             <Button
               className="sm:ml-auto"
               icon={History}
-              onClick={() => void navigate(`/teacher-access/classes/${assignmentId}/history`)}
+              onClick={() =>
+                void navigate(
+                  `/teacher-access/classes/${assignmentId}/history/attendance`,
+                )
+              }
             >
               ประวัติการเช็คชื่อ
             </Button>
@@ -327,20 +394,26 @@ export function TeacherClassroomPage() {
             { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
             { label: "หมายเหตุ", sortKey: "comment" },
-            { label: "สถานะความเสี่ยง", sortKey: "status", className: "text-center" },
+            {
+              label: "สถานะความเสี่ยง",
+              sortKey: "status",
+              className: "text-center",
+            },
             { label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[1040px]"
-          onSortChange={setSort}
+          onSortChange={setRosterSort}
           responsive={false}
-          sort={sort}
+          sort={rosterSort}
         >
           {visibleRoster.map((student, index) => {
             const fullName = studentDisplayName(student);
             const tier = student.riskTier ?? "NORMAL";
             return (
               <DataTableRow key={student.studentUuid}>
-                <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
+                <DataTableCell className="tabular-nums">
+                  {index + 1}
+                </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
                     <button
@@ -353,27 +426,32 @@ export function TeacherClassroomPage() {
                       }
                       type="button"
                     >
-                      <StudentAvatar name={fullName} />
+                      <TeacherAccessStudentAvatar
+                        assignmentId={Number(assignmentId)}
+                        student={student}
+                      />
                     </button>
                   </div>
                 </DataTableCell>
                 <DataTableCell className="font-medium tabular-nums">
                   {student.studentNumber ?? "-"}
                 </DataTableCell>
-                <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
+                <DataTableCell className="font-medium text-slate-900">
+                  {fullName}
+                </DataTableCell>
                 <DataTableCell className="max-w-[360px] text-slate-700">
                   {student.teacherComment?.trim() || "-"}
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
-                    <span
-                      className={cn(
-                        "inline-flex h-9 w-32 shrink-0 items-center justify-center rounded-full border bg-white px-3 text-sm font-medium",
-                        getRiskTierChipClass(tier),
-                      )}
+                    <Badge
+                      data-student-risk-tier={tier}
+                      variant={
+                        RISK_TIER_PRESENTATION[tier]?.badge ?? "destructive"
+                      }
                     >
                       {RISK_TIER_PRESENTATION[tier]?.label ?? tier}
-                    </span>
+                    </Badge>
                   </div>
                 </DataTableCell>
                 <DataTableCell>
@@ -390,11 +468,9 @@ export function TeacherClassroomPage() {
                     />
                     <IconButton
                       aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
-                      className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                       icon={MessageSquareText}
-                      iconClassName="text-white"
                       onClick={() => setCommentStudent(student)}
-                      variant="outline"
+                      variant="comment"
                     />
                   </div>
                 </DataTableCell>
@@ -418,7 +494,8 @@ export function TeacherClassroomPage() {
               value={date}
             />
           </div>
-          {assignment.assignmentKind === "SUBJECT" && !attendanceSlotsQuery.isLoading ? (
+          {assignment.assignmentKind === "SUBJECT" &&
+          !attendanceSlotsQuery.isLoading ? (
             <div className="mb-4 w-[270px] max-w-full">
               {hasScheduledSubjectSlot ? (
                 requiresPeriodSelection ? (
@@ -442,94 +519,46 @@ export function TeacherClassroomPage() {
                   </>
                 ) : (
                   <Alert>
-                    <AlertDescription>เช็คชื่อคาบ {attendanceSlots[0]?.period}</AlertDescription>
+                    <AlertDescription>
+                      เช็คชื่อคาบ {attendanceSlots[0]?.period}
+                    </AlertDescription>
                   </Alert>
                 )
               ) : (
                 <Alert variant="warning">
-                  <AlertDescription>คุณไม่มีคาบสอนวิชานี้ในวันที่เลือก</AlertDescription>
+                  <AlertDescription>
+                    คุณไม่มีคาบสอนวิชานี้ในวันที่เลือก
+                  </AlertDescription>
                 </Alert>
               )}
             </div>
           ) : null}
-          <DataTable
-            headings={[
-              { label: "ลำดับ" },
-              { label: "รูปประจำตัว", className: "text-center" },
-              { label: "รหัสประจำตัว", sortKey: "studentNumber" },
-              { label: "ชื่อ-นามสกุล", sortKey: "name" },
-              { label: "สถานะการเข้าเรียน", className: "text-center" },
-            ]}
-            minWidthClassName="min-w-[1040px]"
-            onSortChange={setSort}
-            responsive={false}
-            sort={sort}
-          >
-            {visibleRoster.map((student, index) => {
-              const fullName = studentDisplayName(student);
-              const current = attendance[student.studentUuid] ?? "P_PRESENT";
-              return (
-                <DataTableRow key={student.studentUuid}>
-                  <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
-                  <DataTableCell>
-                    <div className="flex justify-center">
-                      <StudentAvatar name={fullName} />
-                    </div>
-                  </DataTableCell>
-                  <DataTableCell className="font-medium tabular-nums">
-                    {student.studentNumber ?? "-"}
-                  </DataTableCell>
-                  <DataTableCell className="font-medium text-slate-900">{fullName}</DataTableCell>
-                  <DataTableCell>
-                    <div
-                      aria-label={`สถานะของ ${fullName}`}
-                      className="flex min-w-[340px] justify-center gap-1.5"
-                      role="group"
-                    >
-                      {ATTENDANCE_STATUSES.map((value) => {
-                        const presentation = getAttendanceStatusPresentation(
-                          value,
-                          attendanceStatusCatalog,
-                        );
-                        const selected = current === value;
-                        return (
-                          <button
-                            aria-pressed={selected}
-                            className={cn(
-                              "inline-flex h-9 w-20 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                              selected
-                                ? presentation.pillActiveClass
-                                : `bg-white ${presentation.pillIdleClass}`,
-                            )}
-                            key={value}
-                            onClick={() => {
-                              setAttendance((values) => ({
-                                ...values,
-                                [student.studentUuid]: value,
-                              }));
-                              setSaved(false);
-                            }}
-                            type="button"
-                          >
-                            {presentation.shortLabel}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </DataTableCell>
-                </DataTableRow>
-              );
-            })}
-          </DataTable>
+          <AttendanceRosterTable
+            catalog={attendanceStatusCatalog}
+            onSortChange={setAttendanceSort}
+            onStatusChange={(studentId, status) => {
+              setAttendance((values) => ({ ...values, [studentId]: status }));
+              setSaved(false);
+            }}
+            rows={visibleAttendanceRoster.map((student) => ({
+              id: student.studentUuid,
+              name: studentDisplayName(student),
+              studentNumber: student.studentNumber,
+              avatar: (
+                <TeacherAccessStudentAvatar
+                  assignmentId={Number(assignmentId)}
+                  student={student}
+                />
+              ),
+            }))}
+            selections={attendance}
+            sort={attendanceSort}
+          />
 
           <div className="mt-4 space-y-3">
             <FormErrorAlert
               error={saveAttendance.error}
               fallback="ไม่สามารถบันทึกการเช็คชื่อได้"
-            />
-            <FormErrorAlert
-              error={seedDemoAbsences.error ?? clearDemoAbsences.error}
-              fallback="ไม่สามารถจัดการประวัติเช็คชื่อสาธิตได้"
             />
             {saved ? (
               <Alert variant="success">
@@ -542,51 +571,7 @@ export function TeacherClassroomPage() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {clearDemoAbsences.isSuccess ? (
-              <Alert variant="success">
-                <AlertTitle>ล้างประวัติเช็กชื่อแล้ว</AlertTitle>
-                <AlertDescription>
-                  ล้างเฉพาะข้อมูล 3 วันล่าสุดที่สร้างจากปุ่มสาธิตเรียบร้อยแล้ว
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {seedDemoAbsences.isSuccess ? (
-              <Alert variant="success">
-                <AlertTitle>สร้างประวัติขาดเรียนแล้ว</AlertTitle>
-                <AlertDescription>
-                  นักเรียน 3 คนแรกถูกบันทึกเป็นขาดเรียนย้อนหลังในวันชุดเดียวกับปุ่มล้าง
-                </AlertDescription>
-              </Alert>
-            ) : null}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                disabled={clearDemoAbsences.isPending || seedDemoAbsences.isPending}
-                isLoading={clearDemoAbsences.isPending}
-                loadingText="กำลังล้างข้อมูล"
-                onClick={() => {
-                  clearDemoAbsences.reset();
-                  seedDemoAbsences.reset();
-                  clearDemoAbsences.mutate(Number(assignmentId));
-                }}
-                type="button"
-                variant="outline"
-              >
-                ล้างประวัติเช็คชื่อ 3 วันล่าสุด
-              </Button>
-              <Button
-                disabled={seedDemoAbsences.isPending || clearDemoAbsences.isPending}
-                isLoading={seedDemoAbsences.isPending}
-                loadingText="กำลังสร้างข้อมูล"
-                onClick={() => {
-                  clearDemoAbsences.reset();
-                  seedDemoAbsences.reset();
-                  seedDemoAbsences.mutate(Number(assignmentId));
-                }}
-                type="button"
-                variant="outline"
-              >
-                สร้างขาด 3 คนย้อนหลัง 3 วัน
-              </Button>
               <Button
                 disabled={
                   attendanceSlotsQuery.isLoading ||
@@ -610,7 +595,11 @@ export function TeacherClassroomPage() {
         onOpenChange={(open) => {
           if (!open) setCommentStudent(null);
         }}
-        student={commentStudent}
+        student={
+          commentStudent
+            ? { ...commentStudent, photoUrl: commentPhotoUrl }
+            : null
+        }
         submitComment={async ({ studentUuid, commentText }) => {
           await createComment.mutateAsync({ studentUuid, commentText });
           await rosterQuery.refetch();
@@ -636,7 +625,9 @@ export function TeacherClassroomPage() {
               studentNumber: student.studentNumber ?? "-",
               name: studentDisplayName(student),
               comment: student.teacherComment?.trim() || "-",
-              status: RISK_TIER_PRESENTATION[student.riskTier ?? "NORMAL"]?.label ?? "-",
+              status:
+                RISK_TIER_PRESENTATION[student.riskTier ?? "NORMAL"]?.label ??
+                "-",
             })),
           )
         }

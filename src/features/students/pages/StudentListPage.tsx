@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileDown, MapPin, UserRound } from "lucide-react";
+import { FileDown, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -9,6 +9,7 @@ import {
   PageShell,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
@@ -22,7 +23,6 @@ import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
 import { StudentTable } from "../components/StudentTable";
 import { useStudentFilterOptions, useStudents } from "../hooks/useStudents";
-import { FIELD_MONITOR_MAP_MAX_STUDENTS } from "../../field-followers/types/field-monitor-map.types";
 import type {
   StudentEnrollmentState,
   StudentListItem,
@@ -42,6 +42,7 @@ const ALL_STUDENT_STATUSES = "ALL";
 
 export function StudentListPage() {
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(STUDENT_TAB_ROUTES, "list");
@@ -254,7 +255,7 @@ export function StudentListPage() {
   }
 
   function openStudent(studentId: string): void {
-    void navigate(`/students/${studentId}`);
+    contextualNavigate(`/students/${studentId}`);
   }
 
   function clearSelectedStudents(): void {
@@ -301,25 +302,6 @@ export function StudentListPage() {
           }
           exportAction={
             <>
-              {can("field-monitor") && selectedStudents.length > 0 ? (
-                <Button
-                  disabled={selectedStudents.length > FIELD_MONITOR_MAP_MAX_STUDENTS}
-                  icon={MapPin}
-                  onClick={() =>
-                    navigate(
-                      `/field-monitor-map?studentUuids=${selectedStudents.map((s) => s.id).join(",")}`,
-                    )
-                  }
-                  title={
-                    selectedStudents.length > FIELD_MONITOR_MAP_MAX_STUDENTS
-                      ? `ดูบนแผนที่ได้สูงสุด ${FIELD_MONITOR_MAP_MAX_STUDENTS} คน — เอาที่เลือกออกบางส่วนก่อน`
-                      : undefined
-                  }
-                  variant="location"
-                >
-                  ดูบนแผนที่ ({selectedStudents.length})
-                </Button>
-              ) : null}
               {selectedStudents.length > 0 ? (
                 <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
                   ส่งออกที่เลือก ({selectedStudents.length})

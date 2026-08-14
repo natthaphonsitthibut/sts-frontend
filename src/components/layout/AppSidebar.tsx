@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Sheet, SheetHeader, SidebarContainer } from "../base";
+import { Sheet, SheetHeader } from "../base";
 import {
   MENU_ITEMS,
   filterMenuItems,
@@ -8,9 +7,8 @@ import {
   type MenuItem,
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
-import { cn } from "../../lib/utils";
-import { SidebarMenuContent } from "./AppFrame";
-import { useSidebarUiStore } from "./sidebar-ui.store";
+import { AppBrand, SidebarMenuContent } from "./AppFrame";
+import { CollapsibleDesktopSidebar } from "./CollapsibleDesktopSidebar";
 
 interface AppSidebarProps {
   mobileOpen: boolean;
@@ -42,24 +40,21 @@ function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) 
 }
 
 export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) {
-  const collapsed = useSidebarUiStore((state) => state.collapsed);
-  const [hovered, setHovered] = useState(false);
-  const visuallyCollapsed = collapsed && !hovered;
-
   return (
     <>
-      <SidebarContainer
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className={cn(
-          "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-          visuallyCollapsed ? "w-20" : "w-[260px]",
-        )}
-      >
-        <SidebarContent collapsed={visuallyCollapsed} />
-      </SidebarContainer>
+      <CollapsibleDesktopSidebar>
+        {(collapsed) => <SidebarContent collapsed={collapsed} />}
+      </CollapsibleDesktopSidebar>
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
-        <SheetHeader heading="ระบบติดตามนักเรียน" onClose={() => onMobileOpenChange(false)} />
+        <SheetHeader
+          heading={
+            <AppBrand
+              className="max-w-52"
+              onClick={() => onMobileOpenChange(false)}
+            />
+          }
+          onClose={() => onMobileOpenChange(false)}
+        />
         <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
       </Sheet>
     </>

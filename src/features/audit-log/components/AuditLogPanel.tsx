@@ -185,7 +185,7 @@ function AuditLogTable({
             ? [{ label: "เป้าหมาย", sortKey: "reference" }]
             : []),
           { label: "รายละเอียด", sortKey: "details" },
-          "",
+          "เครื่องมือ",
         ]}
         columnWidths={[
           "w-[14%]",

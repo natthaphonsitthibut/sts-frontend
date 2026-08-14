@@ -1,6 +1,21 @@
-import { ClipboardCopy, Link2, RefreshCw, Settings, ShieldOff, Unlink } from "lucide-react";
 import {
+  ClipboardCopy,
+  Link2,
+  MessageCircle,
+  RefreshCw,
+  Settings,
+  ShieldOff,
+  Unlink,
+} from "lucide-react";
+import { useState } from "react";
+import {
+  Avatar,
   Checkbox,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   IconButton,
   type DropdownMenuItem,
@@ -14,6 +29,7 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { LinkStatusBadge } from "../../../components/layout/link-status-badge";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import {
   TEACHER_LINE_STATUS_META,
   TEACHER_LINK_STATUS_META,
@@ -27,12 +43,17 @@ interface TeacherLinkTableProps {
   busyMembershipId: string | null;
   selectedIds: ReadonlySet<string>;
   onSelectRow: (entry: TeacherLinkRosterEntry, selected: boolean) => void;
-  onSelectAll: (entries: readonly TeacherLinkRosterEntry[], selected: boolean) => void;
+  onSelectAll: (
+    entries: readonly TeacherLinkRosterEntry[],
+    selected: boolean,
+  ) => void;
   onCreate: (entry: TeacherLinkRosterEntry) => void;
   onCopy: (entry: TeacherLinkRosterEntry) => void;
   onRotate: (entry: TeacherLinkRosterEntry) => void;
   onRevoke: (entry: TeacherLinkRosterEntry) => void;
   onUnlinkLine: (entry: TeacherLinkRosterEntry) => void;
+  onIssueLineInvitation: (entry: TeacherLinkRosterEntry) => void;
+  onRevokeLineInvitation: (entry: TeacherLinkRosterEntry) => void;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
 }
@@ -48,50 +69,153 @@ function LinkStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
 
 function LineStatus({ entry }: { entry: TeacherLinkRosterEntry }) {
   const meta = TEACHER_LINE_STATUS_META[entry.lineStatus];
+  const invitationLabel =
+    entry.lineInvitationStatus === "ACTIVE" && entry.lineInvitationExpiresAt
+      ? `ลิงก์ยืนยันใช้ได้ถึง ${new Date(
+          entry.lineInvitationExpiresAt,
+        ).toLocaleString("th-TH", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })}`
+      : entry.lineInvitationStatus === "CONSUMED"
+        ? "ใช้ลิงก์ยืนยันแล้ว"
+        : entry.lineInvitationStatus === "EXPIRED"
+          ? "ลิงก์ยืนยันหมดอายุ"
+          : entry.lineInvitationStatus === "REVOKED"
+            ? "ลิงก์ยืนยันถูกยกเลิก"
+            : null;
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center justify-center gap-1">
       <LinkStatusBadge label={meta.label} variant={meta.variant} />
+      {invitationLabel ? (
+        <span className="text-xs text-slate-500">{invitationLabel}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function TeacherIdentity({
+  entry,
+  onPreviewPhoto,
+  showAssignmentCount = false,
+}: {
+  entry: TeacherLinkRosterEntry;
+  onPreviewPhoto?: (entry: TeacherLinkRosterEntry) => void;
+  showAssignmentCount?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {entry.photoUrl && onPreviewPhoto ? (
+        <button
+          aria-label={`ดูรูปประจำตัวของ ${entry.teacherDisplayName}`}
+          className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPreviewPhoto(entry);
+          }}
+          title={`ดูรูปประจำตัวของ ${entry.teacherDisplayName}`}
+          type="button"
+        >
+          <Avatar
+            data-teacher-link-avatar
+            gradientName={entry.teacherDisplayName}
+            imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
+            imageUrl={resolveApiMediaUrl(entry.photoUrl)}
+          />
+        </button>
+      ) : (
+        <Avatar
+          data-teacher-link-avatar
+          gradientName={entry.teacherDisplayName}
+          imageAlt={`รูปประจำตัวของ ${entry.teacherDisplayName}`}
+          imageUrl={resolveApiMediaUrl(entry.photoUrl)}
+        />
+      )}
+      <div className="min-w-0">
+        <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
+        {showAssignmentCount ? (
+          <p className="mt-1 text-xs text-slate-500">
+            {entry.assignmentCount} ห้อง/รายวิชา
+          </p>
+        ) : null}
+        {entry.hasEmail ? null : (
+          <p className="mt-1 text-xs font-medium text-warning-700">
+            ยังไม่มีอีเมล — ต้องยืนยันผ่าน AraID หรือเพิ่มอีเมลก่อนเข้าใช้
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
 function rowActions(
   entry: TeacherLinkRosterEntry,
-  handlers: Pick<TeacherLinkTableProps, "onCreate" | "onCopy" | "onRotate" | "onRevoke">,
+  handlers: Pick<
+    TeacherLinkTableProps,
+    | "onCreate"
+    | "onCopy"
+    | "onRotate"
+    | "onRevoke"
+    | "onIssueLineInvitation"
+    | "onRevokeLineInvitation"
+  >,
 ): DropdownMenuItem[] {
-  if (entry.linkStatus === "ACTIVE") {
-    return [
-      {
-        id: "copy",
-        label: entry.canCopyLink ? "คัดลอกลิงก์" : "ลิงก์เดิมคัดลอกไม่ได้ ต้องออกใหม่",
-        icon: ClipboardCopy,
-        disabled: !entry.canCopyLink,
-        onSelect: () => handlers.onCopy(entry),
-      },
-      {
-        id: "rotate",
-        label: "ออกลิงก์ใหม่แทนลิงก์เดิม",
-        icon: RefreshCw,
-        onSelect: () => handlers.onRotate(entry),
-      },
-      {
-        id: "revoke",
-        label: "เพิกถอนลิงก์",
-        icon: ShieldOff,
-        destructive: true,
-        onSelect: () => handlers.onRevoke(entry),
-      },
-    ];
+  const grantActions: DropdownMenuItem[] =
+    entry.linkStatus === "ACTIVE"
+      ? [
+          {
+            id: "copy",
+            label: entry.canCopyLink
+              ? "คัดลอกลิงก์"
+              : "ลิงก์เดิมคัดลอกไม่ได้ ต้องออกใหม่",
+            icon: ClipboardCopy,
+            disabled: !entry.canCopyLink,
+            onSelect: () => handlers.onCopy(entry),
+          },
+          {
+            id: "rotate",
+            label: "ออกลิงก์ใหม่แทนลิงก์เดิม",
+            icon: RefreshCw,
+            onSelect: () => handlers.onRotate(entry),
+          },
+          {
+            id: "revoke",
+            label: "เพิกถอนลิงก์",
+            icon: ShieldOff,
+            destructive: true,
+            onSelect: () => handlers.onRevoke(entry),
+          },
+        ]
+      : [
+          {
+            id: "create",
+            label: "สร้างลิงก์เช็คชื่อ",
+            icon: Link2,
+            disabled: entry.assignmentCount === 0,
+            onSelect: () => handlers.onCreate(entry),
+          },
+        ];
+  if (entry.lineStatus !== "NOT_VERIFIED") return grantActions;
+  grantActions.push({
+    id: "issue-line-invitation",
+    label:
+      entry.lineInvitationStatus === "ACTIVE"
+        ? "ออกลิงก์ยืนยัน LINE ใหม่"
+        : "ออกลิงก์ยืนยัน LINE",
+    icon: MessageCircle,
+    disabled: !entry.hasEmail,
+    onSelect: () => handlers.onIssueLineInvitation(entry),
+  });
+  if (entry.lineInvitationStatus === "ACTIVE") {
+    grantActions.push({
+      id: "revoke-line-invitation",
+      label: "ยกเลิกลิงก์ยืนยัน LINE",
+      icon: ShieldOff,
+      destructive: true,
+      onSelect: () => handlers.onRevokeLineInvitation(entry),
+    });
   }
-  return [
-    {
-      id: "create",
-      label: "สร้างลิงก์เช็คชื่อ",
-      icon: Link2,
-      disabled: entry.assignmentCount === 0,
-      onSelect: () => handlers.onCreate(entry),
-    },
-  ];
+  return grantActions;
 }
 
 function RowMenu({
@@ -100,7 +224,13 @@ function RowMenu({
   ...handlers
 }: Pick<
   TeacherLinkTableProps,
-  "onCreate" | "onCopy" | "onRotate" | "onRevoke" | "onUnlinkLine"
+  | "onCreate"
+  | "onCopy"
+  | "onRotate"
+  | "onRevoke"
+  | "onUnlinkLine"
+  | "onIssueLineInvitation"
+  | "onRevokeLineInvitation"
 > & {
   entry: TeacherLinkRosterEntry;
   busy: boolean;
@@ -153,27 +283,43 @@ export function TeacherLinkTable({
   onSortChange,
   ...handlers
 }: TeacherLinkTableProps) {
+  const [photoPreview, setPhotoPreview] = useState<TeacherLinkRosterEntry | null>(null);
+  const photoPreviewUrl = resolveApiMediaUrl(photoPreview?.photoUrl ?? null);
   const allSelected =
-    entries.length > 0 && entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
+    entries.length > 0 &&
+    entries.every((entry) => selectedIds.has(entry.teacherMembershipId));
 
   return (
     <div className="flex flex-col gap-2">
       <DataTable
-        columnWidths={["w-[5%]", "w-[8%]", "w-[29%]", "w-[22%]", "w-[22%]", "w-[14%]"]}
+        columnWidths={[
+          "w-[5%]",
+          "w-[8%]",
+          "w-[29%]",
+          "w-[22%]",
+          "w-[22%]",
+          "w-[14%]",
+        ]}
         headings={[
           {
             label: (
               <Checkbox
                 aria-label="เลือกครูทั้งหมดในหน้านี้"
                 checked={allSelected}
-                onChange={(event) => onSelectAll(entries, event.currentTarget.checked)}
+                onChange={(event) =>
+                  onSelectAll(entries, event.currentTarget.checked)
+                }
               />
             ),
             className: "text-center",
           },
           { label: "ลำดับ" },
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
-          { label: "สถานะลิงก์", sortKey: "linkStatus", className: "text-center" },
+          {
+            label: "สถานะลิงก์",
+            sortKey: "linkStatus",
+            className: "text-center",
+          },
           { label: "LINE", className: "text-center" },
           { label: "เครื่องมือ", className: "text-center" },
         ]}
@@ -187,17 +333,14 @@ export function TeacherLinkTable({
               <Checkbox
                 aria-label={`เลือก ${entry.teacherDisplayName}`}
                 checked={selectedIds.has(entry.teacherMembershipId)}
-                onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+                onChange={(event) =>
+                  onSelectRow(entry, event.currentTarget.checked)
+                }
               />
             </DataTableCell>
             <DataTableCell>{startIndex + index}</DataTableCell>
-            <DataTableCell className="text-slate-800">
-              {entry.teacherDisplayName}
-              {entry.hasEmail ? null : (
-                <p className="mt-1 text-xs font-medium text-warning-700">
-                  ยังไม่มีอีเมล — เข้าลิงก์ไม่ได้จนกว่าจะเพิ่มอีเมลให้ครู
-                </p>
-              )}
+            <DataTableCell>
+              <TeacherIdentity entry={entry} onPreviewPhoto={setPhotoPreview} />
             </DataTableCell>
             <DataTableCell className="text-center">
               <LinkStatus entry={entry} />
@@ -225,14 +368,15 @@ export function TeacherLinkTable({
                   aria-label={`เลือก ${entry.teacherDisplayName}`}
                   checked={selectedIds.has(entry.teacherMembershipId)}
                   className="mt-0.5"
-                  onChange={(event) => onSelectRow(entry, event.currentTarget.checked)}
+                  onChange={(event) =>
+                    onSelectRow(entry, event.currentTarget.checked)
+                  }
                 />
-                <div className="min-w-0">
-                  <p className="truncate text-slate-800">{entry.teacherDisplayName}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {entry.assignmentCount} ห้อง/รายวิชา
-                  </p>
-                </div>
+                <TeacherIdentity
+                  entry={entry}
+                  onPreviewPhoto={setPhotoPreview}
+                  showAssignmentCount
+                />
               </div>
               <RowMenu
                 busy={busyMembershipId === entry.teacherMembershipId}
@@ -253,6 +397,23 @@ export function TeacherLinkTable({
           </TableCard>
         ))}
       </TableCardList>
+
+      <Dialog onOpenChange={(open) => !open && setPhotoPreview(null)} open={Boolean(photoPreview)}>
+        <DialogContent onClose={() => setPhotoPreview(null)}>
+          <DialogHeader>
+            <DialogTitle>รูปประจำตัว {photoPreview?.teacherDisplayName}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {photoPreview && photoPreviewUrl ? (
+              <img
+                alt={`รูปประจำตัวของ ${photoPreview.teacherDisplayName}`}
+                className="mx-auto max-h-[70dvh] w-full rounded-lg object-contain"
+                src={photoPreviewUrl}
+              />
+            ) : null}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

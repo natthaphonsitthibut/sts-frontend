@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { getAvatarGradient } from "../../../lib/avatar-gradient";
+import { StudentAvatar } from "../../students/components/StudentAvatar";
 import {
   ChevronLeft,
   ChevronRight,
@@ -263,12 +263,7 @@ export function AttendanceStudentTable({
   function renderStudentIdentity(student: AttendanceStudent, trailing?: ReactNode) {
     return (
       <div className="flex min-w-0 items-center gap-3">
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-          style={getAvatarGradient(student.name)}
-        >
-          {student.name?.[0] || "?"}
-        </div>
+        <StudentAvatar name={student.name} photoUrl={student.photo_url} />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <div className="min-w-0 truncate text-slate-800">
             {student.name}

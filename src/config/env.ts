@@ -26,7 +26,7 @@ function resolveApiBaseUrl(): string {
   }
 
   const { protocol, hostname, port } = window.location;
-  if (port !== "3000" && isPrivateDevHost(hostname)) {
+  if (import.meta.env.DEV && port !== "3000" && isPrivateDevHost(hostname)) {
     return `${protocol}//${formatHostForUrl(hostname)}:3000`;
   }
 

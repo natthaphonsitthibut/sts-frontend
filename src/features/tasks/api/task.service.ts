@@ -9,7 +9,9 @@ import type {
   TaskDelegationResponse,
   TaskGuestStudent,
   TaskHistoryEntry,
+  TaskOtpChallenge,
   TaskSubmitResponse,
+  VisitAssignee,
 } from "../types/task.types";
 
 interface DataEnvelope<T> {
@@ -38,6 +40,13 @@ function createMagicSessionConfig(magicSessionToken?: string) {
 async function createTask(payload: TaskCreatePayload): Promise<TaskCreateResponse> {
   const response = await apiClient.post<TaskCreateResponse>("/tasks", payload);
   return response.data;
+}
+
+async function getVisitAssignees(studentId: string): Promise<VisitAssignee[]> {
+  const response = await apiClient.get<DataEnvelope<VisitAssignee[]>>(
+    `/tasks/visit-assignees/${encodeURIComponent(studentId)}`,
+  );
+  return response.data.data ?? [];
 }
 
 async function getTaskChain(taskId: string): Promise<TaskChainResponse> {
@@ -75,8 +84,11 @@ async function getTaskHistory(
   return normalizeArrayResponse(response.data);
 }
 
-async function requestTaskOtp(token: string): Promise<void> {
-  await apiClient.post(`/tasks/${encodeURIComponent(token)}/otp`);
+async function requestTaskOtp(token: string): Promise<TaskOtpChallenge> {
+  const response = await apiClient.post<TaskOtpChallenge>(
+    `/tasks/${encodeURIComponent(token)}/otp`,
+  );
+  return response.data;
 }
 
 async function verifyTaskOtp(
@@ -132,6 +144,7 @@ async function delegateTask(
 
 export const taskService = {
   createTask,
+  getVisitAssignees,
   delegateTask,
   getTask,
   getTaskChain,

@@ -12,14 +12,22 @@ import {
 } from "../base";
 
 interface LinkShareDialogProps {
+  description?: ReactNode;
   link: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  title?: string;
 }
 
 interface LinkShareButtonProps {
   className?: string;
   compact?: boolean;
+  disabled?: boolean;
+  link?: string | null;
+}
+
+interface LinkSharePanelProps {
+  disabled?: boolean;
   link: string;
 }
 
@@ -39,16 +47,19 @@ async function copyLink(link: string): Promise<boolean> {
 
 function ShareChoice({
   children,
+  disabled = false,
   label,
   onClick,
 }: {
   children: ReactNode;
+  disabled?: boolean;
   label: string;
   onClick: () => void;
 }) {
   return (
     <button
       className="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-2 text-center text-xs text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >
@@ -61,10 +72,30 @@ function ShareChoice({
 }
 
 export function LinkShareDialog({
+  description,
   link,
   onOpenChange,
   open,
+  title = "แชร์",
 }: LinkShareDialogProps) {
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className="max-w-md" onClose={() => onOpenChange(false)}>
+        <DialogHeader>
+          <DialogTitle icon={Share2}>{title}</DialogTitle>
+          {description ? (
+            <div className="text-sm text-slate-600">{description}</div>
+          ) : null}
+        </DialogHeader>
+
+        <LinkSharePanel link={link} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Shared inline content so QR pages and dialogs present the same share UI. */
+export function LinkSharePanel({ disabled = false, link }: LinkSharePanelProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy(): Promise<void> {
@@ -103,25 +134,21 @@ export function LinkShareDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-md" onClose={() => onOpenChange(false)}>
-        <DialogHeader>
-          <DialogTitle icon={Share2}>แชร์</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5">
+        <div className={disabled ? "pointer-events-none space-y-5 opacity-40" : "space-y-5"}>
           <div className="space-y-2">
             <div className="text-xs font-semibold text-slate-700">คัดลอกลิงก์</div>
             <div className="flex items-center gap-2">
               <Input
                 aria-label="ลิงก์ที่จะแชร์"
                 className="min-w-0 flex-1 text-sm"
+                disabled={disabled}
                 readOnly
                 value={link}
               />
               <Button
                 aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
                 className="w-[88px] shrink-0"
+                disabled={disabled}
                 icon={copied ? Check : undefined}
                 iconClassName={copied ? "text-white" : undefined}
                 onClick={() => void handleCopy()}
@@ -136,6 +163,7 @@ export function LinkShareDialog({
             <div className="text-xs font-semibold text-slate-700">แชร์ผ่าน</div>
             <div className="grid grid-cols-5 gap-3">
               <ShareChoice
+                disabled={disabled}
                 label="LINE"
                 onClick={() =>
                   openShareTarget(
@@ -143,7 +171,7 @@ export function LinkShareDialog({
                   )
                 }
               >
-                <span className="flex size-12 items-center justify-center rounded-xl bg-[#06c755] shadow-sm">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-line shadow-sm">
                   <img
                     alt=""
                     className="size-8"
@@ -152,6 +180,7 @@ export function LinkShareDialog({
                 </span>
               </ShareChoice>
               <ShareChoice
+                disabled={disabled}
                 label="Messenger"
                 onClick={() => void handleMessenger()}
               >
@@ -162,6 +191,7 @@ export function LinkShareDialog({
                 />
               </ShareChoice>
               <ShareChoice
+                disabled={disabled}
                 label="Gmail"
                 onClick={() =>
                   openShareTarget(
@@ -177,7 +207,7 @@ export function LinkShareDialog({
                   />
                 </span>
               </ShareChoice>
-              <ShareChoice label="Discord" onClick={() => void handleDiscord()}>
+              <ShareChoice disabled={disabled} label="Discord" onClick={() => void handleDiscord()}>
                 <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
                   <img
                     alt=""
@@ -186,7 +216,7 @@ export function LinkShareDialog({
                   />
                 </span>
               </ShareChoice>
-              <ShareChoice label="เพิ่มเติม" onClick={() => void handleMore()}>
+              <ShareChoice disabled={disabled} label="เพิ่มเติม" onClick={() => void handleMore()}>
                 <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm">
                   <Ellipsis className="size-5" aria-hidden="true" />
                 </span>
@@ -194,23 +224,24 @@ export function LinkShareDialog({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
 export function LinkShareButton({
   className,
   compact = false,
+  disabled = false,
   link,
 }: LinkShareButtonProps) {
   const [open, setOpen] = useState(false);
+  const unavailable = disabled || !link;
   return (
     <>
       {compact ? (
         <IconButton
           aria-label="แชร์ลิงก์"
           className={className}
+          disabled={unavailable}
           icon={Share2}
           onClick={() => setOpen(true)}
           variant="share"
@@ -219,6 +250,7 @@ export function LinkShareButton({
         <Button
           aria-label="แชร์ลิงก์"
           className={className}
+          disabled={unavailable}
           icon={Share2}
           onClick={() => setOpen(true)}
           size="sm"
@@ -227,7 +259,9 @@ export function LinkShareButton({
           แชร์
         </Button>
       )}
-      <LinkShareDialog link={link} onOpenChange={setOpen} open={open} />
+      {link ? (
+        <LinkShareDialog link={link} onOpenChange={setOpen} open={open} />
+      ) : null}
     </>
   );
 }

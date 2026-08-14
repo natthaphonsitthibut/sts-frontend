@@ -105,6 +105,7 @@ export function CurriculumSubjectsPage() {
       <PageToolbar
         actions={
           <NavButton
+            contextual
             disabled={!selectedTermId}
             icon={Plus}
             to={`${CURRICULUM_PATH}/${gradeId}/subjects/new?schoolId=${schoolId}&termId=${selectedTermId ?? ""}`}

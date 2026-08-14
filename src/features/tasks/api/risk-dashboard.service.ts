@@ -8,6 +8,9 @@ import type {
 
 async function getRiskDashboard(query: RiskDashboardQuery = {}): Promise<RiskDashboardResult> {
   const params: Record<string, string> = toPaginationParams(query);
+  if (query.studentGroup) {
+    params.studentGroup = query.studentGroup;
+  }
   if (query.riskTier && query.riskTier !== "ALL") {
     params.riskTier = query.riskTier;
   }
@@ -22,6 +25,15 @@ async function getRiskDashboard(query: RiskDashboardQuery = {}): Promise<RiskDas
   }
   if (query.schoolId?.trim()) {
     params.schoolId = query.schoolId.trim();
+  }
+  if (query.academicYear) {
+    params.academicYear = String(query.academicYear);
+  }
+  if (query.semester) {
+    params.semester = String(query.semester);
+  }
+  if (query.caseStatus) {
+    params.caseStatus = query.caseStatus;
   }
   if (query.grade?.trim() && query.grade !== "ALL") {
     params.grade = query.grade.trim();

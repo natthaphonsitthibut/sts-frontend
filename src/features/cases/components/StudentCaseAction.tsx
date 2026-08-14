@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { CirclePlus, FolderOpen } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertDescription,
@@ -12,8 +11,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
 } from "../../../components/base";
 import { formatThaiDate } from "../../../lib/date-time";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useStudentCases } from "../../students/hooks/useStudentCases";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { OpenCaseDialog } from "./OpenCaseDialog";
@@ -22,6 +23,7 @@ interface StudentCaseActionProps {
   activeCaseCount: number;
   activeCaseId: number | null;
   initialReason?: string;
+  disabled?: boolean;
   mode?: "icon" | "button";
   studentId: string;
   studentName: string;
@@ -31,11 +33,12 @@ export function StudentCaseAction({
   activeCaseCount,
   activeCaseId,
   initialReason,
+  disabled = false,
   mode = "icon",
   studentId,
   studentName,
 }: StudentCaseActionProps) {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const [openCaseDialogOpen, setOpenCaseDialogOpen] = useState(false);
   const [caseListDialogOpen, setCaseListDialogOpen] = useState(false);
   const {
@@ -60,18 +63,28 @@ export function StudentCaseAction({
       : "ดูเคสที่กำลังติดตาม";
     return (
       <>
-        <Button
-          aria-label={label}
-          className={mode === "icon" ? "size-9 shrink-0 px-0" : undefined}
-          icon={FolderOpen}
-          iconClassName={mode === "icon" ? "text-primary" : undefined}
-          onClick={() => setCaseListDialogOpen(true)}
-          size={mode === "icon" ? "sm" : "md"}
-          title={label}
-          variant="outline"
-        >
-          {mode === "button" ? (multipleCases ? "ดูรายการเคส" : "ดูเคส") : null}
-        </Button>
+        {mode === "icon" ? (
+          <IconButton
+            aria-label={label}
+            disabled={disabled}
+            icon={FolderOpen}
+            onClick={() => setCaseListDialogOpen(true)}
+            title={label}
+            variant="edit"
+          />
+        ) : (
+          <Button
+            aria-label={label}
+            className="min-w-28"
+            disabled={disabled}
+            icon={FolderOpen}
+            onClick={() => setCaseListDialogOpen(true)}
+            size="md"
+            title={label}
+          >
+            {multipleCases ? "ดูรายการเคส" : "ดูเคส"}
+          </Button>
+        )}
         <Dialog open={caseListDialogOpen} onOpenChange={setCaseListDialogOpen}>
           <DialogContent
             className="w-[min(92vw,620px)] text-left"
@@ -132,7 +145,7 @@ export function StudentCaseAction({
                         className="shrink-0"
                         onClick={() => {
                           setCaseListDialogOpen(false);
-                          navigate(`/cases/${studentCase.id}`);
+                          contextualNavigate(`/cases/${studentCase.id}`);
                         }}
                         size="sm"
                         variant="outline"
@@ -152,22 +165,31 @@ export function StudentCaseAction({
 
   return (
     <>
-      <Button
-        aria-label="เปิดเคสติดตามนักเรียน"
-        className={mode === "icon" ? "size-9 shrink-0 px-0" : undefined}
-        icon={CirclePlus}
-        iconClassName={mode === "icon" ? "text-success-700" : undefined}
-        onClick={() => setOpenCaseDialogOpen(true)}
-        size={mode === "icon" ? "sm" : "md"}
-        title="เปิดเคสติดตามนักเรียน"
-        variant={mode === "icon" ? "outline" : "default"}
-      >
-        {mode === "button" ? "เปิดเคส" : null}
-      </Button>
+      {mode === "icon" ? (
+        <IconButton
+          aria-label="เปิดเคสติดตามนักเรียน"
+          disabled={disabled}
+          icon={CirclePlus}
+          onClick={() => setOpenCaseDialogOpen(true)}
+          title="เปิดเคสติดตามนักเรียน"
+          variant="contact"
+        />
+      ) : (
+        <Button
+          aria-label="เปิดเคสติดตามนักเรียน"
+          disabled={disabled}
+          icon={CirclePlus}
+          onClick={() => setOpenCaseDialogOpen(true)}
+          size="md"
+          title="เปิดเคสติดตามนักเรียน"
+        >
+          เปิดเคส
+        </Button>
+      )}
       <OpenCaseDialog
         initialReason={initialReason}
         onOpenChange={setOpenCaseDialogOpen}
-        onOpened={(caseRecord) => void navigate(`/cases/${caseRecord.id}`)}
+        onOpened={(caseRecord) => contextualNavigate(`/cases/${caseRecord.id}`)}
         open={openCaseDialogOpen}
         studentId={studentId}
         studentName={studentName}

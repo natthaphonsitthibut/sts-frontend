@@ -12,6 +12,7 @@ import {
   EmptyState,
   PAGE_MAX_WIDTH_CLASS,
   PageShell,
+  PageToolbar,
   SkeletonStack,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
@@ -96,29 +97,20 @@ export function AttendanceRecordPage() {
 
   return (
     <PageShell className="pb-28">
-      <Card className="mb-6 p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <NavButton
-              aria-label="ย้อนกลับ"
-              icon={ArrowLeft}
-              size="sm"
-              to="/attendance"
-              variant="ghost"
-            />
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">
-                {task.target_grade || "-"} {formatStudentRoom(task.target_room)}
-              </h1>
-              <p className="mt-0.5 text-sm text-slate-500">
-                {task.target_school_name || "-"} · นักเรียน {students.length} คน
-              </p>
-            </div>
-          </div>
-
-          <AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />
-        </div>
-      </Card>
+      <PageToolbar
+        actions={<AttendanceCountBadges catalog={attendanceStatusCatalog} counts={counts} />}
+        icon={ClipboardList}
+        navigation={
+          <NavButton icon={ArrowLeft} to="/attendance" variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        }
+        title={`${task.target_grade || "-"} ${formatStudentRoom(task.target_room)}`}
+      >
+        <p className="text-sm text-content-secondary">
+          {task.target_school_name || "-"} · นักเรียน {students.length} คน
+        </p>
+      </PageToolbar>
 
       <div className="mb-6 min-h-[96px]">
         {submitAttendance.isError ? (

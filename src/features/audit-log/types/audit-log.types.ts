@@ -9,7 +9,6 @@ export type AuditLogDomain =
   | "cases"
   | "tasks"
   | "attendance"
-  | "field_followers"
   | "timetable";
 
 export type AuditLogTaskType = "ATTENDANCE" | "VISIT" | "LOGIN";

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, type To } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
-import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
@@ -15,6 +16,7 @@ import {
   Input,
   NumericInput,
   PasswordInput,
+  PersonIcon,
   PhotoPicker,
   registerField,
   type PhotoPickerValue,
@@ -27,10 +29,18 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import { CredentialDialog } from "../../../components/layout/credential-dialog";
+import {
+  AddressFormSection,
+  type AddressFieldNames,
+} from "../../../components/address/AddressFormSection";
+import { stripAddressPrefix } from "../../../components/address/address-format";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
+import { geoService } from "../../tasks/api/geo.service";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import { getScopeValidationError } from "../../auth/lib/scope-validation";
 import type { DataScope } from "../../auth/lib/permissions";
@@ -49,6 +59,20 @@ import type {
 
 const MANAGE_USERS_PATH = "/manage-users";
 
+const ADDRESS_NAMES: AddressFieldNames<UserFormValues> = {
+  houseNo: "address_line",
+  moo: "address_village_no",
+  street: "address_street",
+  soi: "address_soi",
+  trok: "address_trok",
+  province: "address_province",
+  district: "address_district",
+  subDistrict: "address_sub_district",
+  postalCode: "address_postal_code",
+  latitude: "address_latitude",
+  longitude: "address_longitude",
+};
+
 function toDefaults(user: ManagedUser | null): UserFormValues {
   if (!user) return EMPTY_USER_FORM;
   return {
@@ -60,6 +84,18 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
     phone: user.phone ?? "",
     email: user.email ?? "",
     affiliation: user.affiliation ?? "",
+    line_id: user.line_id ?? "",
+    address_line: user.address_line ?? "",
+    address_village_no: stripAddressPrefix("หมู่", user.address_village_no),
+    address_street: stripAddressPrefix("ถนน", user.address_street),
+    address_soi: stripAddressPrefix("ซอย", user.address_soi),
+    address_trok: stripAddressPrefix("ตรอก", user.address_trok),
+    address_sub_district: user.address_sub_district ?? "",
+    address_district: user.address_district ?? "",
+    address_province: user.address_province ?? "",
+    address_postal_code: user.address_postal_code ?? "",
+    address_latitude: user.address_latitude ?? null,
+    address_longitude: user.address_longitude ?? null,
     role: user.role || user.roles?.[0] || "",
   };
 }
@@ -71,7 +107,7 @@ function UserForm({
 }: {
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
-  returnPath: string;
+  returnPath: To;
 }) {
   const navigate = useNavigate();
   const saveUser = useSaveUser();
@@ -91,6 +127,26 @@ function UserForm({
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
     resolver: zodResolver(userFormSchema),
+  });
+  const locationQuery = useQuery({
+    queryKey: ["attendance-locations"],
+    queryFn: attendanceLookupService.getLocations,
+  });
+  const geocodeAddress = useMutation({
+    meta: { suppressSuccessToast: true },
+    mutationFn: geoService.geocodeProfileAddress,
+    onSuccess: (result) => {
+      if (!result) return;
+      form.setValue("address_latitude", result.lat, { shouldDirty: true });
+      form.setValue("address_longitude", result.lng, { shouldDirty: true });
+      if (result.postalCode) {
+        form.setValue("address_postal_code", result.postalCode, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+    },
+    throwOnError: false,
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const assignableRoleGroups = rolesCatalog.filter(
@@ -144,6 +200,18 @@ function UserForm({
       phone: values.phone.trim(),
       email: values.email.trim(),
       affiliation: values.affiliation.trim(),
+      line_id: values.line_id.trim(),
+      address_line: values.address_line.trim(),
+      address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
+      address_street: stripAddressPrefix("ถนน", values.address_street),
+      address_soi: stripAddressPrefix("ซอย", values.address_soi),
+      address_trok: stripAddressPrefix("ตรอก", values.address_trok),
+      address_sub_district: values.address_sub_district.trim(),
+      address_district: values.address_district.trim(),
+      address_province: values.address_province.trim(),
+      address_postal_code: values.address_postal_code.trim(),
+      address_latitude: values.address_latitude,
+      address_longitude: values.address_longitude,
       ...(password ? { password } : {}),
     };
 
@@ -186,7 +254,7 @@ function UserForm({
       <Form form={form} onSubmit={handleSubmit}>
         <Card className="p-6">
           <div className="mb-6 flex items-center gap-2">
-            <UserRound className="size-5 text-slate-700" aria-hidden="true" />
+            <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
             <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
           </div>
 
@@ -257,6 +325,17 @@ function UserForm({
               </FormItem>
 
               <FormItem>
+                <FormLabel htmlFor="line_id">LINE ID</FormLabel>
+                <Input
+                  id="line_id"
+                  maxLength={64}
+                  placeholder="ระบุ LINE ID"
+                  {...registerField(form, "line_id")}
+                />
+                <FormMessage<UserFormValues> name="line_id" />
+              </FormItem>
+
+              <FormItem>
                 <FormLabel htmlFor="PersonID_Onec" required>
                   เลขบัตรประชาชน
                 </FormLabel>
@@ -307,6 +386,29 @@ function UserForm({
             </div>
           </div>
         </Card>
+
+        <div className="mt-6">
+          <AddressFormSection
+            catalog={locationQuery.data}
+            disabled={saveUser.isPending}
+            form={form}
+            geocodeError={
+              geocodeAddress.isError ? (
+                <FormErrorAlert
+                  error={geocodeAddress.error}
+                  fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+                />
+              ) : null
+            }
+            isGeocoding={geocodeAddress.isPending}
+            names={ADDRESS_NAMES}
+            onGeocode={async (address) =>
+              Boolean(await geocodeAddress.mutateAsync(address))
+            }
+            showPlaceholders={!isEdit}
+            title="ที่อยู่ติดต่อ"
+          />
+        </div>
 
         <Card className="mt-6 p-6">
           <div className="mb-6 flex items-center gap-2">
@@ -376,13 +478,14 @@ function UserForm({
 export function ManageUserFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const safeBackTarget = useSafeBackTarget();
   const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const userId = id ? Number(id) : null;
   const returnPath =
     searchParams.get("returnTo") === "/profile"
       ? "/profile"
-      : MANAGE_USERS_PATH;
+      : safeBackTarget;
   const {
     data: user = null,
     isLoading: isUserLoading,

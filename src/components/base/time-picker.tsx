@@ -13,6 +13,7 @@ export interface TimePickerProps {
   disabled?: boolean;
   id?: string;
   placeholder?: string;
+  "aria-invalid"?: boolean;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
@@ -28,6 +29,7 @@ function parseTime(value: string): { hour: string; minute: string } {
 
 export function TimePicker({
   ariaLabel,
+  "aria-invalid": ariaInvalid,
   className,
   disabled = false,
   id,
@@ -47,7 +49,8 @@ export function TimePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
-        className="w-full justify-start px-3 font-medium [&>span]:w-full [&>span>span]:w-full"
+        aria-invalid={ariaInvalid}
+        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20 [&>span]:w-full [&>span>span]:w-full"
         disabled={disabled}
         icon={Clock}
         id={id}

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { MENU_ITEMS, type MenuItem } from "../../features/auth/lib/permissions";
 import { LayoutIcon } from "./LayoutIcon";
 import { collectMenuRoutes } from "./menu-routes";
+import { getNavigationContext } from "./navigation-context";
 
 interface SidebarNavItemProps {
   collapsed?: boolean;
@@ -28,7 +29,7 @@ interface SidebarNavItemProps {
  */
 function navLabelClassName(collapsed: boolean): string {
   return cn(
-    "truncate transition-[opacity,max-width,margin] duration-200 ease-out motion-reduce:transition-none",
+    "truncate transition-[opacity,max-width,margin] duration-300 ease-out motion-reduce:transition-none",
     collapsed ? "-ml-3 max-w-0 opacity-0" : "max-w-48 opacity-100",
   );
 }
@@ -53,7 +54,7 @@ function navLinkClassName(
     // expanded width so it only bites while collapsing). Color transitions
     // ride along because conflicting transition-property utilities merge.
     nested &&
-      "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none",
+      "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-300 ease-out motion-reduce:transition-none",
     collapsed && nested && "max-w-10",
     // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง
     isActive && "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
@@ -75,8 +76,8 @@ function routeMatchesPathname(route: string, pathname: string): boolean {
 /**
  * The most specific (longest) registered route that matches this pathname —
  * either exactly or as a real sub-route. Sibling pages whose paths happen to
- * nest (like the `/field-followers` example above) only ever resolve to one
- * winner instead of both matching independently.
+ * nest only ever resolve to one winner instead of both matching
+ * independently.
  */
 function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): string | null {
   let best: string | null = null;
@@ -113,14 +114,26 @@ export function SidebarNavItem({
   onNavigate,
 }: SidebarNavItemProps) {
   const location = useLocation();
+  const navigationContext = getNavigationContext(location.state);
+  const contextualMenuRoute = navigationContext?.menuRoute;
+  const activePathname = navigationContext && contextualMenuRoute === null
+    ? ""
+    : contextualMenuRoute &&
+        (menuRoutes ?? []).some((route) => routeMatchesPathname(route, contextualMenuRoute))
+      ? contextualMenuRoute
+      : location.pathname;
   const hasActiveChild = Boolean(
-    item.children?.some((child) => isRouteActive(child, location.pathname, menuRoutes)),
+    item.children?.some((child) => isRouteActive(child, activePathname, menuRoutes)),
   );
-  const [open, setOpen] = useState(hasActiveChild);
-  const expanded = open;
+  // `null` means follow the route-derived default. Once the user toggles the
+  // group, their explicit choice wins — including collapsing an active group.
+  // The parent active treatment remains route-derived and is therefore still
+  // visible on the collapsed icon rail.
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const expanded = manualExpanded ?? hasActiveChild;
 
   function handleGroupToggle(): void {
-    setOpen((value) => !value);
+    setManualExpanded(!expanded);
   }
 
   // The collapsed icon rail never shows nested children, so the parent icon
@@ -132,6 +145,7 @@ export function SidebarNavItem({
       <div>
         <button
           type="button"
+          aria-current={collapsed && hasActiveChild ? "page" : undefined}
           aria-expanded={expanded}
           aria-label={collapsed ? item.label : undefined}
           onClick={handleGroupToggle}
@@ -162,7 +176,7 @@ export function SidebarNavItem({
           <ChevronDown
             aria-hidden="true"
             className={cn(
-              "absolute transition-[top,right,width,height,color,transform] duration-200 ease-out motion-reduce:transition-none",
+              "absolute transition-[top,right,width,height,color,transform] duration-300 ease-out motion-reduce:transition-none",
               collapsed ? "right-1 top-6 size-3" : "right-3 top-3 size-4",
               expanded && "rotate-180",
               collapsed && expanded ? "text-primary" : "text-slate-500",
@@ -172,7 +186,7 @@ export function SidebarNavItem({
         <div
           aria-hidden={!childrenVisible}
           className={cn(
-            "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+            "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
             childrenVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
         >
@@ -183,35 +197,37 @@ export function SidebarNavItem({
                 plus `aria-hidden`/`tabIndex` already cover paint and a11y. */}
             <div
               className={cn(
-                "space-y-0.5 border-l py-1 transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+                "space-y-0.5 border-l py-1 transition-[padding] duration-300 ease-out motion-reduce:transition-none",
                 collapsed ? "border-slate-200/80 pl-2" : "border-slate-200 pl-4",
               )}
             >
-              {item.children.map((child) => (
-                <NavLink
-                  aria-label={collapsed ? child.label : undefined}
-                  className={() =>
-                    navLinkClassName(
-                      { isActive: isRouteActive(child, location.pathname, menuRoutes) },
+              {item.children.map((child) => {
+                const childIsActive = isRouteActive(child, activePathname, menuRoutes);
+                return (
+                  <Link
+                    aria-current={childIsActive ? "page" : undefined}
+                    aria-label={collapsed ? child.label : undefined}
+                    className={navLinkClassName(
+                      { isActive: childIsActive },
                       collapsed,
                       true,
-                    )
-                  }
-                  key={child.id}
-                  onClick={onNavigate}
-                  title={collapsed ? child.label : undefined}
-                  to={child.route || "#"}
-                  tabIndex={childrenVisible ? undefined : -1}
-                >
-                  <LayoutIcon
-                    className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                    iconName={child.iconName}
-                  />
-                  <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
-                    {child.label}
-                  </span>
-                </NavLink>
-              ))}
+                    )}
+                    key={child.id}
+                    onClick={onNavigate}
+                    title={collapsed ? child.label : undefined}
+                    to={child.route || "#"}
+                    tabIndex={childrenVisible ? undefined : -1}
+                  >
+                    <LayoutIcon
+                      className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                      iconName={child.iconName}
+                    />
+                    <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
+                      {child.label}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -219,18 +235,15 @@ export function SidebarNavItem({
     );
   }
 
+  const itemIsActive = isRouteActive(item, activePathname, menuRoutes);
   return (
-    <NavLink
+    <Link
+      aria-current={itemIsActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
-      // Active state comes from `isRouteActive`, not NavLink's own prefix
+      // Active state comes from `isRouteActive`, not router prefix matching:
       // match: a rail whose landing page is a parent path of its other items
       // ("/teacher-access" vs "/teacher-access/timetable") would light up both.
-      className={() =>
-        navLinkClassName(
-          { isActive: isRouteActive(item, location.pathname, menuRoutes) },
-          collapsed,
-        )
-      }
+      className={navLinkClassName({ isActive: itemIsActive }, collapsed)}
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       to={item.route || "#"}
@@ -240,6 +253,6 @@ export function SidebarNavItem({
         iconName={item.iconName}
       />
       <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>{item.label}</span>
-    </NavLink>
+    </Link>
   );
 }

@@ -437,6 +437,16 @@ function statusLabel(status: DataExportJob["status"]) {
   return labels[status];
 }
 
+function statusBadgeVariant(
+  status: DataExportJob["status"],
+): "default" | "secondary" | "destructive" | "success" | "warning" {
+  if (status === "COMPLETED") return "success";
+  if (status === "FAILED") return "destructive";
+  if (status === "PENDING") return "warning";
+  if (status === "RUNNING") return "default";
+  return "secondary";
+}
+
 function JobHistory({
   catalog,
   downloadingId,
@@ -477,7 +487,10 @@ function JobHistory({
                   <p className="text-xs text-slate-500">
                     ...{job.id.slice(-8)}
                   </p>
-                  <Badge className="shrink-0 whitespace-nowrap bg-slate-100 text-slate-700">
+                  <Badge
+                    className="shrink-0 whitespace-nowrap"
+                    variant={statusBadgeVariant(job.status)}
+                  >
                     {statusLabel(job.status)}
                   </Badge>
                 </div>

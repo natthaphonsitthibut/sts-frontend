@@ -115,6 +115,39 @@
   --color-surface-soft: #f5f5f5;
   --color-login-hero: #e7edf8;
 
+  /* AraID simulator — isolated from the STS application chrome. */
+  --color-araid-brand: #222b89;
+  --color-araid-brand-deep: #101866;
+  --color-araid-brand-mid: #35409c;
+  --color-araid-wave: #4652ad;
+  --color-araid-wave-soft: #6571c6;
+  --color-araid-action: #3b48a8;
+  --color-araid-accent: #ffbf00;
+  --color-araid-qr-panel: #4775c9;
+  --color-araid-qr-surface: #f2f6fc;
+  --color-araid-shell: #e9eaf2;
+  --color-araid-surface: #f5f5fa;
+  --color-araid-surface-hover: #fafafe;
+  --color-araid-surface-icon: #f0f0f8;
+  --color-araid-border: #ececf2;
+  --color-araid-border-strong: #c8cad3;
+  --color-araid-text-muted: #666871;
+  --color-araid-text-faint: #aaaab0;
+  --color-araid-card: #e8fbff;
+  --color-araid-card-ink: #172050;
+  --color-araid-card-photo: #f0d5c7;
+  --color-araid-card-red: #d85256;
+  --color-araid-card-cream: #f4f0dc;
+  --color-araid-card-blue: #4052a9;
+  --color-araid-wave-dark: #29358d;
+  --color-araid-wave-deepest: #111a68;
+  --font-araid:
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Noto Sans Thai",
+    Tahoma, sans-serif;
+  --text-araid-nav: 0.6875rem;
+  --text-araid-mini: 0.625rem;
+  --text-araid-micro: 0.5rem;
+
   /* Muted — subtle table tint + low-emphasis foreground */
   --color-muted: rgb(250 250 250);
   --color-muted-foreground: #676767;
@@ -137,6 +170,11 @@
     inset 0 1px 4px rgb(0 0 0 / 0.25), 0 3px 6px rgb(15 23 42 / 0.1);
   --shadow-login-surface:
     inset 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 8px rgb(15 23 42 / 0.14);
+  --shadow-araid-subtle: 0 1px 3px rgb(20 20 50 / 0.04);
+  --shadow-araid-card: 0 3px 7px rgb(8 12 55 / 0.38);
+  --shadow-araid-login: 0 4px 8px rgb(11 18 78 / 0.14);
+  --shadow-araid-navigation: 0 -1px 3px rgb(25 28 80 / 0.04);
+  --drop-shadow-araid-wordmark: 0 2px 1px rgb(7 12 66 / 0.8);
   --drop-shadow-login-icon: 0 4px 4px rgb(0 0 0 / 0.25);
 }
 
@@ -188,6 +226,127 @@ p {
   text-wrap: pretty;
 }
 
+/*
+ * Domain badge colors are independent from badge layout. Standard badges use
+ * a soft fill; DataTable/TableCardList override only the shape and surface.
+ */
+[data-slot="badge"][data-case-status="OPEN"] {
+  background-color: var(--color-brand-yellow-bg);
+  color: var(--color-brand-yellow);
+}
+
+[data-slot="badge"][data-case-status="IN_PROGRESS"] {
+  background-color: var(--color-brand-purple-bg);
+  color: var(--color-brand-purple);
+}
+
+[data-slot="badge"][data-case-status="PENDING_REVIEW"] {
+  background-color: var(--color-secondary);
+  color: var(--color-primary);
+}
+
+[data-slot="badge"][data-case-status="STUDENT_NOT_FOUND"],
+[data-slot="badge"][data-student-risk-tier="HIGH"] {
+  background-color: var(--color-danger-100);
+  color: var(--color-danger);
+}
+
+[data-slot="badge"][data-case-status="RESOLVED"],
+[data-slot="badge"][data-student-risk-tier="NORMAL"] {
+  background-color: var(--color-success-100);
+  color: var(--color-success);
+}
+
+[data-slot="badge"][data-student-risk-tier="WATCH"] {
+  background-color: var(--color-brand-orange-bg);
+  color: var(--color-brand-orange);
+}
+
+/*
+ * Table-only status badges. Mobile table cards use the same data slot so the
+ * responsive representation does not silently fall back to filled badges.
+ * Colors resolve exclusively through the Figma palette tokens above.
+ */
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"] {
+  min-width: 6rem;
+  justify-content: center;
+  border: 1px solid currentcolor;
+  background-color: var(--color-slate-50);
+  padding: 0.25rem 0.75rem;
+  color: var(--color-primary);
+  font-weight: 400;
+  line-height: 1rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-variant="secondary"] {
+  color: var(--color-content-secondary);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-variant="destructive"] {
+  color: var(--color-danger);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-variant="success"] {
+  color: var(--color-success);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-variant="warning"] {
+  color: var(--color-brand-orange);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-case-status="OPEN"] {
+  color: var(--color-brand-yellow);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-case-status="IN_PROGRESS"] {
+  color: var(--color-brand-purple);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-case-status="PENDING_REVIEW"] {
+  color: var(--color-primary);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-case-status="STUDENT_NOT_FOUND"],
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-student-risk-tier="HIGH"] {
+  color: var(--color-danger);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-case-status="RESOLVED"],
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-student-risk-tier="NORMAL"] {
+  color: var(--color-success);
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="badge"][data-student-risk-tier="WATCH"] {
+  color: var(--color-brand-orange);
+}
+
+/* All icon-only row actions share one 40px touch target and Base hover motion. */
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="icon-button"] {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+:is([data-slot="data-table"], [data-slot="table-card-list"])
+  [data-slot="button"] {
+  min-height: 2.5rem;
+}
+
 @layer base {
   button,
   input,
@@ -199,6 +358,64 @@ p {
 
 #root {
   min-height: 100vh;
+}
+
+@keyframes araid-screen-enter {
+  from {
+    opacity: 0.01;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes araid-brand-enter {
+  from {
+    opacity: 0.01;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.araid-screen-enter {
+  animation: araid-screen-enter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.araid-brand-enter {
+  animation: araid-brand-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.araid-splash-action {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-araid-brand-mid),
+    var(--color-araid-wave),
+    var(--color-araid-brand-mid)
+  );
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.12),
+    0 2px 5px rgb(7 12 66 / 0.35);
+}
+
+.araid-card-flag {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-araid-card-red) 0 33%,
+    var(--color-araid-card-cream) 33% 66%,
+    var(--color-araid-card-blue) 66%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .araid-screen-enter,
+  .araid-brand-enter {
+    animation: none;
+  }
 }
 
 /*

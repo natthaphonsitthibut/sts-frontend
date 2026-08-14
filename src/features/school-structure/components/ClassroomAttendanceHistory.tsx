@@ -1,6 +1,5 @@
 import { ArrowLeft, Download, History, School } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button, DatePicker, IconButton, Skeleton } from "../../../components/base";
 import {
   DataTable,
@@ -16,6 +15,7 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
@@ -136,7 +136,7 @@ export function ClassroomAttendanceHistory({
   classroomId,
   classroomLabel,
 }: ClassroomAttendanceHistoryProps) {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const { can } = usePermissions();
   const [view, setView] = useState<HistoryView>("DAILY");
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
@@ -485,7 +485,7 @@ export function ClassroomAttendanceHistory({
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
               <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => void navigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} /></button></div></DataTableCell>
+              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => contextualNavigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} photoUrl={row.photoUrl} /></button></div></DataTableCell>
               <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
               <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
               <DataTableCell><AttendanceStatusPills catalog={attendanceStatusCatalog} status={summaryStatus(row)} /></DataTableCell>
@@ -545,7 +545,7 @@ export function ClassroomAttendanceHistory({
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
               <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => void navigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} /></button></div></DataTableCell>
+              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => contextualNavigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} photoUrl={row.photoUrl} /></button></div></DataTableCell>
               <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
               <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
               <DataTableCell>{row.presentCount}</DataTableCell>

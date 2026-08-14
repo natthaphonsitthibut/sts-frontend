@@ -17,10 +17,12 @@ import type { ClassroomRosterStudent } from "../types/school-structure.types";
 interface ClassroomStudentCommentDialogProps {
   classroomId: number;
   /** Only the identity fields are rendered, so link rosters fit as well. */
-  student: Pick<
-    ClassroomRosterStudent,
-    "studentUuid" | "firstName" | "lastName" | "studentNumber"
-  > | null;
+  student:
+    | (Pick<
+        ClassroomRosterStudent,
+        "studentUuid" | "firstName" | "lastName" | "studentNumber"
+      > & { photoUrl?: string | null })
+    | null;
   onOpenChange: (open: boolean) => void;
   /**
    * Replaces the authenticated write. Teacher links post through their own
@@ -83,7 +85,7 @@ export function ClassroomStudentCommentDialog({
         </DialogHeader>
 
         <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">
-          <StudentAvatar name={fullName} />
+          <StudentAvatar name={fullName} photoUrl={student.photoUrl} />
           <div className="min-w-0">
             <p className="truncate font-semibold text-slate-900">{fullName}</p>
             <p className="mt-0.5 text-sm text-slate-600">

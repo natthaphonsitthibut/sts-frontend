@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
-import { Award, ClipboardList, GraduationCap, MapPin, PhoneCall, UserRound } from "lucide-react";
+import { Award, ClipboardList, GraduationCap, MapPin, PhoneCall } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -9,6 +9,7 @@ import {
   Badge,
   Card,
   IconButton,
+  PersonIcon,
 } from "../../../components/base";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
@@ -228,8 +229,8 @@ export function StudentProfileHeader({
             <AlertDescription>{directError}</AlertDescription>
           </Alert>
         ) : null}
-        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
-          <UserRound className="size-4 text-primary" aria-hidden="true" />
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+          <PersonIcon className="size-5 text-ink" aria-hidden="true" />
           ข้อมูลนักเรียน
         </h2>
         <div className="mt-4 flex flex-col items-center gap-5 sm:mt-5 sm:gap-6 md:flex-row md:items-start">
@@ -298,6 +299,7 @@ export function StudentProfileHeader({
               <div className="flex shrink-0 items-center gap-2 text-sm">
                 <span className="font-medium text-slate-600">สถานะความเสี่ยง:</span>
                 <Badge
+                  className={riskPresentation.outlineClassName}
                   data-student-risk-tier={student.risk_tier ?? "NORMAL"}
                   variant={riskPresentation.badge}
                 >
@@ -317,7 +319,7 @@ export function StudentProfileHeader({
               <MetricCard
                 icon={Award}
                 iconClassName="text-primary"
-                iconSurfaceClassName="bg-primary-soft"
+                iconSurfaceClassName="bg-brand-soft"
                 label="เกรดเฉลี่ยเทอมนี้"
                 value={formatMetric(termGpa)}
               />

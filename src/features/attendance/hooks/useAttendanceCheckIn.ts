@@ -5,7 +5,10 @@ import type { GradeLevelOption } from "../../tasks/api/attendance-lookup.service
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../api/attendance.service";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
-import { countAttendanceStatuses, getTodayIso } from "../lib/attendance-presentation";
+import {
+  countAttendanceStatuses,
+  getTodayIso,
+} from "../lib/attendance-presentation";
 import { useSchoolAreaFilter } from "./useSchoolAreaFilter";
 import type {
   AttendanceSaveRecord,
@@ -71,14 +74,18 @@ export function useAttendanceCheckInForSession({
   // ones from user input. No effects, no stored-then-synced state.
   const lockedGradeLabel = useMemo(
     () =>
-      gradeLevels.find((level) => level.id === scope.lockedGradeLevelId)?.label ??
-      "",
+      gradeLevels.find((level) => level.id === scope.lockedGradeLevelId)
+        ?.label ?? "",
     [gradeLevels, scope.lockedGradeLevelId],
   );
 
+  const onlyScopedSchoolId =
+    schoolArea.filteredSchools.length === 1
+      ? String(schoolArea.filteredSchools[0].id)
+      : "";
   const schoolId = scope.isSchoolLocked
     ? String(scope.lockedSchoolId ?? "")
-    : schoolInput;
+    : schoolInput || onlyScopedSchoolId;
   const grade = scope.isGradeLocked ? lockedGradeLabel : gradeInput;
 
   const roomsQuery = useQuery({
@@ -90,7 +97,7 @@ export function useAttendanceCheckInForSession({
 
   // Drop a room that the current grade/school no longer offers (derived, not stored).
   const room = scope.isRoomLocked
-    ? scope.lockedRoom ?? ""
+    ? (scope.lockedRoom ?? "")
     : rooms.includes(roomInput)
       ? roomInput
       : "";
@@ -106,7 +113,14 @@ export function useAttendanceCheckInForSession({
   const sessionKind = timetableSlotId ? "SUBJECT" : "DAILY";
   const sessionKey = timetableSlotId ?? "daily";
   const sessionQuery = useQuery({
-    queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
+    queryKey: [
+      "attendance-session",
+      schoolId,
+      grade,
+      room,
+      attendanceDate,
+      sessionKey,
+    ],
     queryFn: () =>
       attendanceService.getSessionContext({
         schoolId,
@@ -118,7 +132,13 @@ export function useAttendanceCheckInForSession({
     enabled: canLoadRoster,
   });
   const existingAttendanceQuery = useQuery({
-    queryKey: ["attendance-checkin-history", attendanceDate, schoolId, sessionKind, sessionKey],
+    queryKey: [
+      "attendance-checkin-history",
+      attendanceDate,
+      schoolId,
+      sessionKind,
+      sessionKey,
+    ],
     queryFn: () =>
       attendanceService.getHistory(attendanceDate, schoolId, {
         sessionKind,
@@ -129,13 +149,23 @@ export function useAttendanceCheckInForSession({
 
   const saveMutation = useMutation({
     mutationFn: (records: AttendanceSaveRecord[]) =>
-      attendanceService.saveAttendance(records, { timetableSlotId, date: attendanceDate }),
+      attendanceService.saveAttendance(records, {
+        timetableSlotId,
+        date: attendanceDate,
+      }),
     onSuccess: async () => {
       setSelections({});
       setPreviousSelections(null);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
+          queryKey: [
+            "attendance-session",
+            schoolId,
+            grade,
+            room,
+            attendanceDate,
+            sessionKey,
+          ],
         }),
         queryClient.invalidateQueries({
           queryKey: [
@@ -159,7 +189,14 @@ export function useAttendanceCheckInForSession({
       setSelections({});
       setPreviousSelections(null);
       await queryClient.invalidateQueries({
-        queryKey: ["attendance-session", schoolId, grade, room, attendanceDate, sessionKey],
+        queryKey: [
+          "attendance-session",
+          schoolId,
+          grade,
+          room,
+          attendanceDate,
+          sessionKey,
+        ],
       });
     },
   });
@@ -184,12 +221,17 @@ export function useAttendanceCheckInForSession({
   const counts = useMemo(
     () =>
       countAttendanceStatuses(
-        students.map((student) => effectiveSelections[student.id] ?? DEFAULT_STATUS),
+        students.map(
+          (student) => effectiveSelections[student.id] ?? DEFAULT_STATUS,
+        ),
       ),
     [students, effectiveSelections],
   );
 
-  function setStatus(studentId: string, status: AttendanceSelectionStatus): void {
+  function setStatus(
+    studentId: string,
+    status: AttendanceSelectionStatus,
+  ): void {
     if (!canEditAttendance) return;
     setPreviousSelections(effectiveSelections);
     setSelections((current) => ({ ...current, [studentId]: status }));
@@ -202,10 +244,13 @@ export function useAttendanceCheckInForSession({
 
     setPreviousSelections(effectiveSelections);
     setSelections(
-      students.reduce<Record<string, AttendanceSelectionStatus>>((next, student) => {
-        next[student.id] = status;
-        return next;
-      }, {}),
+      students.reduce<Record<string, AttendanceSelectionStatus>>(
+        (next, student) => {
+          next[student.id] = status;
+          return next;
+        },
+        {},
+      ),
     );
   }
 
@@ -287,8 +332,15 @@ export function useAttendanceCheckInForSession({
 /** History view (past check-ins for a chosen date, scoped to one school). */
 export function useAttendanceHistory(date: string, schoolId?: string) {
   const historyQuery = useQuery({
-    queryKey: ["attendance-checkin-history", date, schoolId ?? "", "DAILY", "daily"],
-    queryFn: () => attendanceService.getHistory(date, schoolId, { sessionKind: "DAILY" }),
+    queryKey: [
+      "attendance-checkin-history",
+      date,
+      schoolId ?? "",
+      "DAILY",
+      "daily",
+    ],
+    queryFn: () =>
+      attendanceService.getHistory(date, schoolId, { sessionKind: "DAILY" }),
     // Server requires a school to avoid a nationwide day dump — don't fetch
     // until one is selected.
     enabled: Boolean(schoolId),

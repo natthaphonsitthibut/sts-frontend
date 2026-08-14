@@ -1,12 +1,17 @@
 import type { ReactNode } from "react";
-import { ShieldCheck } from "lucide-react";
-import { Card, CardContent } from "../../../components/base";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { Card, CardContent, IconButton } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
+import { cn } from "../../../lib/utils";
 
 interface MagicAuthCardProps {
   title: string;
   subtitle?: string;
+  showProfile?: boolean;
+  backLabel?: string;
+  onBack?: () => void;
   children: ReactNode;
+  cardContentClassName?: string;
 }
 
 /**
@@ -18,12 +23,27 @@ interface MagicAuthCardProps {
 export function MagicAuthCard({
   title,
   subtitle,
+  showProfile = true,
+  backLabel = "ย้อนกลับ",
+  onBack,
   children,
+  cardContentClassName,
 }: MagicAuthCardProps) {
   return (
-    <GuestPageShell centered contentClassName="max-w-[460px]">
+    <GuestPageShell centered contentClassName="max-w-[460px]" showProfile={showProfile}>
       <Card className="rounded-lg">
-        <CardContent className="p-6">
+        <CardContent className={cn("relative p-6", cardContentClassName)}>
+          {onBack ? (
+            <IconButton
+              aria-label={backLabel}
+              className="absolute left-4 top-4"
+              icon={ArrowLeft}
+              onClick={onBack}
+              size="md"
+              title={backLabel}
+              variant="outline"
+            />
+          ) : null}
           <div className="mb-5 text-center">
             <ShieldCheck
               className="mx-auto mb-3 size-10 text-primary"

@@ -1,18 +1,12 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  ClipboardCheck,
-  Eye,
-  FileText,
-  History,
-  Plus,
-  Siren,
-  UserRound,
-} from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card } from "../../../components/base";
+import { ArrowLeft, FileText, MapPin, PhoneCall } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Card, Dialog, DialogContent, DialogHeader, DialogTitle, PersonIcon } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
+import {
+  getNavigationLabel,
+  useSafeBackTarget,
+} from "../../../components/layout/navigation-context";
 import {
   EmptyState,
   ErrorState,
@@ -20,40 +14,32 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
-import { usePermissions } from "../../auth/hooks/usePermissions";
-import { CaseFollowUpRoundDetails } from "../components/CaseFollowUpRoundDetails";
-import { CaseStatusBadge } from "../components/CaseStatusBadge";
+import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import { formatRoomLabel } from "../../../lib/room-presentation";
+import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
+import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
 import { useCaseDetail } from "../hooks/useCaseDetail";
-import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
-
-function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div className="rounded-lg bg-slate-50 px-4 py-3">
-      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-bold text-slate-800">{value || "-"}</dd>
-    </div>
-  );
-}
+import type { CaseReviewAction } from "../types/cases.types";
+import { VisitMapPreview } from "../../tasks/components/VisitMapPreview";
 
 export function CaseDetailPage() {
-  const { can } = usePermissions();
-  const navigate = useNavigate();
+  const safeBackTarget = useSafeBackTarget();
   const { caseId: caseIdParam } = useParams<{ caseId: string }>();
   const caseId = Number(caseIdParam);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewAction, setReviewAction] = useState<CaseReviewAction | null>(null);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const detailQuery = useCaseDetail(Number.isInteger(caseId) && caseId > 0 ? caseId : undefined);
-  const trackingOptionsQuery = useCaseTrackingOptions();
   const caseRecord = detailQuery.data?.data;
+  const returnTo =
+    typeof safeBackTarget === "string" && safeBackTarget !== "/"
+      ? safeBackTarget
+      : "/student-risk-report/risk";
+  const returnLabel = getNavigationLabel(returnTo);
 
   if (detailQuery.isLoading) {
-    return (
-      <PageShell>
-        <Card className="p-5"><SkeletonStack lines={5} /></Card>
-      </PageShell>
-    );
+    return <PageShell><Card className="p-5"><SkeletonStack lines={5} /></Card></PageShell>;
   }
 
   if (detailQuery.isError) {
@@ -73,229 +59,120 @@ export function CaseDetailPage() {
       <PageShell>
         <EmptyState
           action={<NavButton to={-1} variant="outline">ย้อนกลับ</NavButton>}
+          description="เคสนี้อาจอยู่นอกขอบเขตข้อมูลของคุณหรือถูกนำออกแล้ว"
           icon={FileText}
           title="ไม่พบเคส"
-          description="เคสนี้อาจอยู่นอกขอบเขตข้อมูลของคุณหรือถูกนำออกแล้ว"
         />
       </PageShell>
     );
   }
 
-  const followUpRounds = caseRecord.follow_up_rounds ?? [];
-  const riskSignals = caseRecord.risk_signals ?? [];
-  const latestRound = followUpRounds.at(-1);
-  const canCreateRound =
-    can("create") &&
-    (caseRecord.status === "OPEN" ||
-      (caseRecord.status === "IN_PROGRESS" && latestRound?.task_status === "COMPLETED"));
-  const visitPrefill = {
-    existing_case_id: String(caseRecord.id),
-    student_id: caseRecord.student_id ?? null,
-    student_name: caseRecord.student_name,
-    student_school: caseRecord.student_school ?? null,
-    student_address: caseRecord.student_address ?? null,
-    reason_flagged: caseRecord.reason_flagged ?? null,
-  };
-  const optionLabel = (code: string | null | undefined): string | null => {
-    if (!code) return null;
-    const options = trackingOptionsQuery.data;
-    return (
-      options?.followUpDecisions.find((option) => option.code === code)?.label ??
-      options?.reviewActions.find((option) => option.code === code)?.label ??
-      options?.resolutionOutcomes.find((option) => option.code === code)?.label ??
-      code
-    );
-  };
-  const createFollowUpRound = () =>
-    void navigate("/create/visit", { state: { prefill: visitPrefill } });
-  const handleReviewed = () => {
-    void detailQuery.refetch();
-  };
+  const historyItems = (caseRecord.follow_up_rounds ?? [])
+    .filter((round) => round.submitted_at)
+    .map((round) => ({
+      id: round.task_id,
+      assignee: round.initial_assignee || "-",
+      note: round.assignment_note || "-",
+      at: round.submitted_at!,
+    }))
+    .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime());
 
   return (
     <PageShell>
       <PageToolbar
-        description="อ่านรายงานการติดตามและประวัติให้ครบก่อนพิจารณาเคส"
-        footerActions={
-          caseRecord.student_id ? (
-            <NavButton icon={UserRound} to={`/students/${caseRecord.student_id}`} variant="outline">
-              ข้อมูลนักเรียน
-            </NavButton>
-          ) : null
-        }
+        breadcrumbTrail={[
+          { label: "หน้าหลัก", to: "/" },
+          { label: returnLabel, to: returnTo },
+        ]}
         icon={FileText}
-        navigation={
-          <NavButton icon={ArrowLeft} to={-1} variant="outline">
-            ย้อนกลับ
+        navigation={<NavButton className="w-36" icon={ArrowLeft} to={returnTo} variant="outline">ย้อนกลับ</NavButton>}
+        actions={caseRecord.student_id ? (
+          <NavButton
+            className="w-36"
+            contextual
+            icon={PersonIcon}
+            to={`/students/${caseRecord.student_id}`}
+          >
+            ข้อมูลนักเรียน
           </NavButton>
-        }
-        title="รายละเอียดเคสติดตามนักเรียน"
+        ) : null}
+        title="ติดตามนักเรียน"
       />
 
-      <Card className="mb-5 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-lg font-bold text-slate-900">{caseRecord.student_name}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {caseRecord.student_school || "ไม่ระบุโรงเรียน"}
-            </p>
-          </div>
-          <CaseStatusBadge
-            badgeVariant={caseRecord.status_badge_variant}
-            label={caseRecord.display_status_label ?? caseRecord.status_label}
-            status={caseRecord.status}
+      <StudentTrackingCard
+        avatar={
+          <StudentAvatar
+            className="size-28 shrink-0 text-3xl"
+            name={caseRecord.student_name}
+            photoUrl={caseRecord.student_photo_url}
           />
-        </div>
+        }
+        historyItems={historyItems.map((item) => ({
+          ...item,
+          reason: caseRecord.reason_flagged || "-",
+        }))}
+        name={caseRecord.student_name}
+        noteLabel="เหตุผลที่เปิดเคส"
+        noteValue={caseRecord.reason_flagged || ""}
+        onOpenContacts={() => setContactsOpen(true)}
+        onOpenLocation={() => setMapOpen(true)}
+        schoolLine={`${caseRecord.student_school || "ไม่ระบุโรงเรียน"}${
+          caseRecord.grade || caseRecord.room
+            ? ` · ${[caseRecord.grade, caseRecord.room ? formatRoomLabel(caseRecord.room) : null].filter(Boolean).join(" ")}`
+            : ""
+        }`}
+      />
 
-        <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailItem label="ชั้น" value={caseRecord.grade} />
-          <DetailItem label="ห้อง" value={caseRecord.room ? `ห้อง ${caseRecord.room}` : null} />
-          <DetailItem label="วันที่เปิดเคส" value={formatThaiDate(caseRecord.created_at)} />
-          <DetailItem label="รหัสเคส" value={String(caseRecord.id)} />
-        </dl>
-      </Card>
+      <CaseTrackingTimeline
+        caseRecord={caseRecord}
+        onAssigned={() => void detailQuery.refetch()}
+        onReview={(action) => setReviewAction(action)}
+      />
 
-      <Card className="mb-5 p-5">
-        <h2 className="text-base font-bold text-slate-800">เหตุผลที่เริ่มติดตามเคส</h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-          {caseRecord.reason_flagged || "ไม่ระบุเหตุผล"}
-        </p>
-      </Card>
-
-      {riskSignals.length > 0 ? (
-        <section className="mb-5" aria-labelledby="risk-signal-history-title">
-          <div className="mb-3">
-            <h2
-              className="flex items-center gap-2 text-base font-bold text-slate-900"
-              id="risk-signal-history-title"
+      <Dialog onOpenChange={setContactsOpen} open={contactsOpen}>
+        <DialogContent className="max-w-lg" onClose={() => setContactsOpen(false)}>
+          <DialogHeader>
+            <DialogTitle icon={PhoneCall}>ช่องทางติดต่อนักเรียน</DialogTitle>
+          </DialogHeader>
+          {caseRecord.student_phone ? (
+            <a
+              className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-primary"
+              href={`tel:${caseRecord.student_phone.replace(/[^\d+]/g, "")}`}
             >
-              <Siren className="size-5 text-danger-700" />
-              สัญญาณความเสี่ยงเพิ่มเติมจากระบบ
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              ข้อมูลที่ระบบตรวจพบหลังเริ่มติดตาม ไม่ใช่ผลการพิจารณาของผู้ใช้
+              {caseRecord.student_phone}
+              <PhoneCall className="size-4" aria-hidden="true" />
+            </a>
+          ) : (
+            <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+              ยังไม่มีเบอร์ติดต่อในข้อมูลนักเรียน
             </p>
-          </div>
-          <Card className="divide-y divide-slate-200 px-5">
-            {riskSignals.map((signal) => (
-              <div className="py-4 first:pt-5 last:pb-5" key={signal.id}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-danger-700">
-                    ระบบเฝ้าระวังความเสี่ยงรายวิชา
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {formatThaiDateTime(signal.detected_at)}
-                  </span>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {signal.reason}
-                </p>
-              </div>
-            ))}
-          </Card>
-        </section>
-      ) : null}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      <section className="mb-5" aria-labelledby="follow-up-history-title">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-base font-bold text-slate-900" id="follow-up-history-title">
-              <History className="size-5 text-primary" />
-              รายงานการติดตาม
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">เรียงตามรอบติดตามตั้งแต่รอบแรก</p>
-          </div>
-          {canCreateRound ? (
-            <Button icon={Plus} onClick={createFollowUpRound} variant="outline">
-              สร้างรอบติดตาม
-            </Button>
-          ) : null}
-        </div>
-
-        {followUpRounds.length === 0 ? (
-          <Card className="p-5 text-sm text-slate-500">ยังไม่มีรายงานการติดตาม</Card>
-        ) : (
-          <div className="space-y-4">
-            {followUpRounds.map((round, index) => (
-              <Card className="p-5" key={round.task_id}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-bold text-slate-900">รอบติดตามที่ {index + 1}</h3>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="size-3.5" />
-                        {formatThaiDateTime(round.submitted_at || round.created_at)}
-                      </span>
-                      <span>ผู้รับผิดชอบ: {round.initial_assignee || "-"}</span>
-                    </div>
-                  </div>
-                  <NavButton icon={Eye} to={`/tasks/${round.task_id}`} variant="outline">
-                    ดูภารกิจ
-                  </NavButton>
-                </div>
-
-                <CaseFollowUpRoundDetails optionLabel={optionLabel} round={round} />
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {(caseRecord.reviews ?? []).length > 0 ? (
-        <Card className="mb-5 p-5">
-          <h2 className="text-base font-bold text-slate-900">ประวัติการพิจารณา</h2>
-          <div className="mt-4 divide-y divide-slate-200">
-            {(caseRecord.reviews ?? []).map((review) => (
-              <div className="py-3 first:pt-0 last:pb-0" key={review.id}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <span className="font-semibold text-slate-800">
-                    {optionLabel(review.review_action)}
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-3">
-                    <span className="text-xs text-slate-500">
-                      {formatThaiDateTime(review.reviewed_at)}
-                    </span>
-                    <DetailLinkButton
-                      to={`/cases/${caseRecord.id}/reviews/${review.id}`}
-                    />
-                  </div>
-                </div>
-                <p className="mt-2 text-xs font-semibold text-slate-500">
-                  {review.review_action === "CONTINUE"
-                    ? "เหตุผลที่ติดตามต่อ"
-                    : "เหตุผลที่ปิดเคส"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {review.review_note || review.review_summary || "ไม่มีบันทึกเพิ่มเติม"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">โดย {review.reviewed_by || "-"}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) : null}
-
-      {caseRecord.status === "PENDING_REVIEW" && can("review-cases") ? (
-        <Card className="border-primary/20 bg-slate-50 p-5">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="font-bold text-slate-900">พิจารณาผลการติดตาม</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                หลังตรวจรายงานแล้ว เลือกติดตามต่อหรือปิดเคส
-              </p>
-            </div>
-            <Button icon={ClipboardCheck} onClick={() => setReviewOpen(true)}>
-              พิจารณาผล
-            </Button>
-          </div>
-        </Card>
-      ) : null}
+      <Dialog onOpenChange={setMapOpen} open={mapOpen}>
+        <DialogContent className="max-w-5xl" onClose={() => setMapOpen(false)}>
+          <DialogHeader>
+            <DialogTitle icon={MapPin}>พิกัดบ้านนักเรียน</DialogTitle>
+          </DialogHeader>
+          <VisitMapPreview
+            address={caseRecord.student_address}
+            className="border-0 p-0"
+            lat={caseRecord.student_lat}
+            lng={caseRecord.student_lng}
+            mapClassName="min-h-[60vh]"
+            markerLabel={caseRecord.student_name}
+            title={caseRecord.student_name}
+          />
+        </DialogContent>
+      </Dialog>
 
       <CaseStatusUpdateDialog
         caseRecord={caseRecord}
-        onOpenChange={setReviewOpen}
-        onUpdated={handleReviewed}
-        open={reviewOpen}
+        onOpenChange={(open) => { if (!open) setReviewAction(null); }}
+        onUpdated={() => void detailQuery.refetch()}
+        open={reviewAction !== null}
+        presetAction={reviewAction}
       />
     </PageShell>
   );

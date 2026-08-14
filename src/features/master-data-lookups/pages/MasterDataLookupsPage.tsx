@@ -234,7 +234,7 @@ export function MasterDataLookupsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           <DataTable
-            headings={["ประเภท", "รหัส", "ชื่อ", "รายละเอียด", "สถานะ", ""]}
+            headings={["ประเภท", "รหัส", "ชื่อ", "รายละเอียด", "สถานะ", "เครื่องมือ"]}
             minWidthClassName="min-w-[900px]"
           >
             {rows.map((row) => (

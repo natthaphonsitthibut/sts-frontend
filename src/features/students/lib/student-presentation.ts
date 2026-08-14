@@ -7,9 +7,8 @@ export function formatStudentRoom(room: string | null | undefined): string {
 }
 
 /**
- * Single source of truth for `student_risk_profiles.risk_tier` labels — the
- * field-monitor map (pin labels) and the risk-child picker (status filter)
- * both read from here instead of keeping their own copies.
+ * Single source of truth for `student_risk_profiles.risk_tier` labels, so
+ * every consumer of this tier reads from here instead of keeping its own copy.
  */
 export const RISK_TIER_LABELS: Record<string, string> = {
   HIGH: "เสี่ยง",

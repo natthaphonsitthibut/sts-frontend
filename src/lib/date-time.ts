@@ -15,6 +15,14 @@ const thaiTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   timeZone: THAI_TIME_ZONE,
 });
 
+const thaiTimeWithSecondsFormatter = new Intl.DateTimeFormat("th-TH", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+  timeZone: THAI_TIME_ZONE,
+});
+
 const thaiDateKeyFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   month: "2-digit",
@@ -36,6 +44,13 @@ export function formatThaiDateTime(value?: string | Date | null): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return `${thaiDateFormatter.format(date)} ${thaiTimeFormatter.format(date)}`;
+}
+
+export function formatThaiTimeWithSeconds(value?: string | Date | null): string {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${thaiTimeWithSecondsFormatter.format(date)} น.`;
 }
 
 export function formatThaiDate(value?: string | Date | null): string {

@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
-import type { ReactNode } from "react";
-import { IconButton, SchoolIcon } from "../base";
+import type { MouseEventHandler, ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { IconButton, StsLogo } from "../base";
 import type { MenuItem } from "../../features/auth/lib/permissions";
 import { cn } from "../../lib/utils";
 import { collectMenuRoutes } from "./menu-routes";
@@ -64,12 +65,28 @@ export function AppNavigationControls({ onMobileMenuClick }: { onMobileMenuClick
   );
 }
 
-export function AppBrand() {
+export function AppBrand({
+  className,
+  label = "ระบบติดตามนักเรียน",
+  onClick,
+}: {
+  className?: string;
+  label?: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+}) {
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
-      <SchoolIcon aria-hidden="true" className="size-7 shrink-0 text-primary" />
-      <span className="truncate text-xl font-bold text-primary">ระบบติดตามนักเรียน</span>
-    </div>
+    <Link
+      aria-label="กลับหน้าหลัก"
+      className={cn(
+        "flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        className,
+      )}
+      onClick={onClick}
+      to="/"
+    >
+      <StsLogo aria-hidden="true" className="size-9 shrink-0" />
+      <span className="truncate text-xl font-bold text-primary">{label}</span>
+    </Link>
   );
 }
 
@@ -87,21 +104,11 @@ export function SidebarMenuContent({
     <div className="flex h-full flex-col bg-white">
       <nav
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-2",
-          "transition-[padding] duration-200 ease-out motion-reduce:transition-none",
-          collapsed ? "pt-2 pb-4" : "py-4",
+          "min-h-0 flex-1 overflow-y-auto px-2 py-4",
+          "transition-[padding] duration-300 ease-out motion-reduce:transition-none",
         )}
       >
-        <div
-          className={cn(
-            "truncate overflow-hidden px-3 text-xs font-semibold text-slate-500",
-            "transition-[opacity,max-width,max-height,margin] duration-200 ease-out motion-reduce:transition-none",
-            collapsed ? "max-h-0 max-w-0 opacity-0" : "mb-2 max-h-9 max-w-48 opacity-100",
-          )}
-        >
-          เมนู
-        </div>
-        <div className={cn("space-y-0.5", collapsed && "space-y-2")}>
+        <div className="space-y-0.5">
           {items.map((item) => (
             <SidebarNavItem
               collapsed={collapsed}

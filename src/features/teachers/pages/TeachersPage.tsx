@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import {
   EmptyState,
   ErrorState,
@@ -26,7 +27,7 @@ import type { Teacher, TeacherListQuery } from "../types/teachers.types";
 const TEACHERS_ICON = PAGE_IDENTITIES["/manage-teachers"].icon;
 
 export function TeachersPage() {
-  const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const deactivateTeacher = useDeactivateTeacher();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const schoolsQuery = useScopedSchools();
@@ -85,7 +86,7 @@ export function TeachersPage() {
   }
 
   function openEdit(teacher: Teacher): void {
-    void navigate(`/manage-teachers/${teacher.id}/edit`);
+    contextualNavigate(`/manage-teachers/${teacher.id}/edit`);
   }
 
   async function handleDeactivate(teacher: Teacher): Promise<void> {
@@ -103,6 +104,7 @@ export function TeachersPage() {
       <PageToolbar
         actions={
           <NavButton
+            contextual
             disabled={!selectedSchoolId}
             icon={Plus}
             to={`/manage-teachers/new${

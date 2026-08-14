@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Bell, BellRing } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Skeleton } from "../../../components/base";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useDismissable } from "../../../hooks/useDismissable";
 import { cn } from "../../../lib/utils";
 import {
@@ -19,6 +20,7 @@ export function NotificationBell() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
 
   const { data, isLoading, isError } = useNotifications({ unreadOnly });
   const markAllSeen = useMarkAllSeen();
@@ -49,7 +51,7 @@ export function NotificationBell() {
     setOpen(false);
     const route = getNotificationRoute(notification);
     if (route) {
-      void navigate(route);
+      contextualNavigate(route);
     }
   }
 

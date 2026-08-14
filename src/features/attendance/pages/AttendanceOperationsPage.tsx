@@ -1356,7 +1356,7 @@ export function AttendanceOperationsPage() {
                   { label: "บันทึกแล้ว", sortKey: "recorded" },
                   { label: "รอบบันทึก", sortKey: "revision" },
                   { label: "หมายเหตุ / แนวทางแก้" },
-                  { label: "" },
+                  { label: "เครื่องมือ" },
                 ]}
                 minWidthClassName="min-w-[1080px]"
                 onSortChange={setAnomalySort}
@@ -1384,16 +1384,16 @@ export function AttendanceOperationsPage() {
                       </DataTableCell>
                       <DataTableCell>
                         <div className="flex flex-nowrap items-center gap-2">
-                          {canManageCalendar ? (
-                            <Button
-                              icon={CalendarDays}
-                              onClick={() => setCalendarDialogRow(row)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              แก้ปฏิทิน
-                            </Button>
-                          ) : null}
+                          <Button
+                            disabled={!canManageCalendar}
+                            icon={CalendarDays}
+                            onClick={() => setCalendarDialogRow(row)}
+                            size="sm"
+                            title={!canManageCalendar ? "ไม่มีสิทธิ์จัดการปฏิทิน" : undefined}
+                            variant="outline"
+                          >
+                            แก้ปฏิทิน
+                          </Button>
                           <Button
                             icon={CheckCircle2}
                             onClick={() => setSessionDialogRow(row)}
@@ -1436,16 +1436,16 @@ export function AttendanceOperationsPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {canManageCalendar ? (
-                            <Button
-                              icon={CalendarDays}
-                              onClick={() => setCalendarDialogRow(row)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              แก้ปฏิทิน
-                            </Button>
-                          ) : null}
+                          <Button
+                            disabled={!canManageCalendar}
+                            icon={CalendarDays}
+                            onClick={() => setCalendarDialogRow(row)}
+                            size="sm"
+                            title={!canManageCalendar ? "ไม่มีสิทธิ์จัดการปฏิทิน" : undefined}
+                            variant="outline"
+                          >
+                            แก้ปฏิทิน
+                          </Button>
                           <Button
                             icon={CheckCircle2}
                             onClick={() => setSessionDialogRow(row)}

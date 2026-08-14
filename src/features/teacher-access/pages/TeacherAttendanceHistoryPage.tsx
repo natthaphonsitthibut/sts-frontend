@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarCheck, Download, FileSpreadsheet, UserRoundCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarCheck,
+  Download,
+  FileSpreadsheet,
+  UserRoundCheck,
+} from "lucide-react";
 import { Button, DatePicker, Skeleton, Tabs } from "../../../components/base";
 import {
   DataTable,
@@ -16,8 +22,10 @@ import {
 } from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { NavButton } from "../../../components/layout/nav-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRouteTab } from "../../../hooks/useRouteTab";
 import { ClassroomTableExportDialog } from "../../school-structure/components/ClassroomTableExportDialog";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import {
@@ -28,8 +36,6 @@ import { useTeacherLink } from "../hooks/useTeacherLink";
 import { assignmentClassLabel } from "../lib/teacher-link-presentation";
 import type { TeacherAttendanceHistoryEntry } from "../types/teacher-access.types";
 import { teacherAccessService } from "../api/teacher-access.service";
-
-type HistoryTab = "attendance" | "imports" | "delegations";
 
 const HISTORY_COLUMNS = [
   { key: "order", label: "ลำดับ" },
@@ -55,7 +61,14 @@ function formatNumericThaiDate(value: string): string {
 export function TeacherAttendanceHistoryPage() {
   const { assignmentId = "" } = useParams();
   const { credential, context } = useTeacherLink();
-  const [tab, setTab] = useState<HistoryTab>("attendance");
+  const [tab, setTab] = useRouteTab(
+    {
+      attendance: `/teacher-access/classes/${assignmentId}/history/attendance`,
+      imports: `/teacher-access/classes/${assignmentId}/history/imports`,
+      delegations: `/teacher-access/classes/${assignmentId}/history/delegations`,
+    },
+    "attendance",
+  );
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
@@ -68,7 +81,9 @@ export function TeacherAttendanceHistoryPage() {
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const recordExport = useRecordTeacherClassroomExport();
 
-  const assignment = context.assignments.find((item) => item.id === assignmentId);
+  const assignment = context.assignments.find(
+    (item) => item.id === assignmentId,
+  );
   const classroomLabel = assignment ? assignmentClassLabel(assignment) : "";
   const historyQuery = useTeacherAttendanceHistory(
     credential,
@@ -89,19 +104,33 @@ export function TeacherAttendanceHistoryPage() {
       sortOrder: sort?.direction,
     },
   );
-  const entries: TeacherAttendanceHistoryEntry[] = historyQuery.data?.data ?? [];
+  const entries: TeacherAttendanceHistoryEntry[] =
+    historyQuery.data?.data ?? [];
 
   return (
     <TeacherLinkShell
       breadcrumb={[
-        { label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" },
+        {
+          label: "ห้องเรียนของฉัน",
+          icon: PAGE_ICONS["school-building"],
+          to: "/teacher-access",
+        },
         {
           label: `ห้อง ${classroomLabel}`,
           icon: PAGE_ICONS["school-building"],
-          to: `/teacher-access/classes/${assignmentId}`,
+          to: `/teacher-access/classes/${assignmentId}/roster`,
         },
       ]}
       icon={PAGE_ICONS["calendar-check"]}
+      navigation={
+        <NavButton
+          icon={ArrowLeft}
+          to={`/teacher-access/classes/${assignmentId}/roster`}
+          variant="outline"
+        >
+          ย้อนกลับ
+        </NavButton>
+      }
       title="ประวัติการเช็คชื่อ"
     >
       <div className="mb-6">
@@ -109,7 +138,7 @@ export function TeacherAttendanceHistoryPage() {
           aria-label="ประเภทประวัติ"
           className="flex w-full"
           onChange={(value) => {
-            setTab(value as HistoryTab);
+            setTab(value);
             setPage(1);
           }}
           options={[
@@ -176,7 +205,11 @@ export function TeacherAttendanceHistoryPage() {
         <Skeleton className="h-96 w-full" />
       ) : entries.length === 0 ? (
         <EmptyState
-          description={date || search ? "ลองเปลี่ยนวันที่หรือคำค้นหา" : "เมื่อบันทึกการเช็คชื่อแล้ว รายการจะแสดงที่นี่"}
+          description={
+            date || search
+              ? "ลองเปลี่ยนวันที่หรือคำค้นหา"
+              : "เมื่อบันทึกการเช็คชื่อแล้ว รายการจะแสดงที่นี่"
+          }
           icon={CalendarCheck}
           title="ยังไม่มีประวัติการเช็คชื่อ"
         />
@@ -245,29 +278,33 @@ export function TeacherAttendanceHistoryPage() {
         columns={HISTORY_COLUMNS}
         fileName={`attendance-${classroomLabel.replace("/", "-")}`}
         loadRows={async () => {
-          const allEntries = await teacherAccessService.listCompleteAttendanceHistory(credential, {
-            assignmentId: Number(assignmentId),
-            search: debouncedSearch || undefined,
-            attendanceDate: date || undefined,
-            sortBy: sort?.key as
-              | "date"
-              | "recordedBy"
-              | "present"
-              | "late"
-              | "leave"
-              | "absent"
-              | undefined,
-            sortOrder: sort?.direction,
-          });
+          const allEntries =
+            await teacherAccessService.listCompleteAttendanceHistory(
+              credential,
+              {
+                assignmentId: Number(assignmentId),
+                search: debouncedSearch || undefined,
+                attendanceDate: date || undefined,
+                sortBy: sort?.key as
+                  | "date"
+                  | "recordedBy"
+                  | "present"
+                  | "late"
+                  | "leave"
+                  | "absent"
+                  | undefined,
+                sortOrder: sort?.direction,
+              },
+            );
           return allEntries.map((entry, index) => ({
-              order: String(index + 1),
-              date: formatNumericThaiDate(entry.attendanceDate),
-              recordedBy: entry.recordedBy || "-",
-              present: String(entry.presentCount),
-              late: String(entry.lateCount),
-              leave: String(entry.leaveCount),
-              absent: String(entry.absentCount),
-            }));
+            order: String(index + 1),
+            date: formatNumericThaiDate(entry.attendanceDate),
+            recordedBy: entry.recordedBy || "-",
+            present: String(entry.presentCount),
+            late: String(entry.lateCount),
+            leave: String(entry.leaveCount),
+            absent: String(entry.absentCount),
+          }));
         }}
         onOpenChange={setExportOpen}
         open={exportOpen}

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowLeft, CircleAlert, MessageSquareText, SchoolIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  MessageSquareText,
+  SchoolIcon,
+} from "lucide-react";
 import { Card, IconButton } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
@@ -10,12 +15,14 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { StudentAttendanceCalendar } from "../../students/components/StudentAttendanceCalendar";
 import { StudentProfileHeader } from "../../students/components/StudentProfileHeader";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import {
   useCreateTeacherStudentComment,
+  useTeacherStudentPhoto,
   useTeacherStudentProfile,
 } from "../hooks/useTeacherAccess";
 import { useTeacherLink } from "../hooks/useTeacherLink";
@@ -27,20 +34,39 @@ import { assignmentClassLabel } from "../lib/teacher-link-presentation";
  * from one grant-scoped read instead of the authenticated student APIs, and the
  * PII dialogs (contacts, address) stay closed because a link is not an account.
  */
+
 export function TeacherStudentProfilePage() {
   const { assignmentId = "", studentUuid = "" } = useParams();
   const { context } = useTeacherLink();
-  const assignment = context.assignments.find((item) => item.id === assignmentId);
-  const profileQuery = useTeacherStudentProfile(Number(assignmentId), studentUuid);
+  const assignment = context.assignments.find(
+    (item) => item.id === assignmentId,
+  );
+  const profileQuery = useTeacherStudentProfile(
+    Number(assignmentId),
+    studentUuid,
+  );
+  const profile = profileQuery.data;
+  const photoQuery = useTeacherStudentPhoto(
+    Number(assignmentId) || undefined,
+    studentUuid || undefined,
+    Boolean(profile?.student?.photo_url),
+  );
+  const studentPhotoUrl = useBlobObjectUrl(photoQuery.data);
   const [commentOpen, setCommentOpen] = useState(false);
-  const createComment = useCreateTeacherStudentComment(Number(assignmentId) || 0);
+  const createComment = useCreateTeacherStudentComment(
+    Number(assignmentId) || 0,
+  );
 
   const breadcrumb = [
-    { label: "ห้องเรียนของฉัน", icon: PAGE_ICONS["school-building"], to: "/teacher-access" },
+    {
+      label: "ห้องเรียนของฉัน",
+      icon: PAGE_ICONS["school-building"],
+      to: "/teacher-access",
+    },
     {
       label: `ห้อง ${assignment ? assignmentClassLabel(assignment) : ""}`,
       icon: PAGE_ICONS["school-building"],
-      to: `/teacher-access/classes/${assignmentId}`,
+      to: `/teacher-access/classes/${assignmentId}/roster`,
     },
   ];
   const backAction = (
@@ -89,7 +115,6 @@ export function TeacherStudentProfilePage() {
     );
   }
 
-  const profile = profileQuery.data;
   if (!profile?.student || !profile.summary) {
     return (
       <TeacherLinkShell
@@ -112,18 +137,20 @@ export function TeacherStudentProfilePage() {
     `${profile.student.FirstName_Onec ?? ""} ${profile.student.LastName_Onec ?? ""}`.trim() ||
     "ไม่ระบุชื่อ";
   const studentNumber =
-    typeof profile.student.student_number === "string" ? profile.student.student_number : null;
+    typeof profile.student.student_number === "string"
+      ? profile.student.student_number
+      : null;
 
   return (
     <TeacherLinkShell
-        navigation={backAction}
-        breadcrumb={breadcrumb}
-        icon={PAGE_ICONS["user-graduate"]}
-        title="ข้อมูลนักเรียน"
-      >
+      navigation={backAction}
+      breadcrumb={breadcrumb}
+      icon={PAGE_ICONS["user-graduate"]}
+      title="ข้อมูลนักเรียน"
+    >
       <StudentProfileHeader
         key={studentUuid}
-        student={profile.student}
+        student={{ ...profile.student, photo_url: studentPhotoUrl }}
         studentId={studentUuid}
         summary={profile.summary}
       />
@@ -133,17 +160,18 @@ export function TeacherStudentProfilePage() {
           <Card className="p-5">
             <div className="mb-4 flex items-start justify-between gap-3">
               <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
-                <MessageSquareText aria-hidden="true" className="size-4 text-primary" />
+                <MessageSquareText
+                  aria-hidden="true"
+                  className="size-4 text-primary"
+                />
                 ความคิดเห็นจากคุณครู
               </h2>
               {assignment ? (
                 <IconButton
                   aria-label={`เพิ่มความคิดเห็นของ ${studentFullName}`}
-                  className="border-transparent bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                   icon={MessageSquareText}
-                  iconClassName="text-white"
                   onClick={() => setCommentOpen(true)}
-                  variant="outline"
+                  variant="comment"
                 />
               ) : null}
             </div>
@@ -198,8 +226,13 @@ export function TeacherStudentProfilePage() {
                     key={studentCase.id}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-800">{studentCase.status}</span>
-                      <time className="text-xs text-slate-500" dateTime={studentCase.created_at}>
+                      <span className="font-semibold text-slate-800">
+                        {studentCase.status}
+                      </span>
+                      <time
+                        className="text-xs text-slate-500"
+                        dateTime={studentCase.created_at}
+                      >
                         {formatThaiDateTime(studentCase.created_at)}
                       </time>
                     </div>
@@ -241,7 +274,10 @@ export function TeacherStudentProfilePage() {
             : null
         }
         submitComment={async ({ studentUuid: targetUuid, commentText }) => {
-          await createComment.mutateAsync({ studentUuid: targetUuid, commentText });
+          await createComment.mutateAsync({
+            studentUuid: targetUuid,
+            commentText,
+          });
           await profileQuery.refetch();
         }}
         submitError={createComment.error}

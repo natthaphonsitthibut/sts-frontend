@@ -155,7 +155,7 @@ export function StudentStatusesPage() {
               { label: "หมวด", sortKey: "category" },
               "นโยบาย",
               "ใช้งานอยู่",
-              "",
+              "เครื่องมือ",
             ]}
             minWidthClassName="min-w-[980px]"
             onSortChange={(next) => {
@@ -176,9 +176,17 @@ export function StudentStatusesPage() {
                 <DataTableCell>
                   <div className="flex gap-2">
                     <Button aria-label={`แก้ไข ${status.labelTh}`} icon={Pencil} onClick={() => openEdit(status)} size="sm" variant="outline">แก้ไข</Button>
-                    {status.isEnabled ? (
-                      <Button aria-label={`ปิดใช้งาน ${status.labelTh}`} icon={PowerOff} onClick={() => { void handleDisable(status); }} size="sm" variant="destructive">ปิด</Button>
-                    ) : null}
+                    <Button
+                      aria-label={`ปิดใช้งาน ${status.labelTh}`}
+                      disabled={!status.isEnabled}
+                      icon={PowerOff}
+                      onClick={() => { void handleDisable(status); }}
+                      size="sm"
+                      title={!status.isEnabled ? "สถานะนี้ปิดใช้งานอยู่แล้ว" : undefined}
+                      variant="destructive"
+                    >
+                      ปิด
+                    </Button>
                   </div>
                 </DataTableCell>
               </DataTableRow>
@@ -193,7 +201,17 @@ export function StudentStatusesPage() {
                 </div>
                 <StatusFlags catalog={flagCatalog.items} status={status} />
                 <p className="text-sm text-slate-500">ใช้งานอยู่ {status.usageCount.toLocaleString("th-TH")} รายการ</p>
-                {status.isEnabled ? <Button className="w-full" icon={PowerOff} onClick={() => { void handleDisable(status); }} size="sm" variant="destructive">ปิดใช้งาน</Button> : null}
+                <Button
+                  className="w-full"
+                  disabled={!status.isEnabled}
+                  icon={PowerOff}
+                  onClick={() => { void handleDisable(status); }}
+                  size="sm"
+                  title={!status.isEnabled ? "สถานะนี้ปิดใช้งานอยู่แล้ว" : undefined}
+                  variant="destructive"
+                >
+                  ปิดใช้งาน
+                </Button>
               </TableCard>
             ))}
           </TableCardList>

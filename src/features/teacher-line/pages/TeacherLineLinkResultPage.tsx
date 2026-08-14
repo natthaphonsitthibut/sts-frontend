@@ -6,6 +6,7 @@ import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 type Outcome =
   | "success"
   | "not_friend"
+  | "teacher_already_linked"
   | "already_linked_to_another_teacher"
   | "expired"
   | "failed";
@@ -21,6 +22,11 @@ const OUTCOME_COPY: Record<Outcome, { title: string; description: string }> = {
     description:
       "ยังไม่ได้เพิ่มบัญชีทางการของโรงเรียนเป็นเพื่อน ระบบจึงส่งข้อความหาคุณครูไม่ได้ กดเพิ่มเพื่อนแล้วกลับมาเชื่อมอีกครั้ง",
   },
+  teacher_already_linked: {
+    title: "บัญชีครูเชื่อม LINE แล้ว",
+    description:
+      "ระบบคงการเชื่อมต่อเดิมไว้ หากต้องการเปลี่ยนบัญชี LINE กรุณาให้ผู้ดูแลระบบปลดการเชื่อมต่อก่อน",
+  },
   already_linked_to_another_teacher: {
     title: "บัญชี LINE นี้ถูกใช้ไปแล้ว",
     description:
@@ -32,7 +38,8 @@ const OUTCOME_COPY: Record<Outcome, { title: string; description: string }> = {
   },
   failed: {
     title: "เชื่อมบัญชีไม่สำเร็จ",
-    description: "การเชื่อมบัญชีถูกยกเลิกหรือเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+    description:
+      "การเชื่อมบัญชีถูกยกเลิกหรือเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
   },
 };
 
@@ -49,7 +56,7 @@ export function TeacherLineLinkResultPage() {
   const copy = OUTCOME_COPY[outcome];
 
   return (
-    <MagicAuthCard title={copy.title}>
+    <MagicAuthCard showProfile={false} title={copy.title}>
       <div className="space-y-4">
         {outcome === "success" ? (
           <Alert variant="success">
@@ -59,7 +66,13 @@ export function TeacherLineLinkResultPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <Alert variant={outcome === "not_friend" ? "warning" : "destructive"}>
+          <Alert
+            variant={
+              outcome === "not_friend" || outcome === "teacher_already_linked"
+                ? "warning"
+                : "destructive"
+            }
+          >
             <AlertDescription>{copy.description}</AlertDescription>
           </Alert>
         )}
@@ -76,8 +89,13 @@ export function TeacherLineLinkResultPage() {
           </Button>
         ) : null}
 
-        {outcome === "success" ? null : (
-          <Button fullWidth onClick={() => void navigate("/line-link")} variant="outline">
+        {outcome === "success" ||
+        outcome === "teacher_already_linked" ? null : (
+          <Button
+            fullWidth
+            onClick={() => void navigate("/line-link")}
+            variant="outline"
+          >
             เริ่มใหม่อีกครั้ง
           </Button>
         )}

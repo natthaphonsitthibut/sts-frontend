@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from "react";
 import { File, FileImage, UploadCloud, X } from "lucide-react";
-import { Button, IconButton } from "../../../components/base";
+import { IconButton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 
 const MAX_FILES = 5;
@@ -62,6 +62,8 @@ export function VisitPhotoUpload({
     addFiles(Array.from(event.dataTransfer.files));
   }
 
+  const atFileLimit = files.length >= MAX_FILES;
+
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <input
@@ -78,7 +80,8 @@ export function VisitPhotoUpload({
       <div
         data-visit-upload-dropzone
         className={cn(
-          "flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-primary/50 bg-white px-4 py-6 text-center transition-colors",
+          "flex min-h-52 flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-brand-active px-4 py-8 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          atFileLimit ? "cursor-not-allowed opacity-70" : "cursor-pointer",
           dragging && "border-primary bg-primary-soft",
           dropzoneClassName,
         )}
@@ -89,22 +92,26 @@ export function VisitPhotoUpload({
         onDragLeave={() => setDragging(false)}
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
+        onClick={() => {
+          if (!atFileLimit) inputRef.current?.click();
+        }}
+        onKeyDown={(event) => {
+          if (!atFileLimit && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
+        role="button"
+        aria-disabled={atFileLimit}
+        tabIndex={0}
       >
-        <UploadCloud className="size-10 text-slate-800" aria-hidden="true" />
+        <UploadCloud className="size-16 text-slate-900" aria-hidden="true" />
         <p className="mt-2 text-sm font-semibold text-slate-800">
-          ลากและวางไฟล์ที่นี่ หรือเลือกไฟล์
+          ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์
         </p>
-        <p className="mt-1 text-xs text-slate-600">รองรับรูปภาพ, PDF และ Word สูงสุด 5 ไฟล์ ไฟล์ละไม่เกิน 5MB</p>
-        <Button
-          className="mt-3"
-          disabled={files.length >= MAX_FILES}
-          onClick={() => inputRef.current?.click()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          เลือกไฟล์
-        </Button>
+        <p className="mt-1 text-xs text-slate-600">
+          รองรับ JPG, PNG, GIF, WEBP, PDF, DOC และ DOCX สูงสุด 5MB ต่อไฟล์
+        </p>
       </div>
 
       {error ? (

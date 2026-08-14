@@ -71,6 +71,8 @@ export interface ManagedUser {
   deactivation_note?: string | null;
   created_at?: string | null;
   student_uuid?: string | null;
+  /** Account remains active, but all historical teacher memberships are inactive. */
+  teacher_membership_attention_required?: boolean;
 }
 
 export interface ManagedUserDetail extends ManagedUser {

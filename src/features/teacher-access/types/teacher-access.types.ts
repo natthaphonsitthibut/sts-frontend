@@ -13,7 +13,11 @@ export type TeacherAccessCapability =
   | "HOMEROOM_ATTENDANCE"
   | "SUBJECT_ATTENDANCE"
   | "TEACHER_OBSERVATION";
-export type TeacherAccessGrantStatus = "ACTIVE" | "REVOKED" | "EXPIRED" | "SUSPENDED";
+export type TeacherAccessGrantStatus =
+  | "ACTIVE"
+  | "REVOKED"
+  | "EXPIRED"
+  | "SUSPENDED";
 /** Roster rows also cover teachers who have no link yet. */
 export type TeacherLinkStatus = TeacherAccessGrantStatus | "NOT_CREATED";
 
@@ -67,14 +71,24 @@ export interface TeacherAccessGrant {
 
 /** One teacher row of the จัดการลิงก์เช็คชื่อ screen. */
 /** VERIFIED_NOT_REACHABLE = ยืนยันแล้วแต่ลบ/บล็อก OA จึงส่งข้อความไม่ถึง */
-export type TeacherLineStatus = "NOT_VERIFIED" | "VERIFIED" | "VERIFIED_NOT_REACHABLE";
+export type TeacherLineStatus =
+  | "NOT_VERIFIED"
+  | "VERIFIED"
+  | "VERIFIED_NOT_REACHABLE";
 
 export type TeacherLineFilter = "VERIFIED" | "NOT_VERIFIED" | "REACHABLE";
+export type TeacherLineInvitationStatus =
+  | "NOT_ISSUED"
+  | "ACTIVE"
+  | "CONSUMED"
+  | "EXPIRED"
+  | "REVOKED";
 
 export interface TeacherLinkRosterEntry {
   teacherMembershipId: string;
   teacherId: string;
   teacherDisplayName: string;
+  photoUrl: string | null;
   hasEmail: boolean;
   assignmentCount: number;
   grantId: string | null;
@@ -84,7 +98,28 @@ export interface TeacherLinkRosterEntry {
   expiresAt: string | null;
   lastUsedAt: string | null;
   lineStatus: TeacherLineStatus;
+  lineInvitationId: string | null;
+  lineInvitationStatus: TeacherLineInvitationStatus;
+  lineInvitationExpiresAt: string | null;
 }
+
+export interface TeacherLineInvitationIssueResult {
+  id: string;
+  url: string;
+  expiresAt: string;
+}
+
+export interface TeacherLineGroupInvitationSummary {
+  id: string;
+  schoolId: number;
+  schoolName: string;
+  url: string;
+  startsAt: string;
+  expiresAt: string;
+  status: "PENDING" | "ACTIVE";
+}
+
+export type TeacherLineGroupInvitationIssueResult = TeacherLineGroupInvitationSummary;
 
 export interface TeacherAccessContext {
   grantId: string;
@@ -104,6 +139,7 @@ export interface TeacherAccessRosterStudent {
   studentTermId: string;
   /** School-owned roster number; null until the school imports one. */
   studentNumber: string | null;
+  hasPhoto: boolean;
   firstName: string | null;
   lastName: string | null;
   studentStatusCode: number | null;
@@ -132,6 +168,19 @@ export interface TeacherAccessOtpChallenge {
   maskedEmail: string;
   expiresAt: string;
 }
+
+export interface TeacherAccessAraIdChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+}
+
+export type TeacherAccessAraIdChallengeStatus =
+  | { status: "PENDING"; sessionToken?: never }
+  | { status: "IN_PROGRESS"; expiresAt: string; sessionToken?: never }
+  | { status: "APPROVED"; sessionToken: string };
 
 export interface IssueTeacherAccessGrantInput {
   teacherMembershipId: number;
