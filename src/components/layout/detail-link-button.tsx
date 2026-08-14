@@ -12,6 +12,7 @@ export interface DetailLinkButtonProps
   children?: ReactNode;
   iconOnly?: boolean;
   icon?: LucideIcon;
+  iconClassName?: string;
 }
 
 /**
@@ -23,6 +24,7 @@ export interface DetailLinkButtonProps
 export function DetailLinkButton({
   className,
   icon: Icon = Eye,
+  iconClassName,
   iconOnly = false,
   variant,
   size = "sm",
@@ -43,7 +45,7 @@ export function DetailLinkButton({
       state={contextualState}
       {...props}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className={cn("size-4", iconClassName)} aria-hidden="true" />
       {iconOnly ? null : children}
     </Link>
   );

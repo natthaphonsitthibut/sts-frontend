@@ -1,5 +1,10 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, CircleAlert, History, MessageSquareText } from "lucide-react";
+import { useMemo, useState, type CSSProperties } from "react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  History,
+  MessageSquareText,
+} from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button, Card, IconButton, SchoolIcon } from "../../../components/base";
 import {
@@ -59,67 +64,71 @@ function RiskHistoryPanel({
   const visibleCases = showAll ? sortedCases : sortedCases.slice(0, 3);
 
   return (
-    <Card className="p-5" id="case-history">
-      <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-900">
-        <History className="size-4 text-primary" aria-hidden="true" />
+    <Card className="flex min-h-0 flex-1 flex-col p-5" id="case-history">
+      <h2 className="mb-4 flex shrink-0 items-center gap-2 text-base font-bold text-slate-900">
+        <History className="size-5 text-ink" aria-hidden="true" />
         ประวัติการติดตามนักเรียน
       </h2>
 
-      {isLoading ? (
-        <SkeletonStack lines={3} className="py-2" />
-      ) : isError ? (
-        <ErrorState title="โหลดประวัติการติดตามไม่สำเร็จ" onRetry={onRetry} />
-      ) : sortedCases.length === 0 ? (
-        <EmptyState
-          className="border-none py-6 shadow-none"
-          description="รายการติดตามและการดำเนินการของนักเรียนจะปรากฏในส่วนนี้"
-          icon={History}
-          title="ยังไม่มีประวัติการติดตามนักเรียน"
-        />
-      ) : (
-        <>
-          <ul className="divide-y divide-slate-100">
-            {visibleCases.map((studentCase) => (
-              <li
-                key={studentCase.id}
-                className="flex items-start justify-between gap-4 py-4"
-              >
-                <div className="min-w-0">
-                  <div className="text-xs text-slate-500">
-                    {formatThaiDate(studentCase.created_at)}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isLoading ? (
+          <SkeletonStack lines={3} className="py-2" />
+        ) : isError ? (
+          <ErrorState title="โหลดประวัติการติดตามไม่สำเร็จ" onRetry={onRetry} />
+        ) : sortedCases.length === 0 ? (
+          <EmptyState
+            className="border-none py-6 shadow-none"
+            description="รายการติดตามและการดำเนินการของนักเรียนจะปรากฏในส่วนนี้"
+            icon={History}
+            title="ยังไม่มีประวัติการติดตามนักเรียน"
+          />
+        ) : (
+          <>
+            <ul className="divide-y divide-slate-100">
+              {visibleCases.map((studentCase) => (
+                <li
+                  key={studentCase.id}
+                  className="flex items-start justify-between gap-4 py-4"
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs text-slate-500">
+                      {formatThaiDate(studentCase.created_at)}
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-slate-700">
+                      {studentCase.reason_flagged}
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm font-bold text-slate-700">
-                    {studentCase.reason_flagged}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <CaseStatusBadge status={studentCase.status} />
+                    {canViewCaseDetail ? (
+                      <DetailLinkButton
+                        aria-label="ดูรายละเอียดเคส"
+                        className="size-8"
+                        iconClassName="size-5"
+                        iconOnly
+                        title="ดูรายละเอียดเคส"
+                        to={`/cases/${studentCase.id}`}
+                      />
+                    ) : null}
                   </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <CaseStatusBadge status={studentCase.status} />
-                  {canViewCaseDetail ? (
-                    <DetailLinkButton
-                      aria-label="ดูรายละเอียดเคส"
-                      iconOnly
-                      title="ดูรายละเอียดเคส"
-                      to={`/cases/${studentCase.id}`}
-                    />
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-          {sortedCases.length > 3 ? (
-            <div className="mt-2 text-right">
-              <Button
-                className="font-medium text-slate-600 underline"
-                onClick={() => setShowAll((current) => !current)}
-                size="sm"
-                variant="ghost"
-              >
-                {showAll ? "แสดงน้อยลง" : "เพิ่มเติม"}
-              </Button>
-            </div>
-          ) : null}
-        </>
-      )}
+                </li>
+              ))}
+            </ul>
+            {sortedCases.length > 3 ? (
+              <div className="mt-2 text-right">
+                <Button
+                  className="font-medium text-slate-600 underline"
+                  onClick={() => setShowAll((current) => !current)}
+                  size="sm"
+                  variant="ghost"
+                >
+                  {showAll ? "แสดงน้อยลง" : "เพิ่มเติม"}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     </Card>
   );
 }
@@ -138,61 +147,68 @@ function TeacherCommentsPanel({
   // without it the write has no destination, so the action stays hidden.
   const classroomId = Number(student.classroom_id ?? 0);
   const fullName =
-    `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() || "ไม่ระบุชื่อ";
+    `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+    "ไม่ระบุชื่อ";
 
   return (
-    <Card className="p-5" data-student-teacher-comments>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
-          <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
-          ความคิดเห็นจากคุณครู
-        </h2>
-        {classroomId ? (
-          <IconButton
-            aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
-            icon={MessageSquareText}
-            onClick={() => setCommentOpen(true)}
-            variant="comment"
-          />
-        ) : null}
-      </div>
-      {commentsQuery.isLoading ? (
-        <SkeletonStack lines={2} />
-      ) : commentsQuery.isError ? (
-        <ErrorState
-          description="ส่วนอื่นของข้อมูลนักเรียนยังใช้งานได้ตามปกติ"
-          onRetry={() => void commentsQuery.refetch()}
-          title="โหลดความคิดเห็นจากคุณครูไม่สำเร็จ"
-        />
-      ) : comments.length === 0 ? (
-        <EmptyState
-          className="border-none py-6 shadow-none"
-          description="ความคิดเห็นที่ครูบันทึกจะปรากฏในส่วนนี้"
+    <Card
+      className="relative flex min-h-0 flex-1 flex-col p-5"
+      data-student-teacher-comments
+    >
+      <h2 className="mb-4 flex shrink-0 items-center gap-2 pr-12 text-base font-bold text-slate-900">
+        <MessageSquareText className="size-5 text-ink" aria-hidden="true" />
+        ความคิดเห็นจากคุณครู
+      </h2>
+      {classroomId ? (
+        <IconButton
+          aria-label={`เพิ่มความคิดเห็นของ ${fullName}`}
+          className="absolute right-5 top-5"
           icon={MessageSquareText}
-          title="ยังไม่มีความคิดเห็นจากคุณครู"
+          iconClassName="size-5"
+          onClick={() => setCommentOpen(true)}
+          size="sm"
+          variant="comment"
         />
-      ) : (
-        <ul className="space-y-3">
-          {comments.map((comment) => (
-            <li
-              className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-              key={comment.id}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
-                <strong className="font-semibold text-slate-800">
-                  ผู้รายงาน: {comment.authorDisplayName}
-                </strong>
-                <time dateTime={comment.commentedAt}>
-                  {formatThaiDateTime(comment.commentedAt)}
-                </time>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                {comment.comment}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {commentsQuery.isLoading ? (
+          <SkeletonStack lines={2} />
+        ) : commentsQuery.isError ? (
+          <ErrorState
+            description="ส่วนอื่นของข้อมูลนักเรียนยังใช้งานได้ตามปกติ"
+            onRetry={() => void commentsQuery.refetch()}
+            title="โหลดความคิดเห็นจากคุณครูไม่สำเร็จ"
+          />
+        ) : comments.length === 0 ? (
+          <EmptyState
+            className="border-none py-6 shadow-none"
+            description="ความคิดเห็นที่ครูบันทึกจะปรากฏในส่วนนี้"
+            icon={MessageSquareText}
+            title="ยังไม่มีความคิดเห็นจากคุณครู"
+          />
+        ) : (
+          <ul className="space-y-3">
+            {comments.map((comment) => (
+              <li
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                key={comment.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
+                  <strong className="text-sm font-bold text-slate-800">
+                    ผู้รายงาน: {comment.authorDisplayName}
+                  </strong>
+                  <time dateTime={comment.commentedAt}>
+                    {formatThaiDateTime(comment.commentedAt)}
+                  </time>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {comment.comment}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <ClassroomStudentCommentDialog
         classroomId={classroomId}
@@ -206,7 +222,9 @@ function TeacherCommentsPanel({
                 firstName: student.FirstName_Onec ?? null,
                 lastName: student.LastName_Onec ?? null,
                 studentNumber:
-                  typeof student.student_number === "string" ? student.student_number : null,
+                  typeof student.student_number === "string"
+                    ? student.student_number
+                    : null,
               }
             : null
         }
@@ -221,6 +239,9 @@ export function StudentDetailPage() {
   const studentId = id?.trim();
   const [contactsOpen, setContactsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [calendarBoxHeight, setCalendarBoxHeight] = useState<number | null>(
+    null,
+  );
 
   const { student, isLoading, isError, refetch } = useStudent(studentId);
   const profileSummaryQuery = useStudentProfileSummary(studentId);
@@ -239,16 +260,24 @@ export function StudentDetailPage() {
   );
 
   if (isLoading || profileSummaryQuery.isLoading) {
+    // Mirrors the loaded page's grid (profile header, then a 2/5 + 3/5 row) so
+    // the swap from skeleton to real content doesn't shift the page height —
+    // a mismatched skeleton is what makes that transition read as a jump.
     return (
       <PageShell>
-        <Card className="mb-5 p-5">
-          <SkeletonStack lines={3} />
+        <Card className="mb-5 p-5 sm:p-6">
+          <SkeletonStack lines={5} />
         </Card>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Card className="p-5">
-            <SkeletonStack lines={4} />
-          </Card>
-          <Card className="p-5">
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
+          <div className="flex flex-col gap-5 lg:col-span-2">
+            <Card className="min-h-[210px] p-5">
+              <SkeletonStack lines={3} />
+            </Card>
+            <Card className="min-h-[210px] p-5">
+              <SkeletonStack lines={3} />
+            </Card>
+          </div>
+          <Card className="min-h-[700px] p-5 lg:col-span-3">
             <SkeletonStack lines={4} />
           </Card>
         </div>
@@ -329,7 +358,16 @@ export function StudentDetailPage() {
       />
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
-        <div className="space-y-5 lg:col-span-2">
+        <div
+          className="flex min-h-0 flex-col gap-5 lg:col-span-2 lg:h-[var(--calendar-box-height)]"
+          style={
+            calendarBoxHeight
+              ? ({
+                  "--calendar-box-height": `${calendarBoxHeight}px`,
+                } as CSSProperties)
+              : undefined
+          }
+        >
           {can("manage-student-observations") ? (
             <TeacherCommentsPanel student={student} studentId={studentId} />
           ) : null}
@@ -344,6 +382,7 @@ export function StudentDetailPage() {
         <div className="lg:col-span-3">
           <StudentAttendanceCalendar
             key={studentId}
+            onCalendarBoxHeightChange={setCalendarBoxHeight}
             studentId={studentId}
             summary={profileSummaryQuery.data}
           />

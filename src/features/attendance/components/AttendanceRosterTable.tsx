@@ -30,7 +30,10 @@ interface AttendanceRosterTableProps {
   catalog: readonly StatusCatalogItem[];
   disabled?: boolean;
   onSortChange?: (sort: DataTableSortState | undefined) => void;
-  onStatusChange: (studentId: string, status: RecordableAttendanceStatus) => void;
+  onStatusChange: (
+    studentId: string,
+    status: RecordableAttendanceStatus,
+  ) => void;
   rows: readonly AttendanceRosterTableRow[];
   selections: Readonly<Record<string, AttendanceSelectionStatus>>;
   sort?: DataTableSortState;
@@ -81,13 +84,16 @@ export function AttendanceRosterTable({
                 role="group"
               >
                 {ATTENDANCE_STATUSES.map((status) => {
-                  const presentation = getAttendanceStatusPresentation(status, catalog);
+                  const presentation = getAttendanceStatusPresentation(
+                    status,
+                    catalog,
+                  );
                   const selected = current === status;
                   return (
                     <button
                       aria-pressed={selected}
                       className={cn(
-                        "inline-flex h-9 w-20 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
+                        "inline-flex h-11 w-20 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
                         selected
                           ? presentation.pillActiveClass
                           : `bg-white ${presentation.pillIdleClass}`,

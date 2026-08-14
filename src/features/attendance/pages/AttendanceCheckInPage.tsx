@@ -47,7 +47,10 @@ import {
   getAttendanceStatusPresentation,
   getIsoDayOfWeekFromDateString,
 } from "../lib/attendance-presentation";
-import type { AttendanceHistoryRecord } from "../types/attendance.types";
+import type {
+  AttendanceHistoryRecord,
+  AttendanceStudent,
+} from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -59,19 +62,34 @@ import {
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
-import { usePeriodTimes, useTimetableSlots } from "../../timetable/hooks/useTimetable";
+import {
+  usePeriodTimes,
+  useTimetableSlots,
+} from "../../timetable/hooks/useTimetable";
 import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
-import type { SchoolPeriodTime, TimetableSlot } from "../../timetable/types/timetable.types";
+import type {
+  SchoolPeriodTime,
+  TimetableSlot,
+} from "../../timetable/types/timetable.types";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
-
-
-const TAB_OPTIONS = [
-  { value: "today", label: "เช็คชื่อวันนี้" },
-  { value: "history", label: "ประวัติ" },
-];
 
 function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
+}
+
+function sortAttendanceStudents(
+  students: readonly AttendanceStudent[],
+  sort: DataTableSortState | undefined,
+): AttendanceStudent[] {
+  if (!sort) return [...students];
+  return [...students].sort((left, right) => {
+    const leftValue =
+      sort.key === "studentNumber" ? (left.student_number ?? "") : left.name;
+    const rightValue =
+      sort.key === "studentNumber" ? (right.student_number ?? "") : right.name;
+    const result = leftValue.localeCompare(rightValue, "th");
+    return sort.direction === "asc" ? result : -result;
+  });
 }
 
 function getHistorySortValue(
@@ -82,7 +100,8 @@ function getHistorySortValue(
   if (key === "student") return record.name || record.student_name || "";
   if (key === "grade") return record.grade || "";
   if (key === "room") return formatStudentRoom(record.room);
-  if (key === "status") return getAttendanceStatusPresentation(record.status, catalog).label;
+  if (key === "status")
+    return getAttendanceStatusPresentation(record.status, catalog).label;
   if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
   return "";
 }
@@ -97,7 +116,10 @@ function timeToMinutes(value: string): number {
 // while still sorting among themselves by period number.
 const UNTIMED_SLOT_SORT_BASE = 10_000;
 
-function slotSortKey(row: { startsAt: number | null; slot: TimetableSlot }): number {
+function slotSortKey(row: {
+  startsAt: number | null;
+  slot: TimetableSlot;
+}): number {
   return row.startsAt ?? UNTIMED_SLOT_SORT_BASE + row.slot.period;
 }
 
@@ -112,7 +134,8 @@ function findDefaultSlot(
   const withTimes = slots
     .map((slot) => {
       const periodTime = periodTimes.find(
-        (row) => row.day_of_week === slot.day_of_week && row.period === slot.period,
+        (row) =>
+          row.day_of_week === slot.day_of_week && row.period === slot.period,
       );
       return {
         slot,
@@ -142,18 +165,27 @@ export function AttendanceCheckInPage() {
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [tab, setTab] = useRouteTab(
     {
-      today: "/attendance",
+      roster: "/attendance/roster",
+      attendance: "/attendance/check-in",
       history: "/attendance/history",
     } as const,
-    "today",
+    "roster",
   );
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [attendanceSearch, setAttendanceSearch] = useState("");
-  const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
+  const [attendanceSort, setAttendanceSort] = useState<
+    DataTableSortState | undefined
+  >({
+    key: "studentNumber",
+    direction: "asc",
+  });
+  const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
     key: "name",
     direction: "asc",
   });
-  const [historySort, setHistorySort] = useState<DataTableSortState | undefined>();
+  const [historySort, setHistorySort] = useState<
+    DataTableSortState | undefined
+  >();
   const [selectedSlotId, setSelectedSlotId] = useState("");
   // Defaults to today but stays editable — lets a teacher check in for an
   // earlier date (e.g. catching up after the fact). Never a future date; the
@@ -218,13 +250,20 @@ export function AttendanceCheckInPage() {
   const slotsForDate = useMemo(
     () =>
       (slotsQuery.data?.data ?? [])
-        .filter((slot) => slot.day_of_week === getIsoDayOfWeekFromDateString(checkInDate))
+        .filter(
+          (slot) =>
+            slot.day_of_week === getIsoDayOfWeekFromDateString(checkInDate),
+        )
         .sort((left, right) => left.period - right.period),
     [slotsQuery.data?.data, checkInDate],
   );
   const subjectSlotOptions = useMemo(
     () => [
-      { value: "", label: slotsForDate.length > 0 ? "เลือกคาบรายวิชา" : "ไม่พบคาบวันที่เลือก" },
+      {
+        value: "",
+        label:
+          slotsForDate.length > 0 ? "เลือกคาบรายวิชา" : "ไม่พบคาบวันที่เลือก",
+      },
       ...slotsForDate.map((slot) => ({
         value: String(slot.id),
         label: `${slot.subject_name_th} · ${formatTimetableSlotLabel(
@@ -236,24 +275,15 @@ export function AttendanceCheckInPage() {
     [periodTimesQuery.data?.data, slotsForDate],
   );
 
-  // Default the subject-mode slot to "now" from the room's timetable — only
-  // while viewing today, since "current time" has no meaning for a picked
-  // past date — without locking it: reassign only while the current
-  // selection isn't one of the picked date's slots (mode/date just switched,
-  // or school/grade/room changed underneath it). A user's own pick is always
-  // left alone since it's already in slotsForDate. Adjusting state during
-  // render (not in an effect) per
-  // https://react.dev/learn/you-might-not-need-an-effect — React restarts
-  // this render with the new value before anything commits, so `checkIn`
-  // below still sees the resolved slot on the same pass.
+  // Adjust stale state while rendering so async timetable changes resolve
+  // before commit without an effect/render cascade. A valid user selection is
+  // never replaced.
   if (!slotsForDate.some((slot) => String(slot.id) === selectedSlotId)) {
     const defaultSlot = isCheckInDateToday
       ? findDefaultSlot(slotsForDate, periodTimesQuery.data?.data ?? [])
       : null;
     const defaultSlotId = defaultSlot ? String(defaultSlot.id) : "";
-    if (defaultSlotId !== selectedSlotId) {
-      setSelectedSlotId(defaultSlotId);
-    }
+    if (defaultSlotId !== selectedSlotId) setSelectedSlotId(defaultSlotId);
   }
 
   const newCases = saveState.data?.newCases ?? [];
@@ -318,29 +348,25 @@ export function AttendanceCheckInPage() {
     setCheckInDate(value);
   }
 
-  const visibleStudents = useMemo(() => {
+  const filteredStudents = useMemo(() => {
     const keyword = attendanceSearch.trim().toLocaleLowerCase("th-TH");
-    const filtered = students.filter((student) =>
+    return students.filter((student) =>
       !keyword
         ? true
         : `${student.name} ${student.student_number ?? ""}`
             .toLocaleLowerCase("th-TH")
             .includes(keyword),
     );
-    if (!attendanceSort) return filtered;
-    return [...filtered].sort((left, right) => {
-      const leftValue =
-        attendanceSort.key === "studentNumber"
-          ? left.student_number ?? ""
-          : left.name;
-      const rightValue =
-        attendanceSort.key === "studentNumber"
-          ? right.student_number ?? ""
-          : right.name;
-      const result = leftValue.localeCompare(rightValue, "th");
-      return attendanceSort.direction === "asc" ? result : -result;
-    });
-  }, [attendanceSearch, attendanceSort, students]);
+  }, [attendanceSearch, students]);
+
+  const visibleStudents = useMemo(
+    () => sortAttendanceStudents(filteredStudents, attendanceSort),
+    [attendanceSort, filteredStudents],
+  );
+  const visibleRosterStudents = useMemo(
+    () => sortAttendanceStudents(filteredStudents, rosterSort),
+    [filteredStudents, rosterSort],
+  );
 
   // History uses the same school/grade/room scope as the today tab — filter the
   // records client-side by the selected class so both tabs behave consistently.
@@ -353,32 +379,29 @@ export function AttendanceCheckInPage() {
       ),
     [history.records, grade, room],
   );
-  const filteredHistory = useMemo(
-    () => {
-      const keyword = historySearch.trim().toLocaleLowerCase("th-TH");
-      return scopedHistory.filter((record) => {
-        if (!keyword) return true;
-        const statusLabel = getAttendanceStatusPresentation(
-          record.status,
-          attendanceStatusCatalog,
-        ).label;
-        return [
-          record.name,
-          record.student_name,
-          record.grade,
-          String(record.room ?? ""),
-          record.recorded_by,
-          record.RecordedBy,
-          statusLabel,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLocaleLowerCase("th-TH")
-          .includes(keyword);
-      });
-    },
-    [attendanceStatusCatalog, historySearch, scopedHistory],
-  );
+  const filteredHistory = useMemo(() => {
+    const keyword = historySearch.trim().toLocaleLowerCase("th-TH");
+    return scopedHistory.filter((record) => {
+      if (!keyword) return true;
+      const statusLabel = getAttendanceStatusPresentation(
+        record.status,
+        attendanceStatusCatalog,
+      ).label;
+      return [
+        record.name,
+        record.student_name,
+        record.grade,
+        String(record.room ?? ""),
+        record.recorded_by,
+        record.RecordedBy,
+        statusLabel,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("th-TH")
+        .includes(keyword);
+    });
+  }, [attendanceStatusCatalog, historySearch, scopedHistory]);
   const sortedHistory = useMemo(() => {
     if (!historySort) return filteredHistory;
     return [...filteredHistory].sort((a, b) => {
@@ -396,14 +419,6 @@ export function AttendanceCheckInPage() {
         icon={ClipboardCheck}
         title="เช็คชื่อมาเรียน"
         description="บันทึกการมาเรียนประจำวันของนักเรียนในแต่ละห้อง"
-        navigation={
-          <Tabs
-            aria-label="โหมดเช็คชื่อ"
-            value={tab}
-            onChange={setTab}
-            options={TAB_OPTIONS}
-          />
-        }
       >
         <ToolbarFilterGrid>
           <SchoolClassRoomFilter
@@ -416,6 +431,7 @@ export function AttendanceCheckInPage() {
             onGradeChange={handleGradeChange}
             onRoomChange={handleRoomChange}
             onSchoolChange={handleSchoolChange}
+            schoolSelector="scope-combobox"
             scope={filterScope}
           />
 
@@ -430,7 +446,22 @@ export function AttendanceCheckInPage() {
         </ToolbarFilterGrid>
       </PageToolbar>
 
-      {tab === "today" ? (
+      {tab !== "history" ? (
+        <div className="mb-6">
+          <Tabs
+            aria-label="ข้อมูลห้องเรียน"
+            className="flex w-full"
+            onChange={setTab}
+            options={[
+              { value: "roster", label: "รายชื่อ" },
+              { value: "attendance", label: "เช็คชื่อ" },
+            ]}
+            value={tab}
+          />
+        </div>
+      ) : null}
+
+      {tab !== "history" ? (
         <ToolbarControls className="mb-5">
           <SearchInput
             className="sm:max-w-[560px]"
@@ -438,46 +469,114 @@ export function AttendanceCheckInPage() {
             placeholder="ค้นหา"
             value={attendanceSearch}
           />
-          <DropdownMenu
-            align="start"
-            ariaLabel="เครื่องมือการเช็คชื่อ"
-            items={[
-              {
-                id: "qr",
-                label: "สแกน QR Code เพื่อเช็คชื่อ (เร็ว ๆ นี้)",
-                disabled: true,
-                onSelect: () => undefined,
-              },
-              {
-                id: "delegate",
-                label: "มอบหมายการเช็คชื่อ (เร็ว ๆ นี้)",
-                disabled: true,
-                onSelect: () => undefined,
-              },
-              {
-                id: "import",
-                label: "นำเข้าไฟล์การเช็คชื่อ (เร็ว ๆ นี้)",
-                disabled: true,
-                onSelect: () => undefined,
-              },
-            ]}
-            trigger={(triggerProps) => (
-              <Button {...triggerProps} icon={Wrench} variant="outline">
-                เครื่องมือ
+          {tab === "attendance" ? (
+            <>
+              <DropdownMenu
+                align="start"
+                ariaLabel="เครื่องมือการเช็คชื่อ"
+                items={[
+                  {
+                    id: "qr",
+                    label: "สแกน QR Code เพื่อเช็คชื่อ (เร็ว ๆ นี้)",
+                    disabled: true,
+                    onSelect: () => undefined,
+                  },
+                  {
+                    id: "delegate",
+                    label: "มอบหมายการเช็คชื่อ (เร็ว ๆ นี้)",
+                    disabled: true,
+                    onSelect: () => undefined,
+                  },
+                  {
+                    id: "import",
+                    label: "นำเข้าไฟล์การเช็คชื่อ (เร็ว ๆ นี้)",
+                    disabled: true,
+                    onSelect: () => undefined,
+                  },
+                ]}
+                trigger={(triggerProps) => (
+                  <Button {...triggerProps} icon={Wrench} variant="outline">
+                    เครื่องมือ
+                  </Button>
+                )}
+              />
+              <Button
+                className="sm:ml-auto"
+                icon={History}
+                onClick={() => void navigate("/attendance/history")}
+              >
+                ประวัติการเช็คชื่อ
               </Button>
-            )}
-          />
-          <Button
-            className="sm:ml-auto"
-            icon={History}
-            onClick={() => void navigate("/attendance/history")}
-          >
-            ประวัติการเช็คชื่อ
-          </Button>
+            </>
+          ) : null}
         </ToolbarControls>
       ) : null}
 
-      {tab === "today" ? (
+      {tab === "roster" ? (
+        <div className="space-y-4">
+          {!canLoadRoster ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="เลือกห้องเรียนก่อนดูรายชื่อ"
+              description="กรุณาเลือกโรงเรียน ระดับชั้น และห้อง"
+            />
+          ) : isRosterError ? (
+            <ErrorState
+              title="ไม่สามารถโหลดรายชื่อนักเรียนได้"
+              onRetry={() => void refetchRoster()}
+            />
+          ) : isRosterLoading ? (
+            <SkeletonTable rows={8} />
+          ) : students.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="ไม่พบรายชื่อนักเรียนในห้องนี้"
+              description="ลองเลือกชั้นหรือห้องอื่น"
+            />
+          ) : visibleRosterStudents.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="ไม่พบรายชื่อนักเรียน"
+              description="ลองเปลี่ยนคำค้นหา"
+            />
+          ) : (
+            <DataTable
+              headings={[
+                { label: "ลำดับ" },
+                { label: "รูปประจำตัว", className: "text-center" },
+                { label: "รหัสประจำตัว", sortKey: "studentNumber" },
+                { label: "ชื่อ-นามสกุล", sortKey: "name" },
+              ]}
+              minWidthClassName="min-w-[720px]"
+              onSortChange={setRosterSort}
+              responsive={false}
+              sort={rosterSort}
+            >
+              {visibleRosterStudents.map((student, index) => (
+                <DataTableRow key={student.id}>
+                  <DataTableCell className="tabular-nums">
+                    {index + 1}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <div className="flex justify-center">
+                      <StudentAvatar
+                        name={student.name}
+                        photoUrl={student.photo_url}
+                      />
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell className="font-medium tabular-nums">
+                    {student.student_number ?? "-"}
+                  </DataTableCell>
+                  <DataTableCell className="font-medium text-slate-900">
+                    {student.name}
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTable>
+          )}
+        </div>
+      ) : tab === "attendance" ? (
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -491,13 +590,19 @@ export function AttendanceCheckInPage() {
               id="attendance-date"
               max={getTodayIso()}
               value={checkInDate}
-              onChange={(next) => handleCheckInDateChange(next || getTodayIso())}
+              onChange={(next) =>
+                handleCheckInDateChange(next || getTodayIso())
+              }
             />
           </div>
           <div className="mb-4 w-[270px] max-w-full">
             <Label htmlFor="attendance-period">คาบเรียน</Label>
             <Select
-              disabled={!timetableFilter || slotsQuery.isLoading || slotsForDate.length === 0}
+              disabled={
+                !timetableFilter ||
+                slotsQuery.isLoading ||
+                slotsForDate.length === 0
+              }
               id="attendance-period"
               onChange={(event) => setSelectedSlotId(event.target.value)}
               value={selectedSlotId}
@@ -526,7 +631,10 @@ export function AttendanceCheckInPage() {
             <div className="mb-4">
               <Alert variant="success">
                 <div className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                  <CheckCircle2
+                    className="mt-0.5 size-5 shrink-0"
+                    aria-hidden="true"
+                  />
                   <div>
                     <AlertTitle>บันทึกการเช็คชื่อเรียบร้อยแล้ว</AlertTitle>
                     {newCases.length > 0 ? (
@@ -541,7 +649,9 @@ export function AttendanceCheckInPage() {
             </div>
           ) : null}
 
-          {canLoadRoster && sessionContext && !sessionContext.calendarConfigured ? (
+          {canLoadRoster &&
+          sessionContext &&
+          !sessionContext.calendarConfigured ? (
             <div className="mb-4">
               <Alert variant="warning">
                 <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
@@ -562,7 +672,8 @@ export function AttendanceCheckInPage() {
                   <div>
                     <AlertTitle>ส่งการเช็คชื่อแล้ว</AlertTitle>
                     <AlertDescription>
-                      Revision {sessionContext.session.revision} · บันทึกแล้ว {sessionContext.session.recordedCount} คน
+                      Revision {sessionContext.session.revision} · บันทึกแล้ว{" "}
+                      {sessionContext.session.recordedCount} คน
                     </AlertDescription>
                   </div>
                   <Button
@@ -582,7 +693,9 @@ export function AttendanceCheckInPage() {
             <div className="mb-4">
               <Alert variant="destructive">
                 <AlertTitle>ตรวจสอบรอบเช็คชื่อไม่สำเร็จ</AlertTitle>
-                <AlertDescription>กรุณาโหลดหน้าใหม่ก่อนบันทึกข้อมูล</AlertDescription>
+                <AlertDescription>
+                  กรุณาโหลดหน้าใหม่ก่อนบันทึกข้อมูล
+                </AlertDescription>
               </Alert>
             </div>
           ) : null}
@@ -722,9 +835,7 @@ export function AttendanceCheckInPage() {
                         attendanceStatusCatalog,
                       );
                       return (
-                        <Badge variant={meta.badgeVariant}>
-                          {meta.label}
-                        </Badge>
+                        <Badge variant={meta.badgeVariant}>{meta.label}</Badge>
                       );
                     })()}
                   </DataTableCell>

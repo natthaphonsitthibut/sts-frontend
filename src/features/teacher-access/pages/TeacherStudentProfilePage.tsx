@@ -34,6 +34,7 @@ import { assignmentClassLabel } from "../lib/teacher-link-presentation";
  * from one grant-scoped read instead of the authenticated student APIs, and the
  * PII dialogs (contacts, address) stay closed because a link is not an account.
  */
+
 export function TeacherStudentProfilePage() {
   const { assignmentId = "", studentUuid = "" } = useParams();
   const { context } = useTeacherLink();

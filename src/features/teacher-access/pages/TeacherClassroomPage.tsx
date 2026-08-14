@@ -96,6 +96,20 @@ function rosterSortValue(
   return "";
 }
 
+function sortRoster(
+  students: readonly TeacherAccessRosterStudent[],
+  sort: DataTableSortState | undefined,
+): TeacherAccessRosterStudent[] {
+  if (!sort) return [...students];
+  return [...students].sort((a, b) => {
+    const result = rosterSortValue(a, sort.key).localeCompare(
+      rosterSortValue(b, sort.key),
+      "th",
+    );
+    return sort.direction === "asc" ? result : -result;
+  });
+}
+
 /**
  * One class as the teacher sees it through their link — the same two views the
  * school staff get on ห้องเรียนทั้งหมด (รายชื่อ / เช็คชื่อ), minus the actions a
@@ -124,8 +138,12 @@ export function TeacherClassroomPage() {
     Record<string, AttendanceStatus>
   >({});
   const [saved, setSaved] = useState(false);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
     key: "name",
+    direction: "asc",
+  });
+  const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
+    key: "studentNumber",
     direction: "asc",
   });
   const [exportOpen, setExportOpen] = useState(false);
@@ -169,9 +187,9 @@ export function TeacherClassroomPage() {
     assignment?.assignmentKind === "SUBJECT",
   );
   const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
-  const visibleRoster = useMemo(() => {
+  const filteredRoster = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = roster.filter((student) => {
+    return roster.filter((student) => {
       const matchesSearch =
         !term ||
         `${studentDisplayName(student)} ${student.studentNumber ?? ""}`
@@ -181,15 +199,14 @@ export function TeacherClassroomPage() {
         !riskTier || (student.riskTier ?? "NORMAL") === riskTier;
       return matchesSearch && matchesTier;
     });
-    if (!sort) return filtered;
-    return [...filtered].sort((a, b) => {
-      const result = rosterSortValue(a, sort.key).localeCompare(
-        rosterSortValue(b, sort.key),
-        "th",
-      );
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [roster, riskTier, search, sort]);
+  }, [roster, riskTier, search]);
+  const visibleRoster = useMemo(
+    () => sortRoster(filteredRoster, rosterSort),
+    [filteredRoster, rosterSort],
+  );
+  const visibleAttendanceRoster = useMemo(() => {
+    return sortRoster(filteredRoster, attendanceSort);
+  }, [attendanceSort, filteredRoster]);
 
   if (!assignment) {
     return (
@@ -385,9 +402,9 @@ export function TeacherClassroomPage() {
             { label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[1040px]"
-          onSortChange={setSort}
+          onSortChange={setRosterSort}
           responsive={false}
-          sort={sort}
+          sort={rosterSort}
         >
           {visibleRoster.map((student, index) => {
             const fullName = studentDisplayName(student);
@@ -518,12 +535,12 @@ export function TeacherClassroomPage() {
           ) : null}
           <AttendanceRosterTable
             catalog={attendanceStatusCatalog}
-            onSortChange={setSort}
+            onSortChange={setAttendanceSort}
             onStatusChange={(studentId, status) => {
               setAttendance((values) => ({ ...values, [studentId]: status }));
               setSaved(false);
             }}
-            rows={visibleRoster.map((student) => ({
+            rows={visibleAttendanceRoster.map((student) => ({
               id: student.studentUuid,
               name: studentDisplayName(student),
               studentNumber: student.studentNumber,
@@ -535,7 +552,7 @@ export function TeacherClassroomPage() {
               ),
             }))}
             selections={attendance}
-            sort={sort}
+            sort={attendanceSort}
           />
 
           <div className="mt-4 space-y-3">

@@ -1,4 +1,5 @@
 import { Combobox } from "../../../components/base";
+import { FilterCombobox } from "../../../components/layout/page-primitives";
 import { toRoomOption } from "../../../lib/room-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
@@ -28,6 +29,12 @@ interface SchoolClassRoomFilterProps {
     grade?: string;
     room?: string;
   };
+  /**
+   * The attendance workspace has no need for a geographic cascade: its school
+   * list is already scope-limited by the lookup API. Use the same compact
+   * school combobox as the teacher-link management page instead.
+   */
+  schoolSelector?: "area-cascade" | "scope-combobox";
 }
 
 export function SchoolClassRoomFilter({
@@ -37,43 +44,68 @@ export function SchoolClassRoomFilter({
   onGradeChange,
   onRoomChange,
   onSchoolChange,
+  schoolSelector = "area-cascade",
   scope,
 }: SchoolClassRoomFilterProps) {
+  const showScopeSchoolSelector =
+    schoolSelector === "scope-combobox" &&
+    !scope.schoolLocked &&
+    area.filteredSchools.length > 1;
+
   return (
     <>
-      <SchoolAreaSchoolFilter
-        area={area}
-        disabled={disabled}
-        onSchoolChange={onSchoolChange}
-        schoolEmptyLabel={emptyOptionLabels?.school}
-        schoolId={scope.schoolId}
-        schoolLocked={scope.schoolLocked}
-        hideArea={scope.schoolLocked}
-        hideSchool={scope.schoolLocked}
-      />
-      <Combobox
-        disabled={disabled || !scope.schoolId || scope.gradeLocked}
-        onChange={onGradeChange}
-        options={[
-          { value: "", label: emptyOptionLabels?.grade ?? "ทุกชั้น" },
-          ...scope.gradeLevels.map((grade) => ({
-            value: grade.label,
-            label: grade.label,
-          })),
-        ]}
-        placeholder="ค้นหาชั้น"
-        value={scope.grade}
-      />
-      <Combobox
-        disabled={disabled || !scope.grade || scope.roomLocked}
-        onChange={onRoomChange}
-        options={[
-          { value: "", label: emptyOptionLabels?.room ?? "ทุกห้อง" },
-          ...scope.rooms.map(toRoomOption),
-        ]}
-        placeholder="ค้นหาห้อง"
-        value={scope.room}
-      />
+      {schoolSelector === "area-cascade" ? (
+        <SchoolAreaSchoolFilter
+          area={area}
+          disabled={disabled}
+          onSchoolChange={onSchoolChange}
+          schoolEmptyLabel={emptyOptionLabels?.school}
+          schoolId={scope.schoolId}
+          schoolLocked={scope.schoolLocked}
+          hideArea={scope.schoolLocked}
+          hideSchool={scope.schoolLocked}
+        />
+      ) : showScopeSchoolSelector ? (
+        <FilterCombobox
+          ariaLabel="กรองตามโรงเรียน"
+          disabled={disabled}
+          emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
+          onChange={onSchoolChange}
+          options={area.filteredSchools.map((school) => ({
+            value: String(school.id),
+            label: school.name,
+          }))}
+          placeholder={emptyOptionLabels?.school ?? "เลือกโรงเรียน"}
+          value={scope.schoolId}
+        />
+      ) : null}
+      {!scope.gradeLocked ? (
+        <Combobox
+          disabled={disabled || !scope.schoolId}
+          onChange={onGradeChange}
+          options={[
+            { value: "", label: emptyOptionLabels?.grade ?? "ทุกชั้น" },
+            ...scope.gradeLevels.map((grade) => ({
+              value: grade.label,
+              label: grade.label,
+            })),
+          ]}
+          placeholder="ค้นหาชั้น"
+          value={scope.grade}
+        />
+      ) : null}
+      {!scope.roomLocked ? (
+        <Combobox
+          disabled={disabled || !scope.grade}
+          onChange={onRoomChange}
+          options={[
+            { value: "", label: emptyOptionLabels?.room ?? "ทุกห้อง" },
+            ...scope.rooms.map(toRoomOption),
+          ]}
+          placeholder="ค้นหาห้อง"
+          value={scope.room}
+        />
+      ) : null}
     </>
   );
 }
