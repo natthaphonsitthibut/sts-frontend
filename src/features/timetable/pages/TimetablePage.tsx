@@ -27,6 +27,7 @@ import {
   formatRoomLabel,
 } from "../../../lib/room-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { isStudentAccountSession } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
@@ -566,7 +567,7 @@ function MyScheduleView({
 export function TimetablePage() {
   const { can } = usePermissions();
   const currentUser = useAuthSessionStore((state) => state.user);
-  const isStudent = currentUser?.roles?.includes("STUDENT") === true;
+  const isStudent = isStudentAccountSession(currentUser);
   const isManager = can("manage-timetable");
   const [routeMode, setMode] = useRouteTab(
     { mine: "/timetable/mine", room: "/timetable/rooms" },

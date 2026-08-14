@@ -27,17 +27,8 @@ export function getPageTitle(pathname: string): string {
     return EXTRA_TITLES["/audit-log"];
   }
 
-  // /create/:type (per task type) keeps the same header as the /create menu item.
-  if (pathname.startsWith("/create")) {
-    return MENU_TITLES["/create"] || "สร้างลิงก์";
-  }
-
   const exactTitle = MENU_TITLES[pathname] || EXTRA_TITLES[pathname];
   if (exactTitle) return exactTitle;
-
-  if (/^\/field-followers\/[^/]+$/.test(pathname)) {
-    return "รายละเอียดใบสมัคร";
-  }
 
   const parentRoute = [...Object.keys(MENU_TITLES), ...Object.keys(EXTRA_TITLES)]
     .filter((route) => route !== "/" && pathname.startsWith(`${route}/`))

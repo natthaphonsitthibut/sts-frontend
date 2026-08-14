@@ -196,27 +196,6 @@ export const VisitLinksPage = lazy(() =>
     default: module.VisitLinksPage,
   })),
 );
-export const FieldFollowerApplicationPage = lazy(() =>
-  import("../features/field-followers/pages/FieldFollowerApplicationPage").then(
-    (module) => ({
-      default: module.FieldFollowerApplicationPage,
-    }),
-  ),
-);
-export const FieldFollowersReviewPage = lazy(() =>
-  import("../features/field-followers/pages/FieldFollowersReviewPage").then(
-    (module) => ({
-      default: module.FieldFollowersReviewPage,
-    }),
-  ),
-);
-export const FieldFollowerDetailPage = lazy(() =>
-  import("../features/field-followers/pages/FieldFollowerDetailPage").then(
-    (module) => ({
-      default: module.FieldFollowerDetailPage,
-    }),
-  ),
-);
 export const TimetablePage = lazy(() =>
   import("../features/timetable/pages/TimetablePage").then((module) => ({
     default: module.TimetablePage,
@@ -357,11 +336,6 @@ export const TeacherAttendanceHistoryPage = lazy(() =>
       default: module.TeacherAttendanceHistoryPage,
     }),
   ),
-);
-export const CreateTaskPage = lazy(() =>
-  import("../features/tasks/pages/CreateTaskPage").then((module) => ({
-    default: module.CreateTaskPage,
-  })),
 );
 export const DashboardPage = lazy(() =>
   import("../features/tasks/pages/DashboardPage").then((module) => ({

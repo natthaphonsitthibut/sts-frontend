@@ -114,7 +114,6 @@ export const MENU_ITEMS: MenuItem[] = [
     ],
   },
   pageMenuItem("student-self", "/my-attendance"),
-  pageMenuItem("create", "/create"),
   {
     id: "data-management",
     label: "จัดการข้อมูล",
@@ -173,24 +172,6 @@ export const MENU_ITEMS: MenuItem[] = [
       },
     ],
   },
-  {
-    id: "recruitment-system",
-    label: "ระบบรับสมัคร",
-    iconName: "users-round",
-    permissionId: "field-monitor",
-    children: [
-      {
-        ...pageMenuItem("field-followers", "/field-followers", "field-monitor"),
-      },
-      {
-        ...pageMenuItem(
-          "field-followers-review",
-          "/field-follower-applications",
-          "field-monitor",
-        ),
-      },
-    ],
-  },
   pageMenuItem("settings", "/settings"),
 ];
 
@@ -229,6 +210,10 @@ interface StudentSelfSessionLike {
   data_scope?: DataScope;
 }
 
+interface StudentAccountSessionLike extends StudentSelfSessionLike {
+  roles?: string[];
+}
+
 export function isStudentSelfSession(
   user: StudentSelfSessionLike | null | undefined,
 ): boolean {
@@ -237,6 +222,14 @@ export function isStudentSelfSession(
     user.virtual_auth_token &&
     user.permissions?.includes("student-self") &&
     user.data_scope?.own_only,
+  );
+}
+
+export function isStudentAccountSession(
+  user: StudentAccountSessionLike | null | undefined,
+): boolean {
+  return (
+    isStudentOnlyRole(user?.roles ?? []) || isStudentSelfSession(user)
   );
 }
 

@@ -1,5 +1,6 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { usePermissions } from "../features/auth/hooks/usePermissions";
+import { isStudentAccountSession } from "../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../features/auth/store/auth-session.store";
 
 function suffixWithoutLegacyTab(search: string, hash: string): string {
@@ -13,6 +14,17 @@ export function LegacyRouteRedirect({ to }: { to: string }) {
   const location = useLocation();
 
   return <Navigate replace to={`${to}${location.search}${location.hash}`} />;
+}
+
+/** Preserve the old attendance entry URL while each workspace view has its own path. */
+export function AttendanceDefaultRedirect() {
+  const location = useLocation();
+  return (
+    <Navigate
+      replace
+      to={`/attendance/roster${location.search}${location.hash}`}
+    />
+  );
 }
 
 export function LegacyCasesRedirect() {
@@ -92,7 +104,7 @@ export function TimetableDefaultRedirect() {
   const location = useLocation();
   const { can } = usePermissions();
   const currentUser = useAuthSessionStore((state) => state.user);
-  const isStudent = currentUser?.roles?.includes("STUDENT") === true;
+  const isStudent = isStudentAccountSession(currentUser);
   const tab = !isStudent && can("manage-timetable") ? "rooms" : "mine";
   return (
     <Navigate

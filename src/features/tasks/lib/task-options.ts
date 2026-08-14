@@ -1,30 +1,3 @@
-import type { TaskType } from "../types/task.types";
-
-export interface TaskTypeOption {
-  label: string;
-  value: Exclude<TaskType, "LOGIN">;
-  description: string;
-}
-
-/**
- * Per-classroom attendance links were replaced by per-teacher links
- * (จัดการลิงก์เช็คชื่อ), so ATTENDANCE is no longer offered here. Existing rows
- * and their history stay readable; only the way to create new ones is gone.
- */
-export const TASK_TYPE_OPTIONS: TaskTypeOption[] = [
-  {
-    value: "VISIT",
-    label: "ภารกิจลงพื้นที่",
-    description: "ส่งผู้รับผิดชอบไปเยี่ยมบ้านและรายงานผล",
-  },
-];
-
-export const TASK_DURATION_UNIT_OPTIONS = [
-  { value: "hours", label: "ชั่วโมง" },
-  { value: "days", label: "วัน" },
-  { value: "weeks", label: "สัปดาห์" },
-] as const;
-
 // Single source of truth for the case-dashboard filter dropdown AND the stat cards,
 // so the two never drift apart. `tone` drives the SummaryMetrics card color.
 export const VISIT_CAUSE_CATEGORY_OPTIONS = [

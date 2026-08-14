@@ -35,14 +35,10 @@ import {
   CaseDetailPage,
   CaseReviewDetailPage,
   ChangePasswordPage,
-  CreateTaskPage,
   DataExportsPage,
   DashboardPage,
   DelegatePage,
   ExpiredPage,
-  FieldFollowerApplicationPage,
-  FieldFollowerDetailPage,
-  FieldFollowersReviewPage,
   ForbiddenPage,
   ImportDataPage,
   ImportQuarantineDetailPage,
@@ -79,6 +75,7 @@ import {
   VisitLinksPage,
 } from "./lazy-pages";
 import {
+  AttendanceDefaultRedirect,
   ClassroomDefaultRedirect,
   LegacyCasesRedirect,
   LegacyRouteRedirect,
@@ -192,15 +189,15 @@ export const router = createBrowserRouter([
         element: protectedElement(<StudentSelfPage />, "student-self"),
       },
       {
-        path: "create",
-        element: protectedElement(<CreateTaskPage />, "create"),
-      },
-      {
-        path: "create/:type",
-        element: protectedElement(<CreateTaskPage />, "create"),
-      },
-      {
         path: "attendance",
+        element: protectedElement(<AttendanceDefaultRedirect />, "attendance"),
+      },
+      {
+        path: "attendance/roster",
+        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        path: "attendance/check-in",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
       {
@@ -426,48 +423,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "field-followers",
-        element: protectedElement(
-          <FieldFollowersReviewPage />,
-          "field-monitor",
-        ),
-      },
-      {
-        path: "field-follower-applications",
-        element: protectedElement(
-          <FieldFollowersReviewPage />,
-          "field-monitor",
-        ),
-      },
-      {
-        path: "field-followers/history",
-        element: protectedElement(
-          <FieldFollowersReviewPage />,
-          "field-monitor",
-        ),
-      },
-      {
-        path: "field-follower-applications/history",
-        element: protectedElement(
-          <FieldFollowersReviewPage />,
-          "field-monitor",
-        ),
-      },
-      {
-        path: "field-followers-review",
-        element: <LegacyRouteRedirect to="/field-follower-applications" />,
-      },
-      {
-        path: "field-followers-review/history",
-        element: (
-          <LegacyRouteRedirect to="/field-follower-applications/history" />
-        ),
-      },
-      {
-        path: "field-followers/:id",
-        element: protectedElement(<FieldFollowerDetailPage />, "field-monitor"),
-      },
-      {
         path: "audit-log/:id",
         element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
@@ -586,10 +541,6 @@ export const router = createBrowserRouter([
         element: withSuspense(<TeacherAttendanceHistoryPage />),
       },
     ],
-  },
-  {
-    path: "/apply/field-follower/:code",
-    element: withSuspense(<FieldFollowerApplicationPage />),
   },
   {
     path: "/araid",

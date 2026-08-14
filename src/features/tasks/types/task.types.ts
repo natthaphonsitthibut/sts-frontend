@@ -46,8 +46,6 @@ export interface TaskCreatePayload {
   existing_case_id?: string | null;
   assignment_note?: string | null;
   follow_up_request_id?: string | null;
-  source_field_follower_id?: string | number | null;
-  campaign_target_id?: string | number | null;
 }
 
 export interface TaskCreateResponse {
@@ -150,6 +148,13 @@ export interface TaskSubmitResponse {
   error?: string;
   message?: string;
   session_token?: string;
+}
+
+export interface TaskOtpChallenge {
+  success: boolean;
+  method: "EMAIL";
+  maskedEmail: string;
+  expiresAt: string;
 }
 
 export interface TaskDelegationPayload {

@@ -63,9 +63,6 @@ function findBestMatchingRoute(
 }
 
 export function getDefaultMenuRoute(pathname: string): string | undefined {
-  if (/^\/field-followers\/[^/]+$/.test(pathname)) {
-    return "/field-follower-applications";
-  }
   if (pathname.startsWith("/teacher-access/timetable")) {
     return "/teacher-access/timetable";
   }
@@ -77,12 +74,7 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/attendance/history": "ประวัติการเช็คชื่อ",
-  "/create/attendance": "สร้างลิงก์เช็คชื่อ",
-  "/create/recruitment": "สร้างลิงก์รับสมัคร",
-  "/create/visit": "สร้างลิงก์ลงพื้นที่",
   "/data-exports/history": "ประวัติการส่งออก",
-  "/field-follower-applications/history": "ประวัติการตรวจสอบใบสมัคร",
-  "/field-followers/history": "ประวัติลิงก์รับสมัคร",
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
   "/settings/master-data-lookups": "ข้อมูลพื้นฐาน",
@@ -129,7 +121,6 @@ export function getNavigationLabel(
   if (pathname === "/manage-role-groups/new") return "เพิ่มกลุ่มเมนู";
   if (/^\/manage-role-groups\/[^/]+\/edit$/.test(pathname))
     return "แก้ไขกลุ่มเมนู";
-  if (/^\/field-followers\/[^/]+$/.test(pathname)) return "รายละเอียดใบสมัคร";
   if (/^\/audit-log\/[^/]+$/.test(pathname)) return "รายละเอียดบันทึกการใช้งาน";
   if (/^\/tasks\/[^/]+$/.test(pathname)) return "รายละเอียดภารกิจ";
   if (/^\/teacher-access\/classes\/[^/]+\/students\/[^/]+$/.test(pathname)) {
