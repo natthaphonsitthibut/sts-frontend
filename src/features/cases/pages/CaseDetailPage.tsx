@@ -112,7 +112,8 @@ export function CaseDetailPage() {
           reason: caseRecord.reason_flagged || "-",
         }))}
         name={caseRecord.student_name}
-        noteValue={caseRecord.teacher_comment || ""}
+        noteLabel="เหตุผลที่เปิดเคส"
+        noteValue={caseRecord.reason_flagged || ""}
         onOpenContacts={() => setContactsOpen(true)}
         onOpenLocation={() => setMapOpen(true)}
         schoolLine={`${caseRecord.student_school || "ไม่ระบุโรงเรียน"}${

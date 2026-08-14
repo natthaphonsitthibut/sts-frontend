@@ -22,7 +22,10 @@ export interface RiskDashboardRow {
   grade: string | null;
   room: string | null;
   consecutiveAbsentDays: number;
+  /** Operational count since the most recently resolved case, if any. */
   absentDays: number;
+  termAbsentDays: number;
+  absenceResetAfterDate: string | null;
   lateCount: number;
   subjectLateCount: number;
   schoolDayCount: number;
@@ -42,7 +45,7 @@ export interface RiskDashboardRow {
 }
 
 export interface RiskDashboardThresholds {
-  /** วันขาดสะสมต่อเทอม (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
+  /** วันขาดหลังปิดเคสล่าสุด (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
   highAbsentDays: number;
 }
 

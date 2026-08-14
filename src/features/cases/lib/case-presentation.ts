@@ -22,31 +22,31 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
   CaseTrackingStatusPresentation
 > = {
   OPEN: {
-    badgeClassName: "border border-brand-yellow !bg-white text-brand-yellow",
+    badgeClassName: "text-brand-yellow",
     label: "รอมอบหมาย",
     summaryTone: "orange",
     textClassName: "text-brand-yellow",
   },
   IN_PROGRESS: {
-    badgeClassName: "border border-brand-purple !bg-white text-brand-purple",
+    badgeClassName: "text-brand-purple",
     label: "รอติดตาม",
     summaryTone: "purple",
     textClassName: "text-brand-purple",
   },
   PENDING_REVIEW: {
-    badgeClassName: "border border-primary !bg-white text-primary",
+    badgeClassName: "text-primary",
     label: "รอพิจารณา",
     summaryTone: "info",
     textClassName: "text-primary",
   },
   STUDENT_NOT_FOUND: {
-    badgeClassName: "border border-danger !bg-white text-danger",
+    badgeClassName: "text-danger",
     label: "ไม่พบนักเรียน",
     summaryTone: "danger",
     textClassName: "text-danger",
   },
   RESOLVED: {
-    badgeClassName: "border border-success !bg-white text-success",
+    badgeClassName: "text-success",
     label: "เสร็จสิ้น - ปิดเคส",
     summaryTone: "success",
     textClassName: "text-success",
@@ -54,7 +54,7 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
 };
 
 const UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION: CaseTrackingStatusPresentation = {
-  badgeClassName: "border border-slate-300 !bg-white text-slate-600",
+  badgeClassName: "text-slate-600",
   label: "ไม่ระบุสถานะ",
   summaryTone: "default",
   textClassName: "text-slate-500",

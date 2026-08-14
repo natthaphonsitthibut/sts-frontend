@@ -9,10 +9,12 @@ import { Card } from "../base/card";
  */
 export function TrackingStepsCard({
   children,
+  statusContent,
   statusClassName,
   statusLabel,
 }: {
   children: ReactNode;
+  statusContent?: ReactNode;
   statusClassName: string;
   statusLabel: string;
 }) {
@@ -24,7 +26,10 @@ export function TrackingStepsCard({
           ขั้นตอนการติดตาม
         </h2>
         <span className="text-sm font-semibold text-slate-700">
-          สถานะการติดตาม: <span className={statusClassName}>{statusLabel}</span>
+          สถานะการติดตาม:{" "}
+          {statusContent ?? (
+            <span className={statusClassName}>{statusLabel}</span>
+          )}
         </span>
       </div>
       <div className="space-y-5">{children}</div>

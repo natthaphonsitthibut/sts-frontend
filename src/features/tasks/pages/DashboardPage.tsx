@@ -22,7 +22,6 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import { ContextLink } from "../../../components/layout/context-link";
 import { Pagination } from "../../../components/layout/pagination";
 import {
@@ -42,6 +41,7 @@ import { attendanceService } from "../../attendance/api/attendance.service";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
@@ -213,18 +213,20 @@ function LinkExpiredIndicator() {
 function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
   return (
     <div className="flex items-center justify-center gap-2">
-      <DetailLinkButton
-        aria-label={`ดูรายละเอียดเคสของ ${row.studentName}`}
-        className="bg-primary text-white hover:bg-primary-dark"
-        icon={ClipboardList}
-        iconOnly
-        title="ดูรายละเอียดเคส"
-        to={`/cases/${row.latestCaseId}`}
+      <StudentCaseAction
+        activeCaseCount={row.openCaseCount}
+        activeCaseId={row.latestCaseId}
+        initialReason={row.teacherComment || undefined}
+        studentId={row.studentId}
+        studentName={row.studentName}
       />
-      <LinkShareButton
-        compact
-        disabled={!row.latestCaseMagicLink}
-        link={row.latestCaseMagicLink ?? ""}
+      <DetailLinkButton
+        aria-label={`ดูข้อมูลนักเรียน ${row.studentName}`}
+        className="bg-primary text-white hover:bg-primary-dark"
+        icon={Eye}
+        iconOnly
+        title="ดูข้อมูลนักเรียน"
+        to={`/students/${row.studentId}`}
       />
     </div>
   );

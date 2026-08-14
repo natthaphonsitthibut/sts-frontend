@@ -15,6 +15,7 @@ import {
 import { appToast } from "../../../components/base/app-toast";
 import { AssignmentSummary } from "../../../components/layout/assignment-summary";
 import { TrackingStep, TrackingStepsCard } from "../../../components/layout/tracking-step";
+import { CaseStatusBadge } from "./CaseStatusBadge";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { taskService } from "../../tasks/api/task.service";
@@ -276,6 +277,12 @@ export function CaseTrackingTimeline({ caseRecord, onAssigned, onReview }: CaseT
 
   return (
     <TrackingStepsCard
+      statusContent={
+        <CaseStatusBadge
+          label={caseRecord.display_status_label || caseRecord.status_label}
+          status={caseRecord.status}
+        />
+      }
       statusClassName={statusPresentation.textClassName}
       statusLabel={caseRecord.display_status_label || caseRecord.status_label || statusPresentation.label}
     >

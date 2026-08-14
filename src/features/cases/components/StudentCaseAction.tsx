@@ -75,12 +75,12 @@ export function StudentCaseAction({
         ) : (
           <Button
             aria-label={label}
+            className="min-w-28"
             disabled={disabled}
             icon={FolderOpen}
             onClick={() => setCaseListDialogOpen(true)}
             size="md"
             title={label}
-            variant="outline"
           >
             {multipleCases ? "ดูรายการเคส" : "ดูเคส"}
           </Button>
