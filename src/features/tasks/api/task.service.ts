@@ -9,6 +9,7 @@ import type {
   TaskDelegationResponse,
   TaskGuestStudent,
   TaskHistoryEntry,
+  TaskOtpChallenge,
   TaskSubmitResponse,
   VisitAssignee,
 } from "../types/task.types";
@@ -83,8 +84,11 @@ async function getTaskHistory(
   return normalizeArrayResponse(response.data);
 }
 
-async function requestTaskOtp(token: string): Promise<void> {
-  await apiClient.post(`/tasks/${encodeURIComponent(token)}/otp`);
+async function requestTaskOtp(token: string): Promise<TaskOtpChallenge> {
+  const response = await apiClient.post<TaskOtpChallenge>(
+    `/tasks/${encodeURIComponent(token)}/otp`,
+  );
+  return response.data;
 }
 
 async function verifyTaskOtp(

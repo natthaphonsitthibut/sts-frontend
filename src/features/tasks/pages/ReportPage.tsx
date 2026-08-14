@@ -34,8 +34,6 @@ import { TrackingStep, TrackingStepsCard } from "../../../components/layout/trac
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
-import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
-import { OtpVerifyPanel } from "../../auth/components/OtpVerifyPanel";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
 import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
@@ -45,6 +43,7 @@ import { taskService } from "../api/task.service";
 import { buildVisitReportFormTitle } from "../lib/task-presentation";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
+import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
 import {
   deleteVisitReportDraft,
   loadVisitReportDraft,
@@ -135,7 +134,6 @@ export function ReportPage() {
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
-  const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
   const initialVisit = useMemo(() => getLocalDateTimeParts(), []);
   const [lat, setLat] = useState("");
@@ -344,21 +342,7 @@ export function ReportPage() {
 
   const task = taskQuery.data;
   if (task.auth_required) {
-    return (
-      <MagicAuthCard title="ยืนยันตัวตน" subtitle={task.assigned_to_name || "แบบฟอร์มติดตามนักเรียน"}>
-        <OtpVerifyPanel
-          onRequestOtp={() => taskService.requestTaskOtp(token)}
-          onVerifyOtp={async (otp) => {
-            const response = await taskService.verifyTaskOtp(token, otp);
-            if (!response.session_token) {
-              throw new Error("รหัส OTP ไม่ถูกต้องหรือหมดอายุ");
-            }
-            writeMagicToken(token, response.session_token, "local");
-            setSessionToken(response.session_token);
-          }}
-        />
-      </MagicAuthCard>
-    );
+    return <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />;
   }
 
   const assignmentStart = parseDateTimeParts(task.opens_at || task.created_at);
