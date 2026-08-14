@@ -1,9 +1,7 @@
 import type { DataScope } from "../../auth/lib/permissions";
-import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 
-export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
+export type TaskType = "VISIT" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
-export type AttendanceTaskStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 
 export interface TaskCreatePayload {
   task_type: TaskType;
@@ -100,7 +98,6 @@ export interface TaskAccessTask {
   address_sub_district?: string | null;
   postal_code?: string | null;
   reason_flagged?: string | null;
-  delegation_note?: string | null;
   assignment_note?: string | null;
   student_lat?: number | null;
   student_lng?: number | null;
@@ -116,31 +113,7 @@ export interface TaskAccessTask {
     exception_label?: string | null;
   }>;
   auth_required?: boolean;
-  can_delegate?: boolean;
-  delegation_depth?: number;
-  max_delegation_depth?: number;
   school_name?: string | null;
-  timetable_slots?: Array<{
-    id: number;
-    day_of_week: number;
-    period: number;
-    subject_id: number;
-    subject_name_th?: string | null;
-    teacher_name?: string | null;
-  }>;
-}
-
-export interface TaskGuestStudent {
-  id: string;
-  name: string;
-  grade: string;
-  room: string;
-}
-
-export interface TaskHistoryEntry {
-  student_id: string;
-  student_name: string;
-  status: number | string;
 }
 
 export interface TaskSubmitResponse {
@@ -157,22 +130,17 @@ export interface TaskOtpChallenge {
   expiresAt: string;
 }
 
-export interface TaskDelegationPayload {
-  new_assignee_name?: string;
-  new_assignee_first_name: string;
-  new_assignee_last_name: string;
-  new_assignee_phone: string;
-  new_assignee_email: string;
-  delegation_note: string;
-  expires_in_hours?: number;
-  expires_at?: string;
+export type TaskLinkAdminAction = "lock" | "unlock";
+
+export interface TaskLinkAdminPayload {
+  action: TaskLinkAdminAction;
+  reason: string;
 }
 
-export interface TaskDelegationResponse {
-  magic_link: string;
-  qr_code_data: string | null;
-  expires_at: string;
-  delegation_depth: number;
+export interface TaskLinkAdminResponse {
+  message: string;
+  link_id: string;
+  admin_locked: number | boolean;
 }
 
 export interface TaskChainLink {
@@ -186,9 +154,6 @@ export interface TaskChainLink {
   expires_at?: string | null;
   magic_link?: string | null;
   admin_locked?: boolean | number | null;
-  delegation_depth?: number | null;
-  delegated_by_name?: string | null;
-  delegated_at?: string | null;
   submission?: TaskSubmission | null;
 }
 

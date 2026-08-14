@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ClipboardList, Eye } from "lucide-react";
+import { ArrowLeft, ClipboardList, Eye } from "lucide-react";
 import { Badge, Card } from "../../../components/base";
 import {
   ErrorState,
@@ -187,35 +187,14 @@ export function TaskDetailPage() {
                   </span>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      {index === 0 ? (
-                        <div className="font-bold text-slate-900">
-                          ผู้รับเริ่มต้น:{" "}
-                          {link.assigned_to_name || "ไม่ระบุผู้รับ"}
-                        </div>
-                      ) : (
-                        <div className="flex min-w-0 flex-wrap items-center gap-2 font-bold text-slate-900">
-                          <span className="break-words">
-                            {link.delegated_by_name || "ไม่ระบุผู้ส่ง"}
-                          </span>
-                          <ArrowRight
-                            className="size-4 shrink-0 text-slate-500"
-                            aria-hidden="true"
-                          />
-                          <span className="break-words">
-                            {link.assigned_to_name || "ไม่ระบุผู้รับ"}
-                          </span>
-                        </div>
-                      )}
-                      {link.delegation_depth != null ? (
-                        <div className="text-sm text-slate-500">
-                          ลำดับที่ {Number(link.delegation_depth) + 1}
-                        </div>
-                      ) : null}
+                      <div className="font-bold text-slate-900">
+                        ผู้รับมอบหมาย: {link.assigned_to_name || "ไม่ระบุผู้รับ"}
+                      </div>
                       <LinkTimeSummary
                         className="mt-2 max-w-sm"
                         expiresAt={link.expires_at}
-                        startLabel={index === 0 ? "เริ่ม" : "ส่งต่อ"}
-                        startsAt={link.delegated_at || link.created_at}
+                        startLabel="เริ่ม"
+                        startsAt={link.created_at}
                       />
                     </div>
                     <Badge variant={linkStatus.variant}>{linkStatus.label}</Badge>

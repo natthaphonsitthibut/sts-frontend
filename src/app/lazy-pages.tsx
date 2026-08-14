@@ -75,13 +75,6 @@ export const AttendanceCheckInPage = lazy(() =>
     }),
   ),
 );
-export const AttendanceRecordPage = lazy(() =>
-  import("../features/attendance/pages/AttendanceRecordPage").then(
-    (module) => ({
-      default: module.AttendanceRecordPage,
-    }),
-  ),
-);
 export const AttendanceOperationsPage = lazy(() =>
   import("../features/attendance/pages/AttendanceOperationsPage").then(
     (module) => ({
@@ -190,11 +183,6 @@ export const ImportQuarantineDetailPage = lazy(() =>
       default: module.ImportQuarantineDetailPage,
     }),
   ),
-);
-export const VisitLinksPage = lazy(() =>
-  import("../features/visit-links/pages/VisitLinksPage").then((module) => ({
-    default: module.VisitLinksPage,
-  })),
 );
 export const TimetablePage = lazy(() =>
   import("../features/timetable/pages/TimetablePage").then((module) => ({
@@ -348,11 +336,6 @@ export const TeacherCommentReportsPage = lazy(() =>
       default: module.TeacherCommentReportsPage,
     }),
   ),
-);
-export const DelegatePage = lazy(() =>
-  import("../features/tasks/pages/DelegatePage").then((module) => ({
-    default: module.DelegatePage,
-  })),
 );
 export const ReportPage = lazy(() =>
   import("../features/tasks/pages/ReportPage").then((module) => ({

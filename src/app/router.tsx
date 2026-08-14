@@ -28,7 +28,6 @@ import {
   TeacherStudentProfilePage,
   TeacherTimetablePage,
   AttendanceOperationsPage,
-  AttendanceRecordPage,
   CompletedPage,
   ClassroomsPage,
   ClassroomDetailPage,
@@ -37,7 +36,6 @@ import {
   ChangePasswordPage,
   DataExportsPage,
   DashboardPage,
-  DelegatePage,
   ExpiredPage,
   ForbiddenPage,
   ImportDataPage,
@@ -72,7 +70,6 @@ import {
   TeachersPage,
   TimetablePage,
   UserDetailPage,
-  VisitLinksPage,
 } from "./lazy-pages";
 import {
   AttendanceDefaultRedirect,
@@ -205,10 +202,6 @@ export const router = createBrowserRouter([
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
       {
-        path: "attendance/record/:classId",
-        element: protectedElement(<AttendanceRecordPage />, "attendance"),
-      },
-      {
         path: "cases",
         element: <LegacyCasesRedirect />,
       },
@@ -231,14 +224,6 @@ export const router = createBrowserRouter([
       {
         path: "cases/:caseId/reviews/:reviewId",
         element: protectedElement(<CaseReviewDetailPage />, "review-cases"),
-      },
-      {
-        path: "visit-links",
-        element: protectedElement(<VisitLinksPage />, "review-cases"),
-      },
-      {
-        path: "visit-links/history",
-        element: protectedElement(<VisitLinksPage />, "review-cases"),
       },
       {
         path: "attendance-links",
@@ -451,10 +436,6 @@ export const router = createBrowserRouter([
   {
     path: "/task/:token",
     element: withSuspense(<TaskGuestPage />),
-  },
-  {
-    path: "/task/:token/delegate",
-    element: withSuspense(<DelegatePage />),
   },
   {
     path: "/task/:token/report",

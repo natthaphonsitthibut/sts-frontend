@@ -103,16 +103,6 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("dashboard", "/student-risk-report"),
   pageMenuItem("students", "/students"),
   pageMenuItem("classrooms", "/classrooms", "manage-school-structure"),
-  {
-    id: "case-system",
-    label: "งานติดตามเคส",
-    iconName: "folder-heart",
-    children: [
-      {
-        ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
-      },
-    ],
-  },
   pageMenuItem("student-self", "/my-attendance"),
   {
     id: "data-management",

@@ -1,7 +1,6 @@
 import type { BadgeProps } from "../../../components/base";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { isLinkLocked as isTaskLinkLocked } from "../../../lib/link-lock";
-import type { AttendanceTaskStatus } from "../types/task.types";
 import type { TaskChainLink } from "../types/task.types";
 import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
@@ -35,7 +34,6 @@ export function formatDateTimeRangeAge(
 }
 
 export function getTaskTypeLabel(type?: string | null): string {
-  if (type === "ATTENDANCE") return "เช็คชื่อ";
   if (type === "VISIT") return "ลงพื้นที่";
   if (type === "LOGIN") return "เข้าสู่ระบบ";
   return type || "-";
@@ -101,14 +99,6 @@ export function getTaskLinkDisplayStatus(
     variant: item?.badgeVariant ?? "secondary",
     state: "OTHER",
   };
-}
-
-export function getAttendanceStatusItem(
-  status: AttendanceTaskStatus | string,
-  catalog: readonly StatusCatalogItem[],
-): StatusCatalogItem | undefined {
-  const alias = status === "ABSENT" ? "P_ABSENT" : status === "LATE" ? "P_LATE" : status;
-  return findStatusCatalogItem(catalog, alias);
 }
 
 export function buildLineShareUrl(url: string): string {

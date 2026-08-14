@@ -2,19 +2,14 @@ import { isAxiosError } from "axios";
 import { apiClient } from "../../../lib/api-client";
 import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import type {
-  CreateFollowUpRequestInput,
   CreateHumanRiskReviewInput,
   CreateStudentObservationInput,
   GenerateObservationSummaryResult,
-  HomeVisitRequestReport,
-  HomeVisitRequestReportFilters,
   HumanRiskReview,
   HumanRiskReviewState,
   ObservationCatalog,
   ObservationSummaryResponse,
   PaginationMeta,
-  ReviewFollowUpRequestInput,
-  StudentFollowUpRequest,
   StudentObservation,
   StudentObservationSummary,
   TeacherCommentReport,
@@ -96,39 +91,6 @@ async function createGuestObservation(
   });
 }
 
-async function listGuestFollowUps(
-  credential: TeacherLinkCredential,
-  input: { assignmentId: number; studentTermId: string },
-): Promise<PaginatedEnvelope<StudentFollowUpRequest>> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.get<
-      PaginatedEnvelope<StudentFollowUpRequest>
-    >("/teacher-access/follow-up-requests", {
-      headers: guestHeaders(credential),
-      params: { ...input, page: 1, limit: 50 },
-    });
-    return response.data;
-  });
-}
-
-async function createGuestFollowUp(
-  credential: TeacherLinkCredential,
-  studentTermId: string,
-  input: CreateFollowUpRequestInput,
-): Promise<{ data: StudentFollowUpRequest; meta: { created: boolean } }> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.post<{
-      data: StudentFollowUpRequest;
-      meta: { created: boolean };
-    }>(
-      "/teacher-access/follow-up-requests",
-      { studentTermId, ...input },
-      { headers: guestHeaders(credential) },
-    );
-    return response.data;
-  });
-}
-
 async function listTeacherComments(query: {
   page?: number;
   limit?: number;
@@ -169,66 +131,6 @@ async function createManagedObservation(
   return response.data.data;
 }
 
-function taskLinkHeaders(sessionToken?: string) {
-  return sessionToken ? { "x-magic-session": sessionToken } : undefined;
-}
-
-async function getTaskLinkCatalog(
-  token: string,
-  sessionToken?: string,
-): Promise<ObservationCatalog> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.get<DataEnvelope<ObservationCatalog>>(
-      `/tasks/${encodeURIComponent(token)}/observations/catalog`,
-      { headers: taskLinkHeaders(sessionToken) },
-    );
-    return response.data.data;
-  });
-}
-
-async function listTaskLinkObservations(
-  token: string,
-  input: { studentTermId: string; timetableSlotId?: number },
-  sessionToken?: string,
-): Promise<PaginatedEnvelope<StudentObservation>> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.get<PaginatedEnvelope<StudentObservation>>(
-      `/tasks/${encodeURIComponent(token)}/observations`,
-      {
-        headers: taskLinkHeaders(sessionToken),
-        params: { ...input, page: 1, limit: 50 },
-      },
-    );
-    return response.data;
-  });
-}
-
-async function createTaskLinkObservation(
-  token: string,
-  input: CreateStudentObservationInput,
-  sessionToken?: string,
-): Promise<StudentObservation> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.post<DataEnvelope<StudentObservation>>(
-      `/tasks/${encodeURIComponent(token)}/observations`,
-      input,
-      { headers: taskLinkHeaders(sessionToken) },
-    );
-    return response.data.data;
-  });
-}
-
-async function createManagedFollowUp(
-  studentTermId: string,
-  input: CreateFollowUpRequestInput,
-): Promise<{ data: StudentFollowUpRequest; meta: { created: boolean } }> {
-  const response = await apiClient.post<{
-    data: StudentFollowUpRequest;
-    meta: { created: boolean };
-  }>(`/students/${studentTermId}/follow-up-requests`, input);
-  return response.data;
-}
-
 async function listTeacherObservationReports(
   filters: TeacherObservationReportFilters,
 ): Promise<PaginatedEnvelope<TeacherObservationReport>> {
@@ -257,24 +159,6 @@ async function listTeacherWatchlist(
   return response.data;
 }
 
-async function listHomeVisitRequests(
-  filters: HomeVisitRequestReportFilters,
-): Promise<PaginatedEnvelope<HomeVisitRequestReport>> {
-  const response = await apiClient.get<
-    PaginatedEnvelope<HomeVisitRequestReport>
-  >("/student-risk-report/home-visit-requests", { params: filters });
-  return response.data;
-}
-
-async function getHomeVisitRequest(
-  requestId: string,
-): Promise<HomeVisitRequestReport> {
-  const response = await apiClient.get<DataEnvelope<HomeVisitRequestReport>>(
-    `/student-risk-report/home-visit-requests/${requestId}`,
-  );
-  return response.data.data;
-}
-
 async function getHumanRiskReview(
   studentTermId: string,
 ): Promise<HumanRiskReviewState> {
@@ -296,29 +180,6 @@ async function createHumanRiskReview(
 ): Promise<HumanRiskReview> {
   const response = await apiClient.post<DataEnvelope<HumanRiskReview>>(
     `/students/${studentTermId}/risk-review`,
-    input,
-  );
-  return response.data.data;
-}
-
-async function listManagedFollowUps(
-  studentTermId: string,
-): Promise<PaginatedEnvelope<StudentFollowUpRequest>> {
-  const response = await apiClient.get<
-    PaginatedEnvelope<StudentFollowUpRequest>
-  >(`/students/${studentTermId}/follow-up-requests`, {
-    params: { page: 1, limit: 50 },
-  });
-  return response.data;
-}
-
-async function reviewFollowUp(
-  studentTermId: string,
-  requestId: string,
-  input: ReviewFollowUpRequestInput,
-): Promise<StudentFollowUpRequest> {
-  const response = await apiClient.patch<DataEnvelope<StudentFollowUpRequest>>(
-    `/students/${studentTermId}/follow-up-requests/${requestId}`,
     input,
   );
   return response.data.data;
@@ -375,25 +236,15 @@ export const studentObservationsService = {
   getGuestCatalog,
   listGuestObservations,
   createGuestObservation,
-  listGuestFollowUps,
-  createGuestFollowUp,
   getManagedCatalog,
   createManagedObservation,
-  createManagedFollowUp,
-  getTaskLinkCatalog,
-  listTaskLinkObservations,
-  createTaskLinkObservation,
   listTeacherObservationReports,
   getTeacherObservationReport,
   listTeacherWatchlist,
-  listHomeVisitRequests,
-  getHomeVisitRequest,
   listManagedObservations,
   listTeacherComments,
   getHumanRiskReview,
   createHumanRiskReview,
-  listManagedFollowUps,
-  reviewFollowUp,
   getObservationSummary,
   generateObservationSummary,
   reviewObservationSummary,
