@@ -93,7 +93,10 @@ function destination(
   return `${path}${buildQuery(query)}`;
 }
 
-function getRiskAreaBackAction(filters: HomeDashboardFilters, schoolLocked: boolean): {
+function getRiskAreaBackAction(
+  filters: HomeDashboardFilters,
+  schoolLocked: boolean,
+): {
   label: string;
   next: Partial<HomeDashboardFilters>;
 } | null {
@@ -151,7 +154,9 @@ function FilterCombobox({
   );
 }
 
-function getLockedSchoolId(schoolIds: number[] | undefined): number | undefined {
+function getLockedSchoolId(
+  schoolIds: number[] | undefined,
+): number | undefined {
   return schoolIds?.length === 1 ? schoolIds[0] : undefined;
 }
 
@@ -209,7 +214,12 @@ function useDashboardFilters() {
     );
   }
 
-  return { filters, reset, schoolLocked: lockedSchoolId !== undefined, updateFilter };
+  return {
+    filters,
+    reset,
+    schoolLocked: lockedSchoolId !== undefined,
+    updateFilter,
+  };
 }
 
 function DashboardFilterBar({
@@ -421,7 +431,7 @@ export function MainPage() {
         <div className="space-y-5 ">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{summary.scopeLabel}</Badge>
+              <Badge variant="default">{summary.scopeLabel}</Badge>
             </div>
           </div>
 
@@ -431,7 +441,7 @@ export function MainPage() {
             className={cn(
               "grid gap-5 items-stretch",
               summary.riskAreaRanking &&
-              "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
+                "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
             <GeoMapSVG

@@ -29,10 +29,11 @@ export function RiskAreaRankingChart({
           </span>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              นักเรียนเสี่ยง Top 10 {ranking.dimensionLabel}
+              พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 10 {ranking.dimensionLabel}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน กดพื้นที่เพื่อดูระดับถัดไป
+              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน
+              กดพื้นที่เพื่อดูระดับถัดไป
             </p>
           </div>
         </div>
@@ -82,7 +83,9 @@ export function RiskAreaRankingChart({
                     <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-100">
                       <span
                         className="block h-full rounded-full bg-danger transition-[width] duration-200 ease-out motion-reduce:transition-none"
-                        style={{ width: `${Math.max((item.count / maxCount) * 100, 3)}%` }}
+                        style={{
+                          width: `${Math.max((item.count / maxCount) * 100, 3)}%`,
+                        }}
                       />
                     </span>
                   </span>
