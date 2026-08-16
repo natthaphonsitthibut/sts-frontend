@@ -338,8 +338,6 @@ export async function openAttendanceImportFile(
 
 /** Records an applied import together with the file it came from. */
 export async function recordAttendanceImport(input: {
-  schoolId: number;
-  schoolTermId: number;
   classroomId: number;
   attendanceDate: string;
   timetableSlotId?: number;
@@ -352,8 +350,7 @@ export async function recordAttendanceImport(input: {
 }): Promise<void> {
   const form = new FormData();
   if (input.file) form.append("file", input.file, input.fileName);
-  form.append("schoolId", String(input.schoolId));
-  form.append("schoolTermId", String(input.schoolTermId));
+  // The server derives school and term from the classroom, so neither is sent.
   form.append("classroomId", String(input.classroomId));
   form.append("attendanceDate", input.attendanceDate);
   if (input.timetableSlotId) {

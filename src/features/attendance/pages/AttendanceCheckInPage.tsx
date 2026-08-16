@@ -1175,8 +1175,6 @@ export function AttendanceCheckInPage() {
         recordImport={async (input) => {
           if (!rosterClassroomId || !selectedTimetableSlot) return;
           await recordAttendanceImport({
-            schoolId: Number(selectedTimetableSlot.school_id),
-            schoolTermId: Number(selectedTimetableSlot.school_term_id),
             classroomId: rosterClassroomId,
             attendanceDate: checkInDate,
             timetableSlotId: Number(selectedTimetableSlot.id),
