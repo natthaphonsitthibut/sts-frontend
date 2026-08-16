@@ -1,10 +1,11 @@
 import { formatThaiDateTime } from "../../../lib/date-time";
 import {
+  CalendarClock,
   CircleCheck,
+  ContactRound,
   Clock3,
-  FileCheck2,
+  ListChecks,
   MapPin,
-  UserRoundX,
   type LucideIcon,
 } from "lucide-react";
 import type { KnownCaseStatus } from "../types/cases.types";
@@ -33,32 +34,32 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
 > = {
   OPEN: {
     badgeClassName: "text-brand-yellow",
-    icon: Clock3,
-    iconSurfaceClassName: "bg-brand-yellow-bg text-brand-yellow",
+    icon: ContactRound,
+    iconSurfaceClassName: "bg-brand-yellow text-white",
     label: "รอมอบหมาย",
     summaryTone: "orange",
     textClassName: "text-brand-yellow",
   },
   IN_PROGRESS: {
     badgeClassName: "text-brand-purple",
-    icon: MapPin,
-    iconSurfaceClassName: "bg-brand-purple-bg text-brand-purple",
+    icon: CalendarClock,
+    iconSurfaceClassName: "bg-brand-purple text-white",
     label: "รอติดตาม",
     summaryTone: "purple",
     textClassName: "text-brand-purple",
   },
   PENDING_REVIEW: {
     badgeClassName: "text-primary",
-    icon: FileCheck2,
-    iconSurfaceClassName: "bg-brand-soft text-primary",
+    icon: ListChecks,
+    iconSurfaceClassName: "bg-primary text-white",
     label: "รอพิจารณา",
     summaryTone: "info",
     textClassName: "text-primary",
   },
   STUDENT_NOT_FOUND: {
     badgeClassName: "text-danger",
-    icon: UserRoundX,
-    iconSurfaceClassName: "bg-danger-100 text-danger",
+    icon: MapPin,
+    iconSurfaceClassName: "bg-danger text-white",
     label: "ไม่พบนักเรียน",
     summaryTone: "danger",
     textClassName: "text-danger",
@@ -66,8 +67,8 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
   RESOLVED: {
     badgeClassName: "text-success",
     icon: CircleCheck,
-    iconSurfaceClassName: "bg-success-100 text-success-700",
-    label: "เสร็จสิ้น - ปิดเคส",
+    iconSurfaceClassName: "bg-success text-white",
+    label: "เสร็จสิ้น",
     summaryTone: "success",
     textClassName: "text-success",
   },
@@ -76,7 +77,7 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
 const UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION: CaseTrackingStatusPresentation = {
   badgeClassName: "text-slate-600",
   icon: Clock3,
-  iconSurfaceClassName: "bg-slate-100 text-slate-600",
+  iconSurfaceClassName: "bg-slate-600 text-white",
   label: "ไม่ระบุสถานะ",
   summaryTone: "default",
   textClassName: "text-slate-500",
@@ -97,6 +98,18 @@ export function getCaseReason(reason?: string | null, fallback?: string | null):
 
 export function formatCaseDate(value: string): string {
   return formatThaiDateTime(value);
+}
+
+/**
+ * Multi-choice answers on a round (residence environments, assistance measures)
+ * arrive already ordered and labelled from the API, so every read-only surface
+ * renders them as the same one-line list.
+ */
+export function formatOptionLabels(
+  options?: Array<{ code: string; label: string }> | null,
+): string {
+  if (!options || options.length === 0) return "-";
+  return options.map((option) => option.label).join(", ");
 }
 
 export function isFollowUpLinkExpired(assignmentEndsAt?: string | null): boolean {

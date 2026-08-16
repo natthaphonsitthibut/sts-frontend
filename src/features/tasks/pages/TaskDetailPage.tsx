@@ -136,7 +136,7 @@ export function TaskDetailPage() {
               {task.case_status ? (
                 <CaseStatusBadge
                   badgeVariant={caseStatus?.badgeVariant}
-                  label={task.display_status_label ?? caseStatus?.label}
+                  label={caseStatus?.label}
                   status={task.case_status}
                 />
               ) : (

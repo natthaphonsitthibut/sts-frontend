@@ -1,11 +1,14 @@
 import type { DataScope } from "../../auth/lib/permissions";
 
-export type TaskType = "VISIT" | "LOGIN";
+/** `ASSIST` = assistance round assigned after a follow-up review. */
+export type TaskType = "VISIT" | "ASSIST" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
 
 export interface TaskCreatePayload {
   task_type: TaskType;
   type: TaskType;
+  assistance_measure_codes?: string[];
+  assistance_measure_detail?: string;
   assigned_to_name: string;
   assigned_to_first_name: string;
   assigned_to_last_name: string;
@@ -64,6 +67,7 @@ export interface VisitAssignee {
 export interface TaskAccessTask {
   id?: string;
   type?: TaskType | string;
+  task_type?: TaskType | string;
   error?: string;
   assigned_to_name?: string | null;
   assigned_to_first_name?: string | null;
@@ -73,6 +77,9 @@ export interface TaskAccessTask {
   created_at?: string | null;
   status?: string;
   case_status?: string | null;
+  /** Assistance rounds: measures committed when the round was assigned. */
+  assistance_measures?: Array<{ code: string; label: string }> | null;
+  assistance_measure_detail?: string | null;
   reason?: string;
   subject?: string | null;
   target_grade?: string | null;
@@ -109,9 +116,15 @@ export interface TaskAccessTask {
     assigned_to_name?: string | null;
     visited_at?: string | null;
     submitted_at?: string | null;
+    assignment_starts_at?: string | null;
+    assignment_ends_at?: string | null;
+    assignment_note?: string | null;
     cause_detail?: string | null;
+    follow_up_assessment_label?: string | null;
     exception_label?: string | null;
   }>;
+  /** Composed workflow label (`รอติดตาม : ให้ความช่วยเหลือ`) for the card header. */
+  case_display_status_label?: string | null;
   auth_required?: boolean;
   school_name?: string | null;
 }
@@ -162,6 +175,13 @@ export interface TaskSubmission {
   cause_category?: string | null;
   follow_up_assessment_code?: string | null;
   follow_up_assessment_label?: string | null;
+  parental_status_code?: string | null;
+  parental_status_label?: string | null;
+  guardian_type_code?: string | null;
+  guardian_type_label?: string | null;
+  guardian_type_detail?: string | null;
+  residence_environments?: Array<{ code: string; label: string }> | null;
+  residence_environment_detail?: string | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   submitted_at?: string | null;
@@ -196,3 +216,17 @@ export interface TaskChainResponse {
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;
 }
+
+/** QR challenge for verifying a follow-up/assistance link with AraID. */
+export interface TaskAraIdChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+}
+
+export type TaskAraIdChallengeStatus =
+  | { status: "PENDING" }
+  | { status: "IN_PROGRESS"; expiresAt: string }
+  | { status: "APPROVED"; sessionToken: string };

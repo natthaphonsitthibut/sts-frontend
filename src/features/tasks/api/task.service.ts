@@ -1,6 +1,8 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   TaskAccessTask,
+  TaskAraIdChallenge,
+  TaskAraIdChallengeStatus,
   TaskChainResponse,
   TaskCreatePayload,
   TaskCreateResponse,
@@ -70,6 +72,39 @@ async function verifyTaskOtp(
   return response.data;
 }
 
+const TASK_ARAID_CHALLENGE_HEADER = "x-task-araid-challenge";
+
+async function createTaskAraIdChallenge(token: string): Promise<TaskAraIdChallenge> {
+  const response = await apiClient.post<{ data: TaskAraIdChallenge }>(
+    `/tasks/${encodeURIComponent(token)}/araid/challenge`,
+  );
+  return response.data.data;
+}
+
+async function beginTaskAraIdChallenge(challengeToken: string): Promise<{ expiresAt: string }> {
+  const response = await apiClient.post<{ data: { expiresAt: string } }>(
+    "/tasks/araid/challenge/begin",
+    undefined,
+    { headers: { [TASK_ARAID_CHALLENGE_HEADER]: challengeToken } },
+  );
+  return response.data.data;
+}
+
+async function approveTaskAraIdChallenge(): Promise<void> {
+  await apiClient.post("/tasks/araid/challenge/approve");
+}
+
+async function pollTaskAraIdChallenge(
+  challengeToken: string,
+): Promise<TaskAraIdChallengeStatus> {
+  const response = await apiClient.post<{ data: TaskAraIdChallengeStatus }>(
+    "/tasks/araid/challenge/status",
+    undefined,
+    { headers: { [TASK_ARAID_CHALLENGE_HEADER]: challengeToken } },
+  );
+  return response.data.data;
+}
+
 async function submitTaskReport(
   token: string,
   payload: FormData,
@@ -95,7 +130,11 @@ async function setTaskLinkAdminLock(
 }
 
 export const taskService = {
+  approveTaskAraIdChallenge,
+  beginTaskAraIdChallenge,
   createTask,
+  createTaskAraIdChallenge,
+  pollTaskAraIdChallenge,
   getVisitAssignees,
   getTask,
   getTaskChain,

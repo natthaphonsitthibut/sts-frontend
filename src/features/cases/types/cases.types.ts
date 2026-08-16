@@ -12,9 +12,13 @@ export type CaseBadgeVariant =
   | "secondary"
   | "destructive"
   | "success"
-  | "warning";
+  | "warning"
+  | "purple";
 
-export type CaseReviewAction = "REFER_AGENCY" | "CLOSE";
+export type CaseReviewAction = "REFER_AGENCY" | "CLOSE" | "ASSIST";
+
+/** `FOLLOW_UP` = ติดตาม round, `ASSISTANCE` = ให้ความช่วยเหลือ round. */
+export type CaseWorkflowPhase = "FOLLOW_UP" | "ASSISTANCE";
 export type CaseResolutionOutcome = string;
 
 export interface CaseTrackingOption {
@@ -23,6 +27,15 @@ export interface CaseTrackingOption {
   targetStatus: string | null;
   requiresResolutionOutcome: boolean;
   requiredPermission?: string;
+  /** null = the action is offered in every phase. */
+  availablePhaseCode?: string | null;
+  targetWorkflowPhaseCode?: string | null;
+}
+
+export interface AssistanceMeasureOption {
+  code: string;
+  label: string;
+  requiresDetail: boolean;
 }
 
 export interface CaseTrackingOptions {
@@ -35,11 +48,27 @@ export interface CaseTrackingOptions {
     requiresUpdatedAddress: boolean;
   }>;
   homeVisitAssessments: Array<{ code: string; label: string }>;
+  assistanceMeasures: AssistanceMeasureOption[];
+  parentalStatuses: Array<{ code: string; label: string }>;
+  guardianTypes: Array<{ code: string; label: string; requiresDetail: boolean }>;
+  residenceEnvironments: Array<{
+    code: string;
+    label: string;
+    /** `ปกติ / ไม่มีปัจจัยเสี่ยง` cannot be combined with any risk factor. */
+    isExclusive: boolean;
+    requiresDetail: boolean;
+  }>;
 }
 
 export interface CaseFollowUpRound {
   task_id: string;
   task_status: string;
+  /** `VISIT` = follow-up round, `ASSIST` = assistance round. */
+  task_type?: string | null;
+  assistance_measures?: Array<{ code: string; label: string }> | null;
+  assistance_measure_detail?: string | null;
+  assisted_at?: string | null;
+  assistance_detail?: string | null;
   created_at: string;
   initial_assignee?: string | null;
   assignment_starts_at?: string | null;
@@ -51,6 +80,13 @@ export interface CaseFollowUpRound {
   cause_category?: string | null;
   follow_up_assessment_code?: string | null;
   follow_up_assessment_label?: string | null;
+  parental_status_code?: string | null;
+  parental_status_label?: string | null;
+  guardian_type_code?: string | null;
+  guardian_type_label?: string | null;
+  guardian_type_detail?: string | null;
+  residence_environments?: Array<{ code: string; label: string }> | null;
+  residence_environment_detail?: string | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   visit_lat?: number | null;
@@ -96,6 +132,7 @@ export interface CaseRecord {
   status_label?: string | null;
   completion_outcome_code?: "CLOSED" | "REFERRED_AGENCY" | null;
   completion_outcome_label?: string | null;
+  workflow_phase_code?: CaseWorkflowPhase | null;
   display_status_label?: string | null;
   status_badge_variant?: CaseBadgeVariant | null;
   created_at: string;

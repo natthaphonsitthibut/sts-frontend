@@ -80,7 +80,9 @@ export function TaskGuestPage() {
     );
   }
 
-  if (task.type === "VISIT") {
+  // Both work types file their report through the same route; the report page
+  // picks the follow-up or assistance form from the task type.
+  if (task.type === "VISIT" || task.type === "ASSIST") {
     return <Navigate replace to={`/task/${token}/report`} />;
   }
 

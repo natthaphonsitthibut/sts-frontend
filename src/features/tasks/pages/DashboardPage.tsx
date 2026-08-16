@@ -12,7 +12,7 @@ import {
   Search,
   TriangleAlert,
 } from "lucide-react";
-import { Button, Combobox, Tabs } from "../../../components/base";
+import { Button, Combobox, HoverTooltip, Tabs } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -204,9 +204,9 @@ function needsLinkRenewal(row: RiskDashboardRow): boolean {
 
 function LinkExpiredIndicator() {
   return (
-    <span className="inline-flex" title="ไม่มีลิงก์ที่ใช้งานได้ ต้องมอบหมายใหม่">
-      <TriangleAlert aria-label="ไม่มีลิงก์ที่ใช้งานได้ ต้องมอบหมายใหม่" className="size-4 shrink-0 text-danger" />
-    </span>
+    <HoverTooltip label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่">
+      <TriangleAlert className="size-4 shrink-0 text-danger" aria-hidden="true" />
+    </HoverTooltip>
   );
 }
 
@@ -370,6 +370,9 @@ export function DashboardPage() {
     placeholderData: keepPreviousData,
   });
 
+  // The watchlist tab keeps showing the risk group's case counts, so it asks for
+  // the same summary with the smallest allowed page size — the API rejects any
+  // limit outside `PAGE_SIZE_OPTIONS`, which would leave every card on 0.
   const riskStatusSummaryQuery = useQuery({
     queryKey: ["risk-dashboard", "case-status-summary", query],
     queryFn: () => riskDashboardService.getRiskDashboard({
@@ -377,7 +380,7 @@ export function DashboardPage() {
       studentGroup: "RISK",
       caseStatus: undefined,
       page: 1,
-      limit: 1,
+      limit: PAGE_SIZE_OPTIONS[0],
     }),
     enabled: isWatchlist && !requiresSchoolSelection,
     placeholderData: keepPreviousData,
@@ -708,13 +711,18 @@ export function DashboardPage() {
                     </p>
                   </DataTableCell>
                   {!isWatchlist ? <>
-                    <DataTableCell className="relative text-center">
-                      {row.latestCaseStatus ? <CaseStatusBadge status={row.latestCaseStatus} /> : null}
-                      {needsLinkRenewal(row) ? (
-                        <span className="absolute right-1 top-1/2 -translate-y-1/2">
-                          <LinkExpiredIndicator />
-                        </span>
-                      ) : null}
+                    <DataTableCell className="text-center">
+                      {/* The warning hangs off the badge instead of the cell so
+                          it stays centred on the badge, and the badge itself
+                          stays centred in the column whether or not it shows. */}
+                      <span className="relative inline-flex items-center">
+                        {row.latestCaseStatus ? <CaseStatusBadge status={row.latestCaseStatus} /> : null}
+                        {needsLinkRenewal(row) ? (
+                          <span className="absolute inset-y-0 left-full ml-2 flex items-center">
+                            <LinkExpiredIndicator />
+                          </span>
+                        ) : null}
+                      </span>
                     </DataTableCell>
                     <DataTableCell className="text-slate-700">{row.latestCaseAt ? formatThaiDateTime(row.latestCaseAt) : "-"}</DataTableCell>
                   </> : null}

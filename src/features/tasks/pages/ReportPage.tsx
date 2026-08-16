@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  Divider,
   Form,
   FormErrorAlert,
   FormItem,
@@ -22,6 +23,7 @@ import {
   FormMessage,
   IconButton,
   Input,
+  MultiSelect,
   registerField,
   Textarea,
   TimePicker,
@@ -37,10 +39,12 @@ import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
 import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
+import type { CaseTrackingOptions } from "../../cases/types/cases.types";
 import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { buildVisitReportFormTitle } from "../lib/task-presentation";
+import { AssistanceReportPage } from "./AssistanceReportPage";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
@@ -50,11 +54,27 @@ import {
   saveVisitReportDraft,
 } from "../lib/visit-report-draft";
 
-const reportSchema = z
+/**
+ * Which follow-up answers demand a free-text description is data, not code: the
+ * option rows carry `requiresDetail`, so the schema is built from the loaded
+ * catalogue instead of matching option codes by hand.
+ */
+interface ReportOptionRules {
+  guardianTypes: CaseTrackingOptions["guardianTypes"];
+  residenceEnvironments: CaseTrackingOptions["residenceEnvironments"];
+}
+
+function createReportSchema(rules: ReportOptionRules) {
+  return z
   .object({
     visitedDate: z.string().trim().min(1, "กรุณาเลือกวันที่ลงพื้นที่"),
     visitedTime: z.string().regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
     assessmentCode: z.string().trim().min(1, "กรุณาเลือกผลการติดตาม"),
+    parentalStatusCode: z.string().trim(),
+    guardianTypeCode: z.string().trim(),
+    guardianTypeDetail: z.string().trim(),
+    residenceEnvironmentCodes: z.array(z.string().trim()),
+    residenceEnvironmentDetail: z.string().trim(),
     causeDetail: z.string().trim(),
     homeVisitExceptionCode: z.string().trim(),
     updatedAddressLine: z.string().trim(),
@@ -69,6 +89,27 @@ const reportSchema = z
         code: "custom",
         message: "กรุณาระบุรายละเอียดเมื่อไม่พบนักเรียน",
         path: ["causeDetail"],
+      });
+    }
+    const guardianType = rules.guardianTypes.find(
+      (option) => option.code === values.guardianTypeCode,
+    );
+    if (guardianType?.requiresDetail && !values.guardianTypeDetail) {
+      context.addIssue({
+        code: "custom",
+        message: "กรุณาระบุผู้ปกครอง",
+        path: ["guardianTypeDetail"],
+      });
+    }
+    const pickedEnvironments = values.residenceEnvironmentCodes ?? [];
+    const needsEnvironmentDetail = rules.residenceEnvironments.some(
+      (option) => option.requiresDetail && pickedEnvironments.includes(option.code),
+    );
+    if (needsEnvironmentDetail && !values.residenceEnvironmentDetail) {
+      context.addIssue({
+        code: "custom",
+        message: "กรุณาระบุรายละเอียดสภาพแวดล้อมรอบที่พัก",
+        path: ["residenceEnvironmentDetail"],
       });
     }
     if (values.homeVisitExceptionCode !== "ADDRESS_CHANGED") return;
@@ -90,8 +131,9 @@ const reportSchema = z
       });
     }
   });
+}
 
-type ReportFormValues = z.infer<typeof reportSchema>;
+type ReportFormValues = z.infer<ReturnType<typeof createReportSchema>>;
 
 function getLocalDateTimeParts(date = new Date()): { date: string; time: string } {
   const year = date.getFullYear();
@@ -146,11 +188,30 @@ export function ReportPage() {
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [draftError, setDraftError] = useState("");
 
-  const form = useForm<ReportFormValues>({
-    defaultValues: {
+  const trackingOptionsQuery = useCaseTrackingOptions();
+  const guardianTypes = useMemo(
+    () => trackingOptionsQuery.data?.guardianTypes ?? [],
+    [trackingOptionsQuery.data],
+  );
+  const residenceEnvironments = useMemo(
+    () => trackingOptionsQuery.data?.residenceEnvironments ?? [],
+    [trackingOptionsQuery.data],
+  );
+  const resolver = useMemo(
+    () => zodResolver(createReportSchema({ guardianTypes, residenceEnvironments })),
+    [guardianTypes, residenceEnvironments],
+  );
+
+  const defaultValues = useMemo<ReportFormValues>(
+    () => ({
       visitedDate: initialVisit.date,
       visitedTime: initialVisit.time,
       assessmentCode: "",
+      parentalStatusCode: "",
+      guardianTypeCode: "",
+      guardianTypeDetail: "",
+      residenceEnvironmentCodes: [],
+      residenceEnvironmentDetail: "",
       causeDetail: "",
       homeVisitExceptionCode: "",
       updatedAddressLine: "",
@@ -158,12 +219,18 @@ export function ReportPage() {
       updatedAddressDistrict: "",
       updatedAddressSubDistrict: "",
       updatedPostalCode: "",
-    },
-    resolver: zodResolver(reportSchema),
-  });
+    }),
+    [initialVisit.date, initialVisit.time],
+  );
+
+  const form = useForm<ReportFormValues>({ defaultValues, resolver });
   const visitedDate = useWatch({ control: form.control, name: "visitedDate" });
   const visitedTime = useWatch({ control: form.control, name: "visitedTime" });
   const assessmentCode = useWatch({ control: form.control, name: "assessmentCode" });
+  const parentalStatusCode = useWatch({ control: form.control, name: "parentalStatusCode" });
+  const guardianTypeCode = useWatch({ control: form.control, name: "guardianTypeCode" });
+  const residenceEnvironmentCodes =
+    useWatch({ control: form.control, name: "residenceEnvironmentCodes" }) ?? [];
   const homeVisitExceptionCode = useWatch({
     control: form.control,
     name: "homeVisitExceptionCode",
@@ -181,7 +248,6 @@ export function ReportPage() {
     enabled: Boolean(token),
     retry: false,
   });
-  const trackingOptionsQuery = useCaseTrackingOptions();
   const locationCatalogQuery = useQuery({
     queryKey: ["public-location-catalog"],
     queryFn: attendanceLookupService.getLocations,
@@ -219,13 +285,24 @@ export function ReportPage() {
     }
   }, [navigate, taskQuery.data?.status, token]);
 
+  // An assistance link is handed to AssistanceReportPage further down, but that
+  // is a conditional return: every hook in this component has already run by
+  // then, including the draft effects below. Left ungated they would hydrate and
+  // then autosave THIS form's empty home-visit values over the assistance
+  // draft — same token, same store — and the reporter's typing would vanish.
+  const ownsDraft = taskQuery.data?.task_type !== "ASSIST";
+
   useEffect(() => {
+    if (!ownsDraft) return;
     if (!taskQuery.data || taskQuery.data.status === "COMPLETED" || draftHydrated) return;
     let cancelled = false;
     void loadVisitReportDraft<ReportFormValues>(token)
       .then((draft) => {
         if (cancelled || !draft) return;
-        form.reset(draft.formValues);
+        // A draft saved before a field existed has no key for it, so merge over
+        // the defaults instead of replacing them — otherwise the restored form
+        // holds `undefined` where the UI expects an empty value.
+        form.reset({ ...defaultValues, ...draft.formValues });
         setLat(draft.latitude);
         setLng(draft.longitude);
         setPhotos(draft.files);
@@ -240,9 +317,10 @@ export function ReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [draftHydrated, form, taskQuery.data, token]);
+  }, [defaultValues, draftHydrated, form, ownsDraft, taskQuery.data, token]);
 
   useEffect(() => {
+    if (!ownsDraft) return;
     if (!draftHydrated || !taskQuery.data || taskQuery.data.status === "COMPLETED") return;
     const timer = window.setTimeout(() => {
       void saveVisitReportDraft({
@@ -259,7 +337,7 @@ export function ReportPage() {
         .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [draftFormValues, draftHydrated, form, lat, lng, photos, taskQuery.data, token]);
+  }, [draftFormValues, draftHydrated, form, lat, lng, ownsDraft, photos, taskQuery.data, token]);
 
   const submitReport = useMutation({
     mutationFn: (values: ReportFormValues) => {
@@ -267,6 +345,23 @@ export function ReportPage() {
       const formData = new FormData();
       formData.set("visited_at", visitedAt.toISOString());
       formData.set("follow_up_assessment_code", values.assessmentCode);
+      if (values.parentalStatusCode) {
+        formData.set("parental_status_code", values.parentalStatusCode);
+      }
+      if (values.guardianTypeCode) {
+        formData.set("guardian_type_code", values.guardianTypeCode);
+        if (values.guardianTypeDetail) {
+          formData.set("guardian_type_detail", values.guardianTypeDetail);
+        }
+      }
+      // One field per factor: the backend reads the repeated key as the set of
+      // observed environments.
+      (values.residenceEnvironmentCodes ?? []).forEach((code) => {
+        formData.append("residence_environment_codes", code);
+      });
+      if (values.residenceEnvironmentDetail) {
+        formData.set("residence_environment_detail", values.residenceEnvironmentDetail);
+      }
       formData.set("cause_detail", values.causeDetail);
       formData.set("case_follow_up_decision", "REQUEST_REVIEW");
       formData.set("visit_lat", lat);
@@ -302,6 +397,25 @@ export function ReportPage() {
       });
     },
   });
+
+  /**
+   * `ปกติ / ไม่มีปัจจัยเสี่ยง` is flagged exclusive in the option catalogue:
+   * picking it drops every risk factor, and picking a risk factor drops it.
+   */
+  function handleResidenceEnvironmentChange(next: string[]): void {
+    const exclusiveCodes = new Set(
+      residenceEnvironments.filter((option) => option.isExclusive).map((option) => option.code),
+    );
+    const added = next.find((code) => !residenceEnvironmentCodes.includes(code));
+    const resolved =
+      added && exclusiveCodes.has(added)
+        ? [added]
+        : next.filter((code) => !exclusiveCodes.has(code));
+    form.setValue("residenceEnvironmentCodes", resolved, {
+      shouldDirty: true,
+      shouldValidate: form.formState.isSubmitted,
+    });
+  }
 
   function handleUseCurrentLocation(): void {
     if (!navigator.geolocation) {
@@ -345,11 +459,22 @@ export function ReportPage() {
     return <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />;
   }
 
+  // An assistance round reports what help was given, not a home visit, so it
+  // gets its own form rather than a mode flag threaded through this one.
+  if (task.task_type === "ASSIST") {
+    return <AssistanceReportPage sessionToken={sessionToken} task={task} token={token} />;
+  }
+
   const assignmentStart = parseDateTimeParts(task.opens_at || task.created_at);
   const assignmentEnd = parseDateTimeParts(task.expires_at);
   const formTitle = buildVisitReportFormTitle(task);
   const history = task.follow_up_history ?? [];
   const homeVisitExceptions = trackingOptionsQuery.data?.homeVisitExceptions ?? [];
+  const guardianRequiresDetail =
+    guardianTypes.find((option) => option.code === guardianTypeCode)?.requiresDetail ?? false;
+  const residenceEnvironmentRequiresDetail = residenceEnvironments.some(
+    (option) => option.requiresDetail && residenceEnvironmentCodes.includes(option.code),
+  );
   const contactChannels = getContactChannels(task);
   const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
 
@@ -455,8 +580,11 @@ export function ReportPage() {
         </DialogContent>
       </Dialog>
 
-      <TrackingStepsCard statusClassName={trackingStatus.textClassName} statusLabel={trackingStatus.label}>
-        <TrackingStep connectNext number={1} title="มอบหมาย">
+      <TrackingStepsCard
+        statusClassName={trackingStatus.textClassName}
+        statusLabel={task.case_display_status_label || trackingStatus.label}
+      >
+        <TrackingStep connectNext number={1} title="มอบหมายการติดตาม">
           <AssignmentSummary
             assigneeLabel={task.assigned_to_name || "-"}
             endsAtLabel={assignmentEnd.time}
@@ -467,7 +595,7 @@ export function ReportPage() {
           />
         </TrackingStep>
 
-        <TrackingStep active connectPrev number={2} title="สาเหตุ">
+        <TrackingStep active connectPrev number={2} title="ติดตาม">
           <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
             <div className="space-y-4">
               <FormErrorAlert
@@ -475,9 +603,12 @@ export function ReportPage() {
                 fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
               />
 
-              <div className="grid items-stretch gap-4 lg:grid-cols-2">
+              {/* Household block: both columns share the same three rows through
+                  `grid-rows-subgrid`, so a field that grows moves its whole row
+                  on both sides instead of sliding the columns out of step. */}
+              <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
                 <div
-                  className="grid h-full gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]"
+                  className="grid h-full min-w-0 grid-cols-1 gap-4 lg:row-span-3 lg:grid-rows-subgrid"
                   data-visit-report-fields
                 >
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -517,6 +648,122 @@ export function ReportPage() {
                     </FormItem>
                   </div>
 
+                  <FormItem>
+                    <FormLabel htmlFor="parental-status">สถานะของบิดา-มารดา</FormLabel>
+                    <Combobox
+                      id="parental-status"
+                      name="parentalStatusCode"
+                      onChange={(value) =>
+                        form.setValue("parentalStatusCode", value, {
+                          shouldDirty: true,
+                          shouldValidate: form.formState.isSubmitted,
+                        })
+                      }
+                      options={(trackingOptionsQuery.data?.parentalStatuses ?? []).map(
+                        (option) => ({ value: option.code, label: option.label }),
+                      )}
+                      placeholder="สถานะ"
+                      searchable={false}
+                      value={parentalStatusCode}
+                    />
+                    <FormMessage<ReportFormValues> name="parentalStatusCode" />
+                  </FormItem>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormItem>
+                      <FormLabel htmlFor="guardian-type">ผู้ปกครอง</FormLabel>
+                      <Combobox
+                        id="guardian-type"
+                        name="guardianTypeCode"
+                        onChange={(value) => {
+                          form.setValue("guardianTypeCode", value, {
+                            shouldDirty: true,
+                            shouldValidate: form.formState.isSubmitted,
+                          });
+                          // The note only qualifies an "อื่น ๆ" answer, so it
+                          // must not survive a switch to a named relation.
+                          const requiresDetail =
+                            guardianTypes.find((option) => option.code === value)
+                              ?.requiresDetail ?? false;
+                          if (!requiresDetail) {
+                            form.setValue("guardianTypeDetail", "", { shouldDirty: true });
+                          }
+                        }}
+                        options={guardianTypes.map((option) => ({
+                          value: option.code,
+                          label: option.label,
+                        }))}
+                        placeholder="ผู้ปกครอง"
+                        searchable={false}
+                        value={guardianTypeCode}
+                      />
+                      <FormMessage<ReportFormValues> name="guardianTypeCode" />
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel htmlFor="guardian-type-detail" required={guardianRequiresDetail}>
+                        ระบุผู้ปกครอง
+                      </FormLabel>
+                      <Input
+                        className="bg-white"
+                        disabled={!guardianRequiresDetail}
+                        id="guardian-type-detail"
+                        maxLength={200}
+                        placeholder={guardianRequiresDetail ? "ระบุผู้ปกครอง" : "เลือกอื่น ๆ เพื่อระบุ"}
+                        {...registerField(form, "guardianTypeDetail")}
+                      />
+                      <FormMessage<ReportFormValues> name="guardianTypeDetail" />
+                    </FormItem>
+                  </div>
+                </div>
+
+                <div
+                  className="grid min-w-0 grid-cols-1 gap-4 lg:row-span-3 lg:grid-rows-subgrid"
+                  data-visit-report-context
+                >
+                  <FormItem>
+                    <FormLabel htmlFor="residence-environment">สภาพแวดล้อมรอบที่พัก</FormLabel>
+                    <MultiSelect
+                      id="residence-environment"
+                      onChange={handleResidenceEnvironmentChange}
+                      options={residenceEnvironments.map((option) => ({
+                        value: option.code,
+                        label: option.label,
+                      }))}
+                      placeholder="สภาพแวดล้อม"
+                      singleRow
+                      value={residenceEnvironmentCodes}
+                    />
+                    <FormMessage<ReportFormValues> name="residenceEnvironmentCodes" />
+                  </FormItem>
+
+                  {/* Same three-row template as the description field on the
+                      left, so the box tops and bottoms land on the same line. */}
+                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-0 space-y-0 lg:row-span-2">
+                    <FormLabel
+                      htmlFor="residence-environment-detail"
+                      required={residenceEnvironmentRequiresDetail}
+                    >
+                      รายละเอียดสภาพแวดล้อมรอบที่พัก
+                    </FormLabel>
+                    <Textarea
+                      className="h-full min-h-24 resize-none overflow-y-auto bg-white"
+                      id="residence-environment-detail"
+                      maxLength={2000}
+                      placeholder="รายละเอียดสภาพแวดล้อม"
+                      {...registerField(form, "residenceEnvironmentDetail")}
+                    />
+                    <FormMessage<ReportFormValues> className="mt-2" name="residenceEnvironmentDetail" />
+                  </FormItem>
+                </div>
+              </div>
+
+              {/* Separates what the visit found about the home from what the
+                  visitor concluded. Same `slate-200` as the line joining the
+                  step numbers, so the panel keeps one rule colour. */}
+              <Divider className="-mt-5 mb-5 bg-slate-200" />
+
+              <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
+                <div className="grid h-full min-w-0 grid-cols-1 gap-4 lg:row-span-2 lg:grid-rows-subgrid">
                   <FormItem>
                     <FormLabel htmlFor="follow-up-assessment" required>
                       ผลการติดตาม
@@ -567,19 +814,22 @@ export function ReportPage() {
                   </FormItem>
                 </div>
 
-                <div
-                  className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto]"
-                  data-visit-report-upload
-                >
-                  <FormLabel className="mb-1.5">แนบไฟล์</FormLabel>
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <VisitPhotoUpload files={photos} onChange={setPhotos} />
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:row-span-2 lg:grid-rows-subgrid">
+                  <div
+                    className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] lg:row-span-2"
+                    data-visit-report-upload
+                  >
+                    <FormLabel className="mb-1.5">แนบไฟล์</FormLabel>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <VisitPhotoUpload files={photos} onChange={setPhotos} />
+                    </div>
+                    <div className="mt-2 min-h-5" aria-hidden="true" />
                   </div>
-                  <div className="mt-2 min-h-5" aria-hidden="true" />
                 </div>
               </div>
 
-              <div className="border-t border-primary/20 pt-3">
+              <Divider className="bg-slate-200" />
+              <div>
                 <fieldset
                   className="flex flex-wrap items-center gap-x-6 gap-y-2"
                   data-home-visit-exceptions
@@ -741,7 +991,8 @@ export function ReportPage() {
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-primary/20 pt-3">
+              <Divider className="bg-slate-200" />
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-slate-500">
                   <p>ฉบับร่างอยู่เฉพาะ browser/device นี้ และยังไม่ถือว่าส่งรายงาน</p>
                   {draftError ? <p className="mt-1 text-danger-700">{draftError}</p> : null}
