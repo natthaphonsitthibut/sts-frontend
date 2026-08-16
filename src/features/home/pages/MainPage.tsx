@@ -30,6 +30,8 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { CasePipelineChart } from "../components/CasePipelineChart";
+import { CauseCategoryChart } from "../components/CauseCategoryChart";
+import { MonthlySuccessRateChart } from "../components/MonthlySuccessRateChart";
 import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
@@ -446,28 +448,27 @@ export function MainPage() {
                 "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
-            <GeoMapSVG
-              data={
-                nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
-                  ? nationalSummary.riskAreaRanking.items
-                  : undefined
-              }
-              focusedProvince={filters.province}
-              onProvinceClick={
-                schoolLocked
-                  ? undefined
-                  : (provinceName) => updateFilter({ province: provinceName })
-              }
-            />
+            <div className="flex flex-col gap-5">
+              <GeoMapSVG
+                data={
+                  nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
+                    ? nationalSummary.riskAreaRanking.items
+                    : undefined
+                }
+                focusedProvince={filters.province}
+                onProvinceClick={
+                  schoolLocked
+                    ? undefined
+                    : (provinceName) => updateFilter({ province: provinceName })
+                }
+              />
+
+              {summary.monthlySuccessRates ? (
+                <MonthlySuccessRateChart data={summary.monthlySuccessRates} />
+              ) : null}
+            </div>
 
             <div className="flex flex-col gap-5">
-              {summary.casePipeline ? (
-                <CasePipelineChart
-                  filters={filters}
-                  pipeline={summary.casePipeline}
-                />
-              ) : null}
-
               {summary.riskAreaRanking ? (
                 <RiskAreaRankingChart
                   backLabel={riskAreaBackAction?.label}
@@ -480,6 +481,17 @@ export function MainPage() {
                     schoolLocked ? undefined : (filter) => updateFilter(filter)
                   }
                   ranking={summary.riskAreaRanking}
+                />
+              ) : null}
+              {summary.causeCategoryDistribution ? (
+                <CauseCategoryChart
+                  distribution={summary.causeCategoryDistribution}
+                />
+              ) : null}
+              {summary.casePipeline ? (
+                <CasePipelineChart
+                  filters={filters}
+                  pipeline={summary.casePipeline}
                 />
               ) : null}
             </div>

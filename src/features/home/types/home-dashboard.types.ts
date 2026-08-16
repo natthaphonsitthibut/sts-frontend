@@ -34,7 +34,11 @@ export interface HomeDashboardMetric {
 
 export interface HomeDashboardAttentionItem {
   id: string;
-  kind: "ATTENDANCE_INCOMPLETE" | "RISK_HIGH" | "CASE_OVERDUE" | "CASE_PENDING_REVIEW";
+  kind:
+    | "ATTENDANCE_INCOMPLETE"
+    | "RISK_HIGH"
+    | "CASE_OVERDUE"
+    | "CASE_PENDING_REVIEW";
   label: string;
   reason: string;
   count: number;
@@ -58,6 +62,8 @@ export interface HomeDashboardSummaryData {
   attentionItems: HomeDashboardAttentionItem[];
   riskAreaRanking?: HomeDashboardRiskAreaRanking;
   casePipeline?: HomeDashboardCasePipeline | null;
+  causeCategoryDistribution?: { key: string; label: string; count: number }[];
+  monthlySuccessRates?: { month: string; opened: number; resolved: number }[];
 }
 
 export type HomeDashboardRiskAreaDimension =

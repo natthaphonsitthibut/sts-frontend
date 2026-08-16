@@ -583,7 +583,7 @@ const GeoMapSVG = ({
   return (
     <div
       ref={interactionRegionRef}
-      className="relative flex h-[520px] w-full select-none flex-col overflow-hidden overscroll-contain rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:h-[620px] xl:h-[700px]"
+      className="relative flex h-[400px] w-full select-none flex-col overflow-hidden overscroll-contain rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:h-[580px] xl:h-[660px]"
       data-home-risk-map-surface
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 self-stretch mb-4 z-10">
