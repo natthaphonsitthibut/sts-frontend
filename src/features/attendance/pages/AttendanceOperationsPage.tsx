@@ -101,10 +101,10 @@ const ANOMALY_DESCRIPTIONS: Record<
   AttendanceSessionAnomalyType,
   string
 > = {
-  HOLIDAY_ATTENDANCE: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  CANCELLED_ATTENDANCE: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  OUT_OF_TERM: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
-  MISSING_CALENDAR_DAY: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็คชื่อ",
+  HOLIDAY_ATTENDANCE: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  CANCELLED_ATTENDANCE: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  OUT_OF_TERM: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  MISSING_CALENDAR_DAY: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
 };
 
 function getSummaryToneFromBadgeVariant(
@@ -654,7 +654,7 @@ export function AttendanceOperationsPage() {
   const reconciliationNotice = reconciliationTermInactive
     ? {
         title: "ภาคเรียนยังไม่เปิดใช้งาน",
-        description: "เปิดใช้งานภาคเรียนก่อนตรวจสถานะเช็คชื่อรายวันจริง",
+        description: "เปิดใช้งานภาคเรียนก่อนตรวจสถานะเช็กชื่อรายวันจริง",
         variant: "warning" as const,
       }
     : reconciliationDateOutOfRange
@@ -673,7 +673,7 @@ export function AttendanceOperationsPage() {
         ? {
             title: `วันที่ตรวจสอบเป็น${getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}`,
             description:
-              reconciliationCalendarDay.reason || "วันนี้ไม่มีห้องเรียนที่ต้องเช็คชื่อ",
+              reconciliationCalendarDay.reason || "วันนี้ไม่มีห้องเรียนที่ต้องเช็กชื่อ",
             variant: "default" as const,
           }
         : null;
@@ -756,8 +756,8 @@ export function AttendanceOperationsPage() {
     <PageShell>
       <PageToolbar
         icon={CalendarDays}
-        title="ตรวจสถานะเช็คชื่อรายวัน"
-        description="ดูว่าห้องไหนเช็คชื่อครบ ยังไม่เช็ค หรือเช็คไม่ครบในวันที่เลือก"
+        title="ตรวจสถานะเช็กชื่อรายวัน"
+        description="ดูว่าห้องไหนเช็กชื่อครบ ยังไม่เช็ก หรือเช็กไม่ครบในวันที่เลือก"
         actions={
           canManageCalendar && schoolId ? (
             <Button
@@ -847,7 +847,7 @@ export function AttendanceOperationsPage() {
 
       {!schoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนด้านบนเพื่อดูหรือตรวจสอบข้อมูลการเช็คชื่อ"
+          description="เลือกโรงเรียนด้านบนเพื่อดูหรือตรวจสอบข้อมูลการเช็กชื่อ"
           icon={CalendarDays}
           title="เลือกโรงเรียน"
         />
@@ -1181,9 +1181,9 @@ export function AttendanceOperationsPage() {
             <SkeletonTable />
           ) : rows.length === 0 ? (
             <EmptyState
-              description="วันนี้อาจเป็นวันหยุด หรือยังไม่มีห้องเรียนที่ต้องเช็คชื่อ"
+              description="วันนี้อาจเป็นวันหยุด หรือยังไม่มีห้องเรียนที่ต้องเช็กชื่อ"
               icon={CalendarDays}
-              title="ไม่มีห้องเรียนที่ต้องเช็คในวันนี้"
+              title="ไม่มีห้องเรียนที่ต้องเช็กในวันนี้"
             />
           ) : (
             <>
@@ -1260,7 +1260,7 @@ export function AttendanceOperationsPage() {
               <div>
                 <h2 className="text-base font-bold text-slate-900">รายการผิดปกติ</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  ตรวจ session ที่มีการเช็คชื่อแต่ไม่ตรงกับปฏิทินภาคเรียนที่เปิดใช้งาน
+                  ตรวจ session ที่มีการเช็กชื่อแต่ไม่ตรงกับปฏิทินภาคเรียนที่เปิดใช้งาน
                 </p>
               </div>
               <Badge variant={anomalyQuery.data?.totalCount ? "warning" : "secondary"}>
@@ -1325,7 +1325,7 @@ export function AttendanceOperationsPage() {
             <SkeletonTable />
           ) : sortedAnomalyRows.length === 0 ? (
             <EmptyState
-              description="ไม่พบความผิดปกติของข้อมูลการเช็คชื่อในภาคเรียนนี้"
+              description="ไม่พบความผิดปกติของข้อมูลการเช็กชื่อในภาคเรียนนี้"
               icon={CheckCircle2}
               title="ไม่พบรายการผิดปกติในภาคเรียนนี้"
             />
@@ -1343,9 +1343,9 @@ export function AttendanceOperationsPage() {
                         ประเภท
                         <InfoTooltip label="ประเภทความผิดปกติ">
                           <ul className="list-disc space-y-1 pl-4">
-                            <li>เช็คชื่อในวันหยุด</li>
-                            <li>เช็คชื่อในวันที่ยกเลิกเรียน</li>
-                            <li>เช็คชื่อนอกช่วงภาคเรียน</li>
+                            <li>เช็กชื่อในวันหยุด</li>
+                            <li>เช็กชื่อในวันที่ยกเลิกเรียน</li>
+                            <li>เช็กชื่อนอกช่วงภาคเรียน</li>
                             <li>ไม่มีวันนั้นในปฏิทิน</li>
                           </ul>
                         </InfoTooltip>

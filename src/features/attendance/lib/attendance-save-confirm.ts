@@ -8,8 +8,8 @@ interface AttendanceSaveConfirmCounts {
 }
 
 const ATTENDANCE_SAVE_CONFIRM_TEXT = {
-  title: "ยืนยันการส่งเช็คชื่อ",
-  confirmText: "ส่งเช็คชื่อ",
+  title: "ยืนยันการส่งเช็กชื่อ",
+  confirmText: "ส่งเช็กชื่อ",
   cancelText: "กลับไปตรวจ",
 } as const;
 

@@ -1,17 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ClipboardCheck,
-  ClipboardList,
-  History,
-  LockOpen,
-  MessageSquareText,
-  Search,
-  UserRound,
-  Wrench,
-} from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardCheck, ClipboardList, Download, History, LockOpen, MessageSquareText, UserRound, Wrench } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -21,7 +10,6 @@ import {
   IconButton,
   DatePicker,
   DropdownMenu,
-  Input,
   Label,
   Select,
   Tabs,
@@ -37,6 +25,7 @@ import { useContextualNavigate } from "../../../components/layout/navigation-con
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   PageShell,
   PageToolbar,
   SearchInput,
@@ -44,47 +33,67 @@ import {
   ToolbarControls,
   ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
+import { NavButton } from "../../../components/layout/nav-button";
+import { useQuery } from "@tanstack/react-query";
+import { AttendanceDelegationHistoryTable } from "../components/AttendanceDelegationHistoryTable";
+import { AttendanceImportHistoryTable } from "../components/AttendanceImportHistoryTable";
+import {
+  listAttendanceImports,
+  openAttendanceImportFile,
+  recordAttendanceImport,
+} from "../api/attendance.service";
+import { ClassroomAttendanceHistory } from "../../school-structure/components/ClassroomAttendanceHistory";
+import { ClassroomRosterExportDialog } from "../../school-structure/components/ClassroomRosterExportDialog";
 import { AttendanceMarkToolbar } from "../components/AttendanceMarkToolbar";
+import { AttendanceCountBadges } from "../components/AttendanceCountBadges";
+import { AttendanceImportDialog } from "../components/AttendanceImportDialog";
+import { AttendanceQrScannerDialog } from "../components/AttendanceQrScannerDialog";
+import { attendanceService } from "../api/attendance.service";
+import { formatThaiDate } from "../../../lib/date-time";
 import { AttendanceRosterTable } from "../components/AttendanceRosterTable";
 import { SchoolClassRoomFilter } from "../components/SchoolClassRoomFilter";
 import { getAttendanceSaveConfirm } from "../lib/attendance-save-confirm";
-import {
-  getAttendanceStatusPresentation,
-  getIsoDayOfWeekFromDateString,
-} from "../lib/attendance-presentation";
-import type {
-  AttendanceHistoryRecord,
-  AttendanceStudent,
-} from "../types/attendance.types";
+import { getIsoDayOfWeekFromDateString } from "../lib/attendance-presentation";
+import type { AttendanceStudent } from "../types/attendance.types";
 import { formatStudentRoom } from "../../students/lib/student-presentation";
 import { AttendanceReopenDialog } from "../components/AttendanceReopenDialog";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   getTodayIso,
   useAttendanceCheckInForSession,
-  useAttendanceHistory,
 } from "../hooks/useAttendanceCheckIn";
+import { DEFAULT_PAGE_SIZE } from "../../../lib/pagination";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
-import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 import {
   usePeriodTimes,
   useTimetableSlots,
 } from "../../timetable/hooks/useTimetable";
-import { formatTimetableSlotLabel } from "../../timetable/lib/period-times";
+import { getPeriodTimeLabel } from "../../timetable/lib/period-times";
 import type {
   SchoolPeriodTime,
   TimetableSlot,
 } from "../../timetable/types/timetable.types";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { StudentCommentCell } from "../../students/components/StudentCommentCell";
-import { RISK_TIER_PRESENTATION } from "../../students/lib/risk-tier-presentation";
+import {
+  RISK_TIER_ORDER,
+  RISK_TIER_PRESENTATION,
+} from "../../students/lib/risk-tier-presentation";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { useCreateClassroomStudentComment } from "../../school-structure/hooks/useSchoolStructure";
-
-function compareText(a: string | undefined, b: string | undefined): number {
-  return (a || "").localeCompare(b || "", "th");
-}
+import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import { AttendanceDelegationDialog } from "../components/AttendanceDelegationDialog";
+import { AttendanceDelegationSection } from "../components/AttendanceDelegationSection";
+import { AttendanceDelegationEditDialog } from "../components/AttendanceDelegationEditDialog";
+import type { TeacherAttendanceDelegationHistoryEntry } from "../../teacher-access/types/teacher-access.types";
+import {
+  useRevokeTeacherAttendanceDelegation,
+  useStaffAttendanceDelegationHistory,
+  useTeacherAttendanceDelegationOptions,
+  useUpdateTeacherAttendanceDelegation,
+} from "../../teacher-access/hooks/useTeacherAccess";
 
 function rosterSortValue(student: AttendanceStudent, key: string): string {
   if (key === "studentNumber") return student.student_number ?? "";
@@ -107,20 +116,6 @@ function sortAttendanceStudents(
     );
     return sort.direction === "asc" ? result : -result;
   });
-}
-
-function getHistorySortValue(
-  record: AttendanceHistoryRecord,
-  key: string,
-  catalog: readonly StatusCatalogItem[],
-): string {
-  if (key === "student") return record.name || record.student_name || "";
-  if (key === "grade") return record.grade || "";
-  if (key === "room") return formatStudentRoom(record.room);
-  if (key === "status")
-    return getAttendanceStatusPresentation(record.status, catalog).label;
-  if (key === "recorder") return record.recorded_by || record.RecordedBy || "";
-  return "";
 }
 
 function timeToMinutes(value: string): number {
@@ -179,17 +174,53 @@ function findDefaultSlot(
 
 export function AttendanceCheckInPage() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const contextualNavigate = useContextualNavigate();
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
-  const [tab, setTab] = useRouteTab(
+  const delegationStatusCatalog = useStatusCatalog("ATTENDANCE_DELEGATION").items;
+  const [routeTab, setTab] = useRouteTab(
     {
       roster: "/attendance/roster",
       attendance: "/attendance/check-in",
-      history: "/attendance/history",
     } as const,
     "roster",
   );
+  const [historyTab, setHistoryTab] = useRouteTab(
+    {
+      attendance: "/attendance/history/attendance",
+      imports: "/attendance/history/imports",
+      delegations: "/attendance/history/delegations",
+    } as const,
+    "attendance",
+  );
+  // History is the same page's third branch, split into the three views the
+  // teacher link already uses.
+  const isHistoryRoute = useLocation().pathname.startsWith("/attendance/history");
+  const tab = isHistoryRoute ? "history" : routeTab;
+  const [exportOpen, setExportOpen] = useState(false);
+  const [riskTier, setRiskTier] = useState("");
+  const [delegationPage, setDelegationPage] = useState(1);
+  const [delegationRowsPerPage, setDelegationRowsPerPage] =
+    useState<number>(DEFAULT_PAGE_SIZE);
+  const [delegationSort, setDelegationSort] = useState<
+    DataTableSortState | undefined
+  >({ key: "date", direction: "desc" });
+  // One subject choice for all three history tabs: เช็กชื่อ, นำเข้าไฟล์ and
+  // มอบหมาย answer about the same round, so they filter together.
+  const [historySubjectId, setHistorySubjectId] = useState("");
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  // The success banner stays until it is closed or the next round is sent, so a
+  // teacher who scrolled away still sees that the last submit went through.
+  const [saveNoticeDismissed, setSaveNoticeDismissed] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [delegationOpen, setDelegationOpen] = useState(false);
+  const [delegationShare, setDelegationShare] = useState<{
+    accessUrl: string;
+    description: string;
+  } | null>(null);
+  const [delegationEdit, setDelegationEdit] =
+    useState<TeacherAttendanceDelegationHistoryEntry | null>(null);
   const [commentStudent, setCommentStudent] = useState<AttendanceStudent | null>(
     null,
   );
@@ -205,9 +236,6 @@ export function AttendanceCheckInPage() {
     key: "studentNumber",
     direction: "asc",
   });
-  const [historySort, setHistorySort] = useState<
-    DataTableSortState | undefined
-  >();
   const [selectedSlotId, setSelectedSlotId] = useState("");
   // Defaults to today but stays editable — lets a teacher check in for an
   // earlier date (e.g. catching up after the fact). Never a future date; the
@@ -216,16 +244,14 @@ export function AttendanceCheckInPage() {
   const isCheckInDateToday = checkInDate === getTodayIso();
   const selectedSlotIdNumber = selectedSlotId ? Number(selectedSlotId) : null;
   const checkIn = useAttendanceCheckInForSession({
-    enabled: Boolean(selectedSlotIdNumber),
+    // The roster tab is a class directory, so it must load as soon as the
+    // classroom filter is complete. Only the check-in tab needs a timetable
+    // slot before opening an attendance session.
+    enabled: tab !== "attendance" || Boolean(selectedSlotIdNumber),
     timetableSlotId: selectedSlotIdNumber,
     date: checkInDate,
   });
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const [historyDate, setHistoryDate] = useState(getTodayIso());
-  const [historySearch, setHistorySearch] = useState("");
-  // Pass the selected school so the server scopes history to one school's day
-  // (it returns empty without it) — the history tab shares the today tab's scope.
-  const history = useAttendanceHistory(historyDate, checkIn.schoolId);
 
   const {
     scope,
@@ -240,6 +266,7 @@ export function AttendanceCheckInPage() {
     students,
     selections,
     setStatus,
+    markStatus,
     counts,
     canLoadRoster,
     isRosterLoading,
@@ -264,6 +291,10 @@ export function AttendanceCheckInPage() {
     reopenState,
     schoolArea,
   } = checkIn;
+  // The roster carries the classroom the filter resolved to, which is what the
+  // shared export dialog and the history table are keyed by.
+  const rosterClassroomId = Number(students[0]?.classroom_id) || null;
+  const rosterClassroomLabel = `${grade}/${formatStudentRoom(room)}`;
   const selectedGradeLevel = gradeLevels.find((level) => level.label === grade);
   const selectedRoomNo = Number(room);
   const timetableFilter =
@@ -297,14 +328,114 @@ export function AttendanceCheckInPage() {
       },
       ...slotsForDate.map((slot) => ({
         value: String(slot.id),
-        label: `${slot.subject_name_th} · ${formatTimetableSlotLabel(
-          slot,
+        label: `${slot.subject_name_th} · คาบ ${slot.period} (${getPeriodTimeLabel(
           periodTimesQuery.data?.data ?? [],
-        )}`,
+          slot.day_of_week,
+          slot.period,
+        )})`,
       })),
     ],
     [periodTimesQuery.data?.data, slotsForDate],
   );
+  // The room's subjects, from the timetable this page already loads for the
+  // period picker — so the history can be narrowed to one subject.
+  const delegationHistoryQuery = useStaffAttendanceDelegationHistory(
+    {
+      schoolId: schoolId ? Number(schoolId) : undefined,
+      classroomId: rosterClassroomId,
+      subjectId: historySubjectId ? Number(historySubjectId) : undefined,
+      page: delegationPage,
+      limit: delegationRowsPerPage,
+      search: attendanceSearch.trim() || undefined,
+      sortBy: delegationSort?.key as
+        | "date"
+        | "issuedBy"
+        | "teacher"
+        | "status"
+        | undefined,
+      sortDirection: delegationSort?.direction,
+    },
+    isHistoryRoute && historyTab === "delegations",
+  );
+  const importHistoryQuery = useQuery({
+    queryKey: [
+      "attendance-imports",
+      rosterClassroomId,
+      historySubjectId,
+      delegationPage,
+      delegationRowsPerPage,
+      attendanceSearch,
+    ],
+    queryFn: () =>
+      listAttendanceImports({
+        classroomId: rosterClassroomId!,
+        subjectId: historySubjectId ? Number(historySubjectId) : undefined,
+        page: delegationPage,
+        limit: delegationRowsPerPage,
+        search: attendanceSearch.trim() || undefined,
+      }),
+    enabled: Boolean(
+      rosterClassroomId && isHistoryRoute && historyTab === "imports",
+    ),
+  });
+
+  /** Streams the stored file back and hands it to the browser to open. */
+  async function openImportFile(entry: {
+    id: string;
+    fileName: string;
+    hasFile: boolean;
+    sourceUrl: string | null;
+  }): Promise<void> {
+    if (!entry.hasFile) {
+      if (entry.sourceUrl) window.open(entry.sourceUrl, "_blank", "noopener");
+      return;
+    }
+    if (!rosterClassroomId) return;
+    const blob = await openAttendanceImportFile(entry.id, rosterClassroomId);
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = entry.fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const roomSubjects = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const slot of slotsQuery.data?.data ?? []) {
+      if (slot.subject_id && !seen.has(slot.subject_id)) {
+        seen.set(slot.subject_id, slot.subject_name_th);
+      }
+    }
+    return [...seen].map(([id, name]) => ({ id, name }));
+  }, [slotsQuery.data?.data]);
+  const selectedTimetableSlot = slotsForDate.find(
+    (slot) => String(slot.id) === selectedSlotId,
+  );
+  const attendanceDelegationOptions = useTeacherAttendanceDelegationOptions({
+    schoolId: selectedTimetableSlot?.school_id,
+    schoolTermId: selectedTimetableSlot
+      ? Number(selectedTimetableSlot.school_term_id)
+      : undefined,
+    classroomId: selectedTimetableSlot
+      ? Number(selectedTimetableSlot.classroom_id)
+      : undefined,
+    attendanceDate: checkInDate,
+    enabled: Boolean(selectedTimetableSlot && tab === "attendance"),
+  });
+  // Editing a row from ประวัติ needs the teacher list for that row's own day,
+  // which is not necessarily the day the check-in screen is showing.
+  const delegationEditOptions = useTeacherAttendanceDelegationOptions({
+    schoolId: schoolId ? Number(schoolId) : undefined,
+    schoolTermId: selectedTimetableSlot
+      ? Number(selectedTimetableSlot.school_term_id)
+      : undefined,
+    classroomId: rosterClassroomId ?? undefined,
+    attendanceDate: delegationEdit?.attendanceDate,
+    enabled: Boolean(delegationEdit),
+  });
+  const updateAttendanceDelegation = useUpdateTeacherAttendanceDelegation();
+  const revokeAttendanceDelegation = useRevokeTeacherAttendanceDelegation();
 
   // Adjust stale state while rendering so async timetable changes resolve
   // before commit without an effect/render cascade. A valid user selection is
@@ -356,7 +487,23 @@ export function AttendanceCheckInPage() {
       return;
     }
 
+    setSaveNoticeDismissed(false);
     await save();
+  }
+
+  /** Closing a link from the history is the same action the active list runs. */
+  async function revokeDelegationFromHistory(
+    entry: TeacherAttendanceDelegationHistoryEntry,
+  ): Promise<void> {
+    const accepted = await confirm({
+      title: "ยกเลิกลิงก์มอบหมายการเช็กชื่อ",
+      description: `ลิงก์ของ ${entry.teacherDisplayName} จะใช้งานไม่ได้ทันที`,
+      confirmText: "ยกเลิกลิงก์",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    await revokeAttendanceDelegation.mutateAsync({ grantId: entry.grantId });
+    await delegationHistoryQuery.refetch();
   }
 
   async function handleReopen(reason: string): Promise<void> {
@@ -386,14 +533,17 @@ export function AttendanceCheckInPage() {
 
   const filteredStudents = useMemo(() => {
     const keyword = attendanceSearch.trim().toLocaleLowerCase("th-TH");
-    return students.filter((student) =>
-      !keyword
-        ? true
-        : `${student.name} ${student.student_number ?? ""}`
-            .toLocaleLowerCase("th-TH")
-            .includes(keyword),
-    );
-  }, [attendanceSearch, students]);
+    return students.filter((student) => {
+      const matchesKeyword =
+        !keyword ||
+        `${student.name} ${student.student_number ?? ""}`
+          .toLocaleLowerCase("th-TH")
+          .includes(keyword);
+      const matchesTier =
+        !riskTier || (student.risk_tier ?? "NORMAL") === riskTier;
+      return matchesKeyword && matchesTier;
+    });
+  }, [attendanceSearch, riskTier, students]);
 
   const visibleStudents = useMemo(
     () => sortAttendanceStudents(filteredStudents, attendanceSort),
@@ -404,56 +554,21 @@ export function AttendanceCheckInPage() {
     [filteredStudents, rosterSort],
   );
 
-  // History uses the same school/grade/room scope as the today tab — filter the
-  // records client-side by the selected class so both tabs behave consistently.
-  const scopedHistory = useMemo(
-    () =>
-      history.records.filter(
-        (record) =>
-          (!grade || record.grade === grade) &&
-          (!room || String(record.room) === room),
-      ),
-    [history.records, grade, room],
-  );
-  const filteredHistory = useMemo(() => {
-    const keyword = historySearch.trim().toLocaleLowerCase("th-TH");
-    return scopedHistory.filter((record) => {
-      if (!keyword) return true;
-      const statusLabel = getAttendanceStatusPresentation(
-        record.status,
-        attendanceStatusCatalog,
-      ).label;
-      return [
-        record.name,
-        record.student_name,
-        record.grade,
-        String(record.room ?? ""),
-        record.recorded_by,
-        record.RecordedBy,
-        statusLabel,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("th-TH")
-        .includes(keyword);
-    });
-  }, [attendanceStatusCatalog, historySearch, scopedHistory]);
-  const sortedHistory = useMemo(() => {
-    if (!historySort) return filteredHistory;
-    return [...filteredHistory].sort((a, b) => {
-      const result = compareText(
-        getHistorySortValue(a, historySort.key, attendanceStatusCatalog),
-        getHistorySortValue(b, historySort.key, attendanceStatusCatalog),
-      );
-      return historySort.direction === "asc" ? result : -result;
-    });
-  }, [attendanceStatusCatalog, filteredHistory, historySort]);
 
   return (
     <PageShell className="pb-6">
       <PageToolbar
         icon={ClipboardCheck}
-        title="เช็คชื่อ"
+        // History is a page of its own inside this one, so it needs the way back
+        // that the teacher link's history has.
+        navigation={
+          isHistoryRoute ? (
+            <NavButton icon={ArrowLeft} to="/attendance/check-in" variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          ) : undefined
+        }
+        title="เช็กชื่อ"
         description="บันทึกการมาเรียนประจำวันของนักเรียนในแต่ละห้อง"
       >
         <ToolbarFilterGrid>
@@ -471,14 +586,6 @@ export function AttendanceCheckInPage() {
             scope={filterScope}
           />
 
-          {tab === "history" ? (
-            <DatePicker
-              ariaLabel="เลือกวันที่"
-              className="sm:w-[180px]"
-              value={historyDate}
-              onChange={setHistoryDate}
-            />
-          ) : null}
         </ToolbarFilterGrid>
       </PageToolbar>
 
@@ -490,7 +597,7 @@ export function AttendanceCheckInPage() {
             onChange={setTab}
             options={[
               { value: "roster", label: "รายชื่อ" },
-              { value: "attendance", label: "เช็คชื่อ" },
+              { value: "attendance", label: "เช็กชื่อ" },
             ]}
             value={tab}
           />
@@ -509,25 +616,42 @@ export function AttendanceCheckInPage() {
             <>
               <DropdownMenu
                 align="start"
-                ariaLabel="เครื่องมือการเช็คชื่อ"
+                ariaLabel="เครื่องมือการเช็กชื่อ"
                 items={[
                   {
                     id: "qr",
-                    label: "สแกน QR Code เพื่อเช็คชื่อ (เร็ว ๆ นี้)",
-                    disabled: true,
-                    onSelect: () => undefined,
+                    label: "สแกน QR Code เพื่อเช็กชื่อ",
+                    // Every tool writes into the round, so they follow the round:
+                    // usable while it is open, off once it has been submitted
+                    // until someone reopens it.
+                    disabled:
+                      !canEditAttendance ||
+                      !canLoadRoster ||
+                      isRosterLoading ||
+                      students.length === 0,
+                    onSelect: () => setQrScannerOpen(true),
                   },
                   {
                     id: "delegate",
-                    label: "มอบหมายการเช็คชื่อ (เร็ว ๆ นี้)",
-                    disabled: true,
-                    onSelect: () => undefined,
+                    label: "มอบหมายการเช็กชื่อ",
+                    disabled:
+                      !canEditAttendance ||
+                      !canLoadRoster ||
+                      !selectedTimetableSlot ||
+                      attendanceDelegationOptions.isFetching ||
+                      attendanceDelegationOptions.isError ||
+                      !(attendanceDelegationOptions.data?.assignments.length),
+                    onSelect: () => setDelegationOpen(true),
                   },
                   {
                     id: "import",
-                    label: "นำเข้าไฟล์การเช็คชื่อ (เร็ว ๆ นี้)",
-                    disabled: true,
-                    onSelect: () => undefined,
+                    label: "นำเข้าไฟล์การเช็กชื่อ",
+                    disabled:
+                      !canEditAttendance ||
+                      !canLoadRoster ||
+                      isRosterLoading ||
+                      students.length === 0,
+                    onSelect: () => setImportOpen(true),
                   },
                 ]}
                 trigger={(triggerProps) => (
@@ -539,12 +663,41 @@ export function AttendanceCheckInPage() {
               <Button
                 className="sm:ml-auto"
                 icon={History}
-                onClick={() => void navigate("/attendance/history")}
+                // Straight to the tab: bouncing through the redirect route would
+                // unmount this page and drop the school/grade/room already picked.
+                onClick={() => void navigate("/attendance/history/attendance")}
               >
-                ประวัติการเช็คชื่อ
+                ประวัติการเช็กชื่อ
               </Button>
             </>
-          ) : null}
+          ) : (
+            <>
+              <FilterSelect
+                ariaLabel="กรองสถานะความเสี่ยง"
+                onChange={setRiskTier}
+                value={riskTier}
+              >
+                <option value="">สถานะทั้งหมด</option>
+                {RISK_TIER_ORDER.map((value) => (
+                  <option key={value} value={value}>
+                    {RISK_TIER_PRESENTATION[value].label}
+                  </option>
+                ))}
+              </FilterSelect>
+              {can("export-data") ? (
+                <Button
+                  className="sm:ml-auto"
+                  disabled={
+                    !rosterClassroomId || visibleRosterStudents.length === 0
+                  }
+                  icon={Download}
+                  onClick={() => setExportOpen(true)}
+                >
+                  ดาวน์โหลดข้อมูล
+                </Button>
+              ) : null}
+            </>
+          )}
         </ToolbarControls>
       ) : null}
 
@@ -672,7 +825,7 @@ export function AttendanceCheckInPage() {
           <div className="mb-4 w-[270px] max-w-full">
             <Label htmlFor="attendance-date">วันที่</Label>
             <DatePicker
-              ariaLabel="เลือกวันที่เช็คชื่อ"
+              ariaLabel="เลือกวันที่เช็กชื่อ"
               id="attendance-date"
               max={getTodayIso()}
               value={checkInDate}
@@ -681,7 +834,9 @@ export function AttendanceCheckInPage() {
               }
             />
           </div>
-          <div className="mb-4 w-[270px] max-w-full">
+          {/* Same width as the teacher link's period select: the label carries
+              subject, period and time, which a 270px box truncates. */}
+          <div className="mb-4 w-full max-w-2xl">
             <Label htmlFor="attendance-period">คาบเรียน</Label>
             <Select
               disabled={
@@ -701,6 +856,30 @@ export function AttendanceCheckInPage() {
             </Select>
           </div>
 
+          <AttendanceDelegationSection
+            delegations={
+              attendanceDelegationOptions.isFetching
+                ? []
+                : attendanceDelegationOptions.data?.activeDelegations ?? []
+            }
+            onClose={async (delegation) => {
+              await revokeAttendanceDelegation.mutateAsync({ grantId: delegation.grantId });
+            }}
+            onShare={(delegation, accessUrl) => setDelegationShare({
+              accessUrl: accessUrl ?? delegation.accessUrl,
+              description: `${delegation.teacherDisplayName} · ${delegation.assignmentKind === "HOMEROOM" ? "วิชาโฮมรูม" : `${delegation.subjectName ?? "รายวิชา"}${delegation.period ? ` · คาบ ${delegation.period}` : ""}`} · ${checkInDate}`,
+            })}
+            onUpdate={async (delegation, input) => {
+              if (!selectedTimetableSlot) return;
+              return await updateAttendanceDelegation.mutateAsync({
+                grantId: delegation.grantId,
+                schoolId: selectedTimetableSlot.school_id,
+                ...input,
+              });
+            }}
+            teachers={attendanceDelegationOptions.data?.teachers ?? []}
+          />
+
           {saveState.isError ? (
             <div className="mb-4">
               <Alert variant="destructive">
@@ -708,21 +887,21 @@ export function AttendanceCheckInPage() {
                 <AlertDescription>
                   {getApiErrorMessage(
                     saveState.error,
-                    "เกิดข้อผิดพลาดระหว่างบันทึกการเช็คชื่อ กรุณาลองอีกครั้ง",
+                    "เกิดข้อผิดพลาดระหว่างบันทึกการเช็กชื่อ กรุณาลองอีกครั้ง",
                   )}
                 </AlertDescription>
               </Alert>
             </div>
-          ) : saveState.isSuccess ? (
+          ) : saveState.isSuccess && !saveNoticeDismissed ? (
             <div className="mb-4">
-              <Alert variant="success">
+              <Alert onDismiss={() => setSaveNoticeDismissed(true)} variant="success">
                 <div className="flex items-start gap-2">
                   <CheckCircle2
                     className="mt-0.5 size-5 shrink-0"
                     aria-hidden="true"
                   />
                   <div>
-                    <AlertTitle>ส่งการเช็คชื่อเรียบร้อยแล้ว</AlertTitle>
+                    <AlertTitle>ส่งการเช็กชื่อเรียบร้อยแล้ว</AlertTitle>
                     {newCases.length > 0 ? (
                       <AlertDescription className="max-h-16 overflow-auto">
                         ระบบสร้างเคสติดตามอัตโนมัติ {newCases.length} รายการ:{" "}
@@ -756,7 +935,7 @@ export function AttendanceCheckInPage() {
               <Alert>
                 <div className="flex w-full flex-wrap items-center justify-between gap-3">
                   <div>
-                    <AlertTitle>ส่งการเช็คชื่อแล้ว</AlertTitle>
+                    <AlertTitle>ส่งการเช็กชื่อแล้ว</AlertTitle>
                     <AlertDescription>
                       Revision {sessionContext.session.revision} · บันทึกแล้ว{" "}
                       {sessionContext.session.recordedCount} คน
@@ -778,7 +957,7 @@ export function AttendanceCheckInPage() {
           {isSessionError ? (
             <div className="mb-4">
               <Alert variant="destructive">
-                <AlertTitle>ตรวจสอบรอบเช็คชื่อไม่สำเร็จ</AlertTitle>
+                <AlertTitle>ตรวจสอบรอบเช็กชื่อไม่สำเร็จ</AlertTitle>
                 <AlertDescription>
                   กรุณาโหลดหน้าใหม่ก่อนบันทึกข้อมูล
                 </AlertDescription>
@@ -790,7 +969,7 @@ export function AttendanceCheckInPage() {
             {!canLoadRoster ? (
               <EmptyState
                 icon={ClipboardList}
-                title="เลือกคาบรายวิชาก่อนเช็คชื่อ"
+                title="เลือกคาบรายวิชาก่อนเช็กชื่อ"
                 description="กรุณาเลือกโรงเรียน ระดับชั้น ห้อง และคาบรายวิชาของวันที่เลือก"
               />
             ) : isRosterError ? (
@@ -814,6 +993,12 @@ export function AttendanceCheckInPage() {
               />
             ) : (
               <>
+                <div className="mb-4">
+                  <AttendanceCountBadges
+                    catalog={attendanceStatusCatalog}
+                    counts={counts}
+                  />
+                </div>
                 <AttendanceMarkToolbar
                   autosaveState={autosaveState}
                   canUndo={canUndoSelections}
@@ -864,104 +1049,212 @@ export function AttendanceCheckInPage() {
                   loadingText="กำลังส่ง"
                   type="submit"
                 >
-                  ส่งเช็คชื่อ {students.length} คน
+                  ส่งเช็กชื่อ {students.length} คน
                 </Button>
                 {unmarkedCount > 0 ? (
                   <p className="text-sm text-content-secondary">
-                    เหลืออีก {unmarkedCount} คนที่ยังไม่เช็ค
+                    เหลืออีก {unmarkedCount} คนที่ยังไม่เช็ก
                   </p>
                 ) : null}
               </div>
             ) : null}
           </div>
         </form>
-      ) : history.isError ? (
-        <ErrorState
-          title="ไม่สามารถโหลดประวัติการเช็คชื่อได้"
-          onRetry={() => void history.refetch()}
-        />
-      ) : history.isLoading ? (
-        <SkeletonTable rows={6} />
-      ) : scopedHistory.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="ไม่พบประวัติการเช็คชื่อ"
-          description="ยังไม่มีการบันทึกการเช็คชื่อสำหรับวันที่ ชั้น และห้องที่เลือก"
-        />
       ) : (
-        <div className="flex flex-col gap-3">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative min-w-0 flex-1">
-                <Search
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
-                />
-                <Input
-                  aria-label="ค้นหาประวัติเช็คชื่อ"
-                  className="pl-9"
-                  onChange={(event) => setHistorySearch(event.target.value)}
-                  placeholder="ค้นหาชื่อนักเรียน ผู้บันทึก หรือสถานะ"
-                  value={historySearch}
-                />
-              </div>
-              <p className="shrink-0 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold tabular-nums text-slate-500">
-                แสดง {filteredHistory.length} จาก {scopedHistory.length} คน
-              </p>
-            </div>
+        <div className="space-y-4">
+          <div className="mb-6">
+            <Tabs
+              aria-label="ประเภทประวัติ"
+              className="flex w-full"
+              onChange={setHistoryTab}
+              options={[
+                { value: "attendance", label: "เช็กชื่อ" },
+                { value: "imports", label: "นำเข้าไฟล์" },
+                { value: "delegations", label: "มอบหมาย" },
+              ]}
+              value={historyTab}
+            />
           </div>
-
-          {filteredHistory.length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="ไม่พบประวัติการเช็คชื่อ"
-              description="ลองเปลี่ยนคำค้นหา ชั้น หรือห้อง"
+          {historyTab !== "attendance" && roomSubjects.length > 0 ? (
+            <ToolbarControls className="mb-5">
+              <FilterSelect
+                ariaLabel="กรองรายวิชา"
+                onChange={(value) => {
+                  setHistorySubjectId(value);
+                  setDelegationPage(1);
+                }}
+                value={historySubjectId}
+              >
+                <option value="">ทุกรายวิชา</option>
+                {roomSubjects.map((subject) => (
+                  <option key={subject.id} value={String(subject.id)}>
+                    {subject.name}
+                  </option>
+                ))}
+              </FilterSelect>
+            </ToolbarControls>
+          ) : null}
+          {historyTab === "imports" ? (
+            <AttendanceImportHistoryTable
+              isError={importHistoryQuery.isError}
+              onOpenFile={(entry) => void openImportFile(entry)}
+              onPageChange={setDelegationPage}
+              onRetry={() => void importHistoryQuery.refetch()}
+              onRowsPerPageChange={(value) => {
+                setDelegationRowsPerPage(value);
+                setDelegationPage(1);
+              }}
+              onSortChange={setDelegationSort}
+              page={delegationPage}
+              rows={importHistoryQuery.data?.data ?? []}
+              rowsPerPage={delegationRowsPerPage}
+              sort={delegationSort}
+              totalCount={importHistoryQuery.data?.meta.totalCount ?? 0}
+            />
+          ) : historyTab === "delegations" ? (
+            <AttendanceDelegationHistoryTable
+              isError={delegationHistoryQuery.isError}
+              onEdit={setDelegationEdit}
+              onPageChange={setDelegationPage}
+              onRevoke={(entry) => void revokeDelegationFromHistory(entry)}
+              onRetry={() => void delegationHistoryQuery.refetch()}
+              onRowsPerPageChange={(value) => {
+                setDelegationRowsPerPage(value);
+                setDelegationPage(1);
+              }}
+              onShare={(entry) =>
+                entry.accessUrl
+                  ? setDelegationShare({
+                      accessUrl: entry.accessUrl,
+                      description: `${entry.teacherDisplayName} · ${entry.attendanceDate}`,
+                    })
+                  : undefined
+              }
+              onSortChange={setDelegationSort}
+              page={delegationPage}
+              rows={delegationHistoryQuery.data?.data ?? []}
+              rowsPerPage={delegationRowsPerPage}
+              sort={delegationSort}
+              statuses={delegationStatusCatalog}
+              totalCount={delegationHistoryQuery.data?.meta.totalCount ?? 0}
+            />
+          ) : rosterClassroomId ? (
+            /* The same component ห้องเรียนทั้งหมด renders, so both screens answer
+               "what happened in this room" with one table and one export. */
+            <ClassroomAttendanceHistory
+              classroomId={rosterClassroomId}
+              onSubjectIdChange={setHistorySubjectId}
+              subjectId={historySubjectId}
+              classroomLabel={rosterClassroomLabel}
+              subjects={roomSubjects}
             />
           ) : (
-            <DataTable
-              headings={[
-                { label: "นักเรียน", sortKey: "student" },
-                { label: "ชั้น", sortKey: "grade" },
-                { label: "ห้อง", sortKey: "room" },
-                { label: "สถานะ", sortKey: "status" },
-                { label: "ผู้บันทึก", sortKey: "recorder" },
-              ]}
-              onSortChange={setHistorySort}
-              responsive={false}
-              sort={historySort}
-            >
-              {sortedHistory.map((record) => (
-                <DataTableRow key={record.id}>
-                  <DataTableCell className="text-slate-800">
-                    {record.name || "-"}
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-600">
-                    {record.grade || "-"}
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-600">
-                    {formatStudentRoom(record.room)}
-                  </DataTableCell>
-                  <DataTableCell>
-                    {(() => {
-                      const meta = getAttendanceStatusPresentation(
-                        record.status,
-                        attendanceStatusCatalog,
-                      );
-                      return (
-                        <Badge variant={meta.badgeVariant}>{meta.label}</Badge>
-                      );
-                    })()}
-                  </DataTableCell>
-                  <DataTableCell className="text-sm text-slate-500">
-                    {record.recorded_by || "-"}
-                  </DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTable>
+            <EmptyState
+              description="กรุณาเลือกโรงเรียน ระดับชั้น และห้องด้านบนก่อน"
+              icon={ClipboardList}
+              title="เลือกห้องเรียนก่อนดูประวัติ"
+            />
           )}
         </div>
       )}
       {confirmDialog}
+      <AttendanceImportDialog
+        catalog={attendanceStatusCatalog}
+        classLabel={`${grade || "ห้องเรียน"}-${formatStudentRoom(room)}-${checkInDate}`}
+        contextLabel={[
+          formatThaiDate(checkInDate),
+          selectedTimetableSlot
+            ? `${selectedTimetableSlot.subject_name_th} · คาบ ${selectedTimetableSlot.period}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        disabled={!canEditAttendance || isSessionError}
+        onMark={markStatus}
+        onOpenChange={setImportOpen}
+        recordImport={async (input) => {
+          if (!rosterClassroomId || !selectedTimetableSlot) return;
+          await recordAttendanceImport({
+            schoolId: Number(selectedTimetableSlot.school_id),
+            schoolTermId: Number(selectedTimetableSlot.school_term_id),
+            classroomId: rosterClassroomId,
+            attendanceDate: checkInDate,
+            timetableSlotId: Number(selectedTimetableSlot.id),
+            subjectId: selectedTimetableSlot.subject_id ?? undefined,
+            ...input,
+          });
+          await importHistoryQuery.refetch();
+        }}
+        open={importOpen}
+        parseSheet={(input) => attendanceService.parseAttendanceImport(input)}
+        rows={students.map((student) => ({
+          id: student.id,
+          name: student.name,
+          studentNumber: student.student_number,
+        }))}
+        selections={selections}
+      />
+      <AttendanceQrScannerDialog
+        catalog={attendanceStatusCatalog}
+        disabled={!canEditAttendance || isSessionError}
+        onMark={markStatus}
+        onOpenChange={setQrScannerOpen}
+        open={qrScannerOpen}
+        rows={students.map((student) => ({
+          id: student.id,
+          name: student.name,
+          studentNumber: student.student_number,
+          avatar: <StudentAvatar name={student.name} photoUrl={student.photo_url} />,
+        }))}
+        selections={selections}
+      />
+      {delegationOpen ? <AttendanceDelegationDialog
+        classroomId={selectedTimetableSlot ? Number(selectedTimetableSlot.classroom_id) : undefined}
+        defaultSubjectId={selectedTimetableSlot?.subject_id}
+        defaultTimetableSlotId={
+          selectedTimetableSlot ? Number(selectedTimetableSlot.id) : undefined
+        }
+        initialAttendanceDate={checkInDate}
+        onCreated={setDelegationShare}
+        onOpenChange={setDelegationOpen}
+        open={delegationOpen}
+        schoolId={selectedTimetableSlot?.school_id}
+        schoolTermId={selectedTimetableSlot ? Number(selectedTimetableSlot.school_term_id) : undefined}
+      /> : null}
+      {/* Editing a row from ประวัติการมอบหมาย uses the same dialog as the live
+          links above, and hands the link over as soon as it is saved. */}
+      <AttendanceDelegationEditDialog
+        delegation={delegationEdit}
+        isTeachersLoading={delegationEditOptions.isLoading}
+        onClose={() => setDelegationEdit(null)}
+        onSaveAndShare={async (entry, input) => {
+          if (!schoolId) return;
+          const result = await updateAttendanceDelegation.mutateAsync({
+            grantId: entry.grantId,
+            schoolId: Number(schoolId),
+            ...input,
+          });
+          await delegationHistoryQuery.refetch();
+          // A teacher change closes the old link and answers with a new one.
+          const accessUrl = result.accessUrl ?? entry.accessUrl;
+          if (accessUrl) {
+            setDelegationShare({
+              accessUrl,
+              description: `${entry.teacherDisplayName} · ${formatThaiDate(entry.attendanceDate)}`,
+            });
+          }
+        }}
+        teachers={delegationEditOptions.data?.teachers ?? []}
+      />
+      <LinkShareDialog
+        description={delegationShare?.description}
+        link={delegationShare?.accessUrl ?? ""}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDelegationShare(null);
+        }}
+        open={Boolean(delegationShare)}
+        title="แชร์ลิงก์เช็กชื่อ"
+      />
       {/* Same dialog the classroom and teacher-link pages use, so a comment
           filed from the roster lands in classroom_student_comments identically. */}
       <ClassroomStudentCommentDialog
@@ -987,6 +1280,15 @@ export function AttendanceCheckInPage() {
             : null
         }
       />
+      {rosterClassroomId ? (
+        <ClassroomRosterExportDialog
+          classroomId={rosterClassroomId}
+          classroomLabel={rosterClassroomLabel}
+          onOpenChange={setExportOpen}
+          open={exportOpen}
+          search={attendanceSearch}
+        />
+      ) : null}
       <AttendanceReopenDialog
         error={reopenState.error}
         isPending={reopenState.isPending}

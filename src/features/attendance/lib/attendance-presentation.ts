@@ -14,6 +14,22 @@ const ATTENDANCE_STATUS_CODE = {
   LEAVE: 4,
 } as const;
 
+/**
+ * Attendance labels are a domain fallback, not display copy owned by an
+ * individual page. The catalog normally supplies these, but an older/mis-seeded
+ * catalog can return its internal code (for example `P_PRESENT`) as its label.
+ */
+const ATTENDANCE_STATUS_FALLBACK_LABELS: Record<AttendanceSelectionStatus, {
+  label: string;
+  shortLabel: string;
+}> = {
+  P_PRESENT: { label: "มา", shortLabel: "มา" },
+  P_LATE: { label: "สาย", shortLabel: "สาย" },
+  P_LEAVE: { label: "ลา", shortLabel: "ลา" },
+  P_ABSENT: { label: "ขาด", shortLabel: "ขาด" },
+  NONE: { label: "ยังไม่เช็ก", shortLabel: "ยังไม่เช็ก" },
+};
+
 export const SCHOOL_TERM_STATUSES: readonly SchoolTermStatus[] = [
   "DRAFT",
   "ACTIVE",
@@ -148,19 +164,33 @@ export function getAttendanceStatusPresentation(
 ) {
   const style = ATTENDANCE_STATUS_STYLE[status];
   const item = findStatusCatalogItem(catalog, status);
+  const fallback = ATTENDANCE_STATUS_FALLBACK_LABELS[status];
+  // A catalog code is a transport/internal value, never a user-facing label.
+  // Keep the catalog as source of truth when it has a genuine display string.
+  const isDisplayLabel = (
+    value: string | null | undefined,
+  ): value is string =>
+    Boolean(value) &&
+    value !== status &&
+    value !== item?.code &&
+    value !== item?.internalCode;
+  const label = isDisplayLabel(item?.label) ? item.label : fallback.label;
   return {
     ...style,
-    shortLabel: item?.shortLabel ?? item?.label ?? status,
-    label: item?.label ?? status,
+    shortLabel: isDisplayLabel(item?.shortLabel) ? item.shortLabel : label,
+    label,
     badgeVariant: item?.badgeVariant ?? "secondary",
   };
 }
 
-/** Record-page status buttons in legacy display order: มา / ขาด / สาย / ลา. */
-export const ATTENDANCE_RECORD_STATUSES: AttendanceSelectionStatus[] = [
+/** Shared display order: มา / สาย / ขาด / ลา. */
+export const ATTENDANCE_RECORD_STATUSES: readonly Exclude<
+  AttendanceSelectionStatus,
+  "NONE"
+>[] = [
   "P_PRESENT",
-  "P_ABSENT",
   "P_LATE",
+  "P_ABSENT",
   "P_LEAVE",
 ];
 
@@ -176,8 +206,8 @@ export interface AttendanceCounts {
 /** Which tally each recordable status feeds; `NONE` is deliberately absent. */
 export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<string, keyof AttendanceCounts> = {
   P_PRESENT: "present",
-  P_ABSENT: "absent",
   P_LATE: "late",
+  P_ABSENT: "absent",
   P_LEAVE: "leave",
 };
 

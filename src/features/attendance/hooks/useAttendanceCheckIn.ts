@@ -316,6 +316,7 @@ export function useAttendanceCheckInForSession({
       [selections],
     ),
     setStatus: marksState.setStatus,
+    markStatus: marksState.markStatus,
     markRemainingPresent: marksState.markRemainingPresent,
     undoSelections: marksState.undo,
     canUndoSelections: marksState.canUndo,

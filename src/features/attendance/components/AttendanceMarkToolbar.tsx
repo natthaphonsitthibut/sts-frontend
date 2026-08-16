@@ -81,7 +81,7 @@ export function AttendanceMarkToolbar({
 
       <div className="flex flex-col gap-1 text-sm sm:items-end">
         <p className="tabular-nums text-content-secondary">
-          เช็คแล้ว {markedCount}/{totalCount} คน
+          เช็กแล้ว {markedCount}/{totalCount} คน
           {unmarkedCount > 0 ? ` · เหลือ ${unmarkedCount} คน` : " · ครบแล้ว"}
         </p>
         <div className="flex items-center gap-2">

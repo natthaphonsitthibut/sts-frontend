@@ -86,7 +86,7 @@ function writePersisted(
  * Marks land in local state on tap (so the UI never waits on the network) and
  * are flushed as a debounced batch. Nothing is defaulted: a student the teacher
  * has not touched has no mark at all, which is what lets the caller tell
- * "ยังไม่เช็ค" apart from "มา" and block submit until the class is complete.
+ * "ยังไม่เช็ก" apart from "มา" and block submit until the class is complete.
  *
  * Unsent marks are mirrored into sessionStorage, so a refresh or a crash mid
  * class does not silently lose taps the UI already showed as recorded.
@@ -284,7 +284,7 @@ export function useAttendanceMarks({
 
   /**
    * Tapping a status sets it; tapping the *same* status again takes it back to
-   * "ยังไม่เช็ค". Without that a mis-tap would be unfixable — there is no
+   * "ยังไม่เช็ก". Without that a mis-tap would be unfixable — there is no
    * "no status" pill to press, and clearing has to reach the server or the next
    * prefill would restore the status the teacher just undid.
    */
@@ -298,6 +298,27 @@ export function useAttendanceMarks({
         next[studentId] = isSameStatus
           ? null
           : { status, markedAt: new Date().toISOString() };
+        queue(next, [studentId]);
+        return next;
+      });
+    },
+    [enabled, marks, queue],
+  );
+
+  /**
+   * Scanner input means "apply this status", unlike a roster-pill tap where a
+   * second tap intentionally clears it. Keeping the actions separate prevents
+   * an accidental duplicate camera frame from unmarking a student.
+   */
+  const markStatus = useCallback(
+    (studentId: string, status: RecordableStatus) => {
+      if (!enabled || marks[studentId]?.status === status) return;
+      setPreviousMarks(marks);
+      setLocalMarks((current) => {
+        const next = {
+          ...current,
+          [studentId]: { status, markedAt: new Date().toISOString() },
+        };
         queue(next, [studentId]);
         return next;
       });
@@ -354,6 +375,7 @@ export function useAttendanceMarks({
   return {
     marks,
     setStatus,
+    markStatus,
     markRemainingPresent,
     undo,
     canUndo: previousMarks !== null,

@@ -53,7 +53,7 @@ export function AttendanceReopenDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent onClose={onClose}>
         <DialogHeader>
-          <DialogTitle>เปิดแก้ไขการเช็คชื่อ</DialogTitle>
+          <DialogTitle>เปิดแก้ไขการเช็กชื่อ</DialogTitle>
           <DialogDescription>
             ระบบจะเพิ่ม revision และเก็บผู้แก้ไขพร้อมเหตุผลไว้ในประวัติ
           </DialogDescription>
@@ -63,7 +63,7 @@ export function AttendanceReopenDialog({
             <FormErrorAlert
               className="mb-3"
               error={error}
-              fallback="ไม่สามารถเปิดแก้ไขการเช็คชื่อได้"
+              fallback="ไม่สามารถเปิดแก้ไขการเช็กชื่อได้"
             />
             <FormItem>
               <FormLabel htmlFor="attendance-reopen-reason" required>

@@ -15,8 +15,8 @@ type RecordableAttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 const ATTENDANCE_STATUSES: readonly RecordableAttendanceStatus[] = [
   "P_PRESENT",
   "P_LATE",
-  "P_LEAVE",
   "P_ABSENT",
+  "P_LEAVE",
 ];
 
 export interface AttendanceRosterTableRow {
@@ -65,7 +65,7 @@ export function AttendanceRosterTable({
     >
       {rows.map((student, index) => {
         // No default on purpose: an untouched student has no status, so
-        // "ยังไม่เช็ค" stays visibly different from "มา" and submit can be
+        // "ยังไม่เช็ก" stays visibly different from "มา" and submit can be
         // blocked until the class is actually complete.
         const current = selections[student.id] ?? "NONE";
         const isUnmarked = current === "NONE";
@@ -95,13 +95,13 @@ export function AttendanceRosterTable({
                     isUnmarked ? "" : "invisible",
                   )}
                 >
-                  ยังไม่เช็ค
+                  ยังไม่เช็ก
                 </span>
               </span>
             </DataTableCell>
             <DataTableCell>
               <div
-                aria-label={`สถานะของ ${student.name}${isUnmarked ? " — ยังไม่เช็ค" : ""}`}
+                aria-label={`สถานะของ ${student.name}${isUnmarked ? " — ยังไม่เช็ก" : ""}`}
                 className="flex min-w-[340px] justify-center gap-1.5"
                 role="group"
               >
