@@ -262,6 +262,9 @@ function AddSlotForm({
             }}
             options={teacherOptions}
             placeholder="เลือกผู้สอน"
+            // Fixed height like every other field on the row: picked teachers
+            // pan sideways instead of stacking and pushing the form down.
+            singleRow
             value={selectedTeacherMembershipIds}
           />
         </FormItem>

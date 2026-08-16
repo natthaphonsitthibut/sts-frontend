@@ -58,6 +58,14 @@ const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
   info: "bg-brand-soft text-primary",
 };
 
+const METRIC_ICON_TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
+  default: "bg-slate-700 text-white",
+  success: "bg-success text-white",
+  warning: "bg-warning text-white",
+  danger: "bg-danger text-white",
+  info: "bg-primary text-white",
+};
+
 function parseFilters(searchParams: URLSearchParams): HomeDashboardFilters {
   const period = searchParams.get("period");
   const schoolId = Number(searchParams.get("schoolId"));
@@ -340,7 +348,7 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
               <span
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                  TONE_CLASSES[metric.tone],
+                  METRIC_ICON_TONE_CLASSES[metric.tone],
                 )}
               >
                 <Icon className="size-5" aria-hidden="true" />
