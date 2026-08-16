@@ -18,7 +18,8 @@ export function RiskAreaRankingChart({
   onSelect,
   ranking,
 }: RiskAreaRankingChartProps) {
-  const maxCount = Math.max(...ranking.items.map((item) => item.count), 1);
+  const displayItems = ranking.items.slice(0, 5);
+  const maxCount = Math.max(...displayItems.map((item) => item.count), 1);
 
   return (
     <Card className="p-5" data-risk-area-dimension={ranking.dimension}>
@@ -29,7 +30,7 @@ export function RiskAreaRankingChart({
           </span>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 10 {ranking.dimensionLabel}
+              พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 5 {ranking.dimensionLabel}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน
@@ -51,13 +52,13 @@ export function RiskAreaRankingChart({
         ) : null}
       </div>
 
-      {ranking.items.length === 0 ? (
+      {displayItems.length === 0 ? (
         <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
           ไม่พบนักเรียนระดับเสี่ยงในขอบเขตนี้
         </div>
       ) : (
         <ol className="mt-5 space-y-3">
-          {ranking.items.map((item, index) => (
+          {displayItems.map((item, index) => (
             <li key={`${ranking.dimension}-${item.key}`}>
               <button
                 aria-label={`${item.label} นักเรียนเสี่ยง ${item.count.toLocaleString("th-TH")} คน${onSelect ? " ดูระดับถัดไป" : ""}`}

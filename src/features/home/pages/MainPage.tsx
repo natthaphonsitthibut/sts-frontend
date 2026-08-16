@@ -2,8 +2,9 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
   BarChart3,
-  ClipboardCheck,
-  Clock,
+  CheckCircle2,
+  ClipboardList,
+  BriefcaseBusiness,
   Siren,
   Users,
 } from "lucide-react";
@@ -42,8 +43,9 @@ import GeoMapSVG from "../components/GeoMapSVG";
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
   watchStudents: Siren,
-  activeCases: Clock,
-  pendingReview: ClipboardCheck,
+  totalCases: ClipboardList,
+  inProgressCases: BriefcaseBusiness,
+  resolvedCases: CheckCircle2,
 };
 
 const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
@@ -307,7 +309,7 @@ function DashboardFilterBar({
 
 function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {metrics.map((metric) => {
         const pageIdentity = getPageIdentity(metric.targetPath);
         const Icon =
@@ -440,7 +442,7 @@ export function MainPage() {
           <div
             className={cn(
               "grid gap-5 items-stretch",
-              summary.riskAreaRanking &&
+              (summary.riskAreaRanking || summary.casePipeline) &&
                 "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
@@ -458,28 +460,30 @@ export function MainPage() {
               }
             />
 
-            {summary.riskAreaRanking ? (
-              <RiskAreaRankingChart
-                backLabel={riskAreaBackAction?.label}
-                onBack={
-                  riskAreaBackAction
-                    ? () => updateFilter(riskAreaBackAction.next)
-                    : undefined
-                }
-                onSelect={
-                  schoolLocked ? undefined : (filter) => updateFilter(filter)
-                }
-                ranking={summary.riskAreaRanking}
-              />
-            ) : null}
-          </div>
+            <div className="flex flex-col gap-5">
+              {summary.casePipeline ? (
+                <CasePipelineChart
+                  filters={filters}
+                  pipeline={summary.casePipeline}
+                />
+              ) : null}
 
-          {summary.casePipeline ? (
-            <CasePipelineChart
-              filters={filters}
-              pipeline={summary.casePipeline}
-            />
-          ) : null}
+              {summary.riskAreaRanking ? (
+                <RiskAreaRankingChart
+                  backLabel={riskAreaBackAction?.label}
+                  onBack={
+                    riskAreaBackAction
+                      ? () => updateFilter(riskAreaBackAction.next)
+                      : undefined
+                  }
+                  onSelect={
+                    schoolLocked ? undefined : (filter) => updateFilter(filter)
+                  }
+                  ranking={summary.riskAreaRanking}
+                />
+              ) : null}
+            </div>
+          </div>
         </div>
       )}
     </PageShell>
