@@ -56,6 +56,16 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Picking an option must leave the panel closed. The input reopens on click
+  // and on focus, so any click/focus the browser still routes to it while the
+  // selection is settling would otherwise pop the panel straight back open and
+  // force the user to click elsewhere to dismiss it.
+  const justPickedRef = useRef(false);
+
+  function openPanel(): void {
+    if (justPickedRef.current) return;
+    setOpen(true);
+  }
 
   const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
   const effectiveTerm = searchable ? query.trim().toLowerCase() : "";
@@ -89,10 +99,12 @@ export function Combobox({
           onSearchChange?.(event.target.value);
           setOpen(true);
         }}
-        // Reopen even when the field already has focus (e.g. right after a pick),
-        // otherwise onFocus won't fire again and the panel feels stuck.
-        onClick={() => setOpen(true)}
+        // Reopen even when the field already has focus (e.g. after dismissing
+        // with Escape), otherwise onFocus won't fire again and the panel feels
+        // stuck — but never on the click that just picked an option.
+        onClick={openPanel}
         onFocus={() => {
+          if (justPickedRef.current) return;
           setQuery("");
           onSearchChange?.("");
           setOpen(true);
@@ -126,7 +138,16 @@ export function Combobox({
                     "block w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
                     option.value === value && "bg-slate-50 font-medium text-primary",
                   )}
-                  onClick={() => {
+                  onClick={(event) => {
+                    // Cancel the click's default action so a wrapping <label>
+                    // can never forward it back to the input.
+                    event.preventDefault();
+                    justPickedRef.current = true;
+                    // Release the guard once this click has fully settled, so
+                    // the next genuine click on the field still opens the panel.
+                    window.setTimeout(() => {
+                      justPickedRef.current = false;
+                    }, 0);
                     onChange(option.value);
                     setQuery("");
                     setOpen(false);

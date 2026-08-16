@@ -56,6 +56,7 @@ export function TrackingStep({
     <div
       className="grid items-stretch gap-4 lg:grid-cols-[112px_minmax(0,1fr)]"
       data-flow-step={number}
+      data-flow-step-title={title}
     >
       <div className="flex items-center gap-3 lg:flex-col lg:gap-2">
         <div

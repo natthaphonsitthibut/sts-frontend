@@ -73,9 +73,12 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 }
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
-  "/attendance/roster": "เช็คชื่อ",
-  "/attendance/check-in": "เช็คชื่อ",
-  "/attendance/history": "ประวัติการเช็คชื่อ",
+  "/attendance/roster": "เช็กชื่อ",
+  "/attendance/check-in": "เช็กชื่อ",
+  "/attendance/history": "ประวัติการเช็กชื่อ",
+  "/attendance/history/attendance": "ประวัติการเช็กชื่อ",
+  "/attendance/history/imports": "ประวัติการเช็กชื่อ",
+  "/attendance/history/delegations": "ประวัติการเช็กชื่อ",
   "/data-exports/history": "ประวัติการส่งออก",
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
@@ -98,7 +101,7 @@ export function getNavigationLabel(
   }
   if (/^\/cases\/[^/]+$/.test(pathname)) return "ติดตามนักเรียน";
   if (/^\/attendance\/record\/[^/]+$/.test(pathname))
-    return "บันทึกการเช็คชื่อ";
+    return "บันทึกการเช็กชื่อ";
   if (/^\/classrooms\/[^/]+$/.test(pathname)) return "รายละเอียดห้องเรียน";
   if (/^\/import-data\/quarantine\/[^/]+$/.test(pathname)) {
     return "รายละเอียดรายการนำเข้า";
@@ -128,7 +131,7 @@ export function getNavigationLabel(
     return "ข้อมูลนักเรียน";
   }
   if (/^\/teacher-access\/classes\/[^/]+\/history$/.test(pathname)) {
-    return "ประวัติการเช็คชื่อ";
+    return "ประวัติการเช็กชื่อ";
   }
   return fallback || getPageTitle(pathname);
 }

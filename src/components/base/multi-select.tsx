@@ -17,6 +17,12 @@ export interface MultiSelectProps {
   id?: string;
   ariaLabel?: string;
   className?: string;
+  /**
+   * Keeps the field one row tall and scrolls the chips sideways instead of
+   * wrapping. Use it where the field shares a row with other inputs — a field
+   * that grows with every pick shifts everything around it.
+   */
+  singleRow?: boolean;
 }
 
 /**
@@ -36,10 +42,15 @@ export function MultiSelect({
   id,
   ariaLabel,
   className,
+  singleRow = false,
 }: MultiSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  // Drag-to-pan for the single-row field: a trackpad swipe is not available to
+  // everyone, so the chips can also be pulled sideways with the pointer.
+  const dragRef = useRef({ active: false, moved: false, startX: 0, startScroll: 0 });
   const generatedListId = useId();
   const listId = `${id ?? generatedListId}-listbox`;
   const [open, setOpen] = useState(false);
@@ -70,6 +81,29 @@ export function MultiSelect({
     triggerRef.current?.focus();
   }
 
+  function startDrag(event: React.PointerEvent<HTMLDivElement>): void {
+    const chips = chipsRef.current;
+    if (!singleRow || !chips || chips.scrollWidth <= chips.clientWidth) return;
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startX: event.clientX,
+      startScroll: chips.scrollLeft,
+    };
+  }
+
+  function moveDrag(event: React.PointerEvent<HTMLDivElement>): void {
+    const chips = chipsRef.current;
+    if (!dragRef.current.active || !chips) return;
+    const travelled = event.clientX - dragRef.current.startX;
+    if (Math.abs(travelled) > 3) dragRef.current.moved = true;
+    chips.scrollLeft = dragRef.current.startScroll - travelled;
+  }
+
+  function endDrag(): void {
+    dragRef.current.active = false;
+  }
+
   function focusOption(edge: "first" | "last"): void {
     requestAnimationFrame(() => {
       const optionButtons = listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
@@ -81,19 +115,42 @@ export function MultiSelect({
     <div className={cn("relative", className)} ref={containerRef}>
       <div
         className={cn(
-          "flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 pr-10 text-left text-sm font-medium text-slate-800 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
+          // `min-h-10` matches `Input`, `DatePicker` and `TimePicker` so an
+          // empty picker lines up with every other control on the row.
+          "flex min-h-10 w-full items-center gap-1.5 scroll-px-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 pr-11 text-left text-sm font-medium text-slate-800 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
+          // Wrapping stops at two rows and then scrolls; without a ceiling the
+          // field keeps growing and drags the rest of the form with it.
+          singleRow
+            ? "h-10 flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            : "max-h-[4.75rem] flex-wrap overflow-y-auto",
+          singleRow && selected.length > 0 && "cursor-grab active:cursor-grabbing",
           disabled && "cursor-not-allowed bg-slate-100 text-slate-500",
         )}
+        onClickCapture={(event) => {
+          // A pan that ended on a chip must not also remove it.
+          if (!dragRef.current.moved) return;
+          dragRef.current.moved = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onPointerDown={startDrag}
+        onPointerLeave={endDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        ref={chipsRef}
       >
         {selected.map((option) => (
           <span
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700",
+              singleRow && "shrink-0 whitespace-nowrap",
+            )}
             key={option.value}
           >
             {option.label}
             <button
               aria-label={`นำ ${option.label} ออก`}
-              className="relative inline-flex size-7 items-center justify-center rounded-sm text-slate-500 transition-colors before:absolute before:-inset-2 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+              className="relative inline-flex size-5 items-center justify-center rounded-sm text-slate-500 transition-colors before:absolute before:-inset-2 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               disabled={disabled}
               onClick={() => toggle(option.value)}
               type="button"
@@ -137,7 +194,8 @@ export function MultiSelect({
       <ChevronDown
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute right-3 top-3 size-4 text-primary transition-transform",
+          "pointer-events-none absolute right-3 size-4 text-primary transition-transform",
+          singleRow ? "top-1/2 -translate-y-1/2" : "top-3",
           open && "rotate-180",
           disabled && "text-slate-500",
         )}

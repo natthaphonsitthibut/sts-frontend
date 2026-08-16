@@ -37,6 +37,7 @@ export function Avatar({
 
   return (
     <div
+      data-slot="avatar"
       className={cn(
         "relative flex size-10 shrink-0 overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700",
         useGradient && "font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
