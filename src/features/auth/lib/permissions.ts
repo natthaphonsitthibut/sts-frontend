@@ -132,7 +132,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "attendance-system",
-    label: "ระบบเช็คชื่อ",
+    label: "ระบบเช็กชื่อ",
     iconName: "calendar-check",
     children: [
       {
