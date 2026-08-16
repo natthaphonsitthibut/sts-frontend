@@ -62,6 +62,8 @@ export interface ClassroomRosterListParams {
 export interface ClassroomAttendanceHistoryParams {
   classroomId: number;
   view: "DAILY" | "STUDENT";
+  /** Narrows the history to one subject; omitted means the whole day. */
+  subjectId?: number;
   studentUuid?: string;
   date?: string;
   dateFrom?: string;

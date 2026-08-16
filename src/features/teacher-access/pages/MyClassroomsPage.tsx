@@ -123,9 +123,26 @@ export function MyClassroomsPage() {
   const savePresentation = useUpdateTeacherClassroomCover();
 
   const assignments = useMemo(() => {
+    // Homeroom is taught as a subject now. Where the room already has that
+    // subject card, the legacy HOMEROOM card would be a second card for the same
+    // class — hide it here only, so links opened on it keep working.
+    const roomsWithHomeroomSubject = new Set(
+      context.assignments
+        .filter(
+          (assignment) =>
+            assignment.assignmentKind === "SUBJECT" &&
+            assignment.subjectName === "โฮมรูม",
+        )
+        .map((assignment) => assignment.classroomId),
+    );
+    const visible = context.assignments.filter(
+      (assignment) =>
+        assignment.assignmentKind !== "HOMEROOM" ||
+        !roomsWithHomeroomSubject.has(assignment.classroomId),
+    );
     const term = search.trim().toLowerCase();
-    if (!term) return context.assignments;
-    return context.assignments.filter((assignment) =>
+    if (!term) return visible;
+    return visible.filter((assignment) =>
       `${assignmentClassLabel(assignment)} ${assignmentSubjectLabel(assignment)}`
         .toLowerCase()
         .includes(term),

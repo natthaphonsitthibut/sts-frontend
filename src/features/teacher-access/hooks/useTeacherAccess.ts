@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { teacherAccessService } from "../api/teacher-access.service";
+import {
+  teacherAccessService,
+  type TeacherAttendanceHistoryQuery,
+} from "../api/teacher-access.service";
 import {
   useTeacherLinkSessionStore,
   type TeacherLinkCredential,
 } from "../store/teacher-link-session.store";
 import type {
   IssueTeacherAccessGrantInput,
+  IssueTeacherAttendanceDelegationInput,
+  IssuePublicTeacherAttendanceDelegationInput,
+  UpdatePublicTeacherAttendanceDelegationInput,
+  UpdateTeacherAttendanceDelegationInput,
   TeacherLineFilter,
 } from "../types/teacher-access.types";
 
@@ -51,6 +58,125 @@ export function useIssueTeacherAccessGrant() {
     mutationFn: (input: IssueTeacherAccessGrantInput) =>
       teacherAccessService.issueGrant(input),
     onSuccess: invalidate,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useTeacherAttendanceDelegationOptions(input: {
+  schoolId?: number;
+  schoolTermId?: number;
+  classroomId?: number;
+  attendanceDate?: string;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: [KEY, "attendance-delegation-options", input],
+    queryFn: () =>
+      teacherAccessService.getAttendanceDelegationOptions({
+        schoolId: input.schoolId!,
+        schoolTermId: input.schoolTermId!,
+        classroomId: input.classroomId!,
+        attendanceDate: input.attendanceDate!,
+      }),
+    enabled: Boolean(
+      input.enabled !== false && input.schoolId && input.schoolTermId && input.classroomId && input.attendanceDate,
+    ),
+  });
+}
+
+export function useIssueTeacherAttendanceDelegation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: IssueTeacherAttendanceDelegationInput) =>
+      teacherAccessService.issueAttendanceDelegation(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function usePublicTeacherAttendanceDelegationOptions(
+  credential: TeacherLinkCredential | undefined,
+  input: { assignmentId?: number; attendanceDate?: string },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...(credential ? teacherAccessGuestQueryKey(credential.token) : [KEY, "guest", "none"]),
+      "attendance-delegation-options",
+      input.assignmentId,
+      input.attendanceDate,
+    ],
+    queryFn: () => teacherAccessService.getPublicAttendanceDelegationOptions(
+      credential!,
+      { assignmentId: input.assignmentId!, attendanceDate: input.attendanceDate! },
+    ),
+    enabled: Boolean(enabled && credential?.token && input.assignmentId && input.attendanceDate),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+export function useIssuePublicTeacherAttendanceDelegation(
+  credential: TeacherLinkCredential | undefined,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: IssuePublicTeacherAttendanceDelegationInput) =>
+      teacherAccessService.issuePublicAttendanceDelegation(credential!, input),
+    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "guest"] }),
+    meta: { suppressSuccessToast: true },
+    gcTime: 0,
+  });
+}
+
+export function useUpdateTeacherAttendanceDelegation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTeacherAttendanceDelegationInput) =>
+      teacherAccessService.updateAttendanceDelegation(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+    meta: { successMessage: "แก้ไขลิงก์เช็กชื่อแล้ว" },
+  });
+}
+
+export function useRevokeTeacherAttendanceDelegation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ grantId }: { grantId: string }) =>
+      teacherAccessService.revokeAttendanceDelegation(grantId),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+        client.invalidateQueries({ queryKey: [KEY, "teacher-roster"] }),
+      ]);
+    },
+    meta: { successMessage: "ปิดลิงก์เช็กชื่อแล้ว" },
+  });
+}
+
+export function useUpdatePublicTeacherAttendanceDelegation(
+  credential: TeacherLinkCredential | undefined,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdatePublicTeacherAttendanceDelegationInput) =>
+      teacherAccessService.updatePublicAttendanceDelegation(credential!, input),
+    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "guest"] }),
+    meta: { successMessage: "แก้ไขลิงก์เช็กชื่อแล้ว" },
+    gcTime: 0,
+  });
+}
+
+export function useRevokePublicTeacherAttendanceDelegation(
+  credential: TeacherLinkCredential | undefined,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { grantId: string; assignmentId: number }) =>
+      teacherAccessService.revokePublicAttendanceDelegation(credential!, input),
+    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "guest"] }),
+    meta: { successMessage: "ปิดลิงก์เช็กชื่อแล้ว" },
+    gcTime: 0,
   });
 }
 
@@ -74,14 +200,6 @@ export function useUnlinkTeacherLineAccount() {
   const invalidate = useRosterInvalidation();
   return useMutation({
     mutationFn: teacherAccessService.unlinkTeacherLineAccount,
-    onSuccess: invalidate,
-  });
-}
-
-export function useIssueTeacherLineInvitation() {
-  const invalidate = useRosterInvalidation();
-  return useMutation({
-    mutationFn: teacherAccessService.issueTeacherLineInvitation,
     onSuccess: invalidate,
   });
 }
@@ -143,14 +261,6 @@ export function useRevokeTeacherLineGroupInvitation() {
   });
 }
 
-export function useRevokeTeacherLineInvitation() {
-  const invalidate = useRosterInvalidation();
-  return useMutation({
-    mutationFn: teacherAccessService.revokeTeacherLineInvitation,
-    onSuccess: invalidate,
-  });
-}
-
 export function useTeacherAccessGrantLink() {
   return useMutation({
     mutationFn: teacherAccessService.getGrantLink,
@@ -172,6 +282,7 @@ export function useRotateTeacherAccessGrant() {
   return useMutation({
     mutationFn: teacherAccessService.rotateGrant,
     onSuccess: invalidate,
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -288,12 +399,7 @@ export function useTeacherAttendanceHistory(
   assignmentId: number | undefined,
   page: number,
   limit: number,
-  filters: {
-    search?: string;
-    attendanceDate?: string;
-    sortBy?: "date" | "recordedBy" | "present" | "late" | "leave" | "absent";
-    sortOrder?: "asc" | "desc";
-  },
+  filters: Omit<TeacherAttendanceHistoryQuery, "assignmentId">,
 ) {
   return useQuery({
     queryKey: [
@@ -317,6 +423,154 @@ export function useTeacherAttendanceHistory(
   });
 }
 
+/** Per-student totals of the same history. */
+export function useTeacherAttendanceHistoryStudents(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  page: number,
+  limit: number,
+  filters: Omit<TeacherAttendanceHistoryQuery, "assignmentId">,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-history-students",
+      assignmentId,
+      page,
+      limit,
+      filters,
+    ],
+    queryFn: () =>
+      teacherAccessService.listAttendanceHistoryStudents(credential, {
+        assignmentId: assignmentId!,
+        page,
+        limit,
+        ...filters,
+      }),
+    enabled: Boolean(enabled && credential.token && assignmentId),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** One student's days, opened from either view. */
+export function useTeacherAttendanceHistoryStudentDays(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  studentUuid: string | undefined,
+  page: number,
+  limit: number,
+  filters: Omit<TeacherAttendanceHistoryQuery, "assignmentId" | "studentUuid">,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-history-student-days",
+      assignmentId,
+      studentUuid,
+      page,
+      limit,
+      filters,
+    ],
+    queryFn: () =>
+      teacherAccessService.listAttendanceHistoryStudentDays(credential, {
+        assignmentId: assignmentId!,
+        studentUuid: studentUuid!,
+        page,
+        limit,
+        ...filters,
+      }),
+    enabled: Boolean(credential.token && assignmentId && studentUuid),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** ประวัติการมอบหมาย for the staff screen. */
+export function useStaffAttendanceDelegationHistory(
+  input: {
+    schoolId?: number;
+    classroomId?: number | null;
+    subjectId?: number;
+    page: number;
+    limit: number;
+    attendanceDate?: string;
+    search?: string;
+    sortBy?: "date" | "issuedBy" | "teacher" | "status";
+    sortDirection?: "asc" | "desc";
+  },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [KEY, "delegation-history", input],
+    queryFn: () =>
+      teacherAccessService.listStaffAttendanceDelegationHistory({
+        ...input,
+        schoolId: input.schoolId!,
+        classroomId: input.classroomId!,
+      }),
+    enabled: Boolean(enabled && input.schoolId && input.classroomId),
+  });
+}
+
+/** The same history through a teacher link. */
+export function useTeacherAttendanceDelegationHistory(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  input: {
+    page: number;
+    limit: number;
+    attendanceDate?: string;
+    search?: string;
+    sortBy?: "date" | "issuedBy" | "teacher" | "status";
+    sortDirection?: "asc" | "desc";
+  },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "delegation-history",
+      assignmentId,
+      input,
+    ],
+    queryFn: () =>
+      teacherAccessService.listAttendanceDelegationHistory(credential, {
+        ...input,
+        assignmentId: assignmentId!,
+      }),
+    enabled: Boolean(enabled && credential.token && assignmentId),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** ประวัติการนำเข้าไฟล์ of the class the link opens. */
+export function useTeacherAttendanceImports(
+  credential: TeacherLinkCredential,
+  assignmentId: number | undefined,
+  input: { page: number; limit: number; attendanceDate?: string; search?: string },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-imports",
+      assignmentId,
+      input,
+    ],
+    queryFn: () =>
+      teacherAccessService.listAttendanceImports(credential, {
+        ...input,
+        assignmentId: assignmentId!,
+      }),
+    enabled: Boolean(enabled && credential.token && assignmentId),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
 export function useCreateTeacherStudentComment(assignmentId: number) {
   const token = useTeacherLinkSessionStore((state) => state.token);
   const sessionToken = useTeacherLinkSessionStore(
@@ -332,7 +586,7 @@ export function useCreateTeacherStudentComment(assignmentId: number) {
   });
 }
 
-export function useTeacherSchedule() {
+export function useTeacherSchedule(enabled = true) {
   const token = useTeacherLinkSessionStore((state) => state.token);
   const sessionToken = useTeacherLinkSessionStore(
     (state) => state.sessionToken,
@@ -340,7 +594,7 @@ export function useTeacherSchedule() {
   return useQuery({
     queryKey: [...teacherAccessGuestQueryKey(token), "my-schedule"],
     queryFn: () => teacherAccessService.getMySchedule({ token, sessionToken }),
-    enabled: Boolean(token),
+    enabled: Boolean(enabled && token),
     gcTime: 0,
   });
 }
@@ -529,6 +783,29 @@ export function useTeacherAccessAttendanceSession(
         assignmentId: query.assignmentId as number,
         date: query.date,
         ...(query.timetableSlotId ? { timetableSlotId: query.timetableSlotId } : {}),
+      }),
+    enabled: Boolean(enabled && credential.token && query.assignmentId),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+export function useTeacherAccessAttendanceCalendar(
+  credential: TeacherLinkCredential,
+  query: { assignmentId?: number; date: string },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      ...teacherAccessGuestQueryKey(credential.token),
+      "attendance-calendar",
+      query.assignmentId,
+      query.date,
+    ],
+    queryFn: () =>
+      teacherAccessService.getAttendanceCalendar(credential, {
+        assignmentId: query.assignmentId as number,
+        date: query.date,
       }),
     enabled: Boolean(enabled && credential.token && query.assignmentId),
     retry: false,

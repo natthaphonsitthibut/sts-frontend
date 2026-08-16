@@ -80,6 +80,7 @@ import {
   TeacherClassroomDefaultRedirect,
   TeacherHistoryDefaultRedirect,
   TimetableDefaultRedirect,
+  AttendanceHistoryDefaultRedirect,
 } from "./route-redirects";
 
 function withSuspense(children: ReactNode): ReactNode {
@@ -199,6 +200,18 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance/history",
+        element: <AttendanceHistoryDefaultRedirect />,
+      },
+      {
+        path: "attendance/history/attendance",
+        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        path: "attendance/history/imports",
+        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        path: "attendance/history/delegations",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
       },
       {
@@ -498,7 +511,24 @@ export const router = createBrowserRouter([
         element: withSuspense(<TeacherClassroomPage />),
       },
       {
+        path: "classes/:assignmentId/check-in",
+        element: withSuspense(<TeacherClassroomPage />),
+      },
+      {
+        // Same tab, previous name — kept so links already handed out still open.
         path: "classes/:assignmentId/attendance",
+        element: <TeacherClassroomDefaultRedirect />,
+      },
+      {
+        path: "attendance/:assignmentId",
+        element: withSuspense(<TeacherClassroomPage />),
+      },
+      {
+        path: "attendance/:assignmentId/roster",
+        element: withSuspense(<TeacherClassroomPage />),
+      },
+      {
+        path: "attendance/:assignmentId/check-in",
         element: withSuspense(<TeacherClassroomPage />),
       },
       {

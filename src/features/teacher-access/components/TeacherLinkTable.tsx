@@ -1,7 +1,6 @@
 import {
   ClipboardCopy,
   Link2,
-  MessageCircle,
   RefreshCw,
   Settings,
   ShieldOff,
@@ -46,8 +45,6 @@ interface TeacherLinkTableProps {
   onRotate: (entry: TeacherLinkRosterEntry) => void;
   onRevoke: (entry: TeacherLinkRosterEntry) => void;
   onUnlinkLine: (entry: TeacherLinkRosterEntry) => void;
-  onIssueLineInvitation: (entry: TeacherLinkRosterEntry) => void;
-  onRevokeLineInvitation: (entry: TeacherLinkRosterEntry) => void;
   onOpenProfile?: (entry: TeacherLinkRosterEntry) => void;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
@@ -161,8 +158,6 @@ function rowActions(
     | "onCopy"
     | "onRotate"
     | "onRevoke"
-    | "onIssueLineInvitation"
-    | "onRevokeLineInvitation"
   >,
 ): DropdownMenuItem[] {
   const grantActions: DropdownMenuItem[] =
@@ -194,32 +189,12 @@ function rowActions(
       : [
           {
             id: "create",
-            label: "สร้างลิงก์เช็คชื่อ",
+            label: "สร้างลิงก์เช็กชื่อ",
             icon: Link2,
             disabled: entry.assignmentCount === 0,
             onSelect: () => handlers.onCreate(entry),
           },
         ];
-  if (entry.lineStatus !== "NOT_VERIFIED") return grantActions;
-  grantActions.push({
-    id: "issue-line-invitation",
-    label:
-      entry.lineInvitationStatus === "ACTIVE"
-        ? "ออกลิงก์ยืนยัน LINE ใหม่"
-        : "ออกลิงก์ยืนยัน LINE",
-    icon: MessageCircle,
-    disabled: !entry.hasEmail,
-    onSelect: () => handlers.onIssueLineInvitation(entry),
-  });
-  if (entry.lineInvitationStatus === "ACTIVE") {
-    grantActions.push({
-      id: "revoke-line-invitation",
-      label: "ยกเลิกลิงก์ยืนยัน LINE",
-      icon: ShieldOff,
-      destructive: true,
-      onSelect: () => handlers.onRevokeLineInvitation(entry),
-    });
-  }
   return grantActions;
 }
 
@@ -234,8 +209,6 @@ function RowMenu({
   | "onRotate"
   | "onRevoke"
   | "onUnlinkLine"
-  | "onIssueLineInvitation"
-  | "onRevokeLineInvitation"
 > & {
   entry: TeacherLinkRosterEntry;
   busy: boolean;

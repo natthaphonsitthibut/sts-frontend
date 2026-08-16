@@ -29,6 +29,8 @@ interface TeacherLinkShellProps {
   navigation?: ReactNode;
   /** Trail before the current page; the title is always the last crumb. */
   breadcrumb?: Array<{ label: string; to: string; icon?: LucideIcon }>;
+  /** Crumb text for this page when the title says more than its name. */
+  breadcrumbTitle?: string;
   /** Icon beside the page title, matching the authenticated pages. */
   icon?: LucideIcon;
   title?: ReactNode;
@@ -89,6 +91,7 @@ export function TeacherLinkShell({
   actions,
   navigation,
   breadcrumb,
+  breadcrumbTitle,
   centered = false,
   children,
   contentClassName,
@@ -98,15 +101,21 @@ export function TeacherLinkShell({
 }: TeacherLinkShellProps) {
   const { context } = useTeacherLink();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const attendanceOnly = context.accessScope === "ATTENDANCE_ONLY";
+  const homeRoute = attendanceOnly && context.assignments[0]
+    ? `/teacher-access/attendance/${context.assignments[0].id}/check-in`
+    : "/teacher-access";
 
   return (
     <AppFrame
       header={
         <AppHeaderFrame>
           <AppNavigationControls
-            onMobileMenuClick={() => setMobileSidebarOpen(true)}
+            onMobileMenuClick={() => {
+              if (!attendanceOnly) setMobileSidebarOpen(true);
+            }}
           />
-          <AppBrand className="flex-1" to="/teacher-access" />
+          <AppBrand className="flex-1" to={homeRoute} />
           <Avatar
             aria-label={`เข้าใช้งานในชื่อ ${context.teacherDisplayName}`}
             className="size-10"
@@ -114,7 +123,7 @@ export function TeacherLinkShell({
           />
         </AppHeaderFrame>
       }
-      sidebar={
+      sidebar={attendanceOnly ? undefined : (
         <>
           <CollapsibleDesktopSidebar>
             {(collapsed) => <TeacherSidebarContent collapsed={collapsed} />}
@@ -135,7 +144,7 @@ export function TeacherLinkShell({
             />
           </Sheet>
         </>
-      }
+      )}
     >
       <PageShell
         className={cn(centered && "flex items-center")}
@@ -148,9 +157,13 @@ export function TeacherLinkShell({
           {title ? (
             <PageToolbar
               actions={actions}
+              breadcrumbTitle={breadcrumbTitle}
+              hideBreadcrumb={attendanceOnly}
               navigation={navigation}
               breadcrumbTrail={
-                breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB
+                attendanceOnly
+                  ? []
+                  : (breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB)
               }
               icon={icon}
               title={title}

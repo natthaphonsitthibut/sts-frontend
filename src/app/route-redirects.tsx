@@ -65,11 +65,24 @@ export function LegacyTaskDetailRedirect() {
   );
 }
 
+/** `/attendance/history` opens on the check-in rounds, like the teacher link. */
+export function AttendanceHistoryDefaultRedirect() {
+  const location = useLocation();
+  return (
+    <Navigate
+      replace
+      to={`/attendance/history/attendance${location.search}${location.hash}`}
+    />
+  );
+}
+
 export function TeacherClassroomDefaultRedirect() {
   const location = useLocation();
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const legacyTab = new URLSearchParams(location.search).get("tab");
-  const tab = legacyTab === "attendance" ? "attendance" : "roster";
+  const isCheckIn =
+    legacyTab === "attendance" || location.pathname.endsWith("/attendance");
+  const tab = isCheckIn ? "check-in" : "roster";
   return (
     <Navigate
       replace

@@ -48,7 +48,7 @@ function defaultSummarySort(view: HistoryView): DataTableSortState {
 const DAILY_COLUMNS = [
   { key: "order", label: "ลำดับ" },
   { key: "date", label: "วันที่" },
-  { key: "recordedBy", label: "ผู้เช็คชื่อ" },
+  { key: "recordedBy", label: "ผู้เช็กชื่อ" },
   { key: "present", label: "จำนวนที่มา (คน)" },
   { key: "late", label: "จำนวนที่สาย (คน)" },
   { key: "leave", label: "จำนวนที่ลา (คน)" },
@@ -69,7 +69,7 @@ const STUDENT_DAY_COLUMNS = [
   { key: "order", label: "ลำดับ" },
   { key: "date", label: "วันที่" },
   { key: "time", label: "เวลา" },
-  { key: "recordedBy", label: "ผู้เช็คชื่อ" },
+  { key: "recordedBy", label: "ผู้เช็กชื่อ" },
   { key: "status", label: "สถานะการเข้าเรียน" },
 ] as const satisfies readonly RosterExportColumn[];
 
@@ -130,15 +130,33 @@ function AttendanceStatusPills({
 interface ClassroomAttendanceHistoryProps {
   classroomId: number;
   classroomLabel: string;
+  /**
+   * Subjects taught in this room. Given, the screen can narrow the history to a
+   * single subject and read exactly what that subject's teacher sees; omitted,
+   * the history stays the whole-day summary.
+   */
+  subjects?: readonly { id: number; name: string }[];
+  /**
+   * Lets a screen own the subject choice so its other history tabs read the
+   * same filter; left out, the component keeps the choice itself.
+   */
+  subjectId?: string;
+  onSubjectIdChange?: (subjectId: string) => void;
 }
 
 export function ClassroomAttendanceHistory({
   classroomId,
   classroomLabel,
+  onSubjectIdChange,
+  subjectId: controlledSubjectId,
+  subjects,
 }: ClassroomAttendanceHistoryProps) {
   const contextualNavigate = useContextualNavigate();
   const { can } = usePermissions();
   const [view, setView] = useState<HistoryView>("DAILY");
+  const [ownSubjectId, setOwnSubjectId] = useState("");
+  const subjectId = controlledSubjectId ?? ownSubjectId;
+  const setSubjectId = onSubjectIdChange ?? setOwnSubjectId;
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
   const [selectedStudent, setSelectedStudent] = useState<ClassroomStudentAttendanceSummary | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -154,6 +172,7 @@ export function ClassroomAttendanceHistory({
   const baseParams = {
     classroomId,
     view,
+    subjectId: subjectId ? Number(subjectId) : undefined,
     date: date || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -345,9 +364,9 @@ export function ClassroomAttendanceHistory({
   }
 
   const title = selectedStudent
-    ? "ประวัติการเช็คชื่อรายคน"
+    ? "ประวัติการเช็กชื่อรายคน"
     : selectedDay
-      ? "ประวัติการเช็คชื่อรายวัน"
+      ? "ประวัติการเช็กชื่อรายวัน"
       : undefined;
   const rows = useMemo(() => activeQuery.data?.data ?? [], [activeQuery.data?.data]);
 
@@ -368,9 +387,11 @@ export function ClassroomAttendanceHistory({
       <ToolbarControls className="mb-5">
         {view === "STUDENT" || selectedStudent || selectedDay ? (
           <SearchInput
-            className="sm:max-w-[560px]"
+            // sm:flex-none because SearchInput grows by default; the date box
+            // beside it is a fixed 270px and the two must read as one pair.
+            className="w-[270px] max-w-full sm:flex-none"
             onChange={(value) => { setSearch(value); setPage(1); }}
-            placeholder={selectedStudent ? "ค้นหาผู้เช็คชื่อ" : "ค้นหา"}
+            placeholder={selectedStudent ? "ค้นหาผู้เช็กชื่อ" : "ค้นหา"}
             value={search}
           />
         ) : null}
@@ -398,25 +419,43 @@ export function ClassroomAttendanceHistory({
         ) : selectedDay ? (
           <div className="w-[270px] max-w-full">
             <DatePicker
-              ariaLabel="วันที่เช็คชื่อ"
+              ariaLabel="วันที่เช็กชื่อ"
               onChange={(value) => { setSelectedDay(value); setPage(1); }}
               placeholder="วันที่"
               value={selectedDay}
             />
           </div>
         ) : !selectedDay && view === "DAILY" ? (
+          // รายวัน filters by day, รายคน by name — one control each, never both.
           <div className="w-[270px] max-w-full">
             <DatePicker
-              ariaLabel="กรองวันที่เช็คชื่อ"
+              ariaLabel="กรองวันที่เช็กชื่อ"
               onChange={(value) => { setDate(value); setPage(1); }}
               placeholder="วันที่"
               value={date}
             />
           </div>
         ) : null}
+        {subjects?.length && !selectedStudent && !selectedDay ? (
+          <FilterSelect
+            ariaLabel="กรองรายวิชา"
+            onChange={(value) => {
+              setSubjectId(value);
+              setPage(1);
+            }}
+            value={subjectId}
+          >
+            <option value="">ทุกรายวิชา</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={String(subject.id)}>
+                {subject.name}
+              </option>
+            ))}
+          </FilterSelect>
+        ) : null}
         {!selectedStudent && !selectedDay ? (
           <FilterSelect
-            ariaLabel="รูปแบบประวัติเช็คชื่อ"
+            ariaLabel="รูปแบบประวัติเช็กชื่อ"
             onChange={(value) => changeView(value as HistoryView)}
             value={view}
           >
@@ -439,16 +478,16 @@ export function ClassroomAttendanceHistory({
       {activeQuery.isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : activeQuery.isError ? (
-        <ErrorState description="ไม่สามารถโหลดประวัติการเช็คชื่อได้" onRetry={() => void activeQuery.refetch()} />
+        <ErrorState description="ไม่สามารถโหลดประวัติการเช็กชื่อได้" onRetry={() => void activeQuery.refetch()} />
       ) : rows.length === 0 ? (
-        <EmptyState description="ลองเปลี่ยนวันที่หรือคำค้นหา" icon={School} title="ไม่มีประวัติการเช็คชื่อ" />
+        <EmptyState description="ลองเปลี่ยนวันที่หรือคำค้นหา" icon={School} title="ไม่มีประวัติการเช็กชื่อ" />
       ) : selectedStudent ? (
         <DataTable
           headings={[
             { label: "ลำดับ" },
             { label: "วันที่", sortKey: "date" },
             { label: "เวลา", sortKey: "time" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
+            { label: "ผู้เช็กชื่อ", sortKey: "recordedBy" },
             { label: "สถานะการเข้าเรียน", sortKey: "status", className: "text-center" },
           ]}
           minWidthClassName="min-w-[900px]"
@@ -497,7 +536,7 @@ export function ClassroomAttendanceHistory({
           headings={[
             { label: "ลำดับ" },
             { label: "วันที่", sortKey: "date" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
+            { label: "ผู้เช็กชื่อ", sortKey: "recordedBy" },
             { label: "จำนวนที่มา (คน)", sortKey: "present" },
             { label: "จำนวนที่สาย (คน)", sortKey: "late" },
             { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
@@ -575,7 +614,7 @@ export function ClassroomAttendanceHistory({
         loadRows={loadExportRows}
         onOpenChange={setExportOpen}
         open={exportOpen}
-        title={selectedStudent ? `ประวัติการเช็คชื่อ ${studentName(selectedStudent)}` : selectedDay ? `ประวัติการเช็คชื่อ ${formatNumericThaiDate(selectedDay)}` : `ประวัติการเช็คชื่อ ห้อง ${classroomLabel}`}
+        title={selectedStudent ? `ประวัติการเช็กชื่อ ${studentName(selectedStudent)}` : selectedDay ? `ประวัติการเช็กชื่อ ${formatNumericThaiDate(selectedDay)}` : `ประวัติการเช็กชื่อ ห้อง ${classroomLabel}`}
       />
     </div>
   );

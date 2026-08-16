@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, Link2, MessageCircle, Pencil, Plus, Share2, ShieldOff, X } from "lucide-react";
+import { CalendarClock, Link2, Link2Off, MessageCircle, Pencil, Plus, Share2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -47,13 +47,11 @@ import { TeacherLinkTable } from "../components/TeacherLinkTable";
 import { summarizeSkipReasons } from "../lib/teacher-link-presentation";
 import {
   useIssueTeacherAccessGrant,
-  useIssueTeacherLineInvitation,
   useIssueTeacherLineGroupInvitation,
   useRevokeTeacherLineGroupInvitation,
   useSendTeacherAccessGrantsOverLine,
   useIssueTeacherAccessGrantsForTerm,
   useRevokeTeacherAccessGrant,
-  useRevokeTeacherLineInvitation,
   useRotateTeacherAccessGrant,
   useTeacherAccessGrantLink,
   useTeacherLinkRoster,
@@ -307,8 +305,6 @@ export function TeacherAttendanceLinksPage() {
   const revokeGrant = useRevokeTeacherAccessGrant();
   const rotateGrant = useRotateTeacherAccessGrant();
   const unlinkLine = useUnlinkTeacherLineAccount();
-  const issueLineInvitation = useIssueTeacherLineInvitation();
-  const revokeLineInvitation = useRevokeTeacherLineInvitation();
   const lineGroupInvitation = useTeacherLineGroupInvitation(selectedSchoolId);
   const issueLineGroupInvitation = useIssueTeacherLineGroupInvitation();
   const updateLineGroupInvitation = useUpdateTeacherLineGroupInvitation();
@@ -347,11 +343,7 @@ export function TeacherAttendanceLinksPage() {
     ? String(issueGrant.variables?.teacherMembershipId ?? "")
     : unlinkLine.isPending
       ? (unlinkLine.variables ?? null)
-      : issueLineInvitation.isPending
-        ? (issueLineInvitation.variables ?? null)
-        : revokeLineInvitation.isPending
-          ? (revokeLineInvitation.variables ?? null)
-          : null;
+      : null;
 
   async function createLink(entry: TeacherLinkRosterEntry): Promise<void> {
     if (!selectedTermId) return;
@@ -465,47 +457,14 @@ export function TeacherAttendanceLinksPage() {
     await unlinkLine.mutateAsync(entry.teacherMembershipId);
   }
 
-  async function issueLineInvitationLink(
-    entry: TeacherLinkRosterEntry,
-  ): Promise<void> {
-    const rotating = entry.lineInvitationStatus === "ACTIVE";
-    const accepted = await confirm({
-      title: `${rotating ? "ออกลิงก์ใหม่" : "ออกลิงก์ยืนยัน LINE"}ให้ ${entry.teacherDisplayName}?`,
-      description: rotating
-        ? "ลิงก์ยืนยันเดิมจะใช้ไม่ได้ทันที ลิงก์ใหม่มีอายุ 24 ชั่วโมงและใช้ได้ครั้งเดียว"
-        : "ลิงก์มีอายุ 24 ชั่วโมง ใช้ได้ครั้งเดียว และครูต้องยืนยัน OTP ทางอีเมลก่อนเชื่อม LINE",
-      confirmText: rotating ? "ออกลิงก์ใหม่" : "ออกลิงก์",
-      variant: rotating ? "destructive" : "default",
-    });
-    if (!accepted) return;
-    const invitation = await issueLineInvitation.mutateAsync(
-      entry.teacherMembershipId,
-    );
-    setSharedUrl(invitation.url);
-  }
-
-  async function revokeLineInvitationLink(
-    entry: TeacherLinkRosterEntry,
-  ): Promise<void> {
-    const accepted = await confirm({
-      title: `ยกเลิกลิงก์ยืนยัน LINE ของ ${entry.teacherDisplayName}?`,
-      description:
-        "ลิงก์ที่ส่งไปแล้วจะใช้ไม่ได้ทันที แต่ไม่กระทบบัญชี LINE ที่เชื่อมสำเร็จแล้ว",
-      confirmText: "ยกเลิกลิงก์",
-      variant: "destructive",
-    });
-    if (!accepted) return;
-    await revokeLineInvitation.mutateAsync(entry.teacherMembershipId);
-  }
-
   /** With no rows ticked the button covers the whole term; with rows ticked, only those. */
   async function issueLinks(): Promise<void> {
     if (!selectedTermId) return;
     const picked = selectedEntries.length > 0;
     const accepted = await confirm({
       title: picked
-        ? `สร้างลิงก์เช็คชื่อให้ครู ${selectedEntries.length} คนที่เลือก?`
-        : "สร้างลิงก์เช็คชื่อให้ครูทั้งภาคเรียนนี้?",
+        ? `สร้างลิงก์เช็กชื่อให้ครู ${selectedEntries.length} คนที่เลือก?`
+        : "สร้างลิงก์เช็กชื่อให้ครูทั้งภาคเรียนนี้?",
       description: picked
         ? "ระบบจะสร้างลิงก์ให้เฉพาะครูที่เลือกซึ่งยังไม่มีลิงก์และมีห้องหรือรายวิชาในภาคเรียนนี้ ลิงก์เดิมไม่ถูกเปลี่ยน"
         : "ระบบจะสร้างลิงก์ให้ครูทุกคนที่ยังไม่มีลิงก์และมีห้องหรือรายวิชาในภาคเรียนนี้ ลิงก์เดิมของครูคนอื่นไม่ถูกเปลี่ยน",
@@ -646,24 +605,24 @@ export function TeacherAttendanceLinksPage() {
             >
               {selectedEntries.length > 0
                 ? `สร้างลิงก์ที่เลือก (${selectedEntries.length})`
-                : "สร้างลิงก์เช็คชื่อ"}
+                : "สร้างลิงก์เช็กชื่อ"}
             </Button>
           </>
         }
-        description="ออกลิงก์เช็คชื่อให้ครูรายคน อายุลิงก์เท่ากับหนึ่งภาคเรียน"
+        description="ออกลิงก์เช็กชื่อให้ครูรายคน อายุลิงก์เท่ากับหนึ่งภาคเรียน"
         icon={PAGE_ICON}
-        title="จัดการลิงก์เช็คชื่อ"
+        title="จัดการลิงก์เช็กชื่อ"
       />
       {lineGroupInvitation.data ? (
-        <Alert className="mb-4" variant="success">
+        <section className="mb-4 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <AlertTitle>
+              <h2 className="text-base font-bold text-slate-900">
                 ลิงก์ยืนยัน LINE กลาง{
                   lineGroupInvitation.data.status === "PENDING" ? " (รอเวลาเริ่ม)" : " เปิดใช้งาน"
                 }
-              </AlertTitle>
-              <AlertDescription>
+              </h2>
+              <p className="mt-0.5 text-sm text-slate-600">
                 {lineGroupInvitation.data.schoolName} · {" "}
                 เริ่ม {new Date(lineGroupInvitation.data.startsAt).toLocaleString("th-TH", {
                   dateStyle: "medium",
@@ -672,12 +631,21 @@ export function TeacherAttendanceLinksPage() {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}
-              </AlertDescription>
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <IconButton
+                aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
+                icon={Pencil}
+                iconClassName="size-5"
+                onClick={openLineGroupEditDialog}
+                title="แก้ไขวันเวลา"
+                variant="edit"
+              />
+              <IconButton
                 aria-label="แชร์ลิงก์ยืนยัน LINE"
                 icon={Share2}
+                iconClassName="size-5"
                 onClick={() => {
                   const invitation = lineGroupInvitation.data;
                   if (!invitation) return;
@@ -688,23 +656,17 @@ export function TeacherAttendanceLinksPage() {
                 variant="share"
               />
               <IconButton
-                aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
-                icon={Pencil}
-                onClick={openLineGroupEditDialog}
-                title="แก้ไขวันเวลา"
-                variant="edit"
-              />
-              <IconButton
                 aria-label="ปิดลิงก์ยืนยัน LINE"
                 disabled={revokeLineGroupInvitation.isPending}
-                icon={ShieldOff}
+                icon={Link2Off}
+                iconClassName="size-5"
                 onClick={() => void closeLineGroupInvitation()}
                 title="ปิดลิงก์"
                 variant="lock"
               />
             </div>
           </div>
-        </Alert>
+        </section>
       ) : null}
       <ToolbarControls className="mb-8">
         <SearchInput
@@ -793,9 +755,7 @@ export function TeacherAttendanceLinksPage() {
           rotateGrant.error ??
           grantLink.error ??
           sendOverLine.error ??
-          unlinkLine.error ??
-          issueLineInvitation.error ??
-          revokeLineInvitation.error
+          unlinkLine.error
         }
         fallback="ดำเนินการกับลิงก์ไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
@@ -892,9 +852,6 @@ export function TeacherAttendanceLinksPage() {
             entries={entries}
             onCopy={(entry) => void copyLink(entry)}
             onCreate={(entry) => void createLink(entry)}
-            onIssueLineInvitation={(entry) =>
-              void issueLineInvitationLink(entry)
-            }
             onOpenProfile={
               canManageTeachers
                 ? (entry) =>
@@ -907,9 +864,6 @@ export function TeacherAttendanceLinksPage() {
               revokeGrant.reset();
             }}
             onRotate={(entry) => void rotateLink(entry)}
-            onRevokeLineInvitation={(entry) =>
-              void revokeLineInvitationLink(entry)
-            }
             onUnlinkLine={(entry) => void unlinkLineAccount(entry)}
             onSelectAll={selectRows}
             onSelectRow={selectRow}

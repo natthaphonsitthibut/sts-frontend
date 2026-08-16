@@ -2,6 +2,7 @@ import type { BadgeProps } from "../../../components/base";
 
 export type StatusCatalogDomain =
   | "CASE_WORKFLOW"
+  | "STUDENT_RISK_TIER"
   | "USER_ACCOUNT_STATUS"
   | "USER_ACCOUNT_LIFECYCLE"
   | "TASK_WORKFLOW"
@@ -9,6 +10,7 @@ export type StatusCatalogDomain =
   | "TASK_LINK_STATE"
   | "LOGIN_LINK_USAGE"
   | "ATTENDANCE_RECORD"
+  | "ATTENDANCE_DELEGATION"
   | "SCHOOL_TERM"
   | "SCHOOL_CALENDAR_DAY"
   | "ATTENDANCE_SESSION"

@@ -135,6 +135,22 @@ export function TeacherStudentProfilePage() {
   }
 
   const observations = profile.observations?.data ?? [];
+  // Two stores, one section: an observation and a roster comment are both
+  // "what a teacher wrote", so the card lists them together, newest first.
+  const teacherNotes = [
+    ...observations.map((observation) => ({
+      id: `observation-${observation.id}`,
+      authorName: observation.author.displayName,
+      createdAt: observation.observedAt,
+      text: observation.comment ?? "",
+    })),
+    ...(profile.comments ?? []).map((comment) => ({
+      id: `comment-${comment.id}`,
+      authorName: comment.authorName,
+      createdAt: comment.createdAt,
+      text: comment.commentText,
+    })),
+  ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   const studentFullName =
     `${profile.student.FirstName_Onec ?? ""} ${profile.student.LastName_Onec ?? ""}`.trim() ||
     "ไม่ระบุชื่อ";
@@ -177,7 +193,7 @@ export function TeacherStudentProfilePage() {
                 />
               ) : null}
             </div>
-            {observations.length === 0 ? (
+            {teacherNotes.length === 0 ? (
               <EmptyState
                 className="border-none py-6 shadow-none"
                 description="ความคิดเห็นที่ครูบันทึกจะปรากฏในส่วนนี้"
@@ -186,21 +202,21 @@ export function TeacherStudentProfilePage() {
               />
             ) : (
               <ul className="space-y-3">
-                {observations.slice(0, 3).map((observation) => (
+                {teacherNotes.slice(0, 5).map((note) => (
                   <li
                     className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-                    key={observation.id}
+                    key={note.id}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
                       <strong className="font-semibold text-slate-800">
-                        ผู้รายงาน: {observation.author.displayName}
+                        ผู้รายงาน: {note.authorName}
                       </strong>
-                      <time dateTime={observation.observedAt}>
-                        {formatThaiDateTime(observation.observedAt)}
+                      <time dateTime={note.createdAt}>
+                        {formatThaiDateTime(note.createdAt)}
                       </time>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                      {observation.comment || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
+                      {note.text || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
                     </p>
                   </li>
                 ))}
