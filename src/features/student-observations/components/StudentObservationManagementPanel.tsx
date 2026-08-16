@@ -23,7 +23,7 @@ import {
 import { EmptyState, SkeletonStack } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { getRiskTierLabel } from "../../students/lib/student-presentation";
+import { useRiskTierLabels } from "../../students/hooks/useRiskTierLabels";
 import {
   useCreateHumanRiskReview,
   useGenerateObservationSummary,
@@ -60,6 +60,7 @@ function derivedTeacherSignal(
 }
 
 function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
+  const riskTierLabels = useRiskTierLabels();
   const observationsQuery = useManagedStudentObservations(studentTermId);
   const reviewQuery = useHumanRiskReview(studentTermId);
   const createReview = useCreateHumanRiskReview(studentTermId);
@@ -151,7 +152,7 @@ function RiskSignalsCard({ studentTermId }: { studentTermId: string }) {
                 <dd className="mt-1 font-semibold text-slate-900">
                   {currentCalculatedAttendanceRisk === "UNKNOWN"
                     ? "ยังไม่มีผลคำนวณ"
-                    : getRiskTierLabel(currentCalculatedAttendanceRisk)}
+                    : riskTierLabels.getLabel(currentCalculatedAttendanceRisk)}
                 </dd>
               </div>
               <div className="rounded-lg border border-slate-200 p-3">

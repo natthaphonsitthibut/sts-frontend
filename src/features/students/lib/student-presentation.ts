@@ -7,8 +7,10 @@ export function formatStudentRoom(room: string | null | undefined): string {
 }
 
 /**
- * Single source of truth for `student_risk_profiles.risk_tier` labels, so
- * every consumer of this tier reads from here instead of keeping its own copy.
+ * Fallback wording for `student_risk_profiles.risk_tier`. The labels now live in
+ * the `STUDENT_RISK_TIER` status catalogue — use `useRiskTierLabels()` so a
+ * change of wording needs no deploy. These values only cover the first paint
+ * before the catalogue resolves, and keep pure (non-hook) callers working.
  */
 export const RISK_TIER_LABELS: Record<string, string> = {
   HIGH: "เสี่ยง",

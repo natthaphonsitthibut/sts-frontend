@@ -99,7 +99,7 @@ export function StudentSelfPage() {
           ) : !stats || stats.total === 0 ? (
             <EmptyState
               className="mt-4 rounded-none border-none py-8 shadow-none"
-              description="ข้อมูลการเข้าเรียนจะแสดงที่นี่หลังมีการเช็คชื่อครั้งแรก"
+              description="ข้อมูลการเข้าเรียนจะแสดงที่นี่หลังมีการเช็กชื่อครั้งแรก"
               icon={CalendarDays}
               title="ยังไม่มีข้อมูลการเข้าเรียน"
             />
