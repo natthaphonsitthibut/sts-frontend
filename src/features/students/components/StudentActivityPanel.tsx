@@ -11,6 +11,7 @@ import { formatThaiDateTimeWithSeconds } from "../../../lib/date-time";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
+import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
 import {
   StudentActivityTimeline,
   type StudentTimelineEntry,
@@ -84,7 +85,13 @@ export function StudentActivityPanel({
         sourceLabel: TIMELINE_SOURCES.comment.label,
         sourceVariant: TIMELINE_SOURCES.comment.variant,
         title: `ผู้รายงาน: ${comment.authorDisplayName}`,
-        lines: [comment.comment],
+        lines: [
+          `หัวข้อปัญหา: ${formatProblemCategoryOption({
+            label: comment.problemCategoryLabel,
+            guidance: comment.problemCategoryGuidance,
+          })}`,
+          `คำอธิบาย: ${comment.problemDescription}`,
+        ],
       })),
       ...cases.map((studentCase) => ({
         id: `case:${studentCase.id}`,
@@ -193,9 +200,19 @@ export function StudentActivityPanel({
                       {formatThaiDateTimeWithSeconds(comment.commentedAt)}
                     </time>
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {comment.comment}
-                  </p>
+                  <div className="mt-2 space-y-1 text-sm leading-6 text-slate-700">
+                    <p>
+                      <span className="font-medium text-slate-800">หัวข้อปัญหา:</span>{" "}
+                      {formatProblemCategoryOption({
+                        label: comment.problemCategoryLabel,
+                        guidance: comment.problemCategoryGuidance,
+                      })}
+                    </p>
+                    <p className="whitespace-pre-wrap">
+                      <span className="font-medium text-slate-800">คำอธิบาย:</span>{" "}
+                      {comment.problemDescription}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>

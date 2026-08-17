@@ -23,6 +23,7 @@ import { taskService } from "../../tasks/api/task.service";
 import type { TaskCreatePayload } from "../../tasks/types/task.types";
 import { VisitAttachments } from "./CaseFollowUpRoundDetails";
 import {
+  formatFollowUpProblemCategory,
   formatOptionLabels,
   getCaseTrackingStatusPresentation,
   isFollowUpLinkExpired,
@@ -466,7 +467,7 @@ export function CaseTrackingTimeline({ caseRecord, onAssigned, onReview }: CaseT
 
           <div className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
             <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-2 lg:grid-rows-subgrid">
-              <label className="space-y-1 text-sm font-medium text-slate-700">ผลการติดตาม<Input disabled value={latestFollowUp?.follow_up_assessment_label || latestFollowUp?.cause_category || "-"} /></label>
+              <label className="space-y-1 text-sm font-medium text-slate-700">ผลการติดตาม<Input disabled value={formatFollowUpProblemCategory({ code: latestFollowUp?.follow_up_problem_category_code, label: latestFollowUp?.follow_up_problem_category_label, guidance: latestFollowUp?.follow_up_problem_category_guidance })} /></label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">คำอธิบายเพิ่มเติม<Textarea className="min-h-28 flex-1 resize-none overflow-y-auto" disabled rows={4} value={latestFollowUp?.cause_detail || ""} /></label>
             </div>
             <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-2 lg:grid-rows-subgrid">

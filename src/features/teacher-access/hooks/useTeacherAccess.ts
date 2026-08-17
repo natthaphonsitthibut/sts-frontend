@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import type { ClassroomStudentProblemCategory } from "../../school-structure/types/school-structure.types";
 import {
   teacherAccessService,
   type TeacherAttendanceHistoryQuery,
@@ -577,7 +578,11 @@ export function useCreateTeacherStudentComment(assignmentId: number) {
     (state) => state.sessionToken,
   );
   return useMutation({
-    mutationFn: (input: { studentUuid: string; commentText: string }) =>
+    mutationFn: (input: {
+      studentUuid: string;
+      problemCategory: ClassroomStudentProblemCategory;
+      problemDescription: string;
+    }) =>
       teacherAccessService.createStudentComment(
         { token, sessionToken },
         { assignmentId, ...input },

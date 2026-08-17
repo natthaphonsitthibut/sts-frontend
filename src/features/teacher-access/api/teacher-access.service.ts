@@ -3,6 +3,7 @@ import { getApiErrorMessage } from "../../../lib/api-error";
 import type { AttendanceImportHistoryEntry } from "../../attendance/components/AttendanceImportHistoryTable";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import type { AttendanceImportSheet } from "../../attendance/lib/attendance-import";
+import type { ClassroomStudentProblemCategory } from "../../school-structure/types/school-structure.types";
 import type { TeacherLinkCredential } from "../store/teacher-link-session.store";
 import type {
   BulkIssueTeacherAccessResult,
@@ -703,7 +704,12 @@ async function listCompleteAttendanceHistory(
 
 async function createStudentComment(
   credential: TeacherLinkCredential,
-  input: { assignmentId: number; studentUuid: string; commentText: string },
+  input: {
+    assignmentId: number;
+    studentUuid: string;
+    problemCategory: ClassroomStudentProblemCategory;
+    problemDescription: string;
+  },
 ): Promise<void> {
   await runGuestRequest(async () => {
     await apiClient.post("/teacher-access/student-comments", input, {

@@ -234,7 +234,7 @@ export function useCreateClassroomStudentComment() {
                 ...current,
                 data: current.data.map((student) =>
                   student.studentUuid === input.studentUuid
-                    ? { ...student, teacherComment: created.teacherComment }
+                    ? { ...student, teacherComment: created.problemDescription }
                     : student,
                 ),
               }
@@ -246,6 +246,15 @@ export function useCreateClassroomStudentComment() {
       });
     },
     meta: { successMessage: "บันทึกความคิดเห็นแล้ว" },
+  });
+}
+
+export function useStudentProblemCategories(enabled = true) {
+  return useQuery({
+    queryKey: [KEY, "student-problem-categories"],
+    queryFn: schoolStructureService.listStudentProblemCategories,
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

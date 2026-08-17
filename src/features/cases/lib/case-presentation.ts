@@ -112,6 +112,16 @@ export function formatOptionLabels(
   return options.map((option) => option.label).join(", ");
 }
 
+export function formatFollowUpProblemCategory(category: {
+  code?: string | null;
+  label?: string | null;
+  guidance?: string | null;
+}): string {
+  const label = category.label || category.code;
+  if (!label) return "-";
+  return category.guidance ? `${label} (${category.guidance})` : label;
+}
+
 export function isFollowUpLinkExpired(assignmentEndsAt?: string | null): boolean {
   if (!assignmentEndsAt) return false;
   const expiresAt = new Date(assignmentEndsAt);

@@ -968,13 +968,18 @@ export function TeacherClassroomPage() {
         onOpenChange={(open) => {
           if (!open) setCommentStudent(null);
         }}
+        problemCategories={context.problemCategories}
         student={
           commentStudent
             ? { ...commentStudent, photoUrl: commentPhotoUrl }
             : null
         }
-        submitComment={async ({ studentUuid, commentText }) => {
-          await createComment.mutateAsync({ studentUuid, commentText });
+        submitComment={async ({ studentUuid, problemCategory, problemDescription }) => {
+          await createComment.mutateAsync({
+            studentUuid,
+            problemCategory,
+            problemDescription,
+          });
           await rosterQuery.refetch();
         }}
         submitError={createComment.error}

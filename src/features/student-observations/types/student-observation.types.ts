@@ -107,7 +107,10 @@ export interface TeacherCommentReport {
   schoolName: string | null;
   gradeLabel: string | null;
   roomNo: string | null;
-  comment: string;
+  problemCategory: string;
+  problemCategoryLabel: string;
+  problemCategoryGuidance: string | null;
+  problemDescription: string;
   authorDisplayName: string;
   commentedAt: string;
 }

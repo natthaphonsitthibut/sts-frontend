@@ -18,6 +18,7 @@ import {
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
+import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
 import { StudentAttendanceCalendar } from "../../students/components/StudentAttendanceCalendar";
 import { StudentProfileHeader } from "../../students/components/StudentProfileHeader";
 import { TeacherLinkShell } from "../components/TeacherLinkShell";
@@ -143,12 +144,16 @@ export function TeacherStudentProfilePage() {
       authorName: observation.author.displayName,
       createdAt: observation.observedAt,
       text: observation.comment ?? "",
+      problemCategoryLabel: null,
+      problemCategoryGuidance: null,
     })),
     ...(profile.comments ?? []).map((comment) => ({
       id: `comment-${comment.id}`,
       authorName: comment.authorName,
       createdAt: comment.createdAt,
-      text: comment.commentText,
+      text: comment.problemDescription,
+      problemCategoryLabel: comment.problemCategoryLabel,
+      problemCategoryGuidance: comment.problemCategoryGuidance,
     })),
   ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   const studentFullName =
@@ -215,9 +220,23 @@ export function TeacherStudentProfilePage() {
                         {formatThaiDateTime(note.createdAt)}
                       </time>
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                      {note.text || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
-                    </p>
+                    <div className="mt-2 space-y-1 text-sm leading-6 text-slate-700">
+                      {note.problemCategoryLabel ? (
+                        <p>
+                          <span className="font-medium text-slate-800">หัวข้อปัญหา:</span>{" "}
+                          {formatProblemCategoryOption({
+                            label: note.problemCategoryLabel,
+                            guidance: note.problemCategoryGuidance,
+                          })}
+                        </p>
+                      ) : null}
+                      <p className="whitespace-pre-wrap">
+                        {note.problemCategoryLabel ? (
+                          <><span className="font-medium text-slate-800">คำอธิบาย:</span>{" "}</>
+                        ) : null}
+                        {note.text || "ไม่ได้ระบุความคิดเห็นเพิ่มเติม"}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -281,6 +300,7 @@ export function TeacherStudentProfilePage() {
         onOpenChange={(open) => {
           if (!open) setCommentOpen(false);
         }}
+        problemCategories={context.problemCategories}
         student={
           commentOpen
             ? {
@@ -291,10 +311,15 @@ export function TeacherStudentProfilePage() {
               }
             : null
         }
-        submitComment={async ({ studentUuid: targetUuid, commentText }) => {
+        submitComment={async ({
+          studentUuid: targetUuid,
+          problemCategory,
+          problemDescription,
+        }) => {
           await createComment.mutateAsync({
             studentUuid: targetUuid,
-            commentText,
+            problemCategory,
+            problemDescription,
           });
           await profileQuery.refetch();
         }}

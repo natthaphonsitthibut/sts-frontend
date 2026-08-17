@@ -120,7 +120,8 @@ export interface TaskAccessTask {
     assignment_ends_at?: string | null;
     assignment_note?: string | null;
     cause_detail?: string | null;
-    follow_up_assessment_label?: string | null;
+    follow_up_problem_category_label?: string | null;
+    follow_up_problem_category_guidance?: string | null;
     exception_label?: string | null;
   }>;
   /** Composed workflow label (`รอติดตาม : ให้ความช่วยเหลือ`) for the card header. */
@@ -172,9 +173,9 @@ export interface TaskChainLink {
 
 export interface TaskSubmission {
   visited_at?: string | null;
-  cause_category?: string | null;
-  follow_up_assessment_code?: string | null;
-  follow_up_assessment_label?: string | null;
+  follow_up_problem_category_code?: string | null;
+  follow_up_problem_category_label?: string | null;
+  follow_up_problem_category_guidance?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
   guardian_type_code?: string | null;

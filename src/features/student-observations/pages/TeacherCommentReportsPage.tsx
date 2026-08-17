@@ -19,6 +19,7 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatRoomLabel } from "../../../lib/room-presentation";
+import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
 import { RiskReportTabs } from "../components/RiskReportTabs";
 import { useTeacherComments } from "../hooks/useStudentObservations";
 
@@ -85,7 +86,7 @@ export function TeacherCommentReportsPage() {
           <DataTable
             headings={[
               "นักเรียน",
-              "ความคิดเห็น",
+              "หัวข้อปัญหาและคำอธิบาย",
               "ผู้บันทึก",
               { label: "เครื่องมือ", className: "text-center" },
             ]}
@@ -103,9 +104,17 @@ export function TeacherCommentReportsPage() {
                   </p>
                 </DataTableCell>
                 <DataTableCell>
-                  <p className="line-clamp-2 max-w-[46ch] whitespace-pre-wrap text-sm text-slate-600">
-                    {row.comment}
-                  </p>
+                  <div className="max-w-[46ch] space-y-1 text-sm text-slate-600">
+                    <p className="font-medium text-slate-800">
+                      {formatProblemCategoryOption({
+                        label: row.problemCategoryLabel,
+                        guidance: row.problemCategoryGuidance,
+                      })}
+                    </p>
+                    <p className="line-clamp-2 whitespace-pre-wrap">
+                      {row.problemDescription}
+                    </p>
+                  </div>
                 </DataTableCell>
                 <DataTableCell>
                   <p className="text-slate-700">{row.authorDisplayName}</p>

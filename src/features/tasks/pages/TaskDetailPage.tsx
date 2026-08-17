@@ -17,6 +17,7 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
+import { formatFollowUpProblemCategory } from "../../cases/lib/case-presentation";
 import type { CaseRecord } from "../../cases/types/cases.types";
 import { VisitAttachments } from "../../cases/components/CaseFollowUpRoundDetails";
 import { taskService } from "../api/task.service";
@@ -230,10 +231,11 @@ export function TaskDetailPage() {
               <div>
                 <div className="text-sm text-slate-500">ผลประเมินหลังลงพื้นที่</div>
                 <div className="font-bold">
-                  {firstSubmission.follow_up_assessment_label ||
-                    firstSubmission.follow_up_assessment_code ||
-                    firstSubmission.cause_category ||
-                    "-"}
+                  {formatFollowUpProblemCategory({
+                    code: firstSubmission.follow_up_problem_category_code,
+                    label: firstSubmission.follow_up_problem_category_label,
+                    guidance: firstSubmission.follow_up_problem_category_guidance,
+                  })}
                 </div>
               </div>
               <div>

@@ -66,7 +66,7 @@ function createReportSchema(rules: ReportOptionRules) {
   .object({
     visitedDate: z.string().trim().min(1, "กรุณาเลือกวันที่ลงพื้นที่"),
     visitedTime: z.string().regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
-    assessmentCode: z.string().trim().min(1, "กรุณาเลือกผลการติดตาม"),
+    problemCategoryCode: z.string().trim().min(1, "กรุณาเลือกผลการติดตาม"),
     parentalStatusCode: z.string().trim(),
     guardianTypeCode: z.string().trim(),
     guardianTypeDetail: z.string().trim(),
@@ -216,7 +216,7 @@ export function HomeVisitReportPage({
     () => ({
       visitedDate: initialVisit.date,
       visitedTime: initialVisit.time,
-      assessmentCode: "",
+      problemCategoryCode: "",
       parentalStatusCode: "",
       guardianTypeCode: "",
       guardianTypeDetail: "",
@@ -236,7 +236,10 @@ export function HomeVisitReportPage({
   const form = useForm<ReportFormValues>({ defaultValues, resolver });
   const visitedDate = useWatch({ control: form.control, name: "visitedDate" });
   const visitedTime = useWatch({ control: form.control, name: "visitedTime" });
-  const assessmentCode = useWatch({ control: form.control, name: "assessmentCode" });
+  const problemCategoryCode = useWatch({
+    control: form.control,
+    name: "problemCategoryCode",
+  });
   const parentalStatusCode = useWatch({ control: form.control, name: "parentalStatusCode" });
   const guardianTypeCode = useWatch({ control: form.control, name: "guardianTypeCode" });
   const residenceEnvironmentCodes =
@@ -319,7 +322,10 @@ export function HomeVisitReportPage({
       const visitedAt = new Date(`${values.visitedDate}T${values.visitedTime}:00`);
       const formData = new FormData();
       formData.set("visited_at", visitedAt.toISOString());
-      formData.set("follow_up_assessment_code", values.assessmentCode);
+      formData.set(
+        "follow_up_problem_category_code",
+        values.problemCategoryCode,
+      );
       if (values.parentalStatusCode) {
         formData.set("parental_status_code", values.parentalStatusCode);
       }
@@ -713,28 +719,30 @@ export function HomeVisitReportPage({
                       ผลการติดตาม
                     </FormLabel>
                     <Combobox
-                      aria-invalid={form.formState.errors.assessmentCode ? true : undefined}
+                      aria-invalid={form.formState.errors.problemCategoryCode ? true : undefined}
                       id="follow-up-assessment"
-                      name="assessmentCode"
+                      name="problemCategoryCode"
                       onChange={(value) =>
-                        form.setValue("assessmentCode", value, {
+                        form.setValue("problemCategoryCode", value, {
                           shouldDirty: true,
                           shouldValidate: form.formState.isSubmitted,
                         })
                       }
                       options={[
                         { value: "", label: "เลือกผลการติดตาม" },
-                        ...(trackingOptionsQuery.data?.homeVisitAssessments ?? []).map(
+                        ...(trackingOptionsQuery.data?.followUpProblemCategories ?? []).map(
                           (option) => ({
                             value: option.code,
-                            label: option.label,
+                            label: option.guidance
+                              ? `${option.label} (${option.guidance})`
+                              : option.label,
                           }),
                         ),
                       ]}
                       searchable={false}
-                      value={assessmentCode}
+                      value={problemCategoryCode}
                     />
-                    <FormMessage<ReportFormValues> name="assessmentCode" />
+                    <FormMessage<ReportFormValues> name="problemCategoryCode" />
                   </FormItem>
 
                   <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-2 space-y-0">

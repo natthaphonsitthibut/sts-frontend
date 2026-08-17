@@ -1,6 +1,9 @@
 import { FileText } from "lucide-react";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
-import { formatOptionLabels } from "../lib/case-presentation";
+import {
+  formatFollowUpProblemCategory,
+  formatOptionLabels,
+} from "../lib/case-presentation";
 import type { CaseFollowUpRound } from "../types/cases.types";
 
 interface CaseFollowUpRoundDetailsProps {
@@ -112,11 +115,11 @@ export function CaseFollowUpRoundDetails({
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         <RoundDetailItem
           label="ผลประเมินหลังลงพื้นที่"
-          value={
-            round.follow_up_assessment_label ||
-            round.follow_up_assessment_code ||
-            round.cause_category
-          }
+          value={formatFollowUpProblemCategory({
+            code: round.follow_up_problem_category_code,
+            label: round.follow_up_problem_category_label,
+            guidance: round.follow_up_problem_category_guidance,
+          })}
         />
         <RoundDetailItem
           label="ผลหลังการติดตาม"

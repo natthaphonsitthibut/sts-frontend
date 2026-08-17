@@ -8,6 +8,10 @@ import type {
   StudentDetail,
   StudentProfileSummary,
 } from "../../students/types/students.types";
+import type {
+  ClassroomStudentProblemCategory,
+  ClassroomStudentProblemCategoryOption,
+} from "../../school-structure/types/school-structure.types";
 
 export type TeacherAccessCapability =
   | "HOMEROOM_ATTENDANCE"
@@ -124,6 +128,7 @@ export interface TeacherAccessContext {
   semester: number;
   capabilities: TeacherAccessCapability[];
   accessScope: "FULL" | "ATTENDANCE_ONLY";
+  problemCategories: ClassroomStudentProblemCategoryOption[];
   assignments: TeacherAccessAssignment[];
 }
 
@@ -338,7 +343,10 @@ export interface TeacherStudentProfile {
   /** Comments written from the roster's comment button, same section, same list. */
   comments?: {
     id: string;
-    commentText: string;
+    problemCategory: ClassroomStudentProblemCategory;
+    problemCategoryLabel: string;
+    problemCategoryGuidance: string | null;
+    problemDescription: string;
     authorName: string;
     createdAt: string;
   }[];

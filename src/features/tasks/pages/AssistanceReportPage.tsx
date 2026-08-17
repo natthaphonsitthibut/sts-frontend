@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,7 @@ import { AssignmentSummary } from "../../../components/layout/assignment-summary
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import { formatFollowUpProblemCategory } from "../../cases/lib/case-presentation";
 import { TrackingStep, TrackingStepsCard } from "../../../components/layout/tracking-step";
 import { formatThaiDate } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
@@ -105,7 +106,6 @@ export function AssistanceReportPage({
 }) {
   const navigate = useNavigate();
   const [photos, setPhotos] = useState<File[]>([]);
-  const photosRef = useRef<File[]>([]);
   const defaults = bangkokParts();
   const form = useForm<AssistanceReportValues>({
     resolver: zodResolver(assistanceReportSchema),
@@ -116,11 +116,12 @@ export function AssistanceReportPage({
     },
     mode: "onSubmit",
   });
-  useEffect(() => {
-    photosRef.current = photos;
-  }, [photos]);
   const assistedDate = useWatch({ control: form.control, name: "assistedDate" });
   const assistedTime = useWatch({ control: form.control, name: "assistedTime" });
+  const assistanceDetail = useWatch({
+    control: form.control,
+    name: "assistanceDetail",
+  });
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftError, setDraftError] = useState("");
 
@@ -148,33 +149,21 @@ export function AssistanceReportPage({
     };
   }, [draftHydrated, form, token]);
 
-  // Subscribe rather than depend on a watched value: `useWatch` hands back a new
-  // object every render, which would clear the debounce timer before it ever
-  // fired and silently save nothing.
   useEffect(() => {
     if (!draftHydrated) return;
-    let timer = 0;
-    const persist = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        void saveVisitReportDraft({
-          token,
-          formValues: form.getValues(),
-          latitude: "",
-          longitude: "",
-          files: photosRef.current,
-        })
-          .then(() => setDraftError(""))
-          .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
-      }, 700);
-    };
-    const subscription = form.watch(persist);
-    persist();
-    return () => {
-      window.clearTimeout(timer);
-      subscription.unsubscribe();
-    };
-  }, [draftHydrated, form, token]);
+    const timer = window.setTimeout(() => {
+      void saveVisitReportDraft({
+        token,
+        formValues: { assistedDate, assistedTime, assistanceDetail },
+        latitude: "",
+        longitude: "",
+        files: photos,
+      })
+        .then(() => setDraftError(""))
+        .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [assistanceDetail, assistedDate, assistedTime, draftHydrated, photos, token]);
 
   const measures = task.assistance_measures ?? [];
   const measureLabel = measures.length > 0 ? measures.map((item) => item.label).join(", ") : "-";
@@ -272,7 +261,15 @@ export function AssistanceReportPage({
                   <FormLabel>ผลการติดตาม</FormLabel>
                   <Input
                     disabled
-                    value={followUp?.follow_up_assessment_label || followUp?.exception_label || "-"}
+                    value={
+                      followUp?.follow_up_problem_category_label
+                        ? formatFollowUpProblemCategory({
+                            label: followUp.follow_up_problem_category_label,
+                            guidance:
+                              followUp.follow_up_problem_category_guidance,
+                          })
+                        : followUp?.exception_label || "-"
+                    }
                   />
                 </FormItem>
               </div>

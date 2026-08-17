@@ -47,7 +47,11 @@ export interface CaseTrackingOptions {
     label: string;
     requiresUpdatedAddress: boolean;
   }>;
-  homeVisitAssessments: Array<{ code: string; label: string }>;
+  followUpProblemCategories: Array<{
+    code: string;
+    label: string;
+    guidance: string | null;
+  }>;
   assistanceMeasures: AssistanceMeasureOption[];
   parentalStatuses: Array<{ code: string; label: string }>;
   guardianTypes: Array<{ code: string; label: string; requiresDetail: boolean }>;
@@ -77,9 +81,9 @@ export interface CaseFollowUpRound {
   link_count: number;
   submitted_at?: string | null;
   visited_at?: string | null;
-  cause_category?: string | null;
-  follow_up_assessment_code?: string | null;
-  follow_up_assessment_label?: string | null;
+  follow_up_problem_category_code?: string | null;
+  follow_up_problem_category_label?: string | null;
+  follow_up_problem_category_guidance?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
   guardian_type_code?: string | null;
