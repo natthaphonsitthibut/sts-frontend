@@ -93,8 +93,8 @@ export function MonthlySuccessRateChart({
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
                 fontSize: "14px",
               }}
-              formatter={(value: number, name: string) => [
-                `${value.toLocaleString("th-TH")} เคส`,
+              formatter={(value, name) => [
+                `${Number(value ?? 0).toLocaleString("th-TH")} เคส`,
                 name === "opened" ? "เคสที่เกิดขึ้นใหม่" : "ช่วยเหลือสำเร็จ",
               ]}
               labelFormatter={(label) => `เดือน ${label}`}

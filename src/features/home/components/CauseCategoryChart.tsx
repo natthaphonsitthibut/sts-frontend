@@ -61,8 +61,8 @@ export function CauseCategoryChart({ distribution }: CauseCategoryChartProps) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [
-                  `${value.toLocaleString("th-TH")} รายการ`,
+                formatter={(value) => [
+                  `${Number(value ?? 0).toLocaleString("th-TH")} รายการ`,
                   "จำนวน",
                 ]}
                 contentStyle={{
