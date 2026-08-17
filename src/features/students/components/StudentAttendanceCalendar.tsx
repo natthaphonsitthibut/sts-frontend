@@ -353,7 +353,7 @@ export function StudentAttendanceCalendar({
             ) : !subjectQuery.data?.length ? (
               <EmptyState
                 className="border-none py-5 shadow-none"
-                description="วันที่เลือกยังไม่มีการเช็คชื่อรายวิชา"
+                description="วันที่เลือกยังไม่มีการเช็กชื่อรายวิชา"
                 icon={CalendarDays}
                 title="ไม่มีข้อมูลรายวิชา"
               />
@@ -377,7 +377,7 @@ export function StudentAttendanceCalendar({
                         <div className="mt-0.5 text-xs text-slate-500">
                           คาบที่ {record.period} ·{" "}
                           {formatThaiTimeWithSeconds(record.recordedAt)} ·
-                          ผู้เช็คชื่อ {record.recordedBy ?? "-"}
+                          ผู้เช็กชื่อ {record.recordedBy ?? "-"}
                         </div>
                       </div>
                       <Badge

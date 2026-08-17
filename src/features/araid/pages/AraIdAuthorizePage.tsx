@@ -1,5 +1,6 @@
 import { CheckCircle2, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, Button } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -7,6 +8,8 @@ import {
   useApproveTeacherAccessAraIdChallenge,
   useBeginTeacherAccessAraIdChallenge,
 } from "../../teacher-access/hooks/useTeacherAccess";
+import { taskService } from "../../tasks/api/task.service";
+import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
 import { useAraIdSession } from "../hooks/useAraId";
 
@@ -16,16 +19,52 @@ function readChallengeToken(): string {
   return /^[A-Za-z0-9_-]{40,64}$/.test(token) ? token : "";
 }
 
+/**
+ * Which flow the QR belongs to. Older teacher-link QR codes carry no scope, so
+ * the absent value has to keep meaning `teacher-access`.
+ */
+type AraIdChallengeScope = "teacher-access" | "task-link" | "admin-login";
+
+function readChallengeScope(): AraIdChallengeScope {
+  const scope = new URLSearchParams(window.location.hash.slice(1)).get("scope")?.trim();
+  return scope === "task-link" || scope === "admin-login" ? scope : "teacher-access";
+}
+
 export function AraIdAuthorizePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const routeState = location.state as { challengeToken?: string } | null;
+  const routeState = location.state as {
+    challengeToken?: string;
+    araIdPinVerified?: boolean;
+    scope?: AraIdChallengeScope;
+  } | null;
   const [challengeToken] = useState(() => routeState?.challengeToken ?? readChallengeToken());
+  const [scope] = useState<AraIdChallengeScope>(() => routeState?.scope ?? readChallengeScope());
   const [completed, setCompleted] = useState(false);
   const attempted = useRef(false);
   const session = useAraIdSession();
-  const begin = useBeginTeacherAccessAraIdChallenge();
-  const approve = useApproveTeacherAccessAraIdChallenge();
+  const teacherAccessBegin = useBeginTeacherAccessAraIdChallenge();
+  const teacherAccessApprove = useApproveTeacherAccessAraIdChallenge();
+  const taskBegin = useMutation({
+    mutationFn: (token: string) => taskService.beginTaskAraIdChallenge(token),
+  });
+  const taskApprove = useMutation({ mutationFn: () => taskService.approveTaskAraIdChallenge() });
+  const adminLoginBegin = useMutation({
+    mutationFn: (token: string) => authService.beginAraIdLoginChallenge(token),
+  });
+  const adminLoginApprove = useMutation({ mutationFn: authService.approveAraIdLoginChallenge });
+  const begin =
+    scope === "task-link"
+      ? taskBegin
+      : scope === "admin-login"
+        ? adminLoginBegin
+        : teacherAccessBegin;
+  const approve =
+    scope === "task-link"
+      ? taskApprove
+      : scope === "admin-login"
+        ? adminLoginApprove
+        : teacherAccessApprove;
 
   useEffect(() => {
     if (!challengeToken || session.isPending || attempted.current) return;
@@ -40,8 +79,23 @@ export function AraIdAuthorizePage() {
         replace: true,
         state: {
           challengeToken,
+          scope,
           returnTo: "/araid/authorize",
           verificationIntent: "TEACHER_ACCESS_QR",
+        },
+      });
+      return;
+    }
+    if (!routeState?.araIdPinVerified) {
+      attempted.current = true;
+      void navigate("/araid/pin", {
+        replace: true,
+        state: {
+          challengeToken,
+          scope,
+          returnTo: "/araid/authorize",
+          verificationIntent: "TEACHER_ACCESS_QR",
+          reauthenticate: true,
         },
       });
       return;
@@ -51,7 +105,16 @@ export function AraIdAuthorizePage() {
       .mutateAsync()
       .then(() => setCompleted(true))
       .catch(() => undefined);
-  }, [approve, begin, challengeToken, navigate, session.isError, session.isPending]);
+  }, [
+    approve,
+    begin,
+    challengeToken,
+    navigate,
+    routeState?.araIdPinVerified,
+    session.isError,
+    session.isPending,
+    scope,
+  ]);
 
   return (
     <main className="grid min-h-dvh place-items-center bg-araid-brand px-5 py-10 font-araid">

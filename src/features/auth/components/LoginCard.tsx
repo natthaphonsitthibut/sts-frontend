@@ -2,9 +2,15 @@ import { Card } from "../../../components/base";
 import { AdminLoginForm } from "./AdminLoginForm";
 import { LoginBrandMark } from "./LoginBrandMark";
 import { LoginDivider } from "./LoginDivider";
-import { ThaIdLoginButton } from "./ThaIdLoginButton";
+import { AraIdLoginButton } from "./AraIdLoginButton";
 
-export function LoginCard() {
+interface LoginCardProps {
+  araIdError: unknown;
+  araIdPending: boolean;
+  onAraIdLogin: () => void;
+}
+
+export function LoginCard({ araIdError, araIdPending, onAraIdLogin }: LoginCardProps) {
   return (
     <div className="relative pt-[clamp(13rem,26vh,21rem)]">
       <div className="absolute left-1/2 top-0 -translate-x-1/2">
@@ -25,7 +31,11 @@ export function LoginCard() {
 
           <AdminLoginForm />
           <LoginDivider />
-          <ThaIdLoginButton />
+          <AraIdLoginButton
+            error={araIdError}
+            isPending={araIdPending}
+            onClick={onAraIdLogin}
+          />
         </div>
       </Card>
     </div>

@@ -1,14 +1,13 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
-  AttendanceTaskStatus,
   TaskAccessTask,
+  TaskAraIdChallenge,
+  TaskAraIdChallengeStatus,
   TaskChainResponse,
   TaskCreatePayload,
   TaskCreateResponse,
-  TaskDelegationPayload,
-  TaskDelegationResponse,
-  TaskGuestStudent,
-  TaskHistoryEntry,
+  TaskLinkAdminPayload,
+  TaskLinkAdminResponse,
   TaskOtpChallenge,
   TaskSubmitResponse,
   VisitAssignee,
@@ -16,18 +15,6 @@ import type {
 
 interface DataEnvelope<T> {
   data?: T;
-}
-
-function normalizeArrayResponse<T>(
-  data: T[] | DataEnvelope<T[]> | null | undefined,
-): T[] {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  if (Array.isArray(data?.data)) {
-    return data.data;
-  }
-  return [];
 }
 
 function createMagicSessionConfig(magicSessionToken?: string) {
@@ -67,23 +54,6 @@ async function getTask(
   return response.data;
 }
 
-async function getTaskStudents(token: string): Promise<TaskGuestStudent[]> {
-  const response = await apiClient.get<
-    TaskGuestStudent[] | DataEnvelope<TaskGuestStudent[]>
-  >(`/tasks/${encodeURIComponent(token)}/students`);
-  return normalizeArrayResponse(response.data);
-}
-
-async function getTaskHistory(
-  token: string,
-  date: string,
-): Promise<TaskHistoryEntry[]> {
-  const response = await apiClient.get<
-    TaskHistoryEntry[] | DataEnvelope<TaskHistoryEntry[]>
-  >(`/tasks/${encodeURIComponent(token)}/history`, { params: { date } });
-  return normalizeArrayResponse(response.data);
-}
-
 async function requestTaskOtp(token: string): Promise<TaskOtpChallenge> {
   const response = await apiClient.post<TaskOtpChallenge>(
     `/tasks/${encodeURIComponent(token)}/otp`,
@@ -102,18 +72,37 @@ async function verifyTaskOtp(
   return response.data;
 }
 
-async function submitTaskAttendance(
-  token: string,
-  records: Array<{ student_id: string; status: AttendanceTaskStatus }>,
-  timetableSlotId?: number | null,
-  magicSessionToken?: string,
-): Promise<TaskSubmitResponse> {
-  const response = await apiClient.post<TaskSubmitResponse>(
-    `/tasks/${encodeURIComponent(token)}/attendance`,
-    { records, timetable_slot_id: timetableSlotId ?? null },
-    createMagicSessionConfig(magicSessionToken),
+const TASK_ARAID_CHALLENGE_HEADER = "x-task-araid-challenge";
+
+async function createTaskAraIdChallenge(token: string): Promise<TaskAraIdChallenge> {
+  const response = await apiClient.post<{ data: TaskAraIdChallenge }>(
+    `/tasks/${encodeURIComponent(token)}/araid/challenge`,
   );
-  return response.data;
+  return response.data.data;
+}
+
+async function beginTaskAraIdChallenge(challengeToken: string): Promise<{ expiresAt: string }> {
+  const response = await apiClient.post<{ data: { expiresAt: string } }>(
+    "/tasks/araid/challenge/begin",
+    undefined,
+    { headers: { [TASK_ARAID_CHALLENGE_HEADER]: challengeToken } },
+  );
+  return response.data.data;
+}
+
+async function approveTaskAraIdChallenge(): Promise<void> {
+  await apiClient.post("/tasks/araid/challenge/approve");
+}
+
+async function pollTaskAraIdChallenge(
+  challengeToken: string,
+): Promise<TaskAraIdChallengeStatus> {
+  const response = await apiClient.post<{ data: TaskAraIdChallengeStatus }>(
+    "/tasks/araid/challenge/status",
+    undefined,
+    { headers: { [TASK_ARAID_CHALLENGE_HEADER]: challengeToken } },
+  );
+  return response.data.data;
 }
 
 async function submitTaskReport(
@@ -129,29 +118,28 @@ async function submitTaskReport(
   return response.data;
 }
 
-async function delegateTask(
-  token: string,
-  payload: TaskDelegationPayload,
-  magicSessionToken?: string,
-): Promise<TaskDelegationResponse> {
-  const response = await apiClient.post<TaskDelegationResponse>(
-    `/tasks/${encodeURIComponent(token)}/delegate`,
+async function setTaskLinkAdminLock(
+  linkId: string,
+  payload: TaskLinkAdminPayload,
+): Promise<TaskLinkAdminResponse> {
+  const response = await apiClient.post<TaskLinkAdminResponse>(
+    `/task-links/${encodeURIComponent(linkId)}/admin-lock`,
     payload,
-    createMagicSessionConfig(magicSessionToken),
   );
   return response.data;
 }
 
 export const taskService = {
+  approveTaskAraIdChallenge,
+  beginTaskAraIdChallenge,
   createTask,
+  createTaskAraIdChallenge,
+  pollTaskAraIdChallenge,
   getVisitAssignees,
-  delegateTask,
   getTask,
   getTaskChain,
-  getTaskHistory,
-  getTaskStudents,
   requestTaskOtp,
-  submitTaskAttendance,
+  setTaskLinkAdminLock,
   submitTaskReport,
   verifyTaskOtp,
 };

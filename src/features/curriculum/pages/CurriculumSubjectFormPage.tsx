@@ -246,6 +246,8 @@ function SubjectForm({
                     }
                     options={teacherOptions}
                     placeholder="ครูผู้สอน"
+                    // Same one-row behaviour as the timetable picker.
+                    singleRow
                     value={draft.teacherMembershipIds}
                   />
                 </div>

@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
   Combobox,
+  FileDropzone,
   Select,
   Tabs,
   useConfirm,
@@ -48,7 +49,6 @@ import {
   useSchoolClassroomOptions,
   useScopedSchools,
 } from "../../school-structure/hooks/useSchoolStructure";
-import { ImportDropZone } from "../components/ImportDropZone";
 import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
   useExportImportQuarantine,
@@ -1182,7 +1182,7 @@ export function ImportDataPage() {
                     </div>
                   ) : null}
                 </div>
-                <ImportDropZone
+                <FileDropzone
                   disabled={isBusy}
                   file={file}
                   onFileSelect={(next) => {

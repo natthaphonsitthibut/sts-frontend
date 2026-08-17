@@ -1,5 +1,56 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-bold.ttf") format("truetype");
+}
+
+/* TH Sarabun PSK ships only regular and bold. Map the UI's medium and
+ * semibold tokens to the supplied bold face instead of letting the browser
+ * fall back to a visually thin regular face. */
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-bold-italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TH Sarabun PSK";
+  font-style: italic;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url("/fonts/thsarabunpsk-bold-italic.ttf") format("truetype");
+}
+
 /*
  * Centralized design tokens (Tailwind v4 @theme).
  * This project uses the @tailwindcss/vite plugin with no tailwind.config.ts,
@@ -26,8 +77,8 @@
 
   /* Neutral content — primary labels/icons are black; supporting copy stays #676767. */
   --color-content-primary: #111111;
-  --color-content-secondary: #676767;
-  --color-breadcrumb-muted: #737373;
+  --color-content-secondary: #525252;
+  --color-breadcrumb-muted: #525252;
 
   /* Replace Tailwind's blue-cast slate ramp with true neutral grays. */
   --color-slate-50: #fafafa;
@@ -35,7 +86,7 @@
   --color-slate-200: #e5e5e5;
   --color-slate-300: #dddddd;
   --color-slate-400: #a3a3a3;
-  --color-slate-500: #737373;
+  --color-slate-500: #525252;
   --color-slate-600: #525252;
   --color-slate-700: #404040;
   --color-slate-800: #262626;
@@ -141,16 +192,34 @@
   --color-araid-card-blue: #4052a9;
   --color-araid-wave-dark: #29358d;
   --color-araid-wave-deepest: #111a68;
-  --font-araid:
-    -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Noto Sans Thai",
-    Tahoma, sans-serif;
-  --text-araid-nav: 0.6875rem;
-  --text-araid-mini: 0.625rem;
-  --text-araid-micro: 0.5rem;
+  --font-sans: "TH Sarabun PSK", sans-serif;
+  --font-araid: "TH Sarabun PSK", sans-serif;
+  --font-mono: "TH Sarabun PSK", sans-serif;
+  /* TH SarabunPSK has a smaller visual x-height than the previous UI font.
+   * Scale text and its line-height together so Thai marks have room to render. */
+  --text-xs: 1.125rem;
+  --text-xs--line-height: 1.5rem;
+  --text-sm: 1.3125rem;
+  --text-sm--line-height: 1.875rem;
+  --text-base: 1.5rem;
+  --text-base--line-height: 2.25rem;
+  --text-lg: 1.6875rem;
+  --text-lg--line-height: 2.625rem;
+  --text-xl: 1.875rem;
+  --text-xl--line-height: 2.625rem;
+  --text-2xl: 2.25rem;
+  --text-2xl--line-height: 3rem;
+  --text-3xl: 2.8125rem;
+  --text-3xl--line-height: 3.375rem;
+  --text-4xl: 3.375rem;
+  --text-4xl--line-height: 3.75rem;
+  --text-araid-nav: 1.03125rem;
+  --text-araid-mini: 0.9375rem;
+  --text-araid-micro: 0.75rem;
 
   /* Muted — subtle table tint + low-emphasis foreground */
   --color-muted: rgb(250 250 250);
-  --color-muted-foreground: #676767;
+  --color-muted-foreground: #525252;
 
   /* Accessible neutral used when generated avatar identity has no name seed. */
   --color-avatar-neutral: #64748b;
@@ -179,14 +248,7 @@
 }
 
 :root {
-  font-family:
-    "TH Sarabun PSK",
-    "Sarabun",
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: "TH Sarabun PSK", sans-serif;
   color: var(--color-content-primary);
   background: var(--color-surface-page);
   font-synthesis: none;
@@ -523,12 +585,40 @@ svg.text-slate-900 {
   }
 }
 
+@keyframes notification-bell {
+  0%,
+  30%,
+  100% {
+    transform: rotate(0deg);
+  }
+  5% {
+    transform: rotate(-16deg);
+  }
+  10% {
+    transform: rotate(14deg);
+  }
+  15% {
+    transform: rotate(-11deg);
+  }
+  20% {
+    transform: rotate(8deg);
+  }
+  25% {
+    transform: rotate(-4deg);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .animate-overlay-in {
     animation: overlay-in 150ms ease-out;
   }
   .animate-dialog-in {
     animation: dialog-in 180ms ease-out;
+  }
+
+  .animate-notification-bell {
+    transform-origin: 50% 12%;
+    animation: notification-bell 2.2s ease-out infinite;
   }
   .animate-sheet-in-left {
     animation: sheet-in-left 220ms ease-out;

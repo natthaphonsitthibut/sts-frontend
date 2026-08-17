@@ -1,15 +1,12 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RotateCw } from "lucide-react";
 import {
   Alert,
   AlertDescription,
-  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Checkbox,
   Combobox,
   InfoTooltip,
   Label,
@@ -25,9 +22,7 @@ import type {
 } from "../../tasks/api/attendance-lookup.service";
 import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
 import { type DataScope } from "../lib/permissions";
-import { usePermissionCatalog } from "../hooks/usePermissionCatalog";
 import { getScopeFieldStates, getScopeValidationError } from "../lib/scope-validation";
-import { useRefreshSpin } from "../../../hooks/useRefreshSpin";
 
 export interface ScopeSelectionLabels {
   province: string;
@@ -43,11 +38,7 @@ interface PermissionScopeEditorProps {
   roleLabel: string;
   scopeMode: RoleScopeMode;
   scopePolicy?: RoleScopePolicy;
-  /** Standard permissions for the selected role — used to colour the diff. */
-  baselinePermissions: string[];
-  permissions: string[];
   dataScope: DataScope;
-  onPermissionsChange: (permissions: string[]) => void;
   onDataScopeChange: (dataScope: DataScope) => void;
   /** Resolved human-readable labels for the current selection (names, not ids). */
   onScopeLabelsChange?: (labels: ScopeSelectionLabels) => void;
@@ -86,36 +77,18 @@ function withSingleValue<T extends string | number>(
   };
 }
 
-/** Colour each permission by how it differs from the role's standard set. */
-function permissionLabelClass(checked: boolean, inBaseline: boolean): string {
-  if (checked && inBaseline) {
-    return "text-slate-700";
-  }
-  if (checked && !inBaseline) {
-    return "text-emerald-600 font-semibold";
-  }
-  if (!checked && inBaseline) {
-    return "text-red-600 line-through";
-  }
-  return "text-slate-500";
-}
-
 export function PermissionScopeEditor({
   role,
   roleLabel,
   scopeMode,
   scopePolicy = "ASSIGNABLE",
-  baselinePermissions,
-  permissions,
   dataScope = EMPTY_SCOPE,
-  onPermissionsChange,
   onDataScopeChange,
   onScopeLabelsChange,
   disabled = false,
   showErrors = false,
 }: PermissionScopeEditorProps) {
   const hasRole = role.trim().length > 0;
-  const { catalog: permissionCatalog, isLoading: permissionCatalogLoading } = usePermissionCatalog();
   const fieldStates = getScopeFieldStates(scopeMode);
   const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
   const isOwnOnlyScope = scopePolicy === "OWN_ONLY";
@@ -124,7 +97,6 @@ export function PermissionScopeEditor({
   // ("ทุกจังหวัด") is itself the nationwide selection (confirmed on save).
   const isGlobalScope = scopeMode === "global";
   const usesAreaScope = scopeMode !== "global" && scopeMode !== "flexible";
-  const { isRefreshing, refresh } = useRefreshSpin();
 
   const selectedSchoolId = singleString(dataScope.school_ids);
   const selectedGradeId = singleString(dataScope.grade_levels);
@@ -233,14 +205,6 @@ export function PermissionScopeEditor({
   const isLookupLoading = locationsQuery.isLoading || gradeLevelsQuery.isLoading;
   const isLookupError = locationsQuery.isError || gradeLevelsQuery.isError;
 
-  function togglePermission(permissionId: string, checked: boolean): void {
-    if (checked) {
-      onPermissionsChange(Array.from(new Set([...permissions, permissionId])));
-      return;
-    }
-    onPermissionsChange(permissions.filter((permission) => permission !== permissionId));
-  }
-
   function setProvince(value: string): void {
     onDataScopeChange({
       ...dataScope,
@@ -281,69 +245,6 @@ export function PermissionScopeEditor({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-          <CardTitle className="text-base">สิทธิ์การใช้งาน</CardTitle>
-          <Button
-            disabled={disabled || !hasRole}
-            icon={RotateCw}
-            isLoading={isRefreshing}
-            loadingIconMotion="refresh"
-            loadingText="รีเซ็ตเป็นค่ามาตรฐาน"
-            onClick={() => void refresh(() => onPermissionsChange(baselinePermissions))}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            รีเซ็ตเป็นค่ามาตรฐาน
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {hasRole ? (
-            <>
-              <p className="text-sm text-slate-500">
-                แสดงสิทธิ์มาตรฐานของตำแหน่งไว้ให้แล้ว ปรับเพิ่มหรือเอาออกได้ตามต้องการ
-              </p>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                <span className="text-slate-600">● มาตรฐานของตำแหน่ง</span>
-                <span className="font-semibold text-emerald-600">● เพิ่มจากมาตรฐาน</span>
-                <span className="text-red-600 line-through">● เอาออกจากมาตรฐาน</span>
-              </div>
-              {permissionCatalogLoading ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <Skeleton className="h-6 w-full" key={index} />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {permissionCatalog.map((permission) => {
-                    const checked = permissions.includes(permission.id);
-                    const inBaseline = baselinePermissions.includes(permission.id);
-                    return (
-                      <Checkbox
-                        checked={checked}
-                        className={permissionLabelClass(checked, inBaseline)}
-                        disabled={disabled}
-                        key={permission.id}
-                        label={permission.label}
-                        onChange={(event) =>
-                          togglePermission(permission.id, event.target.checked)
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-slate-500">
-              เลือกตำแหน่งก่อน เพื่อกำหนดสิทธิ์การใช้งาน
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-1.5 text-base">

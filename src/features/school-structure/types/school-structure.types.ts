@@ -1,6 +1,24 @@
 export type StructureStatus = "ACTIVE" | "INACTIVE";
 export type ClassroomCardCoverColor = `#${string}`;
 
+export const CLASSROOM_STUDENT_PROBLEM_CATEGORIES = [
+  "HEALTH",
+  "SOCIAL_INTEGRATION",
+  "ACADEMIC",
+  "EMOTIONAL",
+  "FINANCIAL",
+  "OTHER",
+] as const;
+
+export type ClassroomStudentProblemCategory =
+  (typeof CLASSROOM_STUDENT_PROBLEM_CATEGORIES)[number];
+
+export interface ClassroomStudentProblemCategoryOption {
+  code: ClassroomStudentProblemCategory;
+  label: string;
+  guidance: string | null;
+}
+
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -69,8 +87,7 @@ export interface PaginatedSchoolClassrooms {
 export interface SchoolTeacherMembership {
   id: string;
   schoolId: number;
-  teacherUserId: number;
-  username: string;
+  teacherId: string;
   displayName: string;
   membershipStatus: StructureStatus;
   startedOn: string;
@@ -88,7 +105,7 @@ export interface ClassroomTeacherAssignment {
   schoolId: number;
   classroomId: string;
   teacherMembershipId: string;
-  teacherUserId: number;
+  teacherId: string;
   teacherName: string;
   subjectId: number | null;
   subjectCode: string | null;
@@ -130,14 +147,20 @@ export interface PaginatedClassroomRoster {
 export interface ClassroomStudentCommentResult {
   id: string;
   studentUuid: string;
-  teacherComment: string;
+  problemCategory: ClassroomStudentProblemCategory;
+  problemCategoryLabel: string;
+  problemCategoryGuidance: string | null;
+  problemDescription: string;
   createdAt: string;
 }
 
 export interface StudentClassroomComment {
   id: string;
   studentTermId: string;
-  comment: string;
+  problemCategory: ClassroomStudentProblemCategory;
+  problemCategoryLabel: string;
+  problemCategoryGuidance: string | null;
+  problemDescription: string;
   authorDisplayName: string;
   commentedAt: string;
 }

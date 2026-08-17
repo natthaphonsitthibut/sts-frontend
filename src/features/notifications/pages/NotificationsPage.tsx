@@ -34,7 +34,7 @@ export function NotificationsPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications(
     {
-      unreadOnly,
+      status: unreadOnly ? "unread" : "all",
       page,
       limit: rowsPerPage,
     },

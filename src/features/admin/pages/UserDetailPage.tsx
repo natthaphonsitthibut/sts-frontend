@@ -12,9 +12,7 @@ import {
   AvatarPhotoEditor,
   Button,
   Card,
-  CardContent,
   PersonIcon,
-  SchoolIcon,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -166,7 +164,6 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
 function UserDetailContent({ user }: { user: ManagedUserDetail }) {
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const { labelOf } = usePermissionCatalog();
-  const canOpenStudentDetail = Boolean(user.student_uuid);
   const roleName = user.role || user.roles?.[0] || "";
   // One locked row for this account's role, carrying the permissions it
   // actually holds (role defaults plus any per-account changes).
@@ -233,6 +230,8 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
           disabled
           labelOf={labelOf}
           onChange={() => undefined}
+          onPermissionsChange={() => undefined}
+          permissions={user.permissions ?? []}
           roleGroups={roleGroups}
           value={roleName}
         />
@@ -241,27 +240,6 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
         </p>
       </Card>
 
-      {canOpenStudentDetail ? (
-        <Card>
-          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-bold text-slate-800">
-                บัญชีนักเรียน
-              </div>
-              <div className="mt-1 text-sm text-slate-500">
-                ข้อมูลนักเรียนฉบับเต็มอยู่ที่หน้ารายละเอียดนักเรียน
-              </div>
-            </div>
-            <NavButton
-              icon={SchoolIcon}
-              contextual
-              to={`/students/${user.student_uuid}`}
-            >
-              เปิดข้อมูลนักเรียน
-            </NavButton>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

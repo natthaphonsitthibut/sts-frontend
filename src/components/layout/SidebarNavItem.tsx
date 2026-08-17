@@ -92,7 +92,7 @@ function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): st
 
 /**
  * A nested menu item stays active on its own sub-routes too (e.g. a page
- * with tabs like "/attendance-links/history"), not just its exact path.
+ * with tabs like "/login-links/history"), not just its exact path.
  * Matching goes through `findBestMatchingRoute` so that when two menu
  * routes nest inside each other, only the most specific one is active.
  */
@@ -127,8 +127,8 @@ export function SidebarNavItem({
   );
   // `null` means follow the route-derived default. Once the user toggles the
   // group, their explicit choice wins — including collapsing an active group.
-  // The parent active treatment remains route-derived and is therefore still
-  // visible on the collapsed icon rail.
+  // Route-derived expansion keeps the currently selected child visible, while
+  // the child alone owns the active treatment.
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
   const expanded = manualExpanded ?? hasActiveChild;
 
@@ -136,8 +136,6 @@ export function SidebarNavItem({
     setManualExpanded(!expanded);
   }
 
-  // The collapsed icon rail never shows nested children, so the parent icon
-  // carries the active state whenever one of its children owns the route.
   const childrenVisible = expanded && !collapsed;
 
   if (item.children) {
@@ -145,7 +143,6 @@ export function SidebarNavItem({
       <div>
         <button
           type="button"
-          aria-current={collapsed && hasActiveChild ? "page" : undefined}
           aria-expanded={expanded}
           aria-label={collapsed ? item.label : undefined}
           onClick={handleGroupToggle}
@@ -154,8 +151,6 @@ export function SidebarNavItem({
             // justify-center is unconditional for the same glide reason as
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
             "group relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
-            hasActiveChild &&
-              "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
           )}
         >
           <LayoutIcon

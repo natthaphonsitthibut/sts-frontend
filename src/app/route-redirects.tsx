@@ -1,7 +1,5 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { usePermissions } from "../features/auth/hooks/usePermissions";
-import { isStudentAccountSession } from "../features/auth/lib/permissions";
-import { useAuthSessionStore } from "../features/auth/store/auth-session.store";
 
 function suffixWithoutLegacyTab(search: string, hash: string): string {
   const query = new URLSearchParams(search);
@@ -65,11 +63,24 @@ export function LegacyTaskDetailRedirect() {
   );
 }
 
+/** `/attendance/history` opens on the check-in rounds, like the teacher link. */
+export function AttendanceHistoryDefaultRedirect() {
+  const location = useLocation();
+  return (
+    <Navigate
+      replace
+      to={`/attendance/history/attendance${location.search}${location.hash}`}
+    />
+  );
+}
+
 export function TeacherClassroomDefaultRedirect() {
   const location = useLocation();
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const legacyTab = new URLSearchParams(location.search).get("tab");
-  const tab = legacyTab === "attendance" ? "attendance" : "roster";
+  const isCheckIn =
+    legacyTab === "attendance" || location.pathname.endsWith("/attendance");
+  const tab = isCheckIn ? "check-in" : "roster";
   return (
     <Navigate
       replace
@@ -103,9 +114,7 @@ export function ClassroomDefaultRedirect() {
 export function TimetableDefaultRedirect() {
   const location = useLocation();
   const { can } = usePermissions();
-  const currentUser = useAuthSessionStore((state) => state.user);
-  const isStudent = isStudentAccountSession(currentUser);
-  const tab = !isStudent && can("manage-timetable") ? "rooms" : "mine";
+  const tab = can("timetable") ? "rooms" : "mine";
   return (
     <Navigate
       replace

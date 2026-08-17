@@ -6,6 +6,11 @@ import {
 } from "../../status-catalog/hooks/useStatusCatalog";
 import { getCaseTrackingStatusPresentation } from "../lib/case-presentation";
 
+/**
+ * Badges stay on the plain workflow status (`เสร็จสิ้น`) even when the case
+ * carries a completion outcome — owner's call, because `เสร็จสิ้น : ส่งต่อหน่วยงาน`
+ * overflows the table column. The outcome is shown on the case detail header.
+ */
 export function CaseStatusBadge({
   badgeVariant,
   label,

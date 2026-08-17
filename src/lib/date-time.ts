@@ -46,11 +46,31 @@ export function formatThaiDateTime(value?: string | Date | null): string {
   return `${thaiDateFormatter.format(date)} ${thaiTimeFormatter.format(date)}`;
 }
 
+/**
+ * The one timestamp wording for record lists (comments, follow-ups, timeline):
+ * Thai date then clock time with seconds. Every surface that shows "when this
+ * happened" reads from here so the three tabs cannot drift apart.
+ */
+export function formatThaiDateTimeWithSeconds(value?: string | Date | null): string {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${thaiDateFormatter.format(date)} ${thaiTimeWithSecondsFormatter.format(date)} น.`;
+}
+
 export function formatThaiTimeWithSeconds(value?: string | Date | null): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return `${thaiTimeWithSecondsFormatter.format(date)} น.`;
+}
+
+/** Clock time only (`HH:mm`) in the canonical Thailand timezone. */
+export function formatThaiTime(value?: string | Date | null): string {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return thaiTimeFormatter.format(date);
 }
 
 export function formatThaiDate(value?: string | Date | null): string {

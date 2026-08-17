@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Clock3, Plus, SquarePen, Trash2 } from "lucide-react";
 import {
@@ -10,7 +10,6 @@ import {
   FormLabel,
   IconButton,
   MultiSelect,
-  Tabs,
   useConfirm,
 } from "../../../components/base";
 import {
@@ -21,14 +20,7 @@ import {
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { useRouteTab } from "../../../hooks/useRouteTab";
-import {
-  formatClassLabel,
-  formatRoomLabel,
-} from "../../../lib/room-presentation";
-import { usePermissions } from "../../auth/hooks/usePermissions";
-import { isStudentAccountSession } from "../../auth/lib/permissions";
-import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
 import { SchoolPeriodTimesDialog } from "../components/SchoolPeriodTimesDialog";
@@ -36,7 +28,6 @@ import { TimetableGrid } from "../components/TimetableGrid";
 import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
-  useMySchedule,
   usePeriodTimes,
   useRoomSubjects,
   useTimetableTeachers,
@@ -262,6 +253,9 @@ function AddSlotForm({
             }}
             options={teacherOptions}
             placeholder="เลือกผู้สอน"
+            // Fixed height like every other field on the row: picked teachers
+            // pan sideways instead of stacking and pushing the form down.
+            singleRow
             value={selectedTeacherMembershipIds}
           />
         </FormItem>
@@ -478,173 +472,38 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
   );
 }
 
-function MyScheduleView({
-  includeConfiguredSchedule = false,
-  mode,
-  room,
-}: {
-  includeConfiguredSchedule?: boolean;
-  mode: "mine" | "room";
-  room: RoomSelection | null;
-}) {
-  const mineQuery = useMySchedule({ mine: true });
-  const roomQuery = useMySchedule(
-    room
-      ? {
-          schoolId: room.schoolId,
-          gradeLevelId: room.gradeLevelId,
-          roomNo: room.roomNo,
-        }
-      : {},
-  );
-  const activeQuery = mode === "mine" ? mineQuery : roomQuery;
-  const slots = activeQuery.data?.data ?? [];
-  // "mine" has no single selected room to read schoolId from — fall back to
-  // the first returned slot's school (a teacher's periods are, in practice,
-  // within one school).
-  const periodTimesSchoolId =
-    mode === "room" ? (room?.schoolId ?? null) : (slots[0]?.school_id ?? null);
-  const periodTimesQuery = usePeriodTimes(periodTimesSchoolId);
-
-  return (
-    <div className="space-y-4">
-      {activeQuery.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            {getApiErrorMessage(activeQuery.error, "โหลดตารางไม่สำเร็จ")}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {activeQuery.isLoading ? (
-        <div className="py-10 text-center text-slate-500">กำลังโหลด...</div>
-      ) : mode === "room" && !room ? (
-        <EmptyState
-          description="เลือกห้องเรียนด้านบนเพื่อดูตารางเรียนของห้องนั้น"
-          icon={CalendarClock}
-          title="ยังไม่ได้เลือกห้องเรียน"
-        />
-      ) : slots.length === 0 ? (
-        <EmptyState
-          description={
-            mode === "mine"
-              ? "ตารางสอนของคุณจะแสดงที่นี่เมื่อฝ่ายบริหารจัดตารางให้"
-              : "ห้องนี้ยังไม่มีตารางสอนในระบบ"
-          }
-          icon={CalendarClock}
-          title={
-            mode === "mine" ? "คุณยังไม่มีตารางสอน" : "ห้องนี้ยังไม่มีตารางสอน"
-          }
-        />
-      ) : (
-        <TimetableGrid
-          includeConfiguredSchedule={includeConfiguredSchedule}
-          renderSlot={
-            mode === "mine"
-              ? (slot) => (
-                  <div className="relative min-h-12 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 top-0 h-1 bg-primary/60"
-                    />
-                    <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
-                      {slot.subject_name_th}
-                    </div>
-                    <div className="mt-0.5 text-xs leading-4 text-slate-500">
-                      {formatClassLabel(slot.grade_label, slot.room_no)}
-                    </div>
-                  </div>
-                )
-              : undefined
-          }
-          periodTimes={periodTimesQuery.data?.data ?? []}
-          slots={slots}
-        />
-      )}
-    </div>
-  );
-}
-
 export function TimetablePage() {
-  const { can } = usePermissions();
-  const currentUser = useAuthSessionStore((state) => state.user);
-  const isStudent = isStudentAccountSession(currentUser);
-  const isManager = can("manage-timetable");
-  const [routeMode, setMode] = useRouteTab(
-    { mine: "/timetable/mine", room: "/timetable/rooms" },
-    "mine",
-  );
-  const mode = isManager ? "room" : isStudent ? "mine" : routeMode;
   const [room, setRoom] = useState<RoomSelection | null>(null);
   const [roomPickerKey, setRoomPickerKey] = useState(0);
   const [periodTimesDialogOpen, setPeriodTimesDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (isManager && routeMode !== "room") setMode("room");
-    if (isStudent && routeMode !== "mine") setMode("mine");
-  }, [isManager, isStudent, routeMode, setMode]);
 
   return (
     <PageShell>
       <PageToolbar
         actions={
-          isManager ? (
-            <Button
-              disabled={!room}
-              icon={Clock3}
-              onClick={() => setPeriodTimesDialogOpen(true)}
-            >
-              ตั้งเวลาคาบ
-            </Button>
-          ) : undefined
+          <Button
+            disabled={!room}
+            icon={Clock3}
+            onClick={() => setPeriodTimesDialogOpen(true)}
+          >
+            ตั้งเวลาคาบ
+          </Button>
         }
-        description={
-          isStudent
-            ? "ดูตารางเรียนของคุณตามชั้นและห้องปัจจุบัน"
-            : isManager
-              ? "เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
-              : "ดูตารางเรียน/ตารางสอนตามสิทธิ์ของคุณ"
-        }
+        description="เลือกห้องเรียนเพื่อจัดตารางสอน — วิชาต้องเพิ่มในระบบก่อนจึงจะเลือกได้"
         icon={CalendarClock}
-        title={isStudent ? "ตารางเรียน" : "ตารางสอน"}
+        title="ตารางสอน"
         footerActions={
-          isManager || mode === "room" ? (
-            <ClearFiltersButton
-              onClear={() => {
-                setRoom(null);
-                setRoomPickerKey((current) => current + 1);
-              }}
-            />
-          ) : undefined
+          <ClearFiltersButton
+            onClear={() => {
+              setRoom(null);
+              setRoomPickerKey((current) => current + 1);
+            }}
+          />
         }
       >
-        {isStudent ? null : isManager ? (
-          <RoomPicker key={roomPickerKey} onChange={setRoom} />
-        ) : (
-          <div className="space-y-3">
-            <Tabs
-              aria-label="โหมดดูตาราง"
-              onChange={(next) => setMode(next as "mine" | "room")}
-              options={[
-                { value: "mine", label: "ตารางของฉัน" },
-                { value: "room", label: "เลือกห้องเรียน" },
-              ]}
-              value={mode}
-            />
-            {mode === "room" ? (
-              <RoomPicker key={roomPickerKey} onChange={setRoom} />
-            ) : null}
-          </div>
-        )}
+        <RoomPicker key={roomPickerKey} onChange={setRoom} />
       </PageToolbar>
-      {isManager ? (
-        <ManageTimetableView room={room} />
-      ) : (
-        <MyScheduleView
-          includeConfiguredSchedule={isStudent}
-          mode={isStudent ? "mine" : mode}
-          room={isStudent ? null : room}
-        />
-      )}
+      <ManageTimetableView room={room} />
       {room ? (
         <SchoolPeriodTimesDialog
           onClose={() => setPeriodTimesDialogOpen(false)}

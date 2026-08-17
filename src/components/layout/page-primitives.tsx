@@ -62,6 +62,8 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   actions?: ReactNode;
   description?: ReactNode;
   footerActions?: ReactNode;
+  /** Hide the breadcrumb row while keeping the page title and actions. */
+  hideBreadcrumb?: boolean;
   icon?: LucideIcon;
   navigation?: ReactNode;
   /**
@@ -72,6 +74,12 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   breadcrumbTrail?: Array<{ label: string; to: string; icon?: LucideIcon }>;
   parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
   title?: ReactNode;
+  /**
+   * Crumb text for the current page when the title carries more than the page's
+   * name — a class title reads "ห้อง ป.6/3 (วิชาโฮมรูม)" but the trail wants the
+   * room alone.
+   */
+  breadcrumbTitle?: string;
   /** Color only — size/padding/structure stay identical across tones. */
   tone?: "default" | "primary";
 }
@@ -98,11 +106,13 @@ const toolbarToneClasses: Record<
 
 export function PageToolbar({
   actions,
+  breadcrumbTitle,
   breadcrumbTrail,
   children,
   className,
   description,
   footerActions,
+  hideBreadcrumb = false,
   icon: Icon,
   navigation,
   parentBreadcrumb,
@@ -147,9 +157,10 @@ export function PageToolbar({
     ...defaultParentCrumbs,
   ];
   const currentCrumbLabel =
-    typeof toolbarTitle === "string"
+    breadcrumbTitle ??
+    (typeof toolbarTitle === "string"
       ? getNavigationLabel(pathname, toolbarTitle)
-      : toolbarTitle;
+      : toolbarTitle);
   const middleCrumbs = rawMiddleCrumbs
     .filter(
       (crumb) =>
@@ -191,7 +202,9 @@ export function PageToolbar({
             tone === "primary" ? "min-h-20 p-5" : "py-1",
           )}
         >
-          <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
+          {!hideBreadcrumb || navigation ? (
+            <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
+              {!hideBreadcrumb ? (
             <nav
               aria-label="เส้นทางนำทาง"
               data-page-breadcrumb
@@ -286,16 +299,21 @@ export function PageToolbar({
                 </>
               )}
             </nav>
+              ) : null}
             {navigation ? (
               <div className="flex shrink-0 flex-wrap items-center sm:justify-end">
                 {navigation}
               </div>
             ) : null}
-          </div>
+            </div>
+          ) : null}
           {/* Fixed row height so the page title sits at the same y whether or not
               the page has action buttons — otherwise the tallest child (an lg
               button) shifts the heading down on some pages only. */}
-          <div className="mt-2 flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between">
+          <div className={cn(
+            !hideBreadcrumb && "mt-2",
+            "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
+          )}>
             <div className="min-w-0 flex-1">
               <h1
                 className={cn(
@@ -352,7 +370,9 @@ export function SearchInput({
   value,
 }: SearchInputProps) {
   return (
-    <div className={cn("relative w-full sm:max-w-xs sm:flex-1", className)}>
+    // White, never see-through: the toolbar sits on tinted surfaces in places and
+    // a transparent field reads as disabled.
+    <div className={cn("relative w-full rounded-lg bg-white sm:max-w-xs sm:flex-1", className)}>
       <Search
         className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500"
         aria-hidden="true"
@@ -592,45 +612,61 @@ type SummaryTone =
 const summaryToneClasses: Record<
   SummaryTone,
   {
+    comparisonBg: string;
+    comparisonColor: string;
     surface: string;
     iconBg: string;
     iconColor: string;
   }
 > = {
   default: {
+    comparisonBg: "bg-slate-100",
+    comparisonColor: "text-slate-600",
     surface: "bg-white",
-    iconBg: "bg-slate-100",
-    iconColor: "text-slate-600",
+    iconBg: "bg-slate-600",
+    iconColor: "text-white",
   },
   success: {
+    comparisonBg: "bg-success-100",
+    comparisonColor: "text-success-700",
     surface: "bg-white",
-    iconBg: "bg-success-100",
-    iconColor: "text-success-700",
+    iconBg: "bg-success",
+    iconColor: "text-white",
   },
   warning: {
+    comparisonBg: "bg-warning-100",
+    comparisonColor: "text-warning-700",
     surface: "bg-white",
-    iconBg: "bg-warning-100",
-    iconColor: "text-warning-700",
+    iconBg: "bg-warning",
+    iconColor: "text-white",
   },
   orange: {
+    comparisonBg: "bg-brand-yellow-bg",
+    comparisonColor: "text-brand-yellow",
     surface: "bg-white",
-    iconBg: "bg-brand-yellow-bg",
-    iconColor: "text-brand-yellow",
+    iconBg: "bg-brand-yellow",
+    iconColor: "text-white",
   },
   danger: {
+    comparisonBg: "bg-danger-100",
+    comparisonColor: "text-danger",
     surface: "bg-white",
-    iconBg: "bg-danger-100",
-    iconColor: "text-danger",
+    iconBg: "bg-danger",
+    iconColor: "text-white",
   },
   info: {
+    comparisonBg: "bg-brand-soft",
+    comparisonColor: "text-primary",
     surface: "bg-white",
-    iconBg: "bg-brand-soft",
-    iconColor: "text-primary",
+    iconBg: "bg-primary",
+    iconColor: "text-white",
   },
   purple: {
+    comparisonBg: "bg-brand-purple-bg",
+    comparisonColor: "text-brand-purple",
     surface: "bg-white",
-    iconBg: "bg-brand-purple-bg",
-    iconColor: "text-brand-purple",
+    iconBg: "bg-brand-purple",
+    iconColor: "text-white",
   },
 };
 
@@ -745,6 +781,7 @@ export function SummaryMetrics({
                         "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
                         item.emphasis ? "text-3xl" : "text-2xl",
                       )}
+                      data-summary-value
                       key={String(item.value)}
                     >
                       {item.value}
@@ -771,6 +808,7 @@ export function SummaryMetrics({
                     "animate-value-in font-bold leading-tight tabular-nums text-slate-950",
                     item.emphasis ? "text-3xl" : "text-2xl",
                   )}
+                  data-summary-value
                   key={String(item.value)}
                 >
                   {item.value}
@@ -781,8 +819,8 @@ export function SummaryMetrics({
                   <span
                     className={cn(
                       "shrink-0 rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
-                      comparisonTone.iconBg,
-                      comparisonTone.iconColor,
+                      comparisonTone.comparisonBg,
+                      comparisonTone.comparisonColor,
                     )}
                   >
                     {comparison.value}
@@ -809,7 +847,15 @@ export function SummaryMetrics({
               {content}
             </button>
           ) : (
-            <div className={metricClassName} key={index}>
+            // Same `data-summary-label` hook as the selectable variant, so a
+            // metric can be read back by label whether or not it is clickable.
+            <div
+              className={metricClassName}
+              data-summary-label={
+                typeof item.label === "string" ? item.label : undefined
+              }
+              key={index}
+            >
               {content}
             </div>
           );

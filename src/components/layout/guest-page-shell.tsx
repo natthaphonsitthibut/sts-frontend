@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
-import { Avatar } from "../base";
 import { cn } from "../../lib/utils";
 import { AppBrand } from "./AppFrame";
+import { HeaderProfileMenu } from "./HeaderProfileMenu";
 
 const GUEST_PAGE_MAX_WIDTH_CLASS = "max-w-[1180px]";
 
@@ -10,7 +10,11 @@ interface GuestPageShellProps extends ComponentProps<"div"> {
   centered?: boolean;
   containerClassName?: string;
   contentClassName?: string;
+  /** สังกัด for the link holder — their school. */
+  profileAffiliation?: string | null;
   profileName?: string | null;
+  /** ตำแหน่ง for the link holder; teachers reach every link as คุณครู. */
+  profileRoleLabel?: string | null;
   showHeader?: boolean;
   showProfile?: boolean;
 }
@@ -22,7 +26,9 @@ export function GuestPageShell({
   className,
   containerClassName,
   contentClassName,
+  profileAffiliation,
   profileName,
+  profileRoleLabel = "คุณครู",
   showHeader = true,
   showProfile = true,
   ...props
@@ -40,10 +46,15 @@ export function GuestPageShell({
           <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6">
             <AppBrand className="max-w-xs sm:max-w-sm" label="ระบบติดตามผู้เรียน" />
             {showProfile ? (
-              <Avatar
-                aria-label={profileName ? `ผู้รับมอบหมาย: ${profileName}` : "ผู้รับมอบหมาย"}
-                className="size-10"
-                gradientName={profileName ?? undefined}
+              // Same popover as the signed-in header, minus the two actions a
+              // link cannot offer: there is no profile to edit and nothing to
+              // sign out of.
+              <HeaderProfileMenu
+                affiliation={profileAffiliation}
+                canEditProfile={false}
+                canSignOut={false}
+                displayName={profileName ?? "ผู้รับมอบหมาย"}
+                roleLabel={profileRoleLabel}
               />
             ) : null}
           </div>

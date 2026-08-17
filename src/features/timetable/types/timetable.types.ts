@@ -27,6 +27,7 @@ export interface TimetableSlot {
   id: string;
   school_term_id: string;
   school_id: number;
+  classroom_id: string;
   grade_level_id: number;
   /** Thai grade label (e.g. "ม.1"); null when the grade row is missing. */
   grade_label: string | null;
@@ -60,13 +61,11 @@ export interface CreateTimetableSlotPayload {
   dayOfWeek: number;
   period: number;
   subjectId: number;
-  teacherUserId?: number | null;
   teacherMembershipIds?: number[];
 }
 
 export interface UpdateTimetableSlotPayload {
   subjectId?: number;
-  teacherUserId?: number | null;
   teacherMembershipIds?: number[];
 }
 

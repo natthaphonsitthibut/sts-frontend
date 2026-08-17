@@ -75,13 +75,6 @@ export const AttendanceCheckInPage = lazy(() =>
     }),
   ),
 );
-export const AttendanceRecordPage = lazy(() =>
-  import("../features/attendance/pages/AttendanceRecordPage").then(
-    (module) => ({
-      default: module.AttendanceRecordPage,
-    }),
-  ),
-);
 export const AttendanceOperationsPage = lazy(() =>
   import("../features/attendance/pages/AttendanceOperationsPage").then(
     (module) => ({
@@ -162,13 +155,6 @@ export const StudentStatusesPage = lazy(() =>
     }),
   ),
 );
-export const MasterDataLookupsPage = lazy(() =>
-  import("../features/master-data-lookups/pages/MasterDataLookupsPage").then(
-    (module) => ({
-      default: module.MasterDataLookupsPage,
-    }),
-  ),
-);
 export const DataExportsPage = lazy(() =>
   import("../features/data-exports/pages/DataExportsPage").then((module) => ({
     default: module.DataExportsPage,
@@ -190,11 +176,6 @@ export const ImportQuarantineDetailPage = lazy(() =>
       default: module.ImportQuarantineDetailPage,
     }),
   ),
-);
-export const VisitLinksPage = lazy(() =>
-  import("../features/visit-links/pages/VisitLinksPage").then((module) => ({
-    default: module.VisitLinksPage,
-  })),
 );
 export const TimetablePage = lazy(() =>
   import("../features/timetable/pages/TimetablePage").then((module) => ({
@@ -240,11 +221,6 @@ export const CaseReviewDetailPage = lazy(() =>
 export const StudentListPage = lazy(() =>
   import("../features/students/pages/StudentListPage").then((module) => ({
     default: module.StudentListPage,
-  })),
-);
-export const StudentSelfPage = lazy(() =>
-  import("../features/students/pages/StudentSelfPage").then((module) => ({
-    default: module.StudentSelfPage,
   })),
 );
 export const TeacherLineLinkPage = lazy(() =>
@@ -348,11 +324,6 @@ export const TeacherCommentReportsPage = lazy(() =>
       default: module.TeacherCommentReportsPage,
     }),
   ),
-);
-export const DelegatePage = lazy(() =>
-  import("../features/tasks/pages/DelegatePage").then((module) => ({
-    default: module.DelegatePage,
-  })),
 );
 export const ReportPage = lazy(() =>
   import("../features/tasks/pages/ReportPage").then((module) => ({

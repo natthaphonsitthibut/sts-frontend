@@ -1,3 +1,5 @@
+export type NotificationReadStatus = "all" | "unread" | "read";
+
 export interface NotificationItem {
   id: string;
   type_code: string;
@@ -6,6 +8,7 @@ export interface NotificationItem {
   body?: string | null;
   student_person_uuid: string | null;
   case_id: number | null;
+  case_status_code: string;
   student_name_masked: string | null;
   reason_text: string | null;
   ref_entity?: string | null;

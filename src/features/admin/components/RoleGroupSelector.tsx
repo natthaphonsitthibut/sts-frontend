@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ShieldCheck } from "lucide-react";
+import { Checkbox } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 import { ROLE_LABELS } from "../../auth/lib/permissions";
 import type { RoleDefinition } from "../types/admin.types";
@@ -13,8 +14,11 @@ interface RoleGroupSelectorProps {
   roleGroups: RoleGroupOption[];
   value: string;
   onChange: (roleName: string) => void;
-  /** Turns a permission id into its Thai label for the expanded detail. */
+  /** Turns a permission id into its page name for the expanded detail. */
   labelOf: (permissionId: string) => string;
+  /** Pages the account actually keeps — a subset of the selected group's set. */
+  permissions: string[];
+  onPermissionsChange: (permissions: string[]) => void;
   disabled?: boolean;
 }
 
@@ -25,12 +29,19 @@ interface RoleGroupSelectorProps {
  * Rendered as a radio group rather than checkboxes: an account holds exactly one
  * role (`users.role`), so multi-select would imply a relationship the data model
  * does not have.
+ *
+ * The group's pages are ticked inside it. A group is the ceiling, never a
+ * starting point to build on: an account can drop pages it does not need, and
+ * nothing here can add one the group does not carry. Granting more means editing
+ * the group — which is a decision about the role, not about one person.
  */
 export function RoleGroupSelector({
   roleGroups,
   value,
   onChange,
   labelOf,
+  permissions,
+  onPermissionsChange,
   disabled,
 }: RoleGroupSelectorProps) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
@@ -93,13 +104,21 @@ export function RoleGroupSelector({
             {isExpanded ? (
               <div className="border-t border-slate-200 px-4 py-3" id={detailId}>
                 {group.default_permissions.length > 0 ? (
-                  <ul className="flex flex-wrap gap-2">
+                  <ul className="flex flex-col gap-1">
                     {group.default_permissions.map((permission) => (
-                      <li
-                        className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
-                        key={permission}
-                      >
-                        {labelOf(permission)}
+                      <li key={permission}>
+                        <Checkbox
+                          checked={isSelected ? permissions.includes(permission) : true}
+                          disabled={disabled || !isSelected}
+                          label={labelOf(permission)}
+                          onChange={(event) =>
+                            onPermissionsChange(
+                              event.target.checked
+                                ? [...permissions, permission]
+                                : permissions.filter((granted) => granted !== permission),
+                            )
+                          }
+                        />
                       </li>
                     ))}
                   </ul>

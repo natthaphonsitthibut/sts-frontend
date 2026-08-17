@@ -1,19 +1,20 @@
 import type { DataScope } from "../../auth/lib/permissions";
-import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 
-export type TaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
+/** `ASSIST` = assistance round assigned after a follow-up review. */
+export type TaskType = "VISIT" | "ASSIST" | "LOGIN";
 export type TaskDurationUnit = "minutes" | "hours" | "days" | "weeks";
-export type AttendanceTaskStatus = Exclude<AttendanceSelectionStatus, "NONE">;
 
 export interface TaskCreatePayload {
   task_type: TaskType;
   type: TaskType;
+  assistance_measure_codes?: string[];
+  assistance_measure_detail?: string;
   assigned_to_name: string;
   assigned_to_first_name: string;
   assigned_to_last_name: string;
   assigned_to_email?: string | null;
   assigned_to_phone?: string | null;
-  assigned_teacher_user_id?: number | null;
+  assigned_teacher_id?: number | null;
   expires_value: number;
   expires_unit: TaskDurationUnit;
   /** ISO datetime the link becomes usable; omit/null = opens immediately. */
@@ -58,7 +59,7 @@ export interface TaskCreateResponse {
 }
 
 export interface VisitAssignee {
-  teacherUserId: number;
+  teacherId: string;
   displayName: string;
   isHomeroom: boolean;
 }
@@ -66,6 +67,7 @@ export interface VisitAssignee {
 export interface TaskAccessTask {
   id?: string;
   type?: TaskType | string;
+  task_type?: TaskType | string;
   error?: string;
   assigned_to_name?: string | null;
   assigned_to_first_name?: string | null;
@@ -75,6 +77,9 @@ export interface TaskAccessTask {
   created_at?: string | null;
   status?: string;
   case_status?: string | null;
+  /** Assistance rounds: measures committed when the round was assigned. */
+  assistance_measures?: Array<{ code: string; label: string }> | null;
+  assistance_measure_detail?: string | null;
   reason?: string;
   subject?: string | null;
   target_grade?: string | null;
@@ -100,7 +105,6 @@ export interface TaskAccessTask {
   address_sub_district?: string | null;
   postal_code?: string | null;
   reason_flagged?: string | null;
-  delegation_note?: string | null;
   assignment_note?: string | null;
   student_lat?: number | null;
   student_lng?: number | null;
@@ -112,35 +116,18 @@ export interface TaskAccessTask {
     assigned_to_name?: string | null;
     visited_at?: string | null;
     submitted_at?: string | null;
+    assignment_starts_at?: string | null;
+    assignment_ends_at?: string | null;
+    assignment_note?: string | null;
     cause_detail?: string | null;
+    follow_up_problem_category_label?: string | null;
+    follow_up_problem_category_guidance?: string | null;
     exception_label?: string | null;
   }>;
+  /** Composed workflow label (`รอติดตาม : ให้ความช่วยเหลือ`) for the card header. */
+  case_display_status_label?: string | null;
   auth_required?: boolean;
-  can_delegate?: boolean;
-  delegation_depth?: number;
-  max_delegation_depth?: number;
   school_name?: string | null;
-  timetable_slots?: Array<{
-    id: number;
-    day_of_week: number;
-    period: number;
-    subject_id: number;
-    subject_name_th?: string | null;
-    teacher_name?: string | null;
-  }>;
-}
-
-export interface TaskGuestStudent {
-  id: string;
-  name: string;
-  grade: string;
-  room: string;
-}
-
-export interface TaskHistoryEntry {
-  student_id: string;
-  student_name: string;
-  status: number | string;
 }
 
 export interface TaskSubmitResponse {
@@ -157,22 +144,17 @@ export interface TaskOtpChallenge {
   expiresAt: string;
 }
 
-export interface TaskDelegationPayload {
-  new_assignee_name?: string;
-  new_assignee_first_name: string;
-  new_assignee_last_name: string;
-  new_assignee_phone: string;
-  new_assignee_email: string;
-  delegation_note: string;
-  expires_in_hours?: number;
-  expires_at?: string;
+export type TaskLinkAdminAction = "lock" | "unlock";
+
+export interface TaskLinkAdminPayload {
+  action: TaskLinkAdminAction;
+  reason: string;
 }
 
-export interface TaskDelegationResponse {
-  magic_link: string;
-  qr_code_data: string | null;
-  expires_at: string;
-  delegation_depth: number;
+export interface TaskLinkAdminResponse {
+  message: string;
+  link_id: string;
+  admin_locked: number | boolean;
 }
 
 export interface TaskChainLink {
@@ -186,17 +168,21 @@ export interface TaskChainLink {
   expires_at?: string | null;
   magic_link?: string | null;
   admin_locked?: boolean | number | null;
-  delegation_depth?: number | null;
-  delegated_by_name?: string | null;
-  delegated_at?: string | null;
   submission?: TaskSubmission | null;
 }
 
 export interface TaskSubmission {
   visited_at?: string | null;
-  cause_category?: string | null;
-  follow_up_assessment_code?: string | null;
-  follow_up_assessment_label?: string | null;
+  follow_up_problem_category_code?: string | null;
+  follow_up_problem_category_label?: string | null;
+  follow_up_problem_category_guidance?: string | null;
+  parental_status_code?: string | null;
+  parental_status_label?: string | null;
+  guardian_type_code?: string | null;
+  guardian_type_label?: string | null;
+  guardian_type_detail?: string | null;
+  residence_environments?: Array<{ code: string; label: string }> | null;
+  residence_environment_detail?: string | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   submitted_at?: string | null;
@@ -231,3 +217,17 @@ export interface TaskChainResponse {
   chain: TaskChainLink[];
   reviews?: Array<Record<string, unknown>>;
 }
+
+/** QR challenge for verifying a follow-up/assistance link with AraID. */
+export interface TaskAraIdChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+}
+
+export type TaskAraIdChallengeStatus =
+  | { status: "PENDING" }
+  | { status: "IN_PROGRESS"; expiresAt: string }
+  | { status: "APPROVED"; sessionToken: string };

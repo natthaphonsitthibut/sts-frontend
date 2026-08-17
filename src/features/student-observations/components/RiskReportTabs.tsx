@@ -9,7 +9,7 @@ export function RiskReportTabs() {
   const value = location.pathname.includes("/teacher-comments")
     ? "teacher-comments"
     : "attendance-risk";
-  if (!can("manage-student-observations")) return null;
+  if (!can("students")) return null;
   return (
     <Tabs
       aria-label="ประเภทรายงานความเสี่ยง"

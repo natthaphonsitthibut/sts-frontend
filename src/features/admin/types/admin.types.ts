@@ -70,9 +70,6 @@ export interface ManagedUser {
   deactivation_reason_code?: AccountDeactivationReasonCode | null;
   deactivation_note?: string | null;
   created_at?: string | null;
-  student_uuid?: string | null;
-  /** Account remains active, but all historical teacher memberships are inactive. */
-  teacher_membership_attention_required?: boolean;
 }
 
 export interface ManagedUserDetail extends ManagedUser {
@@ -377,7 +374,6 @@ export interface RoleDefinition {
   id: number;
   name: string;
   label: string;
-  rank: number;
   default_permissions: string[];
   scope_mode: RoleScopeMode;
   scope_policy: RoleScopePolicy;
@@ -392,7 +388,6 @@ export interface RoleGroupForm {
   schoolId: number;
   name?: string;
   label: string;
-  rank: number;
   scope_mode?: RoleScopeMode;
   default_permissions: string[];
 }

@@ -4,7 +4,6 @@ export type AuditLogDomain =
   | "student_accounts"
   | "imports"
   | "users"
-  | "login_links"
   | "students"
   | "cases"
   | "tasks"

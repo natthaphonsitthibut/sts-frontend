@@ -16,7 +16,8 @@ export function CollapsibleDesktopSidebar({
   children,
 }: CollapsibleDesktopSidebarProps) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
-  const [hovered, setHovered] = useState(false);
+  const hovered = useSidebarUiStore((state) => state.desktopSidebarHovered);
+  const setHovered = useSidebarUiStore((state) => state.setDesktopSidebarHovered);
   const [focusedWithin, setFocusedWithin] = useState(false);
   const visuallyCollapsed = collapsed && !hovered && !focusedWithin;
 
@@ -39,7 +40,15 @@ export function CollapsibleDesktopSidebar({
             setFocusedWithin(false);
           }
         }}
-        onFocusCapture={() => setFocusedWithin(true)}
+        // Only keyboard focus keeps the rail open. Clicking a menu item focuses
+        // it on Chrome/Windows but not on macOS Safari, which is why the rail
+        // stayed open on some machines and collapsed on others; `:focus-visible`
+        // is true for keyboard navigation only, so both behave the same and the
+        // Tab-through case still works.
+        onFocusCapture={(event) => {
+          const target = event.target as Element | null;
+          if (target?.matches?.(":focus-visible")) setFocusedWithin(true);
+        }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >

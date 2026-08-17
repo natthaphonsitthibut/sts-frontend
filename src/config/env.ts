@@ -1,5 +1,3 @@
-type ThaIdMode = "disabled" | "mock";
-
 function isPrivateDevHost(hostname: string): boolean {
   return (
     hostname === "localhost" ||
@@ -39,14 +37,9 @@ function resolveApiPrefix(): string {
   return prefix.startsWith("/") ? prefix : `/${prefix}`;
 }
 
-function resolveThaIdMode(): ThaIdMode {
-  return import.meta.env.VITE_THAID_MODE === "mock" ? "mock" : "disabled";
-}
-
 export const appConfig = {
   apiBaseUrl: resolveApiBaseUrl(),
   apiPrefix: resolveApiPrefix(),
   googleMapsBrowserKey: import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY?.trim() || "",
   isDevelopment: import.meta.env.DEV,
-  thaidMode: resolveThaIdMode(),
 };

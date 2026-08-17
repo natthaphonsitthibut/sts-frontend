@@ -32,6 +32,7 @@ export {
 export { DatePicker, type DatePickerProps } from "./date-picker";
 export { DateTimePicker, type DateTimePickerProps } from "./date-time-picker";
 export { Divider, type DividerProps } from "./divider";
+export { FileDropzone, type FileDropzoneProps } from "./file-dropzone";
 export {
   DropdownMenu,
   type DropdownMenuItem,
@@ -62,6 +63,7 @@ export { FormErrorAlert } from "./form-error-alert";
 export { registerField } from "./register-field";
 export { IconButton, type IconButtonProps } from "./icon-button";
 export { iconButtonVariants } from "./icon-button-variants";
+export { HoverTooltip, type HoverTooltipProps } from "./hover-tooltip";
 export { InfoTooltip, type InfoTooltipProps } from "./info-tooltip";
 export {
   Input,
@@ -72,6 +74,7 @@ export {
   type PasswordInputProps,
 } from "./input";
 export { Label, type LabelProps } from "./label";
+export { LinkButton, type LinkButtonProps } from "./link-button";
 export {
   AccountCircleIcon,
   AddLinkIcon,
@@ -81,6 +84,7 @@ export {
   EditIcon,
   EqualizerIcon,
   EventAvailableIcon,
+  FactCheckIcon,
   FileDownloadIcon,
   FolderSpecialIcon,
   GroupIcon,

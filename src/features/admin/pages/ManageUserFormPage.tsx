@@ -155,7 +155,6 @@ function UserForm({
   const selectedRoleGroup = rolesCatalog.find(
     (role) => role.name === selectedRole,
   );
-  const baselinePermissions = selectedRoleGroup?.default_permissions ?? [];
   const scopeError = getScopeValidationError(
     selectedRoleGroup?.scope_mode ?? "global",
     dataScope,
@@ -421,23 +420,21 @@ function UserForm({
             disabled={saveUser.isPending}
             labelOf={labelOf}
             onChange={handleRoleChange}
+            onPermissionsChange={setPermissions}
+            permissions={permissions}
             roleGroups={assignableRoleGroups}
             value={selectedRole}
           />
           <FormMessage<UserFormValues> name="role" />
 
-          {/* Add or remove permissions on top of the role's standard set, and
-              set the account's data scope — the same editor the rest of the app
-              uses, so the diff colours and scope rules stay identical. */}
+          {/* Pages are ticked inside the group above; this only sets which rows
+              the account may see. */}
           {selectedRoleGroup ? (
             <div className="mt-6">
               <PermissionScopeEditor
-                baselinePermissions={baselinePermissions}
                 dataScope={dataScope}
                 disabled={saveUser.isPending}
                 onDataScopeChange={setDataScope}
-                onPermissionsChange={setPermissions}
-                permissions={permissions}
                 role={selectedRoleGroup.name}
                 roleLabel={selectedRoleGroup.label}
                 scopeMode={selectedRoleGroup.scope_mode}

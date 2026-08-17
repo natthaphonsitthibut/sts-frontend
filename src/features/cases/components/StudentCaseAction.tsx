@@ -22,6 +22,7 @@ import { OpenCaseDialog } from "./OpenCaseDialog";
 interface StudentCaseActionProps {
   activeCaseCount: number;
   activeCaseId: number | null;
+  className?: string;
   initialReason?: string;
   disabled?: boolean;
   mode?: "icon" | "button";
@@ -32,6 +33,7 @@ interface StudentCaseActionProps {
 export function StudentCaseAction({
   activeCaseCount,
   activeCaseId,
+  className,
   initialReason,
   disabled = false,
   mode = "icon",
@@ -177,6 +179,7 @@ export function StudentCaseAction({
       ) : (
         <Button
           aria-label="เปิดเคสติดตามนักเรียน"
+          className={className}
           disabled={disabled}
           icon={CirclePlus}
           onClick={() => setOpenCaseDialogOpen(true)}

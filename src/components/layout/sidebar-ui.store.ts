@@ -4,7 +4,9 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = "sts_sidebar_collapsed";
 
 interface SidebarUiState {
   collapsed: boolean;
+  desktopSidebarHovered: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  setDesktopSidebarHovered: (hovered: boolean) => void;
   toggleCollapsed: () => void;
 }
 
@@ -34,10 +36,12 @@ function writeStoredCollapsed(collapsed: boolean): void {
 
 export const useSidebarUiStore = create<SidebarUiState>((set, get) => ({
   collapsed: readStoredCollapsed(),
+  desktopSidebarHovered: false,
   setCollapsed: (collapsed) => {
     writeStoredCollapsed(collapsed);
     set({ collapsed });
   },
+  setDesktopSidebarHovered: (desktopSidebarHovered) => set({ desktopSidebarHovered }),
   toggleCollapsed: () => {
     const collapsed = !get().collapsed;
     writeStoredCollapsed(collapsed);

@@ -73,15 +73,18 @@ export function getDefaultMenuRoute(pathname: string): string | undefined {
 }
 
 const EXACT_ROUTE_LABELS: Record<string, string> = {
-  "/attendance/history": "ประวัติการเช็คชื่อ",
+  "/attendance/roster": "เช็กชื่อ",
+  "/attendance/check-in": "เช็กชื่อ",
+  "/attendance/history": "ประวัติการเช็กชื่อ",
+  "/attendance/history/attendance": "ประวัติการเช็กชื่อ",
+  "/attendance/history/imports": "ประวัติการเช็กชื่อ",
+  "/attendance/history/delegations": "ประวัติการเช็กชื่อ",
   "/data-exports/history": "ประวัติการส่งออก",
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
-  "/settings/master-data-lookups": "ข้อมูลพื้นฐาน",
   "/settings/student-statuses": "สถานะนักเรียน",
   "/students/export": "ส่งออกข้อมูลนักเรียน",
   "/students/history": "ประวัติรายชื่อนักเรียน",
-  "/visit-links/history": "ประวัติลิงก์ลงพื้นที่",
 };
 
 export function getNavigationLabel(
@@ -97,7 +100,7 @@ export function getNavigationLabel(
   }
   if (/^\/cases\/[^/]+$/.test(pathname)) return "ติดตามนักเรียน";
   if (/^\/attendance\/record\/[^/]+$/.test(pathname))
-    return "บันทึกการเช็คชื่อ";
+    return "บันทึกการเช็กชื่อ";
   if (/^\/classrooms\/[^/]+$/.test(pathname)) return "รายละเอียดห้องเรียน";
   if (/^\/import-data\/quarantine\/[^/]+$/.test(pathname)) {
     return "รายละเอียดรายการนำเข้า";
@@ -127,7 +130,7 @@ export function getNavigationLabel(
     return "ข้อมูลนักเรียน";
   }
   if (/^\/teacher-access\/classes\/[^/]+\/history$/.test(pathname)) {
-    return "ประวัติการเช็คชื่อ";
+    return "ประวัติการเช็กชื่อ";
   }
   return fallback || getPageTitle(pathname);
 }
@@ -295,9 +298,12 @@ export function createContextualNavigationState(
     label: getNavigationLabel(location.pathname),
     to: sourcePath,
   };
+  const isAttendanceTab =
+    location.pathname === "/attendance/roster" ||
+    location.pathname === "/attendance/check-in";
   const trail = dedupeTrail([
     ...(inherited?.trail ?? getDefaultParentCrumbs(location.pathname)),
-    sourceCrumb,
+    ...(isAttendanceTab ? [] : [sourceCrumb]),
   ]);
   const context: AppNavigationContext = {
     backTo: sourcePath,

@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, CalendarCheck, Download, History } from "lucide-react";
 import {
-  ArrowLeft,
-  CalendarCheck,
-  Download,
-  FileSpreadsheet,
-  UserRoundCheck,
-} from "lucide-react";
-import { Button, DatePicker, Skeleton, Tabs } from "../../../components/base";
+  Button,
+  DatePicker,
+  IconButton,
+  Skeleton,
+  Tabs,
+  useConfirm,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -17,6 +18,7 @@ import {
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   SearchInput,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
@@ -31,16 +33,39 @@ import { TeacherLinkShell } from "../components/TeacherLinkShell";
 import {
   useRecordTeacherClassroomExport,
   useTeacherAttendanceHistory,
+  useTeacherAttendanceHistoryStudentDays,
+  useTeacherAttendanceHistoryStudents,
+  useTeacherAttendanceDelegationHistory,
+  useTeacherAttendanceImports,
+  usePublicTeacherAttendanceDelegationOptions,
+  useRevokePublicTeacherAttendanceDelegation,
+  useUpdatePublicTeacherAttendanceDelegation,
 } from "../hooks/useTeacherAccess";
+import { getAttendanceStatusPresentation } from "../../attendance/lib/attendance-presentation";
+import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
+import {
+  usePublicAttendanceDelegationStatusCatalog,
+  usePublicAttendanceStatusCatalog,
+} from "../../status-catalog/hooks/useStatusCatalog";
+import { AttendanceDelegationHistoryTable } from "../../attendance/components/AttendanceDelegationHistoryTable";
+import { AttendanceDelegationEditDialog } from "../../attendance/components/AttendanceDelegationEditDialog";
+import { AttendanceImportHistoryTable } from "../../attendance/components/AttendanceImportHistoryTable";
+import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import { TeacherAccessStudentAvatar } from "../components/TeacherAccessStudentAvatar";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 import { assignmentClassLabel } from "../lib/teacher-link-presentation";
-import type { TeacherAttendanceHistoryEntry } from "../types/teacher-access.types";
-import { teacherAccessService } from "../api/teacher-access.service";
+import type { TeacherAttendanceHistoryEntry,
+  TeacherAttendanceDelegationHistoryEntry,
+  TeacherAttendanceHistoryStudent, } from "../types/teacher-access.types";
+import {
+  teacherAccessService,
+  type TeacherAttendanceHistoryQuery,
+} from "../api/teacher-access.service";
 
 const HISTORY_COLUMNS = [
   { key: "order", label: "ลำดับ" },
   { key: "date", label: "วันที่" },
-  { key: "recordedBy", label: "ผู้เช็คชื่อ" },
+  { key: "recordedBy", label: "ผู้เช็กชื่อ" },
   { key: "present", label: "จำนวนที่มา (คน)" },
   { key: "late", label: "จำนวนที่สาย (คน)" },
   { key: "leave", label: "จำนวนที่ลา (คน)" },
@@ -54,11 +79,12 @@ function formatNumericThaiDate(value: string): string {
 }
 
 /**
- * History behind ประวัติการเช็คชื่อ. The เช็คชื่อ tab is live; นำเข้าไฟล์ and
+ * History behind ประวัติการเช็กชื่อ. The เช็กชื่อ tab is live; นำเข้าไฟล์ and
  * มอบหมาย are laid out with their real columns and stay empty until those two
  * features ship, so the shape of the page does not change when they do.
  */
 export function TeacherAttendanceHistoryPage() {
+  const navigate = useNavigate();
   const { assignmentId = "" } = useParams();
   const { credential, context } = useTeacherLink();
   const [tab, setTab] = useRouteTab(
@@ -69,7 +95,33 @@ export function TeacherAttendanceHistoryPage() {
     },
     "attendance",
   );
+  const attendanceStatusCatalog = usePublicAttendanceStatusCatalog().data ?? [];
+  const delegationStatusCatalog =
+    usePublicAttendanceDelegationStatusCatalog().data ?? [];
+  const updateDelegation = useUpdatePublicTeacherAttendanceDelegation(credential);
+  const revokeDelegationMutation = useRevokePublicTeacherAttendanceDelegation(credential);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const [delegationEditTarget, setDelegationEditTarget] = useState<{
+    assignmentId: number;
+    attendanceDate: string;
+  } | null>(null);
+  const delegationOptionsQuery = usePublicTeacherAttendanceDelegationOptions(
+    credential,
+    {
+      assignmentId: delegationEditTarget?.assignmentId,
+      attendanceDate: delegationEditTarget?.attendanceDate,
+    },
+    Boolean(delegationEditTarget),
+  );
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"DAILY" | "STUDENT">("DAILY");
+  const [selectedStudent, setSelectedStudent] =
+    useState<TeacherAttendanceHistoryStudent | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [delegationShare, setDelegationShare] =
+    useState<TeacherAttendanceDelegationHistoryEntry | null>(null);
+  const [delegationEdit, setDelegationEdit] =
+    useState<TeacherAttendanceDelegationHistoryEntry | null>(null);
   const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -104,8 +156,90 @@ export function TeacherAttendanceHistoryPage() {
       sortOrder: sort?.direction,
     },
   );
+  const importHistoryQuery = useTeacherAttendanceImports(
+    credential,
+    Number(assignmentId) || undefined,
+    {
+      page,
+      limit: rowsPerPage,
+      attendanceDate: date || undefined,
+      search: debouncedSearch || undefined,
+    },
+    tab === "imports",
+  );
+  const delegationHistoryQuery = useTeacherAttendanceDelegationHistory(
+    credential,
+    Number(assignmentId) || undefined,
+    {
+      page,
+      limit: rowsPerPage,
+      attendanceDate: date || undefined,
+      search: debouncedSearch || undefined,
+      sortBy: sort?.key as "date" | "issuedBy" | "teacher" | "status" | undefined,
+      sortDirection: sort?.direction,
+    },
+    tab === "delegations",
+  );
+  const studentsQuery = useTeacherAttendanceHistoryStudents(
+    credential,
+    Number(assignmentId) || undefined,
+    page,
+    rowsPerPage,
+    {
+      search: debouncedSearch || undefined,
+      attendanceDate: selectedDay ?? (date || undefined),
+      sortBy: sort?.key as TeacherAttendanceHistoryQuery["sortBy"],
+      sortOrder: sort?.direction,
+    },
+    !selectedStudent && (view === "STUDENT" || Boolean(selectedDay)),
+  );
+  const studentDaysQuery = useTeacherAttendanceHistoryStudentDays(
+    credential,
+    Number(assignmentId) || undefined,
+    selectedStudent?.studentUuid,
+    page,
+    rowsPerPage,
+    {
+      search: debouncedSearch || undefined,
+      sortBy: sort?.key as TeacherAttendanceHistoryQuery["sortBy"],
+      sortOrder: sort?.direction,
+    },
+  );
   const entries: TeacherAttendanceHistoryEntry[] =
     historyQuery.data?.data ?? [];
+  const studentRows = studentsQuery.data?.data ?? [];
+  const studentDayRows = studentDaysQuery.data?.data ?? [];
+  const isDayList = !selectedStudent && !selectedDay && view === "DAILY";
+  const activeQuery = selectedStudent
+    ? studentDaysQuery
+    : isDayList
+      ? historyQuery
+      : studentsQuery;
+  const activeTotal = activeQuery.data?.meta.totalCount ?? 0;
+
+  /** Same action as the active-links list, run from the history row. */
+  async function revokeDelegation(
+    entry: TeacherAttendanceDelegationHistoryEntry,
+  ): Promise<void> {
+    const accepted = await confirm({
+      title: "ยกเลิกลิงก์มอบหมายการเช็กชื่อ",
+      description: `ลิงก์ของ ${entry.teacherDisplayName} จะใช้งานไม่ได้ทันที`,
+      confirmText: "ยกเลิกลิงก์",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    await revokeDelegationMutation.mutateAsync({
+      grantId: entry.grantId,
+      assignmentId: entry.assignmentId,
+    });
+    await delegationHistoryQuery.refetch();
+  }
+
+  function returnToSummary(): void {
+    setSelectedStudent(null);
+    setSelectedDay(null);
+    setPage(1);
+  }
 
   return (
     <TeacherLinkShell
@@ -131,7 +265,7 @@ export function TeacherAttendanceHistoryPage() {
           ย้อนกลับ
         </NavButton>
       }
-      title="ประวัติการเช็คชื่อ"
+      title="ประวัติการเช็กชื่อ"
     >
       <div className="mb-6">
         <Tabs
@@ -142,7 +276,7 @@ export function TeacherAttendanceHistoryPage() {
             setPage(1);
           }}
           options={[
-            { value: "attendance", label: "เช็คชื่อ" },
+            { value: "attendance", label: "เช็กชื่อ" },
             { value: "imports", label: "นำเข้าไฟล์" },
             { value: "delegations", label: "มอบหมาย" },
           ]}
@@ -150,27 +284,69 @@ export function TeacherAttendanceHistoryPage() {
         />
       </div>
 
+      {selectedStudent || selectedDay ? (
+        <div className="mb-5 flex items-center gap-3">
+          <IconButton
+            aria-label="กลับไปหน้าสรุป"
+            icon={ArrowLeft}
+            onClick={returnToSummary}
+            variant="outline"
+          />
+          <div>
+            <h2 className="text-xl font-bold text-content-primary">
+              {selectedStudent
+                ? "ประวัติการเช็กชื่อรายคน"
+                : "ประวัติการเช็กชื่อรายวัน"}
+            </h2>
+            <p className="text-sm text-content-secondary">
+              {selectedStudent
+                ? `${selectedStudent.firstName ?? ""} ${selectedStudent.lastName ?? ""}`.trim()
+                : formatNumericThaiDate(selectedDay!)}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <ToolbarControls className="mb-5">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-          placeholder="ค้นหา"
-          value={search}
-        />
+        {tab !== "attendance" || !isDayList ? (
+          <SearchInput
+            // sm:flex-none because SearchInput grows by default; the date box
+            // beside it is a fixed 270px and the two must read as one pair.
+            className="w-[270px] max-w-full sm:flex-none"
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            placeholder="ค้นหา"
+            value={search}
+          />
+        ) : null}
+        {tab !== "attendance" || isDayList || selectedDay ? (
         <div className="w-[270px] max-w-full">
           <DatePicker
-            ariaLabel="กรองวันที่เช็คชื่อ"
+            ariaLabel="กรองวันที่เช็กชื่อ"
             onChange={(value) => {
               setDate(value);
               setPage(1);
             }}
             placeholder="วันที่"
-            value={date}
+            value={selectedDay ?? date}
           />
         </div>
+        ) : null}
+        {tab === "attendance" && !selectedStudent && !selectedDay ? (
+          <FilterSelect
+            ariaLabel="รูปแบบประวัติเช็กชื่อ"
+            onChange={(value) => {
+              setView(value as "DAILY" | "STUDENT");
+              setPage(1);
+            }}
+            value={view}
+          >
+            <option value="DAILY">รูปแบบรายวัน</option>
+            <option value="STUDENT">รูปแบบรายคน</option>
+          </FilterSelect>
+        ) : null}
         {tab === "attendance" ? (
           <Button
             className="sm:ml-auto"
@@ -184,46 +360,111 @@ export function TeacherAttendanceHistoryPage() {
       </ToolbarControls>
 
       {tab === "imports" ? (
-        <EmptyState
-          description="ยังไม่เปิดใช้งานการนำเข้าไฟล์การเช็คชื่อ เมื่อเปิดใช้แล้วไฟล์ที่อัปโหลดจะแสดงที่นี่"
-          icon={FileSpreadsheet}
-          title="ยังไม่มีประวัติการนำเข้าไฟล์"
+        <AttendanceImportHistoryTable
+          isError={importHistoryQuery.isError}
+          onOpenFile={(entry) => {
+            // The link cannot stream a private file through an <a>, so a URL
+            // import opens its source and an uploaded file stays in the record.
+            if (entry.sourceUrl) window.open(entry.sourceUrl, "_blank", "noopener");
+          }}
+          onPageChange={setPage}
+          onRetry={() => void importHistoryQuery.refetch()}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setPage(1);
+          }}
+          onSortChange={(nextSort) => {
+            setSort(nextSort);
+            setPage(1);
+          }}
+          page={page}
+          rows={importHistoryQuery.data?.data ?? []}
+          rowsPerPage={rowsPerPage}
+          sort={sort}
+          totalCount={importHistoryQuery.data?.meta.totalCount ?? 0}
         />
       ) : tab === "delegations" ? (
-        <EmptyState
-          description="ยังไม่เปิดใช้งานการมอบหมายการเช็คชื่อ เมื่อเปิดใช้แล้วรายการที่มอบหมายจะแสดงที่นี่"
-          icon={UserRoundCheck}
-          title="ยังไม่มีประวัติการมอบหมาย"
+        <AttendanceDelegationHistoryTable
+          isError={delegationHistoryQuery.isError}
+          onEdit={(entry) => {
+            setDelegationEdit(entry);
+            setDelegationEditTarget({
+              assignmentId: entry.assignmentId,
+              attendanceDate: entry.attendanceDate,
+            });
+          }}
+          onPageChange={setPage}
+          onRetry={() => void delegationHistoryQuery.refetch()}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setPage(1);
+          }}
+          onRevoke={(entry) => void revokeDelegation(entry)}
+          onShare={(entry) => setDelegationShare(entry)}
+          onSortChange={(nextSort) => {
+            setSort(nextSort);
+            setPage(1);
+          }}
+          page={page}
+          rows={delegationHistoryQuery.data?.data ?? []}
+          rowsPerPage={rowsPerPage}
+          sort={sort}
+          statuses={delegationStatusCatalog}
+          totalCount={delegationHistoryQuery.data?.meta.totalCount ?? 0}
         />
-      ) : historyQuery.isError ? (
+) : activeQuery.isError ? (
         <ErrorState
-          description="กรุณาลองโหลดประวัติการเช็คชื่ออีกครั้ง"
-          onRetry={() => void historyQuery.refetch()}
+          description="กรุณาลองโหลดประวัติการเช็กชื่ออีกครั้ง"
+          onRetry={() => void activeQuery.refetch()}
           title="โหลดประวัติไม่สำเร็จ"
         />
-      ) : historyQuery.isLoading ? (
+      ) : activeQuery.isLoading ? (
         <Skeleton className="h-96 w-full" />
-      ) : entries.length === 0 ? (
+      ) : (selectedStudent ? studentDayRows : isDayList ? entries : studentRows)
+          .length === 0 ? (
         <EmptyState
           description={
-            date || search
+            date || selectedDay || search
               ? "ลองเปลี่ยนวันที่หรือคำค้นหา"
-              : "เมื่อบันทึกการเช็คชื่อแล้ว รายการจะแสดงที่นี่"
+              : "เมื่อบันทึกการเช็กชื่อแล้ว รายการจะแสดงที่นี่"
           }
           icon={CalendarCheck}
-          title="ยังไม่มีประวัติการเช็คชื่อ"
+          title="ยังไม่มีประวัติการเช็กชื่อ"
         />
       ) : (
         <DataTable
-          headings={[
-            { label: "ลำดับ" },
-            { label: "วันที่", sortKey: "date" },
-            { label: "ผู้เช็คชื่อ", sortKey: "recordedBy" },
-            { label: "จำนวนที่มา (คน)", sortKey: "present" },
-            { label: "จำนวนที่สาย (คน)", sortKey: "late" },
-            { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
-            { label: "จำนวนที่ขาด (คน)", sortKey: "absent" },
-          ]}
+          headings={
+            selectedStudent
+              ? [
+                  { label: "ลำดับ" },
+                  { label: "วันที่", sortKey: "date" },
+                  { label: "เวลา", sortKey: "time" },
+                  { label: "ผู้เช็กชื่อ", sortKey: "recordedBy" },
+                  { label: "สถานะการเข้าเรียน", sortKey: "status" },
+                ]
+              : isDayList
+                ? [
+                    { label: "ลำดับ" },
+                    { label: "วันที่", sortKey: "date" },
+                    { label: "ผู้เช็กชื่อ", sortKey: "recordedBy" },
+                    { label: "จำนวนที่มา (คน)", sortKey: "present" },
+                    { label: "จำนวนที่สาย (คน)", sortKey: "late" },
+                    { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
+                    { label: "จำนวนที่ขาด (คน)", sortKey: "absent" },
+                    { label: "เครื่องมือ", className: "text-center" },
+                  ]
+                : [
+                    { label: "ลำดับ" },
+                    { label: "รูปประจำตัว", className: "text-center" },
+                    { label: "รหัสประจำตัว", sortKey: "studentNumber" },
+                    { label: "ชื่อ-นามสกุล", sortKey: "name" },
+                    { label: "จำนวนที่มา (ครั้ง)", sortKey: "present" },
+                    { label: "จำนวนที่สาย (ครั้ง)", sortKey: "late" },
+                    { label: "จำนวนที่ลา (ครั้ง)", sortKey: "leave" },
+                    { label: "จำนวนที่ขาด (ครั้ง)", sortKey: "absent" },
+                    { label: "เครื่องมือ", className: "text-center" },
+                  ]
+          }
           minWidthClassName="min-w-[950px]"
           onSortChange={(nextSort) => {
             setSort(nextSort);
@@ -242,30 +483,154 @@ export function TeacherAttendanceHistoryPage() {
                 page={page}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-                totalCount={historyQuery.data?.meta.totalCount ?? 0}
+                totalCount={activeTotal}
                 unitLabel="รายการ"
               />
             </div>
           }
         >
-          {entries.map((entry, index) => (
-            <DataTableRow key={entry.sessionId}>
-              <DataTableCell className="tabular-nums">
-                {(page - 1) * rowsPerPage + index + 1}
-              </DataTableCell>
-              <DataTableCell className="tabular-nums">
-                {formatNumericThaiDate(entry.attendanceDate)}
-              </DataTableCell>
-              <DataTableCell>{entry.recordedBy || "-"}</DataTableCell>
-              <DataTableCell>{entry.presentCount}</DataTableCell>
-              <DataTableCell>{entry.lateCount}</DataTableCell>
-              <DataTableCell>{entry.leaveCount}</DataTableCell>
-              <DataTableCell>{entry.absentCount}</DataTableCell>
-            </DataTableRow>
-          ))}
+          {selectedStudent
+            ? studentDayRows.map((row, index) => (
+                <DataTableRow key={row.id}>
+                  <DataTableCell className="tabular-nums">
+                    {(page - 1) * rowsPerPage + index + 1}
+                  </DataTableCell>
+                  <DataTableCell className="tabular-nums">
+                    {formatNumericThaiDate(row.date)}
+                  </DataTableCell>
+                  <DataTableCell className="tabular-nums">
+                    {row.time ?? "-"}
+                  </DataTableCell>
+                  <DataTableCell>{row.recordedBy || "-"}</DataTableCell>
+                  <DataTableCell>
+                    {getAttendanceStatusPresentation(
+                      row.status as AttendanceSelectionStatus,
+                      attendanceStatusCatalog,
+                    ).label}
+                  </DataTableCell>
+                </DataTableRow>
+              ))
+            : isDayList
+              ? entries.map((entry, index) => (
+                  <DataTableRow key={entry.attendanceDate}>
+                    <DataTableCell className="tabular-nums">
+                      {(page - 1) * rowsPerPage + index + 1}
+                    </DataTableCell>
+                    <DataTableCell className="tabular-nums">
+                      {formatNumericThaiDate(entry.attendanceDate)}
+                    </DataTableCell>
+                    <DataTableCell>{entry.recordedBy || "-"}</DataTableCell>
+                    <DataTableCell>{entry.presentCount}</DataTableCell>
+                    <DataTableCell>{entry.lateCount}</DataTableCell>
+                    <DataTableCell>{entry.leaveCount}</DataTableCell>
+                    <DataTableCell>{entry.absentCount}</DataTableCell>
+                    <DataTableCell className="text-center">
+                      <IconButton
+                        aria-label={`ดูย้อนหลังวันที่ ${formatNumericThaiDate(entry.attendanceDate)}`}
+                        icon={History}
+                        onClick={() => {
+                          setSelectedDay(entry.attendanceDate);
+                          setPage(1);
+                        }}
+                        variant="edit"
+                      />
+                    </DataTableCell>
+                  </DataTableRow>
+                ))
+              : studentRows.map((row, index) => (
+                  <DataTableRow key={row.studentUuid}>
+                    <DataTableCell className="tabular-nums">
+                      {(page - 1) * rowsPerPage + index + 1}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <div className="flex justify-center">
+                        <button
+                          aria-label={`เปิดข้อมูลนักเรียน ${`${row.firstName ?? ""} ${row.lastName ?? ""}`.trim()}`}
+                          className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          onClick={() =>
+                            void navigate(
+                              `/teacher-access/classes/${assignmentId}/students/${row.studentUuid}`,
+                            )
+                          }
+                          type="button"
+                        >
+                          <TeacherAccessStudentAvatar
+                            assignmentId={Number(assignmentId)}
+                            student={{
+                              studentUuid: row.studentUuid,
+                              studentNumber: row.studentNumber,
+                              hasPhoto: row.hasPhoto,
+                              firstName: row.firstName,
+                              lastName: row.lastName,
+                            } as never}
+                          />
+                        </button>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell className="tabular-nums">
+                      {row.studentNumber ?? "-"}
+                    </DataTableCell>
+                    <DataTableCell>
+                      {`${row.firstName ?? ""} ${row.lastName ?? ""}`.trim() || "-"}
+                    </DataTableCell>
+                    <DataTableCell>{row.presentCount}</DataTableCell>
+                    <DataTableCell>{row.lateCount}</DataTableCell>
+                    <DataTableCell>{row.leaveCount}</DataTableCell>
+                    <DataTableCell>{row.absentCount}</DataTableCell>
+                    <DataTableCell className="text-center">
+                      <IconButton
+                        aria-label={`ดูย้อนหลังของ ${`${row.firstName ?? ""} ${row.lastName ?? ""}`.trim()}`}
+                        icon={History}
+                        onClick={() => {
+                          setSelectedStudent(row);
+                          setPage(1);
+                        }}
+                        variant="edit"
+                      />
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
         </DataTable>
       )}
 
+      
+      {confirmDialog}
+      {/* The same edit dialog the staff page opens, so a delegation is adjusted
+          identically from the link and from the system. */}
+      <AttendanceDelegationEditDialog
+        delegation={delegationEdit}
+        isTeachersLoading={delegationOptionsQuery.isLoading}
+        onClose={() => {
+          setDelegationEdit(null);
+          setDelegationEditTarget(null);
+        }}
+        onSaveAndShare={async (entry, input) => {
+          const result = await updateDelegation.mutateAsync({
+            grantId: entry.grantId,
+            assignmentId: entry.assignmentId,
+            ...input,
+          });
+          await delegationHistoryQuery.refetch();
+          // Handing the round to another teacher answers with a new link; the
+          // old URL is dead, so share whichever one is now live.
+          const accessUrl = result.accessUrl ?? entry.accessUrl;
+          if (accessUrl) setDelegationShare({ ...entry, accessUrl });
+        }}
+        teachers={delegationOptionsQuery.data?.teachers ?? []}
+      />
+      <LinkShareDialog
+        description={
+          delegationShare
+            ? `${delegationShare.teacherDisplayName} · ${formatNumericThaiDate(delegationShare.attendanceDate)}`
+            : ""
+        }
+        link={delegationShare?.accessUrl ?? ""}
+        onOpenChange={(next) => {
+          if (!next) setDelegationShare(null);
+        }}
+        open={Boolean(delegationShare?.accessUrl)}
+        title="ลิงก์มอบหมายการเช็กชื่อ"
+      />
       <ClassroomTableExportDialog
         authorizeExport={async (format, columns) => {
           await recordExport.mutateAsync({
@@ -308,7 +673,7 @@ export function TeacherAttendanceHistoryPage() {
         }}
         onOpenChange={setExportOpen}
         open={exportOpen}
-        title={`ประวัติการเช็คชื่อ ห้อง ${classroomLabel}`}
+        title={`ประวัติการเช็กชื่อ ห้อง ${classroomLabel}`}
       />
     </TeacherLinkShell>
   );

@@ -1,5 +1,9 @@
 import { FileText } from "lucide-react";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
+import {
+  formatFollowUpProblemCategory,
+  formatOptionLabels,
+} from "../lib/case-presentation";
 import type { CaseFollowUpRound } from "../types/cases.types";
 
 interface CaseFollowUpRoundDetailsProps {
@@ -111,15 +115,35 @@ export function CaseFollowUpRoundDetails({
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         <RoundDetailItem
           label="ผลประเมินหลังลงพื้นที่"
-          value={
-            round.follow_up_assessment_label ||
-            round.follow_up_assessment_code ||
-            round.cause_category
-          }
+          value={formatFollowUpProblemCategory({
+            code: round.follow_up_problem_category_code,
+            label: round.follow_up_problem_category_label,
+            guidance: round.follow_up_problem_category_guidance,
+          })}
         />
         <RoundDetailItem
           label="ผลหลังการติดตาม"
           value={optionLabel(round.follow_up_decision)}
+        />
+        <RoundDetailItem
+          label="สถานะของบิดา-มารดา"
+          value={round.parental_status_label}
+        />
+        <RoundDetailItem
+          label="ผู้ปกครอง"
+          value={
+            round.guardian_type_label && round.guardian_type_detail
+              ? `${round.guardian_type_label} (${round.guardian_type_detail})`
+              : round.guardian_type_label
+          }
+        />
+        <RoundDetailItem
+          label="สภาพแวดล้อมรอบที่พัก"
+          value={formatOptionLabels(round.residence_environments)}
+        />
+        <RoundDetailItem
+          label="รายละเอียดสภาพแวดล้อมรอบที่พัก"
+          value={round.residence_environment_detail}
         />
         <RoundDetailItem
           label="รายละเอียดจากการเยี่ยมบ้าน"

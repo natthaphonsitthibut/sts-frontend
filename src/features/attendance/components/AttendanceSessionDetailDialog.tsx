@@ -23,8 +23,8 @@ const SESSION_STATUS_META: Record<
   AttendanceSessionStatus,
   { label: string; variant: NonNullable<BadgeProps["variant"]> }
 > = {
-  OPEN: { label: "เปิดเช็คชื่อ", variant: "secondary" },
-  SUBMITTED: { label: "ส่งการเช็คชื่อแล้ว", variant: "success" },
+  OPEN: { label: "เปิดเช็กชื่อ", variant: "secondary" },
+  SUBMITTED: { label: "ส่งการเช็กชื่อแล้ว", variant: "success" },
   REOPENED: { label: "เปิดแก้ไขอยู่", variant: "warning" },
   VOIDED: { label: "ยกเลิกแล้ว", variant: "destructive" },
 };

@@ -14,7 +14,6 @@ export interface AuthUser {
     gradeLevels?: Array<{ id: number; label: string }>;
   };
   PersonID_Onec?: string;
-  student_uuid?: string;
   phone?: string | null;
   email?: string | null;
   affiliation?: string | null;
@@ -32,10 +31,9 @@ export interface AuthUser {
   address_postal_code?: string | null;
   address_latitude?: number | null;
   address_longitude?: number | null;
-  virtual_login?: boolean;
   magic_link_token?: string;
   magic_session_token?: string;
-  virtual_auth_token?: string;
+  virtual_login?: boolean;
   must_change_password?: boolean;
 }
 
@@ -78,8 +76,17 @@ export interface UpdateProfilePayload {
   address_longitude: number | null;
 }
 
-export interface MockThaIdLoginPayload {
-  personId: string;
+export interface AraIdLoginChallenge {
+  challengeToken: string;
+  verificationUrl: string;
+  qrDataUrl: string;
+  referenceCode: string;
+  expiresAt: string;
+}
+
+export interface AraIdLoginChallengeStatus {
+  status: "PENDING" | "IN_PROGRESS" | "APPROVED";
+  expiresAt?: string;
 }
 
 export interface MagicLoginVerifyResponse extends Partial<AuthUser> {

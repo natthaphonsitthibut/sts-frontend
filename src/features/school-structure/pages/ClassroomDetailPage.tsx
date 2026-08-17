@@ -131,7 +131,7 @@ export function ClassroomDetailPage() {
           onChange={setTab}
           options={[
             { value: "roster", label: "รายชื่อนักเรียน" },
-            { value: "history", label: "ประวัติการเช็คชื่อ" },
+            { value: "history", label: "ประวัติการเช็กชื่อ" },
           ]}
           value={tab}
         />

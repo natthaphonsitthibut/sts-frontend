@@ -13,4 +13,15 @@ async function getPublicAttendanceRecordCatalog(): Promise<StatusCatalogItem[]> 
   return response.data;
 }
 
-export const statusCatalogService = { getCatalogs, getPublicAttendanceRecordCatalog };
+async function getPublicAttendanceDelegationCatalog(): Promise<StatusCatalogItem[]> {
+  const response = await apiClient.get<StatusCatalogItem[]>(
+    "/public/status-catalogs/attendance-delegation",
+  );
+  return response.data;
+}
+
+export const statusCatalogService = {
+  getCatalogs,
+  getPublicAttendanceDelegationCatalog,
+  getPublicAttendanceRecordCatalog,
+};

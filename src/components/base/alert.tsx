@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const alertVariants = cva("animate-banner-in rounded-lg border p-4 text-sm shadow-sm", {
@@ -18,11 +19,38 @@ const alertVariants = cva("animate-banner-in rounded-lg border p-4 text-sm shado
 
 export interface AlertProps
   extends ComponentProps<"div">,
-    VariantProps<typeof alertVariants> {}
+    VariantProps<typeof alertVariants> {
+  /** Renders a close button; the caller decides what closing means. */
+  onDismiss?: () => void;
+  dismissLabel?: string;
+}
 
-export function Alert({ className, variant, ...props }: AlertProps) {
+export function Alert({
+  children,
+  className,
+  dismissLabel = "ปิดข้อความนี้",
+  onDismiss,
+  variant,
+  ...props
+}: AlertProps) {
   return (
-    <div className={cn(alertVariants({ variant }), className)} role="alert" {...props} />
+    <div
+      className={cn(alertVariants({ variant }), onDismiss && "relative pr-12", className)}
+      role="alert"
+      {...props}
+    >
+      {children}
+      {onDismiss ? (
+        <button
+          aria-label={dismissLabel}
+          className="absolute right-3 top-3 rounded-md p-1 text-current opacity-70 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+          onClick={onDismiss}
+          type="button"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 

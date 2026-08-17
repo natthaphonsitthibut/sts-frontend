@@ -68,6 +68,8 @@ export function TimePicker({
         <div
           aria-label="เลือกเวลา"
           className="absolute left-0 top-11 z-50 w-full min-w-64 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
           role="dialog"
         >
           <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
@@ -98,7 +100,13 @@ export function TimePicker({
             </label>
           </div>
           <div className="mt-3 flex justify-end">
-            <Button onClick={() => setOpen(false)} size="sm">เสร็จสิ้น</Button>
+            <Button
+              onClick={() => setOpen(false)}
+              onMouseDown={() => setOpen(false)}
+              size="sm"
+            >
+              เสร็จสิ้น
+            </Button>
           </div>
         </div>
       ) : null}

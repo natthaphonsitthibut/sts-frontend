@@ -50,7 +50,7 @@ export function CaseStatusUpdateDialog({
     (option) => option.code === presetAction,
   );
   const hasPermission =
-    Boolean(selectedAction) && can("review-cases") && can(selectedAction?.requiredPermission || "");
+    Boolean(selectedAction) && can("dashboard") && can(selectedAction?.requiredPermission || "");
   const submitDisabled =
     !caseRecord ||
     !presetAction ||

@@ -530,6 +530,8 @@ export function ProfilePage() {
               disabled
               labelOf={labelOf}
               onChange={() => undefined}
+              onPermissionsChange={() => undefined}
+              permissions={profileUser?.permissions ?? []}
               roleGroups={ownRoleGroups}
               value={ownRoleName}
             />
@@ -764,6 +766,8 @@ export function ProfilePage() {
                 disabled
                 labelOf={labelOf}
                 onChange={() => undefined}
+                onPermissionsChange={() => undefined}
+                permissions={profileUser?.permissions ?? []}
                 roleGroups={ownRoleGroups}
                 value={ownRoleName}
               />

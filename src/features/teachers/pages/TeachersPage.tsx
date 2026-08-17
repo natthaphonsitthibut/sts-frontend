@@ -92,7 +92,7 @@ export function TeachersPage() {
   async function handleDeactivate(teacher: Teacher): Promise<void> {
     const confirmed = await confirm({
       title: "ปิดใช้งานข้อมูลครู",
-      description: `ต้องการปิดใช้งาน “${teacher.fullName}” ใช่หรือไม่? ประวัติการสอนและการเช็คชื่อเดิมจะยังคงอยู่`,
+      description: `ต้องการปิดใช้งาน “${teacher.fullName}” ใช่หรือไม่? ประวัติการสอนและการเช็กชื่อเดิมจะยังคงอยู่`,
       confirmText: "ปิดใช้งาน",
       variant: "destructive",
     });

@@ -2,12 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-link-session.store";
 import { studentObservationsService } from "../api/student-observations.service";
 import type {
-  CreateFollowUpRequestInput,
   CreateHumanRiskReviewInput,
   CreateStudentObservationInput,
   HumanRiskReviewState,
-  HomeVisitRequestReportFilters,
-  ReviewFollowUpRequestInput,
   TeacherObservationReportFilters,
   TeacherWatchlistFilters,
 } from "../types/student-observation.types";
@@ -21,10 +18,6 @@ function guestIdentity(credential: TeacherLinkCredential): string {
 
 function guestKey(cacheIdentity: string, studentTermId?: string) {
   return [KEY, "guest", cacheIdentity, studentTermId] as const;
-}
-
-function guestFollowUpKey(cacheIdentity: string, studentTermId?: string) {
-  return [KEY, "guest-follow-ups", cacheIdentity, studentTermId] as const;
 }
 
 function managedKey(studentTermId: string, resource: string) {
@@ -85,48 +78,6 @@ export function useCreateGuestStudentObservation(
   });
 }
 
-export function useGuestStudentFollowUps(
-  credential: TeacherLinkCredential,
-  assignmentId?: number,
-  studentTermId?: string,
-) {
-  return useQuery({
-    queryKey: guestFollowUpKey(
-      guestIdentity(credential),
-      studentTermId,
-    ),
-    queryFn: () =>
-      studentObservationsService.listGuestFollowUps(credential, {
-        assignmentId: assignmentId!,
-        studentTermId: studentTermId!,
-      }),
-    enabled: Boolean(credential.token && assignmentId && studentTermId),
-    retry: false,
-    gcTime: 0,
-  });
-}
-
-export function useCreateGuestFollowUp(
-  credential: TeacherLinkCredential,
-  studentTermId: string,
-) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateFollowUpRequestInput) =>
-      studentObservationsService.createGuestFollowUp(
-        credential,
-        studentTermId,
-        input,
-      ),
-    gcTime: 0,
-    onSuccess: async () => {
-      await client.invalidateQueries({
-        queryKey: guestFollowUpKey(guestIdentity(credential), studentTermId),
-      });
-    },
-  });
-}
-
 export function useTeacherComments(query: {
   page?: number;
   limit?: number;
@@ -168,79 +119,6 @@ export function useCreateManagedStudentObservation(studentTermId: string) {
   });
 }
 
-export function useCreateManagedFollowUp(studentTermId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateFollowUpRequestInput) =>
-      studentObservationsService.createManagedFollowUp(studentTermId, input),
-    onSuccess: async () => {
-      await client.invalidateQueries({
-        queryKey: managedKey(studentTermId, "follow-ups"),
-      });
-      await client.invalidateQueries({
-        queryKey: [KEY, "home-visit-requests"],
-      });
-      await client.invalidateQueries({ queryKey: [KEY, "teacher-reports"] });
-    },
-  });
-}
-
-export function useTaskLinkObservationCatalog(
-  token: string,
-  sessionToken: string | undefined,
-  enabled: boolean,
-) {
-  return useQuery({
-    queryKey: [KEY, "task-catalog", token],
-    queryFn: () =>
-      studentObservationsService.getTaskLinkCatalog(token, sessionToken),
-    enabled: Boolean(enabled && token),
-    retry: false,
-    gcTime: 0,
-  });
-}
-
-export function useTaskLinkStudentObservations(
-  token: string,
-  sessionToken: string | undefined,
-  studentTermId?: string,
-  timetableSlotId?: number,
-) {
-  return useQuery({
-    queryKey: [KEY, "task", token, studentTermId, timetableSlotId],
-    queryFn: () =>
-      studentObservationsService.listTaskLinkObservations(
-        token,
-        { studentTermId: studentTermId!, timetableSlotId },
-        sessionToken,
-      ),
-    enabled: Boolean(token && studentTermId),
-    retry: false,
-    gcTime: 0,
-  });
-}
-
-export function useCreateTaskLinkStudentObservation(
-  token: string,
-  sessionToken: string | undefined,
-) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateStudentObservationInput) =>
-      studentObservationsService.createTaskLinkObservation(
-        token,
-        input,
-        sessionToken,
-      ),
-    gcTime: 0,
-    onSuccess: async (observation) => {
-      await client.invalidateQueries({
-        queryKey: [KEY, "task", token, observation.studentTermId],
-      });
-    },
-  });
-}
-
 export function useTeacherObservationReports(
   filters: TeacherObservationReportFilters,
 ) {
@@ -271,21 +149,6 @@ export function useTeacherWatchlist(
   });
 }
 
-export function useHomeVisitRequests(filters: HomeVisitRequestReportFilters) {
-  return useQuery({
-    queryKey: [KEY, "home-visit-requests", filters],
-    queryFn: () => studentObservationsService.listHomeVisitRequests(filters),
-  });
-}
-
-export function useHomeVisitRequest(requestId: string) {
-  return useQuery({
-    queryKey: [KEY, "home-visit-request", requestId],
-    queryFn: () => studentObservationsService.getHomeVisitRequest(requestId),
-    enabled: Boolean(requestId),
-  });
-}
-
 export function useHumanRiskReview(studentTermId: string) {
   return useQuery({
     queryKey: managedKey(studentTermId, "risk-review"),
@@ -306,41 +169,6 @@ export function useCreateHumanRiskReview(studentTermId: string) {
           currentCalculatedAttendanceRisk: review.calculatedAttendanceRisk,
         },
       );
-    },
-  });
-}
-
-export function useManagedFollowUps(studentTermId: string) {
-  return useQuery({
-    queryKey: managedKey(studentTermId, "follow-ups"),
-    queryFn: () =>
-      studentObservationsService.listManagedFollowUps(studentTermId),
-  });
-}
-
-export function useReviewFollowUp(studentTermId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      requestId,
-      input,
-    }: {
-      requestId: string;
-      input: ReviewFollowUpRequestInput;
-    }) =>
-      studentObservationsService.reviewFollowUp(
-        studentTermId,
-        requestId,
-        input,
-      ),
-    onSuccess: async () => {
-      await client.invalidateQueries({
-        queryKey: managedKey(studentTermId, "follow-ups"),
-      });
-      await client.invalidateQueries({
-        queryKey: [KEY, "home-visit-requests"],
-      });
-      await client.invalidateQueries({ queryKey: [KEY, "home-visit-request"] });
     },
   });
 }

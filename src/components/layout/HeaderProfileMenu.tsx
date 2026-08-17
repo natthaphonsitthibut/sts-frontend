@@ -10,21 +10,37 @@ import { cn } from "../../lib/utils";
 
 interface HeaderProfileMenuProps {
   canEditProfile: boolean;
+  /** A guest link has nothing to sign out of — it ends when the link ends. */
+  canSignOut?: boolean;
   displayName: string;
+  /** Overrides the signed-in account's สังกัด; a link passes its school. */
+  affiliation?: string | null;
+  /** Overrides the signed-in account's ตำแหน่ง; a link passes คุณครู. */
+  roleLabel?: string | null;
   /** Already-resolved photo URL; the shared letter fallback shows without one. */
   photoUrl?: string | null;
 }
 
+/**
+ * The header identity popover, used by the signed-in shell and by every guest
+ * link. A link shows who it belongs to and nothing to act on, but it is the same
+ * component so the trigger, hover, focus ring and panel never drift apart.
+ */
 export function HeaderProfileMenu({
   canEditProfile,
+  canSignOut = true,
   displayName,
+  affiliation,
+  roleLabel,
   photoUrl,
 }: HeaderProfileMenuProps) {
   const navigate = useNavigate();
   const user = useAuthSessionStore((state) => state.user);
   const clearSession = useAuthSessionStore((state) => state.clearSession);
   const primaryRole = user?.roles?.[0];
-  const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-";
+  const resolvedRoleLabel =
+    roleLabel ?? (primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-");
+  const resolvedAffiliation = affiliation ?? user?.affiliation ?? null;
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -124,22 +140,30 @@ export function HeaderProfileMenu({
             items[nextIndex]?.focus();
           }}
         >
-          <div className="flex items-start gap-3 px-3 py-2.5">
+          {/* The photo sits centred against the three identity lines, not pinned
+              to the first one. */}
+          <div className="flex items-center gap-3 px-3 py-2.5">
             <Avatar
               className="size-12"
               gradientName={displayName}
               imageAlt={displayName}
               imageUrl={photoUrl ?? null}
             />
-            <div className="min-w-0 flex-1 pt-0.5">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
-              {user?.affiliation ? (
-                <div className="truncate text-xs text-slate-500">สังกัด: {user.affiliation}</div>
+              {resolvedAffiliation ? (
+                <div className="truncate text-xs text-slate-500">
+                  สังกัด: {resolvedAffiliation}
+                </div>
               ) : null}
-              <div className="truncate text-xs text-slate-500">ตำแหน่ง: {roleLabel}</div>
+              <div className="truncate text-xs text-slate-500">
+                ตำแหน่ง: {resolvedRoleLabel}
+              </div>
             </div>
           </div>
-          <div className="my-1 border-t border-slate-100" />
+          {canEditProfile || canSignOut ? (
+            <div className="my-1 border-t border-slate-100" />
+          ) : null}
           {canEditProfile ? (
             <Link
               role="menuitem"
@@ -153,18 +177,20 @@ export function HeaderProfileMenu({
               แก้ไขข้อมูลส่วนตัว
             </Link>
           ) : null}
-          <button
-            type="button"
-            role="menuitem"
-            className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-danger transition-colors hover:bg-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={loggingOut}
-            onClick={() => void handleLogout()}
-          >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-danger-100 text-danger">
-              <LogOut className="size-3.5" aria-hidden="true" />
-            </span>
-            {loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"}
-          </button>
+          {canSignOut ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-danger transition-colors hover:bg-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={loggingOut}
+              onClick={() => void handleLogout()}
+            >
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-danger-100 text-danger">
+                <LogOut className="size-3.5" aria-hidden="true" />
+              </span>
+              {loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

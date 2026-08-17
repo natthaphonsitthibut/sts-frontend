@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
   BarChart3,
-  ClipboardCheck,
-  Clock,
+  CheckCircle2,
+  ClipboardList,
+  BriefcaseBusiness,
   Siren,
   Users,
 } from "lucide-react";
@@ -29,6 +31,8 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { CasePipelineChart } from "../components/CasePipelineChart";
+import { CauseCategoryChart } from "../components/CauseCategoryChart";
+import { MonthlySuccessRateChart } from "../components/MonthlySuccessRateChart";
 import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
@@ -37,13 +41,15 @@ import type {
   HomeDashboardMetric,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
-import GeoMapSVG from "../components/GeoMapSVG";
+
+const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
   watchStudents: Siren,
-  activeCases: Clock,
-  pendingReview: ClipboardCheck,
+  totalCases: ClipboardList,
+  inProgressCases: BriefcaseBusiness,
+  resolvedCases: CheckCircle2,
 };
 
 const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
@@ -51,7 +57,15 @@ const TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
   success: "bg-success-100 text-success-700",
   warning: "bg-warning-100 text-warning-700",
   danger: "bg-danger-100 text-danger-700",
-  info: "bg-brand-soft text-primary-dark",
+  info: "bg-brand-soft text-primary",
+};
+
+const METRIC_ICON_TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
+  default: "bg-slate-700 text-white",
+  success: "bg-success text-white",
+  warning: "bg-warning text-white",
+  danger: "bg-danger text-white",
+  info: "bg-primary text-white",
 };
 
 function parseFilters(searchParams: URLSearchParams): HomeDashboardFilters {
@@ -93,7 +107,10 @@ function destination(
   return `${path}${buildQuery(query)}`;
 }
 
-function getRiskAreaBackAction(filters: HomeDashboardFilters, schoolLocked: boolean): {
+function getRiskAreaBackAction(
+  filters: HomeDashboardFilters,
+  schoolLocked: boolean,
+): {
   label: string;
   next: Partial<HomeDashboardFilters>;
 } | null {
@@ -151,7 +168,9 @@ function FilterCombobox({
   );
 }
 
-function getLockedSchoolId(schoolIds: number[] | undefined): number | undefined {
+function getLockedSchoolId(
+  schoolIds: number[] | undefined,
+): number | undefined {
   return schoolIds?.length === 1 ? schoolIds[0] : undefined;
 }
 
@@ -209,7 +228,12 @@ function useDashboardFilters() {
     );
   }
 
-  return { filters, reset, schoolLocked: lockedSchoolId !== undefined, updateFilter };
+  return {
+    filters,
+    reset,
+    schoolLocked: lockedSchoolId !== undefined,
+    updateFilter,
+  };
 }
 
 function DashboardFilterBar({
@@ -297,7 +321,7 @@ function DashboardFilterBar({
 
 function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {metrics.map((metric) => {
         const pageIdentity = getPageIdentity(metric.targetPath);
         const Icon =
@@ -312,21 +336,21 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
             key={metric.key}
             data-home-metric={metric.key}
             to={destination(metric.targetPath, metric.targetQuery)}
-            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-left shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-slate-600">
+                <div className="truncate text-base font-normal text-content-secondary">
                   {metric.label}
                 </div>
-                <div className="text-2xl font-bold leading-tight tabular-nums text-slate-950">
+                <div className="animate-value-in text-3xl font-bold leading-tight tabular-nums text-slate-950">
                   {metric.value.toLocaleString("th-TH")}
                 </div>
               </div>
               <span
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                  TONE_CLASSES[metric.tone],
+                  METRIC_ICON_TONE_CLASSES[metric.tone],
                 )}
               >
                 <Icon className="size-5" aria-hidden="true" />
@@ -421,7 +445,7 @@ export function MainPage() {
         <div className="space-y-5 ">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{summary.scopeLabel}</Badge>
+              <Badge variant="default">{summary.scopeLabel}</Badge>
             </div>
           </div>
 
@@ -430,46 +454,69 @@ export function MainPage() {
           <div
             className={cn(
               "grid gap-5 items-stretch",
-              summary.riskAreaRanking &&
-              "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
+              (summary.riskAreaRanking || summary.casePipeline) &&
+                "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
             )}
           >
-            <GeoMapSVG
-              data={
-                nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
-                  ? nationalSummary.riskAreaRanking.items
-                  : undefined
-              }
-              focusedProvince={filters.province}
-              onProvinceClick={
-                schoolLocked
-                  ? undefined
-                  : (provinceName) => updateFilter({ province: provinceName })
-              }
-            />
+            <div className="flex flex-col gap-5">
+              <Suspense
+                fallback={
+                  <div
+                    aria-label="กำลังโหลดแผนที่ประเทศไทย"
+                    className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
+                    role="status"
+                  />
+                }
+              >
+                <GeoMapSVG
+                  data={
+                    nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
+                      ? nationalSummary.riskAreaRanking.items
+                      : undefined
+                  }
+                  focusedProvince={filters.province}
+                  onProvinceClick={
+                    schoolLocked
+                      ? undefined
+                      : (provinceName) =>
+                          updateFilter({ province: provinceName })
+                  }
+                />
+              </Suspense>
 
-            {summary.riskAreaRanking ? (
-              <RiskAreaRankingChart
-                backLabel={riskAreaBackAction?.label}
-                onBack={
-                  riskAreaBackAction
-                    ? () => updateFilter(riskAreaBackAction.next)
-                    : undefined
-                }
-                onSelect={
-                  schoolLocked ? undefined : (filter) => updateFilter(filter)
-                }
-                ranking={summary.riskAreaRanking}
-              />
-            ) : null}
+              {summary.monthlySuccessRates ? (
+                <MonthlySuccessRateChart data={summary.monthlySuccessRates} />
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-5">
+              {summary.riskAreaRanking ? (
+                <RiskAreaRankingChart
+                  backLabel={riskAreaBackAction?.label}
+                  onBack={
+                    riskAreaBackAction
+                      ? () => updateFilter(riskAreaBackAction.next)
+                      : undefined
+                  }
+                  onSelect={
+                    schoolLocked ? undefined : (filter) => updateFilter(filter)
+                  }
+                  ranking={summary.riskAreaRanking}
+                />
+              ) : null}
+              {summary.causeCategoryDistribution ? (
+                <CauseCategoryChart
+                  distribution={summary.causeCategoryDistribution}
+                />
+              ) : null}
+              {summary.casePipeline ? (
+                <CasePipelineChart
+                  filters={filters}
+                  pipeline={summary.casePipeline}
+                />
+              ) : null}
+            </div>
           </div>
-
-          {summary.casePipeline ? (
-            <CasePipelineChart
-              filters={filters}
-              pipeline={summary.casePipeline}
-            />
-          ) : null}
         </div>
       )}
     </PageShell>

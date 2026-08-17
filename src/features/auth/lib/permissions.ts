@@ -31,18 +31,6 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
-export const GRANT_EXEMPT_PERMISSION_IDS = ["student-self"] as const;
-
-const EXECUTIVE_ALLOWED_PERMISSIONS = ["home"] as const;
-
-export const ROLE_RANKS: Record<string, number> = {
-  STUDENT: 1,
-  TEACHER: 2,
-  EXECUTIVE: 3,
-  DIRECTOR: 4,
-  ADMIN: 5,
-};
-
 export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "ผู้ดูแลระบบ",
   DIRECTOR: "ผู้อำนวยการ",
@@ -102,18 +90,7 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("home", "/"),
   pageMenuItem("dashboard", "/student-risk-report"),
   pageMenuItem("students", "/students"),
-  pageMenuItem("classrooms", "/classrooms", "manage-school-structure"),
-  {
-    id: "case-system",
-    label: "งานติดตามเคส",
-    iconName: "folder-heart",
-    children: [
-      {
-        ...pageMenuItem("visit-links", "/visit-links", "review-cases"),
-      },
-    ],
-  },
-  pageMenuItem("student-self", "/my-attendance"),
+  pageMenuItem("classrooms", "/classrooms"),
   {
     id: "data-management",
     label: "จัดการข้อมูล",
@@ -142,7 +119,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "attendance-system",
-    label: "ระบบเช็คชื่อ",
+    label: "ระบบเช็กชื่อ",
     iconName: "calendar-check",
     children: [
       {
@@ -152,7 +129,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("manage-teacher-access", "/attendance-links"),
       },
       {
-        ...pageMenuItem("timetable", "/timetable", ["home", "student-self"]),
+        ...pageMenuItem("timetable", "/timetable"),
       },
     ],
   },
@@ -175,62 +152,22 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("settings", "/settings"),
 ];
 
+/**
+ * What the account may open, as the server granted it.
+ *
+ * A wildcard is still narrowed here — `*` in storage means "whatever the role
+ * carries", and the menu needs concrete ids to match against — but the role
+ * itself is no longer second-guessed. ผู้บริหาร used to be clamped to หน้าหลัก
+ * by this function no matter what its group granted, which made the group's own
+ * ticks a lie; the backend still refuses raw student text to that role
+ * (`denyExecutiveRaw`), which is where that rule belongs.
+ */
 export function getEffectivePermissions(
   roles: string[],
   customPermissions: string[] = [],
 ): string[] {
-  const isRestrictedExecutive =
-    roles.includes("EXECUTIVE") &&
-    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
-  if (isRestrictedExecutive) {
-    const hasWildcard = customPermissions.some(
-      (permission) => permission === "*" || permission === "ALL",
-    );
-    return hasWildcard
-      ? [...EXECUTIVE_ALLOWED_PERMISSIONS]
-      : customPermissions.filter((permission) =>
-          EXECUTIVE_ALLOWED_PERMISSIONS.includes(
-            permission as (typeof EXECUTIVE_ALLOWED_PERMISSIONS)[number],
-          ),
-        );
-  }
-
+  void roles;
   return Array.from(new Set(customPermissions));
-}
-
-export function isStudentOnlyRole(roles: string[]): boolean {
-  // Any non-STUDENT role (system or custom role group) means a staff session.
-  return roles.length > 0 && roles.every((role) => role === "STUDENT");
-}
-
-interface StudentSelfSessionLike {
-  virtual_login?: boolean;
-  virtual_auth_token?: string;
-  permissions?: string[];
-  data_scope?: DataScope;
-}
-
-interface StudentAccountSessionLike extends StudentSelfSessionLike {
-  roles?: string[];
-}
-
-export function isStudentSelfSession(
-  user: StudentSelfSessionLike | null | undefined,
-): boolean {
-  return Boolean(
-    user?.virtual_login &&
-    user.virtual_auth_token &&
-    user.permissions?.includes("student-self") &&
-    user.data_scope?.own_only,
-  );
-}
-
-export function isStudentAccountSession(
-  user: StudentAccountSessionLike | null | undefined,
-): boolean {
-  return (
-    isStudentOnlyRole(user?.roles ?? []) || isStudentSelfSession(user)
-  );
 }
 
 export function hasPermission(

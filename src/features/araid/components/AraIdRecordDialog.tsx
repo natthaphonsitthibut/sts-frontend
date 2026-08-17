@@ -5,6 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
   Button,
+  DatePicker,
   Dialog,
   DialogBody,
   DialogContent,
@@ -167,6 +168,7 @@ export function AraIdRecordDialog({ open, record, onOpenChange }: AraIdRecordDia
   });
   const titlePreset = useWatch({ control: form.control, name: "titlePreset" });
   const pin = useWatch({ control: form.control, name: "pin" });
+  const dateOfBirth = useWatch({ control: form.control, name: "dateOfBirth" });
 
   useEffect(() => {
     if (!open) return;
@@ -219,7 +221,7 @@ export function AraIdRecordDialog({ open, record, onOpenChange }: AraIdRecordDia
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogContent
-        className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-hidden border-0 p-0"
+        className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-visible border-0 p-0"
         onClose={() => handleOpenChange(false)}
       >
         <Form form={form} onSubmit={handleSubmit}>
@@ -320,7 +322,18 @@ export function AraIdRecordDialog({ open, record, onOpenChange }: AraIdRecordDia
                 </FormItem>
                 <FormItem>
                   <FormLabel htmlFor="araid-birth-date">วันเกิด</FormLabel>
-                  <Input id="araid-birth-date" type="date" {...registerField(form, "dateOfBirth")} />
+                  <DatePicker
+                    aria-invalid={Boolean(form.formState.errors.dateOfBirth)}
+                    ariaLabel="วันเกิด"
+                    id="araid-birth-date"
+                    onChange={(value) =>
+                      form.setValue("dateOfBirth", value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    value={dateOfBirth}
+                  />
                   <FormMessage<RecordFormValues> name="dateOfBirth" />
                 </FormItem>
                 <FormItem>
@@ -378,7 +391,7 @@ export function AraIdRecordDialog({ open, record, onOpenChange }: AraIdRecordDia
             </section>
           </DialogBody>
 
-          <DialogFooter className="m-0 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+          <DialogFooter className="m-0 border-t border-slate-200 bg-white px-6 py-5 sm:px-8">
             <Button onClick={() => handleOpenChange(false)} type="button" variant="outline">ยกเลิก</Button>
             <Button
               className="bg-araid-brand hover:bg-araid-brand-deep"

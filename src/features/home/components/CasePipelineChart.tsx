@@ -21,13 +21,14 @@ const PIPELINE_ITEMS: Array<{
 }> = [
   { key: "OPEN", label: "เปิดเคส", barClassName: "bg-primary" },
   { key: "IN_PROGRESS", label: "รอติดตาม", barClassName: "bg-warning" },
-  { key: "PENDING_REVIEW", label: "รอพิจารณา", barClassName: "bg-primary-dark" },
+  {
+    key: "PENDING_REVIEW",
+    label: "รอพิจารณา",
+    barClassName: "bg-primary-dark",
+  },
 ];
 
-function buildCasePath(
-  filters: HomeDashboardFilters,
-  status: string,
-): string {
+function buildCasePath(filters: HomeDashboardFilters, status: string): string {
   const params = new URLSearchParams({ caseStatus: status });
   if (filters.province) params.set("province", filters.province);
   if (filters.district) params.set("district", filters.district);
@@ -54,13 +55,16 @@ export function CasePipelineChart({
   return (
     <Card className="p-5">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary-dark">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-100 text-warning-700">
           <BriefcaseBusiness className="size-5" aria-hidden="true" />
         </span>
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">เคสที่ยังดำเนินการ</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            เคสที่กำลังดำเนินการ
+          </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {activeTotal.toLocaleString("th-TH")} เคสในขอบเขตปัจจุบัน ไม่รวมเคสปิดแล้ว
+            {activeTotal.toLocaleString("th-TH")} เคสในขอบเขตปัจจุบัน
+            ไม่รวมเคสปิดแล้ว
           </p>
         </div>
       </div>
@@ -76,7 +80,9 @@ export function CasePipelineChart({
               to={buildCasePath(filters, item.key)}
             >
               <span className="flex items-baseline justify-between gap-3">
-                <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  {item.label}
+                </span>
                 <span className="text-sm font-bold tabular-nums text-slate-900">
                   {count.toLocaleString("th-TH")} เคส
                 </span>
@@ -84,7 +90,9 @@ export function CasePipelineChart({
               <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-100">
                 <span
                   className={`block h-full rounded-full ${item.barClassName}`}
-                  style={{ width: `${count === 0 ? 0 : Math.max((count / maxCount) * 100, 3)}%` }}
+                  style={{
+                    width: `${count === 0 ? 0 : Math.max((count / maxCount) * 100, 3)}%`,
+                  }}
                 />
               </span>
             </Link>

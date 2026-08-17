@@ -7,6 +7,7 @@ import {
   EditIcon,
   EqualizerIcon,
   EventAvailableIcon,
+  FactCheckIcon,
   FileDownloadIcon,
   FolderSpecialIcon,
   GroupIcon,
@@ -35,6 +36,7 @@ export const PAGE_ICONS = {
   "chart-line": EqualizerIcon,
   "clipboard-check": AssignmentTurnedInIcon,
   download: FileDownloadIcon,
+  "fact-check": FactCheckIcon,
   edit: EditIcon,
   "file-import": UploadFileIcon,
   "file-spreadsheet": TableChartIcon,
@@ -79,10 +81,14 @@ const createIdentity = (title: string, iconName: PageIconName): PageIdentity => 
  */
 export const PAGE_IDENTITIES = {
   "/": createIdentity("หน้าหลัก", "home"),
-  "/attendance": createIdentity("เช็คชื่อ", "edit"),
-  "/attendance/history": createIdentity("เช็คชื่อ", "edit"),
-  "/attendance-links": createIdentity("จัดการลิงก์เช็คชื่อ", "link"),
-  "/attendance-operations": createIdentity("ความครบถ้วน", "calendar-check"),
+  "/attendance": createIdentity("เช็กชื่อ", "edit"),
+  "/attendance/history": createIdentity("เช็กชื่อ", "edit"),
+  "/attendance/history/attendance": createIdentity("เช็กชื่อ", "edit"),
+  "/attendance/history/imports": createIdentity("เช็กชื่อ", "edit"),
+  "/attendance/history/delegations": createIdentity("เช็กชื่อ", "edit"),
+  "/attendance-links": createIdentity("จัดการลิงก์เช็กชื่อ", "link"),
+  // Not `calendar-check` — that one is the "ระบบเช็กชื่อ" sidebar group icon.
+  "/attendance-operations": createIdentity("ความครบถ้วน", "fact-check"),
   "/classrooms": createIdentity("ห้องเรียนทั้งหมด", "school-building"),
   "/curriculum": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
   "/data-exports": createIdentity("ส่งออกข้อมูล", "download"),
@@ -92,7 +98,6 @@ export const PAGE_IDENTITIES = {
   "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),
   "/manage-teachers": createIdentity("จัดการข้อมูลคุณครู", "users-round"),
   "/manage-users": createIdentity("จัดการผู้ใช้งาน", "users"),
-  "/my-attendance": createIdentity("ข้อมูลตัวเอง", "user-circle"),
   "/school-structure": createIdentity("จัดการภาคเรียนและห้องเรียน", "graduation"),
   "/settings": createIdentity("ตั้งค่าระบบ", "settings"),
   "/student-risk-report": createIdentity("รายงานสถานะนักเรียน", "chart-line"),
@@ -107,8 +112,6 @@ export const PAGE_IDENTITIES = {
   "/timetable": createIdentity("ตารางสอน", "calendar"),
   "/timetable/mine": createIdentity("ตารางสอน", "calendar"),
   "/timetable/rooms": createIdentity("ตารางสอน", "calendar"),
-  "/visit-links": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
-  "/visit-links/history": createIdentity("ลิงก์ลงพื้นที่", "map-pin"),
 } as const satisfies Record<string, PageIdentity>;
 
 export function getPageIdentity(pathname: string): PageIdentity | undefined {

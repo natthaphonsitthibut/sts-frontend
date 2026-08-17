@@ -38,7 +38,6 @@ export function ManageRoleGroupsPage() {
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const {
-    rolesCatalog,
     isLoading: rolesCatalogLoading,
     isError: rolesCatalogError,
     refetch: refetchRolesCatalog,
@@ -68,11 +67,6 @@ export function ManageRoleGroupsPage() {
   const selectedSchoolId = Number(selectedSchoolValue) || null;
   const selectedSchool = schools.find((school) => school.id === selectedSchoolId);
   const multipleSchools = schools.length > 1;
-  const maxRank = rolesCatalog.reduce(
-    (highest, role) => Math.max(highest, role.rank),
-    1,
-  );
-
   const query = useMemo<RoleGroupListQuery | null>(
     () =>
       selectedSchoolId
@@ -225,7 +219,6 @@ export function ManageRoleGroupsPage() {
       {dialogRoleGroup !== undefined && selectedSchoolId && selectedSchool ? (
         <RoleGroupDialog
           key={dialogRoleGroup?.name ?? `new-${selectedSchoolId}`}
-          maxRank={maxRank}
           onOpenChange={(open) => {
             if (!open) setDialogRoleGroup(undefined);
           }}

@@ -18,10 +18,14 @@ export function RiskAreaRankingChart({
   onSelect,
   ranking,
 }: RiskAreaRankingChartProps) {
-  const maxCount = Math.max(...ranking.items.map((item) => item.count), 1);
+  const displayItems = ranking.items.slice(0, 5);
+  const maxCount = Math.max(...displayItems.map((item) => item.count), 1);
 
   return (
-    <Card className="p-5" data-risk-area-dimension={ranking.dimension}>
+    <Card
+      className="p-5 h-[400px]"
+      data-risk-area-dimension={ranking.dimension}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danger-100 text-danger-700">
@@ -29,10 +33,11 @@ export function RiskAreaRankingChart({
           </span>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              นักเรียนเสี่ยง Top 10 {ranking.dimensionLabel}
+              พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 5 {ranking.dimensionLabel}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน กดพื้นที่เพื่อดูระดับถัดไป
+              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน
+              กดพื้นที่เพื่อดูระดับถัดไป
             </p>
           </div>
         </div>
@@ -50,13 +55,13 @@ export function RiskAreaRankingChart({
         ) : null}
       </div>
 
-      {ranking.items.length === 0 ? (
+      {displayItems.length === 0 ? (
         <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
           ไม่พบนักเรียนระดับเสี่ยงในขอบเขตนี้
         </div>
       ) : (
         <ol className="mt-5 space-y-3">
-          {ranking.items.map((item, index) => (
+          {displayItems.map((item, index) => (
             <li key={`${ranking.dimension}-${item.key}`}>
               <button
                 aria-label={`${item.label} นักเรียนเสี่ยง ${item.count.toLocaleString("th-TH")} คน${onSelect ? " ดูระดับถัดไป" : ""}`}
@@ -82,7 +87,9 @@ export function RiskAreaRankingChart({
                     <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-100">
                       <span
                         className="block h-full rounded-full bg-danger transition-[width] duration-200 ease-out motion-reduce:transition-none"
-                        style={{ width: `${Math.max((item.count / maxCount) * 100, 3)}%` }}
+                        style={{
+                          width: `${Math.max((item.count / maxCount) * 100, 3)}%`,
+                        }}
                       />
                     </span>
                   </span>

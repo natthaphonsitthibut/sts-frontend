@@ -2,6 +2,8 @@ import { apiClient } from "../../../lib/api-client";
 import type {
   ClassroomTeacherAssignment,
   ClassroomStudentCommentResult,
+  ClassroomStudentProblemCategory,
+  ClassroomStudentProblemCategoryOption,
   CreateClassroomInput,
   UpdateClassroomInput,
   PaginatedClassroomRoster,
@@ -62,6 +64,8 @@ export interface ClassroomRosterListParams {
 export interface ClassroomAttendanceHistoryParams {
   classroomId: number;
   view: "DAILY" | "STUDENT";
+  /** Narrows the history to one subject; omitted means the whole day. */
+  subjectId?: number;
   studentUuid?: string;
   date?: string;
   dateFrom?: string;
@@ -229,14 +233,27 @@ async function listRoster(
 async function createStudentComment(input: {
   classroomId: number;
   studentUuid: string;
-  commentText: string;
+  problemCategory: ClassroomStudentProblemCategory;
+  problemDescription: string;
 }): Promise<ClassroomStudentCommentResult> {
   const response = await apiClient.post<
     DataEnvelope<ClassroomStudentCommentResult>
   >(
     `/school-structure/classrooms/${input.classroomId}/students/${encodeURIComponent(input.studentUuid)}/comments`,
-    { commentText: input.commentText },
+    {
+      problemCategory: input.problemCategory,
+      problemDescription: input.problemDescription,
+    },
   );
+  return response.data.data;
+}
+
+async function listStudentProblemCategories(): Promise<
+  ClassroomStudentProblemCategoryOption[]
+> {
+  const response = await apiClient.get<
+    DataEnvelope<ClassroomStudentProblemCategoryOption[]>
+  >("/school-structure/student-problem-categories");
   return response.data.data;
 }
 
@@ -317,6 +334,7 @@ export const schoolStructureService = {
   listAssignments,
   createHomeroomAssignment,
   listRoster,
+  listStudentProblemCategories,
   createStudentComment,
   listStudentClassroomComments,
   listClassroomDailyAttendance,

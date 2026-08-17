@@ -1,11 +1,12 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
   AuthUser,
+  AraIdLoginChallenge,
+  AraIdLoginChallengeStatus,
   ChangePasswordPayload,
   LoginCredentials,
   MagicLoginVerifyResponse,
   MagicOtpVerifyResponse,
-  MockThaIdLoginPayload,
   UpdateProfilePayload,
 } from "../types/auth.types";
 
@@ -17,7 +18,10 @@ interface AuthService {
   updateMyPhoto: (input: { photo?: File; remove?: boolean }) => Promise<AuthUser>;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
-  loginWithMockThaId: (payload: MockThaIdLoginPayload) => Promise<AuthUser>;
+  createAraIdLoginChallenge: () => Promise<AraIdLoginChallenge>;
+  beginAraIdLoginChallenge: (challengeToken: string) => Promise<{ expiresAt: string }>;
+  approveAraIdLoginChallenge: () => Promise<void>;
+  pollAraIdLoginChallenge: (challengeToken: string) => Promise<AraIdLoginChallengeStatus>;
   requestMagicOtp: (token: string) => Promise<void>;
   verifyMagicLogin: (
     token: string,
@@ -65,14 +69,37 @@ async function changeOwnPassword(payload: ChangePasswordPayload): Promise<void> 
   await apiClient.post("/users/me/change-password", payload);
 }
 
-async function loginWithMockThaId(
-  payload: MockThaIdLoginPayload,
-): Promise<AuthUser> {
-  const response = await apiClient.post<AuthUser>(
-    "/auth/thaid/mock/login",
-    payload,
+const ARAID_CHALLENGE_HEADER = "x-auth-araid-challenge";
+
+async function createAraIdLoginChallenge(): Promise<AraIdLoginChallenge> {
+  const response = await apiClient.post<{ data: AraIdLoginChallenge }>("/auth/araid/challenge");
+  return response.data.data;
+}
+
+async function beginAraIdLoginChallenge(
+  challengeToken: string,
+): Promise<{ expiresAt: string }> {
+  const response = await apiClient.post<{ data: { expiresAt: string } }>(
+    "/auth/araid/challenge/begin",
+    undefined,
+    { headers: { [ARAID_CHALLENGE_HEADER]: challengeToken } },
   );
-  return response.data;
+  return response.data.data;
+}
+
+async function approveAraIdLoginChallenge(): Promise<void> {
+  await apiClient.post("/auth/araid/challenge/approve");
+}
+
+async function pollAraIdLoginChallenge(
+  challengeToken: string,
+): Promise<AraIdLoginChallengeStatus> {
+  const response = await apiClient.post<{ data: AraIdLoginChallengeStatus }>(
+    "/auth/araid/challenge/status",
+    undefined,
+    { headers: { [ARAID_CHALLENGE_HEADER]: challengeToken } },
+  );
+  return response.data.data;
 }
 
 async function verifyMagicLogin(
@@ -110,11 +137,14 @@ async function verifyMagicOtp(
 
 export const authService: AuthService = {
   changeOwnPassword,
+  approveAraIdLoginChallenge,
+  beginAraIdLoginChallenge,
+  createAraIdLoginChallenge,
   getMyProfile,
   getUserProfile,
   login,
   logout,
-  loginWithMockThaId,
+  pollAraIdLoginChallenge,
   requestMagicOtp,
   updateMyProfile,
   updateMyPhoto,

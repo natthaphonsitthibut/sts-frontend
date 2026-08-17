@@ -8,6 +8,10 @@ import type {
   StudentDetail,
   StudentProfileSummary,
 } from "../../students/types/students.types";
+import type {
+  ClassroomStudentProblemCategory,
+  ClassroomStudentProblemCategoryOption,
+} from "../../school-structure/types/school-structure.types";
 
 export type TeacherAccessCapability =
   | "HOMEROOM_ATTENDANCE"
@@ -45,8 +49,7 @@ export interface TeacherAccessAssignment {
 export interface TeacherAccessGrant {
   id: string;
   teacherMembershipId: string;
-  teacherUserId: number;
-  teacherUsername: string;
+  teacherId: string;
   teacherDisplayName: string;
   schoolId: number;
   schoolName: string;
@@ -56,7 +59,7 @@ export interface TeacherAccessGrant {
   status: TeacherAccessGrantStatus;
   capabilities: TeacherAccessCapability[];
   assignmentCount: number;
-  stepUpPolicy: "NONE" | "EMAIL_OTP" | "THAID";
+  stepUpPolicy: "NONE" | "EMAIL_OTP" | "ARAID";
   issuerName: string;
   issuedAt: string;
   expiresAt: string;
@@ -69,7 +72,7 @@ export interface TeacherAccessGrant {
   accessUrl?: string;
 }
 
-/** One teacher row of the จัดการลิงก์เช็คชื่อ screen. */
+/** One teacher row of the จัดการลิงก์เช็กชื่อ screen. */
 /** VERIFIED_NOT_REACHABLE = ยืนยันแล้วแต่ลบ/บล็อก OA จึงส่งข้อความไม่ถึง */
 export type TeacherLineStatus =
   | "NOT_VERIFIED"
@@ -103,12 +106,6 @@ export interface TeacherLinkRosterEntry {
   lineInvitationExpiresAt: string | null;
 }
 
-export interface TeacherLineInvitationIssueResult {
-  id: string;
-  url: string;
-  expiresAt: string;
-}
-
 export interface TeacherLineGroupInvitationSummary {
   id: string;
   schoolId: number;
@@ -119,7 +116,8 @@ export interface TeacherLineGroupInvitationSummary {
   status: "PENDING" | "ACTIVE";
 }
 
-export type TeacherLineGroupInvitationIssueResult = TeacherLineGroupInvitationSummary;
+export type TeacherLineGroupInvitationIssueResult =
+  TeacherLineGroupInvitationSummary;
 
 export interface TeacherAccessContext {
   grantId: string;
@@ -130,7 +128,79 @@ export interface TeacherAccessContext {
   academicYear: number;
   semester: number;
   capabilities: TeacherAccessCapability[];
+  accessScope: "FULL" | "ATTENDANCE_ONLY";
+  problemCategories: ClassroomStudentProblemCategoryOption[];
   assignments: TeacherAccessAssignment[];
+}
+
+export interface TeacherAttendanceDelegationOptions {
+  assignments: Array<{
+    id: number;
+    assignmentKind: "HOMEROOM" | "SUBJECT";
+    subjectId: number | null;
+    subjectName: string | null;
+    timetableSlotId: number | null;
+    period: number | null;
+  }>;
+  teachers: Array<{
+    teacherMembershipId: number;
+    teacherDisplayName: string;
+  }>;
+  activeDelegations: TeacherAttendanceDelegation[];
+}
+
+export interface TeacherAttendanceDelegation {
+  grantId: string;
+  teacherMembershipId: number;
+  teacherDisplayName: string;
+  assignmentId: number;
+  assignmentKind: "HOMEROOM" | "SUBJECT";
+  subjectName: string | null;
+  timetableSlotId: number | null;
+  period: number | null;
+  attendanceDate: string;
+  startsAt: string;
+  endsAt: string;
+  accessUrl: string;
+}
+
+export interface IssueTeacherAttendanceDelegationInput {
+  schoolId: number;
+  schoolTermId: number;
+  teacherMembershipId: number;
+  assignmentId: number;
+  timetableSlotId?: number;
+  /** The round the link covers. */
+  attendanceDate: string;
+  /** When the link itself stops working; the start is stamped by the server. */
+  endsOn: string;
+  endsAt: string;
+}
+
+export interface IssuePublicTeacherAttendanceDelegationInput {
+  teacherMembershipId: number;
+  assignmentId: number;
+  timetableSlotId?: number;
+  attendanceDate: string;
+  endsOn: string;
+  endsAt: string;
+}
+
+export interface UpdateTeacherAttendanceDelegationInput {
+  grantId: string;
+  schoolId: number;
+  /** Set only when the round moves to a different teacher. */
+  teacherMembershipId?: number;
+  endsOn: string;
+  endsAt: string;
+}
+
+export interface UpdatePublicTeacherAttendanceDelegationInput {
+  grantId: string;
+  assignmentId: number;
+  teacherMembershipId?: number;
+  endsOn: string;
+  endsAt: string;
 }
 
 export interface TeacherAccessRosterStudent {
@@ -149,18 +219,54 @@ export interface TeacherAccessRosterStudent {
   teacherComment: string | null;
 }
 
-/** One recorded attendance round, as shown in ประวัติการเช็คชื่อ. */
+/** One recorded attendance round, as shown in ประวัติการเช็กชื่อ. */
+/** One day of the class the link opens, same shape the staff history returns. */
 export interface TeacherAttendanceHistoryEntry {
-  sessionId: string;
   attendanceDate: string;
-  period: number;
-  status: string;
   recordedBy: string | null;
-  submittedAt: string | null;
   presentCount: number;
   lateCount: number;
   leaveCount: number;
   absentCount: number;
+}
+
+/** The per-student view of the same history. */
+export interface TeacherAttendanceHistoryStudent {
+  studentUuid: string;
+  studentNumber: string | null;
+  hasPhoto: boolean;
+  firstName: string | null;
+  lastName: string | null;
+  presentCount: number;
+  lateCount: number;
+  leaveCount: number;
+  absentCount: number;
+}
+
+/** A delegation as the history tables list it, in any state. */
+export interface TeacherAttendanceDelegationHistoryEntry {
+  grantId: string;
+  assignmentId: number;
+  teacherMembershipId: number;
+  issuedByName: string;
+  teacherDisplayName: string;
+  subjectName: string | null;
+  period: number | null;
+  attendanceDate: string;
+  startsAt: string;
+  endsAt: string;
+  status: "PENDING" | "COMPLETED" | "REVOKED" | "EXPIRED";
+  /** Only while the link can still be opened. */
+  accessUrl: string | null;
+}
+
+/** One student's days, opened from either view. */
+export interface TeacherAttendanceHistoryStudentDay {
+  id: string;
+  date: string;
+  time: string | null;
+  recordedBy: string | null;
+  status: string;
 }
 
 export interface TeacherAccessOtpChallenge {
@@ -235,4 +341,42 @@ export interface TeacherStudentProfile {
   cases: StudentCase[];
   attendance: unknown;
   observations: { data: StudentObservation[] };
+  /** Comments written from the roster's comment button, same section, same list. */
+  comments?: {
+    id: string;
+    problemCategory: ClassroomStudentProblemCategory;
+    problemCategoryLabel: string;
+    problemCategoryGuidance: string | null;
+    problemDescription: string;
+    authorName: string;
+    createdAt: string;
+  }[];
+}
+
+/** Round state plus the marks already stored, for prefill and submit locking. */
+export interface TeacherAccessAttendanceSession {
+  calendar: {
+    calendarConfigured: boolean;
+    canRecord: boolean;
+    dayType: string | null;
+  };
+  expectedRosterCount: number;
+  session: {
+    id: string;
+    status: "OPEN" | "SUBMITTED" | "REOPENED" | "VOIDED";
+    revision: number;
+    expectedRosterCount: number;
+    recordedCount: number;
+    submittedAt: string | null;
+    correctionReason: string | null;
+  } | null;
+  marks: Array<{
+    studentUuid: string;
+    status: import("../../attendance/types/attendance.types").AttendanceSelectionStatus;
+    markedAt: string | null;
+  }>;
+}
+
+export interface TeacherAccessAttendanceCalendar {
+  calendar: TeacherAccessAttendanceSession["calendar"];
 }

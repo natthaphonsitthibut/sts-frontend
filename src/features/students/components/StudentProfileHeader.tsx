@@ -289,7 +289,7 @@ export function StudentProfileHeader({
                     </span>
                   </div>
                   <div>
-                    ครูที่ปรึกษา:{" "}
+                    ครูประจำชั้น:{" "}
                     <span className="font-medium text-slate-800">
                       {toDisplay(student.homeroom_teacher_name)}
                     </span>
