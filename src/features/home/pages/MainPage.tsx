@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
@@ -40,7 +41,8 @@ import type {
   HomeDashboardMetric,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
-import GeoMapSVG from "../components/GeoMapSVG";
+
+const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -457,19 +459,30 @@ export function MainPage() {
             )}
           >
             <div className="flex flex-col gap-5">
-              <GeoMapSVG
-                data={
-                  nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
-                    ? nationalSummary.riskAreaRanking.items
-                    : undefined
+              <Suspense
+                fallback={
+                  <div
+                    aria-label="กำลังโหลดแผนที่ประเทศไทย"
+                    className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
+                    role="status"
+                  />
                 }
-                focusedProvince={filters.province}
-                onProvinceClick={
-                  schoolLocked
-                    ? undefined
-                    : (provinceName) => updateFilter({ province: provinceName })
-                }
-              />
+              >
+                <GeoMapSVG
+                  data={
+                    nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
+                      ? nationalSummary.riskAreaRanking.items
+                      : undefined
+                  }
+                  focusedProvince={filters.province}
+                  onProvinceClick={
+                    schoolLocked
+                      ? undefined
+                      : (provinceName) =>
+                          updateFilter({ province: provinceName })
+                  }
+                />
+              </Suspense>
 
               {summary.monthlySuccessRates ? (
                 <MonthlySuccessRateChart data={summary.monthlySuccessRates} />
