@@ -59,7 +59,7 @@ export interface TeacherAccessGrant {
   status: TeacherAccessGrantStatus;
   capabilities: TeacherAccessCapability[];
   assignmentCount: number;
-  stepUpPolicy: "NONE" | "EMAIL_OTP" | "THAID";
+  stepUpPolicy: "NONE" | "EMAIL_OTP" | "ARAID";
   issuerName: string;
   issuedAt: string;
   expiresAt: string;
@@ -116,7 +116,8 @@ export interface TeacherLineGroupInvitationSummary {
   status: "PENDING" | "ACTIVE";
 }
 
-export type TeacherLineGroupInvitationIssueResult = TeacherLineGroupInvitationSummary;
+export type TeacherLineGroupInvitationIssueResult =
+  TeacherLineGroupInvitationSummary;
 
 export interface TeacherAccessContext {
   grantId: string;
