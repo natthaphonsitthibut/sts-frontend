@@ -24,26 +24,6 @@ async function listSlots(filter: RoomFilter): Promise<{ success: true; data: Tim
   return response.data;
 }
 
-async function getMySchedule(filter: {
-  schoolId?: number;
-  gradeLevelId?: number;
-  roomNo?: number;
-  mine?: boolean;
-}): Promise<{ success: true; data: TimetableSlot[] }> {
-  const response = await apiClient.get<{ success: true; data: TimetableSlot[] }>(
-    "/timetable/my-schedule",
-    {
-      params: {
-        schoolId: filter.schoolId,
-        gradeLevelId: filter.gradeLevelId,
-        roomNo: filter.roomNo,
-        mine: filter.mine || undefined,
-      },
-    },
-  );
-  return response.data;
-}
-
 async function getSubjectsForRoom(
   filter: RoomFilter,
 ): Promise<{ success: true; data: RoomSubject[] }> {
@@ -134,7 +114,6 @@ async function overridePeriodTime(
 
 export const timetableService = {
   listSlots,
-  getMySchedule,
   getSubjectsForRoom,
   listTeacherCandidates,
   createSlot,

@@ -8,7 +8,6 @@ import type {
 } from "../types/timetable.types";
 
 const SLOTS_QUERY_KEY = "timetable-slots";
-const MY_SCHEDULE_QUERY_KEY = "my-schedule";
 const ROOM_SUBJECTS_QUERY_KEY = "room-subjects";
 const TIMETABLE_TEACHERS_QUERY_KEY = "timetable-teachers";
 const PERIOD_TIMES_QUERY_KEY = "school-period-times";
@@ -24,20 +23,6 @@ export function useTimetableSlots(filter: RoomFilter | null) {
     queryKey: [SLOTS_QUERY_KEY, filter],
     queryFn: () => timetableService.listSlots(filter!),
     enabled: Boolean(filter),
-  });
-}
-
-export function useMySchedule(filter: {
-  schoolId?: number;
-  gradeLevelId?: number;
-  roomNo?: number;
-  mine?: boolean;
-}) {
-  const ready = filter.mine || (filter.schoolId !== undefined && filter.gradeLevelId !== undefined && filter.roomNo !== undefined);
-  return useQuery({
-    queryKey: [MY_SCHEDULE_QUERY_KEY, filter],
-    queryFn: () => timetableService.getMySchedule(filter),
-    enabled: ready,
   });
 }
 
