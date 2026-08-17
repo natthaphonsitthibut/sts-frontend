@@ -24,6 +24,10 @@ function autosaveLabel(
   lastSavedAt: string | null,
 ): string {
   if (state === "saving") return "กำลังบันทึกอัตโนมัติ…";
+  if (state === "pending") return "รอบันทึกอัตโนมัติ…";
+  if (state === "retrying") {
+    return `${failureMessage ?? "บันทึกอัตโนมัติไม่สำเร็จ"} · กำลังลองใหม่อัตโนมัติ`;
+  }
   if (state === "blocked") {
     // The server reason is already the actionable part (round closed, calendar
     // not opened for this date, …) and each needs a different fix, so state that
@@ -31,7 +35,7 @@ function autosaveLabel(
     return `${failureMessage ?? "บันทึกอัตโนมัติไม่สำเร็จ"} · หยุดบันทึกอัตโนมัติแล้ว`;
   }
   if (state === "error") {
-    return `${failureMessage ?? "บันทึกอัตโนมัติไม่สำเร็จ"} · กำลังลองใหม่อัตโนมัติ`;
+    return `${failureMessage ?? "บันทึกอัตโนมัติไม่สำเร็จ"} · กรุณากดลองใหม่`;
   }
   if (state === "saved" && lastSavedAt) {
     return `บันทึกอัตโนมัติ ${formatThaiTime(lastSavedAt)} น. · ยังไม่ส่ง`;
@@ -88,7 +92,9 @@ export function AttendanceMarkToolbar({
           <p
             aria-live="polite"
             className={
-              autosaveState === "error" || autosaveState === "blocked"
+              autosaveState === "error" ||
+              autosaveState === "retrying" ||
+              autosaveState === "blocked"
                 ? "text-xs font-medium text-danger"
                 : "text-xs text-content-secondary"
             }

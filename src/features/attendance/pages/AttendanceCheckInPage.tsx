@@ -1,6 +1,18 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardCheck, ClipboardList, Download, History, LockOpen, MessageSquareText, UserRound, Wrench } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
+  Download,
+  History,
+  LockOpen,
+  MessageSquareText,
+  UserRound,
+  Wrench,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -177,7 +189,9 @@ export function AttendanceCheckInPage() {
   const { can } = usePermissions();
   const contextualNavigate = useContextualNavigate();
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
-  const delegationStatusCatalog = useStatusCatalog("ATTENDANCE_DELEGATION").items;
+  const delegationStatusCatalog = useStatusCatalog(
+    "ATTENDANCE_DELEGATION",
+  ).items;
   const [routeTab, setTab] = useRouteTab(
     {
       roster: "/attendance/roster",
@@ -195,7 +209,9 @@ export function AttendanceCheckInPage() {
   );
   // History is the same page's third branch, split into the three views the
   // teacher link already uses.
-  const isHistoryRoute = useLocation().pathname.startsWith("/attendance/history");
+  const isHistoryRoute = useLocation().pathname.startsWith(
+    "/attendance/history",
+  );
   const tab = isHistoryRoute ? "history" : routeTab;
   const [exportOpen, setExportOpen] = useState(false);
   const [riskTier, setRiskTier] = useState("");
@@ -221,9 +237,8 @@ export function AttendanceCheckInPage() {
   } | null>(null);
   const [delegationEdit, setDelegationEdit] =
     useState<TeacherAttendanceDelegationHistoryEntry | null>(null);
-  const [commentStudent, setCommentStudent] = useState<AttendanceStudent | null>(
-    null,
-  );
+  const [commentStudent, setCommentStudent] =
+    useState<AttendanceStudent | null>(null);
   const createClassroomComment = useCreateClassroomStudentComment();
   const [attendanceSearch, setAttendanceSearch] = useState("");
   const [attendanceSort, setAttendanceSort] = useState<
@@ -298,7 +313,11 @@ export function AttendanceCheckInPage() {
   const selectedGradeLevel = gradeLevels.find((level) => level.label === grade);
   const selectedRoomNo = Number(room);
   const timetableFilter =
-    schoolId && selectedGradeLevel && Number.isInteger(selectedRoomNo)
+    schoolId &&
+    selectedGradeLevel &&
+    room !== "" &&
+    Number.isInteger(selectedRoomNo) &&
+    selectedRoomNo > 0
       ? {
           schoolId: Number(schoolId),
           gradeLevelId: selectedGradeLevel.id,
@@ -488,7 +507,12 @@ export function AttendanceCheckInPage() {
     }
 
     setSaveNoticeDismissed(false);
-    await save();
+    try {
+      await save();
+    } catch {
+      // The mutation state renders the actionable API error below the form.
+      // Catch here so a failed request does not become an unhandled promise.
+    }
   }
 
   /** Closing a link from the history is the same action the active list runs. */
@@ -554,7 +578,6 @@ export function AttendanceCheckInPage() {
     [filteredStudents, rosterSort],
   );
 
-
   return (
     <PageShell className="pb-6">
       <PageToolbar
@@ -563,7 +586,11 @@ export function AttendanceCheckInPage() {
         // that the teacher link's history has.
         navigation={
           isHistoryRoute ? (
-            <NavButton icon={ArrowLeft} to="/attendance/check-in" variant="outline">
+            <NavButton
+              icon={ArrowLeft}
+              to="/attendance/check-in"
+              variant="outline"
+            >
               ย้อนกลับ
             </NavButton>
           ) : undefined
@@ -585,7 +612,6 @@ export function AttendanceCheckInPage() {
             schoolSelector="scope-combobox"
             scope={filterScope}
           />
-
         </ToolbarFilterGrid>
       </PageToolbar>
 
@@ -640,7 +666,7 @@ export function AttendanceCheckInPage() {
                       !selectedTimetableSlot ||
                       attendanceDelegationOptions.isFetching ||
                       attendanceDelegationOptions.isError ||
-                      !(attendanceDelegationOptions.data?.assignments.length),
+                      !attendanceDelegationOptions.data?.assignments.length,
                     onSelect: () => setDelegationOpen(true),
                   },
                   {
@@ -758,7 +784,9 @@ export function AttendanceCheckInPage() {
                       <button
                         aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
                         className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        onClick={() => void contextualNavigate(`/students/${student.id}`)}
+                        onClick={() =>
+                          void contextualNavigate(`/students/${student.id}`)
+                        }
                         type="button"
                       >
                         <StudentAvatar
@@ -785,7 +813,8 @@ export function AttendanceCheckInPage() {
                           <Badge
                             data-student-risk-tier={tier}
                             variant={
-                              RISK_TIER_PRESENTATION[tier]?.badge ?? "destructive"
+                              RISK_TIER_PRESENTATION[tier]?.badge ??
+                              "destructive"
                             }
                           >
                             {RISK_TIER_PRESENTATION[tier]?.label ?? tier}
@@ -799,7 +828,9 @@ export function AttendanceCheckInPage() {
                       <IconButton
                         aria-label={`ดูข้อมูล ${student.name}`}
                         icon={UserRound}
-                        onClick={() => void contextualNavigate(`/students/${student.id}`)}
+                        onClick={() =>
+                          void contextualNavigate(`/students/${student.id}`)
+                        }
                         variant="edit"
                       />
                       <IconButton
@@ -860,15 +891,19 @@ export function AttendanceCheckInPage() {
             delegations={
               attendanceDelegationOptions.isFetching
                 ? []
-                : attendanceDelegationOptions.data?.activeDelegations ?? []
+                : (attendanceDelegationOptions.data?.activeDelegations ?? [])
             }
             onClose={async (delegation) => {
-              await revokeAttendanceDelegation.mutateAsync({ grantId: delegation.grantId });
+              await revokeAttendanceDelegation.mutateAsync({
+                grantId: delegation.grantId,
+              });
             }}
-            onShare={(delegation, accessUrl) => setDelegationShare({
-              accessUrl: accessUrl ?? delegation.accessUrl,
-              description: `${delegation.teacherDisplayName} · ${delegation.assignmentKind === "HOMEROOM" ? "วิชาโฮมรูม" : `${delegation.subjectName ?? "รายวิชา"}${delegation.period ? ` · คาบ ${delegation.period}` : ""}`} · ${checkInDate}`,
-            })}
+            onShare={(delegation, accessUrl) =>
+              setDelegationShare({
+                accessUrl: accessUrl ?? delegation.accessUrl,
+                description: `${delegation.teacherDisplayName} · ${delegation.assignmentKind === "HOMEROOM" ? "วิชาโฮมรูม" : `${delegation.subjectName ?? "รายวิชา"}${delegation.period ? ` · คาบ ${delegation.period}` : ""}`} · ${checkInDate}`,
+              })
+            }
             onUpdate={async (delegation, input) => {
               if (!selectedTimetableSlot) return;
               return await updateAttendanceDelegation.mutateAsync({
@@ -894,7 +929,10 @@ export function AttendanceCheckInPage() {
             </div>
           ) : saveState.isSuccess && !saveNoticeDismissed ? (
             <div className="mb-4">
-              <Alert onDismiss={() => setSaveNoticeDismissed(true)} variant="success">
+              <Alert
+                onDismiss={() => setSaveNoticeDismissed(true)}
+                variant="success"
+              >
                 <div className="flex items-start gap-2">
                   <CheckCircle2
                     className="mt-0.5 size-5 shrink-0"
@@ -1014,27 +1052,29 @@ export function AttendanceCheckInPage() {
                 />
                 <AttendanceRosterTable
                   catalog={attendanceStatusCatalog}
-                disabled={!canEditAttendance || isSessionError}
-                onSortChange={setAttendanceSort}
-                onStatusChange={setStatus}
-                rows={visibleStudents.map((student) => ({
-                  id: student.id,
-                  name: student.name,
-                  studentNumber: student.student_number,
-                  avatar: (
-                    <button
-                      aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
-                      className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      onClick={() => void contextualNavigate(`/students/${student.id}`)}
-                      type="button"
-                    >
-                      <StudentAvatar
-                        name={student.name}
-                        photoUrl={student.photo_url}
-                      />
-                    </button>
-                  ),
-                }))}
+                  disabled={!canEditAttendance || isSessionError}
+                  onSortChange={setAttendanceSort}
+                  onStatusChange={setStatus}
+                  rows={visibleStudents.map((student) => ({
+                    id: student.id,
+                    name: student.name,
+                    studentNumber: student.student_number,
+                    avatar: (
+                      <button
+                        aria-label={`เปิดข้อมูลนักเรียน ${student.name}`}
+                        className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        onClick={() =>
+                          void contextualNavigate(`/students/${student.id}`)
+                        }
+                        type="button"
+                      >
+                        <StudentAvatar
+                          name={student.name}
+                          photoUrl={student.photo_url}
+                        />
+                      </button>
+                    ),
+                  }))}
                   selections={selections}
                   sort={attendanceSort}
                 />
@@ -1202,23 +1242,35 @@ export function AttendanceCheckInPage() {
           id: student.id,
           name: student.name,
           studentNumber: student.student_number,
-          avatar: <StudentAvatar name={student.name} photoUrl={student.photo_url} />,
+          avatar: (
+            <StudentAvatar name={student.name} photoUrl={student.photo_url} />
+          ),
         }))}
         selections={selections}
       />
-      {delegationOpen ? <AttendanceDelegationDialog
-        classroomId={selectedTimetableSlot ? Number(selectedTimetableSlot.classroom_id) : undefined}
-        defaultSubjectId={selectedTimetableSlot?.subject_id}
-        defaultTimetableSlotId={
-          selectedTimetableSlot ? Number(selectedTimetableSlot.id) : undefined
-        }
-        initialAttendanceDate={checkInDate}
-        onCreated={setDelegationShare}
-        onOpenChange={setDelegationOpen}
-        open={delegationOpen}
-        schoolId={selectedTimetableSlot?.school_id}
-        schoolTermId={selectedTimetableSlot ? Number(selectedTimetableSlot.school_term_id) : undefined}
-      /> : null}
+      {delegationOpen ? (
+        <AttendanceDelegationDialog
+          classroomId={
+            selectedTimetableSlot
+              ? Number(selectedTimetableSlot.classroom_id)
+              : undefined
+          }
+          defaultSubjectId={selectedTimetableSlot?.subject_id}
+          defaultTimetableSlotId={
+            selectedTimetableSlot ? Number(selectedTimetableSlot.id) : undefined
+          }
+          initialAttendanceDate={checkInDate}
+          onCreated={setDelegationShare}
+          onOpenChange={setDelegationOpen}
+          open={delegationOpen}
+          schoolId={selectedTimetableSlot?.school_id}
+          schoolTermId={
+            selectedTimetableSlot
+              ? Number(selectedTimetableSlot.school_term_id)
+              : undefined
+          }
+        />
+      ) : null}
       {/* Editing a row from ประวัติการมอบหมาย uses the same dialog as the live
           links above, and hands the link over as soon as it is saved. */}
       <AttendanceDelegationEditDialog

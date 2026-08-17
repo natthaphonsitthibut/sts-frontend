@@ -197,7 +197,10 @@ export function useAttendanceCheckInForSession({
   });
 
   const students = studentsQuery.data ?? EMPTY_STUDENTS;
-  const rosterIds = useMemo(() => students.map((student) => student.id), [students]);
+  const rosterIds = useMemo(
+    () => students.map((student) => student.id),
+    [students],
+  );
   const session = sessionQuery.data?.session ?? null;
   const canEditAttendance = session?.status !== "SUBMITTED";
 
@@ -205,25 +208,26 @@ export function useAttendanceCheckInForSession({
   // checked earlier instead of an empty roster.
   const serverMarks = useMemo(
     () =>
-      (existingAttendanceQuery.data ?? []).reduce<Record<string, AttendanceMark>>(
-        (next, record) => {
-          if (record.id && record.status !== "NONE") {
-            next[record.id] = {
-              status: record.status,
-              markedAt: record.marked_at ?? "",
-            };
-          }
-          return next;
-        },
-        {},
-      ),
+      (existingAttendanceQuery.data ?? []).reduce<
+        Record<string, AttendanceMark>
+      >((next, record) => {
+        if (record.id && record.status !== "NONE") {
+          next[record.id] = {
+            status: record.status,
+            markedAt: record.marked_at ?? "",
+          };
+        }
+        return next;
+      }, {}),
     [existingAttendanceQuery.data],
   );
 
   const sessionMarksKey = `${schoolId}:${grade}:${room}:${attendanceDate}:${sessionKey}`;
   const transport = useMemo(
     () => ({
-      saveMarks: async (batch: Array<{ studentId: string; mark: AttendanceMark | null }>) => {
+      saveMarks: async (
+        batch: Array<{ studentId: string; mark: AttendanceMark | null }>,
+      ) => {
         await attendanceService.saveAttendanceMarks(
           batch
             .filter((entry) => entry.mark !== null)
@@ -283,10 +287,15 @@ export function useAttendanceCheckInForSession({
 
   /** Closes the round. Every pending tap is flushed first so nothing is lost. */
   const save = useCallback(async (): Promise<void> => {
-    if (!rosterIds.length || !canEditAttendance || marksState.unmarkedCount > 0) {
+    if (
+      !rosterIds.length ||
+      !canEditAttendance ||
+      marksState.unmarkedCount > 0
+    ) {
       return;
     }
-    await marksState.flush();
+    const flushed = await marksState.flush();
+    if (!flushed) return;
     await saveMutation.mutateAsync(
       rosterIds.map((studentId) => ({
         student_id: studentId,
@@ -311,7 +320,10 @@ export function useAttendanceCheckInForSession({
     selections: useMemo(
       () =>
         Object.fromEntries(
-          Object.entries(selections).map(([studentId, mark]) => [studentId, mark.status]),
+          Object.entries(selections).map(([studentId, mark]) => [
+            studentId,
+            mark.status,
+          ]),
         ) as Record<string, AttendanceSelectionStatus>,
       [selections],
     ),

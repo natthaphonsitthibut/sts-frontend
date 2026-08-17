@@ -168,7 +168,9 @@ export function TeacherClassroomPage() {
     key: "studentNumber",
     direction: "asc",
   });
-  const [attendanceSort, setAttendanceSort] = useState<DataTableSortState | undefined>({
+  const [attendanceSort, setAttendanceSort] = useState<
+    DataTableSortState | undefined
+  >({
     key: "studentNumber",
     direction: "asc",
   });
@@ -207,7 +209,15 @@ export function TeacherClassroomPage() {
         replace: true,
       });
     }
-  }, [assignment, assignmentId, attendanceOnly, attendanceRoute, canRecordAttendance, navigate, tab]);
+  }, [
+    assignment,
+    assignmentId,
+    attendanceOnly,
+    attendanceRoute,
+    canRecordAttendance,
+    navigate,
+    tab,
+  ]);
   const rosterQuery = useTeacherAccessRoster(
     credential,
     Number(assignmentId) || undefined,
@@ -226,17 +236,25 @@ export function TeacherClassroomPage() {
     { assignmentId: Number(assignmentId) || undefined, date },
     Boolean(
       assignment?.assignmentKind === "SUBJECT" &&
-        canRecordAttendance &&
-        tab === "attendance",
+      canRecordAttendance &&
+      tab === "attendance",
     ),
   );
-  const attendanceDelegationOptions = usePublicTeacherAttendanceDelegationOptions(
-    credential,
-    { assignmentId: Number(assignmentId) || undefined, attendanceDate: date },
-    Boolean(!attendanceOnly && canRecordAttendance && assignmentId && tab === "attendance"),
-  );
-  const updateAttendanceDelegation = useUpdatePublicTeacherAttendanceDelegation(credential);
-  const revokeAttendanceDelegation = useRevokePublicTeacherAttendanceDelegation(credential);
+  const attendanceDelegationOptions =
+    usePublicTeacherAttendanceDelegationOptions(
+      credential,
+      { assignmentId: Number(assignmentId) || undefined, attendanceDate: date },
+      Boolean(
+        !attendanceOnly &&
+        canRecordAttendance &&
+        assignmentId &&
+        tab === "attendance",
+      ),
+    );
+  const updateAttendanceDelegation =
+    useUpdatePublicTeacherAttendanceDelegation(credential);
+  const revokeAttendanceDelegation =
+    useRevokePublicTeacherAttendanceDelegation(credential);
   const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
   const filteredRoster = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -269,7 +287,7 @@ export function TeacherClassroomPage() {
     assignment?.assignmentKind === "SUBJECT" && attendanceSlotsQuery.isFetching;
   const attendanceSlots = isAttendanceSlotFetching
     ? []
-    : attendanceSlotsQuery.data ?? [];
+    : (attendanceSlotsQuery.data ?? []);
   const requiresPeriodSelection =
     assignment?.assignmentKind === "SUBJECT" && attendanceSlots.length > 1;
   const hasScheduledSubjectSlot =
@@ -293,13 +311,15 @@ export function TeacherClassroomPage() {
     {
       assignmentId: Number(assignmentId) || undefined,
       date,
-      ...(selectedTimetableSlotId ? { timetableSlotId: selectedTimetableSlotId } : {}),
+      ...(selectedTimetableSlotId
+        ? { timetableSlotId: selectedTimetableSlotId }
+        : {}),
     },
     Boolean(
       canRecordAttendance &&
-        tab === "attendance" &&
-        hasScheduledSubjectSlot &&
-        (!requiresPeriodSelection || selectedTimetableSlotId),
+      tab === "attendance" &&
+      hasScheduledSubjectSlot &&
+      (!requiresPeriodSelection || selectedTimetableSlotId),
     ),
   );
   const isAttendanceDateChanging =
@@ -377,7 +397,8 @@ export function TeacherClassroomPage() {
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (roster.length === 0 || !canEditAttendance || marks.unmarkedCount > 0) return;
+    if (roster.length === 0 || !canEditAttendance || marks.unmarkedCount > 0)
+      return;
     if (
       !hasScheduledSubjectSlot ||
       (requiresPeriodSelection && !selectedTimetableSlotId)
@@ -389,19 +410,26 @@ export function TeacherClassroomPage() {
 
     // Flush pending taps first so the submitted round matches what the teacher
     // sees on screen, not just what happened to reach the server already.
-    await marks.flush();
-    await saveAttendance.mutateAsync({
-      assignmentId: Number(assignmentId),
-      ...(selectedTimetableSlotId
-        ? { timetableSlotId: selectedTimetableSlotId }
-        : {}),
-      date,
-      records: roster.map((student) => ({
-        studentId: student.studentUuid,
-        status: marks.marks[student.studentUuid].status,
-        markedAt: marks.marks[student.studentUuid].markedAt || null,
-      })),
-    });
+    const flushed = await marks.flush();
+    if (!flushed) return;
+    try {
+      await saveAttendance.mutateAsync({
+        assignmentId: Number(assignmentId),
+        ...(selectedTimetableSlotId
+          ? { timetableSlotId: selectedTimetableSlotId }
+          : {}),
+        date,
+        records: roster.map((student) => ({
+          studentId: student.studentUuid,
+          status: marks.marks[student.studentUuid].status,
+          markedAt: marks.marks[student.studentUuid].markedAt || null,
+        })),
+      });
+    } catch {
+      // The page renders the mutation error. Do not continue into the success
+      // path or leave an unhandled rejected promise in the browser console.
+      return;
+    }
     marks.reset();
     await sessionQuery.refetch();
     setSaved(true);
@@ -418,17 +446,21 @@ export function TeacherClassroomPage() {
       ]}
       breadcrumbTitle={`ห้อง ${classroomLabel}`}
       icon={CLASSROOM_ICON}
-      navigation={attendanceOnly ? undefined : (
-        <NavButton icon={ArrowLeft} to="/teacher-access" variant="outline">
-          ย้อนกลับ
-        </NavButton>
-      )}
-      title={<>
-        ห้อง {classroomLabel}{" "}
-        <span className="text-lg font-medium text-slate-500">
-          ({assignmentSubjectLabel(assignment)})
-        </span>
-      </>}
+      navigation={
+        attendanceOnly ? undefined : (
+          <NavButton icon={ArrowLeft} to="/teacher-access" variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        )
+      }
+      title={
+        <>
+          ห้อง {classroomLabel}{" "}
+          <span className="text-lg font-medium text-slate-500">
+            ({assignmentSubjectLabel(assignment)})
+          </span>
+        </>
+      }
     >
       <div className="mb-6">
         <Tabs
@@ -466,14 +498,16 @@ export function TeacherClassroomPage() {
                 </option>
               ))}
             </FilterSelect>
-            {!attendanceOnly ? <Button
-              className="sm:ml-auto"
-              disabled={visibleRoster.length === 0}
-              icon={Download}
-              onClick={() => setExportOpen(true)}
-            >
-              ดาวน์โหลดข้อมูล
-            </Button> : null}
+            {!attendanceOnly ? (
+              <Button
+                className="sm:ml-auto"
+                disabled={visibleRoster.length === 0}
+                icon={Download}
+                onClick={() => setExportOpen(true)}
+              >
+                ดาวน์โหลดข้อมูล
+              </Button>
+            ) : null}
           </>
         ) : (
           <>
@@ -486,28 +520,36 @@ export function TeacherClassroomPage() {
                   label: "สแกน QR Code เพื่อเช็กชื่อ",
                   // A submitted round is read-only, so the tools that write into
                   // it are off until it is reopened.
-                  disabled: !canEditAttendance || rosterQuery.isLoading || roster.length === 0,
+                  disabled:
+                    !canEditAttendance ||
+                    rosterQuery.isLoading ||
+                    roster.length === 0,
                   onSelect: () => setQrScannerOpen(true),
                 },
-                ...(!attendanceOnly ? [
-                  {
-                    id: "delegate",
-                    label: "มอบหมายการเช็กชื่อ",
-                    disabled:
-                      !canEditAttendance ||
-                      !canRecordAttendance ||
-                      attendanceDelegationOptions.isFetching ||
-                      attendanceDelegationOptions.isError ||
-                      !(attendanceDelegationOptions.data?.assignments.length),
-                    onSelect: () => setDelegationOpen(true),
-                  },
-                ] : []),
+                ...(!attendanceOnly
+                  ? [
+                      {
+                        id: "delegate",
+                        label: "มอบหมายการเช็กชื่อ",
+                        disabled:
+                          !canEditAttendance ||
+                          !canRecordAttendance ||
+                          attendanceDelegationOptions.isFetching ||
+                          attendanceDelegationOptions.isError ||
+                          !attendanceDelegationOptions.data?.assignments.length,
+                        onSelect: () => setDelegationOpen(true),
+                      },
+                    ]
+                  : []),
                 // Importing a file is part of checking in, so a delegated
                 // attendance-only link gets it too.
                 {
                   id: "import",
                   label: "นำเข้าไฟล์การเช็กชื่อ",
-                  disabled: !canEditAttendance || rosterQuery.isLoading || roster.length === 0,
+                  disabled:
+                    !canEditAttendance ||
+                    rosterQuery.isLoading ||
+                    roster.length === 0,
                   onSelect: () => setImportOpen(true),
                 },
               ]}
@@ -517,17 +559,19 @@ export function TeacherClassroomPage() {
                 </Button>
               )}
             />
-            {!attendanceOnly ? <Button
-              className="sm:ml-auto"
-              icon={History}
-              onClick={() =>
-                void navigate(
-                  `/teacher-access/classes/${assignmentId}/history/attendance`,
-                )
-              }
-            >
-              ประวัติการเช็กชื่อ
-            </Button> : null}
+            {!attendanceOnly ? (
+              <Button
+                className="sm:ml-auto"
+                icon={History}
+                onClick={() =>
+                  void navigate(
+                    `/teacher-access/classes/${assignmentId}/history/attendance`,
+                  )
+                }
+              >
+                ประวัติการเช็กชื่อ
+              </Button>
+            ) : null}
           </>
         )}
       </ToolbarControls>
@@ -537,7 +581,7 @@ export function TeacherClassroomPage() {
           delegations={
             attendanceDelegationOptions.isFetching
               ? []
-              : attendanceDelegationOptions.data?.activeDelegations ?? []
+              : (attendanceDelegationOptions.data?.activeDelegations ?? [])
           }
           onClose={async (delegation) => {
             await revokeAttendanceDelegation.mutateAsync({
@@ -545,10 +589,12 @@ export function TeacherClassroomPage() {
               assignmentId: Number(assignmentId),
             });
           }}
-          onShare={(delegation, accessUrl) => setDelegationShare({
-            accessUrl: accessUrl ?? delegation.accessUrl,
-            description: `${delegation.teacherDisplayName} · ${delegation.assignmentKind === "HOMEROOM" ? "วิชาโฮมรูม" : `${delegation.subjectName ?? "รายวิชา"}${delegation.period ? ` · คาบ ${delegation.period}` : ""}`} · ${date}`,
-          })}
+          onShare={(delegation, accessUrl) =>
+            setDelegationShare({
+              accessUrl: accessUrl ?? delegation.accessUrl,
+              description: `${delegation.teacherDisplayName} · ${delegation.assignmentKind === "HOMEROOM" ? "วิชาโฮมรูม" : `${delegation.subjectName ?? "รายวิชา"}${delegation.period ? ` · คาบ ${delegation.period}` : ""}`} · ${date}`,
+            })
+          }
           onUpdate={async (delegation, input) => {
             return await updateAttendanceDelegation.mutateAsync({
               grantId: delegation.grantId,
@@ -710,9 +756,10 @@ export function TeacherClassroomPage() {
                     ) : null}
                     {requiresPeriodSelection ? (
                       attendanceSlots.map((slot) => {
-                        const scheduledSlot = teacherScheduleQuery.data?.slots.find(
-                          (item) => Number(item.id) === slot.id,
-                        );
+                        const scheduledSlot =
+                          teacherScheduleQuery.data?.slots.find(
+                            (item) => Number(item.id) === slot.id,
+                          );
                         const label = scheduledSlot
                           ? `${scheduledSlot.subject_name_th} · คาบ ${scheduledSlot.period} (${getPeriodTimeLabel(
                               teacherScheduleQuery.data?.periodTimes ?? [],
@@ -765,113 +812,114 @@ export function TeacherClassroomPage() {
             />
           ) : (
             <>
-          {/* The delegated link only checks a round in; who submitted it and at
+              {/* The delegated link only checks a round in; who submitted it and at
               which revision is the school's business, not the delegate's. */}
-          {session?.status === "SUBMITTED" && !attendanceOnly ? (
-            <Alert className="mb-4">
-              <AlertTitle>ส่งการเช็กชื่อแล้ว</AlertTitle>
-              <AlertDescription>
-                Revision {session.revision} · บันทึกแล้ว {session.recordedCount} คน
-                — ต้องติดต่อเจ้าหน้าที่โรงเรียนเพื่อเปิดแก้ไข
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="mb-4">
-            <AttendanceCountBadges
-              catalog={attendanceStatusCatalog}
-              counts={counts}
-            />
-          </div>
-          <AttendanceMarkToolbar
-            autosaveState={marks.autosaveState}
-            canUndo={marks.canUndo}
-            failureMessage={marks.failureMessage}
-            disabled={!canEditAttendance}
-            lastSavedAt={marks.lastSavedAt}
-            markedCount={marks.markedCount}
-            onMarkRemainingPresent={marks.markRemainingPresent}
-            onRetrySave={() => void marks.flush()}
-            onUndo={marks.undo}
-            totalCount={roster.length}
-            unmarkedCount={marks.unmarkedCount}
-          />
-          <AttendanceRosterTable
-            catalog={attendanceStatusCatalog}
-            disabled={!canEditAttendance}
-            onSortChange={setAttendanceSort}
-            onStatusChange={(studentId, status) => {
-              marks.setStatus(studentId, status);
-              setSaved(false);
-            }}
-            rows={visibleAttendanceRoster.map((student) => ({
-              id: student.studentUuid,
-              name: studentDisplayName(student),
-              studentNumber: student.studentNumber,
-              avatar: (
-                <button
-                  aria-label={`เปิดข้อมูลนักเรียน ${studentDisplayName(student)}`}
-                  className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  onClick={() =>
-                    void contextualNavigate(
-                      `/teacher-access/classes/${assignmentId}/students/${student.studentUuid}`,
-                    )
-                  }
-                  type="button"
-                >
-                  <TeacherAccessStudentAvatar
-                    assignmentId={Number(assignmentId)}
-                    student={student}
-                  />
-                </button>
-              ),
-            }))}
-            selections={Object.fromEntries(
-              Object.entries(marks.marks).map(([studentId, mark]) => [
-                studentId,
-                mark.status,
-              ]),
-            )}
-            sort={attendanceSort}
-          />
-
-          <div className="mt-4 space-y-3">
-            <FormErrorAlert
-              error={saveAttendance.error}
-              fallback="ไม่สามารถบันทึกการเช็กชื่อได้"
-            />
-            {saved ? (
-              <Alert variant="success">
-                <AlertTitle className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="size-4" />
-                  บันทึกเรียบร้อย
-                </AlertTitle>
-                <AlertDescription>
-                  ส่งการเช็กชื่อของนักเรียน {roster.length} คนแล้ว
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <div className="mt-4 flex flex-col items-end gap-1">
-              <Button
-                disabled={
-                  attendanceSlotsQuery.isLoading ||
-                  !hasScheduledSubjectSlot ||
-                  !canEditAttendance ||
-                  marks.unmarkedCount > 0 ||
-                  (requiresPeriodSelection && !selectedTimetableSlotId)
-                }
-                isLoading={saveAttendance.isPending}
-                loadingText="กำลังส่ง"
-                type="submit"
-              >
-                ส่งเช็กชื่อ {roster.length} คน
-              </Button>
-              {marks.unmarkedCount > 0 ? (
-                <p className="text-sm text-content-secondary">
-                  เหลืออีก {marks.unmarkedCount} คนที่ยังไม่เช็ก
-                </p>
+              {session?.status === "SUBMITTED" && !attendanceOnly ? (
+                <Alert className="mb-4">
+                  <AlertTitle>ส่งการเช็กชื่อแล้ว</AlertTitle>
+                  <AlertDescription>
+                    Revision {session.revision} · บันทึกแล้ว{" "}
+                    {session.recordedCount} คน —
+                    ต้องติดต่อเจ้าหน้าที่โรงเรียนเพื่อเปิดแก้ไข
+                  </AlertDescription>
+                </Alert>
               ) : null}
-            </div>
-          </div>
+              <div className="mb-4">
+                <AttendanceCountBadges
+                  catalog={attendanceStatusCatalog}
+                  counts={counts}
+                />
+              </div>
+              <AttendanceMarkToolbar
+                autosaveState={marks.autosaveState}
+                canUndo={marks.canUndo}
+                failureMessage={marks.failureMessage}
+                disabled={!canEditAttendance}
+                lastSavedAt={marks.lastSavedAt}
+                markedCount={marks.markedCount}
+                onMarkRemainingPresent={marks.markRemainingPresent}
+                onRetrySave={() => void marks.flush()}
+                onUndo={marks.undo}
+                totalCount={roster.length}
+                unmarkedCount={marks.unmarkedCount}
+              />
+              <AttendanceRosterTable
+                catalog={attendanceStatusCatalog}
+                disabled={!canEditAttendance}
+                onSortChange={setAttendanceSort}
+                onStatusChange={(studentId, status) => {
+                  marks.setStatus(studentId, status);
+                  setSaved(false);
+                }}
+                rows={visibleAttendanceRoster.map((student) => ({
+                  id: student.studentUuid,
+                  name: studentDisplayName(student),
+                  studentNumber: student.studentNumber,
+                  avatar: (
+                    <button
+                      aria-label={`เปิดข้อมูลนักเรียน ${studentDisplayName(student)}`}
+                      className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      onClick={() =>
+                        void contextualNavigate(
+                          `/teacher-access/classes/${assignmentId}/students/${student.studentUuid}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <TeacherAccessStudentAvatar
+                        assignmentId={Number(assignmentId)}
+                        student={student}
+                      />
+                    </button>
+                  ),
+                }))}
+                selections={Object.fromEntries(
+                  Object.entries(marks.marks).map(([studentId, mark]) => [
+                    studentId,
+                    mark.status,
+                  ]),
+                )}
+                sort={attendanceSort}
+              />
+
+              <div className="mt-4 space-y-3">
+                <FormErrorAlert
+                  error={saveAttendance.error}
+                  fallback="ไม่สามารถบันทึกการเช็กชื่อได้"
+                />
+                {saved ? (
+                  <Alert variant="success">
+                    <AlertTitle className="flex items-center gap-2">
+                      <CheckCircle2 aria-hidden="true" className="size-4" />
+                      บันทึกเรียบร้อย
+                    </AlertTitle>
+                    <AlertDescription>
+                      ส่งการเช็กชื่อของนักเรียน {roster.length} คนแล้ว
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className="mt-4 flex flex-col items-end gap-1">
+                  <Button
+                    disabled={
+                      attendanceSlotsQuery.isLoading ||
+                      !hasScheduledSubjectSlot ||
+                      !canEditAttendance ||
+                      marks.unmarkedCount > 0 ||
+                      (requiresPeriodSelection && !selectedTimetableSlotId)
+                    }
+                    isLoading={saveAttendance.isPending}
+                    loadingText="กำลังส่ง"
+                    type="submit"
+                  >
+                    ส่งเช็กชื่อ {roster.length} คน
+                  </Button>
+                  {marks.unmarkedCount > 0 ? (
+                    <p className="text-sm text-content-secondary">
+                      เหลืออีก {marks.unmarkedCount} คนที่ยังไม่เช็ก
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </>
           )}
         </form>
@@ -941,18 +989,20 @@ export function TeacherClassroomPage() {
           ]),
         )}
       />
-      {!attendanceOnly && delegationOpen ? <AttendanceDelegationDialog
-        classroomId={Number(assignment.classroomId)}
-        credential={credential}
-        defaultAssignmentId={Number(assignmentId)}
-        defaultTimetableSlotId={selectedTimetableSlotId}
-        initialAttendanceDate={date}
-        onCreated={setDelegationShare}
-        onOpenChange={setDelegationOpen}
-        open={delegationOpen}
-        schoolId={context.schoolId}
-        schoolTermId={Number(context.schoolTermId)}
-      /> : null}
+      {!attendanceOnly && delegationOpen ? (
+        <AttendanceDelegationDialog
+          classroomId={Number(assignment.classroomId)}
+          credential={credential}
+          defaultAssignmentId={Number(assignmentId)}
+          defaultTimetableSlotId={selectedTimetableSlotId}
+          initialAttendanceDate={date}
+          onCreated={setDelegationShare}
+          onOpenChange={setDelegationOpen}
+          open={delegationOpen}
+          schoolId={context.schoolId}
+          schoolTermId={Number(context.schoolTermId)}
+        />
+      ) : null}
       <LinkShareDialog
         description={delegationShare?.description}
         link={delegationShare?.accessUrl ?? ""}
@@ -974,7 +1024,11 @@ export function TeacherClassroomPage() {
             ? { ...commentStudent, photoUrl: commentPhotoUrl }
             : null
         }
-        submitComment={async ({ studentUuid, problemCategory, problemDescription }) => {
+        submitComment={async ({
+          studentUuid,
+          problemCategory,
+          problemDescription,
+        }) => {
           await createComment.mutateAsync({
             studentUuid,
             problemCategory,
