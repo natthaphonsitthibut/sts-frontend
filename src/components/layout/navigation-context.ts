@@ -82,7 +82,6 @@ const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/data-exports/history": "ประวัติการส่งออก",
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
-  "/settings/master-data-lookups": "ข้อมูลพื้นฐาน",
   "/settings/student-statuses": "สถานะนักเรียน",
   "/students/export": "ส่งออกข้อมูลนักเรียน",
   "/students/history": "ประวัติรายชื่อนักเรียน",

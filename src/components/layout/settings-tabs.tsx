@@ -3,7 +3,6 @@ import { useRouteTab } from "../../hooks/useRouteTab";
 
 const SETTINGS_TAB_ROUTES = {
   system: "/settings",
-  "master-data": "/settings/master-data-lookups",
   "student-statuses": "/settings/student-statuses",
 } as const;
 
@@ -17,7 +16,6 @@ export function SettingsTabs() {
       onChange={setActiveTab}
       options={[
         { value: "system", label: "ตั้งค่าระบบ" },
-        { value: "master-data", label: "ข้อมูลพื้นฐาน" },
         { value: "student-statuses", label: "สถานะนักเรียน" },
       ]}
       value={activeTab}
