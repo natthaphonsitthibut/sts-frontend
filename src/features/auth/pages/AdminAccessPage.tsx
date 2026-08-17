@@ -1,7 +1,24 @@
 import { LoginCard } from "../components/LoginCard";
+import { AraIdLoginChallengePanel } from "../components/AraIdLoginChallengePanel";
+import { useAraIdLoginChallenge } from "../hooks/useAraIdLoginChallenge";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 
 export function AdminAccessPage() {
+  const araId = useAraIdLoginChallenge();
+
+  // Same shape as entering a guest link: the identity check takes the whole
+  // screen rather than unfolding beneath the form it replaces.
+  if (araId.challenge) {
+    return (
+      <AraIdLoginChallengePanel
+        challenge={araId.challenge}
+        isRefreshing={araId.isPending}
+        onBack={araId.reset}
+        onRefresh={araId.request}
+      />
+    );
+  }
+
   return (
     <GuestPageShell
       as="main"
@@ -10,7 +27,11 @@ export function AdminAccessPage() {
       contentClassName="relative z-10 max-w-[1380px] px-4 pb-0 pt-[clamp(2rem,5vh,5rem)] sm:px-6"
       showHeader={false}
     >
-      <LoginCard />
+      <LoginCard
+        araIdError={araId.error}
+        araIdPending={araId.isPending}
+        onAraIdLogin={araId.request}
+      />
     </GuestPageShell>
   );
 }
