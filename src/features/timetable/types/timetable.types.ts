@@ -61,13 +61,11 @@ export interface CreateTimetableSlotPayload {
   dayOfWeek: number;
   period: number;
   subjectId: number;
-  teacherUserId?: number | null;
   teacherMembershipIds?: number[];
 }
 
 export interface UpdateTimetableSlotPayload {
   subjectId?: number;
-  teacherUserId?: number | null;
   teacherMembershipIds?: number[];
 }
 

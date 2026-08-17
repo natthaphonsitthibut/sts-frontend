@@ -46,11 +46,11 @@ interface AssignmentFormValues {
   startsAt: string;
   endsOn: string;
   endsAt: string;
-  teacherUserId: string;
+  teacherId: string;
   note: string;
 }
 
-type AssignmentField = "startsOn" | "startsAt" | "endsOn" | "endsAt" | "teacherUserId";
+type AssignmentField = "startsOn" | "startsAt" | "endsOn" | "endsAt" | "teacherId";
 type AssignmentFieldErrors = Partial<Record<AssignmentField, true>>;
 
 function createAssignmentDefaults(): AssignmentFormValues {
@@ -76,7 +76,7 @@ function createAssignmentDefaults(): AssignmentFormValues {
     // so only the end date is left for the assigner to pick.
     endsOn: "",
     endsAt: `${parts.hour}:${parts.minute}`,
-    teacherUserId: "",
+    teacherId: "",
     note: "",
   };
 }
@@ -133,7 +133,7 @@ function AssignmentForm({
   });
   const assignees = useMemo(() => assigneesQuery.data ?? [], [assigneesQuery.data]);
   const defaultTeacher = assignees.find((teacher) => teacher.isHomeroom);
-  const selectedTeacherUserId = values.teacherUserId || (defaultTeacher ? String(defaultTeacher.teacherUserId) : "");
+  const selectedTeacherId = values.teacherId || (defaultTeacher ? String(defaultTeacher.teacherId) : "");
 
   const createAssignment = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
@@ -157,7 +157,7 @@ function AssignmentForm({
       !values.startsAt ? { field: "startsAt", label: "เวลาเริ่ม" } : null,
       !values.endsOn ? { field: "endsOn", label: "วันที่สิ้นสุด" } : null,
       !values.endsAt ? { field: "endsAt", label: "เวลาสิ้นสุด" } : null,
-      !selectedTeacherUserId ? { field: "teacherUserId", label: "ครูผู้ได้รับมอบหมาย" } : null,
+      !selectedTeacherId ? { field: "teacherId", label: "ครูผู้ได้รับมอบหมาย" } : null,
     ].filter((item): item is { field: AssignmentField; label: string } => item !== null);
     if (missing.length > 0) {
       setFieldErrors(Object.fromEntries(missing.map((item) => [item.field, true])));
@@ -202,7 +202,7 @@ function AssignmentForm({
       assigned_to_name: "",
       assigned_to_first_name: "",
       assigned_to_last_name: "",
-      assigned_teacher_user_id: Number(selectedTeacherUserId),
+      assigned_teacher_id: Number(selectedTeacherId),
       expires_value: 1,
       expires_unit: "days",
       opens_at: toIsoDateTime(values.startsOn, values.startsAt),
@@ -243,7 +243,7 @@ function AssignmentForm({
             <Combobox
               disabled={!caseRecord.student_id}
               ariaLabel="ครูผู้ได้รับมอบหมาย"
-              aria-invalid={Boolean(fieldErrors.teacherUserId)}
+              aria-invalid={Boolean(fieldErrors.teacherId)}
               emptyText={
                 assigneesQuery.isLoading
                   ? "กำลังโหลดรายชื่อครู…"
@@ -251,13 +251,13 @@ function AssignmentForm({
                     ? "โหลดรายชื่อครูไม่สำเร็จ"
                     : "ไม่พบครูที่พร้อมรับมอบหมายในโรงเรียนนี้"
               }
-              onChange={(value) => updateField("teacherUserId", value)}
+              onChange={(value) => updateField("teacherId", value)}
               options={assignees.map((teacher) => ({
-                value: String(teacher.teacherUserId),
+                value: String(teacher.teacherId),
                 label: `${teacher.displayName}${teacher.isHomeroom ? " (ครูประจำชั้น)" : ""}`,
               }))}
               placeholder={caseRecord.student_id ? "เลือกครูผู้ได้รับมอบหมาย" : "ไม่พบข้อมูลนักเรียน"}
-              value={selectedTeacherUserId}
+              value={selectedTeacherId}
             />
           </label>
           {isAssistance ? (
@@ -327,7 +327,7 @@ function ReviewActions({
   can: (permission: string) => boolean;
   onReview: (action: CaseReviewAction) => void;
 }) {
-  const allowed = actions.filter((action) => can(action.requiredPermission || "review-cases"));
+  const allowed = actions.filter((action) => can(action.requiredPermission || "dashboard"));
   if (allowed.length === 0) return null;
   return (
     <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -363,7 +363,7 @@ function ReadOnlyAssignment({ round }: { round: CaseFollowUpRound | undefined })
 export function CaseTrackingTimeline({ caseRecord, onAssigned, onReview }: CaseTrackingTimelineProps) {
   const [manualReassign, setManualReassign] = useState(false);
   const { can } = usePermissions();
-  const canAssign = can("create");
+  const canAssign = can("dashboard");
   const trackingOptions = useCaseTrackingOptions();
   const rounds = useMemo(() => caseRecord.follow_up_rounds ?? [], [caseRecord.follow_up_rounds]);
   // Rounds predating the assistance phase carry no task_type; they are follow-ups.

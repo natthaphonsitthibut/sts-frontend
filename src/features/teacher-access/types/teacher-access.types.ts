@@ -45,8 +45,7 @@ export interface TeacherAccessAssignment {
 export interface TeacherAccessGrant {
   id: string;
   teacherMembershipId: string;
-  teacherUserId: number;
-  teacherUsername: string;
+  teacherId: string;
   teacherDisplayName: string;
   schoolId: number;
   schoolName: string;

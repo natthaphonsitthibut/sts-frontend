@@ -14,7 +14,7 @@ export interface TaskCreatePayload {
   assigned_to_last_name: string;
   assigned_to_email?: string | null;
   assigned_to_phone?: string | null;
-  assigned_teacher_user_id?: number | null;
+  assigned_teacher_id?: number | null;
   expires_value: number;
   expires_unit: TaskDurationUnit;
   /** ISO datetime the link becomes usable; omit/null = opens immediately. */
@@ -59,7 +59,7 @@ export interface TaskCreateResponse {
 }
 
 export interface VisitAssignee {
-  teacherUserId: number;
+  teacherId: string;
   displayName: string;
   isHomeroom: boolean;
 }

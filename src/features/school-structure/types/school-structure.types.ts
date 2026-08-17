@@ -69,8 +69,7 @@ export interface PaginatedSchoolClassrooms {
 export interface SchoolTeacherMembership {
   id: string;
   schoolId: number;
-  teacherUserId: number;
-  username: string;
+  teacherId: string;
   displayName: string;
   membershipStatus: StructureStatus;
   startedOn: string;
@@ -88,7 +87,7 @@ export interface ClassroomTeacherAssignment {
   schoolId: number;
   classroomId: string;
   teacherMembershipId: string;
-  teacherUserId: number;
+  teacherId: string;
   teacherName: string;
   subjectId: number | null;
   subjectCode: string | null;
