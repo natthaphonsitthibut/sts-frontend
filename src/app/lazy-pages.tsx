@@ -155,13 +155,6 @@ export const StudentStatusesPage = lazy(() =>
     }),
   ),
 );
-export const MasterDataLookupsPage = lazy(() =>
-  import("../features/master-data-lookups/pages/MasterDataLookupsPage").then(
-    (module) => ({
-      default: module.MasterDataLookupsPage,
-    }),
-  ),
-);
 export const DataExportsPage = lazy(() =>
   import("../features/data-exports/pages/DataExportsPage").then((module) => ({
     default: module.DataExportsPage,
@@ -228,11 +221,6 @@ export const CaseReviewDetailPage = lazy(() =>
 export const StudentListPage = lazy(() =>
   import("../features/students/pages/StudentListPage").then((module) => ({
     default: module.StudentListPage,
-  })),
-);
-export const StudentSelfPage = lazy(() =>
-  import("../features/students/pages/StudentSelfPage").then((module) => ({
-    default: module.StudentSelfPage,
   })),
 );
 export const TeacherLineLinkPage = lazy(() =>

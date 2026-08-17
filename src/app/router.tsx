@@ -42,7 +42,6 @@ import {
   ImportQuarantineDetailPage,
   LockedPage,
   MainPage,
-  MasterDataLookupsPage,
   CurriculumGradesPage,
   CurriculumSubjectFormPage,
   CurriculumSubjectsPage,
@@ -59,7 +58,6 @@ import {
   StudentDetailPage,
   StudentEditPage,
   StudentListPage,
-  StudentSelfPage,
   StudentStatusesPage,
   SuccessPage,
   SystemSettingsPage,
@@ -125,10 +123,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "student-risk-report/teacher-comments",
-        element: protectedElement(
-          <TeacherCommentReportsPage />,
-          "manage-student-observations",
-        ),
+        element: protectedElement(<TeacherCommentReportsPage />, "students"),
       },
       {
         // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
@@ -180,11 +175,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "students/:id/edit",
-        element: protectedElement(<StudentEditPage />, "edit-students"),
-      },
-      {
-        path: "my-attendance",
-        element: protectedElement(<StudentSelfPage />, "student-self"),
+        element: protectedElement(<StudentEditPage />, "students"),
       },
       {
         path: "attendance",
@@ -232,11 +223,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "cases/:caseId",
-        element: protectedElement(<CaseDetailPage />, "review-cases"),
+        element: protectedElement(<CaseDetailPage />, "dashboard"),
       },
       {
         path: "cases/:caseId/reviews/:reviewId",
-        element: protectedElement(<CaseReviewDetailPage />, "review-cases"),
+        element: protectedElement(<CaseReviewDetailPage />, "dashboard"),
       },
       {
         path: "attendance-links",
@@ -254,43 +245,31 @@ export const router = createBrowserRouter([
       },
       {
         path: "timetable",
-        element: protectedElement(<TimetableDefaultRedirect />),
+        element: protectedElement(<TimetableDefaultRedirect />, "timetable"),
       },
       {
         path: "timetable/mine",
-        element: protectedElement(<TimetablePage />),
+        element: protectedElement(<TimetablePage />, "timetable"),
       },
       {
         path: "timetable/rooms",
-        element: protectedElement(<TimetablePage />),
+        element: protectedElement(<TimetablePage />, "timetable"),
       },
       {
         path: "classrooms",
-        element: protectedElement(
-          <ClassroomsPage />,
-          "manage-school-structure",
-        ),
+        element: protectedElement(<ClassroomsPage />, "classrooms"),
       },
       {
         path: "classrooms/:classroomId",
-        element: protectedElement(
-          <ClassroomDefaultRedirect />,
-          "manage-school-structure",
-        ),
+        element: protectedElement(<ClassroomDefaultRedirect />, "classrooms"),
       },
       {
         path: "classrooms/:classroomId/roster",
-        element: protectedElement(
-          <ClassroomDetailPage />,
-          "manage-school-structure",
-        ),
+        element: protectedElement(<ClassroomDetailPage />, "classrooms"),
       },
       {
         path: "classrooms/:classroomId/history",
-        element: protectedElement(
-          <ClassroomDetailPage />,
-          "manage-school-structure",
-        ),
+        element: protectedElement(<ClassroomDetailPage />, "classrooms"),
       },
       {
         path: "school-structure",
@@ -301,10 +280,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "import-data",
-        element: protectedElement(<ImportDataPage />, [
-          "import-data",
-          "import-school-roster",
-        ]),
+        element: protectedElement(<ImportDataPage />, "import-data"),
       },
       {
         path: "data-exports",
@@ -316,24 +292,15 @@ export const router = createBrowserRouter([
       },
       {
         path: "import-data/quarantine",
-        element: protectedElement(<ImportDataPage />, [
-          "import-data",
-          "import-school-roster",
-        ]),
+        element: protectedElement(<ImportDataPage />, "import-data"),
       },
       {
         path: "import-data/history",
-        element: protectedElement(<ImportDataPage />, [
-          "import-data",
-          "import-school-roster",
-        ]),
+        element: protectedElement(<ImportDataPage />, "import-data"),
       },
       {
         path: "import-data/quarantine/:id",
-        element: protectedElement(<ImportQuarantineDetailPage />, [
-          "import-data",
-          "import-school-roster",
-        ]),
+        element: protectedElement(<ImportQuarantineDetailPage />, "import-data"),
       },
       {
         path: "manage-users",
@@ -431,10 +398,6 @@ export const router = createBrowserRouter([
       {
         path: "settings/student-statuses",
         element: protectedElement(<StudentStatusesPage />, "settings"),
-      },
-      {
-        path: "settings/master-data-lookups",
-        element: protectedElement(<MasterDataLookupsPage />, "settings"),
       },
       {
         path: "tasks/:taskId",

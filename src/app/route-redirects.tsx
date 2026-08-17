@@ -1,7 +1,5 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { usePermissions } from "../features/auth/hooks/usePermissions";
-import { isStudentAccountSession } from "../features/auth/lib/permissions";
-import { useAuthSessionStore } from "../features/auth/store/auth-session.store";
 
 function suffixWithoutLegacyTab(search: string, hash: string): string {
   const query = new URLSearchParams(search);
@@ -116,9 +114,7 @@ export function ClassroomDefaultRedirect() {
 export function TimetableDefaultRedirect() {
   const location = useLocation();
   const { can } = usePermissions();
-  const currentUser = useAuthSessionStore((state) => state.user);
-  const isStudent = isStudentAccountSession(currentUser);
-  const tab = !isStudent && can("manage-timetable") ? "rooms" : "mine";
+  const tab = can("timetable") ? "rooms" : "mine";
   return (
     <Navigate
       replace
