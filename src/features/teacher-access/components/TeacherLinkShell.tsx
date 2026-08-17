@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  Avatar,
   Sheet,
   SheetHeader,
 } from "../../../components/base";
@@ -18,6 +17,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { CollapsibleDesktopSidebar } from "../../../components/layout/CollapsibleDesktopSidebar";
+import { HeaderProfileMenu } from "../../../components/layout/HeaderProfileMenu";
 import { cn } from "../../../lib/utils";
 import { useTeacherLink } from "../hooks/useTeacherLink";
 
@@ -116,10 +116,12 @@ export function TeacherLinkShell({
             }}
           />
           <AppBrand className="flex-1" to={homeRoute} />
-          <Avatar
-            aria-label={`เข้าใช้งานในชื่อ ${context.teacherDisplayName}`}
-            className="size-10"
-            gradientName={context.teacherDisplayName}
+          <HeaderProfileMenu
+            affiliation={context.schoolName}
+            canEditProfile={false}
+            canSignOut={false}
+            displayName={context.teacherDisplayName}
+            roleLabel="คุณครู"
           />
         </AppHeaderFrame>
       }
