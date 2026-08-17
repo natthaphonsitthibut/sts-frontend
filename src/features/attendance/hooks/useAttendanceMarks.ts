@@ -13,7 +13,14 @@ const FLUSH_DEBOUNCE_MS = 2_000;
 const FLUSH_MAX_WAIT_MS = 10_000;
 const RETRY_BACKOFF_MS = [2_000, 5_000, 15_000] as const;
 
-export type AutosaveState = "idle" | "saving" | "saved" | "error" | "blocked";
+export type AutosaveState =
+  | "idle"
+  | "pending"
+  | "saving"
+  | "saved"
+  | "retrying"
+  | "error"
+  | "blocked";
 
 export interface AttendanceMarksTransport {
   /**
@@ -55,11 +62,15 @@ interface UseAttendanceMarksOptions {
   enabled: boolean;
 }
 
-function readPersisted(sessionKey: string): Record<string, AttendanceMark | null> {
+function readPersisted(
+  sessionKey: string,
+): Record<string, AttendanceMark | null> {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.sessionStorage.getItem(`attendance-draft:${sessionKey}`);
-    return raw ? (JSON.parse(raw) as Record<string, AttendanceMark | null>) : {};
+    return raw
+      ? (JSON.parse(raw) as Record<string, AttendanceMark | null>)
+      : {};
   } catch {
     return {};
   }
@@ -72,7 +83,8 @@ function writePersisted(
   if (typeof window === "undefined") return;
   const key = `attendance-draft:${sessionKey}`;
   try {
-    if (Object.keys(pending).length === 0) window.sessionStorage.removeItem(key);
+    if (Object.keys(pending).length === 0)
+      window.sessionStorage.removeItem(key);
     else window.sessionStorage.setItem(key, JSON.stringify(pending));
   } catch {
     // Private-mode or quota failures must never block check-in; the marks still
@@ -100,9 +112,9 @@ export function useAttendanceMarks({
 }: UseAttendanceMarksOptions) {
   // `null` is a tombstone: the teacher cleared this student locally. Without it
   // the merge below would let the still-stored server mark reappear.
-  const [localMarks, setLocalMarks] = useState<Record<string, AttendanceMark | null>>(
-    () => readPersisted(sessionKey),
-  );
+  const [localMarks, setLocalMarks] = useState<
+    Record<string, AttendanceMark | null>
+  >(() => readPersisted(sessionKey));
   const [localSessionKey, setLocalSessionKey] = useState(sessionKey);
   const [previousMarks, setPreviousMarks] = useState<Record<
     string,
@@ -134,9 +146,9 @@ export function useAttendanceMarks({
 
   // Retry re-enters flush, so the callback reaches itself through a ref rather
   // than referencing its own binding before it exists.
-  const flushRef = useRef<() => Promise<void>>(async () => undefined);
+  const flushRef = useRef<() => Promise<boolean>>(async () => true);
 
-  const flush = useCallback(async (): Promise<void> => {
+  const flush = useCallback(async (): Promise<boolean> => {
     clearTimers();
     // Capture the round and its transport before waiting. A class/date change
     // can happen while an earlier request is in flight; using mutable refs
@@ -145,8 +157,15 @@ export function useAttendanceMarks({
     const activeTransport = transportRef.current;
     const batch = Object.entries(pendingRef.current);
     if (batch.length === 0) {
-      await inFlightRef.current?.catch(() => undefined);
-      return;
+      try {
+        await inFlightRef.current;
+      } catch {
+        return false;
+      }
+      if (Object.keys(pendingRef.current).length > 0) {
+        return await flushRef.current();
+      }
+      return true;
     }
 
     pendingRef.current = {};
@@ -165,14 +184,17 @@ export function useAttendanceMarks({
         if (sessionKeyRef.current !== activeSessionKey) return;
         retryRef.current = 0;
         setFailureMessage(null);
-        setAutosaveState("saved");
+        setAutosaveState(
+          Object.keys(pendingRef.current).length > 0 ? "pending" : "saved",
+        );
         setLastSavedAt(new Date().toISOString());
       })
       .catch((error: unknown) => {
         // Put the batch back without clobbering newer marks. If the user has
         // already switched rounds, persist it under the old key rather than
         // contaminating the new round's in-memory queue.
-        const currentSessionIsActive = sessionKeyRef.current === activeSessionKey;
+        const currentSessionIsActive =
+          sessionKeyRef.current === activeSessionKey;
         if (currentSessionIsActive) {
           pendingRef.current = Object.fromEntries([
             ...batch,
@@ -199,18 +221,40 @@ export function useAttendanceMarks({
           retryRef.current = 0;
           throw error;
         }
-        setAutosaveState("error");
-        const delay =
-          RETRY_BACKOFF_MS[Math.min(retryRef.current, RETRY_BACKOFF_MS.length - 1)];
-        retryRef.current += 1;
-        debounceRef.current = setTimeout(() => void flushRef.current(), delay);
+        if (retryRef.current < RETRY_BACKOFF_MS.length) {
+          const delay = RETRY_BACKOFF_MS[retryRef.current];
+          retryRef.current += 1;
+          setAutosaveState("retrying");
+          debounceRef.current = setTimeout(
+            () => void flushRef.current(),
+            delay,
+          );
+        } else {
+          // Do not hammer a degraded/read-only backend forever. The unsent
+          // marks stay queued in sessionStorage and the teacher can retry once
+          // the service is healthy again.
+          retryRef.current = 0;
+          setAutosaveState("error");
+        }
         throw error;
       })
       .finally(() => {
         if (inFlightRef.current === run) inFlightRef.current = null;
       });
     inFlightRef.current = run;
-    await run.catch(() => undefined);
+    try {
+      await run;
+    } catch {
+      return false;
+    }
+    // A failed request that was already in flight can put its batch back while
+    // this request is waiting. Drain that restored work before reporting a
+    // successful flush; otherwise final submit can close the round and leave a
+    // late autosave retry to collide with the submitted session.
+    if (Object.keys(pendingRef.current).length > 0) {
+      return await flushRef.current();
+    }
+    return true;
   }, [clearTimers]);
 
   useEffect(() => {
@@ -233,6 +277,7 @@ export function useAttendanceMarks({
         pendingRef.current[studentId] = next[studentId] ?? null;
       }
       writePersisted(sessionKeyRef.current, pendingRef.current);
+      setAutosaveState("pending");
       scheduleFlush();
     },
     [scheduleFlush],
@@ -351,7 +396,9 @@ export function useAttendanceMarks({
 
   const undo = useCallback(() => {
     if (!previousMarks) return;
-    const restored: Record<string, AttendanceMark | null> = { ...previousMarks };
+    const restored: Record<string, AttendanceMark | null> = {
+      ...previousMarks,
+    };
     for (const studentId of Object.keys(marks)) {
       if (!previousMarks[studentId]) restored[studentId] = null;
     }

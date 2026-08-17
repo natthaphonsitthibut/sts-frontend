@@ -5,12 +5,14 @@ function normalizeText(value: string | null | undefined): string | null {
   return normalized ? normalized : null;
 }
 
-export function formatNotificationBody(notification: NotificationItem): string | null {
+export function formatNotificationBody(
+  notification: NotificationItem,
+): string | null {
   if (notification.type_code !== "CASE_STATUS_CHANGED") {
     return normalizeText(notification.body);
   }
 
-  const studentName = normalizeText(notification.student_name_masked);
+  const studentName = normalizeText(notification.student_name_snapshot);
   if (!studentName) return null;
 
   const reason = normalizeText(notification.reason_text);
