@@ -3,7 +3,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import {
   getEffectivePermissions,
   hasPermission,
-  isStudentSelfSession,
 } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
 
@@ -47,9 +46,6 @@ export function ProtectedRoute({ children, permission, role }: ProtectedRoutePro
       ? permission.some((permissionId) => hasPermission(userPermissions, permissionId))
       : hasPermission(userPermissions, permission);
     if (!allowed) {
-      if (isStudentSelfSession(session.user)) {
-        return <Navigate replace to="/my-attendance" />;
-      }
       return <Navigate replace to="/forbidden" />;
     }
   }

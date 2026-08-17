@@ -59,16 +59,13 @@ apiClient.interceptors.request.use((config) => {
   const onTeacherAccessGuestPage =
     typeof window !== "undefined" && window.location.pathname === "/teacher-access";
 
-  // Guest / student flows still authenticate with signed tokens via headers; the
-  // admin session is carried entirely by the httpOnly cookie (no client-supplied
-  // user id / scope, which the backend no longer trusts).
+  // Public magic-link flows authenticate with short-lived signed tokens via
+  // headers; the staff session is carried entirely by the httpOnly cookie.
   if (!onTeacherAccessGuestPage && currentUser?.virtual_login && currentUser.magic_link_token) {
     config.headers["x-magic-link-token"] = currentUser.magic_link_token;
     if (currentUser.magic_session_token) {
       config.headers["x-magic-session"] = currentUser.magic_session_token;
     }
-  } else if (!onTeacherAccessGuestPage && currentUser?.virtual_login && currentUser.virtual_auth_token) {
-    config.headers["x-virtual-auth"] = currentUser.virtual_auth_token;
   }
 
   return config;
@@ -77,9 +74,8 @@ apiClient.interceptors.request.use((config) => {
 // When a session goes stale the client still looks "logged in" (the user is
 // cached in storage), so requests just start failing with 401 and pages get
 // stranded in a 401 loop that a reload can't fix. Detect it once, clear the
-// session, and bounce to login. This also recovers the magic-login clobber case
-// (opening a /login/magic link overwrites the admin store with a virtual_login
-// user); public magic/task routes are excluded below so guest 401s are untouched.
+// session, and bounce to login. Public magic/task routes are excluded below so
+// guest 401s are untouched.
 let isHandlingExpiredSession = false;
 
 apiClient.interceptors.response.use(

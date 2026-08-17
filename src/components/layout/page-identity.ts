@@ -98,7 +98,6 @@ export const PAGE_IDENTITIES = {
   "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),
   "/manage-teachers": createIdentity("จัดการข้อมูลคุณครู", "users-round"),
   "/manage-users": createIdentity("จัดการผู้ใช้งาน", "users"),
-  "/my-attendance": createIdentity("ข้อมูลตัวเอง", "user-circle"),
   "/school-structure": createIdentity("จัดการภาคเรียนและห้องเรียน", "graduation"),
   "/settings": createIdentity("ตั้งค่าระบบ", "settings"),
   "/student-risk-report": createIdentity("รายงานสถานะนักเรียน", "chart-line"),
