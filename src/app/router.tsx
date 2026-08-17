@@ -401,7 +401,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "tasks/:taskId",
-        element: protectedElement(<TaskDetailPage />, "home"),
+        // A task link belongs to a case and is opened from one, and the page
+        // embeds บันทึกการใช้งาน — `home`, which every account holds, would have
+        // made that panel world-readable.
+        element: protectedElement(<TaskDetailPage />, "dashboard"),
       },
       {
         path: "task-detail/:taskId",
