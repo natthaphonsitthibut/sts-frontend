@@ -105,7 +105,7 @@ export function StudentDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          can("review-cases") && !casesLoading ? (
+          can("dashboard") && !casesLoading ? (
             <StudentCaseAction
               activeCaseCount={activeCases.length}
               activeCaseId={
@@ -136,7 +136,7 @@ export function StudentDetailPage() {
       />
 
       <StudentProfileHeader
-        canEditPhoto={can("edit-students")}
+        canEditPhoto={can("students")}
         contactsOpen={contactsOpen}
         key={studentId}
         locationOpen={locationOpen}
@@ -154,8 +154,8 @@ export function StudentDetailPage() {
       <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
         <div className="flex min-h-0 flex-col gap-5">
           <StudentActivityPanel
-            canManageComments={can("manage-student-observations")}
-            canViewCaseDetail={can("review-cases")}
+            canManageComments={can("students")}
+            canViewCaseDetail={can("dashboard")}
             cases={cases}
             casesError={casesError}
             casesLoading={casesLoading}

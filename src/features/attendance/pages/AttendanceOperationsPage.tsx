@@ -402,7 +402,7 @@ export function AttendanceOperationsPage() {
   const queryClient = useQueryClient();
   const user = useAuthSessionStore((state) => state.user);
   const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
-  const canManageCalendar = hasPermission(user?.permissions ?? [], "manage-attendance-calendar");
+  const canManageCalendar = hasPermission(user?.permissions ?? [], "attendance-dashboard");
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
