@@ -2,7 +2,7 @@ import { Card } from "../../../components/base";
 import { AdminLoginForm } from "./AdminLoginForm";
 import { LoginBrandMark } from "./LoginBrandMark";
 import { LoginDivider } from "./LoginDivider";
-import { ThaIdLoginButton } from "./ThaIdLoginButton";
+import { AraIdLoginButton } from "./AraIdLoginButton";
 
 export function LoginCard() {
   return (
@@ -25,7 +25,7 @@ export function LoginCard() {
 
           <AdminLoginForm />
           <LoginDivider />
-          <ThaIdLoginButton />
+          <AraIdLoginButton />
         </div>
       </Card>
     </div>

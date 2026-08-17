@@ -9,6 +9,7 @@ import {
   useBeginTeacherAccessAraIdChallenge,
 } from "../../teacher-access/hooks/useTeacherAccess";
 import { taskService } from "../../tasks/api/task.service";
+import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
 import { useAraIdSession } from "../hooks/useAraId";
 
@@ -22,11 +23,11 @@ function readChallengeToken(): string {
  * Which flow the QR belongs to. Older teacher-link QR codes carry no scope, so
  * the absent value has to keep meaning `teacher-access`.
  */
-type AraIdChallengeScope = "teacher-access" | "task-link";
+type AraIdChallengeScope = "teacher-access" | "task-link" | "admin-login";
 
 function readChallengeScope(): AraIdChallengeScope {
   const scope = new URLSearchParams(window.location.hash.slice(1)).get("scope")?.trim();
-  return scope === "task-link" ? "task-link" : "teacher-access";
+  return scope === "task-link" || scope === "admin-login" ? scope : "teacher-access";
 }
 
 export function AraIdAuthorizePage() {
@@ -48,8 +49,22 @@ export function AraIdAuthorizePage() {
     mutationFn: (token: string) => taskService.beginTaskAraIdChallenge(token),
   });
   const taskApprove = useMutation({ mutationFn: () => taskService.approveTaskAraIdChallenge() });
-  const begin = scope === "task-link" ? taskBegin : teacherAccessBegin;
-  const approve = scope === "task-link" ? taskApprove : teacherAccessApprove;
+  const adminLoginBegin = useMutation({
+    mutationFn: (token: string) => authService.beginAraIdLoginChallenge(token),
+  });
+  const adminLoginApprove = useMutation({ mutationFn: authService.approveAraIdLoginChallenge });
+  const begin =
+    scope === "task-link"
+      ? taskBegin
+      : scope === "admin-login"
+        ? adminLoginBegin
+        : teacherAccessBegin;
+  const approve =
+    scope === "task-link"
+      ? taskApprove
+      : scope === "admin-login"
+        ? adminLoginApprove
+        : teacherAccessApprove;
 
   useEffect(() => {
     if (!challengeToken || session.isPending || attempted.current) return;
