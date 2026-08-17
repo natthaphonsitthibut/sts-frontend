@@ -1,11 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PanelsTopLeft } from "lucide-react";
 import { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
   Button,
   Checkbox,
-  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,7 +16,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  InfoTooltip,
   Input,
   Skeleton,
   registerField,
@@ -31,7 +29,6 @@ import {
 import type { RoleDefinition } from "../types/admin.types";
 
 interface RoleGroupDialogProps {
-  maxRank: number;
   onOpenChange: (open: boolean) => void;
   roleGroup: RoleDefinition | null;
   schoolId: number;
@@ -39,7 +36,6 @@ interface RoleGroupDialogProps {
 }
 
 export function RoleGroupDialog({
-  maxRank,
   onOpenChange,
   roleGroup,
   schoolId,
@@ -49,7 +45,6 @@ export function RoleGroupDialog({
   const form = useForm<RoleGroupFormValues>({
     defaultValues: {
       label: roleGroup?.label ?? "",
-      rank: String(roleGroup?.rank ?? 1),
     },
     resolver: zodResolver(roleGroupFormSchema),
   });
@@ -58,11 +53,6 @@ export function RoleGroupDialog({
   );
   const { catalog: permissionOptions, isLoading: permissionsLoading } =
     usePermissionCatalog();
-  const selectedRank = useWatch({ control: form.control, name: "rank" });
-  const rankOptions = Array.from({ length: Math.max(1, maxRank) }, (_, index) => ({
-    value: String(index + 1),
-    label: String(index + 1),
-  }));
   const hasNoPermissions = permissions.length === 0;
   const isEdit = Boolean(roleGroup);
 
@@ -87,7 +77,6 @@ export function RoleGroupDialog({
         payload: {
           schoolId,
           label: values.label.trim(),
-          rank: Number(values.rank),
           default_permissions: permissions,
         },
       },
@@ -132,50 +121,6 @@ export function RoleGroupDialog({
               <FormMessage<RoleGroupFormValues> name="label" />
             </FormItem>
 
-            <FormItem>
-              <div className="flex h-5 items-baseline justify-between gap-2">
-                <FormLabel className="mb-0" htmlFor="menu-group-rank" required>
-                  ลำดับสิทธิ์
-                </FormLabel>
-                <div className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-slate-700">
-                  <span>เกณฑ์การจัดระดับ</span>
-                  <InfoTooltip
-                    align="end"
-                    contentClassName="w-72 max-w-[calc(100vw-3rem)]"
-                    label="เกณฑ์การจัดลำดับสิทธิ์"
-                    triggerClassName="size-5"
-                  >
-                    <div className="space-y-2">
-                      <p>
-                        ลำดับสิทธิ์ใช้กำหนดระดับอำนาจในการจัดการบัญชีและกลุ่มเมนู
-                        ไม่ใช่จำนวนเมนูที่เข้าถึง
-                      </p>
-                      <ul className="list-disc space-y-1 pl-4">
-                        <li>เลขมากหมายถึงระดับอำนาจสูงกว่า</li>
-                        <li>
-                          จัดการได้เฉพาะระดับที่ต่ำกว่า
-                          โดยผู้ดูแลระบบสามารถจัดการระดับเท่ากันได้
-                        </li>
-                        <li>เมนูที่เข้าถึงจริงยึดตามรายการที่เลือกด้านล่าง</li>
-                      </ul>
-                    </div>
-                  </InfoTooltip>
-                </div>
-              </div>
-              <Combobox
-                aria-invalid={form.formState.errors.rank ? true : undefined}
-                id="menu-group-rank"
-                onChange={(value) =>
-                  form.setValue("rank", value, {
-                    shouldValidate: form.formState.isSubmitted,
-                  })
-                }
-                options={rankOptions}
-                searchable={false}
-                value={selectedRank}
-              />
-              <FormMessage<RoleGroupFormValues> name="rank" />
-            </FormItem>
           </div>
 
           <div className="mt-2">

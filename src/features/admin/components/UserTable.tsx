@@ -43,11 +43,6 @@ function UserIdentity({
       />
       <span className="min-w-0">
         <span className="block truncate text-slate-800">{displayName}</span>
-        {user.teacher_membership_attention_required ? (
-          <span className="block text-xs font-medium text-warning-700">
-            ไม่มีสถานะครูที่ใช้งานอยู่
-          </span>
-        ) : null}
       </span>
     </>
   );
