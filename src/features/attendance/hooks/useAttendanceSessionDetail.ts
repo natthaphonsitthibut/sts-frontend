@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { attendanceService } from "../api/attendance.service";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 
@@ -17,10 +17,7 @@ interface UseAttendanceSessionDetailParams {
 }
 
 /**
- * Read-only roster + session view for one specific historical day/room, used
- * by the anomaly "ตรวจวันนั้น" dialog. The save-attendance endpoint has no
- * date param (it always writes "today" server-side), so past days can only be
- * inspected and, if submitted, reopened — not re-saved from here.
+ * Read-only roster + all-subject day view for one historical room/day.
  */
 export function useAttendanceSessionDetail({
   schoolId,
@@ -29,17 +26,11 @@ export function useAttendanceSessionDetail({
   date,
   enabled,
 }: UseAttendanceSessionDetailParams) {
-  const queryClient = useQueryClient();
   const canLoad = enabled && Boolean(schoolId && grade && room && date);
 
   const studentsQuery = useQuery({
     queryKey: ["attendance-session-detail-students", schoolId, grade, room],
     queryFn: () => attendanceService.getStudents({ schoolId, grade, room }),
-    enabled: canLoad,
-  });
-  const sessionQuery = useQuery({
-    queryKey: ["attendance-session-detail-session", schoolId, grade, room, date],
-    queryFn: () => attendanceService.getSessionContext({ schoolId, grade, room, date }),
     enabled: canLoad,
   });
   const historyQuery = useQuery({
@@ -50,41 +41,40 @@ export function useAttendanceSessionDetail({
 
   const students = studentsQuery.data ?? EMPTY_STUDENTS;
   const selections = useMemo(() => {
-    return (historyQuery.data ?? [])
-      .filter((record) => record.grade === grade && String(record.room) === String(room))
-      .reduce<Record<string, AttendanceSelectionStatus>>((next, record) => {
-        if (record.id) next[record.id] = record.status;
-        return next;
-      }, {});
+    const byStudent = new Map<string, AttendanceSelectionStatus[]>();
+    for (const record of historyQuery.data ?? []) {
+      if (
+        record.grade !== grade ||
+        String(record.room) !== String(room) ||
+        !record.id
+      )
+        continue;
+      const statuses = byStudent.get(record.id) ?? [];
+      statuses.push(record.status);
+      byStudent.set(record.id, statuses);
+    }
+    return Object.fromEntries(
+      [...byStudent.entries()].map(([studentId, statuses]) => {
+        const status: AttendanceSelectionStatus = statuses.every(
+          (value) => value === "P_LEAVE",
+        )
+          ? "P_LEAVE"
+          : statuses.every(
+                (value) => value !== "P_PRESENT" && value !== "P_LATE",
+              )
+            ? "P_ABSENT"
+            : statuses.some((value) => value === "P_LATE")
+              ? "P_LATE"
+              : "P_PRESENT";
+        return [studentId, status];
+      }),
+    );
   }, [historyQuery.data, grade, room]);
-
-  const reopenMutation = useMutation({
-    mutationFn: (reason: string) => {
-      const sessionId = sessionQuery.data?.session?.id;
-      if (!sessionId) throw new Error("Attendance session is missing");
-      return attendanceService.reopenSession(sessionId, reason);
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["attendance-session-detail-session", schoolId, grade, room, date],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
-      ]);
-    },
-  });
 
   return {
     students,
     selections,
-    isLoading:
-      canLoad &&
-      (studentsQuery.isLoading || sessionQuery.isLoading || historyQuery.isLoading),
-    isError: studentsQuery.isError || sessionQuery.isError || historyQuery.isError,
-    session: sessionQuery.data?.session ?? null,
-    dayType: sessionQuery.data?.dayType ?? null,
-    reopen: reopenMutation.mutateAsync,
-    reopenState: reopenMutation,
+    isLoading: canLoad && (studentsQuery.isLoading || historyQuery.isLoading),
+    isError: studentsQuery.isError || historyQuery.isError,
   };
 }

@@ -26,7 +26,9 @@ import type { TeacherLinkCredential } from "../../teacher-access/store/teacher-l
 
 /** Today in Bangkok, the day a link always starts on. */
 function getTodayIso(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(
+    new Date(),
+  );
 }
 
 function getCurrentTime(): string {
@@ -37,7 +39,9 @@ function getCurrentTime(): string {
     timeZone: "Asia/Bangkok",
   }).formatToParts(new Date());
   const values = Object.fromEntries(
-    parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
   );
   return `${values.hour ?? "00"}:${values.minute ?? "00"}`;
 }
@@ -97,7 +101,8 @@ export function AttendanceDelegationDialog({
     Boolean(credential),
   );
   const issueDelegation = useIssueTeacherAttendanceDelegation();
-  const issuePublicDelegation = useIssuePublicTeacherAttendanceDelegation(credential);
+  const issuePublicDelegation =
+    useIssuePublicTeacherAttendanceDelegation(credential);
   const activeOptionsQuery = credential ? publicOptionsQuery : optionsQuery;
   const assignments = useMemo(
     () => activeOptionsQuery.data?.assignments ?? [],
@@ -112,7 +117,12 @@ export function AttendanceDelegationDialog({
   // nothing to hand over, and the form has to say so instead of offering a
   // daily round that the school no longer checks.
   const delegatableAssignments = useMemo(
-    () => assignments.filter((assignment) => assignment.assignmentKind !== "HOMEROOM"),
+    () =>
+      assignments.filter(
+        (assignment) =>
+          assignment.assignmentKind === "SUBJECT" &&
+          assignment.timetableSlotId !== null,
+      ),
     [assignments],
   );
 
@@ -126,38 +136,48 @@ export function AttendanceDelegationDialog({
           assignment.timetableSlotId === defaultTimetableSlotId,
       ) ??
       (defaultAssignmentId
-        ? delegatableAssignments.find((assignment) => assignment.id === defaultAssignmentId)
+        ? delegatableAssignments.find(
+            (assignment) => assignment.id === defaultAssignmentId,
+          )
         : undefined);
     return preselected
-      ? `${preselected.id}:${preselected.timetableSlotId ?? "daily"}`
+      ? `${preselected.id}:${preselected.timetableSlotId}`
       : "";
   }, [defaultAssignmentId, defaultTimetableSlotId, delegatableAssignments]);
   const activeOptionKey = selectedOptionKey || preselectedOptionKey;
   const selectedAssignment =
     delegatableAssignments.find(
-      (item) => `${item.id}:${item.timetableSlotId ?? "daily"}` === activeOptionKey,
+      (item) => `${item.id}:${item.timetableSlotId}` === activeOptionKey,
     ) ??
     ((defaultAssignmentId
       ? delegatableAssignments.filter((item) => item.id === defaultAssignmentId)
       : defaultSubjectId
-        ? delegatableAssignments.filter((item) => item.subjectId === defaultSubjectId)
-        : delegatableAssignments).length === 1
+        ? delegatableAssignments.filter(
+            (item) => item.subjectId === defaultSubjectId,
+          )
+        : delegatableAssignments
+    ).length === 1
       ? (defaultAssignmentId
-        ? delegatableAssignments.filter((item) => item.id === defaultAssignmentId)
-        : defaultSubjectId
-          ? delegatableAssignments.filter((item) => item.subjectId === defaultSubjectId)
-          : delegatableAssignments)[0]
+          ? delegatableAssignments.filter(
+              (item) => item.id === defaultAssignmentId,
+            )
+          : defaultSubjectId
+            ? delegatableAssignments.filter(
+                (item) => item.subjectId === defaultSubjectId,
+              )
+            : delegatableAssignments)[0]
       : undefined);
-  const resolvedAssignmentId = selectedAssignment ? String(selectedAssignment.id) : "";
-  const selectedAssignmentLabel =
-    `${selectedAssignment?.subjectName ?? "รายวิชา"}${selectedAssignment?.period ? ` · คาบ ${selectedAssignment.period}` : ""}`;
+  const resolvedAssignmentId = selectedAssignment
+    ? String(selectedAssignment.id)
+    : "";
+  const selectedAssignmentLabel = `${selectedAssignment?.subjectName ?? "รายวิชา"}${selectedAssignment?.period ? ` · คาบ ${selectedAssignment.period}` : ""}`;
   const assignmentOptions = useMemo(
     () =>
       delegatableAssignments
         .slice()
         .sort((left, right) => (left.period ?? 99) - (right.period ?? 99))
         .map((assignment) => ({
-          value: `${assignment.id}:${assignment.timetableSlotId ?? "daily"}`,
+          value: `${assignment.id}:${assignment.timetableSlotId}`,
           label: `${assignment.subjectName ?? "รายวิชา"}${assignment.period ? ` · คาบ ${assignment.period}` : ""}`,
         })),
     [delegatableAssignments],
@@ -165,19 +185,21 @@ export function AttendanceDelegationDialog({
 
   const canSubmit = Boolean(
     schoolId &&
-      schoolTermId &&
-      classroomId &&
-      teacherMembershipId &&
-      resolvedAssignmentId &&
-      attendanceDate &&
-      endsOn &&
-      endsAt,
+    schoolTermId &&
+    classroomId &&
+    teacherMembershipId &&
+    resolvedAssignmentId &&
+    selectedAssignment?.timetableSlotId &&
+    attendanceDate &&
+    endsOn &&
+    endsAt,
   );
   const teacherOptions = useMemo(
-    () => teachers.map((teacher) => ({
-      value: String(teacher.teacherMembershipId),
-      label: teacher.teacherDisplayName,
-    })),
+    () =>
+      teachers.map((teacher) => ({
+        value: String(teacher.teacherMembershipId),
+        label: teacher.teacherDisplayName,
+      })),
     [teachers],
   );
 
@@ -191,20 +213,24 @@ export function AttendanceDelegationDialog({
       const input = {
         teacherMembershipId: Number(teacherMembershipId),
         assignmentId: Number(resolvedAssignmentId),
-        ...(selectedAssignment?.timetableSlotId
-          ? { timetableSlotId: selectedAssignment.timetableSlotId }
-          : {}),
+        timetableSlotId: selectedAssignment!.timetableSlotId!,
         attendanceDate,
         endsOn,
         endsAt,
       };
       const result = credential
         ? await issuePublicDelegation.mutateAsync(input)
-        : await issueDelegation.mutateAsync({ schoolId, schoolTermId, ...input });
+        : await issueDelegation.mutateAsync({
+            schoolId,
+            schoolTermId,
+            ...input,
+          });
       if (!result.accessUrl) throw new Error("ไม่พบลิงก์ที่สร้างแล้ว");
-      const teacherName = teachers.find(
-        (teacher) => String(teacher.teacherMembershipId) === teacherMembershipId,
-      )?.teacherDisplayName ?? "ครูผู้ได้รับมอบหมาย";
+      const teacherName =
+        teachers.find(
+          (teacher) =>
+            String(teacher.teacherMembershipId) === teacherMembershipId,
+        )?.teacherDisplayName ?? "ครูผู้ได้รับมอบหมาย";
       onOpenChange(false);
       onCreated({
         accessUrl: result.accessUrl,
@@ -237,11 +263,21 @@ export function AttendanceDelegationDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1 text-sm font-medium text-slate-700">
               ลิงก์เริ่มใช้ได้
-              <DatePicker ariaLabel="วันที่ลิงก์เริ่มใช้ได้" disabled onChange={() => undefined} value={startsOn} />
+              <DatePicker
+                ariaLabel="วันที่ลิงก์เริ่มใช้ได้"
+                disabled
+                onChange={() => undefined}
+                value={startsOn}
+              />
             </label>
             <label className="block space-y-1 text-sm font-medium text-slate-700">
               เวลาเริ่มต้น
-              <TimePicker ariaLabel="เวลาที่ลิงก์เริ่มใช้ได้" disabled onChange={() => undefined} value={startsAt} />
+              <TimePicker
+                ariaLabel="เวลาที่ลิงก์เริ่มใช้ได้"
+                disabled
+                onChange={() => undefined}
+                value={startsAt}
+              />
             </label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -258,17 +294,25 @@ export function AttendanceDelegationDialog({
             </label>
             <label className="block space-y-1 text-sm font-medium text-slate-700">
               เวลาสิ้นสุด <span className="text-danger">*</span>
-              <TimePicker ariaLabel="เวลาที่ลิงก์หมดอายุ" onChange={setEndsAt} value={endsAt} />
+              <TimePicker
+                ariaLabel="เวลาที่ลิงก์หมดอายุ"
+                onChange={setEndsAt}
+                value={endsAt}
+              />
             </label>
           </div>
           {/* Kept on screen when the day has nothing to delegate: a field that
               silently disappears reads as a broken form, not as an answer. */}
           {delegatableAssignments.length > 1 ? (
             <div className="space-y-1">
-              <Label htmlFor="attendance-delegation-assignment">วิชาและคาบที่มอบหมาย <span className="text-danger">*</span></Label>
+              <Label htmlFor="attendance-delegation-assignment">
+                วิชาและคาบที่มอบหมาย <span className="text-danger">*</span>
+              </Label>
               <Combobox
                 ariaLabel="วิชาและคาบที่มอบหมาย"
-                disabled={activeOptionsQuery.isLoading || activeOptionsQuery.isError}
+                disabled={
+                  activeOptionsQuery.isLoading || activeOptionsQuery.isError
+                }
                 emptyText="ไม่พบวิชาหรือคาบที่มอบหมายได้"
                 id="attendance-delegation-assignment"
                 onChange={(value) => {
@@ -292,11 +336,19 @@ export function AttendanceDelegationDialog({
             </Alert>
           ) : null}
           <div className="space-y-1">
-            <Label htmlFor="attendance-delegation-teacher">คุณครูที่ได้รับมอบหมาย <span className="text-danger">*</span></Label>
+            <Label htmlFor="attendance-delegation-teacher">
+              คุณครูที่ได้รับมอบหมาย <span className="text-danger">*</span>
+            </Label>
             <Combobox
               ariaLabel="ครูผู้ได้รับมอบหมาย"
-              disabled={activeOptionsQuery.isLoading || activeOptionsQuery.isError}
-              emptyText={activeOptionsQuery.isLoading ? "กำลังโหลดรายชื่อครู…" : "ไม่พบครูในโรงเรียนนี้"}
+              disabled={
+                activeOptionsQuery.isLoading || activeOptionsQuery.isError
+              }
+              emptyText={
+                activeOptionsQuery.isLoading
+                  ? "กำลังโหลดรายชื่อครู…"
+                  : "ไม่พบครูในโรงเรียนนี้"
+              }
               id="attendance-delegation-teacher"
               onChange={setTeacherMembershipId}
               options={teacherOptions}
@@ -307,16 +359,25 @@ export function AttendanceDelegationDialog({
           {formError || activeOptionsQuery.isError ? (
             <Alert variant="destructive">
               <AlertDescription>
-                {formError ?? "ไม่สามารถโหลดห้องเรียน รายวิชา หรือรายชื่อครูได้"}
+                {formError ??
+                  "ไม่สามารถโหลดห้องเรียน รายวิชา หรือรายชื่อครูได้"}
               </AlertDescription>
             </Alert>
           ) : null}
         </DialogBody>
         <DialogFooter className="mt-6 sm:grid sm:grid-cols-2 sm:[&>button]:w-full">
-          <Button onClick={() => onOpenChange(false)} type="button" variant="secondary">ยกเลิก</Button>
+          <Button
+            onClick={() => onOpenChange(false)}
+            type="button"
+            variant="secondary"
+          >
+            ยกเลิก
+          </Button>
           <Button
             disabled={!canSubmit}
-            isLoading={issueDelegation.isPending || issuePublicDelegation.isPending}
+            isLoading={
+              issueDelegation.isPending || issuePublicDelegation.isPending
+            }
             loadingText="กำลังบันทึก"
             onClick={() => void submit()}
             type="button"

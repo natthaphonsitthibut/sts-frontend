@@ -116,7 +116,7 @@ export interface AttendanceSessionContext {
   session: AttendanceSession | null;
 }
 
-export type AttendanceSessionKind = "DAILY" | "SUBJECT";
+export type AttendanceSessionKind = "SUBJECT";
 
 export interface SchoolTerm {
   id: string;

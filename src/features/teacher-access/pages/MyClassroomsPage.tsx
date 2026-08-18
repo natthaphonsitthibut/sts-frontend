@@ -123,22 +123,11 @@ export function MyClassroomsPage() {
   const savePresentation = useUpdateTeacherClassroomCover();
 
   const assignments = useMemo(() => {
-    // Homeroom is taught as a subject now. Where the room already has that
-    // subject card, the legacy HOMEROOM card would be a second card for the same
-    // class — hide it here only, so links opened on it keep working.
-    const roomsWithHomeroomSubject = new Set(
-      context.assignments
-        .filter(
-          (assignment) =>
-            assignment.assignmentKind === "SUBJECT" &&
-            assignment.subjectName === "โฮมรูม",
-        )
-        .map((assignment) => assignment.classroomId),
-    );
+    // Every attendance card is a real timetable subject now, including the
+    // homeroom lesson. Legacy HOMEROOM duties remain server-side ownership data
+    // but are not an actionable classroom card.
     const visible = context.assignments.filter(
-      (assignment) =>
-        assignment.assignmentKind !== "HOMEROOM" ||
-        !roomsWithHomeroomSubject.has(assignment.classroomId),
+      (assignment) => assignment.assignmentKind === "SUBJECT",
     );
     const term = search.trim().toLowerCase();
     if (!term) return visible;

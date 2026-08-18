@@ -30,10 +30,6 @@ const EMPTY_STUDENTS: Awaited<
  * data_scope (not stored) so a teacher only ever touches their own class and
  * we avoid setState-in-effect churn.
  */
-export function useAttendanceCheckIn() {
-  return useAttendanceCheckInForSession({});
-}
-
 export function useAttendanceCheckInForSession({
   enabled = true,
   timetableSlotId,
@@ -103,8 +99,9 @@ export function useAttendanceCheckInForSession({
   });
 
   const attendanceDate = date ?? getTodayIso();
-  const sessionKind = timetableSlotId ? "SUBJECT" : "DAILY";
-  const sessionKey = timetableSlotId ?? "daily";
+  const sessionKind = "SUBJECT";
+  const sessionKey = timetableSlotId ?? "no-subject-slot";
+  const canLoadSubjectSession = canLoadRoster && Boolean(timetableSlotId);
   const sessionQuery = useQuery({
     queryKey: [
       "attendance-session",
@@ -114,15 +111,18 @@ export function useAttendanceCheckInForSession({
       attendanceDate,
       sessionKey,
     ],
-    queryFn: () =>
-      attendanceService.getSessionContext({
+    queryFn: () => {
+      if (!timetableSlotId)
+        throw new Error("Timetable subject slot is required");
+      return attendanceService.getSessionContext({
         schoolId,
         grade,
         room,
         date: attendanceDate,
         timetableSlotId,
-      }),
-    enabled: canLoadRoster,
+      });
+    },
+    enabled: canLoadSubjectSession,
   });
   const existingAttendanceQuery = useQuery({
     queryKey: [
@@ -137,7 +137,7 @@ export function useAttendanceCheckInForSession({
         sessionKind,
         timetableSlotId,
       }),
-    enabled: canLoadRoster,
+    enabled: canLoadSubjectSession,
   });
 
   // The mutations are declared before the marks hook exists, so the reset is
@@ -145,11 +145,14 @@ export function useAttendanceCheckInForSession({
   const marksResetRef = useRef<(() => void) | null>(null);
 
   const saveMutation = useMutation({
-    mutationFn: (records: AttendanceSaveRecord[]) =>
-      attendanceService.saveAttendance(records, {
+    mutationFn: (records: AttendanceSaveRecord[]) => {
+      if (!timetableSlotId)
+        throw new Error("Timetable subject slot is required");
+      return attendanceService.saveAttendance(records, {
         timetableSlotId,
         date: attendanceDate,
-      }),
+      });
+    },
     onSuccess: async () => {
       marksResetRef.current?.();
       await Promise.all([
@@ -202,7 +205,8 @@ export function useAttendanceCheckInForSession({
     [students],
   );
   const session = sessionQuery.data?.session ?? null;
-  const canEditAttendance = session?.status !== "SUBMITTED";
+  const canEditAttendance =
+    Boolean(timetableSlotId) && session?.status !== "SUBMITTED";
 
   // Marks already stored for this round, so reopening the page shows what was
   // checked earlier instead of an empty roster.
@@ -228,6 +232,8 @@ export function useAttendanceCheckInForSession({
       saveMarks: async (
         batch: Array<{ studentId: string; mark: AttendanceMark | null }>,
       ) => {
+        if (!timetableSlotId)
+          throw new Error("Timetable subject slot is required");
         await attendanceService.saveAttendanceMarks(
           batch
             .filter((entry) => entry.mark !== null)
@@ -346,35 +352,11 @@ export function useAttendanceCheckInForSession({
     save,
     saveState: saveMutation,
     sessionContext: sessionQuery.data ?? null,
-    isSessionLoading: sessionQuery.isLoading && canLoadRoster,
+    isSessionLoading: sessionQuery.isLoading && canLoadSubjectSession,
     isSessionError: sessionQuery.isError,
     canEditAttendance,
     reopen: reopenMutation.mutateAsync,
     reopenState: reopenMutation,
-  };
-}
-
-/** History view (past check-ins for a chosen date, scoped to one school). */
-export function useAttendanceHistory(date: string, schoolId?: string) {
-  const historyQuery = useQuery({
-    queryKey: [
-      "attendance-checkin-history",
-      date,
-      schoolId ?? "",
-      "DAILY",
-      "daily",
-    ],
-    queryFn: () =>
-      attendanceService.getHistory(date, schoolId, { sessionKind: "DAILY" }),
-    // Server requires a school to avoid a nationwide day dump — don't fetch
-    // until one is selected.
-    enabled: Boolean(schoolId),
-  });
-  return {
-    records: historyQuery.data ?? [],
-    isLoading: historyQuery.isLoading,
-    isError: historyQuery.isError,
-    refetch: historyQuery.refetch,
   };
 }
 
