@@ -42,6 +42,10 @@ export interface RiskDashboardRow {
   latestCaseStatus: string | null;
   latestCaseAt: string | null;
   latestCaseMagicLink: string | null;
+  /** True once this case has ever had a task/link assignment — distinguishes
+   * a case whose link expired/was cancelled (needs reassignment) from one
+   * that has simply never been assigned yet. */
+  latestCaseHadAssignment: boolean;
   problemCategoryLabel: string | null;
   teacherComment: string | null;
 }
