@@ -62,9 +62,16 @@ export function AttendanceMarkToolbar({
   onRetrySave,
 }: AttendanceMarkToolbarProps) {
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-wrap items-center gap-2">
+    // Sticky so progress and the bulk/undo actions stay reachable while
+    // scrolling a long roster — this is the state a teacher checks
+    // continuously while marking, not just once at the end.
+    <div className="sticky top-0 z-10 mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 sm:flex-none">
+        {/* flex-1 on both keeps the pair equal width and stable — the count
+            growing from a 1-digit to a 2-digit class size must not resize
+            the button, only the row split decides its width. */}
         <Button
+          className="flex-1 sm:flex-none"
           disabled={disabled || unmarkedCount === 0}
           icon={Check}
           onClick={onMarkRemainingPresent}
@@ -73,6 +80,7 @@ export function AttendanceMarkToolbar({
           มาทั้งหมด{unmarkedCount > 0 ? ` (${unmarkedCount})` : ""}
         </Button>
         <Button
+          className="flex-1 sm:flex-none"
           disabled={disabled || !canUndo}
           icon={Undo2}
           onClick={onUndo}

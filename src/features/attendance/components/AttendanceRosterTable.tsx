@@ -3,6 +3,8 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  TableCard,
+  TableCardList,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { cn } from "../../../lib/utils";
@@ -39,6 +41,65 @@ interface AttendanceRosterTableProps {
   sort?: DataTableSortState;
 }
 
+/**
+ * The four status buttons for one student. Desktop keeps a fixed pill width
+ * so the row doesn't reflow; mobile splits the row evenly (`flex-1`) so the
+ * group stays reachable without horizontal scroll.
+ */
+function AttendanceStatusButtons({
+  buttonClassName,
+  catalog,
+  current,
+  disabled,
+  isUnmarked,
+  onStatusChange,
+  studentId,
+  studentName,
+}: {
+  buttonClassName: string;
+  catalog: readonly StatusCatalogItem[];
+  current: AttendanceSelectionStatus;
+  disabled: boolean;
+  isUnmarked: boolean;
+  onStatusChange: (
+    studentId: string,
+    status: RecordableAttendanceStatus,
+  ) => void;
+  studentId: string;
+  studentName: string;
+}) {
+  return (
+    <div
+      aria-label={`สถานะของ ${studentName}${isUnmarked ? " — ยังไม่เช็ก" : ""}`}
+      className="flex gap-1.5"
+      role="group"
+    >
+      {ATTENDANCE_STATUSES.map((status) => {
+        const presentation = getAttendanceStatusPresentation(status, catalog);
+        const selected = current === status;
+        return (
+          <button
+            aria-pressed={selected}
+            className={cn(
+              "inline-flex h-11 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
+              selected
+                ? presentation.pillActiveClass
+                : `bg-white ${presentation.pillIdleClass}`,
+              buttonClassName,
+            )}
+            disabled={disabled}
+            key={status}
+            onClick={() => onStatusChange(studentId, status)}
+            type="button"
+          >
+            {presentation.shortLabel}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Shared attendance grid used by account and teacher-link check-in surfaces. */
 export function AttendanceRosterTable({
   catalog,
@@ -50,90 +111,95 @@ export function AttendanceRosterTable({
   sort,
 }: AttendanceRosterTableProps) {
   return (
-    <DataTable
-      headings={[
-        { label: "ลำดับ" },
-        { label: "รูปประจำตัว", className: "text-center" },
-        { label: "รหัสประจำตัว", sortKey: "studentNumber" },
-        { label: "ชื่อ-นามสกุล", sortKey: "name" },
-        { label: "สถานะการเข้าเรียน", className: "text-center" },
-      ]}
-      minWidthClassName="min-w-[1040px]"
-      onSortChange={onSortChange}
-      responsive={false}
-      sort={sort}
-    >
-      {rows.map((student, index) => {
-        // No default on purpose: an untouched student has no status, so
-        // "ยังไม่เช็ก" stays visibly different from "มา" and submit can be
-        // blocked until the class is actually complete.
-        const current = selections[student.id] ?? "NONE";
-        const isUnmarked = current === "NONE";
-        return (
-          // Exposes the mark as data rather than leaving it inferable only from
-          // pill styling — the badge text is always in the DOM (hidden when
-          // marked) so it cannot be used to detect state.
-          <DataTableRow data-attendance-mark={current} key={student.id}>
-            <DataTableCell className="tabular-nums">{index + 1}</DataTableCell>
-            <DataTableCell>
-              <div className="flex justify-center">{student.avatar}</div>
-            </DataTableCell>
-            <DataTableCell className="font-medium tabular-nums">
-              {student.studentNumber ?? "-"}
-            </DataTableCell>
-            <DataTableCell className="font-medium text-slate-900">
-              {/* justify-between pins the badge to the cell's right edge so it
-                  lines up down the column instead of drifting with each name's
-                  length. It is always rendered and only hidden, because removing
-                  it on every tap would resize the column and shift the table. */}
-              <span className="flex items-center justify-between gap-3">
+    <>
+      <DataTable
+        headings={[
+          { label: "ลำดับ" },
+          { label: "รูปประจำตัว", className: "text-center" },
+          { label: "รหัสประจำตัว", sortKey: "studentNumber" },
+          { label: "ชื่อ-นามสกุล", sortKey: "name" },
+          { label: "สถานะการเข้าเรียน", className: "text-center" },
+        ]}
+        minWidthClassName="min-w-[1040px]"
+        onSortChange={onSortChange}
+        sort={sort}
+      >
+        {rows.map((student, index) => {
+          // No default on purpose: an untouched student has no status, so
+          // submit can be blocked until the class is actually complete.
+          // "Unmarked" reads from the pills themselves (all idle/outline vs.
+          // one filled) — no separate badge or row tint needed.
+          const current = selections[student.id] ?? "NONE";
+          const isUnmarked = current === "NONE";
+          return (
+            <DataTableRow data-attendance-mark={current} key={student.id}>
+              <DataTableCell className="tabular-nums">
+                {index + 1}
+              </DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">{student.avatar}</div>
+              </DataTableCell>
+              <DataTableCell className="font-medium tabular-nums">
+                {student.studentNumber ?? "-"}
+              </DataTableCell>
+              <DataTableCell className="font-medium text-slate-900">
                 {student.name}
-                <span
-                  aria-hidden={!isUnmarked}
-                  className={cn(
-                    "shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500",
-                    isUnmarked ? "" : "invisible",
-                  )}
-                >
-                  ยังไม่เช็ก
+              </DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">
+                  <AttendanceStatusButtons
+                    buttonClassName="w-20"
+                    catalog={catalog}
+                    current={current}
+                    disabled={disabled}
+                    isUnmarked={isUnmarked}
+                    onStatusChange={onStatusChange}
+                    studentId={student.id}
+                    studentName={student.name}
+                  />
+                </div>
+              </DataTableCell>
+            </DataTableRow>
+          );
+        })}
+      </DataTable>
+
+      <TableCardList>
+        {rows.map((student, index) => {
+          const current = selections[student.id] ?? "NONE";
+          const isUnmarked = current === "NONE";
+          return (
+            <TableCard data-attendance-mark={current} key={student.id}>
+              <div className="flex items-center gap-3">
+                <span className="w-5 shrink-0 text-center text-xs tabular-nums text-slate-400">
+                  {index + 1}
                 </span>
-              </span>
-            </DataTableCell>
-            <DataTableCell>
-              <div
-                aria-label={`สถานะของ ${student.name}${isUnmarked ? " — ยังไม่เช็ก" : ""}`}
-                className="flex min-w-[340px] justify-center gap-1.5"
-                role="group"
-              >
-                {ATTENDANCE_STATUSES.map((status) => {
-                  const presentation = getAttendanceStatusPresentation(
-                    status,
-                    catalog,
-                  );
-                  const selected = current === status;
-                  return (
-                    <button
-                      aria-pressed={selected}
-                      className={cn(
-                        "inline-flex h-11 w-20 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
-                        selected
-                          ? presentation.pillActiveClass
-                          : `bg-white ${presentation.pillIdleClass}`,
-                      )}
-                      disabled={disabled}
-                      key={status}
-                      onClick={() => onStatusChange(student.id, status)}
-                      type="button"
-                    >
-                      {presentation.shortLabel}
-                    </button>
-                  );
-                })}
+                {student.avatar}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-900">
+                    {student.name}
+                  </p>
+                  <p className="tabular-nums text-xs text-slate-500">
+                    {student.studentNumber ?? "-"}
+                  </p>
+                </div>
               </div>
-            </DataTableCell>
-          </DataTableRow>
-        );
-      })}
-    </DataTable>
+              <div className="mt-3">
+                <AttendanceStatusButtons
+                  buttonClassName="flex-1"
+                  catalog={catalog}
+                  current={current}
+                  disabled={disabled}
+                  isUnmarked={isUnmarked}
+                  onStatusChange={onStatusChange}
+                  studentId={student.id}
+                  studentName={student.name}
+                />
+              </div>
+            </TableCard>
+          );
+        })}
+      </TableCardList>
+    </>
   );
 }
