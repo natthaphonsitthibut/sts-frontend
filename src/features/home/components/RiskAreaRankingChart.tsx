@@ -22,10 +22,7 @@ export function RiskAreaRankingChart({
   const maxCount = Math.max(...displayItems.map((item) => item.count), 1);
 
   return (
-    <Card
-      className="p-5 h-[400px]"
-      data-risk-area-dimension={ranking.dimension}
-    >
+    <Card className="p-4 sm:p-6" data-risk-area-dimension={ranking.dimension}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danger-100 text-danger-700">
