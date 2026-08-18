@@ -271,6 +271,9 @@
 
 html {
   min-height: 100%;
+  /* Paints behind `body` during the dvh/toolbar lag described below, so that
+     gap shows the same color instead of an unstyled void. */
+  background: var(--color-surface-page);
 }
 
 body {
