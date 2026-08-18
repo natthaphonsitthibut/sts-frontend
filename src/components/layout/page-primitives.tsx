@@ -1,4 +1,10 @@
-import type { ComponentProps, ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight, Search } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -125,6 +131,25 @@ export function PageToolbar({
   // noisy call-site rewrite; descriptions continue to belong in page content.
   void description;
   const location = useLocation();
+  // The back button sits in the breadcrumb row, the primary action in the
+  // title row below it — two different flex containers, so they can't share
+  // a column to size off of. Measure the action's natural width instead, only
+  // when both are present, so a lone back button keeps its own compact size.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [navigationWidth, setNavigationWidth] = useState<number>();
+  useLayoutEffect(() => {
+    const el = actionsRef.current;
+    if (!el || !navigation || !actions) {
+      setNavigationWidth(undefined);
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width;
+      if (width) setNavigationWidth(width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [navigation, actions]);
   const { pathname } = location;
   const pageIdentity =
     getPageIdentity(pathname) ??
@@ -165,7 +190,10 @@ export function PageToolbar({
     .filter(
       (crumb) =>
         crumb.to !== pathname &&
-        !(typeof currentCrumbLabel === "string" && crumb.label === currentCrumbLabel),
+        !(
+          typeof currentCrumbLabel === "string" &&
+          crumb.label === currentCrumbLabel
+        ),
     )
     .map((crumb) => ({
       ...crumb,
@@ -176,7 +204,8 @@ export function PageToolbar({
     }))
     .reduce<Array<NavigationCrumb & { icon?: LucideIcon }>>((crumbs, crumb) => {
       const duplicateIndex = crumbs.findIndex(
-        (existing) => existing.to === crumb.to || existing.label === crumb.label,
+        (existing) =>
+          existing.to === crumb.to || existing.label === crumb.label,
       );
       if (duplicateIndex >= 0) crumbs.splice(duplicateIndex, 1);
       crumbs.push(crumb);
@@ -205,115 +234,132 @@ export function PageToolbar({
           {!hideBreadcrumb || navigation ? (
             <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
               {!hideBreadcrumb ? (
-            <nav
-              aria-label="เส้นทางนำทาง"
-              data-page-breadcrumb
-              className={cn(
-                "flex min-h-6 min-w-0 items-center gap-2 overflow-x-auto text-sm font-medium",
-                tone === "primary" ? "text-white/80" : "text-breadcrumb-muted",
-              )}
-            >
-              {isHomePage ? (
-                <span
+                <nav
+                  aria-label="เส้นทางนำทาง"
+                  data-page-breadcrumb
                   className={cn(
-                    "inline-flex min-w-0 items-center gap-1.5 font-semibold",
-                    tone === "primary" ? "text-white" : "text-content-primary",
+                    "flex min-h-6 min-w-0 items-center gap-2 overflow-x-auto text-sm font-medium",
+                    tone === "primary"
+                      ? "text-white/80"
+                      : "text-breadcrumb-muted",
                   )}
-                  aria-current="page"
                 >
-                  <HomeCrumbIcon
-                    className="size-4 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span className="truncate">{homeCrumb.label}</span>
-                </span>
-              ) : (
-                <>
-                  <Link
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      tone === "primary"
-                        ? "hover:text-white"
-                        : "hover:text-content-primary",
-                    )}
-                    to={homeCrumb.to}
-                  >
-                    <HomeCrumbIcon className="size-4" aria-hidden="true" />
-                    <span>{homeCrumb.label}</span>
-                  </Link>
-                  <ChevronRight
-                    className="size-4 shrink-0 opacity-60"
-                    aria-hidden="true"
-                  />
-                  {middleCrumbs.map((crumb) => {
-                    const CrumbIcon = crumb.icon;
-                    return (
-                      <span
-                        className="flex min-w-0 items-center gap-2"
-                        key={crumb.to}
-                      >
-                        <Link
-                          data-breadcrumb-to={crumb.to}
-                          className={cn(
-                            "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                            tone === "primary"
-                              ? "hover:text-white"
-                              : "hover:text-content-primary",
-                          )}
-                          state={createBreadcrumbNavigationState(location, crumb.to)}
-                          to={crumb.to}
-                        >
-                          {CrumbIcon ? (
-                            <CrumbIcon
-                              className="size-4 shrink-0"
-                              aria-hidden="true"
-                            />
-                          ) : null}
-                          <span className="truncate">{crumb.label}</span>
-                        </Link>
-                        <ChevronRight
-                          className="size-4 shrink-0 opacity-60"
-                          aria-hidden="true"
-                        />
-                      </span>
-                    );
-                  })}
-                  <span
-                    data-breadcrumb-current
-                    className={cn(
-                      "inline-flex min-w-0 items-center gap-1.5 font-semibold",
-                      tone === "primary"
-                        ? "text-white"
-                        : "text-content-primary",
-                    )}
-                    aria-current="page"
-                  >
-                    {ToolbarIcon ? (
-                      <ToolbarIcon
+                  {isHomePage ? (
+                    <span
+                      className={cn(
+                        "inline-flex min-w-0 items-center gap-1.5 font-semibold",
+                        tone === "primary"
+                          ? "text-white"
+                          : "text-content-primary",
+                      )}
+                      aria-current="page"
+                    >
+                      <HomeCrumbIcon
                         className="size-4 shrink-0"
                         aria-hidden="true"
                       />
-                    ) : null}
-                    <span className="truncate">{currentCrumbLabel}</span>
-                  </span>
-                </>
-              )}
-            </nav>
+                      <span className="truncate">{homeCrumb.label}</span>
+                    </span>
+                  ) : (
+                    <>
+                      <Link
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          tone === "primary"
+                            ? "hover:text-white"
+                            : "hover:text-content-primary",
+                        )}
+                        to={homeCrumb.to}
+                      >
+                        <HomeCrumbIcon className="size-4" aria-hidden="true" />
+                        <span>{homeCrumb.label}</span>
+                      </Link>
+                      <ChevronRight
+                        className="size-4 shrink-0 opacity-60"
+                        aria-hidden="true"
+                      />
+                      {middleCrumbs.map((crumb) => {
+                        const CrumbIcon = crumb.icon;
+                        return (
+                          <span
+                            className="flex min-w-0 items-center gap-2"
+                            key={crumb.to}
+                          >
+                            <Link
+                              data-breadcrumb-to={crumb.to}
+                              className={cn(
+                                "inline-flex min-w-0 items-center gap-1.5 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                tone === "primary"
+                                  ? "hover:text-white"
+                                  : "hover:text-content-primary",
+                              )}
+                              state={createBreadcrumbNavigationState(
+                                location,
+                                crumb.to,
+                              )}
+                              to={crumb.to}
+                            >
+                              {CrumbIcon ? (
+                                <CrumbIcon
+                                  className="size-4 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              ) : null}
+                              <span className="truncate">{crumb.label}</span>
+                            </Link>
+                            <ChevronRight
+                              className="size-4 shrink-0 opacity-60"
+                              aria-hidden="true"
+                            />
+                          </span>
+                        );
+                      })}
+                      <span
+                        data-breadcrumb-current
+                        className={cn(
+                          "inline-flex min-w-0 items-center gap-1.5 font-semibold",
+                          tone === "primary"
+                            ? "text-white"
+                            : "text-content-primary",
+                        )}
+                        aria-current="page"
+                      >
+                        {ToolbarIcon ? (
+                          <ToolbarIcon
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <span className="truncate">{currentCrumbLabel}</span>
+                      </span>
+                    </>
+                  )}
+                </nav>
               ) : null}
-            {navigation ? (
-              <div className="flex shrink-0 flex-wrap items-center sm:justify-end">
-                {navigation}
-              </div>
-            ) : null}
+              {navigation ? (
+                <div
+                  className={cn(
+                    "flex shrink-0 flex-wrap items-center sm:justify-end",
+                    navigationWidth && "[&>*]:w-full",
+                  )}
+                  style={
+                    navigationWidth ? { width: navigationWidth } : undefined
+                  }
+                >
+                  {navigation}
+                </div>
+              ) : null}
             </div>
           ) : null}
           {/* Fixed row height so the page title sits at the same y whether or not
               the page has action buttons — otherwise the tallest child (an lg
               button) shifts the heading down on some pages only. */}
-          <div className={cn(
-            !hideBreadcrumb && "mt-2",
-            "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
-          )}>
+          <div
+            className={cn(
+              !hideBreadcrumb && "mt-2",
+              "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
+            )}
+          >
             <div className="min-w-0 flex-1">
               <h1
                 className={cn(
@@ -325,7 +371,10 @@ export function PageToolbar({
               </h1>
             </div>
             {actions ? (
-              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+              <div
+                className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end"
+                ref={actionsRef}
+              >
                 {actions}
               </div>
             ) : null}
@@ -372,7 +421,12 @@ export function SearchInput({
   return (
     // White, never see-through: the toolbar sits on tinted surfaces in places and
     // a transparent field reads as disabled.
-    <div className={cn("relative w-full rounded-lg bg-white sm:max-w-xs sm:flex-1", className)}>
+    <div
+      className={cn(
+        "relative w-full rounded-lg bg-white sm:max-w-xs sm:flex-1",
+        className,
+      )}
+    >
       <Search
         className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500"
         aria-hidden="true"
