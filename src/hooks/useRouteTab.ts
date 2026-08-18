@@ -22,10 +22,16 @@ export function useRouteTab<const R extends Readonly<Record<string, string>>>(
       if (!(value in routes)) return;
       const nextPath = routes[value as keyof R];
       if (normalizePath(nextPath) !== currentPath) {
-        void navigate({ pathname: nextPath, search: location.search });
+        // A tab switch stays on the same page, so it must carry the navigation
+        // context forward; dropping it collapses the breadcrumb of every page
+        // opened from the new tab down to its default parent.
+        void navigate(
+          { pathname: nextPath, search: location.search },
+          { state: location.state },
+        );
       }
     },
-    [currentPath, location.search, navigate, routes],
+    [currentPath, location.search, location.state, navigate, routes],
   );
 
   return [activeTab, setActiveTab] as const;
