@@ -275,7 +275,10 @@ html {
 
 body {
   min-width: 320px;
+  /* iOS Safari counts its toolbars out of 100dvh but into 100vh, so a page
+     sized in dvh leaves a strip of this background showing under it. */
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--color-surface-page);
   line-height: 1.5;
@@ -426,6 +429,7 @@ p {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @keyframes araid-screen-enter {

@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "../../../lib/utils";
 import { AraIdWordmark } from "../components/AraIdWordmark";
 import { useAraIdLogin, useAraIdReauthenticate } from "../hooks/useAraId";
+import type { AraIdChallengeScope } from "../types/araid.types";
 
 const KEYS = [
   "1",
@@ -39,6 +40,7 @@ export function AraIdPinPage() {
     challengeToken?: string;
     identityNumber?: string;
     returnTo?: string;
+    scope?: AraIdChallengeScope;
     verificationIntent?:
       | "LINE_LINK"
       | "LINE_LINK_QR"
@@ -69,7 +71,10 @@ export function AraIdPinPage() {
   const login = useAraIdLogin();
   const reauthenticateMutation = useAraIdReauthenticate();
 
-  if (!reauthenticate && (!identityNumber || !/^\d{13}$/.test(identityNumber))) {
+  if (
+    !reauthenticate &&
+    (!identityNumber || !/^\d{13}$/.test(identityNumber))
+  ) {
     return <Navigate to="/araid/login" replace />;
   }
   const validIdentityNumber = identityNumber ?? "";
@@ -93,18 +98,24 @@ export function AraIdPinPage() {
               ? routeState.returnTo!
               : verifiesLineLinkQr
                 ? routeState.returnTo!
-            : "/araid/home",
+                : "/araid/home",
         {
-        replace: true,
-        state: verifiesTeacherAccess
-          ? { araIdVerificationComplete: true }
-          : verifiesTeacherAccessQr
-            ? { challengeToken: routeState?.challengeToken, araIdPinVerified: true }
-            : verifiesLineLink
-              ? { araIdVerificationComplete: true }
-              : verifiesLineLinkQr
-                ? { challengeToken: routeState.challengeToken }
-            : undefined,
+          replace: true,
+          state: verifiesTeacherAccess
+            ? { araIdVerificationComplete: true }
+            : verifiesTeacherAccessQr
+              ? {
+                  challengeToken: routeState?.challengeToken,
+                  // Without the scope the authorize screen falls back to
+                  // teacher-access and looks the challenge up under the wrong key.
+                  scope: routeState?.scope,
+                  araIdPinVerified: true,
+                }
+              : verifiesLineLink
+                ? { araIdVerificationComplete: true }
+                : verifiesLineLinkQr
+                  ? { challengeToken: routeState.challengeToken }
+                  : undefined,
         },
       );
     } catch (cause) {
@@ -168,7 +179,9 @@ export function AraIdPinPage() {
 
           <div className="mt-3 flex w-full flex-col items-center lg:mt-4">
             <h1 className="text-sm font-semibold leading-tight text-araid-brand-deep lg:text-[clamp(1.25rem,1.5vw,1.5rem)]">
-              {reauthenticate ? "ยืนยัน PIN เพื่อดำเนินการต่อ" : "ยืนยันรหัสผ่าน"}
+              {reauthenticate
+                ? "ยืนยัน PIN เพื่อดำเนินการต่อ"
+                : "ยืนยันรหัสผ่าน"}
             </h1>
             <p className="mt-1 text-[0.6875rem] font-normal text-slate-500 lg:mt-1.5 lg:text-sm">
               กรุณากรอก PIN AraID 8 หลัก
