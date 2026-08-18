@@ -60,6 +60,7 @@ const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   attendance: "attendance",
   openCases: "openCases",
   updatedAt: "updatedAt",
+  problemCategory: "problemCategory",
 };
 
 type RiskSortOptionValue =
@@ -152,12 +153,19 @@ const RISK_SORT_OPTIONS: Array<{
 
 function parseRiskSort(value: string | null): DataTableSortState {
   if (!value || value === "default") return DEFAULT_RISK_SORT;
-  return RISK_SORT_OPTIONS.find((option) => option.value === value)?.sort ?? DEFAULT_RISK_SORT;
+  return (
+    RISK_SORT_OPTIONS.find((option) => option.value === value)?.sort ??
+    DEFAULT_RISK_SORT
+  );
 }
 
-function parseCaseStatus(value: string | null): RiskDashboardQuery["caseStatus"] | undefined {
-  return CASE_STATUS_VALUES.includes(value as (typeof CASE_STATUS_VALUES)[number])
-    ? value as NonNullable<RiskDashboardQuery["caseStatus"]>
+function parseCaseStatus(
+  value: string | null,
+): RiskDashboardQuery["caseStatus"] | undefined {
+  return CASE_STATUS_VALUES.includes(
+    value as (typeof CASE_STATUS_VALUES)[number],
+  )
+    ? (value as NonNullable<RiskDashboardQuery["caseStatus"]>)
     : undefined;
 }
 
@@ -190,9 +198,7 @@ function StudentCell({ row }: { row: RiskDashboardRow }) {
         />
       </ContextLink>
       <div className="min-w-0">
-        <div className="truncate text-slate-800">
-          {row.studentName}
-        </div>
+        <div className="truncate text-slate-800">{row.studentName}</div>
       </div>
     </div>
   );
@@ -205,7 +211,10 @@ function needsLinkRenewal(row: RiskDashboardRow): boolean {
 function LinkExpiredIndicator() {
   return (
     <HoverTooltip label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่">
-      <TriangleAlert className="size-4 shrink-0 text-danger" aria-hidden="true" />
+      <TriangleAlert
+        className="size-4 shrink-0 text-danger"
+        aria-hidden="true"
+      />
     </HoverTooltip>
   );
 }
@@ -244,22 +253,29 @@ function WatchlistRowAction({ row }: { row: RiskDashboardRow }) {
 }
 
 export function DashboardPage() {
-  const [studentGroup, setStudentGroup] = useRouteTab(STUDENT_GROUP_ROUTES, "risk");
+  const [studentGroup, setStudentGroup] = useRouteTab(
+    STUDENT_GROUP_ROUTES,
+    "risk",
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const isWatchlist = studentGroup === "watchlist";
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(() => Number(searchParams.get("limit")) || DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>(() => parseRiskSort(searchParams.get("sort")));
-  const [academicYearInput, setAcademicYearInput] = useState<number | undefined>(
-    () => Number(searchParams.get("academicYear")) || undefined,
+  const [rowsPerPage, setRowsPerPage] = useState<number>(
+    () => Number(searchParams.get("limit")) || DEFAULT_PAGE_SIZE,
   );
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    parseRiskSort(searchParams.get("sort")),
+  );
+  const [academicYearInput, setAcademicYearInput] = useState<
+    number | undefined
+  >(() => Number(searchParams.get("academicYear")) || undefined);
   const [semesterInput, setSemesterInput] = useState<number | undefined>(
     () => Number(searchParams.get("semester")) || undefined,
   );
-  const [caseStatus, setCaseStatus] = useState<RiskDashboardQuery["caseStatus"]>(
-    () => parseCaseStatus(searchParams.get("caseStatus")),
-  );
+  const [caseStatus, setCaseStatus] = useState<
+    RiskDashboardQuery["caseStatus"]
+  >(() => parseCaseStatus(searchParams.get("caseStatus")));
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
@@ -277,13 +293,15 @@ export function DashboardPage() {
     enabled: Boolean(scope.schoolId),
   });
   const schoolTerms = termsQuery.data ?? [];
-  const defaultTerm = schoolTerms.find((term) => term.status === "ACTIVE") ?? schoolTerms[0];
+  const defaultTerm =
+    schoolTerms.find((term) => term.status === "ACTIVE") ?? schoolTerms[0];
   const academicYear = academicYearInput ?? defaultTerm?.academicYear;
   const semester =
     semesterInput ??
     (defaultTerm && defaultTerm.academicYear === academicYear
       ? defaultTerm.semester
-      : schoolTerms.find((term) => term.academicYear === academicYear)?.semester);
+      : schoolTerms.find((term) => term.academicYear === academicYear)
+          ?.semester);
   const academicYears = Array.from(
     new Set(schoolTerms.map((term) => term.academicYear)),
   ).sort((left, right) => right - left);
@@ -333,17 +351,27 @@ export function DashboardPage() {
       if (value) next.set(key, value);
       else next.delete(key);
     };
-    setValue("schoolId", scope.schoolLocked ? undefined : scope.schoolId || undefined);
+    setValue(
+      "schoolId",
+      scope.schoolLocked ? undefined : scope.schoolId || undefined,
+    );
     setValue("grade", scope.gradeLocked ? undefined : scope.grade || undefined);
     setValue("room", scope.roomLocked ? undefined : scope.room || undefined);
     setValue("academicYear", academicYear ? String(academicYear) : undefined);
     setValue("semester", semester ? String(semester) : undefined);
     setValue("caseStatus", isWatchlist ? undefined : caseStatus);
     setValue("search", search.trim() || undefined);
-    setValue("sort", sortToValue(sort) === "default" ? undefined : sortToValue(sort));
+    setValue(
+      "sort",
+      sortToValue(sort) === "default" ? undefined : sortToValue(sort),
+    );
     setValue("page", page > 1 ? String(page) : undefined);
-    setValue("limit", rowsPerPage !== DEFAULT_PAGE_SIZE ? String(rowsPerPage) : undefined);
-    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+    setValue(
+      "limit",
+      rowsPerPage !== DEFAULT_PAGE_SIZE ? String(rowsPerPage) : undefined,
+    );
+    if (next.toString() !== searchParams.toString())
+      setSearchParams(next, { replace: true });
   }, [
     academicYear,
     caseStatus,
@@ -375,13 +403,14 @@ export function DashboardPage() {
   // limit outside `PAGE_SIZE_OPTIONS`, which would leave every card on 0.
   const riskStatusSummaryQuery = useQuery({
     queryKey: ["risk-dashboard", "case-status-summary", query],
-    queryFn: () => riskDashboardService.getRiskDashboard({
-      ...query,
-      studentGroup: "RISK",
-      caseStatus: undefined,
-      page: 1,
-      limit: PAGE_SIZE_OPTIONS[0],
-    }),
+    queryFn: () =>
+      riskDashboardService.getRiskDashboard({
+        ...query,
+        studentGroup: "RISK",
+        caseStatus: undefined,
+        page: 1,
+        limit: PAGE_SIZE_OPTIONS[0],
+      }),
     enabled: isWatchlist && !requiresSchoolSelection,
     placeholderData: keepPreviousData,
   });
@@ -400,7 +429,9 @@ export function DashboardPage() {
   const summaryItems = [
     {
       label: "ไม่พบนักเรียน",
-      value: caseCount(caseStatusMeta?.caseStatusSummary.STUDENT_NOT_FOUND ?? 0),
+      value: caseCount(
+        caseStatusMeta?.caseStatusSummary.STUDENT_NOT_FOUND ?? 0,
+      ),
       tone: "danger" as const,
       icon: MapPin,
       hideComparison: true,
@@ -497,7 +528,11 @@ export function DashboardPage() {
   }
 
   function handleCaseStatusChange(value: string): void {
-    setCaseStatus(value ? (value as NonNullable<RiskDashboardQuery["caseStatus"]>) : undefined);
+    setCaseStatus(
+      value
+        ? (value as NonNullable<RiskDashboardQuery["caseStatus"]>)
+        : undefined,
+    );
     resetPage();
   }
 
@@ -507,7 +542,9 @@ export function DashboardPage() {
     if (isWatchlist) {
       setStudentGroup("risk");
     }
-    setCaseStatus((currentStatus) => currentStatus === status ? undefined : status);
+    setCaseStatus((currentStatus) =>
+      currentStatus === status ? undefined : status,
+    );
     resetPage();
   }
 
@@ -554,49 +591,102 @@ export function DashboardPage() {
         title="รายงานสถานะนักเรียน"
       >
         <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-            {!scope.schoolLocked ? (
-              <label className="space-y-1 text-sm text-slate-800">โรงเรียน
-                <Combobox
-                  ariaLabel="ค้นหาโรงเรียน"
-                  emptyText={schoolArea.schoolsEnabled ? "ไม่พบโรงเรียน" : "พิมพ์ชื่อโรงเรียนเพื่อค้นหา"}
-                  onChange={handleSchoolChange}
-                  onSearchChange={schoolArea.setSchoolSearch}
-                  options={[
-                    { value: "", label: "เลือกโรงเรียน" },
-                    ...schoolArea.filteredSchools.map((school) => ({
-                      value: String(school.id),
-                      label: school.name,
-                    })),
-                  ]}
-                  placeholder="ค้นหาโรงเรียน"
-                  value={scope.schoolId}
-                />
-              </label>
-            ) : null}
-            <label className="space-y-1 text-sm text-slate-800">ปีการศึกษา
-              <FilterSelect ariaLabel="ปีการศึกษา" className="w-full !w-full" disabled={!scope.schoolId} onChange={handleAcademicYearChange} value={academicYear ? String(academicYear) : ""}>
-                {academicYears.length === 0 ? <option value="">ปีการศึกษา</option> : null}
-                {academicYears.map((year) => <option key={year} value={year}>{year}</option>)}
-              </FilterSelect>
+          {!scope.schoolLocked ? (
+            <label className="space-y-1 text-sm text-slate-800">
+              โรงเรียน
+              <Combobox
+                ariaLabel="ค้นหาโรงเรียน"
+                emptyText={
+                  schoolArea.schoolsEnabled
+                    ? "ไม่พบโรงเรียน"
+                    : "พิมพ์ชื่อโรงเรียนเพื่อค้นหา"
+                }
+                onChange={handleSchoolChange}
+                onSearchChange={schoolArea.setSchoolSearch}
+                options={[
+                  { value: "", label: "เลือกโรงเรียน" },
+                  ...schoolArea.filteredSchools.map((school) => ({
+                    value: String(school.id),
+                    label: school.name,
+                  })),
+                ]}
+                placeholder="ค้นหาโรงเรียน"
+                value={scope.schoolId}
+              />
             </label>
-            <label className="space-y-1 text-sm text-slate-800">ภาคเรียน
-              <FilterSelect ariaLabel="ภาคเรียน" className="w-full !w-full" disabled={!academicYear} onChange={handleSemesterChange} value={semester ? String(semester) : ""}>
-                {semesters.length === 0 ? <option value="">ภาคเรียน</option> : null}
-                {semesters.map((item) => <option key={item} value={item}>ภาคเรียนที่ {item}</option>)}
-              </FilterSelect>
-            </label>
-            <label className="space-y-1 text-sm text-slate-800">ระดับชั้น
-              <FilterSelect ariaLabel="ระดับชั้น" className="w-full !w-full" disabled={!scope.schoolId || scope.gradeLocked} onChange={handleGradeChange} value={scope.grade}>
-                <option value="">ทั้งหมด</option>
-                {scope.gradeLevels.map((grade) => <option key={grade.id} value={grade.label}>{grade.label}</option>)}
-              </FilterSelect>
-            </label>
-            <label className="space-y-1 text-sm text-slate-800">ห้อง
-              <FilterSelect ariaLabel="ห้อง" className="w-full !w-full" disabled={!scope.grade || scope.roomLocked} onChange={handleRoomChange} value={scope.room}>
-                <option value="">ทั้งหมด</option>
-                {scope.rooms.map((room) => <option key={room} value={room}>{room}</option>)}
-              </FilterSelect>
-            </label>
+          ) : null}
+          <label className="space-y-1 text-sm text-slate-800">
+            ปีการศึกษา
+            <FilterSelect
+              ariaLabel="ปีการศึกษา"
+              className="w-full !w-full"
+              disabled={!scope.schoolId}
+              onChange={handleAcademicYearChange}
+              value={academicYear ? String(academicYear) : ""}
+            >
+              {academicYears.length === 0 ? (
+                <option value="">ปีการศึกษา</option>
+              ) : null}
+              {academicYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </FilterSelect>
+          </label>
+          <label className="space-y-1 text-sm text-slate-800">
+            ภาคเรียน
+            <FilterSelect
+              ariaLabel="ภาคเรียน"
+              className="w-full !w-full"
+              disabled={!academicYear}
+              onChange={handleSemesterChange}
+              value={semester ? String(semester) : ""}
+            >
+              {semesters.length === 0 ? (
+                <option value="">ภาคเรียน</option>
+              ) : null}
+              {semesters.map((item) => (
+                <option key={item} value={item}>
+                  ภาคเรียนที่ {item}
+                </option>
+              ))}
+            </FilterSelect>
+          </label>
+          <label className="space-y-1 text-sm text-slate-800">
+            ระดับชั้น
+            <FilterSelect
+              ariaLabel="ระดับชั้น"
+              className="w-full !w-full"
+              disabled={!scope.schoolId || scope.gradeLocked}
+              onChange={handleGradeChange}
+              value={scope.grade}
+            >
+              <option value="">ทั้งหมด</option>
+              {scope.gradeLevels.map((grade) => (
+                <option key={grade.id} value={grade.label}>
+                  {grade.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </label>
+          <label className="space-y-1 text-sm text-slate-800">
+            ห้อง
+            <FilterSelect
+              ariaLabel="ห้อง"
+              className="w-full !w-full"
+              disabled={!scope.grade || scope.roomLocked}
+              onChange={handleRoomChange}
+              value={scope.room}
+            >
+              <option value="">ทั้งหมด</option>
+              {scope.rooms.map((room) => (
+                <option key={room} value={room}>
+                  {room}
+                </option>
+              ))}
+            </FilterSelect>
+          </label>
         </div>
       </PageToolbar>
 
@@ -682,9 +772,55 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
-              columnWidths={isWatchlist ? ["w-[7%]", "w-[22%]", "w-[12%]", "w-[10%]", "w-[35%]", "w-[14%]"] : ["w-[6%]", "w-[18%]", "w-[10%]", "w-[8%]", "w-[23%]", "w-[14%]", "w-[12%]", "w-[9%]"]}
-              headings={isWatchlist ? ["ลำดับ", { label: "ชื่อนักเรียน", sortKey: "name" }, { label: "ชั้น", sortKey: "grade" }, { label: "ห้อง", sortKey: "room" }, "หมายเหตุ", "เครื่องมือ"] : ["ลำดับ", { label: "ชื่อนักเรียน", sortKey: "name" }, { label: "ชั้น", sortKey: "grade" }, { label: "ห้อง", sortKey: "room" }, "หมายเหตุ", { label: "สถานะการติดตาม", sortKey: "openCases", className: "text-center" }, { label: "อัปเดตล่าสุด", sortKey: "updatedAt" }, "เครื่องมือ"]}
-              minWidthClassName={isWatchlist ? "min-w-[960px]" : "min-w-[1120px]"}
+              columnWidths={
+                isWatchlist
+                  ? [
+                      "w-[7%]",
+                      "w-[22%]",
+                      "w-[12%]",
+                      "w-[10%]",
+                      "w-[35%]",
+                      "w-[14%]",
+                    ]
+                  : [
+                      "w-[6%]",
+                      "w-[18%]",
+                      "w-[10%]",
+                      "w-[8%]",
+                      "w-[23%]",
+                      "w-[14%]",
+                      "w-[12%]",
+                      "w-[9%]",
+                    ]
+              }
+              headings={
+                isWatchlist
+                  ? [
+                      "ลำดับ",
+                      { label: "ชื่อนักเรียน", sortKey: "name" },
+                      { label: "ชั้น", sortKey: "grade" },
+                      { label: "ห้อง", sortKey: "room" },
+                      { label: "หัวข้อปัญหา", sortKey: "problemCategory" },
+                      "เครื่องมือ",
+                    ]
+                  : [
+                      "ลำดับ",
+                      { label: "ชื่อนักเรียน", sortKey: "name" },
+                      { label: "ชั้น", sortKey: "grade" },
+                      { label: "ห้อง", sortKey: "room" },
+                      "หมายเหตุ",
+                      {
+                        label: "สถานะการติดตาม",
+                        sortKey: "openCases",
+                        className: "text-center",
+                      },
+                      { label: "อัปเดตล่าสุด", sortKey: "updatedAt" },
+                      "เครื่องมือ",
+                    ]
+              }
+              minWidthClassName={
+                isWatchlist ? "min-w-[960px]" : "min-w-[1120px]"
+              }
               onSortChange={handleSortChange}
               sort={sort}
             >
@@ -696,7 +832,9 @@ export function DashboardPage() {
                   <DataTableCell className="text-slate-800">
                     {(page - 1) * rowsPerPage + index + 1}
                   </DataTableCell>
-                  <DataTableCell className={isWatchlist ? "text-center" : undefined}>
+                  <DataTableCell
+                    className={isWatchlist ? "text-center" : undefined}
+                  >
                     <StudentCell row={row} />
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
@@ -707,28 +845,46 @@ export function DashboardPage() {
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
                     <p className="line-clamp-2 whitespace-pre-wrap">
-                      {row.teacherComment || "-"}
+                      {(isWatchlist
+                        ? row.problemCategoryLabel
+                        : row.teacherComment) || "-"}
                     </p>
                   </DataTableCell>
-                  {!isWatchlist ? <>
-                    <DataTableCell className="text-center">
-                      {/* The warning hangs off the badge instead of the cell so
+                  {!isWatchlist ? (
+                    <>
+                      <DataTableCell className="text-center">
+                        {/* The warning hangs off the badge instead of the cell so
                           it stays centred on the badge, and the badge itself
                           stays centred in the column whether or not it shows. */}
-                      <span className="relative inline-flex items-center">
-                        {row.latestCaseStatus ? <CaseStatusBadge status={row.latestCaseStatus} /> : null}
-                        {needsLinkRenewal(row) ? (
-                          <span className="absolute inset-y-0 left-full ml-2 flex items-center">
-                            <LinkExpiredIndicator />
-                          </span>
-                        ) : null}
-                      </span>
-                    </DataTableCell>
-                    <DataTableCell className="text-slate-700">{row.latestCaseAt ? formatThaiDateTime(row.latestCaseAt) : "-"}</DataTableCell>
-                  </> : null}
+                        <span className="relative inline-flex items-center">
+                          {row.latestCaseStatus ? (
+                            <CaseStatusBadge status={row.latestCaseStatus} />
+                          ) : null}
+                          {needsLinkRenewal(row) ? (
+                            <span className="absolute inset-y-0 left-full ml-2 flex items-center">
+                              <LinkExpiredIndicator />
+                            </span>
+                          ) : null}
+                        </span>
+                      </DataTableCell>
+                      <DataTableCell className="text-slate-700">
+                        {row.latestCaseAt
+                          ? formatThaiDateTime(row.latestCaseAt)
+                          : "-"}
+                      </DataTableCell>
+                    </>
+                  ) : null}
                   <DataTableCell>
-                    <div className={isWatchlist ? "flex justify-center" : undefined}>
-                      {isWatchlist ? <WatchlistRowAction row={row} /> : <DashboardRowAction row={row} />}
+                    <div
+                      className={
+                        isWatchlist ? "flex justify-center" : undefined
+                      }
+                    >
+                      {isWatchlist ? (
+                        <WatchlistRowAction row={row} />
+                      ) : (
+                        <DashboardRowAction row={row} />
+                      )}
                     </div>
                   </DataTableCell>
                 </DataTableRow>
@@ -769,35 +925,55 @@ export function DashboardPage() {
                     {row.latestCaseStatus ? (
                       <span className="inline-flex items-center gap-1">
                         <CaseStatusBadge status={row.latestCaseStatus} />
-                        {needsLinkRenewal(row) ? <LinkExpiredIndicator /> : null}
+                        {needsLinkRenewal(row) ? (
+                          <LinkExpiredIndicator />
+                        ) : null}
                       </span>
                     ) : (
-                      <span className="text-slate-400" aria-label="ไม่มีสถานะเคส">—</span>
+                      <span
+                        className="text-slate-400"
+                        aria-label="ไม่มีสถานะเคส"
+                      >
+                        —
+                      </span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <div className="text-xs text-slate-500">ระดับชั้น</div>
-                      <div className="text-slate-800">{row.grade || "-"}{row.room ? `/${row.room}` : ""}</div>
+                      <div className="text-slate-800">
+                        {row.grade || "-"}
+                        {row.room ? `/${row.room}` : ""}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-slate-500">อัปเดตล่าสุด</div>
                       <div className="text-slate-800">
-                        {row.latestCaseAt ? formatThaiDateTime(row.latestCaseAt) : "-"}
+                        {row.latestCaseAt
+                          ? formatThaiDateTime(row.latestCaseAt)
+                          : "-"}
                       </div>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">หมายเหตุจากครู</div>
+                    <div className="text-xs text-slate-500">
+                      {isWatchlist ? "หัวข้อปัญหา" : "หมายเหตุจากครู"}
+                    </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                      {row.teacherComment || "-"}
+                      {(isWatchlist
+                        ? row.problemCategoryLabel
+                        : row.teacherComment) || "-"}
                     </p>
                   </div>
                   <div
                     className="flex justify-end"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    {isWatchlist ? <WatchlistRowAction row={row} /> : <DashboardRowAction row={row} />}
+                    {isWatchlist ? (
+                      <WatchlistRowAction row={row} />
+                    ) : (
+                      <DashboardRowAction row={row} />
+                    )}
                   </div>
                 </TableCard>
               ))}
