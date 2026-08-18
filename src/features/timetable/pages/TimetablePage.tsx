@@ -244,7 +244,9 @@ function AddSlotForm({
             emptyText={
               !subjectId
                 ? "เลือกวิชาก่อนเพื่อดูผู้สอน"
-                : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"
+                : teachersQuery.isError
+                  ? "โหลดรายชื่อผู้สอนไม่สำเร็จ กรุณาลองใหม่"
+                  : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"
             }
             id="slot-teacher"
             onChange={(values) => {
