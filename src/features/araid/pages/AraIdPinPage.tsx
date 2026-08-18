@@ -153,6 +153,7 @@ export function AraIdPinPage() {
       state: {
         challengeToken: routeState?.challengeToken,
         returnTo: routeState?.returnTo,
+        scope: routeState?.scope,
         verificationIntent: routeState?.verificationIntent,
       },
     });
