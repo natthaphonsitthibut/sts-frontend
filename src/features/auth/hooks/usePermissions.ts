@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import {
+  canOpenRoute,
   getEffectivePermissions,
   hasPermission,
 } from "../lib/permissions";
@@ -21,6 +22,7 @@ export function usePermissions() {
     return {
       permissions,
       can: (permissionId: string) => hasPermission(permissions, permissionId),
+      canOpen: (route: string) => canOpenRoute(permissions, route),
     };
   }, [user]);
 }
