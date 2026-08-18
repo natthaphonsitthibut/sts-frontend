@@ -22,14 +22,21 @@ interface TaskOtpVerificationGateProps {
  * id on file is the school's data-entry problem, so the attempt simply fails
  * with a clear message rather than the button being hidden.
  */
-export function TaskOtpVerificationGate({ token, onVerified }: TaskOtpVerificationGateProps) {
+export function TaskOtpVerificationGate({
+  token,
+  onVerified,
+}: TaskOtpVerificationGateProps) {
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [method, setMethod] = useState<"ARAID" | "EMAIL" | null>(null);
-  const [araIdChallenge, setAraIdChallenge] = useState<TaskAraIdChallenge | null>(null);
+  const [araIdChallenge, setAraIdChallenge] =
+    useState<TaskAraIdChallenge | null>(null);
 
   const createAraIdChallenge = useMutation({
     mutationFn: () => taskService.createTaskAraIdChallenge(token),
+    // Minting a QR is not a save — the global mutation toast would announce
+    // "บันทึกแล้ว" for it, exactly like the teacher-access gate already opts out.
+    meta: { suppressSuccessToast: true },
   });
 
   function acceptSession(sessionToken: string): void {
@@ -97,7 +104,9 @@ export function TaskOtpVerificationGate({ token, onVerified }: TaskOtpVerificati
         ) : method === "ARAID" ? (
           <div className="space-y-3 text-center">
             <div className="mx-auto size-10 animate-spin rounded-full border-4 border-araid-action/20 border-t-araid-action motion-reduce:animate-none" />
-            <p className="text-sm text-slate-600">กำลังสร้าง QR สำหรับยืนยัน…</p>
+            <p className="text-sm text-slate-600">
+              กำลังสร้าง QR สำหรับยืนยัน…
+            </p>
           </div>
         ) : (
           <OtpVerifyPanel

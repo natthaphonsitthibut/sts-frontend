@@ -8,7 +8,9 @@ import { teacherLineService } from "../api/teacher-line.service";
 
 function readChallengeToken(): string {
   const value =
-    new URLSearchParams(window.location.hash.slice(1)).get("challenge")?.trim() ?? "";
+    new URLSearchParams(window.location.hash.slice(1))
+      .get("challenge")
+      ?.trim() ?? "";
   return /^[A-Za-z0-9_-]{32,128}$/.test(value) ? value : "";
 }
 
@@ -33,10 +35,19 @@ export function TeacherLineAraIdAuthorizePage() {
   });
 
   useEffect(() => {
-    if (!challengeToken || challenge.isPending || challenge.isError || !challenge.data) return;
-    const authorizationStarted = challenge.data.status === "CLAIMED" || begin.isSuccess;
-    if (!authorizationStarted) {
-      if (challenge.data.status === "PENDING" && begin.isIdle) begin.mutate();
+    if (
+      !challengeToken ||
+      challenge.isPending ||
+      challenge.isError ||
+      !challenge.data
+    )
+      return;
+    // Claim on every visit, not only while the challenge is still PENDING: a
+    // rescan or a second browser finds it CLAIMED, and the server renews the
+    // authorization for that visit instead of leaving it with no cookie to
+    // approve with.
+    if (!begin.isSuccess) {
+      if (begin.isIdle) begin.mutate();
       return;
     }
     if (session.isPending) return;
@@ -70,7 +81,9 @@ export function TeacherLineAraIdAuthorizePage() {
     return (
       <MagicAuthCard showProfile={false} title="คำขอ AraID ไม่ถูกต้อง">
         <Alert variant="warning">
-          <AlertDescription>ลิงก์ยืนยันไม่ถูกต้อง กรุณาสร้าง QR ใหม่</AlertDescription>
+          <AlertDescription>
+            ลิงก์ยืนยันไม่ถูกต้อง กรุณาสร้าง QR ใหม่
+          </AlertDescription>
         </Alert>
       </MagicAuthCard>
     );
@@ -100,7 +113,11 @@ export function TeacherLineAraIdAuthorizePage() {
             ข้อมูล AraID ไม่ตรงกับครูในโรงเรียนของลิงก์ หรือเวลาทำรายการหมดแล้ว
           </AlertDescription>
         </Alert>
-        <Button className="mt-4" fullWidth onClick={() => void navigate("/araid/home")}>
+        <Button
+          className="mt-4"
+          fullWidth
+          onClick={() => void navigate("/araid/home")}
+        >
           กลับหน้าหลัก AraID
         </Button>
       </MagicAuthCard>
@@ -120,8 +137,15 @@ export function TeacherLineAraIdAuthorizePage() {
   }
 
   return (
-    <MagicAuthCard showProfile={false} subtitle="กำลังตรวจสอบข้อมูลครู…" title="ยืนยันผ่าน AraID">
-      <div aria-hidden="true" className="h-11 animate-pulse rounded-lg bg-slate-100" />
+    <MagicAuthCard
+      showProfile={false}
+      subtitle="กำลังตรวจสอบข้อมูลครู…"
+      title="ยืนยันผ่าน AraID"
+    >
+      <div
+        aria-hidden="true"
+        className="h-11 animate-pulse rounded-lg bg-slate-100"
+      />
     </MagicAuthCard>
   );
 }

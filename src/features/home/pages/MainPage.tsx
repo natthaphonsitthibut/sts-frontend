@@ -29,6 +29,7 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { CasePipelineChart } from "../components/CasePipelineChart";
 import { CauseCategoryChart } from "../components/CauseCategoryChart";
@@ -320,6 +321,10 @@ function DashboardFilterBar({
 }
 
 function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
+  // Every role reads the same overview; only the jump into the underlying page
+  // is a permission, so a card the account cannot open stays a plain card.
+  const { canOpen } = usePermissions();
+
   return (
     <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {metrics.map((metric) => {
@@ -331,16 +336,17 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
           description: "ไม่มีข้อมูลเทียบปีการศึกษาที่แล้ว",
           tone: "default" as const,
         };
-        return (
-          <Link
-            key={metric.key}
-            data-home-metric={metric.key}
-            to={destination(metric.targetPath, metric.targetQuery)}
-            className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-left shadow-card transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
+        const openable = canOpen(metric.targetPath);
+        const cardClassName = cn(
+          "flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-left shadow-card",
+          openable &&
+            "transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        );
+        const cardContent = (
+          <>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-base font-normal text-content-secondary">
+                <div className="truncate text-base text-content-secondary">
                   {metric.label}
                 </div>
                 <div className="animate-value-in text-3xl font-bold leading-tight tabular-nums text-slate-950">
@@ -369,7 +375,25 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
                 {comparison.description}
               </span>
             </div>
+          </>
+        );
+        return openable ? (
+          <Link
+            key={metric.key}
+            className={cardClassName}
+            data-home-metric={metric.key}
+            to={destination(metric.targetPath, metric.targetQuery)}
+          >
+            {cardContent}
           </Link>
+        ) : (
+          <div
+            key={metric.key}
+            className={cardClassName}
+            data-home-metric={metric.key}
+          >
+            {cardContent}
+          </div>
         );
       })}
     </div>

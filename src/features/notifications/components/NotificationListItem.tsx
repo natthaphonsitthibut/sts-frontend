@@ -39,7 +39,9 @@ export function NotificationListItem({
   const isUnread = !notification.read_at;
   const body = formatNotificationBody(notification);
   const centerPresentation = presentation === "center";
-  const statusPresentation = getCaseTrackingStatusPresentation(notification.case_status_code);
+  const statusPresentation = getCaseTrackingStatusPresentation(
+    notification.case_status_code,
+  );
   const StatusIcon = statusPresentation.icon;
 
   return (
@@ -47,7 +49,9 @@ export function NotificationListItem({
       <button
         className={cn(
           "flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
-          centerPresentation && "min-h-28 items-center gap-5 px-5 py-4 sm:px-6",
+          // The tray shows the collapsed row only; detail is one click away, so
+          // the row stays short enough to fit several without scrolling.
+          centerPresentation && "items-center gap-3 px-4 py-2",
           expanded
             ? "bg-white hover:bg-white"
             : isUnread
@@ -61,7 +65,7 @@ export function NotificationListItem({
         <span
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-full",
-            centerPresentation && "size-14 rounded-lg",
+            centerPresentation && "size-10 rounded-lg",
             statusPresentation.iconSurfaceClassName,
           )}
         >
@@ -102,23 +106,31 @@ export function NotificationListItem({
                 ) : null}
               </span>
               {body ? (
-                <span className="mt-1 block truncate text-sm text-content-secondary">
+                <span className="mt-0.5 block truncate text-sm text-content-secondary">
                   {body}
                 </span>
               ) : null}
-              <span className="mt-2 flex items-center gap-3 text-xs text-content-secondary">
+              {/* The tray keeps this line as plain meta text: a Badge here adds
+                  a row of chrome to every notification, and the unread dot on
+                  the title already carries the state. */}
+              <span className="mt-1 flex items-center gap-3 text-xs text-content-secondary">
                 <span className="inline-flex items-center gap-1.5">
-                  <Clock3 aria-hidden="true" className="size-4" />
+                  <Clock3 aria-hidden="true" className="size-3.5" />
                   {formatThaiRelativeTime(notification.created_at)}
                 </span>
-                <Badge className="gap-1.5" variant={isUnread ? "default" : "secondary"}>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5",
+                    isUnread && "font-semibold text-primary",
+                  )}
+                >
                   {isUnread ? (
                     <Mail aria-hidden="true" className="size-3.5" />
                   ) : (
                     <MailOpen aria-hidden="true" className="size-3.5" />
                   )}
                   {isUnread ? "ยังไม่อ่าน" : "อ่านแล้ว"}
-                </Badge>
+                </span>
               </span>
             </>
           ) : (
@@ -175,7 +187,9 @@ export function NotificationListItem({
             "bg-white",
           )}
         >
-          {body ? <p className="text-sm text-content-secondary">{body}</p> : null}
+          {body ? (
+            <p className="text-sm text-content-secondary">{body}</p>
+          ) : null}
           {onOpenRelated ? (
             <Button
               className="mt-3"

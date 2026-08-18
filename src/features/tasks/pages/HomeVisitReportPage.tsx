@@ -32,7 +32,10 @@ import { AssignmentSummary } from "../../../components/layout/assignment-summary
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
-import { TrackingStep, TrackingStepsCard } from "../../../components/layout/tracking-step";
+import {
+  TrackingStep,
+  TrackingStepsCard,
+} from "../../../components/layout/tracking-step";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -63,76 +66,116 @@ interface ReportOptionRules {
 
 function createReportSchema(rules: ReportOptionRules) {
   return z
-  .object({
-    visitedDate: z.string().trim().min(1, "กรุณาเลือกวันที่ลงพื้นที่"),
-    visitedTime: z.string().regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
-    problemCategoryCode: z.string().trim().min(1, "กรุณาเลือกผลการติดตาม"),
-    parentalStatusCode: z.string().trim(),
-    guardianTypeCode: z.string().trim(),
-    guardianTypeDetail: z.string().trim(),
-    residenceEnvironmentCodes: z.array(z.string().trim()),
-    residenceEnvironmentDetail: z.string().trim(),
-    causeDetail: z.string().trim(),
-    homeVisitExceptionCode: z.string().trim(),
-    updatedAddressLine: z.string().trim(),
-    updatedAddressProvince: z.string().trim(),
-    updatedAddressDistrict: z.string().trim(),
-    updatedAddressSubDistrict: z.string().trim(),
-    updatedPostalCode: z.string().trim(),
-  })
-  .superRefine((values, context) => {
-    if (values.homeVisitExceptionCode === "STUDENT_NOT_FOUND" && !values.causeDetail) {
-      context.addIssue({
-        code: "custom",
-        message: "กรุณาระบุรายละเอียดเมื่อไม่พบนักเรียน",
-        path: ["causeDetail"],
+    .object({
+      visitedDate: z.string().trim().min(1, "กรุณาเลือกวันที่ลงพื้นที่"),
+      visitedTime: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
+      problemCategoryCode: z.string().trim(),
+      parentalStatusCode: z.string().trim(),
+      guardianTypeCode: z.string().trim(),
+      guardianTypeDetail: z.string().trim(),
+      residenceEnvironmentCodes: z.array(z.string().trim()),
+      residenceEnvironmentDetail: z.string().trim(),
+      causeDetail: z.string().trim(),
+      homeVisitExceptionCode: z.string().trim(),
+      updatedAddressLine: z.string().trim(),
+      updatedAddressProvince: z.string().trim(),
+      updatedAddressDistrict: z.string().trim(),
+      updatedAddressSubDistrict: z.string().trim(),
+      updatedPostalCode: z.string().trim(),
+    })
+    .superRefine((values, context) => {
+      // Everything the visitor observed is required, because a report with the
+      // household half blank is not a report. Not finding the student is the one
+      // case where there was nothing to observe — then only the account of the
+      // search itself is required.
+      const studentNotFound =
+        values.homeVisitExceptionCode === "STUDENT_NOT_FOUND";
+      if (!values.causeDetail) {
+        context.addIssue({
+          code: "custom",
+          message: studentNotFound
+            ? "กรุณาระบุรายละเอียดเมื่อไม่พบนักเรียน"
+            : "กรุณากรอกคำอธิบายเพิ่มเติม",
+          path: ["causeDetail"],
+        });
+      }
+      if (!studentNotFound) {
+        const observedFields: Array<[keyof typeof values, string]> = [
+          ["problemCategoryCode", "กรุณาเลือกผลการติดตาม"],
+          ["parentalStatusCode", "กรุณาเลือกสถานะของบิดา-มารดา"],
+          ["guardianTypeCode", "กรุณาเลือกผู้ปกครอง"],
+          [
+            "residenceEnvironmentDetail",
+            "กรุณากรอกรายละเอียดสภาพแวดล้อมรอบที่พัก",
+          ],
+        ];
+        observedFields.forEach(([field, message]) => {
+          if (!values[field])
+            context.addIssue({ code: "custom", message, path: [field] });
+        });
+        if ((values.residenceEnvironmentCodes ?? []).length === 0) {
+          context.addIssue({
+            code: "custom",
+            message: "กรุณาเลือกสภาพแวดล้อมรอบที่พัก",
+            path: ["residenceEnvironmentCodes"],
+          });
+        }
+      }
+      const guardianType = rules.guardianTypes.find(
+        (option) => option.code === values.guardianTypeCode,
+      );
+      if (guardianType?.requiresDetail && !values.guardianTypeDetail) {
+        context.addIssue({
+          code: "custom",
+          message: "กรุณาระบุผู้ปกครอง",
+          path: ["guardianTypeDetail"],
+        });
+      }
+      const pickedEnvironments = values.residenceEnvironmentCodes ?? [];
+      const needsEnvironmentDetail = rules.residenceEnvironments.some(
+        (option) =>
+          option.requiresDetail && pickedEnvironments.includes(option.code),
+      );
+      if (needsEnvironmentDetail && !values.residenceEnvironmentDetail) {
+        context.addIssue({
+          code: "custom",
+          message: "กรุณาระบุรายละเอียดสภาพแวดล้อมรอบที่พัก",
+          path: ["residenceEnvironmentDetail"],
+        });
+      }
+      if (values.homeVisitExceptionCode !== "ADDRESS_CHANGED") return;
+      const requiredAddressFields: Array<[keyof typeof values, string]> = [
+        ["updatedAddressLine", "กรุณากรอกที่อยู่ใหม่"],
+        ["updatedAddressProvince", "กรุณากรอกจังหวัด"],
+        ["updatedAddressDistrict", "กรุณากรอกอำเภอ/เขต"],
+        ["updatedAddressSubDistrict", "กรุณากรอกตำบล/แขวง"],
+        ["updatedPostalCode", "กรุณากรอกรหัสไปรษณีย์"],
+      ];
+      requiredAddressFields.forEach(([field, message]) => {
+        if (!values[field])
+          context.addIssue({ code: "custom", message, path: [field] });
       });
-    }
-    const guardianType = rules.guardianTypes.find(
-      (option) => option.code === values.guardianTypeCode,
-    );
-    if (guardianType?.requiresDetail && !values.guardianTypeDetail) {
-      context.addIssue({
-        code: "custom",
-        message: "กรุณาระบุผู้ปกครอง",
-        path: ["guardianTypeDetail"],
-      });
-    }
-    const pickedEnvironments = values.residenceEnvironmentCodes ?? [];
-    const needsEnvironmentDetail = rules.residenceEnvironments.some(
-      (option) => option.requiresDetail && pickedEnvironments.includes(option.code),
-    );
-    if (needsEnvironmentDetail && !values.residenceEnvironmentDetail) {
-      context.addIssue({
-        code: "custom",
-        message: "กรุณาระบุรายละเอียดสภาพแวดล้อมรอบที่พัก",
-        path: ["residenceEnvironmentDetail"],
-      });
-    }
-    if (values.homeVisitExceptionCode !== "ADDRESS_CHANGED") return;
-    const requiredAddressFields: Array<[keyof typeof values, string]> = [
-      ["updatedAddressLine", "กรุณากรอกที่อยู่ใหม่"],
-      ["updatedAddressProvince", "กรุณากรอกจังหวัด"],
-      ["updatedAddressDistrict", "กรุณากรอกอำเภอ/เขต"],
-      ["updatedAddressSubDistrict", "กรุณากรอกตำบล/แขวง"],
-      ["updatedPostalCode", "กรุณากรอกรหัสไปรษณีย์"],
-    ];
-    requiredAddressFields.forEach(([field, message]) => {
-      if (!values[field]) context.addIssue({ code: "custom", message, path: [field] });
+      if (
+        values.updatedPostalCode &&
+        !/^\d{5}$/.test(values.updatedPostalCode)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
+          path: ["updatedPostalCode"],
+        });
+      }
     });
-    if (values.updatedPostalCode && !/^\d{5}$/.test(values.updatedPostalCode)) {
-      context.addIssue({
-        code: "custom",
-        message: "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
-        path: ["updatedPostalCode"],
-      });
-    }
-  });
 }
 
 type ReportFormValues = z.infer<ReturnType<typeof createReportSchema>>;
 
-function getLocalDateTimeParts(date = new Date()): { date: string; time: string } {
+function getLocalDateTimeParts(date = new Date()): {
+  date: string;
+  time: string;
+} {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -141,7 +184,10 @@ function getLocalDateTimeParts(date = new Date()): { date: string; time: string 
   return { date: `${year}-${month}-${day}`, time: `${hour}:${minute}` };
 }
 
-function parseDateTimeParts(value?: string | null): { date: string; time: string } {
+function parseDateTimeParts(value?: string | null): {
+  date: string;
+  time: string;
+} {
   if (!value) return { date: "-", time: "-" };
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return { date: "-", time: "-" };
@@ -190,7 +236,9 @@ export function HomeVisitReportPage({
   const initialVisit = useMemo(() => getLocalDateTimeParts(), []);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [photos, setPhotos] = useState<File[]>([]);
   const [mapOpen, setMapOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -208,7 +256,8 @@ export function HomeVisitReportPage({
     [trackingOptionsQuery.data],
   );
   const resolver = useMemo(
-    () => zodResolver(createReportSchema({ guardianTypes, residenceEnvironments })),
+    () =>
+      zodResolver(createReportSchema({ guardianTypes, residenceEnvironments })),
     [guardianTypes, residenceEnvironments],
   );
 
@@ -240,19 +289,41 @@ export function HomeVisitReportPage({
     control: form.control,
     name: "problemCategoryCode",
   });
-  const parentalStatusCode = useWatch({ control: form.control, name: "parentalStatusCode" });
-  const guardianTypeCode = useWatch({ control: form.control, name: "guardianTypeCode" });
+  const parentalStatusCode = useWatch({
+    control: form.control,
+    name: "parentalStatusCode",
+  });
+  const guardianTypeCode = useWatch({
+    control: form.control,
+    name: "guardianTypeCode",
+  });
   const residenceEnvironmentCodes =
-    useWatch({ control: form.control, name: "residenceEnvironmentCodes" }) ?? [];
+    useWatch({ control: form.control, name: "residenceEnvironmentCodes" }) ??
+    [];
   const homeVisitExceptionCode = useWatch({
     control: form.control,
     name: "homeVisitExceptionCode",
   });
-  const updatedAddressProvince = useWatch({ control: form.control, name: "updatedAddressProvince" });
-  const updatedAddressDistrict = useWatch({ control: form.control, name: "updatedAddressDistrict" });
-  const updatedAddressSubDistrict = useWatch({ control: form.control, name: "updatedAddressSubDistrict" });
-  const updatedAddressLine = useWatch({ control: form.control, name: "updatedAddressLine" });
-  const updatedPostalCode = useWatch({ control: form.control, name: "updatedPostalCode" });
+  const updatedAddressProvince = useWatch({
+    control: form.control,
+    name: "updatedAddressProvince",
+  });
+  const updatedAddressDistrict = useWatch({
+    control: form.control,
+    name: "updatedAddressDistrict",
+  });
+  const updatedAddressSubDistrict = useWatch({
+    control: form.control,
+    name: "updatedAddressSubDistrict",
+  });
+  const updatedAddressLine = useWatch({
+    control: form.control,
+    name: "updatedAddressLine",
+  });
+  const updatedPostalCode = useWatch({
+    control: form.control,
+    name: "updatedPostalCode",
+  });
   const draftFormValues = useWatch({ control: form.control });
 
   const locationCatalogQuery = useQuery({
@@ -261,16 +332,33 @@ export function HomeVisitReportPage({
     enabled: homeVisitExceptionCode === "ADDRESS_CHANGED",
     staleTime: 30 * 60 * 1000,
   });
-  const locationCatalog = locationCatalogQuery.data ?? { provinces: [], districts: [], subDistricts: [] };
-  const provinceOptions = locationCatalog.provinces.map((province) => ({ label: province, value: province }));
-  const districtOptions = Array.from(new Set(locationCatalog.districts
-    .filter((entry) => entry.province === updatedAddressProvince)
-    .map((entry) => entry.district)))
-    .map((district) => ({ label: district, value: district }));
-  const subDistrictOptions = Array.from(new Set(locationCatalog.subDistricts
-    .filter((entry) => entry.province === updatedAddressProvince && entry.district === updatedAddressDistrict)
-    .map((entry) => entry.sub_district)))
-    .map((subDistrict) => ({ label: subDistrict, value: subDistrict }));
+  const locationCatalog = locationCatalogQuery.data ?? {
+    provinces: [],
+    districts: [],
+    subDistricts: [],
+  };
+  const provinceOptions = locationCatalog.provinces.map((province) => ({
+    label: province,
+    value: province,
+  }));
+  const districtOptions = Array.from(
+    new Set(
+      locationCatalog.districts
+        .filter((entry) => entry.province === updatedAddressProvince)
+        .map((entry) => entry.district),
+    ),
+  ).map((district) => ({ label: district, value: district }));
+  const subDistrictOptions = Array.from(
+    new Set(
+      locationCatalog.subDistricts
+        .filter(
+          (entry) =>
+            entry.province === updatedAddressProvince &&
+            entry.district === updatedAddressDistrict,
+        )
+        .map((entry) => entry.sub_district),
+    ),
+  ).map((subDistrict) => ({ label: subDistrict, value: subDistrict }));
 
   useEffect(() => {
     if (task.status === "COMPLETED" || draftHydrated) return;
@@ -288,7 +376,8 @@ export function HomeVisitReportPage({
         setDraftSavedAt(draft.updatedAt);
       })
       .catch(() => {
-        if (!cancelled) setDraftError("ไม่สามารถกู้คืนฉบับร่างใน browser นี้ได้");
+        if (!cancelled)
+          setDraftError("ไม่สามารถกู้คืนฉบับร่างใน browser นี้ได้");
       })
       .finally(() => {
         if (!cancelled) setDraftHydrated(true);
@@ -312,20 +401,28 @@ export function HomeVisitReportPage({
           setDraftSavedAt(updatedAt);
           setDraftError("");
         })
-        .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
+        .catch(() =>
+          setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"),
+        );
     }, 700);
     return () => window.clearTimeout(timer);
   }, [draftFormValues, draftHydrated, form, lat, lng, photos, task, token]);
 
   const submitReport = useMutation({
     mutationFn: (values: ReportFormValues) => {
-      const visitedAt = new Date(`${values.visitedDate}T${values.visitedTime}:00`);
+      const visitedAt = new Date(
+        `${values.visitedDate}T${values.visitedTime}:00`,
+      );
       const formData = new FormData();
       formData.set("visited_at", visitedAt.toISOString());
-      formData.set(
-        "follow_up_problem_category_code",
-        values.problemCategoryCode,
-      );
+      // Not finding the student makes every household answer optional rather
+      // than forbidden: whatever the visitor did observe is still recorded.
+      if (values.problemCategoryCode) {
+        formData.set(
+          "follow_up_problem_category_code",
+          values.problemCategoryCode,
+        );
+      }
       if (values.parentalStatusCode) {
         formData.set("parental_status_code", values.parentalStatusCode);
       }
@@ -341,27 +438,40 @@ export function HomeVisitReportPage({
         formData.append("residence_environment_codes", code);
       });
       if (values.residenceEnvironmentDetail) {
-        formData.set("residence_environment_detail", values.residenceEnvironmentDetail);
+        formData.set(
+          "residence_environment_detail",
+          values.residenceEnvironmentDetail,
+        );
       }
       formData.set("cause_detail", values.causeDetail);
       formData.set("case_follow_up_decision", "REQUEST_REVIEW");
       formData.set("visit_lat", lat);
       formData.set("visit_lng", lng);
       if (values.homeVisitExceptionCode) {
-        formData.set("home_visit_exception_code", values.homeVisitExceptionCode);
+        formData.set(
+          "home_visit_exception_code",
+          values.homeVisitExceptionCode,
+        );
       }
       if (values.homeVisitExceptionCode === "ADDRESS_CHANGED") {
         formData.set("address_changed", "true");
         formData.set("updated_address_line", values.updatedAddressLine);
         formData.set("updated_address_province", values.updatedAddressProvince);
         formData.set("updated_address_district", values.updatedAddressDistrict);
-        formData.set("updated_address_sub_district", values.updatedAddressSubDistrict);
+        formData.set(
+          "updated_address_sub_district",
+          values.updatedAddressSubDistrict,
+        );
         formData.set("updated_postal_code", values.updatedPostalCode);
         formData.set("updated_lat", lat);
         formData.set("updated_lng", lng);
       }
       photos.forEach((photo) => formData.append("photos", photo));
-      return taskService.submitTaskReport(token, formData, sessionToken || undefined);
+      return taskService.submitTaskReport(
+        token,
+        formData,
+        sessionToken || undefined,
+      );
     },
     onSuccess: async () => {
       await deleteVisitReportDraft(token).catch(() => undefined);
@@ -385,9 +495,13 @@ export function HomeVisitReportPage({
    */
   function handleResidenceEnvironmentChange(next: string[]): void {
     const exclusiveCodes = new Set(
-      residenceEnvironments.filter((option) => option.isExclusive).map((option) => option.code),
+      residenceEnvironments
+        .filter((option) => option.isExclusive)
+        .map((option) => option.code),
     );
-    const added = next.find((code) => !residenceEnvironmentCodes.includes(code));
+    const added = next.find(
+      (code) => !residenceEnvironmentCodes.includes(code),
+    );
     const resolved =
       added && exclusiveCodes.has(added)
         ? [added]
@@ -419,24 +533,33 @@ export function HomeVisitReportPage({
   const assignmentEnd = parseDateTimeParts(task.expires_at);
   const formTitle = buildVisitReportFormTitle(task);
   const history = task.follow_up_history ?? [];
-  const homeVisitExceptions = trackingOptionsQuery.data?.homeVisitExceptions ?? [];
+  const homeVisitExceptions =
+    trackingOptionsQuery.data?.homeVisitExceptions ?? [];
   const guardianRequiresDetail =
-    guardianTypes.find((option) => option.code === guardianTypeCode)?.requiresDetail ?? false;
-  const residenceEnvironmentRequiresDetail = residenceEnvironments.some(
-    (option) => option.requiresDetail && residenceEnvironmentCodes.includes(option.code),
-  );
+    guardianTypes.find((option) => option.code === guardianTypeCode)
+      ?.requiresDetail ?? false;
+  // Nothing about the household can be observed when the student was not found,
+  // so those answers stop being required (the schema mirrors this).
+  const studentNotFound = homeVisitExceptionCode === "STUDENT_NOT_FOUND";
   const contactChannels = getContactChannels(task);
   const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
 
   return (
     <GuestPageShell
-      contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
+      contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-3")}
       profileName={task.assigned_to_name}
     >
-      <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">{formTitle}</h1>
+      <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">
+        {formTitle}
+      </h1>
 
       <StudentTrackingCard
-        avatar={<Avatar className="size-28 shrink-0 text-3xl" gradientName={task.student_name || undefined} />}
+        avatar={
+          <Avatar
+            className="size-28 shrink-0 text-3xl"
+            gradientName={task.student_name || undefined}
+          />
+        }
         historyItems={history.map((item, index) => ({
           id: `${item.submitted_at ?? index}:${item.assigned_to_name ?? index}`,
           assignee: item.assigned_to_name || "-",
@@ -474,9 +597,14 @@ export function HomeVisitReportPage({
       </Dialog>
 
       <Dialog onOpenChange={setContactsOpen} open={contactsOpen}>
-        <DialogContent className="max-w-lg" onClose={() => setContactsOpen(false)}>
+        <DialogContent
+          className="max-w-lg"
+          onClose={() => setContactsOpen(false)}
+        >
           <DialogHeader>
-            <DialogTitle icon={PhoneCall}>ช่องทางติดต่อนักเรียนและผู้ปกครอง</DialogTitle>
+            <DialogTitle icon={PhoneCall}>
+              ช่องทางติดต่อนักเรียนและผู้ปกครอง
+            </DialogTitle>
           </DialogHeader>
           {contactChannels.length > 0 ? (
             <ul className="space-y-3">
@@ -489,7 +617,9 @@ export function HomeVisitReportPage({
                     key={`${contact.contact_kind}:${contact.relation ?? ""}:${phone}:${index}`}
                   >
                     <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft font-semibold text-primary">
-                      {(contact.full_name || getContactRelationLabel(contact)).slice(0, 2)}
+                      {(
+                        contact.full_name || getContactRelationLabel(contact)
+                      ).slice(0, 2)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -498,12 +628,15 @@ export function HomeVisitReportPage({
                         </span>
                         <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-primary">
                           {getContactRelationLabel(contact)}
-                          {contact.is_primary && contact.contact_kind === "GUARDIAN"
+                          {contact.is_primary &&
+                          contact.contact_kind === "GUARDIAN"
                             ? " · ผู้ติดต่อหลัก"
                             : ""}
                         </span>
                       </div>
-                      <div className="mt-1 text-sm tabular-nums text-slate-600">{phone}</div>
+                      <div className="mt-1 text-sm tabular-nums text-slate-600">
+                        {phone}
+                      </div>
                     </div>
                     <IconButton
                       aria-label={`โทร ${contact.full_name || getContactRelationLabel(contact)} ${phone}`}
@@ -520,8 +653,13 @@ export function HomeVisitReportPage({
             </ul>
           ) : (
             <div className="flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center">
-              <PhoneCall className="mb-2 size-8 text-slate-400" aria-hidden="true" />
-              <div className="text-sm font-semibold text-slate-700">ยังไม่มีเบอร์ติดต่อ</div>
+              <PhoneCall
+                className="mb-2 size-8 text-slate-400"
+                aria-hidden="true"
+              />
+              <div className="text-sm font-semibold text-slate-700">
+                ยังไม่มีเบอร์ติดต่อ
+              </div>
               <p className="mt-1 text-xs text-slate-500">
                 ไม่พบเบอร์ของนักเรียนหรือผู้ปกครองในข้อมูลปัจจุบัน
               </p>
@@ -547,7 +685,7 @@ export function HomeVisitReportPage({
 
         <TrackingStep active connectPrev number={2} title="ติดตาม">
           <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <FormErrorAlert
                 error={trackingOptionsQuery.error ?? submitReport.error}
                 fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
@@ -556,9 +694,9 @@ export function HomeVisitReportPage({
               {/* Household block: both columns share the same three rows through
                   `grid-rows-subgrid`, so a field that grows moves its whole row
                   on both sides instead of sliding the columns out of step. */}
-              <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
+              <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
                 <div
-                  className="grid h-full min-w-0 grid-cols-1 gap-4 lg:row-span-3 lg:grid-rows-subgrid"
+                  className="grid h-full min-w-0 grid-cols-1 gap-x-4 gap-y-3 lg:row-span-3 lg:grid-rows-subgrid"
                   data-visit-report-fields
                 >
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -577,7 +715,10 @@ export function HomeVisitReportPage({
                         }
                         value={visitedDate}
                       />
-                      <FormMessage<ReportFormValues> name="visitedDate" />
+                      <FormMessage<ReportFormValues>
+                        className="min-h-0 empty:hidden"
+                        name="visitedDate"
+                      />
                     </FormItem>
                     <FormItem>
                       <FormLabel htmlFor="visited-time" required>
@@ -594,12 +735,20 @@ export function HomeVisitReportPage({
                         }
                         value={visitedTime}
                       />
-                      <FormMessage<ReportFormValues> name="visitedTime" />
+                      <FormMessage<ReportFormValues>
+                        className="min-h-0 empty:hidden"
+                        name="visitedTime"
+                      />
                     </FormItem>
                   </div>
 
                   <FormItem>
-                    <FormLabel htmlFor="parental-status">สถานะของบิดา-มารดา</FormLabel>
+                    <FormLabel
+                      htmlFor="parental-status"
+                      required={!studentNotFound}
+                    >
+                      สถานะของบิดา-มารดา
+                    </FormLabel>
                     <Combobox
                       id="parental-status"
                       name="parentalStatusCode"
@@ -609,19 +758,35 @@ export function HomeVisitReportPage({
                           shouldValidate: form.formState.isSubmitted,
                         })
                       }
-                      options={(trackingOptionsQuery.data?.parentalStatuses ?? []).map(
-                        (option) => ({ value: option.code, label: option.label }),
-                      )}
-                      placeholder="สถานะ"
+                      options={[
+                        // An empty row so a wrong pick can be taken back; the
+                        // control has no other way to return to "not answered".
+                        { value: "", label: "ไม่ระบุ" },
+                        ...(
+                          trackingOptionsQuery.data?.parentalStatuses ?? []
+                        ).map((option) => ({
+                          value: option.code,
+                          label: option.label,
+                        })),
+                      ]}
+                      placeholder="เลือกสถานะของบิดา-มารดา"
                       searchable={false}
                       value={parentalStatusCode}
                     />
-                    <FormMessage<ReportFormValues> name="parentalStatusCode" />
+                    <FormMessage<ReportFormValues>
+                      className="min-h-0 empty:hidden"
+                      name="parentalStatusCode"
+                    />
                   </FormItem>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FormItem>
-                      <FormLabel htmlFor="guardian-type">ผู้ปกครอง</FormLabel>
+                      <FormLabel
+                        htmlFor="guardian-type"
+                        required={!studentNotFound}
+                      >
+                        ผู้ปกครอง
+                      </FormLabel>
                       <Combobox
                         id="guardian-type"
                         name="guardianTypeCode"
@@ -633,24 +798,36 @@ export function HomeVisitReportPage({
                           // The note only qualifies an "อื่น ๆ" answer, so it
                           // must not survive a switch to a named relation.
                           const requiresDetail =
-                            guardianTypes.find((option) => option.code === value)
-                              ?.requiresDetail ?? false;
+                            guardianTypes.find(
+                              (option) => option.code === value,
+                            )?.requiresDetail ?? false;
                           if (!requiresDetail) {
-                            form.setValue("guardianTypeDetail", "", { shouldDirty: true });
+                            form.setValue("guardianTypeDetail", "", {
+                              shouldDirty: true,
+                            });
                           }
                         }}
-                        options={guardianTypes.map((option) => ({
-                          value: option.code,
-                          label: option.label,
-                        }))}
-                        placeholder="ผู้ปกครอง"
+                        options={[
+                          { value: "", label: "ไม่ระบุ" },
+                          ...guardianTypes.map((option) => ({
+                            value: option.code,
+                            label: option.label,
+                          })),
+                        ]}
+                        placeholder="เลือกผู้ปกครอง"
                         searchable={false}
                         value={guardianTypeCode}
                       />
-                      <FormMessage<ReportFormValues> name="guardianTypeCode" />
+                      <FormMessage<ReportFormValues>
+                        className="min-h-0 empty:hidden"
+                        name="guardianTypeCode"
+                      />
                     </FormItem>
                     <FormItem>
-                      <FormLabel htmlFor="guardian-type-detail" required={guardianRequiresDetail}>
+                      <FormLabel
+                        htmlFor="guardian-type-detail"
+                        required={guardianRequiresDetail}
+                      >
                         ระบุผู้ปกครอง
                       </FormLabel>
                       <Input
@@ -658,20 +835,32 @@ export function HomeVisitReportPage({
                         disabled={!guardianRequiresDetail}
                         id="guardian-type-detail"
                         maxLength={200}
-                        placeholder={guardianRequiresDetail ? "ระบุผู้ปกครอง" : "เลือกอื่น ๆ เพื่อระบุ"}
+                        placeholder={
+                          guardianRequiresDetail
+                            ? "ระบุผู้ปกครอง"
+                            : "เลือกอื่น ๆ เพื่อระบุ"
+                        }
                         {...registerField(form, "guardianTypeDetail")}
                       />
-                      <FormMessage<ReportFormValues> name="guardianTypeDetail" />
+                      <FormMessage<ReportFormValues>
+                        className="min-h-0 empty:hidden"
+                        name="guardianTypeDetail"
+                      />
                     </FormItem>
                   </div>
                 </div>
 
                 <div
-                  className="grid min-w-0 grid-cols-1 gap-4 lg:row-span-3 lg:grid-rows-subgrid"
+                  className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-3 lg:row-span-3 lg:grid-rows-subgrid"
                   data-visit-report-context
                 >
                   <FormItem>
-                    <FormLabel htmlFor="residence-environment">สภาพแวดล้อมรอบที่พัก</FormLabel>
+                    <FormLabel
+                      htmlFor="residence-environment"
+                      required={!studentNotFound}
+                    >
+                      สภาพแวดล้อมรอบที่พัก
+                    </FormLabel>
                     <MultiSelect
                       id="residence-environment"
                       onChange={handleResidenceEnvironmentChange}
@@ -679,19 +868,22 @@ export function HomeVisitReportPage({
                         value: option.code,
                         label: option.label,
                       }))}
-                      placeholder="สภาพแวดล้อม"
+                      placeholder="เลือกสภาพแวดล้อมรอบที่พัก"
                       singleRow
                       value={residenceEnvironmentCodes}
                     />
-                    <FormMessage<ReportFormValues> name="residenceEnvironmentCodes" />
+                    <FormMessage<ReportFormValues>
+                      className="min-h-0 empty:hidden"
+                      name="residenceEnvironmentCodes"
+                    />
                   </FormItem>
 
                   {/* Same three-row template as the description field on the
                       left, so the box tops and bottoms land on the same line. */}
-                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-0 space-y-0 lg:row-span-2">
+                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:row-span-2">
                     <FormLabel
                       htmlFor="residence-environment-detail"
-                      required={residenceEnvironmentRequiresDetail}
+                      required={!studentNotFound}
                     >
                       รายละเอียดสภาพแวดล้อมรอบที่พัก
                     </FormLabel>
@@ -702,7 +894,10 @@ export function HomeVisitReportPage({
                       placeholder="รายละเอียดสภาพแวดล้อม"
                       {...registerField(form, "residenceEnvironmentDetail")}
                     />
-                    <FormMessage<ReportFormValues> className="mt-2" name="residenceEnvironmentDetail" />
+                    <FormMessage<ReportFormValues>
+                      className="mt-2 min-h-0 empty:hidden"
+                      name="residenceEnvironmentDetail"
+                    />
                   </FormItem>
                 </div>
               </div>
@@ -710,16 +905,23 @@ export function HomeVisitReportPage({
               {/* Separates what the visit found about the home from what the
                   visitor concluded. Same `slate-200` as the line joining the
                   step numbers, so the panel keeps one rule colour. */}
-              <Divider className="-mt-5 mb-5 bg-slate-200" />
+              <Divider className="my-1 bg-slate-200" />
 
-              <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
-                <div className="grid h-full min-w-0 grid-cols-1 gap-4 lg:row-span-2 lg:grid-rows-subgrid">
+              <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
+                <div className="grid h-full min-w-0 grid-cols-1 gap-x-4 gap-y-3 lg:row-span-2 lg:grid-rows-subgrid">
                   <FormItem>
-                    <FormLabel htmlFor="follow-up-assessment" required>
+                    <FormLabel
+                      htmlFor="follow-up-assessment"
+                      required={!studentNotFound}
+                    >
                       ผลการติดตาม
                     </FormLabel>
                     <Combobox
-                      aria-invalid={form.formState.errors.problemCategoryCode ? true : undefined}
+                      aria-invalid={
+                        form.formState.errors.problemCategoryCode
+                          ? true
+                          : undefined
+                      }
                       id="follow-up-assessment"
                       name="problemCategoryCode"
                       onChange={(value) =>
@@ -730,26 +932,27 @@ export function HomeVisitReportPage({
                       }
                       options={[
                         { value: "", label: "เลือกผลการติดตาม" },
-                        ...(trackingOptionsQuery.data?.followUpProblemCategories ?? []).map(
-                          (option) => ({
-                            value: option.code,
-                            label: option.guidance
-                              ? `${option.label} (${option.guidance})`
-                              : option.label,
-                          }),
-                        ),
+                        ...(
+                          trackingOptionsQuery.data
+                            ?.followUpProblemCategories ?? []
+                        ).map((option) => ({
+                          value: option.code,
+                          label: option.guidance
+                            ? `${option.label} (${option.guidance})`
+                            : option.label,
+                        })),
                       ]}
                       searchable={false}
                       value={problemCategoryCode}
                     />
-                    <FormMessage<ReportFormValues> name="problemCategoryCode" />
+                    <FormMessage<ReportFormValues>
+                      className="min-h-0 empty:hidden"
+                      name="problemCategoryCode"
+                    />
                   </FormItem>
 
-                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-2 space-y-0">
-                    <FormLabel
-                      htmlFor="cause-detail"
-                      required={homeVisitExceptionCode === "STUDENT_NOT_FOUND"}
-                    >
+                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 space-y-0">
+                    <FormLabel htmlFor="cause-detail" required>
                       คำอธิบายเพิ่มเติม
                     </FormLabel>
                     <Textarea
@@ -762,20 +965,22 @@ export function HomeVisitReportPage({
                       }
                       {...registerField(form, "causeDetail")}
                     />
-                    <FormMessage<ReportFormValues> name="causeDetail" />
+                    <FormMessage<ReportFormValues>
+                      className="min-h-0 empty:hidden"
+                      name="causeDetail"
+                    />
                   </FormItem>
                 </div>
 
-                <div className="grid min-w-0 grid-cols-1 gap-4 lg:row-span-2 lg:grid-rows-subgrid">
+                <div className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-3 lg:row-span-2 lg:grid-rows-subgrid">
                   <div
-                    className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] lg:row-span-2"
+                    className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)] lg:row-span-2"
                     data-visit-report-upload
                   >
-                    <FormLabel className="mb-1.5">แนบไฟล์</FormLabel>
+                    <FormLabel className="mb-2">แนบไฟล์</FormLabel>
                     <div className="rounded-xl border border-slate-200 bg-white p-4">
                       <VisitPhotoUpload files={photos} onChange={setPhotos} />
                     </div>
-                    <div className="mt-2 min-h-5" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -787,7 +992,10 @@ export function HomeVisitReportPage({
                   data-home-visit-exceptions
                 >
                   <legend className="sr-only">กรณีพิเศษที่พบ</legend>
-                  <span className="mr-1 text-xs font-semibold text-slate-700" aria-hidden="true">
+                  <span
+                    className="mr-1 text-xs font-semibold text-slate-700"
+                    aria-hidden="true"
+                  >
                     กรณีพิเศษ:
                   </span>
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
@@ -830,66 +1038,126 @@ export function HomeVisitReportPage({
 
               {homeVisitExceptionCode === "ADDRESS_CHANGED" ? (
                 <div className="space-y-4">
-                  <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                  <div className="grid items-stretch gap-x-4 gap-y-3 lg:grid-cols-2">
                     <FormItem className="flex flex-col gap-2 space-y-0">
-                      <FormLabel htmlFor="updated-address-line" required>ที่อยู่ใหม่</FormLabel>
+                      <FormLabel htmlFor="updated-address-line" required>
+                        ที่อยู่ใหม่
+                      </FormLabel>
                       <Textarea
                         className="min-h-36 flex-1 bg-white"
                         id="updated-address-line"
                         placeholder="บ้านเลขที่ หมู่ ถนน ซอย หรือรายละเอียดจุดสังเกต"
                         {...registerField(form, "updatedAddressLine")}
                       />
-                      <FormMessage<ReportFormValues> name="updatedAddressLine" />
+                      <FormMessage<ReportFormValues>
+                        className="min-h-0 empty:hidden"
+                        name="updatedAddressLine"
+                      />
                     </FormItem>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <FormItem>
-                        <FormLabel htmlFor="updated-address-province" required>จังหวัด</FormLabel>
+                        <FormLabel htmlFor="updated-address-province" required>
+                          จังหวัด
+                        </FormLabel>
                         <Combobox
-                          aria-invalid={form.formState.errors.updatedAddressProvince ? true : undefined}
+                          aria-invalid={
+                            form.formState.errors.updatedAddressProvince
+                              ? true
+                              : undefined
+                          }
                           disabled={locationCatalogQuery.isLoading}
                           id="updated-address-province"
                           onChange={(value) => {
-                            form.setValue("updatedAddressProvince", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
-                            form.setValue("updatedAddressDistrict", "", { shouldDirty: true });
-                            form.setValue("updatedAddressSubDistrict", "", { shouldDirty: true });
+                            form.setValue("updatedAddressProvince", value, {
+                              shouldDirty: true,
+                              shouldValidate: form.formState.isSubmitted,
+                            });
+                            form.setValue("updatedAddressDistrict", "", {
+                              shouldDirty: true,
+                            });
+                            form.setValue("updatedAddressSubDistrict", "", {
+                              shouldDirty: true,
+                            });
                           }}
                           options={provinceOptions}
                           placeholder="เลือกจังหวัด"
                           value={updatedAddressProvince}
                         />
-                        <FormMessage<ReportFormValues> name="updatedAddressProvince" />
+                        <FormMessage<ReportFormValues>
+                          className="min-h-0 empty:hidden"
+                          name="updatedAddressProvince"
+                        />
                       </FormItem>
                       <FormItem>
-                        <FormLabel htmlFor="updated-address-district" required>อำเภอ/เขต</FormLabel>
+                        <FormLabel htmlFor="updated-address-district" required>
+                          อำเภอ/เขต
+                        </FormLabel>
                         <Combobox
-                          aria-invalid={form.formState.errors.updatedAddressDistrict ? true : undefined}
-                          disabled={!updatedAddressProvince || locationCatalogQuery.isLoading}
+                          aria-invalid={
+                            form.formState.errors.updatedAddressDistrict
+                              ? true
+                              : undefined
+                          }
+                          disabled={
+                            !updatedAddressProvince ||
+                            locationCatalogQuery.isLoading
+                          }
                           id="updated-address-district"
                           onChange={(value) => {
-                            form.setValue("updatedAddressDistrict", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
-                            form.setValue("updatedAddressSubDistrict", "", { shouldDirty: true });
+                            form.setValue("updatedAddressDistrict", value, {
+                              shouldDirty: true,
+                              shouldValidate: form.formState.isSubmitted,
+                            });
+                            form.setValue("updatedAddressSubDistrict", "", {
+                              shouldDirty: true,
+                            });
                           }}
                           options={districtOptions}
                           placeholder="เลือกอำเภอ/เขต"
                           value={updatedAddressDistrict}
                         />
-                        <FormMessage<ReportFormValues> name="updatedAddressDistrict" />
+                        <FormMessage<ReportFormValues>
+                          className="min-h-0 empty:hidden"
+                          name="updatedAddressDistrict"
+                        />
                       </FormItem>
                       <FormItem>
-                        <FormLabel htmlFor="updated-address-sub-district" required>ตำบล/แขวง</FormLabel>
+                        <FormLabel
+                          htmlFor="updated-address-sub-district"
+                          required
+                        >
+                          ตำบล/แขวง
+                        </FormLabel>
                         <Combobox
-                          aria-invalid={form.formState.errors.updatedAddressSubDistrict ? true : undefined}
-                          disabled={!updatedAddressDistrict || locationCatalogQuery.isLoading}
+                          aria-invalid={
+                            form.formState.errors.updatedAddressSubDistrict
+                              ? true
+                              : undefined
+                          }
+                          disabled={
+                            !updatedAddressDistrict ||
+                            locationCatalogQuery.isLoading
+                          }
                           id="updated-address-sub-district"
-                          onChange={(value) => form.setValue("updatedAddressSubDistrict", value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted })}
+                          onChange={(value) =>
+                            form.setValue("updatedAddressSubDistrict", value, {
+                              shouldDirty: true,
+                              shouldValidate: form.formState.isSubmitted,
+                            })
+                          }
                           options={subDistrictOptions}
                           placeholder="เลือกตำบล/แขวง"
                           value={updatedAddressSubDistrict}
                         />
-                        <FormMessage<ReportFormValues> name="updatedAddressSubDistrict" />
+                        <FormMessage<ReportFormValues>
+                          className="min-h-0 empty:hidden"
+                          name="updatedAddressSubDistrict"
+                        />
                       </FormItem>
                       <FormItem>
-                        <FormLabel htmlFor="updated-postal-code" required>รหัสไปรษณีย์</FormLabel>
+                        <FormLabel htmlFor="updated-postal-code" required>
+                          รหัสไปรษณีย์
+                        </FormLabel>
                         <Input
                           className="bg-white"
                           id="updated-postal-code"
@@ -897,18 +1165,27 @@ export function HomeVisitReportPage({
                           maxLength={5}
                           {...registerField(form, "updatedPostalCode")}
                         />
-                        <FormMessage<ReportFormValues> name="updatedPostalCode" />
+                        <FormMessage<ReportFormValues>
+                          className="min-h-0 empty:hidden"
+                          name="updatedPostalCode"
+                        />
                       </FormItem>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     {locationStatus === "success" ? (
                       <p className="flex items-center gap-1.5 text-xs font-medium text-success-700">
-                        <Check className="size-4" aria-hidden="true" />ระบุพิกัดแล้ว — จะบันทึกพร้อมผลการติดตาม
+                        <Check className="size-4" aria-hidden="true" />
+                        ระบุพิกัดแล้ว — จะบันทึกพร้อมผลการติดตาม
                       </p>
                     ) : null}
                     {locationStatus === "error" ? (
-                      <p className="text-xs font-medium text-danger-700" role="alert">ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS แล้วลองอีกครั้ง</p>
+                      <p
+                        className="text-xs font-medium text-danger-700"
+                        role="alert"
+                      >
+                        ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS แล้วลองอีกครั้ง
+                      </p>
                     ) : null}
                     <Button
                       icon={LocateFixed}
@@ -918,10 +1195,20 @@ export function HomeVisitReportPage({
                       size="sm"
                       type="button"
                       variant="location"
-                    >ระบุตำแหน่งที่อยู่ใหม่</Button>
+                    >
+                      ระบุตำแหน่งที่อยู่ใหม่
+                    </Button>
                   </div>
                   <VisitMapPreview
-                    address={[updatedAddressLine, updatedAddressSubDistrict, updatedAddressDistrict, updatedAddressProvince, updatedPostalCode].filter(Boolean).join(" ")}
+                    address={[
+                      updatedAddressLine,
+                      updatedAddressSubDistrict,
+                      updatedAddressDistrict,
+                      updatedAddressProvince,
+                      updatedPostalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     className="bg-white p-3"
                     editable
                     emptyDescription="กดบนแผนที่หรือใช้ตำแหน่งปัจจุบันเพื่อวางหมุดที่อยู่ใหม่"
@@ -938,7 +1225,10 @@ export function HomeVisitReportPage({
                     title="พิกัดที่อยู่ใหม่"
                   />
                   {locationCatalogQuery.isError ? (
-                    <FormErrorAlert error={locationCatalogQuery.error} fallback="ไม่สามารถโหลดรายการจังหวัดและอำเภอได้ กรุณาลองใหม่" />
+                    <FormErrorAlert
+                      error={locationCatalogQuery.error}
+                      fallback="ไม่สามารถโหลดรายการจังหวัดและอำเภอได้ กรุณาลองใหม่"
+                    />
                   ) : null}
                 </div>
               ) : null}
@@ -946,10 +1236,17 @@ export function HomeVisitReportPage({
               <Divider className="bg-slate-200" />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-slate-500">
-                  <p>ฉบับร่างอยู่เฉพาะ browser/device นี้ และยังไม่ถือว่าส่งรายงาน</p>
-                  {draftError ? <p className="mt-1 text-danger-700">{draftError}</p> : null}
+                  <p>
+                    ฉบับร่างอยู่เฉพาะ browser/device นี้
+                    และยังไม่ถือว่าส่งรายงาน
+                  </p>
+                  {draftError ? (
+                    <p className="mt-1 text-danger-700">{draftError}</p>
+                  ) : null}
                   {!draftError && draftSavedAt ? (
-                    <p className="mt-1">บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}</p>
+                    <p className="mt-1">
+                      บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex gap-2">

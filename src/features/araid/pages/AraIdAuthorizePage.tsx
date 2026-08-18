@@ -12,6 +12,7 @@ import { taskService } from "../../tasks/api/task.service";
 import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
 import { useAraIdSession } from "../hooks/useAraId";
+import type { AraIdChallengeScope } from "../types/araid.types";
 
 function readChallengeToken(): string {
   const token =
@@ -20,12 +21,6 @@ function readChallengeToken(): string {
       ?.trim() ?? "";
   return /^[A-Za-z0-9_-]{40,64}$/.test(token) ? token : "";
 }
-
-/**
- * Which flow the QR belongs to. Older teacher-link QR codes carry no scope, so
- * the absent value has to keep meaning `teacher-access`.
- */
-type AraIdChallengeScope = "teacher-access" | "task-link" | "admin-login";
 
 function readChallengeScope(): AraIdChallengeScope {
   const scope = new URLSearchParams(window.location.hash.slice(1))

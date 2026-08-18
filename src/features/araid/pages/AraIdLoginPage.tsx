@@ -6,6 +6,7 @@ import { AraIdPrimaryButton } from "../components/AraIdPrimaryButton";
 import { AraIdSplashBackground } from "../components/AraIdSplashBackground";
 import { AraIdStatusBar } from "../components/AraIdStatusBar";
 import { AraIdWordmark } from "../components/AraIdWordmark";
+import type { AraIdChallengeScope } from "../types/araid.types";
 
 function formatIdentityNumber(value: string): string {
   const groups = [
@@ -26,6 +27,7 @@ export function AraIdLoginPage() {
   const routeState = location.state as {
     challengeToken?: string;
     returnTo?: string;
+    scope?: AraIdChallengeScope;
     verificationIntent?:
       | "LINE_LINK"
       | "LINE_LINK_QR"
@@ -62,10 +64,16 @@ export function AraIdLoginPage() {
     void navigate("/araid/pin", {
       state: {
         identityNumber,
-        ...(verifiesTeacherAccess || verifiesTeacherAccessQr || verifiesLineLink || verifiesLineLinkQr
+        ...(verifiesTeacherAccess ||
+        verifiesTeacherAccessQr ||
+        verifiesLineLink ||
+        verifiesLineLinkQr
           ? {
               challengeToken: routeState?.challengeToken,
               returnTo: routeState?.returnTo,
+              // The QR carries the flow it belongs to only in its hash, which
+              // this detour drops — hand it on so the PIN step can give it back.
+              scope: routeState?.scope,
               verificationIntent: routeState?.verificationIntent,
             }
           : {}),

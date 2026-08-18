@@ -24,7 +24,10 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
 import { formatFollowUpProblemCategory } from "../../cases/lib/case-presentation";
-import { TrackingStep, TrackingStepsCard } from "../../../components/layout/tracking-step";
+import {
+  TrackingStep,
+  TrackingStepsCard,
+} from "../../../components/layout/tracking-step";
 import { formatThaiDate } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -116,8 +119,14 @@ export function AssistanceReportPage({
     },
     mode: "onSubmit",
   });
-  const assistedDate = useWatch({ control: form.control, name: "assistedDate" });
-  const assistedTime = useWatch({ control: form.control, name: "assistedTime" });
+  const assistedDate = useWatch({
+    control: form.control,
+    name: "assistedDate",
+  });
+  const assistedTime = useWatch({
+    control: form.control,
+    name: "assistedTime",
+  });
   const assistanceDetail = useWatch({
     control: form.control,
     name: "assistanceDetail",
@@ -139,7 +148,8 @@ export function AssistanceReportPage({
         setPhotos(draft.files);
       })
       .catch(() => {
-        if (!cancelled) setDraftError("ไม่สามารถกู้คืนฉบับร่างใน browser นี้ได้");
+        if (!cancelled)
+          setDraftError("ไม่สามารถกู้คืนฉบับร่างใน browser นี้ได้");
       })
       .finally(() => {
         if (!cancelled) setDraftHydrated(true);
@@ -160,28 +170,46 @@ export function AssistanceReportPage({
         files: photos,
       })
         .then(() => setDraftError(""))
-        .catch(() => setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"));
+        .catch(() =>
+          setDraftError("บันทึกฉบับร่างไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม"),
+        );
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [assistanceDetail, assistedDate, assistedTime, draftHydrated, photos, token]);
+  }, [
+    assistanceDetail,
+    assistedDate,
+    assistedTime,
+    draftHydrated,
+    photos,
+    token,
+  ]);
 
   const measures = task.assistance_measures ?? [];
-  const measureLabel = measures.length > 0 ? measures.map((item) => item.label).join(", ") : "-";
+  const measureLabel =
+    measures.length > 0 ? measures.map((item) => item.label).join(", ") : "-";
   // The history is newest-first, so the follow-up round is the one before this.
   const followUp = (task.follow_up_history ?? [])[0];
   const assignmentStart = bangkokParts(task.opens_at ?? task.created_at);
   const assignmentEnd = bangkokParts(task.expires_at);
-  const statusPresentation = getCaseTrackingStatusPresentation(task.case_status);
+  const statusPresentation = getCaseTrackingStatusPresentation(
+    task.case_status,
+  );
 
   const submitReport = useMutation({
     mutationFn: (values: AssistanceReportValues) => {
-      const assistedAt = new Date(`${values.assistedDate}T${values.assistedTime}:00`);
+      const assistedAt = new Date(
+        `${values.assistedDate}T${values.assistedTime}:00`,
+      );
       const formData = new FormData();
       formData.set("assisted_at", assistedAt.toISOString());
       formData.set("assistance_detail", values.assistanceDetail);
       formData.set("case_follow_up_decision", "REQUEST_REVIEW");
       photos.forEach((photo) => formData.append("photos", photo));
-      return taskService.submitTaskReport(token, formData, sessionToken || undefined);
+      return taskService.submitTaskReport(
+        token,
+        formData,
+        sessionToken || undefined,
+      );
     },
     onSuccess: async () => {
       await deleteVisitReportDraft(token).catch(() => undefined);
@@ -197,7 +225,7 @@ export function AssistanceReportPage({
 
   return (
     <GuestPageShell
-      contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
+      contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-3")}
       profileName={task.assigned_to_name}
     >
       <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">
@@ -205,7 +233,12 @@ export function AssistanceReportPage({
       </h1>
 
       <StudentTrackingCard
-        avatar={<Avatar className="size-28 shrink-0 text-3xl" gradientName={task.student_name || undefined} />}
+        avatar={
+          <Avatar
+            className="size-28 shrink-0 text-3xl"
+            gradientName={task.student_name || undefined}
+          />
+        }
         historyItems={[]}
         name={task.student_name || "-"}
         noteLabel="สาเหตุที่ต้องติดตาม"
@@ -222,7 +255,9 @@ export function AssistanceReportPage({
       <Form form={form} onSubmit={(values) => submitReport.mutate(values)}>
         <TrackingStepsCard
           statusClassName={statusPresentation.textClassName}
-          statusLabel={task.case_display_status_label || statusPresentation.label}
+          statusLabel={
+            task.case_display_status_label || statusPresentation.label
+          }
         >
           <TrackingStep connectNext number={1} title="มอบหมายการติดตาม">
             <AssignmentSummary
@@ -239,21 +274,25 @@ export function AssistanceReportPage({
             {/* Same rule as step 4: both columns stretch together and the
                 description fills what is left, so it ends level with the last
                 field on the left instead of overshooting it. */}
-            <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-              <div className="flex min-w-0 flex-col gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:items-stretch">
+              <div className="flex min-w-0 flex-col gap-3">
+                <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
                   <FormItem>
                     <FormLabel>วันที่ลงพื้นที่</FormLabel>
                     <Input
                       disabled
-                      value={readOnlyDate(followUp?.visited_at ?? followUp?.submitted_at)}
+                      value={readOnlyDate(
+                        followUp?.visited_at ?? followUp?.submitted_at,
+                      )}
                     />
                   </FormItem>
                   <FormItem>
                     <FormLabel>เวลาที่ลงพื้นที่</FormLabel>
                     <Input
                       disabled
-                      value={readOnlyTime(followUp?.visited_at ?? followUp?.submitted_at)}
+                      value={readOnlyTime(
+                        followUp?.visited_at ?? followUp?.submitted_at,
+                      )}
                     />
                   </FormItem>
                 </div>
@@ -284,7 +323,12 @@ export function AssistanceReportPage({
             </div>
           </TrackingStep>
 
-          <TrackingStep connectNext connectPrev number={3} title="มอบหมายการช่วยเหลือ">
+          <TrackingStep
+            connectNext
+            connectPrev
+            number={3}
+            title="มอบหมายการช่วยเหลือ"
+          >
             <AssignmentSummary
               assigneeLabel={task.assigned_to_name || "-"}
               endsAtLabel={assignmentEnd.time || "-"}
@@ -298,7 +342,10 @@ export function AssistanceReportPage({
           <TrackingStep active connectPrev number={4} title="ให้ความช่วยเหลือ">
             <FormErrorAlert
               className="mb-4"
-              error={submitReport.error ?? (draftError ? new Error(draftError) : null)}
+              error={
+                submitReport.error ??
+                (draftError ? new Error(draftError) : null)
+              }
               fallback="ไม่สามารถบันทึกการให้ความช่วยเหลือได้ กรุณาลองอีกครั้ง"
             />
             {/* Both columns stretch to the same height, and the last element in
@@ -309,15 +356,19 @@ export function AssistanceReportPage({
             {/* The description and the upload card share the last grid row, so
                 their bottom edges are the same line by construction rather than
                 by matching heights. The description scrolls instead of growing. */}
-            <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_minmax(11rem,1fr)]">
-              <div className="grid gap-4 sm:grid-cols-2 lg:col-start-1 lg:row-start-1"
-                data-assistance-report-fields>
+            <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_auto_minmax(11rem,1fr)]">
+              <div
+                className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:col-start-1 lg:row-start-1"
+                data-assistance-report-fields
+              >
                 <FormItem>
                   <FormLabel required>วันที่ให้ความช่วยเหลือ</FormLabel>
                   <DatePicker
                     ariaLabel="วันที่ให้ความช่วยเหลือ"
                     onChange={(value) =>
-                      form.setValue("assistedDate", value, { shouldValidate: true })
+                      form.setValue("assistedDate", value, {
+                        shouldValidate: true,
+                      })
                     }
                     value={assistedDate}
                   />
@@ -331,7 +382,9 @@ export function AssistanceReportPage({
                   <TimePicker
                     ariaLabel="เวลาที่ให้ความช่วยเหลือ"
                     onChange={(value) =>
-                      form.setValue("assistedTime", value, { shouldValidate: true })
+                      form.setValue("assistedTime", value, {
+                        shouldValidate: true,
+                      })
                     }
                     value={assistedTime}
                   />
@@ -342,7 +395,10 @@ export function AssistanceReportPage({
                 </FormItem>
               </div>
 
-              <FormItem className="lg:col-start-1 lg:row-start-2" data-assistance-report-measures>
+              <FormItem
+                className="lg:col-start-1 lg:row-start-2"
+                data-assistance-report-measures
+              >
                 {/* Locked: set when this round was assigned. */}
                 <FormLabel>มาตรการการช่วยเหลือ</FormLabel>
                 <Input disabled value={measureLabel} />

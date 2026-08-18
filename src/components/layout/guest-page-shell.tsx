@@ -35,16 +35,16 @@ export function GuestPageShell({
 }: GuestPageShellProps) {
   return (
     <Root
-      className={cn(
-        "min-h-screen bg-white text-slate-900",
-        className,
-      )}
+      className={cn("min-h-dvh bg-white text-slate-900", className)}
       {...props}
     >
       {showHeader ? (
         <header className="h-16 border-b border-slate-200 bg-white">
           <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6">
-            <AppBrand className="max-w-xs sm:max-w-sm" label="ระบบติดตามผู้เรียน" />
+            <AppBrand
+              className="max-w-xs sm:max-w-sm"
+              label="ระบบติดตามผู้เรียน"
+            />
             {showProfile ? (
               // Same popover as the signed-in header, minus the two actions a
               // link cannot offer: there is no profile to edit and nothing to
@@ -62,14 +62,18 @@ export function GuestPageShell({
       ) : null}
       <div
         className={cn(
-          showHeader ? "min-h-[calc(100vh-4rem)]" : "min-h-screen",
+          showHeader ? "min-h-[calc(100dvh-4rem)]" : "min-h-dvh",
           "w-full bg-white px-4 py-5 sm:px-6 sm:py-6",
           centered && "flex items-center justify-center",
           containerClassName,
         )}
       >
         <div
-          className={cn("mx-auto w-full", GUEST_PAGE_MAX_WIDTH_CLASS, contentClassName)}
+          className={cn(
+            "mx-auto w-full",
+            GUEST_PAGE_MAX_WIDTH_CLASS,
+            contentClassName,
+          )}
           data-page-container="guest"
         >
           {children}

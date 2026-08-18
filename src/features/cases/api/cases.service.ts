@@ -1,5 +1,7 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
+  CancelCaseAssignmentPayload,
+  CancelCaseAssignmentResponse,
   CaseDetailResponse,
   CaseTrackingOptions,
   CaseReviewPayload,
@@ -21,6 +23,11 @@ interface CasesService {
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
   getTrackingOptions: () => Promise<CaseTrackingOptions>;
+  /** Withdraws the assignment the case is waiting on; the case returns to รอมอบหมาย. */
+  cancelAssignment: (
+    caseId: number,
+    payload: CancelCaseAssignmentPayload,
+  ) => Promise<CancelCaseAssignmentResponse>;
 }
 
 async function getCase(caseId: number): Promise<CaseDetailResponse> {
@@ -44,6 +51,17 @@ async function reviewCase(
   return response.data;
 }
 
+async function cancelAssignment(
+  caseId: number,
+  payload: CancelCaseAssignmentPayload,
+): Promise<CancelCaseAssignmentResponse> {
+  const response = await apiClient.post<CancelCaseAssignmentResponse>(
+    `/cases/${caseId}/cancel-assignment`,
+    payload,
+  );
+  return response.data;
+}
+
 async function getTrackingOptions(): Promise<CaseTrackingOptions> {
   const response = await apiClient.get<CaseTrackingOptions>(
     "/public/case-tracking-options",
@@ -56,4 +74,5 @@ export const casesService: CasesService = {
   openCase,
   reviewCase,
   getTrackingOptions,
+  cancelAssignment,
 };

@@ -235,3 +235,23 @@ export function getLeafMenuItems(
       : [item],
   );
 }
+
+/**
+ * Whether the account may open a route, matched against the same menu table the
+ * sidebar filters. Used where a surface shows data for a page the account may
+ * not enter — the number stays, the link does not.
+ */
+export function canOpenRoute(
+  userPermissions: string[],
+  route: string,
+): boolean {
+  const path = route.split("?")[0];
+  const item = getLeafMenuItems().find((leaf) => leaf.route === path);
+  if (!item) return false;
+  const required = item.permissionId ?? item.id;
+  return Array.isArray(required)
+    ? required.some((permissionId) =>
+        hasPermission(userPermissions, permissionId),
+      )
+    : hasPermission(userPermissions, required);
+}
