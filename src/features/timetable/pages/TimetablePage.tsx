@@ -264,28 +264,36 @@ function AddSlotForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button onClick={onDone} type="button" variant="outline">
+        <Button
+          className="w-28"
+          onClick={onDone}
+          type="button"
+          variant="outline"
+        >
           ยกเลิก
         </Button>
         <Button
+          className="w-28"
           disabled={(!editingSlot && !activeTerm) || !subjectId}
           isLoading={createSlot.isPending || updateSlot.isPending}
           onClick={handleSubmit}
           type="button"
         >
-          {editingSlot ? "บันทึกการแก้ไข" : "บันทึก"}
+          บันทึก
         </Button>
       </div>
-      {disableSaveReason ? (
-        <p className="text-right text-sm font-medium text-slate-500">
-          {disableSaveReason}
-        </p>
-      ) : null}
-      {teacherRequired ? (
-        <p className="text-right text-sm font-medium text-danger" role="alert">
-          กรุณาเลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก
-        </p>
-      ) : null}
+      {/* Reserves one line regardless of which message (or none) is active, so
+        showing/hiding it never resizes the form section around it. */}
+      <p
+        className="min-h-5 text-right text-sm font-medium text-danger"
+        role={teacherRequired ? "alert" : undefined}
+      >
+        {teacherRequired ? (
+          "กรุณาเลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก"
+        ) : disableSaveReason ? (
+          <span className="text-slate-500">{disableSaveReason}</span>
+        ) : null}
+      </p>
     </div>
   );
 }
