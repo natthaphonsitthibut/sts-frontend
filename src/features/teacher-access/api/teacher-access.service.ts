@@ -218,10 +218,9 @@ async function getAttendanceDelegationOptions(input: {
   classroomId: number;
   attendanceDate: string;
 }): Promise<TeacherAttendanceDelegationOptions> {
-  const response = await apiClient.get<DataEnvelope<TeacherAttendanceDelegationOptions>>(
-    "/teacher-access-grants/attendance-delegation-options",
-    { params: input },
-  );
+  const response = await apiClient.get<
+    DataEnvelope<TeacherAttendanceDelegationOptions>
+  >("/teacher-access-grants/attendance-delegation-options", { params: input });
   return response.data.data;
 }
 
@@ -240,10 +239,12 @@ async function getPublicAttendanceDelegationOptions(
   input: { assignmentId: number; attendanceDate: string },
 ): Promise<TeacherAttendanceDelegationOptions> {
   return await runGuestRequest(async () => {
-    const response = await apiClient.get<DataEnvelope<TeacherAttendanceDelegationOptions>>(
-      "/teacher-access/attendance-delegation-options",
-      { headers: guestHeaders(credential), params: input },
-    );
+    const response = await apiClient.get<
+      DataEnvelope<TeacherAttendanceDelegationOptions>
+    >("/teacher-access/attendance-delegation-options", {
+      headers: guestHeaders(credential),
+      params: input,
+    });
     return response.data.data;
   });
 }
@@ -272,7 +273,9 @@ async function updateAttendanceDelegation(
     schoolId: input.schoolId,
     endsOn: input.endsOn,
     endsAt: input.endsAt,
-    ...(input.teacherMembershipId ? { teacherMembershipId: input.teacherMembershipId } : {}),
+    ...(input.teacherMembershipId
+      ? { teacherMembershipId: input.teacherMembershipId }
+      : {}),
   });
   return {
     grantId: response.data.data.grantId,
@@ -293,7 +296,9 @@ async function updatePublicAttendanceDelegation(
         assignmentId: input.assignmentId,
         endsOn: input.endsOn,
         endsAt: input.endsAt,
-        ...(input.teacherMembershipId ? { teacherMembershipId: input.teacherMembershipId } : {}),
+        ...(input.teacherMembershipId
+          ? { teacherMembershipId: input.teacherMembershipId }
+          : {}),
       },
       { headers: guestHeaders(credential) },
     );
@@ -404,18 +409,22 @@ async function verifyOtp(token: string, otp: string): Promise<string> {
   }
 }
 
-async function createAraIdChallenge(token: string): Promise<TeacherAccessAraIdChallenge> {
+async function createAraIdChallenge(
+  token: string,
+): Promise<TeacherAccessAraIdChallenge> {
   try {
-    const response = await apiClient.post<DataEnvelope<TeacherAccessAraIdChallenge>>(
-      "/teacher-access/araid/challenge",
-      undefined,
-      { headers: { [TOKEN_HEADER]: token } },
-    );
+    const response = await apiClient.post<
+      DataEnvelope<TeacherAccessAraIdChallenge>
+    >("/teacher-access/araid/challenge", undefined, {
+      headers: { [TOKEN_HEADER]: token },
+    });
     return response.data.data;
   } catch (error) {
     // Drop Axios config because it contains the raw teacher-link credential.
     // eslint-disable-next-line preserve-caught-error
-    throw new Error(getApiErrorMessage(error, "สร้างคำขอยืนยัน AraID ไม่สำเร็จ"));
+    throw new Error(
+      getApiErrorMessage(error, "สร้างคำขอยืนยัน AraID ไม่สำเร็จ"),
+    );
   }
 }
 
@@ -423,11 +432,11 @@ async function pollAraIdChallenge(
   challengeToken: string,
 ): Promise<TeacherAccessAraIdChallengeStatus> {
   try {
-    const response = await apiClient.post<DataEnvelope<TeacherAccessAraIdChallengeStatus>>(
-      "/teacher-access/araid/challenge/status",
-      undefined,
-      { headers: { [ARAID_CHALLENGE_HEADER]: challengeToken } },
-    );
+    const response = await apiClient.post<
+      DataEnvelope<TeacherAccessAraIdChallengeStatus>
+    >("/teacher-access/araid/challenge/status", undefined, {
+      headers: { [ARAID_CHALLENGE_HEADER]: challengeToken },
+    });
     return response.data.data;
   } catch (error) {
     // eslint-disable-next-line preserve-caught-error
@@ -435,7 +444,9 @@ async function pollAraIdChallenge(
   }
 }
 
-async function beginAraIdChallenge(challengeToken: string): Promise<{ expiresAt: string }> {
+async function beginAraIdChallenge(
+  challengeToken: string,
+): Promise<{ expiresAt: string }> {
   try {
     const response = await apiClient.post<DataEnvelope<{ expiresAt: string }>>(
       "/teacher-access/araid/challenge/begin",
@@ -445,7 +456,9 @@ async function beginAraIdChallenge(challengeToken: string): Promise<{ expiresAt:
     return response.data.data;
   } catch (error) {
     // eslint-disable-next-line preserve-caught-error
-    throw new Error(getApiErrorMessage(error, "คำขอยืนยัน AraID ถูกใช้หรือหมดอายุแล้ว"));
+    throw new Error(
+      getApiErrorMessage(error, "คำขอยืนยัน AraID ถูกใช้หรือหมดอายุแล้ว"),
+    );
   }
 }
 
@@ -854,7 +867,7 @@ async function recordClassroomExport(
 
 interface TeacherAccessAttendanceInput {
   assignmentId: number;
-  timetableSlotId?: number;
+  timetableSlotId: number;
   date: string;
   records: Array<{
     studentId: string;
@@ -893,10 +906,12 @@ async function getAttendanceSession(
   query: { assignmentId: number; date: string; timetableSlotId?: number },
 ): Promise<TeacherAccessAttendanceSession> {
   return await runGuestRequest(async () => {
-    const response = await apiClient.get<{ data: TeacherAccessAttendanceSession }>(
-      "/teacher-access/attendance-session",
-      { headers: guestHeaders(credential), params: query },
-    );
+    const response = await apiClient.get<{
+      data: TeacherAccessAttendanceSession;
+    }>("/teacher-access/attendance-session", {
+      headers: guestHeaders(credential),
+      params: query,
+    });
     return response.data.data;
   });
 }
@@ -906,13 +921,12 @@ async function getAttendanceCalendar(
   query: { assignmentId: number; date: string },
 ): Promise<TeacherAccessAttendanceCalendar> {
   return await runGuestRequest(async () => {
-    const response = await apiClient.get<{ data: TeacherAccessAttendanceCalendar }>(
-      "/teacher-access/attendance-session",
-      {
-        headers: guestHeaders(credential),
-        params: { ...query, preflightOnly: true },
-      },
-    );
+    const response = await apiClient.get<{
+      data: TeacherAccessAttendanceCalendar;
+    }>("/teacher-access/attendance-session", {
+      headers: guestHeaders(credential),
+      params: { ...query, preflightOnly: true },
+    });
     return response.data.data;
   });
 }

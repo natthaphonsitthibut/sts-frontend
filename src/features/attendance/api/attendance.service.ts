@@ -32,16 +32,19 @@ interface AttendanceService {
   getHistory: (
     date: string,
     schoolId?: string,
-    options?: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null },
+    options?: {
+      sessionKind?: AttendanceSessionKind;
+      timetableSlotId?: number | null;
+    },
   ) => Promise<AttendanceHistoryRecord[]>;
   saveAttendance: (
     records: AttendanceSaveRecord[],
-    options?: { timetableSlotId?: number | null; date?: string },
+    options: { timetableSlotId: number; date?: string },
   ) => Promise<AttendanceSaveResponse>;
   saveAttendanceMarks: (
     records: AttendanceSaveRecord[],
-    options?: {
-      timetableSlotId?: number | null;
+    options: {
+      timetableSlotId: number;
       date?: string;
       clearedStudentIds?: string[];
     },
@@ -51,9 +54,12 @@ interface AttendanceService {
     grade: string;
     room: string | number;
     date: string;
-    timetableSlotId?: number | null;
+    timetableSlotId: number;
   }) => Promise<AttendanceSessionContext>;
-  reopenSession: (sessionId: string, reason: string) => Promise<AttendanceSessionContext["session"]>;
+  reopenSession: (
+    sessionId: string,
+    reason: string,
+  ) => Promise<AttendanceSessionContext["session"]>;
   getTerms: (schoolId: string | number) => Promise<SchoolTerm[]>;
   upsertTerm: (input: {
     schoolId: number;
@@ -63,7 +69,10 @@ interface AttendanceService {
     endsOn: string;
     status: SchoolTermStatus;
   }) => Promise<SchoolTerm>;
-  generateCalendar: (termId: string, schoolDays: number[]) => Promise<SchoolCalendarDay[]>;
+  generateCalendar: (
+    termId: string,
+    schoolDays: number[],
+  ) => Promise<SchoolCalendarDay[]>;
   getCalendar: (termId: string) => Promise<SchoolCalendarDay[]>;
   updateCalendarDay: (
     calendarDayId: string,
@@ -105,7 +114,10 @@ async function getStudents(
 async function getHistory(
   date: string,
   schoolId?: string,
-  options: { sessionKind?: AttendanceSessionKind; timetableSlotId?: number | null } = {},
+  options: {
+    sessionKind?: AttendanceSessionKind;
+    timetableSlotId?: number | null;
+  } = {},
 ): Promise<AttendanceHistoryRecord[]> {
   const response = await apiClient.get<DataEnvelope<AttendanceHistoryRecord[]>>(
     "/attendance/history",
@@ -114,7 +126,9 @@ async function getHistory(
         date,
         ...(schoolId ? { schoolId } : {}),
         ...(options.sessionKind ? { sessionKind: options.sessionKind } : {}),
-        ...(options.timetableSlotId ? { timetableSlotId: options.timetableSlotId } : {}),
+        ...(options.timetableSlotId
+          ? { timetableSlotId: options.timetableSlotId }
+          : {}),
       },
     },
   );
@@ -130,16 +144,13 @@ async function getHistory(
 
 async function saveAttendance(
   records: AttendanceSaveRecord[],
-  options: { timetableSlotId?: number | null; date?: string } = {},
+  options: { timetableSlotId: number; date?: string },
 ): Promise<AttendanceSaveResponse> {
-  const response = await apiClient.post<AttendanceSaveResponse>(
-    "/attendance",
-    {
-      records,
-      ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
-      ...(options.date ? { date: options.date } : {}),
-    },
-  );
+  const response = await apiClient.post<AttendanceSaveResponse>("/attendance", {
+    records,
+    timetable_slot_id: options.timetableSlotId,
+    ...(options.date ? { date: options.date } : {}),
+  });
   return response.data;
 }
 
@@ -150,19 +161,22 @@ async function saveAttendance(
 async function saveAttendanceMarks(
   records: AttendanceSaveRecord[],
   options: {
-    timetableSlotId?: number | null;
+    timetableSlotId: number;
     date?: string;
     clearedStudentIds?: string[];
-  } = {},
+  },
 ): Promise<AttendanceMarksSaveResponse> {
-  const response = await apiClient.post<AttendanceMarksSaveResponse>("/attendance/marks", {
-    records,
-    ...(options.clearedStudentIds?.length
-      ? { cleared_student_ids: options.clearedStudentIds }
-      : {}),
-    ...(options.timetableSlotId ? { timetable_slot_id: options.timetableSlotId } : {}),
-    ...(options.date ? { date: options.date } : {}),
-  });
+  const response = await apiClient.post<AttendanceMarksSaveResponse>(
+    "/attendance/marks",
+    {
+      records,
+      ...(options.clearedStudentIds?.length
+        ? { cleared_student_ids: options.clearedStudentIds }
+        : {}),
+      timetable_slot_id: options.timetableSlotId,
+      ...(options.date ? { date: options.date } : {}),
+    },
+  );
   return response.data;
 }
 
@@ -171,7 +185,7 @@ async function getSessionContext(query: {
   grade: string;
   room: string | number;
   date: string;
-  timetableSlotId?: number | null;
+  timetableSlotId: number;
 }): Promise<AttendanceSessionContext> {
   const response = await apiClient.get<DataEnvelope<AttendanceSessionContext>>(
     "/attendance/session",
@@ -316,7 +330,9 @@ export interface AttendanceImportHistoryQuery {
 }
 
 /** ประวัติ → นำเข้าไฟล์ for the staff screen. */
-export async function listAttendanceImports(query: AttendanceImportHistoryQuery) {
+export async function listAttendanceImports(
+  query: AttendanceImportHistoryQuery,
+) {
   const response = await apiClient.get<{
     data: AttendanceImportHistoryEntry[];
     meta: { totalCount: number; totalPages: number };
@@ -363,4 +379,3 @@ export async function recordAttendanceImport(input: {
   form.append("appliedCount", String(input.appliedCount));
   await apiClient.post("/attendance/imports", form);
 }
-

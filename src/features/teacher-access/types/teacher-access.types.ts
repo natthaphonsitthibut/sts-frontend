@@ -14,7 +14,6 @@ import type {
 } from "../../school-structure/types/school-structure.types";
 
 export type TeacherAccessCapability =
-  | "HOMEROOM_ATTENDANCE"
   | "SUBJECT_ATTENDANCE"
   | "TEACHER_OBSERVATION";
 export type TeacherAccessGrantStatus =
@@ -169,7 +168,7 @@ export interface IssueTeacherAttendanceDelegationInput {
   schoolTermId: number;
   teacherMembershipId: number;
   assignmentId: number;
-  timetableSlotId?: number;
+  timetableSlotId: number;
   /** The round the link covers. */
   attendanceDate: string;
   /** When the link itself stops working; the start is stamped by the server. */
@@ -180,7 +179,7 @@ export interface IssueTeacherAttendanceDelegationInput {
 export interface IssuePublicTeacherAttendanceDelegationInput {
   teacherMembershipId: number;
   assignmentId: number;
-  timetableSlotId?: number;
+  timetableSlotId: number;
   attendanceDate: string;
   endsOn: string;
   endsAt: string;

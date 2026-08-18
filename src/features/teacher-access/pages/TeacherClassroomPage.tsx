@@ -199,10 +199,7 @@ export function TeacherClassroomPage() {
     (item) => item.id === assignmentId,
   );
   const canRecordAttendance =
-    assignment?.allowedActions.some(
-      (action) =>
-        action === "HOMEROOM_ATTENDANCE" || action === "SUBJECT_ATTENDANCE",
-    ) ?? false;
+    assignment?.allowedActions.includes("SUBJECT_ATTENDANCE") ?? false;
   useEffect(() => {
     if (assignment && tab === "attendance" && !canRecordAttendance) {
       void navigate(`/teacher-access/classes/${assignmentId}/roster`, {
@@ -332,6 +329,7 @@ export function TeacherClassroomPage() {
       ? (attendanceCalendarQuery.data?.calendar.canRecord ?? false)
       : (sessionQuery.data?.calendar.canRecord ?? false);
   const canEditAttendance =
+    Boolean(selectedTimetableSlotId) &&
     hasScheduledSubjectSlot &&
     canRecordOnSelectedDate &&
     session?.status !== "SUBMITTED";
@@ -352,14 +350,15 @@ export function TeacherClassroomPage() {
   const marks = useAttendanceMarks({
     serverMarks,
     rosterIds,
-    sessionKey: `teacher-link:${assignmentId}:${date}:${selectedTimetableSlotId ?? "daily"}`,
+    sessionKey: `teacher-link:${assignmentId}:${date}:${selectedTimetableSlotId ?? "no-subject-slot"}`,
     transport: {
       saveMarks: async (batch) => {
+        if (!selectedTimetableSlotId) {
+          throw new Error("Timetable subject slot is required");
+        }
         await teacherAccessService.saveAttendanceMarks(credential, {
           assignmentId: Number(assignmentId),
-          ...(selectedTimetableSlotId
-            ? { timetableSlotId: selectedTimetableSlotId }
-            : {}),
+          timetableSlotId: selectedTimetableSlotId,
           date,
           records: batch
             .filter((entry) => entry.mark !== null)
@@ -399,11 +398,7 @@ export function TeacherClassroomPage() {
     event.preventDefault();
     if (roster.length === 0 || !canEditAttendance || marks.unmarkedCount > 0)
       return;
-    if (
-      !hasScheduledSubjectSlot ||
-      (requiresPeriodSelection && !selectedTimetableSlotId)
-    )
-      return;
+    if (!hasScheduledSubjectSlot || !selectedTimetableSlotId) return;
 
     const confirmed = await confirm(getAttendanceSaveConfirm(counts));
     if (!confirmed) return;
@@ -415,9 +410,7 @@ export function TeacherClassroomPage() {
     try {
       await saveAttendance.mutateAsync({
         assignmentId: Number(assignmentId),
-        ...(selectedTimetableSlotId
-          ? { timetableSlotId: selectedTimetableSlotId }
-          : {}),
+        timetableSlotId: selectedTimetableSlotId,
         date,
         records: roster.map((student) => ({
           studentId: student.studentUuid,
