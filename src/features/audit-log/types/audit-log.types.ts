@@ -1,7 +1,6 @@
 import type { PaginationMeta } from "../../../lib/pagination";
 
 export type AuditLogDomain =
-  | "student_accounts"
   | "imports"
   | "users"
   | "students"
