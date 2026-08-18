@@ -4,7 +4,6 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   case: "เคสติดตามนักเรียน",
   import: "การนำเข้าข้อมูล",
   role_group: "กลุ่มสิทธิ์",
-  student_accounts: "บัญชีนักเรียน",
   task: "ภารกิจ",
   task_link: "ลิงก์ภารกิจ",
   user: "ผู้ใช้งาน",
@@ -34,5 +33,7 @@ export function hasAuditLogTargetReference(entry: AuditLogEntry): boolean {
 
 export function formatAuditLogDetails(details: AuditLogDetail[]): string {
   if (details.length === 0) return "-";
-  return details.map((detail) => `${detail.label}: ${String(detail.value)}`).join(" · ");
+  return details
+    .map((detail) => `${detail.label}: ${String(detail.value)}`)
+    .join(" · ");
 }

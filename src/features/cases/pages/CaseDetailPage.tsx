@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { ArrowLeft, FileText, MapPin, PhoneCall } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Card, Dialog, DialogContent, DialogHeader, DialogTitle, PersonIcon } from "../../../components/base";
+import {
+  Card,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  PersonIcon,
+} from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import {
   getNavigationLabel,
@@ -27,10 +34,14 @@ export function CaseDetailPage() {
   const safeBackTarget = useSafeBackTarget();
   const { caseId: caseIdParam } = useParams<{ caseId: string }>();
   const caseId = Number(caseIdParam);
-  const [reviewAction, setReviewAction] = useState<CaseReviewAction | null>(null);
+  const [reviewAction, setReviewAction] = useState<CaseReviewAction | null>(
+    null,
+  );
   const [contactsOpen, setContactsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
-  const detailQuery = useCaseDetail(Number.isInteger(caseId) && caseId > 0 ? caseId : undefined);
+  const detailQuery = useCaseDetail(
+    Number.isInteger(caseId) && caseId > 0 ? caseId : undefined,
+  );
   const caseRecord = detailQuery.data?.data;
   const returnTo =
     typeof safeBackTarget === "string" && safeBackTarget !== "/"
@@ -39,7 +50,13 @@ export function CaseDetailPage() {
   const returnLabel = getNavigationLabel(returnTo);
 
   if (detailQuery.isLoading) {
-    return <PageShell><Card className="p-5"><SkeletonStack lines={5} /></Card></PageShell>;
+    return (
+      <PageShell>
+        <Card className="p-5">
+          <SkeletonStack lines={5} />
+        </Card>
+      </PageShell>
+    );
   }
 
   if (detailQuery.isError) {
@@ -58,7 +75,11 @@ export function CaseDetailPage() {
     return (
       <PageShell>
         <EmptyState
-          action={<NavButton to={-1} variant="outline">ย้อนกลับ</NavButton>}
+          action={
+            <NavButton to={-1} variant="outline">
+              ย้อนกลับ
+            </NavButton>
+          }
           description="เคสนี้อาจอยู่นอกขอบเขตข้อมูลของคุณหรือถูกนำออกแล้ว"
           icon={FileText}
           title="ไม่พบเคส"
@@ -75,27 +96,41 @@ export function CaseDetailPage() {
       note: round.assignment_note || "-",
       at: round.submitted_at!,
     }))
-    .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime());
+    .sort(
+      (left, right) =>
+        new Date(right.at).getTime() - new Date(left.at).getTime(),
+    );
 
   return (
     <PageShell>
       <PageToolbar
-        breadcrumbTrail={[
-          { label: "หน้าหลัก", to: "/" },
-          { label: returnLabel, to: returnTo },
-        ]}
+        // A hardcoded trail makes PageToolbar discard the contextual one, which
+        // flattened report → student → case down to its immediate parent. As a
+        // parent crumb it only fills in when there is no trail to inherit.
+        parentBreadcrumb={{ label: returnLabel, to: returnTo }}
         icon={FileText}
-        navigation={<NavButton className="w-36" icon={ArrowLeft} to={returnTo} variant="outline">ย้อนกลับ</NavButton>}
-        actions={caseRecord.student_id ? (
+        navigation={
           <NavButton
             className="w-36"
-            contextual
-            icon={PersonIcon}
-            to={`/students/${caseRecord.student_id}`}
+            icon={ArrowLeft}
+            to={returnTo}
+            variant="outline"
           >
-            ข้อมูลนักเรียน
+            ย้อนกลับ
           </NavButton>
-        ) : null}
+        }
+        actions={
+          caseRecord.student_id ? (
+            <NavButton
+              className="w-36"
+              contextual
+              icon={PersonIcon}
+              to={`/students/${caseRecord.student_id}`}
+            >
+              ข้อมูลนักเรียน
+            </NavButton>
+          ) : null
+        }
         title="ติดตามนักเรียน"
       />
 
@@ -130,7 +165,10 @@ export function CaseDetailPage() {
       />
 
       <Dialog onOpenChange={setContactsOpen} open={contactsOpen}>
-        <DialogContent className="max-w-lg" onClose={() => setContactsOpen(false)}>
+        <DialogContent
+          className="max-w-lg"
+          onClose={() => setContactsOpen(false)}
+        >
           <DialogHeader>
             <DialogTitle icon={PhoneCall}>ช่องทางติดต่อนักเรียน</DialogTitle>
           </DialogHeader>
@@ -169,7 +207,9 @@ export function CaseDetailPage() {
 
       <CaseStatusUpdateDialog
         caseRecord={caseRecord}
-        onOpenChange={(open) => { if (!open) setReviewAction(null); }}
+        onOpenChange={(open) => {
+          if (!open) setReviewAction(null);
+        }}
         onUpdated={() => void detailQuery.refetch()}
         open={reviewAction !== null}
         presetAction={reviewAction}
