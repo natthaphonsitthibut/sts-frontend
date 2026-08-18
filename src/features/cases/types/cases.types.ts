@@ -54,7 +54,11 @@ export interface CaseTrackingOptions {
   }>;
   assistanceMeasures: AssistanceMeasureOption[];
   parentalStatuses: Array<{ code: string; label: string }>;
-  guardianTypes: Array<{ code: string; label: string; requiresDetail: boolean }>;
+  guardianTypes: Array<{
+    code: string;
+    label: string;
+    requiresDetail: boolean;
+  }>;
   residenceEnvironments: Array<{
     code: string;
     label: string;
@@ -62,6 +66,15 @@ export interface CaseTrackingOptions {
     isExclusive: boolean;
     requiresDetail: boolean;
   }>;
+}
+
+export interface CancelCaseAssignmentPayload {
+  cancel_reason: string;
+}
+
+export interface CancelCaseAssignmentResponse {
+  success: boolean;
+  data: { case_id: number; task_id: string };
 }
 
 export interface CaseFollowUpRound {
@@ -77,6 +90,11 @@ export interface CaseFollowUpRound {
   initial_assignee?: string | null;
   assignment_starts_at?: string | null;
   assignment_ends_at?: string | null;
+  /** Link state of the round: ACTIVE, SCHEDULED, CANCELLED, EXPIRED, COMPLETED. */
+  link_status?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  cancelled_by_label?: string | null;
   assignment_note?: string | null;
   link_count: number;
   submitted_at?: string | null;
