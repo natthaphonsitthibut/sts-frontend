@@ -10,7 +10,8 @@ export type RiskDashboardSortBy =
   | "room"
   | "attendance"
   | "openCases"
-  | "updatedAt";
+  | "updatedAt"
+  | "problemCategory";
 export type RiskDashboardSortDirection = "asc" | "desc";
 
 export interface RiskDashboardRow {
@@ -41,6 +42,7 @@ export interface RiskDashboardRow {
   latestCaseStatus: string | null;
   latestCaseAt: string | null;
   latestCaseMagicLink: string | null;
+  problemCategoryLabel: string | null;
   teacherComment: string | null;
 }
 
@@ -74,7 +76,12 @@ export interface RiskDashboardQuery {
   schoolId?: string;
   academicYear?: number;
   semester?: number;
-  caseStatus?: "OPEN" | "IN_PROGRESS" | "PENDING_REVIEW" | "STUDENT_NOT_FOUND" | "RESOLVED";
+  caseStatus?:
+    | "OPEN"
+    | "IN_PROGRESS"
+    | "PENDING_REVIEW"
+    | "STUDENT_NOT_FOUND"
+    | "RESOLVED";
   grade?: string;
   room?: string;
   searchTerm?: string;
