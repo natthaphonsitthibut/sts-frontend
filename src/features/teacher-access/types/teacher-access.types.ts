@@ -121,6 +121,7 @@ export type TeacherLineGroupInvitationIssueResult =
 export interface TeacherAccessContext {
   grantId: string;
   teacherDisplayName: string;
+  teacherHasPhoto: boolean;
   schoolId: number;
   schoolName: string;
   schoolTermId: string;

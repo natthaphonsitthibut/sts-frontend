@@ -1,9 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  Sheet,
-  SheetHeader,
-} from "../../../components/base";
+import { Sheet, SheetHeader } from "../../../components/base";
 import {
   AppBrand,
   AppFrame,
@@ -18,8 +15,10 @@ import {
 import { PAGE_ICONS } from "../../../components/layout/page-identity";
 import { CollapsibleDesktopSidebar } from "../../../components/layout/CollapsibleDesktopSidebar";
 import { HeaderProfileMenu } from "../../../components/layout/HeaderProfileMenu";
+import { useBlobObjectUrl } from "../../../hooks/useBlobObjectUrl";
 import { cn } from "../../../lib/utils";
 import { useTeacherLink } from "../hooks/useTeacherLink";
+import { useTeacherOwnPhoto } from "../hooks/useTeacherAccess";
 
 interface TeacherLinkShellProps {
   children: ReactNode;
@@ -100,11 +99,14 @@ export function TeacherLinkShell({
   title,
 }: TeacherLinkShellProps) {
   const { context } = useTeacherLink();
+  const ownPhoto = useTeacherOwnPhoto(context.teacherHasPhoto);
+  const ownPhotoUrl = useBlobObjectUrl(ownPhoto.data);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const attendanceOnly = context.accessScope === "ATTENDANCE_ONLY";
-  const homeRoute = attendanceOnly && context.assignments[0]
-    ? `/teacher-access/attendance/${context.assignments[0].id}/check-in`
-    : "/teacher-access";
+  const homeRoute =
+    attendanceOnly && context.assignments[0]
+      ? `/teacher-access/attendance/${context.assignments[0].id}/check-in`
+      : "/teacher-access";
 
   return (
     <AppFrame
@@ -121,32 +123,35 @@ export function TeacherLinkShell({
             canEditProfile={false}
             canSignOut={false}
             displayName={context.teacherDisplayName}
+            photoUrl={ownPhotoUrl}
             roleLabel="คุณครู"
           />
         </AppHeaderFrame>
       }
-      sidebar={attendanceOnly ? undefined : (
-        <>
-          <CollapsibleDesktopSidebar>
-            {(collapsed) => <TeacherSidebarContent collapsed={collapsed} />}
-          </CollapsibleDesktopSidebar>
-          <Sheet onOpenChange={setMobileSidebarOpen} open={mobileSidebarOpen}>
-            <SheetHeader
-              heading={
-                <AppBrand
-                  className="max-w-52"
-                  onClick={() => setMobileSidebarOpen(false)}
-                  to="/teacher-access"
-                />
-              }
-              onClose={() => setMobileSidebarOpen(false)}
-            />
-            <TeacherSidebarContent
-              onNavigate={() => setMobileSidebarOpen(false)}
-            />
-          </Sheet>
-        </>
-      )}
+      sidebar={
+        attendanceOnly ? undefined : (
+          <>
+            <CollapsibleDesktopSidebar>
+              {(collapsed) => <TeacherSidebarContent collapsed={collapsed} />}
+            </CollapsibleDesktopSidebar>
+            <Sheet onOpenChange={setMobileSidebarOpen} open={mobileSidebarOpen}>
+              <SheetHeader
+                heading={
+                  <AppBrand
+                    className="max-w-52"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    to="/teacher-access"
+                  />
+                }
+                onClose={() => setMobileSidebarOpen(false)}
+              />
+              <TeacherSidebarContent
+                onNavigate={() => setMobileSidebarOpen(false)}
+              />
+            </Sheet>
+          </>
+        )
+      }
     >
       <PageShell
         className={cn(centered && "flex items-center")}
@@ -165,7 +170,9 @@ export function TeacherLinkShell({
               breadcrumbTrail={
                 attendanceOnly
                   ? []
-                  : (breadcrumb?.length ? breadcrumb : TEACHER_HOME_CRUMB)
+                  : breadcrumb?.length
+                    ? breadcrumb
+                    : TEACHER_HOME_CRUMB
               }
               icon={icon}
               title={title}
