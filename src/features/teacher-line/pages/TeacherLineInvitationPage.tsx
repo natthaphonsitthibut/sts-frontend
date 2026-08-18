@@ -33,9 +33,11 @@ export function TeacherLineInvitationPage() {
   });
   const requestOtp = useMutation({
     mutationFn: () => teacherLineService.requestInvitationOtp(token),
+    meta: { suppressSuccessToast: true },
   });
   const startAuthorization = useMutation({
     mutationFn: teacherLineService.startAuthorization,
+    meta: { suppressSuccessToast: true },
   });
 
   async function openLineAuthorization(bindingToken: string): Promise<void> {
