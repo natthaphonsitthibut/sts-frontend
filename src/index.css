@@ -249,6 +249,10 @@
 
 :root {
   font-family: "TH Sarabun PSK", sans-serif;
+  /* TH Sarabun PSK ships regular and bold only, and the @font-face block above
+     maps 500-600 onto the bold file — so this base weight renders the UI in the
+     medium slot rather than the thin regular one. */
+  font-weight: 500;
   color: var(--color-content-primary);
   background: var(--color-surface-page);
   font-synthesis: none;
@@ -337,7 +341,9 @@ p {
   background-color: var(--color-slate-50);
   padding: 0.25rem 0.75rem;
   color: var(--color-primary);
-  font-weight: 400;
+  /* Quieter than the bold badge elsewhere, but on the same medium face as the
+     rest of the UI — the regular face reads as thin next to it. */
+  font-weight: 500;
   line-height: 1rem;
   text-align: center;
   white-space: nowrap;
