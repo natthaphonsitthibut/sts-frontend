@@ -1,19 +1,25 @@
 import { useState } from "react";
 import { ClipboardCheck, Link2Off, Share2 } from "lucide-react";
 import { IconButton, useConfirm } from "../../../components/base";
-import { formatThaiDate, formatThaiTime } from "../../../lib/date-time";
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { AttendanceDelegationEditDialog } from "./AttendanceDelegationEditDialog";
 import type { TeacherAttendanceDelegation } from "../../teacher-access/types/teacher-access.types";
 
 interface AttendanceDelegationSectionProps {
   delegations: readonly TeacherAttendanceDelegation[];
   onClose: (delegation: TeacherAttendanceDelegation) => Promise<void>;
-  onShare: (delegation: TeacherAttendanceDelegation, accessUrl?: string) => void;
+  onShare: (
+    delegation: TeacherAttendanceDelegation,
+    accessUrl?: string,
+  ) => void;
   onUpdate: (
     delegation: TeacherAttendanceDelegation,
     input: { endsOn: string; endsAt: string; teacherMembershipId: number },
   ) => Promise<{ accessUrl: string | null } | void>;
-  teachers: readonly { teacherMembershipId: number; teacherDisplayName: string }[];
+  teachers: readonly {
+    teacherMembershipId: number;
+    teacherDisplayName: string;
+  }[];
 }
 
 function delegationLabel(delegation: TeacherAttendanceDelegation): string {
@@ -29,7 +35,9 @@ export function AttendanceDelegationSection({
   onUpdate,
   teachers,
 }: AttendanceDelegationSectionProps) {
-  const [editing, setEditing] = useState<TeacherAttendanceDelegation | null>(null);
+  const [editing, setEditing] = useState<TeacherAttendanceDelegation | null>(
+    null,
+  );
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   if (delegations.length === 0) return null;
@@ -49,21 +57,55 @@ export function AttendanceDelegationSection({
       <section className="mb-5 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
         <div className="flex items-center gap-2 text-slate-900">
           <ClipboardCheck className="size-4 text-success" aria-hidden="true" />
-          <h2 className="text-base font-bold">ลิงก์มอบหมายการเช็กชื่อที่ยังใช้งาน</h2>
+          <h2 className="text-base font-bold">
+            ลิงก์มอบหมายการเช็กชื่อที่ยังใช้งาน
+          </h2>
         </div>
         <div className="mt-2 divide-y divide-success/20">
           {delegations.map((delegation) => (
-            <div className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-1 last:pb-0" key={delegation.grantId}>
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-1 last:pb-0"
+              key={delegation.grantId}
+            >
               <div>
-                <p className="font-medium text-slate-900">{delegation.teacherDisplayName} · {delegationLabel(delegation)}</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {delegation.teacherDisplayName} ·{" "}
+                  {delegationLabel(delegation)}
+                </p>
+                {/* The round being checked and the link's own validity window are
+                    different dates on purpose (a link opened today can still cover
+                    an earlier round) — each needs its own date so they never read
+                    as one span. */}
                 <p className="mt-0.5 text-sm text-slate-600">
-                  {formatThaiDate(delegation.attendanceDate)} · {formatThaiTime(delegation.startsAt)}–{formatThaiTime(delegation.endsAt)} น.
+                  เช็กชื่อวันที่ {formatThaiDate(delegation.attendanceDate)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  ลิงก์ใช้ได้ {formatThaiDateTime(delegation.startsAt)}–
+                  {formatThaiDateTime(delegation.endsAt)} น.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <IconButton aria-label={`แก้ไขลิงก์ของ ${delegation.teacherDisplayName}`} icon={ClipboardCheck} iconClassName="size-5" onClick={() => setEditing(delegation)} variant="edit" />
-                <IconButton aria-label={`แชร์ลิงก์ของ ${delegation.teacherDisplayName}`} icon={Share2} iconClassName="size-5" onClick={() => onShare(delegation)} variant="share" />
-                <IconButton aria-label={`ปิดลิงก์ของ ${delegation.teacherDisplayName}`} icon={Link2Off} iconClassName="size-5" onClick={() => void close(delegation)} variant="lock" />
+                <IconButton
+                  aria-label={`แก้ไขลิงก์ของ ${delegation.teacherDisplayName}`}
+                  icon={ClipboardCheck}
+                  iconClassName="size-5"
+                  onClick={() => setEditing(delegation)}
+                  variant="edit"
+                />
+                <IconButton
+                  aria-label={`แชร์ลิงก์ของ ${delegation.teacherDisplayName}`}
+                  icon={Share2}
+                  iconClassName="size-5"
+                  onClick={() => onShare(delegation)}
+                  variant="share"
+                />
+                <IconButton
+                  aria-label={`ปิดลิงก์ของ ${delegation.teacherDisplayName}`}
+                  icon={Link2Off}
+                  iconClassName="size-5"
+                  onClick={() => void close(delegation)}
+                  variant="lock"
+                />
               </div>
             </div>
           ))}

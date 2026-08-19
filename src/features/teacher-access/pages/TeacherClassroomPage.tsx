@@ -161,7 +161,12 @@ export function TeacherClassroomPage() {
   );
   const [search, setSearch] = useState("");
   const [riskTier, setRiskTier] = useState("");
-  const [date, setDate] = useState(getThaiDateKey);
+  // An ATTENDANCE_ONLY delegation link is scoped server-side to its own round's
+  // date (which can be an earlier day than today) — defaulting to today here
+  // would ask the server for a date the link was never granted, and 403.
+  const [date, setDate] = useState(
+    () => context.attendanceDate ?? getThaiDateKey(),
+  );
   const [timetableSlotId, setTimetableSlotId] = useState("");
   const [saved, setSaved] = useState(false);
   const [rosterSort, setRosterSort] = useState<DataTableSortState | undefined>({
@@ -503,10 +508,16 @@ export function TeacherClassroomPage() {
             ) : null}
           </>
         ) : (
-          <>
+          // Grouped so เครื่องมือ shares its row's width instead of sitting at
+          // its own tiny content width on mobile — matters even more here since
+          // a delegation link hides ประวัติ entirely, leaving it alone in the
+          // row. `sm:contents` drops the wrapper at desktop so the existing
+          // auto-width + ml-auto layout there is untouched.
+          <div className="flex items-center gap-2 sm:contents">
             <DropdownMenu
               align="start"
               ariaLabel="เครื่องมือการเช็กชื่อ"
+              className="flex-1 sm:flex-none"
               items={[
                 {
                   id: "qr",
@@ -547,14 +558,19 @@ export function TeacherClassroomPage() {
                 },
               ]}
               trigger={(triggerProps) => (
-                <Button {...triggerProps} icon={Wrench} variant="outline">
+                <Button
+                  {...triggerProps}
+                  className="w-full sm:w-auto"
+                  icon={Wrench}
+                  variant="outline"
+                >
                   เครื่องมือ
                 </Button>
               )}
             />
             {!attendanceOnly ? (
               <Button
-                className="sm:ml-auto"
+                className="flex-1 sm:flex-none sm:ml-auto"
                 icon={History}
                 onClick={() =>
                   void navigate(
@@ -565,7 +581,7 @@ export function TeacherClassroomPage() {
                 ประวัติการเช็กชื่อ
               </Button>
             ) : null}
-          </>
+          </div>
         )}
       </ToolbarControls>
 
@@ -711,10 +727,14 @@ export function TeacherClassroomPage() {
         </DataTable>
       ) : (
         <form onSubmit={(event) => void submitAttendance(event)}>
-          <div className="mb-4 w-[270px] max-w-full">
+          <div className="mb-4 w-full sm:max-w-[560px]">
             <Label htmlFor="attendance-date">วันที่</Label>
             <DatePicker
               ariaLabel="เลือกวันที่เช็กชื่อ"
+              // A delegation link is server-locked to the one date it was issued
+              // for (assertAttendanceDateAllowed) — picking another date here
+              // can only ever 403, so don't offer the choice.
+              disabled={attendanceOnly}
               id="attendance-date"
               max={getThaiDateKey()}
               onChange={(value) => {
@@ -727,7 +747,7 @@ export function TeacherClassroomPage() {
           </div>
           {assignment.assignmentKind === "SUBJECT" &&
           !attendanceSlotsQuery.isLoading ? (
-            <div className="mb-4 w-full max-w-2xl">
+            <div className="mb-4 w-full sm:max-w-[560px]">
               {hasScheduledSubjectSlot ? (
                 <>
                   <Label htmlFor="attendance-period">คาบเรียน</Label>
@@ -891,7 +911,7 @@ export function TeacherClassroomPage() {
                     </AlertDescription>
                   </Alert>
                 ) : null}
-                <div className="mt-4 flex flex-col items-end gap-1">
+                <div className="sticky bottom-0 z-10 flex flex-col items-end gap-1 border-t border-slate-200 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <Button
                     disabled={
                       attendanceSlotsQuery.isLoading ||

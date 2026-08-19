@@ -639,10 +639,15 @@ export function AttendanceCheckInPage() {
             value={attendanceSearch}
           />
           {tab === "attendance" ? (
-            <>
+            // Grouped so the two secondary tools sit side by side and share
+            // width equally on mobile; `sm:contents` drops the wrapper at the
+            // desktop breakpoint so the original auto-width + ml-auto layout
+            // there is untouched.
+            <div className="flex items-center gap-2 sm:contents">
               <DropdownMenu
                 align="start"
                 ariaLabel="เครื่องมือการเช็กชื่อ"
+                className="flex-1 sm:flex-none"
                 items={[
                   {
                     id: "qr",
@@ -681,13 +686,18 @@ export function AttendanceCheckInPage() {
                   },
                 ]}
                 trigger={(triggerProps) => (
-                  <Button {...triggerProps} icon={Wrench} variant="outline">
+                  <Button
+                    {...triggerProps}
+                    className="w-full sm:w-auto"
+                    icon={Wrench}
+                    variant="outline"
+                  >
                     เครื่องมือ
                   </Button>
                 )}
               />
               <Button
-                className="sm:ml-auto"
+                className="flex-1 sm:flex-none sm:ml-auto"
                 icon={History}
                 // Straight to the tab: bouncing through the redirect route would
                 // unmount this page and drop the school/grade/room already picked.
@@ -695,7 +705,7 @@ export function AttendanceCheckInPage() {
               >
                 ประวัติการเช็กชื่อ
               </Button>
-            </>
+            </div>
           ) : (
             <>
               <FilterSelect
@@ -853,7 +863,7 @@ export function AttendanceCheckInPage() {
             void handleSave();
           }}
         >
-          <div className="mb-4 w-[270px] max-w-full">
+          <div className="mb-4 w-full sm:max-w-[560px]">
             <Label htmlFor="attendance-date">วันที่</Label>
             <DatePicker
               ariaLabel="เลือกวันที่เช็กชื่อ"
@@ -865,9 +875,8 @@ export function AttendanceCheckInPage() {
               }
             />
           </div>
-          {/* Same width as the teacher link's period select: the label carries
-              subject, period and time, which a 270px box truncates. */}
-          <div className="mb-4 w-full max-w-2xl">
+          {/* Same width cap as the search bar and the date field above it. */}
+          <div className="mb-4 w-full sm:max-w-[560px]">
             <Label htmlFor="attendance-period">คาบเรียน</Label>
             <Select
               disabled={
@@ -1082,7 +1091,10 @@ export function AttendanceCheckInPage() {
             )}
 
             {canLoadRoster && students.length > 0 && canEditAttendance ? (
-              <div className="mt-4 flex flex-col items-end gap-1">
+              // Sticky so the submit action stays one tap away from anywhere
+              // in a long roster, instead of scrolling back to the bottom
+              // once the last student is marked.
+              <div className="sticky bottom-0 z-10 mt-4 flex flex-col items-end gap-1 border-t border-slate-200 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                 <Button
                   disabled={isSessionError || unmarkedCount > 0}
                   isLoading={saveState.isPending}

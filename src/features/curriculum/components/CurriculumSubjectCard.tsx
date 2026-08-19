@@ -5,6 +5,8 @@ import {
   DataTable,
   DataTableCell,
   DataTableRow,
+  TableCard,
+  TableCardList,
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
@@ -12,7 +14,10 @@ import { PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatFileSize } from "../../../lib/file-size";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { cn } from "../../../lib/utils";
-import type { CurriculumCoverage, CurriculumSubject } from "../types/curriculum.types";
+import type {
+  CurriculumCoverage,
+  CurriculumSubject,
+} from "../types/curriculum.types";
 
 interface CurriculumSubjectCardProps {
   subject: CurriculumSubject;
@@ -21,9 +26,39 @@ interface CurriculumSubjectCardProps {
   isDeleting?: boolean;
 }
 
-function getCoverageSortValue(row: CurriculumCoverage, key: string): string {
+interface ClassroomCoverageGroup {
+  classroomId: string;
+  classroomLabel: string;
+  teacherNames: string[];
+}
+
+/** One row per classroom, teachers merged — a room with several subject
+ * teachers otherwise repeats its label once per teacher. */
+function groupCoverageByClassroom(
+  coverage: CurriculumCoverage[],
+): ClassroomCoverageGroup[] {
+  const groups = new Map<string, ClassroomCoverageGroup>();
+  for (const row of coverage) {
+    const existing = groups.get(row.classroomId);
+    if (existing) {
+      existing.teacherNames.push(row.teacherName);
+    } else {
+      groups.set(row.classroomId, {
+        classroomId: row.classroomId,
+        classroomLabel: row.classroomLabel,
+        teacherNames: [row.teacherName],
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+function getCoverageSortValue(
+  row: ClassroomCoverageGroup,
+  key: string,
+): string {
   if (key === "classroom") return row.classroomLabel;
-  if (key === "teacher") return row.teacherName;
+  if (key === "teacher") return row.teacherNames.join(", ");
   return "";
 }
 
@@ -42,17 +77,22 @@ export function CurriculumSubjectCard({
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(PAGE_SIZE_OPTIONS[0]);
 
-  // Coverage arrives with the subject, so paging and sorting stay client-side.
+  // Coverage arrives with the subject, so grouping, paging and sorting stay
+  // client-side.
+  const groupedCoverage = useMemo(
+    () => groupCoverageByClassroom(subject.coverage),
+    [subject.coverage],
+  );
   const sortedCoverage = useMemo(() => {
-    if (!sort) return subject.coverage;
-    return [...subject.coverage].sort((a, b) => {
+    if (!sort) return groupedCoverage;
+    return [...groupedCoverage].sort((a, b) => {
       const result = getCoverageSortValue(a, sort.key).localeCompare(
         getCoverageSortValue(b, sort.key),
         "th",
       );
       return sort.direction === "asc" ? result : -result;
     });
-  }, [sort, subject.coverage]);
+  }, [sort, groupedCoverage]);
   const pagedCoverage = sortedCoverage.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage,
@@ -99,25 +139,35 @@ export function CurriculumSubjectCard({
                   { label: "ห้องเรียน", sortKey: "classroom" },
                   { label: "ครูผู้สอน", sortKey: "teacher" },
                 ]}
-                minWidthClassName="min-w-[480px]"
                 onSortChange={(next) => {
                   setSort(next);
                   setPage(1);
                 }}
-                responsive={false}
                 sort={sort}
               >
                 {pagedCoverage.map((row) => (
-                  <DataTableRow key={row.id}>
+                  <DataTableRow key={row.classroomId}>
                     <DataTableCell className="text-slate-800">
                       {row.classroomLabel}
                     </DataTableCell>
                     <DataTableCell className="text-slate-800">
-                      {row.teacherName}
+                      {row.teacherNames.join(", ")}
                     </DataTableCell>
                   </DataTableRow>
                 ))}
               </DataTable>
+              <TableCardList>
+                {pagedCoverage.map((row) => (
+                  <TableCard key={row.classroomId}>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {row.classroomLabel}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      {row.teacherNames.join(", ")}
+                    </div>
+                  </TableCard>
+                ))}
+              </TableCardList>
               <Pagination
                 onPageChange={setPage}
                 onRowsPerPageChange={(value) => {
@@ -145,7 +195,10 @@ export function CurriculumSubjectCard({
                   rel="noreferrer"
                   target="_blank"
                 >
-                  <FileText className="size-4 shrink-0 text-danger" aria-hidden="true" />
+                  <FileText
+                    className="size-4 shrink-0 text-danger"
+                    aria-hidden="true"
+                  />
                   <span className="truncate">{subject.contentFileName}</span>
                   <span className="shrink-0 text-xs text-slate-500">
                     {formatFileSize(subject.contentFileSizeBytes)}

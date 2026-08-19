@@ -40,6 +40,13 @@ export interface TimetableSlot {
   teacher_user_id: number | null;
   teacher_membership_ids?: number[];
   teacher_name: string | null;
+  /** Structured per-teacher detail for a co-taught slot — `photoUrl` is the
+   * same signed-redirect endpoint the teacher roster/link pages use. */
+  teachers?: Array<{
+    id: number;
+    name: string | null;
+    photoUrl: string | null;
+  }>;
 }
 
 export interface RoomSubject {

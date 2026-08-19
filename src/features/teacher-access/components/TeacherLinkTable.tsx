@@ -137,7 +137,7 @@ function TeacherIdentity({
         )}
         {showAssignmentCount ? (
           <p className="mt-1 text-xs text-slate-500">
-            {entry.assignmentCount} ห้อง/รายวิชา
+            {entry.assignmentCount} การสอน
           </p>
         ) : null}
         {entry.hasEmail ? null : (
@@ -154,10 +154,7 @@ function rowActions(
   entry: TeacherLinkRosterEntry,
   handlers: Pick<
     TeacherLinkTableProps,
-    | "onCreate"
-    | "onCopy"
-    | "onRotate"
-    | "onRevoke"
+    "onCreate" | "onCopy" | "onRotate" | "onRevoke"
   >,
 ): DropdownMenuItem[] {
   const grantActions: DropdownMenuItem[] =
@@ -204,11 +201,7 @@ function RowMenu({
   ...handlers
 }: Pick<
   TeacherLinkTableProps,
-  | "onCreate"
-  | "onCopy"
-  | "onRotate"
-  | "onRevoke"
-  | "onUnlinkLine"
+  "onCreate" | "onCopy" | "onRotate" | "onRevoke" | "onUnlinkLine"
 > & {
   entry: TeacherLinkRosterEntry;
   busy: boolean;
@@ -220,7 +213,7 @@ function RowMenu({
         header={
           entry.assignmentCount === 0
             ? "ครูคนนี้ยังไม่มีห้องหรือรายวิชาในภาคเรียนนี้"
-            : `${entry.assignmentCount} ห้อง/รายวิชาในภาคเรียนนี้`
+            : `${entry.assignmentCount} การสอนในภาคเรียนนี้ (นับแยกตามห้อง×วิชา)`
         }
         items={rowActions(entry, handlers)}
         trigger={(triggerProps) => (
@@ -376,7 +369,6 @@ export function TeacherLinkTable({
           </TableCard>
         ))}
       </TableCardList>
-
     </div>
   );
 }

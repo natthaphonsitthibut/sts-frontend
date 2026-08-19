@@ -80,7 +80,11 @@ export function useTeacherAttendanceDelegationOptions(input: {
         attendanceDate: input.attendanceDate!,
       }),
     enabled: Boolean(
-      input.enabled !== false && input.schoolId && input.schoolTermId && input.classroomId && input.attendanceDate,
+      input.enabled !== false &&
+      input.schoolId &&
+      input.schoolTermId &&
+      input.classroomId &&
+      input.attendanceDate,
     ),
   });
 }
@@ -90,7 +94,10 @@ export function useIssueTeacherAttendanceDelegation() {
   return useMutation({
     mutationFn: (input: IssueTeacherAttendanceDelegationInput) =>
       teacherAccessService.issueAttendanceDelegation(input),
-    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+    onSuccess: () =>
+      client.invalidateQueries({
+        queryKey: [KEY, "attendance-delegation-options"],
+      }),
     meta: { suppressSuccessToast: true },
   });
 }
@@ -102,16 +109,24 @@ export function usePublicTeacherAttendanceDelegationOptions(
 ) {
   return useQuery({
     queryKey: [
-      ...(credential ? teacherAccessGuestQueryKey(credential.token) : [KEY, "guest", "none"]),
+      ...(credential
+        ? teacherAccessGuestQueryKey(credential.token)
+        : [KEY, "guest", "none"]),
       "attendance-delegation-options",
       input.assignmentId,
       input.attendanceDate,
     ],
-    queryFn: () => teacherAccessService.getPublicAttendanceDelegationOptions(
-      credential!,
-      { assignmentId: input.assignmentId!, attendanceDate: input.attendanceDate! },
+    queryFn: () =>
+      teacherAccessService.getPublicAttendanceDelegationOptions(credential!, {
+        assignmentId: input.assignmentId!,
+        attendanceDate: input.attendanceDate!,
+      }),
+    enabled: Boolean(
+      enabled &&
+      credential?.token &&
+      input.assignmentId &&
+      input.attendanceDate,
     ),
-    enabled: Boolean(enabled && credential?.token && input.assignmentId && input.attendanceDate),
     retry: false,
     gcTime: 0,
   });
@@ -135,7 +150,10 @@ export function useUpdateTeacherAttendanceDelegation() {
   return useMutation({
     mutationFn: (input: UpdateTeacherAttendanceDelegationInput) =>
       teacherAccessService.updateAttendanceDelegation(input),
-    onSuccess: () => client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+    onSuccess: () =>
+      client.invalidateQueries({
+        queryKey: [KEY, "attendance-delegation-options"],
+      }),
     meta: { successMessage: "แก้ไขลิงก์เช็กชื่อแล้ว" },
   });
 }
@@ -147,7 +165,9 @@ export function useRevokeTeacherAttendanceDelegation() {
       teacherAccessService.revokeAttendanceDelegation(grantId),
     onSuccess: async () => {
       await Promise.all([
-        client.invalidateQueries({ queryKey: [KEY, "attendance-delegation-options"] }),
+        client.invalidateQueries({
+          queryKey: [KEY, "attendance-delegation-options"],
+        }),
         client.invalidateQueries({ queryKey: [KEY, "teacher-roster"] }),
       ]);
     },
@@ -208,7 +228,8 @@ export function useUnlinkTeacherLineAccount() {
 export function useTeacherLineGroupInvitation(schoolId?: number) {
   const query = useQuery({
     queryKey: [KEY, "line-group-invitation", schoolId],
-    queryFn: () => teacherAccessService.getTeacherLineGroupInvitation(schoolId!),
+    queryFn: () =>
+      teacherAccessService.getTeacherLineGroupInvitation(schoolId!),
     enabled: Boolean(schoolId),
   });
   const expiresAt = query.data?.expiresAt;
@@ -551,7 +572,12 @@ export function useTeacherAttendanceDelegationHistory(
 export function useTeacherAttendanceImports(
   credential: TeacherLinkCredential,
   assignmentId: number | undefined,
-  input: { page: number; limit: number; attendanceDate?: string; search?: string },
+  input: {
+    page: number;
+    limit: number;
+    attendanceDate?: string;
+    search?: string;
+  },
   enabled: boolean,
 ) {
   return useQuery({
@@ -680,6 +706,21 @@ export function useTeacherClassroomCover(
   });
 }
 
+export function useTeacherOwnPhoto(hasPhoto: boolean) {
+  const token = useTeacherLinkSessionStore((state) => state.token);
+  const sessionToken = useTeacherLinkSessionStore(
+    (state) => state.sessionToken,
+  );
+  return useQuery({
+    queryKey: [...teacherAccessGuestQueryKey(token), "own-photo"],
+    queryFn: () =>
+      teacherAccessService.getOwnPhotoBlob({ token, sessionToken }),
+    enabled: Boolean(token && hasPhoto),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useTeacherStudentPhoto(
   assignmentId: number | undefined,
   studentUuid: string | undefined,
@@ -787,7 +828,9 @@ export function useTeacherAccessAttendanceSession(
       teacherAccessService.getAttendanceSession(credential, {
         assignmentId: query.assignmentId as number,
         date: query.date,
-        ...(query.timetableSlotId ? { timetableSlotId: query.timetableSlotId } : {}),
+        ...(query.timetableSlotId
+          ? { timetableSlotId: query.timetableSlotId }
+          : {}),
       }),
     enabled: Boolean(enabled && credential.token && query.assignmentId),
     retry: false,

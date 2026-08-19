@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { CalendarClock, Plus } from "lucide-react";
+import { Avatar, HoverTooltip } from "../../../components/base";
 import { EmptyState } from "../../../components/layout/page-primitives";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { cn } from "../../../lib/utils";
 import {
   DAY_LABELS,
@@ -104,6 +106,73 @@ function getGapAfterPeriods(
   return gaps;
 }
 
+/**
+ * A slot's teacher(s) as name text (one teacher) or a stack of small avatars
+ * (co-taught — real photo when the teacher has one, initials otherwise, same
+ * as everywhere else in the app). Shared by `TimetableGrid`'s default cell
+ * and `TimetablePage`'s custom `renderSlot` so both stay in sync.
+ */
+export function TimetableSlotTeachers({
+  onTeacherClick,
+  slot,
+}: {
+  onTeacherClick?: (teacherId: number) => void;
+  slot: TimetableSlot;
+}) {
+  const teachers = slot.teachers ?? [];
+  if (teachers.length <= 1) {
+    return (
+      <div className="mt-0.5 line-clamp-1 break-words text-xs leading-4 text-slate-500">
+        {teachers[0]?.name ?? slot.teacher_name ?? "ไม่ระบุครูผู้สอน"}
+      </div>
+    );
+  }
+  const visible = teachers.slice(0, 3);
+  const overflow = teachers.length - visible.length;
+  return (
+    <div className="mt-1 flex items-center -space-x-1.5">
+      {visible.map((teacher, index) => {
+        const label = teacher.name ?? "ไม่ระบุครูผู้สอน";
+        const avatar = (
+          <Avatar
+            className="rounded-full border border-white text-[9px] font-semibold"
+            gradientName={label}
+            imageAlt=""
+            imageUrl={resolveApiMediaUrl(teacher.photoUrl)}
+            style={{ width: 18, height: 18 }}
+          />
+        );
+        return (
+          // Same ring-on-hover treatment every clickable avatar in the app
+          // uses, for visual consistency — but this stack has no single
+          // profile to open, so on top of that it adds a name tooltip
+          // (HoverTooltip, not a native `title`) since a stack of bare
+          // initials/photos is otherwise anonymous.
+          <HoverTooltip key={`${slot.id}-${teacher.id}-${index}`} label={label}>
+            {onTeacherClick ? (
+              <button
+                aria-label={`เปิดข้อมูลครู ${label}`}
+                className="block rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none"
+                onClick={() => onTeacherClick(teacher.id)}
+                type="button"
+              >
+                {avatar}
+              </button>
+            ) : (
+              avatar
+            )}
+          </HoverTooltip>
+        );
+      })}
+      {overflow > 0 ? (
+        <span className="pl-1 text-[10px] font-semibold leading-none text-slate-500">
+          +{overflow}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 interface TimetableGridProps {
   slots: TimetableSlot[];
   periodTimes: SchoolPeriodTime[];
@@ -123,6 +192,13 @@ interface TimetableGridProps {
    * whole school's configured grid, so this is opt-in.
    */
   onAddSlot?: (dayOfWeek: number, period: number) => void;
+  /**
+   * Manage-view only, same as `onAddSlot`: opens a teacher's edit page when
+   * their avatar is clicked. Omit on a read-only schedule (e.g. a teacher's
+   * own view via teacher-access) — that viewer usually can't reach
+   * `/manage-teachers/:id/edit` and clicking through to it would just 403.
+   */
+  onTeacherClick?: (teacherId: number) => void;
 }
 
 export function TimetableGrid({
@@ -130,6 +206,7 @@ export function TimetableGrid({
   emptyDescription,
   includeConfiguredSchedule = false,
   onAddSlot,
+  onTeacherClick,
   periodTimes,
   renderSlot,
   slots,
@@ -333,9 +410,10 @@ export function TimetableGrid({
                                   <div className="line-clamp-2 break-words text-sm font-bold leading-5 text-slate-900">
                                     {slot.subject_name_th}
                                   </div>
-                                  <div className="mt-0.5 line-clamp-1 break-words text-xs leading-4 text-slate-500">
-                                    {slot.teacher_name || "ไม่ระบุครูผู้สอน"}
-                                  </div>
+                                  <TimetableSlotTeachers
+                                    onTeacherClick={onTeacherClick}
+                                    slot={slot}
+                                  />
                                 </div>
                               ),
                             )}

@@ -19,12 +19,16 @@ import {
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { RoomPicker, type RoomSelection } from "../components/RoomPicker";
 import { SchoolPeriodTimesDialog } from "../components/SchoolPeriodTimesDialog";
-import { TimetableGrid } from "../components/TimetableGrid";
+import {
+  TimetableGrid,
+  TimetableSlotTeachers,
+} from "../components/TimetableGrid";
 import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
@@ -244,7 +248,9 @@ function AddSlotForm({
             emptyText={
               !subjectId
                 ? "เลือกวิชาก่อนเพื่อดูผู้สอน"
-                : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"
+                : teachersQuery.isError
+                  ? "โหลดรายชื่อผู้สอนไม่สำเร็จ กรุณาลองใหม่"
+                  : "ไม่พบผู้สอนสำหรับวิชานี้ในหลักสูตร"
             }
             id="slot-teacher"
             onChange={(values) => {
@@ -262,33 +268,42 @@ function AddSlotForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button onClick={onDone} type="button" variant="outline">
+        <Button
+          className="w-28"
+          onClick={onDone}
+          type="button"
+          variant="outline"
+        >
           ยกเลิก
         </Button>
         <Button
+          className="w-28"
           disabled={(!editingSlot && !activeTerm) || !subjectId}
           isLoading={createSlot.isPending || updateSlot.isPending}
           onClick={handleSubmit}
           type="button"
         >
-          {editingSlot ? "บันทึกการแก้ไข" : "บันทึก"}
+          บันทึก
         </Button>
       </div>
-      {disableSaveReason ? (
-        <p className="text-right text-sm font-medium text-slate-500">
-          {disableSaveReason}
-        </p>
-      ) : null}
-      {teacherRequired ? (
-        <p className="text-right text-sm font-medium text-danger" role="alert">
-          กรุณาเลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก
-        </p>
-      ) : null}
+      {/* Reserves one line regardless of which message (or none) is active, so
+        showing/hiding it never resizes the form section around it. */}
+      <p
+        className="min-h-5 text-right text-sm font-medium text-danger"
+        role={teacherRequired ? "alert" : undefined}
+      >
+        {teacherRequired ? (
+          "กรุณาเลือกผู้สอนอย่างน้อย 1 คนก่อนบันทึก"
+        ) : disableSaveReason ? (
+          <span className="text-slate-500">{disableSaveReason}</span>
+        ) : null}
+      </p>
     </div>
   );
 }
 
 function ManageTimetableView({ room }: { room: RoomSelection | null }) {
+  const contextualNavigate = useContextualNavigate();
   const [adding, setAdding] = useState(false);
   const [addPrefill, setAddPrefill] = useState<{
     dayOfWeek: number;
@@ -429,9 +444,14 @@ function ManageTimetableView({ room }: { room: RoomSelection | null }) {
                       <div className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">
                         {slot.subject_name_th}
                       </div>
-                      <div className="mt-0.5 line-clamp-1 text-xs leading-4 text-slate-500">
-                        {slot.teacher_name || "ยังไม่ระบุผู้สอน"}
-                      </div>
+                      <TimetableSlotTeachers
+                        onTeacherClick={(teacherId) =>
+                          void contextualNavigate(
+                            `/manage-teachers/${teacherId}/edit`,
+                          )
+                        }
+                        slot={slot}
+                      />
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-white/80 opacity-0 backdrop-blur-[2px] transition-opacity group-hover/slot:opacity-100">
                       <IconButton

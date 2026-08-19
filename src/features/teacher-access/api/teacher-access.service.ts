@@ -830,6 +830,19 @@ async function getClassroomCoverBlob(
   });
 }
 
+/** Same header-only auth constraint as the classroom cover and student photo. */
+async function getOwnPhotoBlob(
+  credential: TeacherLinkCredential,
+): Promise<Blob> {
+  return runGuestRequest(async () => {
+    const response = await apiClient.get<Blob>("/teacher-access/my-photo", {
+      headers: guestHeaders(credential),
+      responseType: "blob",
+    });
+    return response.data;
+  });
+}
+
 async function getStudentPhotoBlob(
   credential: TeacherLinkCredential,
   input: { assignmentId: number; studentUuid: string },
@@ -997,6 +1010,7 @@ export const teacherAccessService = {
   recordAttendanceImport,
   createStudentComment,
   getClassroomCoverBlob,
+  getOwnPhotoBlob,
   getStudentPhotoBlob,
   getMySchedule,
   getStudentProfile,

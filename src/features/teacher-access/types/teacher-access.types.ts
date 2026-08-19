@@ -121,6 +121,7 @@ export type TeacherLineGroupInvitationIssueResult =
 export interface TeacherAccessContext {
   grantId: string;
   teacherDisplayName: string;
+  teacherHasPhoto: boolean;
   schoolId: number;
   schoolName: string;
   schoolTermId: string;
@@ -128,6 +129,8 @@ export interface TeacherAccessContext {
   semester: number;
   capabilities: TeacherAccessCapability[];
   accessScope: "FULL" | "ATTENDANCE_ONLY";
+  /** The round's own date for an ATTENDANCE_ONLY delegation link — null for FULL access. */
+  attendanceDate: string | null;
   problemCategories: ClassroomStudentProblemCategoryOption[];
   assignments: TeacherAccessAssignment[];
 }

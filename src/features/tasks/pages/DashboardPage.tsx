@@ -205,7 +205,12 @@ function StudentCell({ row }: { row: RiskDashboardRow }) {
 }
 
 function needsLinkRenewal(row: RiskDashboardRow): boolean {
-  return row.latestCaseStatus === "IN_PROGRESS" && !row.latestCaseMagicLink;
+  return (
+    (row.latestCaseStatus === "IN_PROGRESS" ||
+      row.latestCaseStatus === "OPEN") &&
+    !row.latestCaseMagicLink &&
+    row.latestCaseHadAssignment
+  );
 }
 
 function LinkExpiredIndicator() {

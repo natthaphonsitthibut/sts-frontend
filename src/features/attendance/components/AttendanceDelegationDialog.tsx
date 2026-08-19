@@ -16,6 +16,7 @@ import {
   TimePicker,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatThaiDate } from "../../../lib/date-time";
 import {
   useIssueTeacherAttendanceDelegation,
   useIssuePublicTeacherAttendanceDelegation,
@@ -234,7 +235,7 @@ export function AttendanceDelegationDialog({
       onOpenChange(false);
       onCreated({
         accessUrl: result.accessUrl,
-        description: `${teacherName} · ${selectedAssignmentLabel} · ${attendanceDate} · ลิงก์ถึง ${endsOn} ${endsAt} น.`,
+        description: `${teacherName} · ${selectedAssignmentLabel} · ${formatThaiDate(attendanceDate)} · ลิงก์ใช้ได้ ${formatThaiDate(startsOn)} ${startsAt} น. ถึง ${formatThaiDate(endsOn)} ${endsAt} น.`,
       });
     } catch (error) {
       setFormError(getApiErrorMessage(error, "ไม่สามารถมอบหมายการเช็กชื่อได้"));
@@ -257,6 +258,51 @@ export function AttendanceDelegationDialog({
               value={attendanceDate}
             />
           </label>
+          {/* Kept on screen when the day has nothing to delegate: a field that
+              silently disappears reads as a broken form, not as an answer.
+              With exactly one candidate the field stays visible but disabled
+              (same treatment as วันที่เช็กชื่อ above) so the dialog always
+              confirms in plain sight which subject/period the link will
+              actually be scoped to — it must never be a guess. */}
+          {delegatableAssignments.length === 0 &&
+          !activeOptionsQuery.isLoading &&
+          !activeOptionsQuery.isError ? (
+            /* Nothing to delegate that day — say so, instead of leaving the
+               form looking like a field went missing. */
+            <Alert variant="warning">
+              <AlertDescription>
+                วันที่เลือกไม่มีคาบเรียนของห้องนี้ กรุณาเลือกวันอื่น
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-1">
+              <Label htmlFor="attendance-delegation-assignment">
+                วิชาและคาบที่มอบหมาย <span className="text-danger">*</span>
+              </Label>
+              <Combobox
+                ariaLabel="วิชาและคาบที่มอบหมาย"
+                disabled={
+                  delegatableAssignments.length <= 1 ||
+                  activeOptionsQuery.isLoading ||
+                  activeOptionsQuery.isError
+                }
+                emptyText="ไม่พบวิชาหรือคาบที่มอบหมายได้"
+                id="attendance-delegation-assignment"
+                onChange={(value) => {
+                  setSelectedOptionKey(value);
+                  setFormError(null);
+                }}
+                options={assignmentOptions}
+                placeholder="เลือกวิชาและคาบ"
+                value={
+                  activeOptionKey ||
+                  (delegatableAssignments.length === 1
+                    ? `${delegatableAssignments[0].id}:${delegatableAssignments[0].timetableSlotId}`
+                    : "")
+                }
+              />
+            </div>
+          )}
           {/* The link's own validity, which is not the round's date: a round
               from an earlier day is still checked through a link that starts
               now. */}
@@ -301,40 +347,6 @@ export function AttendanceDelegationDialog({
               />
             </label>
           </div>
-          {/* Kept on screen when the day has nothing to delegate: a field that
-              silently disappears reads as a broken form, not as an answer. */}
-          {delegatableAssignments.length > 1 ? (
-            <div className="space-y-1">
-              <Label htmlFor="attendance-delegation-assignment">
-                วิชาและคาบที่มอบหมาย <span className="text-danger">*</span>
-              </Label>
-              <Combobox
-                ariaLabel="วิชาและคาบที่มอบหมาย"
-                disabled={
-                  activeOptionsQuery.isLoading || activeOptionsQuery.isError
-                }
-                emptyText="ไม่พบวิชาหรือคาบที่มอบหมายได้"
-                id="attendance-delegation-assignment"
-                onChange={(value) => {
-                  setSelectedOptionKey(value);
-                  setFormError(null);
-                }}
-                options={assignmentOptions}
-                placeholder="เลือกวิชาและคาบ"
-                value={activeOptionKey}
-              />
-            </div>
-          ) : delegatableAssignments.length === 0 &&
-            !activeOptionsQuery.isLoading &&
-            !activeOptionsQuery.isError ? (
-            /* Nothing to delegate that day — say so, instead of leaving the
-               form looking like a field went missing. */
-            <Alert variant="warning">
-              <AlertDescription>
-                วันที่เลือกไม่มีคาบเรียนของห้องนี้ กรุณาเลือกวันอื่น
-              </AlertDescription>
-            </Alert>
-          ) : null}
           <div className="space-y-1">
             <Label htmlFor="attendance-delegation-teacher">
               คุณครูที่ได้รับมอบหมาย <span className="text-danger">*</span>

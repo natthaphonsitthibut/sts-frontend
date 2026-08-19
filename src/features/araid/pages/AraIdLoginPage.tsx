@@ -51,9 +51,15 @@ export function AraIdLoginPage() {
     Boolean(routeState.challengeToken);
   const backTo = verifiesTeacherAccess
     ? "/teacher-access"
-    : verifiesLineLink || verifiesLineLinkQr
+    : verifiesTeacherAccessQr || verifiesLineLink || verifiesLineLinkQr
       ? routeState.returnTo!
       : "/araid";
+  // /araid/authorize has no hash to recover the challenge from once we've
+  // navigated away from it client-side, unlike the LINE QR flow, which keeps
+  // its challenge token in returnTo's hash — hand it back explicitly.
+  const backState = verifiesTeacherAccessQr
+    ? { challengeToken: routeState?.challengeToken, scope: routeState?.scope }
+    : undefined;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,7 +113,12 @@ export function AraIdLoginPage() {
             <button
               type="button"
               aria-label="ย้อนกลับ"
-              onClick={() => void navigate(backTo)}
+              onClick={() =>
+                void navigate(
+                  backTo,
+                  backState ? { state: backState } : undefined,
+                )
+              }
               className="absolute left-3 grid size-11 place-items-center rounded-full bg-araid-brand-deep/70 text-white transition-colors duration-150 hover:bg-araid-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:bg-araid-brand-deep motion-reduce:transition-none sm:left-5 lg:static lg:mr-auto lg:bg-transparent lg:text-araid-brand-deep lg:hover:bg-araid-surface-icon lg:focus-visible:outline-araid-brand"
             >
               <ChevronLeft
