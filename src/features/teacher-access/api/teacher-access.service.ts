@@ -824,6 +824,11 @@ async function getClassroomCoverBlob(
         headers: guestHeaders(credential),
         params: { assignmentId },
         responseType: "blob",
+        // The endpoint 302s to a signed storage URL. Credentials must stay off
+        // for that hop: this route authenticates by header token, never cookies,
+        // and the storage host's wildcard CORS origin is rejected by the browser
+        // the moment a credentialed request carries over the redirect.
+        withCredentials: false,
       },
     );
     return response.data;
@@ -838,6 +843,7 @@ async function getOwnPhotoBlob(
     const response = await apiClient.get<Blob>("/teacher-access/my-photo", {
       headers: guestHeaders(credential),
       responseType: "blob",
+      withCredentials: false,
     });
     return response.data;
   });
@@ -854,6 +860,7 @@ async function getStudentPhotoBlob(
         headers: guestHeaders(credential),
         params: input,
         responseType: "blob",
+        withCredentials: false,
       },
     );
     return response.data;
