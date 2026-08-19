@@ -213,7 +213,7 @@ function RowMenu({
         header={
           entry.assignmentCount === 0
             ? "ครูคนนี้ยังไม่มีห้องหรือรายวิชาในภาคเรียนนี้"
-            : `${entry.assignmentCount} การสอนในภาคเรียนนี้ (นับแยกตามห้อง×วิชา)`
+            : `${entry.assignmentCount} ห้องเรียนในภาคเรียนนี้`
         }
         items={rowActions(entry, handlers)}
         trigger={(triggerProps) => (
