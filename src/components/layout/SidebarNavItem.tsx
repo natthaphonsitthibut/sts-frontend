@@ -57,7 +57,8 @@ function navLinkClassName(
       "mx-auto max-w-60 transition-[max-width,background-color,border-color,color] duration-300 ease-out motion-reduce:transition-none",
     collapsed && nested && "max-w-10",
     // ล็อก hover ของ item ที่ active ไว้ที่โทน active เอง
-    isActive && "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
+    isActive &&
+      "bg-brand-active font-semibold text-primary hover:bg-brand-active hover:text-primary",
   );
 }
 
@@ -70,7 +71,9 @@ function navLinkClassName(
 const ALL_MENU_ROUTES = collectMenuRoutes(MENU_ITEMS);
 
 function routeMatchesPathname(route: string, pathname: string): boolean {
-  return route === pathname || (route !== "/" && pathname.startsWith(`${route}/`));
+  return (
+    route === pathname || (route !== "/" && pathname.startsWith(`${route}/`))
+  );
 }
 
 /**
@@ -79,7 +82,10 @@ function routeMatchesPathname(route: string, pathname: string): boolean {
  * nest only ever resolve to one winner instead of both matching
  * independently.
  */
-function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): string | null {
+function findBestMatchingRoute(
+  pathname: string,
+  extraRoutes: string[] = [],
+): string | null {
   let best: string | null = null;
   for (const route of [...ALL_MENU_ROUTES, ...extraRoutes]) {
     if (!routeMatchesPathname(route, pathname)) continue;
@@ -96,12 +102,17 @@ function findBestMatchingRoute(pathname: string, extraRoutes: string[] = []): st
  * Matching goes through `findBestMatchingRoute` so that when two menu
  * routes nest inside each other, only the most specific one is active.
  */
-function isRouteActive(item: MenuItem, pathname: string, menuRoutes: string[] = []): boolean {
-  const routes = [item.route, ...(item.activeRoutes ?? [])].filter(Boolean) as string[];
+function isRouteActive(
+  item: MenuItem,
+  pathname: string,
+  menuRoutes: string[] = [],
+): boolean {
+  const routes = [item.route, ...(item.activeRoutes ?? [])].filter(
+    Boolean,
+  ) as string[];
   if (routes.length === 0) return false;
   // `menuRoutes` carries the rail's own routes so a menu outside the
-  // permission-driven registry still gets most-specific-wins arbitration —
-  // without it "/teacher-access" would light up on "/teacher-access/timetable".
+  // permission-driven registry still gets most-specific-wins arbitration.
   const bestMatch = findBestMatchingRoute(pathname, menuRoutes);
   if (bestMatch !== null) return routes.includes(bestMatch);
   return routes.some((route) => routeMatchesPathname(route, pathname));
@@ -116,14 +127,19 @@ export function SidebarNavItem({
   const location = useLocation();
   const navigationContext = getNavigationContext(location.state);
   const contextualMenuRoute = navigationContext?.menuRoute;
-  const activePathname = navigationContext && contextualMenuRoute === null
-    ? ""
-    : contextualMenuRoute &&
-        (menuRoutes ?? []).some((route) => routeMatchesPathname(route, contextualMenuRoute))
-      ? contextualMenuRoute
-      : location.pathname;
+  const activePathname =
+    navigationContext && contextualMenuRoute === null
+      ? ""
+      : contextualMenuRoute &&
+          (menuRoutes ?? []).some((route) =>
+            routeMatchesPathname(route, contextualMenuRoute),
+          )
+        ? contextualMenuRoute
+        : location.pathname;
   const hasActiveChild = Boolean(
-    item.children?.some((child) => isRouteActive(child, activePathname, menuRoutes)),
+    item.children?.some((child) =>
+      isRouteActive(child, activePathname, menuRoutes),
+    ),
   );
   // `null` means follow the route-derived default. Once the user toggles the
   // group, their explicit choice wins — including collapsing an active group.
@@ -146,7 +162,9 @@ export function SidebarNavItem({
           aria-expanded={expanded}
           aria-label={collapsed ? item.label : undefined}
           onClick={handleGroupToggle}
-          title={collapsed ? `${item.label} — กดเพื่อเปิดหรือปิดเมนูย่อย` : undefined}
+          title={
+            collapsed ? `${item.label} — กดเพื่อเปิดหรือปิดเมนูย่อย` : undefined
+          }
           className={cn(
             // justify-center is unconditional for the same glide reason as
             // navLinkClassName — the flex-1 label makes it a no-op expanded.
@@ -161,7 +179,11 @@ export function SidebarNavItem({
               icon + 12px gap) so truncated text never runs under it; it
               animates away via the label's existing margin transition. */}
           <span
-            className={cn("min-w-0 flex-1", !collapsed && "mr-7", navLabelClassName(collapsed))}
+            className={cn(
+              "min-w-0 flex-1",
+              !collapsed && "mr-7",
+              navLabelClassName(collapsed),
+            )}
           >
             {item.label}
           </span>
@@ -193,11 +215,17 @@ export function SidebarNavItem({
             <div
               className={cn(
                 "space-y-0.5 border-l py-1 transition-[padding] duration-300 ease-out motion-reduce:transition-none",
-                collapsed ? "border-slate-200/80 pl-2" : "border-slate-200 pl-4",
+                collapsed
+                  ? "border-slate-200/80 pl-2"
+                  : "border-slate-200 pl-4",
               )}
             >
               {item.children.map((child) => {
-                const childIsActive = isRouteActive(child, activePathname, menuRoutes);
+                const childIsActive = isRouteActive(
+                  child,
+                  activePathname,
+                  menuRoutes,
+                );
                 return (
                   <Link
                     aria-current={childIsActive ? "page" : undefined}
@@ -217,7 +245,12 @@ export function SidebarNavItem({
                       className="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                       iconName={child.iconName}
                     />
-                    <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1",
+                        navLabelClassName(collapsed),
+                      )}
+                    >
                       {child.label}
                     </span>
                   </Link>
@@ -235,9 +268,8 @@ export function SidebarNavItem({
     <Link
       aria-current={itemIsActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
-      // Active state comes from `isRouteActive`, not router prefix matching:
-      // match: a rail whose landing page is a parent path of its other items
-      // ("/teacher-access" vs "/teacher-access/timetable") would light up both.
+      // Active state comes from `isRouteActive`, not router prefix matching,
+      // so nested navigation items do not light up their parent too.
       className={navLinkClassName({ isActive: itemIsActive }, collapsed)}
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
@@ -247,7 +279,9 @@ export function SidebarNavItem({
         className="size-5 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         iconName={item.iconName}
       />
-      <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>{item.label}</span>
+      <span className={cn("min-w-0 flex-1", navLabelClassName(collapsed))}>
+        {item.label}
+      </span>
     </Link>
   );
 }

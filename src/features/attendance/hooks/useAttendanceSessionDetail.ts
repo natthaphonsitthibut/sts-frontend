@@ -12,13 +12,10 @@ interface UseAttendanceSessionDetailParams {
   grade: string;
   room: string;
   date: string;
-  /** Skip every query until the owning dialog is actually open. */
   enabled: boolean;
 }
 
-/**
- * Read-only roster + all-subject day view for one historical room/day.
- */
+/** Read-only roster plus all-subject day view for one historical room/day. */
 export function useAttendanceSessionDetail({
   schoolId,
   grade,
@@ -27,7 +24,6 @@ export function useAttendanceSessionDetail({
   enabled,
 }: UseAttendanceSessionDetailParams) {
   const canLoad = enabled && Boolean(schoolId && grade && room && date);
-
   const studentsQuery = useQuery({
     queryKey: ["attendance-session-detail-students", schoolId, grade, room],
     queryFn: () => attendanceService.getStudents({ schoolId, grade, room }),
@@ -38,7 +34,6 @@ export function useAttendanceSessionDetail({
     queryFn: () => attendanceService.getHistory(date, schoolId),
     enabled: canLoad,
   });
-
   const students = studentsQuery.data ?? EMPTY_STUDENTS;
   const selections = useMemo(() => {
     const byStudent = new Map<string, AttendanceSelectionStatus[]>();
@@ -70,7 +65,6 @@ export function useAttendanceSessionDetail({
       }),
     );
   }, [historyQuery.data, grade, room]);
-
   return {
     students,
     selections,

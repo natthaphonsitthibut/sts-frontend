@@ -28,16 +28,26 @@ export function AraIdLoginChallengePanel({
   const redirectAfterLogin = usePostLoginRedirect();
   const status = useQuery({
     queryKey: ["araid-login-challenge", challenge.challengeToken],
-    queryFn: () => authService.pollAraIdLoginChallenge(challenge.challengeToken),
+    queryFn: () =>
+      authService.pollAraIdLoginChallenge(challenge.challengeToken),
     // Stop once the challenge is gone (410) or already spent: a fixed interval
     // keeps asking a dead challenge every two seconds for as long as the tab is
     // open, and the login bucket is shared with the honest attempt that follows.
-    refetchInterval: (query) => (query.state.error ? false : 2_000),
+    refetchInterval: (query) =>
+      query.state.error || Date.now() >= new Date(challenge.expiresAt).getTime()
+        ? false
+        : 2_000,
     retry: false,
   });
   const statusData = status.data;
   const inProgress = statusData?.status === "IN_PROGRESS";
-  const expiresAt = inProgress ? statusData.expiresAt ?? challenge.expiresAt : challenge.expiresAt;
+  const expiresAt = inProgress
+    ? (statusData.expiresAt ?? challenge.expiresAt)
+    : challenge.expiresAt;
+
+  useEffect(() => {
+    completed.current = false;
+  }, [challenge.challengeToken]);
 
   useEffect(() => {
     if (statusData?.status !== "APPROVED" || completed.current) return;

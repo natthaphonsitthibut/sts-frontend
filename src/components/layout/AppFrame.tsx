@@ -33,12 +33,18 @@ export function AppFrame({
 export function AppHeaderFrame({ children }: { children: ReactNode }) {
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white">
-      <div className="flex h-full items-center gap-3 px-4 lg:pl-5 lg:pr-6">{children}</div>
+      <div className="flex h-full items-center gap-3 px-4 lg:pl-5 lg:pr-6">
+        {children}
+      </div>
     </header>
   );
 }
 
-export function AppNavigationControls({ onMobileMenuClick }: { onMobileMenuClick: () => void }) {
+export function AppNavigationControls({
+  onMobileMenuClick,
+}: {
+  onMobileMenuClick: () => void;
+}) {
   const collapsed = useSidebarUiStore((state) => state.collapsed);
   const toggleCollapsed = useSidebarUiStore((state) => state.toggleCollapsed);
   return (
@@ -67,7 +73,7 @@ export function AppNavigationControls({ onMobileMenuClick }: { onMobileMenuClick
 
 export function AppBrand({
   className,
-  label = "ระบบติดตามนักเรียน",
+  label = "ระบบติดตามผู้เรียน",
   onClick,
   to = "/",
 }: {

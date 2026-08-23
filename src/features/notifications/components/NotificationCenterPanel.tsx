@@ -154,7 +154,7 @@ export function NotificationCenterPanel({
       // content-sized tray would shrink under the cursor on every tab press.
       className="absolute right-0 top-full z-50 mt-2 flex h-[min(38rem,calc(100dvh-5rem))] w-[min(32rem,calc(100vw-5rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-700 shadow-lg"
       id="notification-center"
-      role="dialog"
+      role="region"
     >
       <div className="flex min-h-14 items-start justify-between gap-2 border-b border-slate-200 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

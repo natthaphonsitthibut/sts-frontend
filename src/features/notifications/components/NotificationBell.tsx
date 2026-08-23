@@ -28,7 +28,7 @@ export function NotificationBell() {
         ref={triggerRef}
         aria-controls="notification-center"
         aria-expanded={open}
-        aria-haspopup="dialog"
+        aria-haspopup="true"
         aria-label={
           unreadCount > 0
             ? `รายการแจ้งเตือน (ยังไม่อ่าน ${unreadCount} รายการ)`

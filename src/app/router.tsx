@@ -15,21 +15,19 @@ import {
   AraIdAuthorizePage,
   AuditLogDetailPage,
   AttendanceCheckInPage,
-  MyClassroomsPage,
-  TeacherAttendanceHistoryPage,
-  TeacherAttendanceLinksPage,
+  PublicCheckInPage,
   TeacherLineInvitationPage,
   TeacherLineLinkPage,
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
-  TeacherClassroomPage,
-  TeacherLinkLayout,
-  TeacherStudentProfilePage,
-  TeacherTimetablePage,
   AttendanceOperationsPage,
   CompletedPage,
+  CurriculumGradesPage,
+  CurriculumSubjectFormPage,
+  CurriculumSubjectsPage,
   ClassroomsPage,
+  ClassroomLinksPage,
   ClassroomDetailPage,
   CaseDetailPage,
   CaseReviewDetailPage,
@@ -42,9 +40,6 @@ import {
   ImportQuarantineDetailPage,
   LockedPage,
   MainPage,
-  CurriculumGradesPage,
-  CurriculumSubjectFormPage,
-  CurriculumSubjectsPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
   ManageUserFormPage,
@@ -66,7 +61,6 @@ import {
   TeacherFormPage,
   TeacherCommentReportsPage,
   TeachersPage,
-  TimetablePage,
   UserDetailPage,
 } from "./lazy-pages";
 import {
@@ -75,10 +69,6 @@ import {
   LegacyCasesRedirect,
   LegacyRouteRedirect,
   LegacyTaskDetailRedirect,
-  TeacherClassroomDefaultRedirect,
-  TeacherHistoryDefaultRedirect,
-  TimetableDefaultRedirect,
-  AttendanceHistoryDefaultRedirect,
 } from "./route-redirects";
 
 function withSuspense(children: ReactNode): ReactNode {
@@ -183,7 +173,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance/roster",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/check-in",
@@ -191,19 +181,19 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance/history",
-        element: <AttendanceHistoryDefaultRedirect />,
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/attendance",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/imports",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/delegations",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "cases",
@@ -231,9 +221,13 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance-links",
+        element: <LegacyRouteRedirect to="/attendance/classroom-links" />,
+      },
+      {
+        path: "attendance/classroom-links",
         element: protectedElement(
-          <TeacherAttendanceLinksPage />,
-          "manage-teacher-access",
+          <ClassroomLinksPage />,
+          "manage-classroom-links",
         ),
       },
       {
@@ -245,15 +239,15 @@ export const router = createBrowserRouter([
       },
       {
         path: "timetable",
-        element: protectedElement(<TimetableDefaultRedirect />, "timetable"),
+        element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
         path: "timetable/mine",
-        element: protectedElement(<TimetablePage />, "timetable"),
+        element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
         path: "timetable/rooms",
-        element: protectedElement(<TimetablePage />, "timetable"),
+        element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
         path: "classrooms",
@@ -300,7 +294,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "import-data/quarantine/:id",
-        element: protectedElement(<ImportQuarantineDetailPage />, "import-data"),
+        element: protectedElement(
+          <ImportQuarantineDetailPage />,
+          "import-data",
+        ),
       },
       {
         path: "manage-users",
@@ -328,31 +325,32 @@ export const router = createBrowserRouter([
       },
       {
         path: "curriculum",
-        element: protectedElement(
-          <CurriculumGradesPage />,
-          "manage-curriculum",
-        ),
+        element: protectedElement(<CurriculumGradesPage />, "manage-subjects"),
       },
       {
         path: "curriculum/:gradeLevelId",
         element: protectedElement(
           <CurriculumSubjectsPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
       },
       {
         path: "curriculum/:gradeLevelId/subjects/new",
         element: protectedElement(
           <CurriculumSubjectFormPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
       },
       {
         path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
         element: protectedElement(
           <CurriculumSubjectFormPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
+      },
+      {
+        path: "subjects",
+        element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
         path: "manage-teachers",
@@ -460,64 +458,12 @@ export const router = createBrowserRouter([
     element: withSuspense(<TeacherLineLinkResultPage />),
   },
   {
-    path: "/teacher-access",
-    element: withSuspense(<TeacherLinkLayout />),
-    children: [
-      { index: true, element: withSuspense(<MyClassroomsPage />) },
-      {
-        path: "timetable",
-        element: withSuspense(<TeacherTimetablePage />),
-      },
-      {
-        path: "classes/:assignmentId",
-        element: <TeacherClassroomDefaultRedirect />,
-      },
-      {
-        path: "classes/:assignmentId/roster",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "classes/:assignmentId/check-in",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        // Same tab, previous name — kept so links already handed out still open.
-        path: "classes/:assignmentId/attendance",
-        element: <TeacherClassroomDefaultRedirect />,
-      },
-      {
-        path: "attendance/:assignmentId",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "attendance/:assignmentId/roster",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "attendance/:assignmentId/check-in",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "classes/:assignmentId/students/:studentUuid",
-        element: withSuspense(<TeacherStudentProfilePage />),
-      },
-      {
-        path: "classes/:assignmentId/history",
-        element: <TeacherHistoryDefaultRedirect />,
-      },
-      {
-        path: "classes/:assignmentId/history/attendance",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-      {
-        path: "classes/:assignmentId/history/imports",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-      {
-        path: "classes/:assignmentId/history/delegations",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-    ],
+    path: "/check-in",
+    element: withSuspense(<PublicCheckInPage />),
+  },
+  {
+    path: "/teacher-access/*",
+    element: <LegacyRouteRedirect to="/check-in" />,
   },
   {
     path: "/araid",

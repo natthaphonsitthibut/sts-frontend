@@ -69,11 +69,14 @@ export const NotificationsPage = lazy(() =>
   ),
 );
 export const AttendanceCheckInPage = lazy(() =>
-  import("../features/attendance/pages/AttendanceCheckInPage").then(
-    (module) => ({
-      default: module.AttendanceCheckInPage,
-    }),
-  ),
+  import("../features/check-in/pages/InternalCheckInPage").then((module) => ({
+    default: module.InternalCheckInPage,
+  })),
+);
+export const PublicCheckInPage = lazy(() =>
+  import("../features/check-in/pages/PublicCheckInPage").then((module) => ({
+    default: module.PublicCheckInPage,
+  })),
 );
 export const AttendanceOperationsPage = lazy(() =>
   import("../features/attendance/pages/AttendanceOperationsPage").then(
@@ -177,11 +180,6 @@ export const ImportQuarantineDetailPage = lazy(() =>
     }),
   ),
 );
-export const TimetablePage = lazy(() =>
-  import("../features/timetable/pages/TimetablePage").then((module) => ({
-    default: module.TimetablePage,
-  })),
-);
 export const SchoolStructurePage = lazy(() =>
   import("../features/school-structure/pages/SchoolStructurePage").then(
     (module) => ({
@@ -194,6 +192,11 @@ export const ClassroomsPage = lazy(() =>
     (module) => ({
       default: module.ClassroomsPage,
     }),
+  ),
+);
+export const ClassroomLinksPage = lazy(() =>
+  import("../features/classroom-links/pages/ClassroomLinksPage").then(
+    (module) => ({ default: module.ClassroomLinksPage }),
   ),
 );
 export const ClassroomDetailPage = lazy(() =>
@@ -258,61 +261,6 @@ export const TeacherLineLinkResultPage = lazy(() =>
   ),
 );
 
-export const TeacherAttendanceLinksPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAttendanceLinksPage").then(
-    (module) => ({
-      default: module.TeacherAttendanceLinksPage,
-    }),
-  ),
-);
-
-export const TeacherLinkLayout = lazy(() =>
-  import("../features/teacher-access/pages/TeacherLinkLayout").then(
-    (module) => ({
-      default: module.TeacherLinkLayout,
-    }),
-  ),
-);
-
-export const MyClassroomsPage = lazy(() =>
-  import("../features/teacher-access/pages/MyClassroomsPage").then(
-    (module) => ({
-      default: module.MyClassroomsPage,
-    }),
-  ),
-);
-
-export const TeacherClassroomPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherClassroomPage").then(
-    (module) => ({
-      default: module.TeacherClassroomPage,
-    }),
-  ),
-);
-
-export const TeacherStudentProfilePage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherStudentProfilePage").then(
-    (module) => ({
-      default: module.TeacherStudentProfilePage,
-    }),
-  ),
-);
-
-export const TeacherTimetablePage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherTimetablePage").then(
-    (module) => ({
-      default: module.TeacherTimetablePage,
-    }),
-  ),
-);
-
-export const TeacherAttendanceHistoryPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAttendanceHistoryPage").then(
-    (module) => ({
-      default: module.TeacherAttendanceHistoryPage,
-    }),
-  ),
-);
 export const DashboardPage = lazy(() =>
   import("../features/tasks/pages/DashboardPage").then((module) => ({
     default: module.DashboardPage,

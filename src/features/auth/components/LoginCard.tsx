@@ -10,7 +10,11 @@ interface LoginCardProps {
   onAraIdLogin: () => void;
 }
 
-export function LoginCard({ araIdError, araIdPending, onAraIdLogin }: LoginCardProps) {
+export function LoginCard({
+  araIdError,
+  araIdPending,
+  onAraIdLogin,
+}: LoginCardProps) {
   return (
     <div className="relative pt-[clamp(13rem,26vh,21rem)]">
       <div className="absolute left-1/2 top-0 -translate-x-1/2">
@@ -24,7 +28,7 @@ export function LoginCard({ araIdError, araIdPending, onAraIdLogin }: LoginCardP
               เข้าสู่ระบบ STS
             </h1>
             <div className="mx-auto max-w-xs text-sm font-medium leading-6 text-slate-500">
-              <div>ระบบติดตามนักเรียนโครงการ</div>
+              <div>ระบบติดตามผู้เรียน</div>
               <div>Zero Dropout เพื่อเด็กไทยทุกคน</div>
             </div>
           </div>

@@ -100,7 +100,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("manage-school-structure", "/school-structure"),
       },
       {
-        ...pageMenuItem("manage-curriculum", "/curriculum"),
+        ...pageMenuItem("manage-subjects", "/curriculum"),
       },
       {
         ...pageMenuItem("import-data", "/import-data"),
@@ -126,10 +126,10 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("attendance", "/attendance"),
       },
       {
-        ...pageMenuItem("manage-teacher-access", "/attendance-links"),
-      },
-      {
-        ...pageMenuItem("timetable", "/timetable"),
+        ...pageMenuItem(
+          "manage-classroom-links",
+          "/attendance/classroom-links",
+        ),
       },
     ],
   },

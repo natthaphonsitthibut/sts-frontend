@@ -1,4 +1,9 @@
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { IconButton } from "./icon-button";
@@ -32,13 +37,19 @@ export function Sheet({
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (!open && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      !open &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setClosing(true);
     }
   }
   useEffect(() => {
     if (open || !closing) return;
-    const timer = window.setTimeout(() => setClosing(false), SHEET_EXIT_DURATION_MS);
+    const timer = window.setTimeout(
+      () => setClosing(false),
+      SHEET_EXIT_DURATION_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [open, closing]);
 
@@ -47,7 +58,11 @@ export function Sheet({
   }
 
   return (
-    <div aria-hidden={!open || undefined} className="fixed inset-0 z-50 lg:hidden" {...props}>
+    <div
+      aria-hidden={!open || undefined}
+      className="fixed inset-0 z-50 lg:hidden"
+      {...props}
+    >
       <button
         aria-label="Close navigation"
         className={cn(
@@ -91,7 +106,9 @@ export function SheetHeader({
       )}
       {...props}
     >
-      <div className="text-sm font-semibold text-slate-900">{heading}</div>
+      <div className="min-w-0 flex-1 text-sm font-semibold text-slate-900">
+        {heading}
+      </div>
       {onClose ? (
         <IconButton aria-label="Close navigation" icon={X} onClick={onClose} />
       ) : null}

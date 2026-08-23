@@ -63,9 +63,6 @@ function findBestMatchingRoute(
 }
 
 export function getDefaultMenuRoute(pathname: string): string | undefined {
-  if (pathname.startsWith("/teacher-access/timetable")) {
-    return "/teacher-access/timetable";
-  }
   if (pathname.startsWith("/teacher-access")) {
     return "/teacher-access";
   }

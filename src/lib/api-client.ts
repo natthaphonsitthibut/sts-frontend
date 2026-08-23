@@ -13,7 +13,9 @@ function joinBaseUrl(baseUrl: string, prefix: string): string {
   }
 
   if (!normalizedBaseUrl || normalizedBaseUrl === "/") {
-    return normalizedPrefix.startsWith("/") ? normalizedPrefix : `/${normalizedPrefix}`;
+    return normalizedPrefix.startsWith("/")
+      ? normalizedPrefix
+      : `/${normalizedPrefix}`;
   }
 
   const baseWithoutTrailingSlash = normalizedBaseUrl.replace(/\/+$/, "");
@@ -57,11 +59,17 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
   const onTeacherAccessGuestPage =
-    typeof window !== "undefined" && window.location.pathname === "/teacher-access";
+    typeof window !== "undefined" &&
+    (window.location.pathname === "/teacher-access" ||
+      window.location.pathname === "/check-in");
 
   // Public magic-link flows authenticate with short-lived signed tokens via
   // headers; the staff session is carried entirely by the httpOnly cookie.
-  if (!onTeacherAccessGuestPage && currentUser?.virtual_login && currentUser.magic_link_token) {
+  if (
+    !onTeacherAccessGuestPage &&
+    currentUser?.virtual_login &&
+    currentUser.magic_link_token
+  ) {
     config.headers["x-magic-link-token"] = currentUser.magic_link_token;
     if (currentUser.magic_session_token) {
       config.headers["x-magic-session"] = currentUser.magic_session_token;
@@ -86,7 +94,11 @@ apiClient.interceptors.response.use(
         ? (error as { response?: { status?: number } }).response?.status
         : undefined;
 
-    if (status === 401 && typeof window !== "undefined" && !isHandlingExpiredSession) {
+    if (
+      status === 401 &&
+      typeof window !== "undefined" &&
+      !isHandlingExpiredSession
+    ) {
       const currentUser = readStoredAuthUser();
       const onLoginPage =
         window.location.pathname === "/login" ||
@@ -100,6 +112,7 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/task/") ||
         window.location.pathname.startsWith("/araid") ||
         window.location.pathname === "/teacher-access" ||
+        window.location.pathname === "/check-in" ||
         window.location.pathname.startsWith("/apply/");
 
       if (currentUser && !onLoginPage && !onPublicLinkPage) {
