@@ -1,4 +1,4 @@
-import { ChevronLeft, Delete } from "lucide-react";
+import { ChevronLeft, Delete, Loader2, RotateCcw } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "../../../lib/utils";
@@ -21,16 +21,51 @@ const KEYS = [
   "delete",
 ] as const;
 
-function errorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "response" in error) {
-    const response = (
-      error as { response?: { data?: { message?: string | string[] } } }
-    ).response;
-    const message = response?.data?.message;
-    if (Array.isArray(message)) return message[0] ?? "ไม่สามารถเข้าสู่ระบบได้";
-    if (typeof message === "string") return message;
+interface AraIdPinFailure {
+  message: string;
+  /** A rejected PIN must be retyped; a failed round trip must not be — the PIN
+   *  was never judged, so wiping it just makes the user redo 8 taps. */
+  clearPin: boolean;
+}
+
+function describeFailure(error: unknown): AraIdPinFailure {
+  const failed = (error ?? {}) as {
+    response?: { status?: number; data?: { message?: string | string[] } };
+  };
+  const response = failed.response;
+
+  // No response at all: the request timed out (the client aborts at 20s) or the
+  // network dropped. On free-tier hosting the very first request also pays the
+  // cold-start wake-up. None of that means the PIN was wrong.
+  if (!response) {
+    return {
+      message: "ระบบตอบช้ากว่าปกติ ยังไม่ได้ตรวจสอบ PIN — กดลองอีกครั้งได้เลย",
+      clearPin: false,
+    };
   }
-  return "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง";
+  const status = response.status ?? 0;
+  if (status === 429) {
+    return {
+      message: "ลองเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองอีกครั้ง",
+      clearPin: false,
+    };
+  }
+  if (status >= 500) {
+    return {
+      message: "ระบบไม่พร้อมใช้งานชั่วคราว กรุณาลองอีกครั้ง",
+      clearPin: false,
+    };
+  }
+
+  const message = response.data?.message;
+  if (Array.isArray(message)) {
+    return { message: message[0] ?? "ไม่สามารถเข้าสู่ระบบได้", clearPin: true };
+  }
+  if (typeof message === "string") return { message, clearPin: true };
+  return {
+    message: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง",
+    clearPin: true,
+  };
 }
 
 export function AraIdPinPage() {
@@ -68,8 +103,10 @@ export function AraIdPinPage() {
     Boolean(routeState.challengeToken);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [retryable, setRetryable] = useState(false);
   const login = useAraIdLogin();
   const reauthenticateMutation = useAraIdReauthenticate();
+  const isSubmitting = login.isPending || reauthenticateMutation.isPending;
 
   if (
     !reauthenticate &&
@@ -119,19 +156,28 @@ export function AraIdPinPage() {
         },
       );
     } catch (cause) {
-      setPin("");
-      setError(errorMessage(cause));
+      const failure = describeFailure(cause);
+      if (failure.clearPin) setPin("");
+      setError(failure.message);
+      setRetryable(!failure.clearPin);
     }
   }
 
-  function press(key: (typeof KEYS)[number]) {
-    if (login.isPending || reauthenticateMutation.isPending) return;
+  function clearFailure(): void {
     setError("");
+    setRetryable(false);
+  }
+
+  function press(key: (typeof KEYS)[number]) {
+    if (isSubmitting) return;
     if (key === "delete") {
+      clearFailure();
       setPin((current) => current.slice(0, -1));
       return;
     }
+    // A full PIN swallows further digits — don't drop the retry affordance with it.
     if (!key || pin.length >= 8) return;
+    clearFailure();
     const next = `${pin}${key}`;
     setPin(next);
     if (next.length === 8) window.setTimeout(() => void submit(next), 120);
@@ -204,14 +250,27 @@ export function AraIdPinPage() {
               ))}
             </div>
 
-            <div className="mx-auto mt-8 grid grid-cols-3 gap-3 lg:mt-10 lg:gap-4">
+            <p
+              aria-live="polite"
+              className="mt-3 flex min-h-5 items-center justify-center gap-1.5 text-xs font-medium text-araid-brand-mid lg:text-sm"
+              role="status"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  กำลังตรวจสอบ…
+                </>
+              ) : null}
+            </p>
+
+            <div className="mx-auto mt-5 grid grid-cols-3 gap-3 lg:mt-7 lg:gap-4">
               {KEYS.map((key, index) =>
                 key ? (
                   <button
                     key={key}
                     type="button"
                     onClick={() => press(key)}
-                    disabled={login.isPending}
+                    disabled={isSubmitting}
                     aria-label={key === "delete" ? "ลบตัวเลข" : `เลข ${key}`}
                     className={cn(
                       "grid size-[3.25rem] place-items-center rounded-[0.7rem] text-base font-normal transition-colors disabled:opacity-40 lg:size-[clamp(4.75rem,6vw,5.75rem)] lg:rounded-2xl lg:text-[clamp(1.25rem,1.5vw,1.5rem)]",
@@ -234,9 +293,27 @@ export function AraIdPinPage() {
                 ),
               )}
             </div>
-            <p className="mt-4 min-h-6 text-xs text-danger" role="alert">
-              {error}
-            </p>
+            <div className="mt-4 flex min-h-[3.25rem] w-full flex-col items-center gap-2.5">
+              {error ? (
+                <p
+                  className="w-full rounded-lg bg-danger-100 px-3 py-2 text-xs font-medium leading-5 text-danger-700 lg:text-sm"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+              {retryable && pin.length === 8 ? (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => void submit(pin)}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-araid-brand px-6 text-sm font-semibold text-white transition-colors hover:bg-araid-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-araid-brand disabled:opacity-40"
+                >
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                  ลองอีกครั้ง
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>
