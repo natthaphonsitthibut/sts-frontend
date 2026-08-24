@@ -10,15 +10,14 @@ import {
   DialogTitle,
   FormErrorAlert,
   Label,
+  Select,
   Textarea,
 } from "../../../components/base";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
+import { useReferralAgencies } from "../hooks/useReferralAgencies";
 import { useUpdateCase } from "../hooks/useUpdateCase";
-import type {
-  CaseRecord,
-  CaseReviewAction,
-} from "../types/cases.types";
+import type { CaseRecord, CaseReviewAction } from "../types/cases.types";
 
 interface CaseStatusUpdateDialogProps {
   caseRecord: CaseRecord | null;
@@ -39,9 +38,18 @@ export function CaseStatusUpdateDialog({
   const optionsQuery = useCaseTrackingOptions();
   const updateCase = useUpdateCase();
   const [note, setNote] = useState("");
+  const [referralAgencyId, setReferralAgencyId] = useState("");
+  const [observationDecision, setObservationDecision] = useState<
+    "" | "APPROVE" | "REJECT"
+  >("");
+  const referralAgencies = useReferralAgencies(
+    open && presetAction === "REFER_AGENCY",
+  );
 
   function closeDialog(): void {
     setNote("");
+    setReferralAgencyId("");
+    setObservationDecision("");
     updateCase.reset();
     onOpenChange(false);
   }
@@ -50,13 +58,16 @@ export function CaseStatusUpdateDialog({
     (option) => option.code === presetAction,
   );
   const hasPermission =
-    Boolean(selectedAction) && can("dashboard") && can(selectedAction?.requiredPermission || "");
+    Boolean(selectedAction) &&
+    can("dashboard") &&
+    can(selectedAction?.requiredPermission || "");
   const submitDisabled =
     !caseRecord ||
     !presetAction ||
     !selectedAction ||
     !hasPermission ||
     !note.trim() ||
+    (presetAction === "REFER_AGENCY" && !referralAgencyId) ||
     optionsQuery.isLoading;
 
   function handleSubmit(): void {
@@ -68,6 +79,9 @@ export function CaseStatusUpdateDialog({
           review_action: presetAction,
           review_note: note.trim(),
           resolution_outcome: null,
+          referral_agency_id:
+            presetAction === "REFER_AGENCY" ? Number(referralAgencyId) : null,
+          care_observation_decision: observationDecision || null,
         },
       },
       {
@@ -80,13 +94,17 @@ export function CaseStatusUpdateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => nextOpen ? onOpenChange(true) : closeDialog()}>
-      <DialogContent
-        className="w-[min(92vw,460px)]"
-        onClose={closeDialog}
-      >
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) =>
+        nextOpen ? onOpenChange(true) : closeDialog()
+      }
+    >
+      <DialogContent className="w-[min(92vw,460px)]" onClose={closeDialog}>
         <DialogHeader>
-          <DialogTitle>{selectedAction?.label || "พิจารณาผลการติดตาม"}</DialogTitle>
+          <DialogTitle>
+            {selectedAction?.label || "พิจารณาผลการติดตาม"}
+          </DialogTitle>
           <DialogDescription>
             {caseRecord
               ? `${caseRecord.student_name} · ${caseRecord.student_school || "-"}`
@@ -97,7 +115,9 @@ export function CaseStatusUpdateDialog({
         <DialogBody>
           <div className="space-y-4">
             <FormErrorAlert
-              error={optionsQuery.error ?? updateCase.error}
+              error={
+                optionsQuery.error ?? referralAgencies.error ?? updateCase.error
+              }
               fallback="ไม่สามารถบันทึกผลการพิจารณาได้ กรุณาลองอีกครั้ง"
             />
 
@@ -120,6 +140,47 @@ export function CaseStatusUpdateDialog({
               />
             </div>
 
+            {presetAction === "REFER_AGENCY" ? (
+              <div className="space-y-2">
+                <Label required htmlFor="referral-agency">
+                  หน่วยงานส่งต่อ
+                </Label>
+                <Select
+                  id="referral-agency"
+                  onChange={(event) => setReferralAgencyId(event.target.value)}
+                  value={referralAgencyId}
+                >
+                  <option value="">เลือกหน่วยงานส่งต่อ</option>
+                  {(referralAgencies.data ?? []).map((agency) => (
+                    <option key={agency.id} value={agency.id}>
+                      {agency.agencyKindLabel} · {agency.agencyName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <Label htmlFor="care-observation-decision">
+                ตรวจข้อสังเกตด้านการดูแลนักเรียน
+              </Label>
+              <Select
+                id="care-observation-decision"
+                onChange={(event) =>
+                  setObservationDecision(
+                    event.target.value as "" | "APPROVE" | "REJECT",
+                  )
+                }
+                value={observationDecision}
+              >
+                <option value="">ยังไม่พิจารณาในครั้งนี้</option>
+                <option value="APPROVE">ยืนยันและเพิ่มในข้อมูลนักเรียน</option>
+                <option value="REJECT">ไม่ยืนยันข้อสังเกต</option>
+              </Select>
+              <p className="text-xs leading-5 text-slate-500">
+                ใช้กับข้อสังเกตความด้อยโอกาสหรือความพิการที่ยังรอพิจารณาในเคสนี้
+              </p>
+            </div>
           </div>
         </DialogBody>
 

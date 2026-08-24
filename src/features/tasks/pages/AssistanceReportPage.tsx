@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  Select,
   registerField,
   Textarea,
   TimePicker,
@@ -24,6 +25,7 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
 import { formatFollowUpProblemCategory } from "../../cases/lib/case-presentation";
+import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
 import {
   TrackingStep,
   TrackingStepsCard,
@@ -44,10 +46,12 @@ import type { TaskAccessTask } from "../types/task.types";
 const assistanceReportSchema = z.object({
   assistedDate: z.string().min(1, "กรุณาเลือกวันที่ให้ความช่วยเหลือ"),
   assistedTime: z.string().min(1, "กรุณาเลือกเวลาที่ให้ความช่วยเหลือ"),
+  executionOutcomeCode: z.enum(["SUCCEEDED", "NOT_SUCCEEDED"], {
+    message: "กรุณาเลือกผลการช่วยเหลือ",
+  }),
   assistanceDetail: z
     .string()
     .trim()
-    .min(1, "กรุณากรอกคำอธิบายเพิ่มเติม")
     .max(2000, "คำอธิบายต้องไม่เกิน 2,000 ตัวอักษร"),
 });
 
@@ -108,6 +112,7 @@ export function AssistanceReportPage({
   token: string;
 }) {
   const navigate = useNavigate();
+  const trackingOptionsQuery = useCaseTrackingOptions();
   const [photos, setPhotos] = useState<File[]>([]);
   const defaults = bangkokParts();
   const form = useForm<AssistanceReportValues>({
@@ -115,6 +120,7 @@ export function AssistanceReportPage({
     defaultValues: {
       assistedDate: defaults.date,
       assistedTime: defaults.time,
+      executionOutcomeCode: "" as "SUCCEEDED",
       assistanceDetail: "",
     },
     mode: "onSubmit",
@@ -130,6 +136,10 @@ export function AssistanceReportPage({
   const assistanceDetail = useWatch({
     control: form.control,
     name: "assistanceDetail",
+  });
+  const executionOutcomeCode = useWatch({
+    control: form.control,
+    name: "executionOutcomeCode",
   });
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftError, setDraftError] = useState("");
@@ -202,8 +212,9 @@ export function AssistanceReportPage({
       );
       const formData = new FormData();
       formData.set("assisted_at", assistedAt.toISOString());
-      formData.set("assistance_detail", values.assistanceDetail);
-      formData.set("case_follow_up_decision", "REQUEST_REVIEW");
+      formData.set("task_execution_outcome_code", values.executionOutcomeCode);
+      if (values.assistanceDetail)
+        formData.set("assistance_detail", values.assistanceDetail);
       photos.forEach((photo) => formData.append("photos", photo));
       return taskService.submitTaskReport(
         token,
@@ -343,6 +354,7 @@ export function AssistanceReportPage({
             <FormErrorAlert
               className="mb-4"
               error={
+                trackingOptionsQuery.error ??
                 submitReport.error ??
                 (draftError ? new Error(draftError) : null)
               }
@@ -356,7 +368,7 @@ export function AssistanceReportPage({
             {/* The description and the upload card share the last grid row, so
                 their bottom edges are the same line by construction rather than
                 by matching heights. The description scrolls instead of growing. */}
-            <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_auto_minmax(11rem,1fr)]">
+            <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto_minmax(11rem,1fr)]">
               <div
                 className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:col-start-1 lg:row-start-1"
                 data-assistance-report-fields
@@ -395,8 +407,35 @@ export function AssistanceReportPage({
                 </FormItem>
               </div>
 
+              <FormItem className="lg:col-start-1 lg:row-start-2">
+                <FormLabel htmlFor="assistance-outcome" required>
+                  ผลการช่วยเหลือ
+                </FormLabel>
+                <Select
+                  id="assistance-outcome"
+                  onChange={(event) =>
+                    form.setValue(
+                      "executionOutcomeCode",
+                      event.target.value as "SUCCEEDED" | "NOT_SUCCEEDED",
+                      { shouldDirty: true, shouldValidate: true },
+                    )
+                  }
+                  value={executionOutcomeCode}
+                >
+                  <option value="">เลือกผลการช่วยเหลือ</option>
+                  {(trackingOptionsQuery.data?.executionOutcomes ?? []).map(
+                    (option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.label}
+                      </option>
+                    ),
+                  )}
+                </Select>
+                <FormMessage<AssistanceReportValues> name="executionOutcomeCode" />
+              </FormItem>
+
               <FormItem
-                className="lg:col-start-1 lg:row-start-2"
+                className="lg:col-start-1 lg:row-start-3"
                 data-assistance-report-measures
               >
                 {/* Locked: set when this round was assigned. */}
@@ -405,10 +444,10 @@ export function AssistanceReportPage({
               </FormItem>
 
               <FormItem
-                className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:col-start-1 lg:row-start-3"
+                className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:col-start-1 lg:row-start-4"
                 data-assistance-report-description
               >
-                <FormLabel required>คำอธิบายเพิ่มเติม</FormLabel>
+                <FormLabel>คำอธิบายเพิ่มเติม</FormLabel>
                 <Textarea
                   aria-label="คำอธิบายการให้ความช่วยเหลือ"
                   className="h-full min-h-0 resize-none overflow-y-auto"
@@ -423,7 +462,7 @@ export function AssistanceReportPage({
               </FormItem>
 
               <FormItem
-                className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:col-start-2 lg:row-span-3 lg:row-start-1"
+                className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:col-start-2 lg:row-span-4 lg:row-start-1"
                 data-assistance-report-upload
               >
                 <FormLabel>แนบไฟล์</FormLabel>

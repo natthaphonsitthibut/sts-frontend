@@ -53,6 +53,13 @@ export interface CaseTrackingOptions {
     guidance: string | null;
   }>;
   assistanceMeasures: AssistanceMeasureOption[];
+  executionOutcomes: Array<{
+    code: "SUCCEEDED" | "NOT_SUCCEEDED";
+    label: string;
+  }>;
+  nonFollowUpReasons: Array<{ code: string; label: string }>;
+  disadvantageTypes: Array<{ code: string; label: string }>;
+  disabilityTypes: Array<{ code: string; label: string }>;
   parentalStatuses: Array<{ code: string; label: string }>;
   guardianTypes: Array<{
     code: string;
@@ -86,6 +93,10 @@ export interface CaseFollowUpRound {
   assistance_measure_detail?: string | null;
   assisted_at?: string | null;
   assistance_detail?: string | null;
+  task_execution_outcome_code?: "SUCCEEDED" | "NOT_SUCCEEDED" | null;
+  task_execution_outcome_label?: string | null;
+  non_follow_up_reason_code?: string | null;
+  non_follow_up_reason_label?: string | null;
   created_at: string;
   initial_assignee?: string | null;
   assignment_starts_at?: string | null;
@@ -173,6 +184,20 @@ export interface CaseRecord {
   follow_up_rounds?: CaseFollowUpRound[];
   reviews?: CaseReviewRecord[];
   risk_signals?: CaseRiskSignal[];
+  referrals?: CaseReferralRecord[];
+}
+
+export interface CaseReferralRecord {
+  id: string;
+  case_review_id: string;
+  referral_agency_id: number;
+  agency_name: string;
+  agency_kind_code: string;
+  agency_kind_label: string;
+  status_code: string;
+  referred_at: string;
+  referred_by: string | null;
+  referral_note: string | null;
 }
 
 export interface OpenCasePayload {
@@ -203,6 +228,18 @@ export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note: string;
   resolution_outcome?: CaseResolutionOutcome | null;
+  referral_agency_id?: number | null;
+  care_observation_decision?: "APPROVE" | "REJECT" | null;
+}
+
+export interface ReferralAgencyOption {
+  id: number;
+  agencyName: string;
+  agencyKindCode: string;
+  agencyKindLabel: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  websiteUrl: string | null;
 }
 
 export interface CaseReviewResponse {

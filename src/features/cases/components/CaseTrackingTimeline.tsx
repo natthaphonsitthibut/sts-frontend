@@ -920,17 +920,6 @@ export function CaseTrackingTimeline({
                   </Button>
                 </div>
               ) : null}
-              {isLive && studentNotFound && canAssign ? (
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    onClick={() => setManualReassign(true)}
-                    type="button"
-                    variant="outline"
-                  >
-                    มอบหมายอีกครั้ง
-                  </Button>
-                </div>
-              ) : null}
             </TrackingStep>
           );
         }
@@ -949,6 +938,19 @@ export function CaseTrackingTimeline({
             ) : (
               <FollowUpReportBody round={round} />
             )}
+            {studentNotFound &&
+            canAssign &&
+            round.task_id === latestRound?.task_id ? (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={() => setManualReassign(true)}
+                  type="button"
+                  variant="outline"
+                >
+                  มอบหมายอีกครั้ง
+                </Button>
+              </div>
+            ) : null}
             {reviewReady && index === lastReportIndex ? (
               <ReviewActions
                 actions={reviewActions}

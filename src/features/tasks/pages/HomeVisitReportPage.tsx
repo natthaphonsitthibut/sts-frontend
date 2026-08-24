@@ -71,6 +71,8 @@ function createReportSchema(rules: ReportOptionRules) {
       visitedTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
+      disadvantageTypeCodes: z.array(z.string().trim()),
+      disabilityTypeCodes: z.array(z.string().trim()),
       problemCategoryCode: z.string().trim(),
       parentalStatusCode: z.string().trim(),
       guardianTypeCode: z.string().trim(),
@@ -86,43 +88,6 @@ function createReportSchema(rules: ReportOptionRules) {
       updatedPostalCode: z.string().trim(),
     })
     .superRefine((values, context) => {
-      // Everything the visitor observed is required, because a report with the
-      // household half blank is not a report. Not finding the student is the one
-      // case where there was nothing to observe — then only the account of the
-      // search itself is required.
-      const studentNotFound =
-        values.homeVisitExceptionCode === "STUDENT_NOT_FOUND";
-      if (!values.causeDetail) {
-        context.addIssue({
-          code: "custom",
-          message: studentNotFound
-            ? "กรุณาระบุรายละเอียดเมื่อไม่พบนักเรียน"
-            : "กรุณากรอกคำอธิบายเพิ่มเติม",
-          path: ["causeDetail"],
-        });
-      }
-      if (!studentNotFound) {
-        const observedFields: Array<[keyof typeof values, string]> = [
-          ["problemCategoryCode", "กรุณาเลือกผลการติดตาม"],
-          ["parentalStatusCode", "กรุณาเลือกสถานะของบิดา-มารดา"],
-          ["guardianTypeCode", "กรุณาเลือกผู้ปกครอง"],
-          [
-            "residenceEnvironmentDetail",
-            "กรุณากรอกรายละเอียดสภาพแวดล้อมรอบที่พัก",
-          ],
-        ];
-        observedFields.forEach(([field, message]) => {
-          if (!values[field])
-            context.addIssue({ code: "custom", message, path: [field] });
-        });
-        if ((values.residenceEnvironmentCodes ?? []).length === 0) {
-          context.addIssue({
-            code: "custom",
-            message: "กรุณาเลือกสภาพแวดล้อมรอบที่พัก",
-            path: ["residenceEnvironmentCodes"],
-          });
-        }
-      }
       const guardianType = rules.guardianTypes.find(
         (option) => option.code === values.guardianTypeCode,
       );
@@ -265,6 +230,8 @@ export function HomeVisitReportPage({
     () => ({
       visitedDate: initialVisit.date,
       visitedTime: initialVisit.time,
+      disadvantageTypeCodes: [],
+      disabilityTypeCodes: [],
       problemCategoryCode: "",
       parentalStatusCode: "",
       guardianTypeCode: "",
@@ -285,6 +252,10 @@ export function HomeVisitReportPage({
   const form = useForm<ReportFormValues>({ defaultValues, resolver });
   const visitedDate = useWatch({ control: form.control, name: "visitedDate" });
   const visitedTime = useWatch({ control: form.control, name: "visitedTime" });
+  const disadvantageTypeCodes =
+    useWatch({ control: form.control, name: "disadvantageTypeCodes" }) ?? [];
+  const disabilityTypeCodes =
+    useWatch({ control: form.control, name: "disabilityTypeCodes" }) ?? [];
   const problemCategoryCode = useWatch({
     control: form.control,
     name: "problemCategoryCode",
@@ -415,6 +386,18 @@ export function HomeVisitReportPage({
       );
       const formData = new FormData();
       formData.set("visited_at", visitedAt.toISOString());
+      formData.set(
+        "task_execution_outcome_code",
+        values.homeVisitExceptionCode === "STUDENT_NOT_FOUND"
+          ? "NOT_SUCCEEDED"
+          : "SUCCEEDED",
+      );
+      values.disadvantageTypeCodes.forEach((code) => {
+        formData.append("disadvantage_type_codes", code);
+      });
+      values.disabilityTypeCodes.forEach((code) => {
+        formData.append("disability_type_codes", code);
+      });
       // Not finding the student makes every household answer optional rather
       // than forbidden: whatever the visitor did observe is still recorded.
       if (values.problemCategoryCode) {
@@ -443,10 +426,9 @@ export function HomeVisitReportPage({
           values.residenceEnvironmentDetail,
         );
       }
-      formData.set("cause_detail", values.causeDetail);
-      formData.set("case_follow_up_decision", "REQUEST_REVIEW");
-      formData.set("visit_lat", lat);
-      formData.set("visit_lng", lng);
+      if (values.causeDetail) formData.set("cause_detail", values.causeDetail);
+      if (lat) formData.set("visit_lat", lat);
+      if (lng) formData.set("visit_lng", lng);
       if (values.homeVisitExceptionCode) {
         formData.set(
           "home_visit_exception_code",
@@ -538,9 +520,6 @@ export function HomeVisitReportPage({
   const guardianRequiresDetail =
     guardianTypes.find((option) => option.code === guardianTypeCode)
       ?.requiresDetail ?? false;
-  // Nothing about the household can be observed when the student was not found,
-  // so those answers stop being required (the schema mirrors this).
-  const studentNotFound = homeVisitExceptionCode === "STUDENT_NOT_FOUND";
   const contactChannels = getContactChannels(task);
   const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
 
@@ -691,6 +670,62 @@ export function HomeVisitReportPage({
                 fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
               />
 
+              <section
+                aria-labelledby="visit-outcome-title"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="mb-4">
+                  <h3
+                    className="font-bold text-slate-900"
+                    id="visit-outcome-title"
+                  >
+                    ผลการติดตาม
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    ระบบสรุปว่าติดตามสำเร็จเมื่อเข้าพบนักเรียน
+                    และไม่สำเร็จเมื่อเลือกกรณีไม่พบนักเรียน
+                  </p>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <FormItem>
+                    <FormLabel>ข้อสังเกตด้านความด้อยโอกาส</FormLabel>
+                    <MultiSelect
+                      onChange={(value) =>
+                        form.setValue("disadvantageTypeCodes", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      options={(
+                        trackingOptionsQuery.data?.disadvantageTypes ?? []
+                      ).map((option) => ({
+                        value: option.code,
+                        label: option.label,
+                      }))}
+                      placeholder="เลือกเฉพาะที่สังเกตพบ"
+                      value={disadvantageTypeCodes}
+                    />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel>ข้อสังเกตด้านความพิการ</FormLabel>
+                    <MultiSelect
+                      onChange={(value) =>
+                        form.setValue("disabilityTypeCodes", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      options={(
+                        trackingOptionsQuery.data?.disabilityTypes ?? []
+                      ).map((option) => ({
+                        value: option.code,
+                        label: option.label,
+                      }))}
+                      placeholder="เลือกเฉพาะที่สังเกตพบ"
+                      value={disabilityTypeCodes}
+                    />
+                  </FormItem>
+                </div>
+              </section>
+
               {/* Household block: both columns share the same three rows through
                   `grid-rows-subgrid`, so a field that grows moves its whole row
                   on both sides instead of sliding the columns out of step. */}
@@ -743,10 +778,7 @@ export function HomeVisitReportPage({
                   </div>
 
                   <FormItem>
-                    <FormLabel
-                      htmlFor="parental-status"
-                      required={!studentNotFound}
-                    >
+                    <FormLabel htmlFor="parental-status">
                       สถานะของบิดา-มารดา
                     </FormLabel>
                     <Combobox
@@ -781,12 +813,7 @@ export function HomeVisitReportPage({
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FormItem>
-                      <FormLabel
-                        htmlFor="guardian-type"
-                        required={!studentNotFound}
-                      >
-                        ผู้ปกครอง
-                      </FormLabel>
+                      <FormLabel htmlFor="guardian-type">ผู้ปกครอง</FormLabel>
                       <Combobox
                         id="guardian-type"
                         name="guardianTypeCode"
@@ -855,10 +882,7 @@ export function HomeVisitReportPage({
                   data-visit-report-context
                 >
                   <FormItem>
-                    <FormLabel
-                      htmlFor="residence-environment"
-                      required={!studentNotFound}
-                    >
+                    <FormLabel htmlFor="residence-environment">
                       สภาพแวดล้อมรอบที่พัก
                     </FormLabel>
                     <MultiSelect
@@ -880,11 +904,8 @@ export function HomeVisitReportPage({
 
                   {/* Same three-row template as the description field on the
                       left, so the box tops and bottoms land on the same line. */}
-                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:row-span-2">
-                    <FormLabel
-                      htmlFor="residence-environment-detail"
-                      required={!studentNotFound}
-                    >
+                  <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-0 space-y-0 lg:row-span-2 lg:pb-2">
+                    <FormLabel htmlFor="residence-environment-detail">
                       รายละเอียดสภาพแวดล้อมรอบที่พัก
                     </FormLabel>
                     <Textarea
@@ -905,16 +926,13 @@ export function HomeVisitReportPage({
               {/* Separates what the visit found about the home from what the
                   visitor concluded. Same `slate-200` as the line joining the
                   step numbers, so the panel keeps one rule colour. */}
-              <Divider className="my-1 bg-slate-200" />
+              <Divider className="my-1 -translate-y-2 bg-slate-200" />
 
               <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
                 <div className="grid h-full min-w-0 grid-cols-1 gap-x-4 gap-y-3 lg:row-span-2 lg:grid-rows-subgrid">
                   <FormItem>
-                    <FormLabel
-                      htmlFor="follow-up-assessment"
-                      required={!studentNotFound}
-                    >
-                      ผลการติดตาม
+                    <FormLabel htmlFor="follow-up-assessment">
+                      หมวดปัญหาที่พบ
                     </FormLabel>
                     <Combobox
                       aria-invalid={
@@ -952,7 +970,7 @@ export function HomeVisitReportPage({
                   </FormItem>
 
                   <FormItem className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 space-y-0">
-                    <FormLabel htmlFor="cause-detail" required>
+                    <FormLabel htmlFor="cause-detail">
                       คำอธิบายเพิ่มเติม
                     </FormLabel>
                     <Textarea

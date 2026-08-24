@@ -19,6 +19,7 @@ import {
 } from "../../../components/base";
 import {
   ErrorState,
+  FilterSelect,
   PageShell,
   PageToolbar,
   SkeletonCards,
@@ -299,23 +300,32 @@ function DashboardFilterBar({
         }
         disabled={schoolLocked}
       />
-      <FilterCombobox
-        allLabel="ทุกชั้น"
+      <FilterSelect
         ariaLabel="ชั้น"
-        options={safeOptions.grades}
-        value={filters.grade}
         onChange={(value) => onUpdate({ grade: value || undefined })}
         disabled={!filters.schoolId}
-      />
-      <FilterCombobox
-        allLabel="ทุกห้อง"
+        value={filters.grade ?? ""}
+      >
+        <option value="">ทุกชั้น</option>
+        {safeOptions.grades.map((option) => (
+          <option key={option.value} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect
         ariaLabel="ห้อง"
-        options={safeOptions.rooms}
-        formatOptionLabel={(option) => formatRoomLabel(option.value)}
-        value={filters.room}
         onChange={(value) => onUpdate({ room: value || undefined })}
         disabled={!filters.grade}
-      />
+        value={filters.room ?? ""}
+      >
+        <option value="">ทุกห้อง</option>
+        {safeOptions.rooms.map((option) => (
+          <option key={option.value} value={String(option.value)}>
+            {formatRoomLabel(option.value)}
+          </option>
+        ))}
+      </FilterSelect>
     </ToolbarFilterGrid>
   );
 }

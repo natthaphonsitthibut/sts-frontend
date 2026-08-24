@@ -22,6 +22,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
@@ -157,6 +158,43 @@ export function CaseDetailPage() {
             : ""
         }`}
       />
+
+      {(caseRecord.referrals ?? []).length > 0 ? (
+        <Card className="mb-5 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-slate-900">
+                ประวัติการส่งต่อหน่วยงาน
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                ประวัติจากผลพิจารณาของเคสนี้ เรียงจากรายการล่าสุด
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+              {caseRecord.referrals?.length ?? 0} ครั้ง
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {caseRecord.referrals?.map((referral) => (
+              <article
+                className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                key={referral.id}
+              >
+                <p className="font-semibold text-slate-900">
+                  {referral.agency_name}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {referral.agency_kind_label} ·{" "}
+                  {formatThaiDateTime(referral.referred_at)}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  ผู้ส่งต่อ: {referral.referred_by || "-"}
+                </p>
+              </article>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <CaseTrackingTimeline
         caseRecord={caseRecord}
