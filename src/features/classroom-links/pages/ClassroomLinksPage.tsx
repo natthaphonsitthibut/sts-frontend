@@ -318,20 +318,21 @@ export function ClassroomLinksPage() {
             </option>
           ))}
         </FilterSelect>
-        <FilterCombobox
+        <FilterSelect
           ariaLabel="กรองระดับชั้น"
-          emptyText="ไม่พบระดับชั้น"
           onChange={(value) => {
             setGradeInput(value);
             resetListState();
           }}
-          options={(gradeLevelsQuery.data ?? []).map((grade) => ({
-            value: String(grade.id),
-            label: grade.label,
-          }))}
-          placeholder="ทุกระดับชั้น"
           value={gradeInput}
-        />
+        >
+          <option value="">ทุกระดับชั้น</option>
+          {(gradeLevelsQuery.data ?? []).map((grade) => (
+            <option key={grade.id} value={String(grade.id)}>
+              {grade.label}
+            </option>
+          ))}
+        </FilterSelect>
         <FilterSelect
           ariaLabel="กรองสถานะลิงก์"
           onChange={(value) => {

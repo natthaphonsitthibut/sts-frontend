@@ -1,4 +1,9 @@
 export type ClassroomLinkStatus = "ACTIVE" | "INACTIVE" | "NOT_CREATED";
+export type ClassroomLinkSessionStatus =
+  | "OPEN"
+  | "SUBMITTED"
+  | "REOPENED"
+  | "VOIDED";
 export type ClassroomLinkDeliveryStatus =
   | "NOT_READY"
   | "SENDING"
@@ -52,7 +57,7 @@ export interface ClassroomLinkListItem {
   latestSession: {
     id: string;
     attendanceDate: string;
-    status: string;
+    status: ClassroomLinkSessionStatus;
     submittedAt: string | null;
   } | null;
 }

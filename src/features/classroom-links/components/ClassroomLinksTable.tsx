@@ -10,6 +10,7 @@ import {
 import type {
   ClassroomLinkDelivery,
   ClassroomLinkListItem,
+  ClassroomLinkSessionStatus,
 } from "../types/classroom-links.types";
 import { formatClassLabel } from "../../../lib/room-presentation";
 
@@ -31,6 +32,15 @@ function formatDateTime(value: string | null): string {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatSessionStatus(status: ClassroomLinkSessionStatus): string {
+  return {
+    OPEN: "กำลังเช็กชื่อ",
+    SUBMITTED: "ส่งแล้ว",
+    REOPENED: "เปิดแก้ไข",
+    VOIDED: "ยกเลิก",
+  }[status];
 }
 
 function linkStatus(status: ClassroomLinkListItem["status"]) {
@@ -171,7 +181,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           "ครูประจำชั้น",
           "สถานะลิงก์",
           "สถานะ LINE",
-          "ใช้งานล่าสุด",
+          "เวลาลิงก์",
           "รอบล่าสุด",
           "เครื่องมือ",
         ]}
@@ -216,12 +226,13 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
               </div>
             </DataTableCell>
             <DataTableCell>
-              <div>{formatDateTime(row.lastUsedAt)}</div>
-              {row.rotatedAt ? (
-                <div className="mt-0.5 text-xs text-slate-500">
-                  หมุน {formatDateTime(row.rotatedAt)}
-                </div>
-              ) : null}
+              <div>ออก {formatDateTime(row.issuedAt)}</div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                หมุน {formatDateTime(row.rotatedAt)}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                ใช้ {formatDateTime(row.lastUsedAt)}
+              </div>
             </DataTableCell>
             <DataTableCell>
               {row.latestSession ? (
@@ -229,7 +240,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                   <div>{formatDateTime(row.latestSession.submittedAt)}</div>
                   <div className="mt-0.5 text-xs text-slate-500">
                     {row.latestSession.attendanceDate} ·{" "}
-                    {row.latestSession.status}
+                    {formatSessionStatus(row.latestSession.status)}
                   </div>
                 </div>
               ) : (

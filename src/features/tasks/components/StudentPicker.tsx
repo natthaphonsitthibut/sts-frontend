@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserRound, X } from "lucide-react";
-import { Button, Combobox, Input } from "../../../components/base";
-import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
+import { Button, Combobox, Input, Select } from "../../../components/base";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -32,7 +32,11 @@ const MAX_RESULTS = 30;
  * and the school itself is a searchable combobox. None of the filters are
  * required. Falls back to manual entry for students not yet in the system.
  */
-export function StudentPicker({ value, onChange, disabled }: StudentPickerProps) {
+export function StudentPicker({
+  value,
+  onChange,
+  disabled,
+}: StudentPickerProps) {
   const scope = useScopeCascade({ lockToActorScope: true });
   const area = useSchoolAreaFilter();
   const [search, setSearch] = useState("");
@@ -42,7 +46,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
 
   const schoolOptions = useMemo(
     () =>
-      area.schools.map((school) => ({ value: String(school.id), label: school.name })),
+      area.schools.map((school) => ({
+        value: String(school.id),
+        label: school.name,
+      })),
     [area.schools],
   );
 
@@ -108,12 +115,16 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   }
 
   function resolveSchoolName(schoolId: string): string {
-    return area.schools.find((school) => String(school.id) === schoolId)?.name ?? "";
+    return (
+      area.schools.find((school) => String(school.id) === schoolId)?.name ?? ""
+    );
   }
 
   function handleSchool(next: string, updateManual = false): void {
     scope.setSchoolId(next);
-    const school = area.schools.find((candidate) => String(candidate.id) === next);
+    const school = area.schools.find(
+      (candidate) => String(candidate.id) === next,
+    );
     area.setAreaFromSchool(school);
     if (updateManual) {
       updateManualStudent(manualFirstName, manualLastName, next);
@@ -127,7 +138,9 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
   ): void {
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
-    const fullName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(" ");
+    const fullName = [trimmedFirstName, trimmedLastName]
+      .filter(Boolean)
+      .join(" ");
     if (!fullName) {
       onChange(null);
       return;
@@ -156,7 +169,9 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-slate-900">{value.name}</div>
+          <div className="truncate text-sm font-bold text-slate-900">
+            {value.name}
+          </div>
           <div className="truncate text-xs text-slate-500">
             {value.school || "ไม่ระบุโรงเรียน"}
             {value.personId ? "" : " · กรอกเอง"}
@@ -212,7 +227,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
               onChange={handleSubDistrict}
               options={[
                 { value: "", label: "ทุกตำบล/แขวง" },
-                ...area.subDistricts.map((name) => ({ value: name, label: name })),
+                ...area.subDistricts.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
               placeholder="ค้นหาตำบล/แขวง"
               value={area.subDistrict}
@@ -232,10 +250,7 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             }
             onChange={(next) => handleSchool(next, true)}
             onSearchChange={area.setSchoolSearch}
-            options={[
-              { value: "", label: "เลือกโรงเรียน" },
-              ...schoolOptions,
-            ]}
+            options={[{ value: "", label: "เลือกโรงเรียน" }, ...schoolOptions]}
             placeholder="ค้นหาโรงเรียน"
             value={scope.schoolId}
           />
@@ -306,7 +321,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             onChange={handleSubDistrict}
             options={[
               { value: "", label: "ทุกตำบล/แขวง" },
-              ...area.subDistricts.map((name) => ({ value: name, label: name })),
+              ...area.subDistricts.map((name) => ({
+                value: name,
+                label: name,
+              })),
             ]}
             placeholder="ค้นหาตำบล/แขวง"
             value={area.subDistrict}
@@ -319,7 +337,10 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
           <Input
             className="sm:col-span-3"
             disabled
-            value={area.schools.find((s) => String(s.id) === scope.schoolId)?.name ?? ""}
+            value={
+              area.schools.find((s) => String(s.id) === scope.schoolId)?.name ??
+              ""
+            }
           />
         ) : (
           <Combobox
@@ -336,26 +357,32 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
             value={scope.schoolId}
           />
         )}
-        <Combobox
+        <Select
+          aria-label="กรองตามระดับชั้น"
           disabled={disabled || !scope.schoolId || scope.gradeLocked}
-          onChange={(next) => scope.setGrade(next)}
-          options={[
-            { value: "", label: "ทุกชั้น" },
-            ...scope.gradeLevels.map((grade) => ({ value: grade.label, label: grade.label })),
-          ]}
-          placeholder="ค้นหาชั้น"
+          onChange={(event) => scope.setGrade(event.target.value)}
           value={scope.grade}
-        />
-        <Combobox
+        >
+          <option value="">ทุกชั้น</option>
+          {scope.gradeLevels.map((grade) => (
+            <option key={grade.id} value={grade.label}>
+              {grade.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          aria-label="กรองตามห้อง"
           disabled={disabled || !scope.grade || scope.roomLocked}
-          onChange={(next) => scope.setRoom(next)}
-          options={[
-            { value: "", label: "ทุกห้อง" },
-            ...scope.rooms.map(toRoomOption),
-          ]}
-          placeholder="ค้นหาห้อง"
+          onChange={(event) => scope.setRoom(event.target.value)}
           value={scope.room}
-        />
+        >
+          <option value="">ทุกห้อง</option>
+          {scope.rooms.map((room) => (
+            <option key={room} value={room}>
+              {formatRoomLabel(room)}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <Input
@@ -386,18 +413,24 @@ export function StudentPicker({ value, onChange, disabled }: StudentPickerProps)
                     firstName: null,
                     lastName: null,
                     school: student.school_name ?? "",
-                    schoolId: student.school_id ? String(student.school_id) : null,
+                    schoolId: student.school_id
+                      ? String(student.school_id)
+                      : null,
                   })
                 }
                 type="button"
               >
-                <UserRound className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                <UserRound
+                  className="size-4 shrink-0 text-slate-500"
+                  aria-hidden="true"
+                />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-slate-800">
                     {student.name}
                   </span>
                   <span className="block truncate text-xs text-slate-500">
-                    {student.school_name ?? "-"} · {student.grade} / {formatRoomLabel(student.room)}
+                    {student.school_name ?? "-"} · {student.grade} /{" "}
+                    {formatRoomLabel(student.room)}
                   </span>
                 </span>
               </button>

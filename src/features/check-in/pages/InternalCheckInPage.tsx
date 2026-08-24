@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { School } from "lucide-react";
-import { Combobox, FormErrorAlert } from "../../../components/base";
+import { Combobox, FormErrorAlert, Select } from "../../../components/base";
 import {
   EmptyState,
   PageShell,
@@ -85,34 +85,39 @@ export function InternalCheckInPage() {
         </label>
         <label className="grid gap-1 text-sm font-semibold text-slate-700">
           ชั้น
-          <Combobox
-            ariaLabel="ชั้น"
+          <Select
+            aria-label="ชั้น"
             disabled={!activeTerm}
-            onChange={(value) => {
+            onChange={(event) => {
+              const value = event.target.value;
               setGradeInput(value);
               setClassroomInput("");
             }}
-            options={gradeOptions.map(([gradeLevelId, gradeLabel]) => ({
-              value: String(gradeLevelId),
-              label: gradeLabel,
-            }))}
-            placeholder="ค้นหาชั้น"
             value={gradeInput}
-          />
+          >
+            <option value="">เลือกชั้น</option>
+            {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
+              <option key={gradeLevelId} value={String(gradeLevelId)}>
+                {gradeLabel}
+              </option>
+            ))}
+          </Select>
         </label>
         <label className="grid gap-1 text-sm font-semibold text-slate-700">
           ห้อง
-          <Combobox
-            ariaLabel="ห้อง"
+          <Select
+            aria-label="ห้อง"
             disabled={!gradeInput}
-            onChange={setClassroomInput}
-            options={roomOptions.map((classroom) => ({
-              value: String(classroom.id),
-              label: classroom.roomName ?? formatRoomLabel(classroom.roomCode),
-            }))}
-            placeholder="ค้นหาห้อง"
+            onChange={(event) => setClassroomInput(event.target.value)}
             value={classroomInput}
-          />
+          >
+            <option value="">เลือกห้อง</option>
+            {roomOptions.map((classroom) => (
+              <option key={classroom.id} value={String(classroom.id)}>
+                {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
+              </option>
+            ))}
+          </Select>
         </label>
       </div>
       {!activeTerm && schoolId ? (

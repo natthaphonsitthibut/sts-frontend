@@ -145,6 +145,7 @@ async function submitSession(input: {
     studentId: string;
     status: AttendanceExceptionStatus;
     markedAt: string;
+    absenceReasonCode?: string | null;
   }>;
 }): Promise<CheckInSession> {
   const response = await apiClient.post<DataEnvelope<CheckInSession>>(

@@ -59,6 +59,14 @@ const STATUS_CONFIG = ATTENDANCE_RECORD_STATUSES.map((status) => {
 });
 const AUTO_ADVANCE_KEY = "sts_check_in_auto_advance";
 
+const ABSENCE_CATEGORY_LABELS: Record<string, string> = {
+  PERSONAL_FAMILY: "ส่วนตัว / ครอบครัว",
+  ECONOMIC: "เศรษฐกิจ",
+  LEARNING_SCHOOL: "การเรียน / โรงเรียน",
+  MENTAL_BEHAVIOR: "จิตใจ / พฤติกรรม",
+  SOCIAL_ENVIRONMENT: "สังคม / สิ่งแวดล้อม",
+};
+
 function readAutoAdvance(): boolean {
   if (typeof window === "undefined") return true;
   return window.localStorage.getItem(AUTO_ADVANCE_KEY) !== "false";
@@ -797,6 +805,62 @@ export function CheckInWorkspace({
           ปัดขวาเพื่อระบุ “มา” ปัดซ้ายเพื่อระบุ “ขาด” หรือใช้ปุ่มด้านล่าง
         </p>
       )}
+
+      {workspace.counts.absent > 0 ? (
+        <section
+          aria-labelledby="absence-reason-title"
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="mb-4">
+            <h2 className="font-bold text-slate-900" id="absence-reason-title">
+              สาเหตุการขาด
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              เลือกจากรายการกลางที่โหลดมาพร้อมหน้าเช็กชื่อ ระบบตั้ง
+              “ยังไม่ทราบสาเหตุ” ไว้ให้ก่อน
+            </p>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {workspace.roster
+              .filter(
+                (student) =>
+                  workspace.marks.get(student.id)?.status === "P_ABSENT",
+              )
+              .map((student) => (
+                <div
+                  className="grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,1.4fr)] sm:items-center"
+                  key={student.id}
+                >
+                  <span className="text-sm font-semibold text-slate-800">
+                    {student.firstName} {student.lastName}
+                  </span>
+                  <Combobox
+                    ariaLabel={`สาเหตุการขาดของ ${student.firstName} ${student.lastName}`}
+                    disabled={readOnly}
+                    emptyText="ไม่พบสาเหตุ"
+                    onChange={(value) =>
+                      workspace.setAbsenceReason(student.id, value)
+                    }
+                    options={(workspace.options?.absenceReasons ?? []).map(
+                      (reason) => ({
+                        value: reason.code,
+                        label: reason.categoryCode
+                          ? `${ABSENCE_CATEGORY_LABELS[reason.categoryCode] ?? reason.categoryCode} · ${reason.labelTh}`
+                          : reason.labelTh,
+                      }),
+                    )}
+                    placeholder="ค้นหาสาเหตุการขาด"
+                    searchable
+                    value={
+                      workspace.marks.get(student.id)?.absenceReasonCode ??
+                      "UNKNOWN"
+                    }
+                  />
+                </div>
+              ))}
+          </div>
+        </section>
+      ) : null}
 
       {workspace.isLoading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">

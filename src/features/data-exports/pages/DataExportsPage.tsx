@@ -18,6 +18,7 @@ import {
   DatePicker,
   Input,
   Label,
+  Select,
   Tabs,
   Textarea,
 } from "../../../components/base";
@@ -30,7 +31,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { cn } from "../../../lib/utils";
-import { toRoomOption } from "../../../lib/room-presentation";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
@@ -132,44 +133,45 @@ function ExportScopeFilters({
         schoolInputId={`${idPrefix}-schoolId`}
       />
       {has("grade") ? (
-        <Combobox
-          ariaLabel="ระดับชั้น"
+        <Select
+          aria-label="ระดับชั้น"
           disabled={!scope.schoolId}
           id={`${idPrefix}-grade`}
-          onChange={(value) => {
+          onChange={(event) => {
+            const value = event.target.value;
             scope.setGrade(value);
             update("grade", value);
             update("room", "");
           }}
-          options={[
-            { value: "", label: "ทุกชั้น" },
-            ...scope.gradeLevels.map((grade) => ({
-              value: grade.label,
-              label: grade.label,
-            })),
-          ]}
-          placeholder="ทุกชั้น"
-          searchable={false}
           value={scope.grade}
-        />
+        >
+          <option value="">ทุกชั้น</option>
+          {scope.gradeLevels.map((grade) => (
+            <option key={grade.id} value={grade.label}>
+              {grade.label}
+            </option>
+          ))}
+        </Select>
       ) : null}
       {has("room") ? (
-        <Combobox
-          ariaLabel="ห้อง"
+        <Select
+          aria-label="ห้อง"
           disabled={!scope.grade}
           id={`${idPrefix}-room`}
-          onChange={(value) => {
+          onChange={(event) => {
+            const value = event.target.value;
             scope.setRoom(value);
             update("room", value);
           }}
-          options={[
-            { value: "", label: "ทุกห้อง" },
-            ...scope.rooms.map(toRoomOption),
-          ]}
-          placeholder="ทุกห้อง"
-          searchable={false}
           value={scope.room}
-        />
+        >
+          <option value="">ทุกห้อง</option>
+          {scope.rooms.map((room) => (
+            <option key={room} value={room}>
+              {formatRoomLabel(room)}
+            </option>
+          ))}
+        </Select>
       ) : null}
     </>
   );

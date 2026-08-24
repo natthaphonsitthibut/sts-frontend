@@ -20,7 +20,7 @@ function statusOptionLabel(code: number, label: string): string {
 
 /**
  * Master-data options for the quarantine inline-fix dialog: grade levels,
- * student statuses (placeholder UNMAPPED-category statuses excluded — they are
+ * student statuses (placeholder UNMATCHED-category statuses excluded — they are
  * not importable) and known rooms for the row's grade/school. School selection
  * uses the shared `useSchoolAreaFilter` cascade instead of a flat list.
  */
@@ -75,7 +75,7 @@ export function useQuarantinePickerOptions({
   const statusOptions: ComboboxOption[] = useMemo(
     () =>
       (statusesQuery.data?.items ?? [])
-        .filter((status) => status.isEnabled && status.category !== "UNMAPPED")
+        .filter((status) => status.isEnabled && status.category !== "UNMATCHED")
         .map((status) => ({
           value: String(status.code),
           label: statusOptionLabel(status.code, status.labelTh),
@@ -84,8 +84,7 @@ export function useQuarantinePickerOptions({
   );
 
   const roomOptions: ComboboxOption[] = useMemo(
-    () =>
-      (roomsQuery.data ?? []).map(toRoomOption),
+    () => (roomsQuery.data ?? []).map(toRoomOption),
     [roomsQuery.data],
   );
 

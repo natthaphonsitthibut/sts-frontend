@@ -12,17 +12,12 @@ import { formatClassLabel } from "../../../lib/room-presentation";
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
 import { checkInService } from "../api/check-in.service";
 
-const LINK_TOKEN_STORAGE_KEY = "sts_classroom_link_token";
 let publicContextRevision = 0;
 
 function initialToken(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return (
-    fragment.get("token")?.trim() ||
-    window.sessionStorage.getItem(LINK_TOKEN_STORAGE_KEY) ||
-    undefined
-  );
+  return fragment.get("token")?.trim() || undefined;
 }
 
 export function PublicCheckInPage() {
@@ -90,7 +85,6 @@ export function PublicCheckInPage() {
 
   useEffect(() => {
     if (!token) return;
-    window.sessionStorage.setItem(LINK_TOKEN_STORAGE_KEY, token);
     if (window.location.hash) {
       window.history.replaceState(
         window.history.state,
@@ -99,11 +93,6 @@ export function PublicCheckInPage() {
       );
     }
   }, [token]);
-
-  useEffect(() => {
-    if (contextQuery.data?.authentication.status !== "AUTHENTICATED") return;
-    window.sessionStorage.removeItem(LINK_TOKEN_STORAGE_KEY);
-  }, [contextQuery.data]);
 
   useEffect(() => {
     if (challengeStatus.data?.status !== "APPROVED" || handledApproval.current)
