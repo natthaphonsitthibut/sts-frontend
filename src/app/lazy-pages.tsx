@@ -158,6 +158,11 @@ export const StudentStatusesPage = lazy(() =>
     }),
   ),
 );
+export const MasterDataPage = lazy(() =>
+  import("../features/master-data/pages/MasterDataPage").then((module) => ({
+    default: module.MasterDataPage,
+  })),
+);
 export const DataExportsPage = lazy(() =>
   import("../features/data-exports/pages/DataExportsPage").then((module) => ({
     default: module.DataExportsPage,

@@ -1,12 +1,14 @@
 import type { PaginationMeta } from "../../../lib/pagination";
 
 export const STUDENT_STATUS_CATEGORIES = [
-  "ACTIVE",
+  "STUDYING",
+  "SUSPENDED",
   "GRADUATED",
-  "WITHDRAWN",
   "TRANSFERRED",
+  "WITHDRAWN",
+  "DISCHARGED",
   "DECEASED",
-  "UNMAPPED",
+  "UNMATCHED",
 ] as const;
 
 export type StudentStatusCategory = (typeof STUDENT_STATUS_CATEGORIES)[number];
@@ -17,7 +19,8 @@ export const STUDENT_STATUS_BADGE_VARIANTS = [
   "success",
   "warning",
 ] as const;
-export type StudentStatusBadgeVariant = (typeof STUDENT_STATUS_BADGE_VARIANTS)[number];
+export type StudentStatusBadgeVariant =
+  (typeof STUDENT_STATUS_BADGE_VARIANTS)[number];
 
 export interface StudentStatus {
   code: number;
@@ -49,6 +52,7 @@ export interface StudentStatusPayload {
 export interface StudentStatusListQuery {
   page: number;
   limit: number;
+  includeInactive?: boolean;
   searchTerm?: string;
   sortBy?: "code" | "labelTh" | "category" | "sortOrder";
   sortDirection?: "asc" | "desc";

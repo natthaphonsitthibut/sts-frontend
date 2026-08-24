@@ -573,6 +573,8 @@ interface ListToolbarSearch {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  /** Optional control rendered beside search on desktop and below it on mobile. */
+  after?: ReactNode;
 }
 
 interface ListPageToolbarBaseProps extends Omit<
@@ -594,14 +596,14 @@ type ListPageToolbarControlProps =
       search?: ListToolbarSearch;
       /** Filter controls (FilterSelect / Combobox …) — rendered after search. */
       filters: ReactNode;
-      /** Required whenever list controls exist, so a reset action cannot be omitted. */
-      onClearFilters: () => void;
+      /** Optional when the page has a meaningful multi-control reset action. */
+      onClearFilters?: () => void;
     }
   | {
-      /** Search-only list controls still require the same reset action. */
+      /** Search-only pages may omit reset when clearing the field is sufficient. */
       search: ListToolbarSearch;
       filters?: ReactNode;
-      onClearFilters: () => void;
+      onClearFilters?: () => void;
     };
 
 type ListPageToolbarProps = ListPageToolbarBaseProps &
@@ -645,6 +647,7 @@ export function ListPageToolbar({
                 placeholder={search.placeholder}
                 value={search.value}
               />
+              {search.after}
             </ToolbarControls>
           ) : null}
           {filters ? <ToolbarFilterGrid>{filters}</ToolbarFilterGrid> : null}

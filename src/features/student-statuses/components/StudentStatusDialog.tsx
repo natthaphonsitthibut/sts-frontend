@@ -35,7 +35,7 @@ import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 const EMPTY_FORM: StudentStatusFormValues = {
   code: "",
   labelTh: "",
-  category: "UNMAPPED",
+  category: "UNMATCHED",
   badgeVariant: "warning",
   isActiveForLogin: false,
   isTerminal: false,
@@ -111,11 +111,17 @@ export function StudentStatusDialog({
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto" onClose={() => handleOpenChange(false)}>
+      <DialogContent
+        className="max-h-[90vh] max-w-2xl overflow-y-auto"
+        onClose={() => handleOpenChange(false)}
+      >
         <DialogHeader>
-          <DialogTitle>{status ? "แก้ไขสถานะนักเรียน" : "เพิ่มสถานะนักเรียน"}</DialogTitle>
+          <DialogTitle>
+            {status ? "แก้ไขสถานะนักเรียน" : "เพิ่มสถานะนักเรียน"}
+          </DialogTitle>
           <DialogDescription>
-            สถานะการศึกษาเป็นข้อมูลอ้างอิง ส่วน “ควรพิจารณาติดตาม” ไม่ได้สร้าง Case อัตโนมัติ
+            สถานะการศึกษาเป็นข้อมูลอ้างอิง ส่วน “ควรพิจารณาติดตาม” ไม่ได้สร้าง
+            Case อัตโนมัติ
           </DialogDescription>
         </DialogHeader>
         <Form form={form} onSubmit={handleSubmit}>
@@ -127,7 +133,9 @@ export function StudentStatusDialog({
             />
             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
               <FormItem>
-                <FormLabel htmlFor="student-status-code" required>รหัสสถานะ</FormLabel>
+                <FormLabel htmlFor="student-status-code" required>
+                  รหัสสถานะ
+                </FormLabel>
                 <NumericInput
                   disabled={Boolean(status)}
                   id="student-status-code"
@@ -137,7 +145,9 @@ export function StudentStatusDialog({
                 <FormMessage<StudentStatusFormValues> name="code" />
               </FormItem>
               <FormItem>
-                <FormLabel htmlFor="student-status-label" required>ชื่อภาษาไทย</FormLabel>
+                <FormLabel htmlFor="student-status-label" required>
+                  ชื่อภาษาไทย
+                </FormLabel>
                 <Input
                   id="student-status-label"
                   placeholder="เช่น กำลังศึกษา"
@@ -146,44 +156,92 @@ export function StudentStatusDialog({
                 <FormMessage<StudentStatusFormValues> name="labelTh" />
               </FormItem>
               <FormItem>
-                <FormLabel htmlFor="student-status-category" required>หมวดสถานะ</FormLabel>
-                <Select id="student-status-category" {...registerField(form, "category")}>
+                <FormLabel htmlFor="student-status-category" required>
+                  หมวดสถานะ
+                </FormLabel>
+                <Select
+                  id="student-status-category"
+                  {...registerField(form, "category")}
+                >
                   {categories.map((category) => (
-                    <option key={category.code} value={category.code}>{category.label}</option>
+                    <option key={category.code} value={category.code}>
+                      {category.label}
+                    </option>
                   ))}
                 </Select>
                 <FormMessage<StudentStatusFormValues> name="category" />
               </FormItem>
               <FormItem>
-                <FormLabel htmlFor="student-status-source" required>ระบบต้นทาง</FormLabel>
-                <Input id="student-status-source" {...registerField(form, "sourceSystem")} />
+                <FormLabel htmlFor="student-status-source" required>
+                  ระบบต้นทาง
+                </FormLabel>
+                <Input
+                  id="student-status-source"
+                  {...registerField(form, "sourceSystem")}
+                />
                 <FormMessage<StudentStatusFormValues> name="sourceSystem" />
               </FormItem>
               <FormItem>
-                <FormLabel htmlFor="student-status-badge" required>รูปแบบป้ายสถานะ</FormLabel>
-                <Select id="student-status-badge" {...registerField(form, "badgeVariant")}>
+                <FormLabel htmlFor="student-status-badge" required>
+                  รูปแบบป้ายสถานะ
+                </FormLabel>
+                <Select
+                  id="student-status-badge"
+                  {...registerField(form, "badgeVariant")}
+                >
                   {STUDENT_STATUS_BADGE_VARIANTS.map((variant) => (
-                    <option key={variant} value={variant}>{variant}</option>
+                    <option key={variant} value={variant}>
+                      {variant}
+                    </option>
                   ))}
                 </Select>
                 <FormMessage<StudentStatusFormValues> name="badgeVariant" />
               </FormItem>
               <FormItem>
-                <FormLabel htmlFor="student-status-sort" required>ลำดับแสดงผล</FormLabel>
-                <NumericInput id="student-status-sort" {...registerField(form, "sortOrder")} />
+                <FormLabel htmlFor="student-status-sort" required>
+                  ลำดับแสดงผล
+                </FormLabel>
+                <NumericInput
+                  id="student-status-sort"
+                  {...registerField(form, "sortOrder")}
+                />
                 <FormMessage<StudentStatusFormValues> name="sortOrder" />
               </FormItem>
             </div>
             <div className="mt-2 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
-              <Checkbox label="เข้าสู่ระบบได้ (policy รอบถัดไป)" {...registerField(form, "isActiveForLogin")} />
-              <Checkbox label="เป็นสถานะสิ้นสุด" {...registerField(form, "isTerminal")} />
-              <Checkbox label="ควรพิจารณาติดตาม" {...registerField(form, "requiresFollowup")} />
-              <Checkbox label="เปิดใช้งาน" {...registerField(form, "isEnabled")} />
+              <Checkbox
+                label="เข้าสู่ระบบได้ (policy รอบถัดไป)"
+                {...registerField(form, "isActiveForLogin")}
+              />
+              <Checkbox
+                label="เป็นสถานะสิ้นสุด"
+                {...registerField(form, "isTerminal")}
+              />
+              <Checkbox
+                label="ควรพิจารณาติดตาม"
+                {...registerField(form, "requiresFollowup")}
+              />
+              <Checkbox
+                label="เปิดใช้งาน"
+                {...registerField(form, "isEnabled")}
+              />
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button onClick={() => handleOpenChange(false)} type="button" variant="outline">ยกเลิก</Button>
-            <Button isLoading={saveStatus.isPending} loadingText="กำลังบันทึก" type="submit">บันทึก</Button>
+            <Button
+              onClick={() => handleOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              isLoading={saveStatus.isPending}
+              loadingText="กำลังบันทึก"
+              type="submit"
+            >
+              บันทึก
+            </Button>
           </DialogFooter>
         </Form>
       </DialogContent>

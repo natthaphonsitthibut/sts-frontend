@@ -10,9 +10,15 @@ interface ProtectedRouteProps {
   children: ReactNode;
   permission?: string | string[];
   role?: string | string[];
+  requireGlobalScope?: boolean;
 }
 
-export function ProtectedRoute({ children, permission, role }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  permission,
+  requireGlobalScope = false,
+  role,
+}: ProtectedRouteProps) {
   const location = useLocation();
   const user = useAuthSessionStore((state) => state.user);
   const hasAdminAccess = useAuthSessionStore((state) => state.hasAdminAccess);
@@ -43,7 +49,9 @@ export function ProtectedRoute({ children, permission, role }: ProtectedRoutePro
     );
 
     const allowed = Array.isArray(permission)
-      ? permission.some((permissionId) => hasPermission(userPermissions, permissionId))
+      ? permission.some((permissionId) =>
+          hasPermission(userPermissions, permissionId),
+        )
       : hasPermission(userPermissions, permission);
     if (!allowed) {
       return <Navigate replace to="/forbidden" />;
@@ -52,8 +60,14 @@ export function ProtectedRoute({ children, permission, role }: ProtectedRoutePro
 
   if (role) {
     const acceptedRoles = Array.isArray(role) ? role : [role];
-    const allowed = acceptedRoles.some((roleId) => session.user?.roles.includes(roleId));
+    const allowed = acceptedRoles.some((roleId) =>
+      session.user?.roles.includes(roleId),
+    );
     if (!allowed) return <Navigate replace to="/forbidden" />;
+  }
+
+  if (requireGlobalScope && session.user?.data_scope?.global !== true) {
+    return <Navigate replace to="/forbidden" />;
   }
 
   return children;

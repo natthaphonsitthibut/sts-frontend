@@ -14,12 +14,19 @@ interface DataEnvelope<T> {
   data: T;
 }
 
-async function list(query: StudentStatusListQuery): Promise<StudentStatusListResult> {
+async function list(
+  query: StudentStatusListQuery,
+): Promise<StudentStatusListResult> {
   const params: Record<string, string> = toPaginationParams(query);
+  if (query.includeInactive !== undefined) {
+    params.includeInactive = String(query.includeInactive);
+  }
   if (query.searchTerm?.trim()) params.searchTerm = query.searchTerm.trim();
   if (query.sortBy) params.sortBy = query.sortBy;
   if (query.sortDirection) params.sortDirection = query.sortDirection;
-  const response = await apiClient.get("/student-statuses", { params });
+  const response = await apiClient.get("/student-statuses", {
+    params,
+  });
   return normalizePaginatedResponse<StudentStatus>(response.data, query);
 }
 

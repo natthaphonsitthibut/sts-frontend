@@ -21,7 +21,6 @@ import type {
   TeacherAccessGrantStatus,
   TeacherAccessOtpChallenge,
   TeacherAccessRosterStudent,
-  TeacherAttendanceDelegationHistoryEntry,
   TeacherAttendanceHistoryEntry,
   TeacherAttendanceHistoryStudent,
   TeacherAttendanceHistoryStudentDay,
@@ -29,11 +28,6 @@ import type {
   TeacherLineGroupInvitationIssueResult,
   TeacherLineGroupInvitationSummary,
   TeacherLinkRosterEntry,
-  TeacherAttendanceDelegationOptions,
-  IssueTeacherAttendanceDelegationInput,
-  IssuePublicTeacherAttendanceDelegationInput,
-  UpdatePublicTeacherAttendanceDelegationInput,
-  UpdateTeacherAttendanceDelegationInput,
   TeacherScheduleResponse,
   TeacherStudentProfile,
   TeacherAccessAttendanceSession,
@@ -212,116 +206,6 @@ async function issueGrant(
   return response.data.data;
 }
 
-async function getAttendanceDelegationOptions(input: {
-  schoolId: number;
-  schoolTermId: number;
-  classroomId: number;
-  attendanceDate: string;
-}): Promise<TeacherAttendanceDelegationOptions> {
-  const response = await apiClient.get<
-    DataEnvelope<TeacherAttendanceDelegationOptions>
-  >("/teacher-access-grants/attendance-delegation-options", { params: input });
-  return response.data.data;
-}
-
-async function issueAttendanceDelegation(
-  input: IssueTeacherAttendanceDelegationInput,
-): Promise<TeacherAccessGrant> {
-  const response = await apiClient.post<DataEnvelope<TeacherAccessGrant>>(
-    "/teacher-access-grants/attendance-delegations",
-    input,
-  );
-  return response.data.data;
-}
-
-async function getPublicAttendanceDelegationOptions(
-  credential: TeacherLinkCredential,
-  input: { assignmentId: number; attendanceDate: string },
-): Promise<TeacherAttendanceDelegationOptions> {
-  return await runGuestRequest(async () => {
-    const response = await apiClient.get<
-      DataEnvelope<TeacherAttendanceDelegationOptions>
-    >("/teacher-access/attendance-delegation-options", {
-      headers: guestHeaders(credential),
-      params: input,
-    });
-    return response.data.data;
-  });
-}
-
-async function issuePublicAttendanceDelegation(
-  credential: TeacherLinkCredential,
-  input: IssuePublicTeacherAttendanceDelegationInput,
-): Promise<TeacherAccessGrant> {
-  return await runGuestRequest(async () => {
-    const response = await apiClient.post<DataEnvelope<TeacherAccessGrant>>(
-      "/teacher-access/attendance-delegations",
-      input,
-      { headers: guestHeaders(credential) },
-    );
-    return response.data.data;
-  });
-}
-
-/** Handing the round to another teacher answers with the new link to share. */
-async function updateAttendanceDelegation(
-  input: UpdateTeacherAttendanceDelegationInput,
-): Promise<{ grantId: string; accessUrl: string | null }> {
-  const response = await apiClient.patch<{
-    data: { grantId: string; accessUrl?: string | null };
-  }>(`/teacher-access-grants/attendance-delegations/${input.grantId}`, {
-    schoolId: input.schoolId,
-    endsOn: input.endsOn,
-    endsAt: input.endsAt,
-    ...(input.teacherMembershipId
-      ? { teacherMembershipId: input.teacherMembershipId }
-      : {}),
-  });
-  return {
-    grantId: response.data.data.grantId,
-    accessUrl: response.data.data.accessUrl ?? null,
-  };
-}
-
-async function updatePublicAttendanceDelegation(
-  credential: TeacherLinkCredential,
-  input: UpdatePublicTeacherAttendanceDelegationInput,
-): Promise<{ grantId: string; accessUrl: string | null }> {
-  return await runGuestRequest(async () => {
-    const response = await apiClient.patch<{
-      data: { grantId: string; accessUrl?: string | null };
-    }>(
-      `/teacher-access/attendance-delegations/${input.grantId}`,
-      {
-        assignmentId: input.assignmentId,
-        endsOn: input.endsOn,
-        endsAt: input.endsAt,
-        ...(input.teacherMembershipId
-          ? { teacherMembershipId: input.teacherMembershipId }
-          : {}),
-      },
-      { headers: guestHeaders(credential) },
-    );
-    return {
-      grantId: response.data.data.grantId,
-      accessUrl: response.data.data.accessUrl ?? null,
-    };
-  });
-}
-
-async function revokePublicAttendanceDelegation(
-  credential: TeacherLinkCredential,
-  input: { grantId: string; assignmentId: number },
-): Promise<void> {
-  await runGuestRequest(async () => {
-    await apiClient.post(
-      `/teacher-access/attendance-delegations/${input.grantId}/revoke`,
-      { assignmentId: input.assignmentId },
-      { headers: guestHeaders(credential) },
-    );
-  });
-}
-
 async function issueGrantsForTerm(
   input: IssueTeacherAccessGrantsForTermInput,
 ): Promise<BulkIssueTeacherAccessResult> {
@@ -364,12 +248,6 @@ async function revokeGrant(
     { reason },
   );
   return response.data.data;
-}
-
-async function revokeAttendanceDelegation(grantId: string): Promise<void> {
-  await apiClient.post(
-    `/teacher-access-grants/attendance-delegations/${grantId}/revoke`,
-  );
 }
 
 async function rotateGrant(grantId: string): Promise<TeacherAccessGrant> {
@@ -602,46 +480,6 @@ async function recordAttendanceImport(
       headers: guestHeaders(credential),
     });
   });
-}
-
-async function listAttendanceDelegationHistory(
-  credential: TeacherLinkCredential,
-  input: {
-    assignmentId: number;
-    page: number;
-    limit: number;
-    attendanceDate?: string;
-    search?: string;
-    sortBy?: "date" | "issuedBy" | "teacher" | "status";
-    sortDirection?: "asc" | "desc";
-  },
-): Promise<PaginatedEnvelope<TeacherAttendanceDelegationHistoryEntry>> {
-  return runGuestRequest(async () => {
-    const response = await apiClient.get<
-      PaginatedEnvelope<TeacherAttendanceDelegationHistoryEntry>
-    >("/teacher-access/attendance-delegation-history", {
-      headers: guestHeaders(credential),
-      params: input,
-    });
-    return response.data;
-  });
-}
-
-async function listStaffAttendanceDelegationHistory(input: {
-  schoolId: number;
-  classroomId: number;
-  subjectId?: number;
-  page: number;
-  limit: number;
-  attendanceDate?: string;
-  search?: string;
-  sortBy?: "date" | "issuedBy" | "teacher" | "status";
-  sortDirection?: "asc" | "desc";
-}): Promise<PaginatedEnvelope<TeacherAttendanceDelegationHistoryEntry>> {
-  const response = await apiClient.get<
-    PaginatedEnvelope<TeacherAttendanceDelegationHistoryEntry>
-  >("/teacher-access-grants/attendance-delegation-history", { params: input });
-  return response.data;
 }
 
 async function listAttendanceHistoryStudents(
@@ -980,13 +818,6 @@ export const teacherAccessService = {
   listTeacherRoster,
   listAssignmentOptions,
   issueGrant,
-  getAttendanceDelegationOptions,
-  issueAttendanceDelegation,
-  getPublicAttendanceDelegationOptions,
-  issuePublicAttendanceDelegation,
-  updateAttendanceDelegation,
-  updatePublicAttendanceDelegation,
-  revokePublicAttendanceDelegation,
   issueGrantsForTerm,
   sendGrantsOverLine,
   unlinkTeacherLineAccount,
@@ -995,7 +826,6 @@ export const teacherAccessService = {
   updateTeacherLineGroupInvitation,
   revokeTeacherLineGroupInvitation,
   getGrantLink,
-  revokeAttendanceDelegation,
   revokeGrant,
   rotateGrant,
   requestOtp,
@@ -1008,12 +838,10 @@ export const teacherAccessService = {
   listAttendanceSlots,
   getCompleteRoster,
   listAttendanceHistory,
-  listAttendanceDelegationHistory,
   listAttendanceImports,
   listAttendanceHistoryStudentDays,
   listAttendanceHistoryStudents,
   listCompleteAttendanceHistory,
-  listStaffAttendanceDelegationHistory,
   recordAttendanceImport,
   createStudentComment,
   getClassroomCoverBlob,

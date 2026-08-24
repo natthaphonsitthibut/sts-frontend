@@ -33,7 +33,11 @@ export function usePostLoginRedirect() {
 
     const targetRoute =
       nextRoute ||
-      getFirstAccessibleRoute(userPermissions);
+      getFirstAccessibleRoute(
+        userPermissions,
+        user.data_scope,
+        user.roles || [],
+      );
 
     void navigate(targetRoute);
   };

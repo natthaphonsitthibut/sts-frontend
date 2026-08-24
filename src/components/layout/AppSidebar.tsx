@@ -27,7 +27,12 @@ function SidebarContent({
     user?.roles || [],
     user?.permissions || [],
   );
-  const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
+  const filteredMenuItems = filterMenuItems(
+    MENU_ITEMS,
+    userPermissions,
+    user?.data_scope,
+    user?.roles || [],
+  );
   return (
     <SidebarMenuContent
       collapsed={collapsed}

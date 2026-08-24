@@ -62,13 +62,14 @@ export function StudentListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [grade, setGrade] = useState(() => searchParams.get("grade") || "ALL");
   const [room, setRoom] = useState(() => searchParams.get("room") || "ALL");
-  const [studentStatusCode, setStudentStatusCode] =
-    useState<StudentStatusFilterValue | undefined>(undefined);
+  const [studentStatusCode, setStudentStatusCode] = useState<
+    StudentStatusFilterValue | undefined
+  >(undefined);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
-  const [selectedStudentsById, setSelectedStudentsById] = useState<Map<string, StudentListItem>>(
-    () => new Map(),
-  );
+  const [selectedStudentsById, setSelectedStudentsById] = useState<
+    Map<string, StudentListItem>
+  >(() => new Map());
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
@@ -96,18 +97,22 @@ export function StudentListPage() {
     () =>
       studentStatuses.find(
         (status) =>
-          status.isEnabled && status.category === "ACTIVE" && status.isActiveForLogin,
+          status.isEnabled &&
+          status.category === "STUDYING" &&
+          status.isActiveForLogin,
       )?.code ??
-      studentStatuses.find((status) => status.isEnabled && status.category === "ACTIVE")
-        ?.code,
+      studentStatuses.find(
+        (status) => status.isEnabled && status.category === "STUDYING",
+      )?.code,
     [studentStatuses],
   );
   const effectiveStudentStatusCode: StudentStatusFilterValue =
-    studentStatusCode ?? (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
+    studentStatusCode ??
+    (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
   const hasResolvedStudentStatusSelection =
     studentStatusCode !== undefined ||
     defaultActiveStatusCode !== undefined ||
-    !studentStatusesQuery.isLoading;
+    studentStatusesQuery.isSuccess;
   const queryStudentStatusCode = hasResolvedStudentStatusSelection
     ? effectiveStudentStatusCode
     : undefined;
@@ -117,7 +122,7 @@ export function StudentListPage() {
   const shouldUseAllEnrollment =
     hasResolvedStudentStatusSelection &&
     (effectiveStudentStatusCode === ALL_STUDENT_STATUSES ||
-      selectedStudentStatus?.category !== "ACTIVE");
+      selectedStudentStatus?.category !== "STUDYING");
   const enrollmentState: StudentEnrollmentState = shouldUseAllEnrollment
     ? "all"
     : "current-active";
@@ -164,7 +169,8 @@ export function StudentListPage() {
     ],
   );
 
-  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } = useStudents(query);
+  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } =
+    useStudents(query);
   const { options } = useStudentFilterOptions({
     schoolId: scope.schoolId || undefined,
     province: schoolArea.province || undefined,
@@ -187,7 +193,8 @@ export function StudentListPage() {
   const selectedGradeLevelId =
     effectiveGrade === "ALL"
       ? null
-      : (scope.gradeLevels.find((level) => level.label === effectiveGrade)?.id ?? null);
+      : (scope.gradeLevels.find((level) => level.label === effectiveGrade)
+          ?.id ?? null);
   const selectedRoomId = effectiveRoom === "ALL" ? undefined : effectiveRoom;
   const filteredRosterExportUrl = buildDataExportContextUrl(
     "student_roster_basic",
@@ -231,7 +238,9 @@ export function StudentListPage() {
     clearSelectedStudents();
   }
 
-  function handleStudentStatusCodeChange(value: StudentStatusFilterValue): void {
+  function handleStudentStatusCodeChange(
+    value: StudentStatusFilterValue,
+  ): void {
     setStudentStatusCode(value);
     setPage(1);
     clearSelectedStudents();
@@ -262,7 +271,10 @@ export function StudentListPage() {
     setSelectedStudentsById(new Map());
   }
 
-  function handleSelectStudent(student: StudentListItem, selected: boolean): void {
+  function handleSelectStudent(
+    student: StudentListItem,
+    selected: boolean,
+  ): void {
     setSelectedStudentsById((current) => {
       const next = new Map(current);
       if (selected) {
@@ -274,7 +286,10 @@ export function StudentListPage() {
     });
   }
 
-  function handleSelectAll(studentsToToggle: readonly StudentListItem[], selected: boolean): void {
+  function handleSelectAll(
+    studentsToToggle: readonly StudentListItem[],
+    selected: boolean,
+  ): void {
     setSelectedStudentsById((current) => {
       const next = new Map(current);
       for (const student of studentsToToggle) {
@@ -303,7 +318,11 @@ export function StudentListPage() {
           exportAction={
             <>
               {selectedStudents.length > 0 ? (
-                <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
+                <Button
+                  icon={FileDown}
+                  onClick={() => setActiveTab("export")}
+                  variant="outline"
+                >
                   ส่งออกที่เลือก ({selectedStudents.length})
                 </Button>
               ) : null}
@@ -342,6 +361,7 @@ export function StudentListPage() {
           searchQuery={searchQuery}
           studentStatusCode={effectiveStudentStatusCode}
           studentStatusOptions={studentStatusFilterOptions}
+          isStudentStatusError={studentStatusesQuery.isError}
           isStudentStatusLoading={studentStatusesQuery.isLoading}
         />
       ) : (
@@ -369,7 +389,11 @@ export function StudentListPage() {
             />
           }
           icon={UserRound}
-          title={effectiveTab === "export" ? "ส่งออกข้อมูลส่วนบุคคล" : "รายชื่อนักเรียน"}
+          title={
+            effectiveTab === "export"
+              ? "ส่งออกข้อมูลส่วนบุคคล"
+              : "รายชื่อนักเรียน"
+          }
         />
       )}
 
@@ -397,6 +421,12 @@ export function StudentListPage() {
             schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
             subDistrict={schoolArea.subDistrict || undefined}
             title="ประวัติข้อมูลนักเรียน"
+          />
+        ) : studentStatusesQuery.isError ? (
+          <ErrorState
+            title="ไม่สามารถโหลดสถานะนักเรียนได้"
+            description="เกิดข้อผิดพลาดระหว่างโหลดตัวกรองสถานะนักเรียน กรุณาลองใหม่อีกครั้ง"
+            onRetry={() => studentStatusesQuery.refetch()}
           />
         ) : isError ? (
           <ErrorState

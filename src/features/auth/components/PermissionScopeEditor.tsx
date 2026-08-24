@@ -10,19 +10,26 @@ import {
   Combobox,
   InfoTooltip,
   Label,
+  Select,
   Skeleton,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
-import { toRoomOption } from "../../../lib/room-presentation";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import type {
   GradeLevelOption,
   LocationCatalog,
   SchoolOption,
 } from "../../tasks/api/attendance-lookup.service";
-import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
+import type {
+  RoleScopeMode,
+  RoleScopePolicy,
+} from "../../admin/types/admin.types";
 import { type DataScope } from "../lib/permissions";
-import { getScopeFieldStates, getScopeValidationError } from "../lib/scope-validation";
+import {
+  getScopeFieldStates,
+  getScopeValidationError,
+} from "../lib/scope-validation";
 
 export interface ScopeSelectionLabels {
   province: string;
@@ -51,7 +58,11 @@ const EMPTY_SCOPE: DataScope = {};
 const EMPTY_SCHOOLS: SchoolOption[] = [];
 const EMPTY_GRADE_LEVELS: GradeLevelOption[] = [];
 const EMPTY_ROOMS: string[] = [];
-const EMPTY_CATALOG: LocationCatalog = { provinces: [], districts: [], subDistricts: [] };
+const EMPTY_CATALOG: LocationCatalog = {
+  provinces: [],
+  districts: [],
+  subDistricts: [],
+};
 
 function singleString(values: Array<string | number> | undefined): string {
   const value = values?.[0];
@@ -90,7 +101,12 @@ export function PermissionScopeEditor({
 }: PermissionScopeEditorProps) {
   const hasRole = role.trim().length > 0;
   const fieldStates = getScopeFieldStates(scopeMode);
-  const scopeError = getScopeValidationError(scopeMode, dataScope, roleLabel, scopePolicy);
+  const scopeError = getScopeValidationError(
+    scopeMode,
+    dataScope,
+    roleLabel,
+    scopePolicy,
+  );
   const isOwnOnlyScope = scopePolicy === "OWN_ONLY";
   // Only a role whose scope_mode is fixed "global" is shown as nationwide-only.
   // A flexible role always shows the area pickers: leaving them all empty
@@ -111,7 +127,12 @@ export function PermissionScopeEditor({
     enabled: !isGlobalScope && !isOwnOnlyScope,
   });
   const schoolsQuery = useQuery({
-    queryKey: ["permission-scope-schools", storedProvince, storedDistrict, storedSubDistrict],
+    queryKey: [
+      "permission-scope-schools",
+      storedProvince,
+      storedDistrict,
+      storedSubDistrict,
+    ],
     queryFn: () =>
       attendanceLookupService.getSchools({
         province: storedProvince || undefined,
@@ -122,7 +143,12 @@ export function PermissionScopeEditor({
     enabled:
       !isGlobalScope &&
       !isOwnOnlyScope &&
-      Boolean(storedProvince || storedDistrict || storedSubDistrict || selectedSchoolId),
+      Boolean(
+        storedProvince ||
+        storedDistrict ||
+        storedSubDistrict ||
+        selectedSchoolId,
+      ),
   });
   const gradeLevelsQuery = useQuery({
     queryKey: ["permission-scope-grade-levels"],
@@ -134,25 +160,31 @@ export function PermissionScopeEditor({
   const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
   const selectedGradeLabel =
-    gradeLevels.find((grade) => String(grade.id) === selectedGradeId)?.label ?? "";
+    gradeLevels.find((grade) => String(grade.id) === selectedGradeId)?.label ??
+    "";
 
   const roomsQuery = useQuery({
     queryKey: ["permission-scope-rooms", selectedGradeLabel, selectedSchoolId],
-    queryFn: () => attendanceLookupService.getRooms(selectedGradeLabel, selectedSchoolId),
-    enabled: Boolean(selectedGradeLabel) && fieldStates.room_ids !== "forbidden",
+    queryFn: () =>
+      attendanceLookupService.getRooms(selectedGradeLabel, selectedSchoolId),
+    enabled:
+      Boolean(selectedGradeLabel) && fieldStates.room_ids !== "forbidden",
   });
   const rooms = roomsQuery.data ?? EMPTY_ROOMS;
 
   // Lift resolved names (not ids) so a review dialog can show the real school /
   // grade / room instead of "โรงเรียน 1 แห่ง".
-  const selectedSchool = schools.find((school) => String(school.id) === selectedSchoolId);
+  const selectedSchool = schools.find(
+    (school) => String(school.id) === selectedSchoolId,
+  );
   const selectedSchoolName = selectedSchool?.name ?? "";
   // A school-only scope (the canonical seeded form) implies the school's own
   // area — display it instead of "ทุกจังหวัด", which reads as nationwide.
   // Queries above keep using the stored values so the school list stays stable.
   const selectedProvince = storedProvince || (selectedSchool?.province ?? "");
   const selectedDistrict = storedDistrict || (selectedSchool?.district ?? "");
-  const selectedSubDistrict = storedSubDistrict || (selectedSchool?.sub_district ?? "");
+  const selectedSubDistrict =
+    storedSubDistrict || (selectedSchool?.sub_district ?? "");
   useEffect(() => {
     onScopeLabelsChange?.({
       province: selectedProvince,
@@ -202,7 +234,8 @@ export function PermissionScopeEditor({
     [catalog.subDistricts, selectedProvince, selectedDistrict],
   );
 
-  const isLookupLoading = locationsQuery.isLoading || gradeLevelsQuery.isLoading;
+  const isLookupLoading =
+    locationsQuery.isLoading || gradeLevelsQuery.isLoading;
   const isLookupError = locationsQuery.isError || gradeLevelsQuery.isError;
 
   function setProvince(value: string): void {
@@ -238,7 +271,9 @@ export function PermissionScopeEditor({
       ...dataScope,
       provinces: school?.province ? [school.province] : dataScope.provinces,
       districts: school?.district ? [school.district] : dataScope.districts,
-      sub_districts: school?.sub_district ? [school.sub_district] : dataScope.sub_districts,
+      sub_districts: school?.sub_district
+        ? [school.sub_district]
+        : dataScope.sub_districts,
       school_ids: value ? [Number(value)] : undefined,
     });
   }
@@ -284,7 +319,8 @@ export function PermissionScopeEditor({
             <>
               {usesAreaScope ? (
                 <p className="text-sm text-slate-500">
-                  ตำแหน่งนี้ต้องระบุพื้นที่ตามระดับสิทธิ์ ไม่สามารถเลือก “ทั้งหมด” ได้
+                  ตำแหน่งนี้ต้องระบุพื้นที่ตามระดับสิทธิ์ ไม่สามารถเลือก
+                  “ทั้งหมด” ได้
                 </p>
               ) : null}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -298,7 +334,11 @@ export function PermissionScopeEditor({
                     </Label>
                     <Combobox
                       aria-invalid={
-                        showErrors && fieldStates.provinces === "required" && !selectedProvince ? true : undefined
+                        showErrors &&
+                        fieldStates.provinces === "required" &&
+                        !selectedProvince
+                          ? true
+                          : undefined
                       }
                       disabled={disabled}
                       id="scope-province"
@@ -306,9 +346,15 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.provinces === "required" ? "เลือกจังหวัด" : "ทุกจังหวัด",
+                          label:
+                            fieldStates.provinces === "required"
+                              ? "เลือกจังหวัด"
+                              : "ทุกจังหวัด",
                         },
-                        ...provinces.map((province) => ({ value: province, label: province })),
+                        ...provinces.map((province) => ({
+                          value: province,
+                          label: province,
+                        })),
                       ]}
                       placeholder="ค้นหาจังหวัด"
                       value={selectedProvince}
@@ -326,7 +372,11 @@ export function PermissionScopeEditor({
                     </Label>
                     <Combobox
                       aria-invalid={
-                        showErrors && fieldStates.districts === "required" && !selectedDistrict ? true : undefined
+                        showErrors &&
+                        fieldStates.districts === "required" &&
+                        !selectedDistrict
+                          ? true
+                          : undefined
                       }
                       disabled={disabled}
                       id="scope-district"
@@ -334,9 +384,15 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.districts === "required" ? "เลือกอำเภอ/เขต" : "ทุกอำเภอ/เขต",
+                          label:
+                            fieldStates.districts === "required"
+                              ? "เลือกอำเภอ/เขต"
+                              : "ทุกอำเภอ/เขต",
                         },
-                        ...districts.map((district) => ({ value: district, label: district })),
+                        ...districts.map((district) => ({
+                          value: district,
+                          label: district,
+                        })),
                       ]}
                       placeholder="ค้นหาอำเภอ/เขต"
                       value={selectedDistrict}
@@ -354,7 +410,11 @@ export function PermissionScopeEditor({
                     </Label>
                     <Combobox
                       aria-invalid={
-                        showErrors && fieldStates.sub_districts === "required" && !selectedSubDistrict ? true : undefined
+                        showErrors &&
+                        fieldStates.sub_districts === "required" &&
+                        !selectedSubDistrict
+                          ? true
+                          : undefined
                       }
                       disabled={disabled}
                       id="scope-sub-district"
@@ -362,7 +422,10 @@ export function PermissionScopeEditor({
                       options={[
                         {
                           value: "",
-                          label: fieldStates.sub_districts === "required" ? "เลือกตำบล/แขวง" : "ทุกตำบล/แขวง",
+                          label:
+                            fieldStates.sub_districts === "required"
+                              ? "เลือกตำบล/แขวง"
+                              : "ทุกตำบล/แขวง",
                         },
                         ...subDistricts.map((subDistrict) => ({
                           value: subDistrict,
@@ -385,7 +448,11 @@ export function PermissionScopeEditor({
                     </Label>
                     <Combobox
                       aria-invalid={
-                        showErrors && fieldStates.school_ids === "required" && !selectedSchoolId ? true : undefined
+                        showErrors &&
+                        fieldStates.school_ids === "required" &&
+                        !selectedSchoolId
+                          ? true
+                          : undefined
                       }
                       disabled={disabled}
                       id="scope-school"
@@ -394,7 +461,9 @@ export function PermissionScopeEditor({
                         {
                           value: "",
                           label:
-                            fieldStates.school_ids === "required" ? "เลือกโรงเรียน" : "ทุกโรงเรียน",
+                            fieldStates.school_ids === "required"
+                              ? "เลือกโรงเรียน"
+                              : "ทุกโรงเรียน",
                         },
                         ...schools.map((school) => ({
                           value: String(school.id),
@@ -410,45 +479,60 @@ export function PermissionScopeEditor({
                 {fieldStates.grade_levels !== "forbidden" ? (
                   <div className="space-y-2">
                     <Label htmlFor="scope-grade">ระดับชั้น</Label>
-                    <Combobox
+                    <Select
                       disabled={disabled}
                       id="scope-grade"
-                      onChange={(next) =>
+                      onChange={(event) =>
                         onDataScopeChange({
-                          ...withSingleValue(dataScope, "grade_levels", numberValue(next)),
+                          ...withSingleValue(
+                            dataScope,
+                            "grade_levels",
+                            numberValue(event.target.value),
+                          ),
                           room_ids: undefined,
                         })
                       }
-                      options={[
-                        { value: "", label: "ทุกชั้น" },
-                        ...gradeLevels.map((grade) => ({
-                          value: String(grade.id),
-                          label: grade.label,
-                        })),
-                      ]}
-                      searchable={false}
                       value={selectedGradeId}
-                    />
+                    >
+                      <option value="">ทุกชั้น</option>
+                      {gradeLevels.map((grade) => (
+                        <option key={grade.id} value={String(grade.id)}>
+                          {grade.label}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
                 ) : null}
 
                 {fieldStates.room_ids !== "forbidden" ? (
                   <div className="space-y-2">
                     <Label htmlFor="scope-room">ห้อง</Label>
-                    <Combobox
+                    <Select
                       disabled={disabled || !selectedGradeId}
                       id="scope-room"
-                      onChange={(next) => onDataScopeChange(withSingleValue(dataScope, "room_ids", next))}
-                      options={[
-                        { value: "", label: "ทุกห้อง" },
-                        ...rooms.map(toRoomOption),
-                        ...(selectedRoom && !rooms.includes(selectedRoom)
-                          ? [toRoomOption(selectedRoom)]
-                          : []),
-                      ]}
-                      searchable={false}
+                      onChange={(event) =>
+                        onDataScopeChange(
+                          withSingleValue(
+                            dataScope,
+                            "room_ids",
+                            event.target.value,
+                          ),
+                        )
+                      }
                       value={selectedRoom}
-                    />
+                    >
+                      <option value="">ทุกห้อง</option>
+                      {rooms.map((room) => (
+                        <option key={room} value={room}>
+                          {formatRoomLabel(room)}
+                        </option>
+                      ))}
+                      {selectedRoom && !rooms.includes(selectedRoom) ? (
+                        <option value={selectedRoom}>
+                          {formatRoomLabel(selectedRoom)}
+                        </option>
+                      ) : null}
+                    </Select>
                   </div>
                 ) : null}
               </div>

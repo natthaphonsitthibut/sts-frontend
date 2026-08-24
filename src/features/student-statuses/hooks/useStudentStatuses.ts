@@ -40,7 +40,9 @@ export function useSaveStudentStatus() {
           })
         : studentStatusService.create(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [STUDENT_STATUSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [STUDENT_STATUSES_QUERY_KEY],
+      });
     },
   });
 }
@@ -50,7 +52,9 @@ export function useDisableStudentStatus() {
   return useMutation({
     mutationFn: studentStatusService.disable,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [STUDENT_STATUSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [STUDENT_STATUSES_QUERY_KEY],
+      });
     },
   });
 }

@@ -12,7 +12,12 @@ export interface StudentListItem {
   school_id?: number | string;
   student_status_label?: string;
   student_status_category?: string;
-  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
+  student_status_badge_variant?:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "success"
+    | "warning";
   total_late?: number;
   total_absent?: number;
 }
@@ -76,7 +81,12 @@ export interface StudentDetail extends Record<string, unknown> {
   homeroom_teacher_name?: string | null;
   student_status_label?: string;
   student_status_category?: string;
-  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
+  student_status_badge_variant?:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "success"
+    | "warning";
   masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;
@@ -107,7 +117,11 @@ export interface StudentAccountSummary {
   user_id: number;
   username: string;
   status: string;
-  lifecycle_status: "PENDING_FIRST_LOGIN" | "ACTIVE" | "TEMP_PASSWORD_EXPIRED" | "DISABLED";
+  lifecycle_status:
+    | "PENDING_FIRST_LOGIN"
+    | "ACTIVE"
+    | "TEMP_PASSWORD_EXPIRED"
+    | "DISABLED";
   must_change_password: boolean;
 }
 
@@ -245,6 +259,10 @@ export interface StudentProfileSummary {
   grades: {
     termGpa: number | null;
     cumulativeGpax: number | null;
+  };
+  careConsiderations: {
+    disadvantages: Array<{ code: string; labelTh: string; recordedAt: string }>;
+    disabilities: Array<{ code: string; labelTh: string; recordedAt: string }>;
   };
   attendance: {
     ratePercent: number | null;

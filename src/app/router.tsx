@@ -44,6 +44,7 @@ import {
   ManageRoleGroupsPage,
   ManageUserFormPage,
   ManageUsersPage,
+  MasterDataPage,
   NotFoundPage,
   NotificationsPage,
   ProfilePage,
@@ -78,9 +79,14 @@ function withSuspense(children: ReactNode): ReactNode {
 function protectedElement(
   children: ReactNode,
   permission?: string | string[],
+  options?: { requireGlobalScope?: boolean; role?: string | string[] },
 ): ReactNode {
   return (
-    <ProtectedRoute permission={permission}>
+    <ProtectedRoute
+      permission={permission}
+      requireGlobalScope={options?.requireGlobalScope}
+      role={options?.role}
+    >
       {withSuspense(children)}
     </ProtectedRoute>
   );
@@ -395,7 +401,21 @@ export const router = createBrowserRouter([
       },
       {
         path: "settings/student-statuses",
-        element: protectedElement(<StudentStatusesPage />, "settings"),
+        element: <LegacyRouteRedirect to="/master-data/student-statuses" />,
+      },
+      {
+        path: "master-data",
+        element: protectedElement(<MasterDataPage />, "master-data", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
+      },
+      {
+        path: "master-data/student-statuses",
+        element: protectedElement(<StudentStatusesPage />, "master-data", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
       },
       {
         path: "tasks/:taskId",

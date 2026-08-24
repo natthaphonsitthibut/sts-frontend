@@ -20,7 +20,10 @@ import {
   PasswordInput,
   registerField,
 } from "../../../components/base";
-import { PageShell, PageToolbar } from "../../../components/layout/page-primitives";
+import {
+  PageShell,
+  PageToolbar,
+} from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { authService } from "../api/auth.service";
 import {
@@ -74,9 +77,16 @@ export function ChangePasswordPage() {
           updatedUser.roles || [],
           updatedUser.permissions || [],
         );
-        void navigate(isForcedChange ? getFirstAccessibleRoute(permissions) : "/profile", {
-          replace: true,
-        });
+        void navigate(
+          isForcedChange
+            ? getFirstAccessibleRoute(
+                permissions,
+                updatedUser.data_scope,
+                updatedUser.roles || [],
+              )
+            : "/profile",
+          { replace: true },
+        );
       }
     },
     throwOnError: false,
@@ -94,7 +104,9 @@ export function ChangePasswordPage() {
       <PageToolbar
         icon={LockKeyhole}
         parentBreadcrumb={
-          isForcedChange ? undefined : { label: "โปรไฟล์ของฉัน", to: "/profile" }
+          isForcedChange
+            ? undefined
+            : { label: "โปรไฟล์ของฉัน", to: "/profile" }
         }
         title="เปลี่ยนรหัสผ่าน"
       />
