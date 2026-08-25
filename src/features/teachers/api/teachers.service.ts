@@ -6,13 +6,19 @@ import {
 } from "../../../lib/pagination";
 import type {
   Teacher,
+  TeacherProfile,
   TeacherCreatePayload,
   TeacherListQuery,
   TeacherSavePayload,
+  TeacherNationalIdRevealResponse,
 } from "../types/teachers.types";
 
 interface TeacherEnvelope {
   data?: Teacher;
+}
+
+interface TeacherProfileEnvelope {
+  data?: TeacherProfile;
 }
 
 async function getTeachers(
@@ -30,6 +36,20 @@ async function getTeachers(
   return normalizePaginatedResponse<Teacher>(response.data, query);
 }
 
+async function getTeacherProfiles(
+  query: TeacherListQuery,
+): Promise<PaginatedResult<TeacherProfile>> {
+  const params: Record<string, string> = toPaginationParams(query);
+  params.schoolId = String(query.schoolId);
+  if (query.teacherStatus) params.teacherStatus = query.teacherStatus;
+  const searchTerm = query.searchTerm?.trim();
+  if (searchTerm) params.searchTerm = searchTerm;
+  if (query.sortBy) params.sortBy = query.sortBy;
+  if (query.sortOrder) params.sortOrder = query.sortOrder;
+  const response = await apiClient.get("/teacher-profiles", { params });
+  return normalizePaginatedResponse<TeacherProfile>(response.data, query);
+}
+
 async function getTeacher(id: string): Promise<Teacher> {
   const response = await apiClient.get<TeacherEnvelope>(
     `/teachers/${encodeURIComponent(id)}`,
@@ -37,6 +57,26 @@ async function getTeacher(id: string): Promise<Teacher> {
   const teacher = response.data?.data;
   if (!teacher) throw new Error("ไม่พบข้อมูลครู");
   return teacher;
+}
+
+async function getTeacherProfile(id: string): Promise<TeacherProfile> {
+  const response = await apiClient.get<TeacherProfileEnvelope>(
+    `/teacher-profiles/${encodeURIComponent(id)}`,
+  );
+  const teacher = response.data?.data;
+  if (!teacher) throw new Error("ไม่พบข้อมูลครู");
+  return teacher;
+}
+
+async function revealTeacherNationalId(
+  id: string,
+  payload: { reason_code: string; reason_note?: string },
+): Promise<TeacherNationalIdRevealResponse> {
+  const response = await apiClient.post<TeacherNationalIdRevealResponse>(
+    `/teacher-profiles/${encodeURIComponent(id)}/pii-reveal`,
+    { field_group: "NATIONAL_ID", ...payload },
+  );
+  return response.data;
 }
 
 async function createTeacher(payload: TeacherCreatePayload): Promise<Teacher> {
@@ -78,7 +118,10 @@ async function deactivateTeacher(id: string, note?: string): Promise<void> {
 
 export const teachersService = {
   getTeachers,
+  getTeacherProfiles,
   getTeacher,
+  getTeacherProfile,
+  revealTeacherNationalId,
   createTeacher,
   updateTeacher,
   updateTeacherPhoto,

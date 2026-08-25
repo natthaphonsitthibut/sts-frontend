@@ -1,5 +1,5 @@
-import { SquarePen, Trash2 } from "lucide-react";
-import { Avatar, IconButton } from "../../../components/base";
+import { Eye, SquarePen, Trash2 } from "lucide-react";
+import { Avatar, Button, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -9,14 +9,18 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
-import type { Teacher } from "../types/teachers.types";
+import type { TeacherDirectoryItem } from "../types/teachers.types";
 
 interface TeacherTableProps {
-  teachers: Teacher[];
+  teachers: TeacherDirectoryItem[];
   /** 1-based index of the first row on the current page, for the ลำดับ column. */
   startIndex: number;
-  onEdit: (teacher: Teacher) => void;
-  onDeactivate: (teacher: Teacher) => void;
+  management?: boolean;
+  onView: (teacher: TeacherDirectoryItem) => void;
+  onRevealNationalId: (teacher: TeacherDirectoryItem) => void;
+  revealedNationalIds?: Record<string, string>;
+  onEdit?: (teacher: TeacherDirectoryItem) => void;
+  onDeactivate?: (teacher: TeacherDirectoryItem) => void;
   deactivatingTeacherId?: string | null;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
@@ -29,16 +33,16 @@ interface TeacherTableProps {
  */
 function TeacherAvatarButton({
   teacher,
-  onEdit,
+  onView,
 }: {
-  teacher: Teacher;
-  onEdit: (teacher: Teacher) => void;
+  teacher: TeacherDirectoryItem;
+  onView: (teacher: TeacherDirectoryItem) => void;
 }) {
   return (
     <button
       aria-label={`เปิดข้อมูลคุณครู ${teacher.fullName}`}
       className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      onClick={() => onEdit(teacher)}
+      onClick={() => onView(teacher)}
       type="button"
     >
       <Avatar
@@ -55,10 +59,14 @@ function RowActions({
   onEdit,
   onDeactivate,
   deactivatingTeacherId,
-}: Omit<TeacherTableProps, "teachers" | "startIndex" | "sort" | "onSortChange"> & {
-  teacher: Teacher;
+}: Pick<
+  TeacherTableProps,
+  "onEdit" | "onDeactivate" | "deactivatingTeacherId"
+> & {
+  teacher: TeacherDirectoryItem;
 }) {
   const isDeactivating = deactivatingTeacherId === teacher.id;
+  if (!onEdit || !onDeactivate) return null;
   return (
     <div className="flex items-center justify-end gap-1">
       <IconButton
@@ -83,6 +91,10 @@ function RowActions({
 export function TeacherTable({
   teachers,
   startIndex,
+  management = false,
+  onView,
+  onRevealNationalId,
+  revealedNationalIds = {},
   onEdit,
   onDeactivate,
   deactivatingTeacherId,
@@ -100,7 +112,7 @@ export function TeacherTable({
           { label: "เบอร์โทรศัพท์", sortKey: "phone" },
           { label: "ไอดีไลน์", sortKey: "lineId" },
           { label: "อีเมล", sortKey: "email" },
-          "เครื่องมือ",
+          ...(management ? ["เครื่องมือ"] : []),
         ]}
         columnWidths={[
           "w-[7%]",
@@ -118,31 +130,49 @@ export function TeacherTable({
       >
         {teachers.map((teacher, index) => (
           <DataTableRow key={teacher.id}>
-            <DataTableCell>
-              {startIndex + index}
-            </DataTableCell>
+            <DataTableCell>{startIndex + index}</DataTableCell>
             <DataTableCell>
               <div className="flex justify-center">
-                <TeacherAvatarButton onEdit={onEdit} teacher={teacher} />
+                <TeacherAvatarButton onView={onView} teacher={teacher} />
               </div>
             </DataTableCell>
             <DataTableCell className="text-slate-800">
               {teacher.fullName}
             </DataTableCell>
-            <DataTableCell>{teacher.citizenId || "-"}</DataTableCell>
+            <DataTableCell>
+              <div className="flex items-center gap-2">
+                <span>
+                  {revealedNationalIds[teacher.id] ?? teacher.citizenId ?? "-"}
+                </span>
+                {teacher.citizenId ? (
+                  <Button
+                    aria-label={`แสดงเลขบัตรประชาชนของ ${teacher.fullName}`}
+                    icon={Eye}
+                    onClick={() => onRevealNationalId(teacher)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    แสดง
+                  </Button>
+                ) : null}
+              </div>
+            </DataTableCell>
             <DataTableCell>{teacher.phone || "-"}</DataTableCell>
             <DataTableCell>{teacher.lineId || "-"}</DataTableCell>
             <DataTableCell className="truncate">
               {teacher.email || "-"}
             </DataTableCell>
-            <DataTableCell>
-              <RowActions
-                deactivatingTeacherId={deactivatingTeacherId}
-                onDeactivate={onDeactivate}
-                onEdit={onEdit}
-                teacher={teacher}
-              />
-            </DataTableCell>
+            {management ? (
+              <DataTableCell>
+                <RowActions
+                  deactivatingTeacherId={deactivatingTeacherId}
+                  onDeactivate={onDeactivate}
+                  onEdit={onEdit}
+                  teacher={teacher}
+                />
+              </DataTableCell>
+            ) : null}
           </DataTableRow>
         ))}
       </DataTable>
@@ -152,24 +182,48 @@ export function TeacherTable({
           <TableCard key={teacher.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <TeacherAvatarButton onEdit={onEdit} teacher={teacher} />
+                <TeacherAvatarButton onView={onView} teacher={teacher} />
                 <div className="min-w-0">
                   <div className="truncate text-slate-800">
                     {teacher.fullName}
                   </div>
                   <div className="truncate text-xs text-slate-500">
-                    {teacher.citizenId || "-"}
+                    {teacher.citizenId || "ไม่มีเลขบัตรประชาชน"}
                   </div>
                 </div>
               </div>
-              <RowActions
-                deactivatingTeacherId={deactivatingTeacherId}
-                onDeactivate={onDeactivate}
-                onEdit={onEdit}
-                teacher={teacher}
-              />
+              {management ? (
+                <RowActions
+                  deactivatingTeacherId={deactivatingTeacherId}
+                  onDeactivate={onDeactivate}
+                  onEdit={onEdit}
+                  teacher={teacher}
+                />
+              ) : null}
             </div>
             <dl className="mt-3 grid grid-cols-1 gap-1 rounded-md bg-slate-50 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500">เลขบัตรประชาชน</dt>
+                <dd className="flex items-center gap-2 text-slate-700">
+                  <span>
+                    {revealedNationalIds[teacher.id] ??
+                      teacher.citizenId ??
+                      "-"}
+                  </span>
+                  {teacher.citizenId ? (
+                    <Button
+                      aria-label={`แสดงเลขบัตรประชาชนของ ${teacher.fullName}`}
+                      icon={Eye}
+                      onClick={() => onRevealNationalId(teacher)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      แสดง
+                    </Button>
+                  ) : null}
+                </dd>
+              </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">เบอร์โทรศัพท์</dt>
                 <dd className="text-slate-700">{teacher.phone || "-"}</dd>
@@ -180,7 +234,9 @@ export function TeacherTable({
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">อีเมล</dt>
-                <dd className="truncate text-slate-700">{teacher.email || "-"}</dd>
+                <dd className="truncate text-slate-700">
+                  {teacher.email || "-"}
+                </dd>
               </div>
             </dl>
           </TableCard>
