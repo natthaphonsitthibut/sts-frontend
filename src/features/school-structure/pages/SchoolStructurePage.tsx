@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DoorOpen, Plus, School, SquarePen, Trash2, UserPlus } from "lucide-react";
+import {
+  DoorOpen,
+  Plus,
+  School,
+  SquarePen,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   Badge,
@@ -65,7 +72,7 @@ import type { SchoolClassroom } from "../types/school-structure.types";
 /**
  * Term, classroom and homeroom-teacher setup for a school.
  *
- * Deliberately narrow: the teacher roster lives on /manage-teachers and the
+ * Deliberately narrow: the teacher roster lives on /teachers and the
  * student roster on /classrooms/:classroomId, so this page only owns the
  * structure those pages read.
  */
@@ -90,12 +97,14 @@ export function SchoolStructurePage() {
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [classroomDialogOpen, setClassroomDialogOpen] = useState(false);
   // Room the homeroom dialog is assigning for; null = dialog closed.
-  const [assigningClassroom, setAssigningClassroom] = useState<SchoolClassroom | null>(null);
+  const [assigningClassroom, setAssigningClassroom] =
+    useState<SchoolClassroom | null>(null);
   const [gradeLevelId, setGradeLevelId] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [roomName, setRoomName] = useState("");
   // Room the classroom dialog is editing; null = creating a new room.
-  const [editingClassroom, setEditingClassroom] = useState<SchoolClassroom | null>(null);
+  const [editingClassroom, setEditingClassroom] =
+    useState<SchoolClassroom | null>(null);
   const [teacherMembershipId, setTeacherMembershipId] = useState("");
 
   useEffect(() => {
@@ -120,7 +129,8 @@ export function SchoolStructurePage() {
   });
   const terms = useMemo(() => termsQuery.data ?? [], [termsQuery.data]);
   const selectedTermId = Number(termInput || terms[0]?.id || 0) || undefined;
-  const selectedTerm = terms.find((term) => Number(term.id) === selectedTermId) ?? null;
+  const selectedTerm =
+    terms.find((term) => Number(term.id) === selectedTermId) ?? null;
 
   const gradeLevelsQuery = useQuery({
     queryKey: ["school-structure", "grade-levels"],
@@ -151,7 +161,9 @@ export function SchoolStructurePage() {
     [classroomsQuery.data?.data],
   );
 
-  const teacherOptionsQuery = useSchoolTeacherOptions(selectedSchoolId ?? undefined);
+  const teacherOptionsQuery = useSchoolTeacherOptions(
+    selectedSchoolId ?? undefined,
+  );
   const teacherOptions = useMemo(
     () => teacherOptionsQuery.data ?? [],
     [teacherOptionsQuery.data],
@@ -258,7 +270,9 @@ export function SchoolStructurePage() {
           disabled={teacherOptions.length === 0}
           icon={UserPlus}
           onClick={() => openAssignmentDialog(room)}
-          title={teacherOptions.length === 0 ? "ยังไม่มีครูในโรงเรียนนี้" : undefined}
+          title={
+            teacherOptions.length === 0 ? "ยังไม่มีครูในโรงเรียนนี้" : undefined
+          }
           variant="outline"
         >
           {room.homeroomTeacherName ? "เปลี่ยนครู" : "กำหนดครู"}
@@ -274,7 +288,9 @@ export function SchoolStructurePage() {
           disabled={room.studentCount > 0 || deleteClassroom.isPending}
           icon={Trash2}
           onClick={() => void handleDeleteClassroom(room)}
-          title={room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined}
+          title={
+            room.studentCount > 0 ? "ห้องที่มีนักเรียนอยู่ลบไม่ได้" : undefined
+          }
           variant="delete"
         />
       </div>
@@ -282,7 +298,8 @@ export function SchoolStructurePage() {
   }
 
   const isLoadingPage =
-    schoolsQuery.isLoading || (selectedSchoolId !== null && termsQuery.isLoading);
+    schoolsQuery.isLoading ||
+    (selectedSchoolId !== null && termsQuery.isLoading);
 
   return (
     <PageShell>
@@ -301,7 +318,9 @@ export function SchoolStructurePage() {
               disabled={!selectedTerm}
               icon={SquarePen}
               onClick={() => openTermDialog(selectedTerm)}
-              title={!selectedTerm ? "เลือกภาคเรียนก่อนจึงจะแก้ไขได้" : undefined}
+              title={
+                !selectedTerm ? "เลือกภาคเรียนก่อนจึงจะแก้ไขได้" : undefined
+              }
               variant="outline"
             >
               แก้ภาคเรียน
@@ -310,7 +329,11 @@ export function SchoolStructurePage() {
               disabled={!selectedTermId}
               icon={Plus}
               onClick={() => openClassroomDialog(null)}
-              title={!selectedTermId ? "เพิ่มภาคเรียนก่อนจึงจะเพิ่มห้องได้" : undefined}
+              title={
+                !selectedTermId
+                  ? "เพิ่มภาคเรียนก่อนจึงจะเพิ่มห้องได้"
+                  : undefined
+              }
             >
               เพิ่มห้องเรียน
             </Button>
@@ -350,34 +373,37 @@ export function SchoolStructurePage() {
           }}
           value={String(selectedTermId ?? "")}
         >
-          {terms.length === 0 ? <option value="">ยังไม่มีภาคเรียน</option> : null}
+          {terms.length === 0 ? (
+            <option value="">ยังไม่มีภาคเรียน</option>
+          ) : null}
           {terms.map((term) => (
             <option key={term.id} value={term.id}>
               {formatSchoolTermLabel(term, termStatusCatalog.items)}
             </option>
           ))}
         </FilterSelect>
-        <FilterCombobox
+        <FilterSelect
           ariaLabel="กรองตามระดับชั้น"
           disabled={!selectedSchoolId}
-          emptyText="ไม่พบระดับชั้น"
           onChange={(value) => {
             setGradeFilter(value);
             setPage(1);
           }}
-          options={[
-            { value: "", label: "ทุกชั้น" },
-            ...(gradeLevelsQuery.data ?? []).map((grade) => ({
-              value: String(grade.id),
-              label: grade.label,
-            })),
-          ]}
-          placeholder="ค้นหาระดับชั้น"
           value={gradeFilter}
-        />
+        >
+          <option value="">ทุกชั้น</option>
+          {(gradeLevelsQuery.data ?? []).map((grade) => (
+            <option key={grade.id} value={String(grade.id)}>
+              {grade.label}
+            </option>
+          ))}
+        </FilterSelect>
       </ToolbarControls>
 
-      <FormErrorAlert error={deleteClassroom.error} fallback="ไม่สามารถลบห้องได้" />
+      <FormErrorAlert
+        error={deleteClassroom.error}
+        fallback="ไม่สามารถลบห้องได้"
+      />
 
       {schoolsQuery.isError ? (
         <ErrorState
@@ -463,7 +489,11 @@ export function SchoolStructurePage() {
                 </DataTableCell>
                 <DataTableCell>
                   <Badge
-                    variant={room.classroomStatus === "ACTIVE" ? "success" : "secondary"}
+                    variant={
+                      room.classroomStatus === "ACTIVE"
+                        ? "success"
+                        : "secondary"
+                    }
                   >
                     {room.classroomStatus === "ACTIVE" ? "ใช้งาน" : "ปิดใช้งาน"}
                   </Badge>
@@ -479,14 +509,19 @@ export function SchoolStructurePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-slate-800">
-                      {room.gradeLabel} {room.roomName || formatRoomLabel(room.roomCode)}
+                      {room.gradeLabel}{" "}
+                      {room.roomName || formatRoomLabel(room.roomCode)}
                     </div>
                     <div className="truncate text-xs text-slate-500">
                       นักเรียน {room.studentCount} คน
                     </div>
                   </div>
                   <Badge
-                    variant={room.classroomStatus === "ACTIVE" ? "success" : "secondary"}
+                    variant={
+                      room.classroomStatus === "ACTIVE"
+                        ? "success"
+                        : "secondary"
+                    }
                   >
                     {room.classroomStatus === "ACTIVE" ? "ใช้งาน" : "ปิดใช้งาน"}
                   </Badge>
@@ -524,7 +559,9 @@ export function SchoolStructurePage() {
           setTermDialogOpen(false);
           setTermDialogTerm(null);
         }}
-        onSubmit={(values) => saveTerm.mutateAsync(values).then(() => undefined)}
+        onSubmit={(values) =>
+          saveTerm.mutateAsync(values).then(() => undefined)
+        }
         open={termDialogOpen}
         term={termDialogTerm}
       />
@@ -542,14 +579,20 @@ export function SchoolStructurePage() {
             <DialogBody className="space-y-4">
               <FormErrorAlert
                 error={createClassroom.error ?? updateClassroom.error}
-                fallback={editingClassroom ? "ไม่สามารถแก้ไขห้องได้" : "ไม่สามารถเพิ่มห้องได้"}
+                fallback={
+                  editingClassroom
+                    ? "ไม่สามารถแก้ไขห้องได้"
+                    : "ไม่สามารถเพิ่มห้องได้"
+                }
               />
               <div>
                 <FormLabel htmlFor="classroom-grade" required>
                   ระดับชั้น
                 </FormLabel>
                 <Select
-                  disabled={Boolean(editingClassroom && editingClassroom.studentCount > 0)}
+                  disabled={Boolean(
+                    editingClassroom && editingClassroom.studentCount > 0,
+                  )}
                   id="classroom-grade"
                   onChange={(event) => setGradeLevelId(event.target.value)}
                   required
@@ -605,7 +648,9 @@ export function SchoolStructurePage() {
                 ยกเลิก
               </Button>
               <Button
-                isLoading={createClassroom.isPending || updateClassroom.isPending}
+                isLoading={
+                  createClassroom.isPending || updateClassroom.isPending
+                }
                 loadingText="กำลังบันทึก"
                 type="submit"
               >

@@ -23,6 +23,7 @@ import { CaseStatusBadge } from "../components/CaseStatusBadge";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
 import type { CaseFollowUpRound, CaseReviewRecord } from "../types/cases.types";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 function DetailItem({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -53,6 +54,7 @@ function findLatestSubmittedRoundBeforeReview(
 }
 
 export function CaseReviewDetailPage() {
+  const { can } = usePermissions();
   const { caseId: caseIdParam = "", reviewId = "" } = useParams<{
     caseId: string;
     reviewId: string;
@@ -283,7 +285,7 @@ export function CaseReviewDetailPage() {
                 ข้อมูลตั้งต้นเพื่อทบทวนว่าการพิจารณาเกิดขึ้นกับเคสใด
               </p>
             </div>
-            {caseRecord.student_id ? (
+            {caseRecord.student_id && can("students") ? (
               <NavButton
                 contextual
                 icon={UserRound}

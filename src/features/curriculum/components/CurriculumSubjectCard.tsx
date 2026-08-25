@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, FileText, SquarePen, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, SquarePen, Trash2 } from "lucide-react";
 import { Button, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -7,96 +7,24 @@ import {
   DataTableRow,
   TableCard,
   TableCardList,
-  type DataTableSortState,
 } from "../../../components/layout/data-table";
-import { Pagination } from "../../../components/layout/pagination";
-import { PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
-import { formatFileSize } from "../../../lib/file-size";
-import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { cn } from "../../../lib/utils";
-import type {
-  CurriculumCoverage,
-  CurriculumSubject,
-} from "../types/curriculum.types";
+import type { CurriculumSubject } from "../types/curriculum.types";
 
 interface CurriculumSubjectCardProps {
   subject: CurriculumSubject;
+  isDeleting?: boolean;
   onEdit: (subject: CurriculumSubject) => void;
   onDelete: (subject: CurriculumSubject) => void;
-  isDeleting?: boolean;
 }
 
-interface ClassroomCoverageGroup {
-  classroomId: string;
-  classroomLabel: string;
-  teacherNames: string[];
-}
-
-/** One row per classroom, teachers merged — a room with several subject
- * teachers otherwise repeats its label once per teacher. */
-function groupCoverageByClassroom(
-  coverage: CurriculumCoverage[],
-): ClassroomCoverageGroup[] {
-  const groups = new Map<string, ClassroomCoverageGroup>();
-  for (const row of coverage) {
-    const existing = groups.get(row.classroomId);
-    if (existing) {
-      existing.teacherNames.push(row.teacherName);
-    } else {
-      groups.set(row.classroomId, {
-        classroomId: row.classroomId,
-        classroomLabel: row.classroomLabel,
-        teacherNames: [row.teacherName],
-      });
-    }
-  }
-  return [...groups.values()];
-}
-
-function getCoverageSortValue(
-  row: ClassroomCoverageGroup,
-  key: string,
-): string {
-  if (key === "classroom") return row.classroomLabel;
-  if (key === "teacher") return row.teacherNames.join(", ");
-  return "";
-}
-
-/**
- * One subject in the grade's curriculum, collapsed to code + name and expanding
- * to the classroom/teacher coverage plus its learning-content PDF.
- */
 export function CurriculumSubjectCard({
   subject,
+  isDeleting,
   onEdit,
   onDelete,
-  isDeleting,
 }: CurriculumSubjectCardProps) {
   const [open, setOpen] = useState(false);
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(PAGE_SIZE_OPTIONS[0]);
-
-  // Coverage arrives with the subject, so grouping, paging and sorting stay
-  // client-side.
-  const groupedCoverage = useMemo(
-    () => groupCoverageByClassroom(subject.coverage),
-    [subject.coverage],
-  );
-  const sortedCoverage = useMemo(() => {
-    if (!sort) return groupedCoverage;
-    return [...groupedCoverage].sort((a, b) => {
-      const result = getCoverageSortValue(a, sort.key).localeCompare(
-        getCoverageSortValue(b, sort.key),
-        "th",
-      );
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [sort, groupedCoverage]);
-  const pagedCoverage = sortedCoverage.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage,
-  );
   const detailId = `curriculum-subject-${subject.id}`;
 
   return (
@@ -110,10 +38,10 @@ export function CurriculumSubjectCard({
       >
         <span className="min-w-0">
           <span className="block truncate text-base font-bold text-slate-900">
-            {subject.subjectCode}
-          </span>
-          <span className="block truncate text-sm text-slate-600">
             {subject.subjectName}
+          </span>
+          <span className="block truncate text-sm text-slate-500">
+            {subject.subjectCode}
           </span>
         </span>
         <ChevronDown
@@ -127,101 +55,45 @@ export function CurriculumSubjectCard({
 
       {open ? (
         <div className="border-t border-slate-200 p-5" id={detailId}>
-          {subject.coverage.length === 0 ? (
+          {subject.classrooms.length === 0 ? (
             <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-              ยังไม่ได้จัดสรรครูผู้สอนและห้องเรียนสำหรับรายวิชานี้
+              ยังไม่ได้เลือกห้องเรียนสำหรับรายวิชานี้
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              <DataTable
-                columnWidths={["w-1/2", "w-1/2"]}
-                headings={[
-                  { label: "ห้องเรียน", sortKey: "classroom" },
-                  { label: "ครูผู้สอน", sortKey: "teacher" },
-                ]}
-                onSortChange={(next) => {
-                  setSort(next);
-                  setPage(1);
-                }}
-                sort={sort}
-              >
-                {pagedCoverage.map((row) => (
-                  <DataTableRow key={row.classroomId}>
-                    <DataTableCell className="text-slate-800">
-                      {row.classroomLabel}
-                    </DataTableCell>
-                    <DataTableCell className="text-slate-800">
-                      {row.teacherNames.join(", ")}
+            <>
+              <DataTable headings={["ชั้น/ห้อง"]} responsiveBreakpoint="md">
+                {subject.classrooms.map((classroom) => (
+                  <DataTableRow key={classroom.id}>
+                    <DataTableCell className="font-medium text-slate-800">
+                      {classroom.label}
                     </DataTableCell>
                   </DataTableRow>
                 ))}
               </DataTable>
-              <TableCardList>
-                {pagedCoverage.map((row) => (
-                  <TableCard key={row.classroomId}>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {row.classroomLabel}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-600">
-                      {row.teacherNames.join(", ")}
-                    </div>
+              <TableCardList desktopBreakpoint="md">
+                {subject.classrooms.map((classroom) => (
+                  <TableCard key={classroom.id}>
+                    <span className="font-semibold text-slate-800">
+                      {classroom.label}
+                    </span>
                   </TableCard>
                 ))}
               </TableCardList>
-              <Pagination
-                onPageChange={setPage}
-                onRowsPerPageChange={(value) => {
-                  setRowsPerPage(value);
-                  setPage(1);
-                }}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-                totalCount={sortedCoverage.length}
-                unitLabel="รายการ"
-              />
-            </div>
+            </>
           )}
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-2 text-sm">
-              <span className="shrink-0 font-semibold text-slate-700">
-                เนื้อหาสาระการเรียนรู้:
-              </span>
-              {subject.contentUrl ? (
-                <a
-                  className="inline-flex min-w-0 items-center gap-2 rounded-md border border-slate-200 px-2 py-1 text-slate-700 transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  href={resolveApiMediaUrl(subject.contentUrl) ?? undefined}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <FileText
-                    className="size-4 shrink-0 text-danger"
-                    aria-hidden="true"
-                  />
-                  <span className="truncate">{subject.contentFileName}</span>
-                  <span className="shrink-0 text-xs text-slate-500">
-                    {formatFileSize(subject.contentFileSizeBytes)}
-                  </span>
-                </a>
-              ) : (
-                <span className="text-slate-500">ยังไม่มีไฟล์</span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 sm:justify-end">
-              <Button icon={SquarePen} onClick={() => onEdit(subject)}>
-                แก้ไขข้อมูล
-              </Button>
-              <IconButton
-                aria-busy={isDeleting}
-                aria-label={`ลบรายวิชา ${subject.subjectCode}`}
-                disabled={isDeleting}
-                icon={Trash2}
-                onClick={() => onDelete(subject)}
-                variant="delete"
-              />
-            </div>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Button icon={SquarePen} onClick={() => onEdit(subject)}>
+              แก้ไขข้อมูล
+            </Button>
+            <IconButton
+              aria-busy={isDeleting}
+              aria-label={`ลบรายวิชา ${subject.subjectName}`}
+              disabled={isDeleting}
+              icon={Trash2}
+              onClick={() => onDelete(subject)}
+              variant="delete"
+            />
           </div>
         </div>
       ) : null}

@@ -6,13 +6,13 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { SkeletonStack } from "../../../components/layout/page-primitives";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
-import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
+import { TaskIdentityVerificationGate } from "../components/TaskIdentityVerificationGate";
 
 /**
  * Entry point for a magic task link. Per-classroom attendance links were retired
  * in favour of per-teacher links (teacher access grants), so the only task a link
  * can carry now is a home visit — this page resolves the token, runs the shared
- * OTP gate, and hands off to the report flow.
+ * Google/AraID gate, and hands off to the report flow.
  */
 export function TaskGuestPage() {
   const { token = "" } = useParams<{ token: string }>();
@@ -73,10 +73,13 @@ export function TaskGuestPage() {
   const task = taskQuery.data;
 
   // Identity gate — same centred card as the login link, so every magic link
-  // verifies the same way. Once OTP passes, the session refetches the task.
+  // verifies the same way. Once identity passes, the session refetches the task.
   if (task.auth_required) {
     return (
-      <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />
+      <TaskIdentityVerificationGate
+        token={token}
+        onVerified={setSessionToken}
+      />
     );
   }
 

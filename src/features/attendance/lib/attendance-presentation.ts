@@ -1,4 +1,11 @@
-import { CalendarOff, Check, Clock, HelpCircle, X, type LucideIcon } from "lucide-react";
+import {
+  CalendarOff,
+  Check,
+  Clock,
+  HelpCircle,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import type {
   AttendanceSelectionStatus,
   SchoolTerm,
@@ -19,10 +26,13 @@ const ATTENDANCE_STATUS_CODE = {
  * individual page. The catalog normally supplies these, but an older/mis-seeded
  * catalog can return its internal code (for example `P_PRESENT`) as its label.
  */
-const ATTENDANCE_STATUS_FALLBACK_LABELS: Record<AttendanceSelectionStatus, {
-  label: string;
-  shortLabel: string;
-}> = {
+const ATTENDANCE_STATUS_FALLBACK_LABELS: Record<
+  AttendanceSelectionStatus,
+  {
+    label: string;
+    shortLabel: string;
+  }
+> = {
   P_PRESENT: { label: "มา", shortLabel: "มา" },
   P_LATE: { label: "สาย", shortLabel: "สาย" },
   P_LEAVE: { label: "ลา", shortLabel: "ลา" },
@@ -99,6 +109,8 @@ export function normalizeAttendanceSelectionStatus(
 
 interface AttendanceStatusStyle {
   icon: LucideIcon;
+  /** Text-only color used by counts and compact summaries. */
+  textClass: string;
   /** Idle (unselected) record-button classes. */
   idleClass: string;
   /** Active (selected) record-button classes — legacy gradient tokens. */
@@ -118,6 +130,7 @@ export const ATTENDANCE_STATUS_STYLE: Record<
 > = {
   P_PRESENT: {
     icon: Check,
+    textClass: "text-success",
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass: "border-success bg-success-100 text-success shadow-sm",
     displayClass: "bg-success-100 text-success",
@@ -126,6 +139,7 @@ export const ATTENDANCE_STATUS_STYLE: Record<
   },
   P_ABSENT: {
     icon: X,
+    textClass: "text-danger",
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass: "border-danger bg-danger-100 text-danger shadow-sm",
     displayClass: "bg-danger-100 text-danger",
@@ -134,22 +148,27 @@ export const ATTENDANCE_STATUS_STYLE: Record<
   },
   P_LATE: {
     icon: Clock,
+    textClass: "text-brand-yellow",
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass: "border-brand-yellow bg-brand-yellow-bg text-brand-yellow shadow-sm",
+    activeClass:
+      "border-brand-yellow bg-brand-yellow-bg text-brand-yellow shadow-sm",
     displayClass: "bg-brand-yellow-bg text-brand-yellow",
     pillIdleClass: "border-brand-yellow text-brand-yellow",
     pillActiveClass: "border-brand-yellow bg-brand-yellow text-white",
   },
   P_LEAVE: {
     icon: CalendarOff,
+    textClass: "text-brand-orange",
     idleClass: "border-slate-200 bg-white text-slate-500",
-    activeClass: "border-attendance-leave bg-brand-orange-bg text-brand-orange shadow-sm",
+    activeClass:
+      "border-attendance-leave bg-brand-orange-bg text-brand-orange shadow-sm",
     displayClass: "bg-brand-orange-bg text-brand-orange",
     pillIdleClass: "border-attendance-leave text-brand-orange",
     pillActiveClass: "border-attendance-leave bg-attendance-leave text-white",
   },
   NONE: {
     icon: HelpCircle,
+    textClass: "text-slate-500",
     idleClass: "border-slate-200 bg-white text-slate-500",
     activeClass: "border-slate-300 bg-slate-100 text-slate-500",
     displayClass: "bg-slate-100 text-slate-500",
@@ -167,9 +186,7 @@ export function getAttendanceStatusPresentation(
   const fallback = ATTENDANCE_STATUS_FALLBACK_LABELS[status];
   // A catalog code is a transport/internal value, never a user-facing label.
   // Keep the catalog as source of truth when it has a genuine display string.
-  const isDisplayLabel = (
-    value: string | null | undefined,
-  ): value is string =>
+  const isDisplayLabel = (value: string | null | undefined): value is string =>
     Boolean(value) &&
     value !== status &&
     value !== item?.code &&
@@ -187,12 +204,7 @@ export function getAttendanceStatusPresentation(
 export const ATTENDANCE_RECORD_STATUSES: readonly Exclude<
   AttendanceSelectionStatus,
   "NONE"
->[] = [
-  "P_PRESENT",
-  "P_LATE",
-  "P_ABSENT",
-  "P_LEAVE",
-];
+>[] = ["P_PRESENT", "P_LATE", "P_ABSENT", "P_LEAVE"];
 
 export interface AttendanceCounts {
   present: number;
@@ -204,7 +216,10 @@ export interface AttendanceCounts {
 }
 
 /** Which tally each recordable status feeds; `NONE` is deliberately absent. */
-export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<string, keyof AttendanceCounts> = {
+export const ATTENDANCE_COUNT_KEY_BY_STATUS: Record<
+  string,
+  keyof AttendanceCounts
+> = {
   P_PRESENT: "present",
   P_LATE: "late",
   P_ABSENT: "absent",
@@ -229,8 +244,6 @@ export function countAttendanceStatuses(
   }
   return counts;
 }
-
-
 
 export function getTodayIso(reference: Date = new Date()): string {
   const year = reference.getFullYear();

@@ -25,9 +25,11 @@ async function waitFor(check, message, timeoutMs = 15_000) {
 async function stopProcess(processRef) {
   if (!processRef || processRef.exitCode !== null) return;
   processRef.kill("SIGTERM");
-  await waitFor(() => processRef.exitCode !== null, "Chrome did not stop", 5_000).catch(
-    () => processRef.kill("SIGKILL"),
-  );
+  await waitFor(
+    () => processRef.exitCode !== null,
+    "Chrome did not stop",
+    5_000,
+  ).catch(() => processRef.kill("SIGKILL"));
 }
 
 class CdpClient {
@@ -72,7 +74,10 @@ async function evaluate(client, expression) {
     returnByValue: true,
   });
   if (result.exceptionDetails) {
-    throw new Error(result.exceptionDetails.exception?.description || "Browser evaluation failed");
+    throw new Error(
+      result.exceptionDetails.exception?.description ||
+        "Browser evaluation failed",
+    );
   }
   return result.result?.value;
 }
@@ -89,6 +94,25 @@ async function navigateAndReadBrand(client, path) {
     `({
       title: document.title,
       icon: document.querySelector('link[rel="icon"]')?.href || "",
+    })`,
+  );
+}
+
+async function navigateAndReadPublicInfo(client, path) {
+  await client.call("Page.navigate", { url: `${FRONTEND_URL}${path}` });
+  await waitFor(
+    async () =>
+      await evaluate(client, "document.querySelector('h1')?.textContent || ''"),
+    `Public page did not render: ${path}`,
+  );
+  return evaluate(
+    client,
+    `({
+      heading: document.querySelector("h1")?.textContent?.trim() || "",
+      pathname: window.location.pathname,
+      text: document.body.textContent || "",
+      privacyHref: document.querySelector('a[href="/privacy"]')?.href || "",
+      hasHorizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
     })`,
   );
 }
@@ -123,11 +147,14 @@ async function main() {
       }
     }, "Chrome DevTools endpoint did not start");
 
-    const targets = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`).then((res) =>
-      res.json(),
-    );
+    const targets = await fetch(
+      `http://127.0.0.1:${DEBUG_PORT}/json/list`,
+    ).then((res) => res.json());
     const target = targets.find((item) => item.type === "page");
-    assert(target?.webSocketDebuggerUrl, "Chrome page target was not available");
+    assert(
+      target?.webSocketDebuggerUrl,
+      "Chrome page target was not available",
+    );
     client = new CdpClient(target.webSocketDebuggerUrl);
     await client.connect();
 
@@ -139,24 +166,78 @@ async function main() {
     );
 
     const araId = await navigateAndReadBrand(client, "/araid");
-    assert(araId.title === "AraID", `Expected AraID title, received ${araId.title}`);
+    assert(
+      araId.title === "AraID",
+      `Expected AraID title, received ${araId.title}`,
+    );
     assert(
       new URL(araId.icon).pathname === "/branding/araid-favicon-64.png",
       `Expected AraID favicon, received ${araId.icon}`,
     );
 
     const restored = await navigateAndReadBrand(client, "/login");
-    assert(restored.title === "STS", `Expected restored STS title, received ${restored.title}`);
+    assert(
+      restored.title === "STS",
+      `Expected restored STS title, received ${restored.title}`,
+    );
     assert(
       new URL(restored.icon).pathname === "/branding/sts-favicon-64.png",
       `Expected restored STS favicon, received ${restored.icon}`,
     );
 
-    console.log("smoke:branding-browser ok (STS -> AraID -> STS)");
+    const about = await navigateAndReadPublicInfo(client, "/about");
+    assert(
+      about.pathname === "/about",
+      `About page redirected to ${about.pathname}`,
+    );
+    assert(
+      about.heading.includes("STS"),
+      `Unexpected about heading: ${about.heading}`,
+    );
+    assert(
+      new URL(about.privacyHref).pathname === "/privacy",
+      `About page privacy link is missing: ${about.privacyHref}`,
+    );
+    assert(!about.hasHorizontalOverflow, "About page has horizontal overflow");
+
+    await client.call("Emulation.setDeviceMetricsOverride", {
+      deviceScaleFactor: 1,
+      height: 844,
+      mobile: true,
+      width: 390,
+    });
+    const privacy = await navigateAndReadPublicInfo(client, "/privacy");
+    assert(
+      privacy.pathname === "/privacy",
+      `Privacy page redirected to ${privacy.pathname}`,
+    );
+    assert(
+      privacy.heading === "นโยบายความเป็นส่วนตัว",
+      `Unexpected privacy heading: ${privacy.heading}`,
+    );
+    assert(
+      privacy.text.includes("openid") && privacy.text.includes("email"),
+      "Privacy page does not disclose the Google identity scopes",
+    );
+    assert(
+      privacy.text.includes("ไม่ขอสิทธิ์อ่านหรือส่ง Gmail"),
+      "Privacy page does not disclose that Gmail access is not requested",
+    );
+    assert(
+      !privacy.hasHorizontalOverflow,
+      "Privacy page has horizontal overflow on mobile",
+    );
+
+    console.log("smoke:branding-browser ok (brands + public OAuth pages)");
   } finally {
     client?.close();
     await stopProcess(chrome);
-    rmSync(profileDir, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+    rmSync(profileDir, {
+      force: true,
+      maxRetries: 5,
+      recursive: true,
+      retryDelay: 100,
+    });
   }
 }
 

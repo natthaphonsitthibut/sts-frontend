@@ -1,12 +1,22 @@
 import { apiClient } from "../../../lib/api-client";
-import { normalizePaginatedResponse, toPaginationParams } from "../../../lib/pagination";
+import {
+  normalizePaginatedResponse,
+  toPaginationParams,
+} from "../../../lib/pagination";
 import type {
   RiskDashboardQuery,
   RiskDashboardResult,
   RiskDashboardRow,
 } from "../types/risk-dashboard.types";
+import type {
+  FollowUpSummary,
+  ReferralDrilldownResult,
+  ReferralDrilldownRow,
+} from "../types/follow-up-dashboard.types";
 
-async function getRiskDashboard(query: RiskDashboardQuery = {}): Promise<RiskDashboardResult> {
+async function getRiskDashboard(
+  query: RiskDashboardQuery = {},
+): Promise<RiskDashboardResult> {
   const params: Record<string, string> = toPaginationParams(query);
   if (query.studentGroup) {
     params.studentGroup = query.studentGroup;
@@ -52,9 +62,34 @@ async function getRiskDashboard(query: RiskDashboardQuery = {}): Promise<RiskDas
   }
 
   const response = await apiClient.get("/dashboard/risk-watchlist", { params });
-  return normalizePaginatedResponse<RiskDashboardRow>(response.data, query) as RiskDashboardResult;
+  return normalizePaginatedResponse<RiskDashboardRow>(
+    response.data,
+    query,
+  ) as RiskDashboardResult;
+}
+
+async function getFollowUpSummary(): Promise<FollowUpSummary> {
+  const response = await apiClient.get<{ data: FollowUpSummary }>(
+    "/dashboard/follow-up-summary",
+  );
+  return response.data.data;
+}
+
+async function getReferralDrilldown(
+  page = 1,
+  limit = 20,
+): Promise<ReferralDrilldownResult> {
+  const response = await apiClient.get("/dashboard/referrals", {
+    params: { page, limit },
+  });
+  return normalizePaginatedResponse<ReferralDrilldownRow>(response.data, {
+    page,
+    limit,
+  }) as ReferralDrilldownResult;
 }
 
 export const riskDashboardService = {
+  getFollowUpSummary,
+  getReferralDrilldown,
   getRiskDashboard,
 };

@@ -14,6 +14,11 @@ export const teacherFormSchema = z.object({
   lineId: z.string().trim().max(64),
 });
 
+/** Existing national id stays unchanged until an authorised reveal unlocks it. */
+export const teacherEditFormSchema = teacherFormSchema.extend({
+  citizenId: z.union([z.literal(""), thaiNationalId]),
+});
+
 export type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 export const EMPTY_TEACHER_FORM: TeacherFormValues = {

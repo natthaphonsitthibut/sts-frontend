@@ -84,13 +84,5 @@ export interface AraIdSessionProfile extends Omit<
   identityNumberMasked: string;
 }
 
-/**
- * Which flow a QR challenge belongs to. Older teacher-link QR codes carry no
- * scope, so the absent value has to keep meaning `teacher-access`. Every hop
- * that leaves the authorize screen (login, PIN) has to carry it back, or the
- * challenge is looked up under the wrong scope and reads as expired.
- */
-export type AraIdChallengeScope =
-  | "teacher-access"
-  | "task-link"
-  | "admin-login";
+/** Which active flow owns an AraID QR challenge. */
+export type AraIdChallengeScope = "task-link" | "admin-login";

@@ -8,7 +8,6 @@ import type {
   TaskCreateResponse,
   TaskLinkAdminPayload,
   TaskLinkAdminResponse,
-  TaskOtpChallenge,
   TaskSubmitResponse,
   VisitAssignee,
 } from "../types/task.types";
@@ -24,7 +23,9 @@ function createMagicSessionConfig(magicSessionToken?: string) {
   return { headers: { "x-magic-session": magicSessionToken } };
 }
 
-async function createTask(payload: TaskCreatePayload): Promise<TaskCreateResponse> {
+async function createTask(
+  payload: TaskCreatePayload,
+): Promise<TaskCreateResponse> {
   const response = await apiClient.post<TaskCreateResponse>("/tasks", payload);
   return response.data;
 }
@@ -54,34 +55,37 @@ async function getTask(
   return response.data;
 }
 
-async function requestTaskOtp(token: string): Promise<TaskOtpChallenge> {
-  const response = await apiClient.post<TaskOtpChallenge>(
-    `/tasks/${encodeURIComponent(token)}/otp`,
-  );
-  return response.data;
+async function startTaskGoogle(token: string): Promise<string> {
+  const response = await apiClient.post<{
+    data: { authorizationUrl: string };
+  }>(`/tasks/${encodeURIComponent(token)}/google/start`);
+  return response.data.data.authorizationUrl;
 }
 
-async function verifyTaskOtp(
+async function verifyDevelopmentTaskGoogle(
   token: string,
-  otp: string,
-): Promise<{ session_token?: string }> {
-  const response = await apiClient.post<{ session_token?: string }>(
-    `/tasks/${encodeURIComponent(token)}/verify`,
-    { otp },
-  );
-  return response.data;
+  email: string,
+): Promise<string> {
+  const response = await apiClient.post<{
+    data: { sessionToken: string };
+  }>(`/tasks/${encodeURIComponent(token)}/google/development`, { email });
+  return response.data.data.sessionToken;
 }
 
 const TASK_ARAID_CHALLENGE_HEADER = "x-task-araid-challenge";
 
-async function createTaskAraIdChallenge(token: string): Promise<TaskAraIdChallenge> {
+async function createTaskAraIdChallenge(
+  token: string,
+): Promise<TaskAraIdChallenge> {
   const response = await apiClient.post<{ data: TaskAraIdChallenge }>(
     `/tasks/${encodeURIComponent(token)}/araid/challenge`,
   );
   return response.data.data;
 }
 
-async function beginTaskAraIdChallenge(challengeToken: string): Promise<{ expiresAt: string }> {
+async function beginTaskAraIdChallenge(
+  challengeToken: string,
+): Promise<{ expiresAt: string }> {
   const response = await apiClient.post<{ data: { expiresAt: string } }>(
     "/tasks/araid/challenge/begin",
     undefined,
@@ -138,8 +142,8 @@ export const taskService = {
   getVisitAssignees,
   getTask,
   getTaskChain,
-  requestTaskOtp,
   setTaskLinkAdminLock,
   submitTaskReport,
-  verifyTaskOtp,
+  startTaskGoogle,
+  verifyDevelopmentTaskGoogle,
 };

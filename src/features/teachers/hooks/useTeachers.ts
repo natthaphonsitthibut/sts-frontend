@@ -8,6 +8,7 @@ import type { PaginationMeta } from "../../../lib/pagination";
 import { teachersService } from "../api/teachers.service";
 import type {
   Teacher,
+  TeacherProfile,
   TeacherCreatePayload,
   TeacherListQuery,
   TeacherSavePayload,
@@ -47,10 +48,35 @@ export function useTeachers(query: TeacherListQuery | null): UseTeachersResult {
   };
 }
 
+export function useTeacherProfiles(query: TeacherListQuery | null) {
+  const result = useQuery({
+    queryKey: [TEACHERS_QUERY_KEY, "directory", query],
+    queryFn: () => teachersService.getTeacherProfiles(query!),
+    enabled: Boolean(query),
+    placeholderData: keepPreviousData,
+  });
+  return {
+    teachers: result.data?.items ?? ([] as TeacherProfile[]),
+    meta: result.data?.meta,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    dataUpdatedAt: result.dataUpdatedAt,
+    refetch: () => void result.refetch(),
+  };
+}
+
 export function useTeacher(id: string | null) {
   return useQuery({
     queryKey: [TEACHERS_QUERY_KEY, "detail", id],
     queryFn: () => teachersService.getTeacher(id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useTeacherProfile(id: string | null) {
+  return useQuery({
+    queryKey: [TEACHERS_QUERY_KEY, "profile", id],
+    queryFn: () => teachersService.getTeacherProfile(id!),
     enabled: Boolean(id),
   });
 }
@@ -74,7 +100,10 @@ export function useSaveTeacher() {
     mutationFn: async ({ id, payload, photo, removePhoto }) => {
       const { schoolId, ...profile } = payload;
       const teacher = id
-        ? await teachersService.updateTeacher(id, profile satisfies TeacherSavePayload)
+        ? await teachersService.updateTeacher(
+            id,
+            profile satisfies TeacherSavePayload,
+          )
         : await teachersService.createTeacher({ ...profile, schoolId });
       if (photo || removePhoto) {
         await teachersService.updateTeacherPhoto(teacher.id, {

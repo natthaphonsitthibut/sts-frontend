@@ -19,6 +19,7 @@ import {
 } from "../../../components/base";
 import {
   ErrorState,
+  FilterSelect,
   PageShell,
   PageToolbar,
   SkeletonCards,
@@ -299,23 +300,32 @@ function DashboardFilterBar({
         }
         disabled={schoolLocked}
       />
-      <FilterCombobox
-        allLabel="ทุกชั้น"
+      <FilterSelect
         ariaLabel="ชั้น"
-        options={safeOptions.grades}
-        value={filters.grade}
         onChange={(value) => onUpdate({ grade: value || undefined })}
         disabled={!filters.schoolId}
-      />
-      <FilterCombobox
-        allLabel="ทุกห้อง"
+        value={filters.grade ?? ""}
+      >
+        <option value="">ทุกชั้น</option>
+        {safeOptions.grades.map((option) => (
+          <option key={option.value} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect
         ariaLabel="ห้อง"
-        options={safeOptions.rooms}
-        formatOptionLabel={(option) => formatRoomLabel(option.value)}
-        value={filters.room}
         onChange={(value) => onUpdate({ room: value || undefined })}
         disabled={!filters.grade}
-      />
+        value={filters.room ?? ""}
+      >
+        <option value="">ทุกห้อง</option>
+        {safeOptions.rooms.map((option) => (
+          <option key={option.value} value={String(option.value)}>
+            {formatRoomLabel(option.value)}
+          </option>
+        ))}
+      </FilterSelect>
     </ToolbarFilterGrid>
   );
 }
@@ -406,7 +416,6 @@ export function MainPage() {
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
   const {
     summary,
-    nationalSummary,
     filterOptions,
     isLoading,
     isError,
@@ -493,18 +502,16 @@ export function MainPage() {
                 }
               >
                 <GeoMapSVG
-                  data={
-                    nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
-                      ? nationalSummary.riskAreaRanking.items
+                  backLabel={riskAreaBackAction?.label}
+                  disabled={schoolLocked}
+                  filters={filters}
+                  onBack={
+                    riskAreaBackAction
+                      ? () => updateFilter(riskAreaBackAction.next)
                       : undefined
                   }
-                  focusedProvince={filters.province}
-                  onProvinceClick={
-                    schoolLocked
-                      ? undefined
-                      : (provinceName) =>
-                          updateFilter({ province: provinceName })
-                  }
+                  onSelect={schoolLocked ? undefined : updateFilter}
+                  ranking={summary.riskAreaRanking}
                 />
               </Suspense>
 

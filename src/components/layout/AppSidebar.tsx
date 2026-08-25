@@ -18,14 +18,34 @@ interface SidebarContentProps {
   onNavigate?: () => void;
 }
 
-function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
+function SidebarContent({
+  collapsed = false,
+  onNavigate,
+}: SidebarContentProps) {
   const user = useAuthSessionStore((state) => state.user);
-  const userPermissions = getEffectivePermissions(user?.roles || [], user?.permissions || []);
-  const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
-  return <SidebarMenuContent collapsed={collapsed} items={filteredMenuItems} onNavigate={onNavigate} />;
+  const userPermissions = getEffectivePermissions(
+    user?.roles || [],
+    user?.permissions || [],
+  );
+  const filteredMenuItems = filterMenuItems(
+    MENU_ITEMS,
+    userPermissions,
+    user?.data_scope,
+    user?.roles || [],
+  );
+  return (
+    <SidebarMenuContent
+      collapsed={collapsed}
+      items={filteredMenuItems}
+      onNavigate={onNavigate}
+    />
+  );
 }
 
-export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) {
+export function AppSidebar({
+  mobileOpen,
+  onMobileOpenChange,
+}: AppSidebarProps) {
   return (
     <>
       <CollapsibleDesktopSidebar>
@@ -35,7 +55,7 @@ export function AppSidebar({ mobileOpen, onMobileOpenChange }: AppSidebarProps) 
         <SheetHeader
           heading={
             <AppBrand
-              className="max-w-52"
+              className="gap-2 pr-2 [&>span]:text-lg"
               onClick={() => onMobileOpenChange(false)}
             />
           }

@@ -1048,42 +1048,40 @@ export function ImportDataPage() {
                 />
               ) : null}
               {requiresClassroomContext ? (
-                <Combobox
-                  ariaLabel="เลือกชั้น"
+                <Select
+                  aria-label="เลือกชั้น"
                   disabled={
                     !importSchoolTermId || importClassroomsQuery.isLoading
                   }
-                  onChange={selectImportGrade}
-                  options={[
-                    { value: "", label: "เลือกชั้น" },
-                    ...importGrades.map((grade) => ({
-                      value: grade,
-                      label: grade,
-                    })),
-                  ]}
-                  placeholder="เลือกชั้น"
-                  searchable={false}
+                  onChange={(event) => selectImportGrade(event.target.value)}
                   value={effectiveImportGrade}
-                />
+                >
+                  <option value="">เลือกชั้น</option>
+                  {importGrades.map((grade) => (
+                    <option key={grade} value={grade}>
+                      {grade}
+                    </option>
+                  ))}
+                </Select>
               ) : null}
               {requiresClassroomContext ? (
-                <Combobox
-                  ariaLabel="เลือกห้องเรียน"
+                <Select
+                  aria-label="เลือกห้องเรียน"
                   disabled={
                     !effectiveImportGrade || importClassroomsQuery.isLoading
                   }
-                  onChange={selectImportClassroom}
-                  options={[
-                    { value: "", label: "เลือกห้องเรียน" },
-                    ...importClassrooms.map((classroom) => ({
-                      value: classroom.id,
-                      label: formatRoomLabel(classroom.roomCode),
-                    })),
-                  ]}
-                  placeholder="เลือกห้องเรียน"
-                  searchable={false}
+                  onChange={(event) =>
+                    selectImportClassroom(event.target.value)
+                  }
                   value={importClassroomId}
-                />
+                >
+                  <option value="">เลือกห้องเรียน</option>
+                  {importClassrooms.map((classroom) => (
+                    <option key={classroom.id} value={classroom.id}>
+                      {formatRoomLabel(classroom.roomCode)}
+                    </option>
+                  ))}
+                </Select>
               ) : null}
             </ToolbarFilterGrid>
           </CardContent>

@@ -23,14 +23,6 @@ export function usePublicAttendanceStatusCatalog() {
   });
 }
 
-export function usePublicAttendanceDelegationStatusCatalog() {
-  return useQuery({
-    queryKey: ["public-status-catalog", "attendance-delegation"],
-    queryFn: statusCatalogService.getPublicAttendanceDelegationCatalog,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
 export function useStatusCatalog(domain: StatusCatalogDomain): {
   items: StatusCatalogItem[];
   isLoading: boolean;

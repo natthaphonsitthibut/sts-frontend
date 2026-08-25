@@ -33,7 +33,7 @@ import {
   Label,
   Select,
 } from "../../../components/base";
-import { formatRoomLabel, toRoomOption } from "../../../lib/room-presentation";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   DataTable,
   DataTableCell,
@@ -48,6 +48,7 @@ import { ClearFiltersButton } from "../../../components/layout/clear-filters-but
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   PageShell,
   PageToolbar,
   SkeletonTable,
@@ -58,7 +59,6 @@ import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatThaiDate } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { cn } from "../../../lib/utils";
-import { hasPermission } from "../../auth/lib/permissions";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
@@ -67,7 +67,10 @@ import { attendanceService } from "../api/attendance.service";
 import { AttendanceSessionDetailDialog } from "../components/AttendanceSessionDetailDialog";
 import { CalendarDayEditDialog } from "../components/CalendarDayEditDialog";
 import { SchoolAreaSchoolFilter } from "../components/SchoolAreaSchoolFilter";
-import { SchoolTermDialog, type SchoolTermFormValues } from "../components/SchoolTermDialog";
+import {
+  SchoolTermDialog,
+  type SchoolTermFormValues,
+} from "../components/SchoolTermDialog";
 import { resolveAttendanceScopeLock } from "../lib/attendance-scope";
 import {
   formatSchoolTermLabel,
@@ -97,14 +100,15 @@ function getCatalogMeta(items: readonly StatusCatalogItem[], code: string) {
   };
 }
 
-const ANOMALY_DESCRIPTIONS: Record<
-  AttendanceSessionAnomalyType,
-  string
-> = {
-  HOLIDAY_ATTENDANCE: "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
-  CANCELLED_ATTENDANCE: "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
-  OUT_OF_TERM: "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
-  MISSING_CALENDAR_DAY: "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+const ANOMALY_DESCRIPTIONS: Record<AttendanceSessionAnomalyType, string> = {
+  HOLIDAY_ATTENDANCE:
+    "ตรวจวันหยุดในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  CANCELLED_ATTENDANCE:
+    "ตรวจเหตุผลยกเลิกเรียนในปฏิทิน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  OUT_OF_TERM:
+    "ตรวจวันเริ่ม/สิ้นสุดภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
+  MISSING_CALENDAR_DAY:
+    "เพิ่มวันในปฏิทินภาคเรียน หรือเปิด session ไปแก้/ยกเลิกการเช็กชื่อ",
 };
 
 function getSummaryToneFromBadgeVariant(
@@ -156,7 +160,10 @@ function getAdjacentMonthDate(
   return nextIso;
 }
 
-function buildCalendarCells(year: number, monthIndex: number): Array<{
+function buildCalendarCells(
+  year: number,
+  monthIndex: number,
+): Array<{
   date: string;
   day: number;
   inMonth: boolean;
@@ -199,7 +206,10 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return (a || "").localeCompare(b || "", "th");
 }
 
-function compareNumber(a: number | null | undefined, b: number | null | undefined): number {
+function compareNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): number {
   return (a ?? -1) - (b ?? -1);
 }
 
@@ -290,9 +300,15 @@ function CalendarMonthGrid({
   const { year, monthIndex } = getIsoMonth(selectedDate);
   const cells = buildCalendarCells(year, monthIndex);
   const dayByDate = new Map(days.map((day) => [day.date, day]));
-  const previousMonthDate = getAdjacentMonthDate(selectedDate, -1, minDate, maxDate);
+  const previousMonthDate = getAdjacentMonthDate(
+    selectedDate,
+    -1,
+    minDate,
+    maxDate,
+  );
   const nextMonthDate = getAdjacentMonthDate(selectedDate, 1, minDate, maxDate);
-  const disablePrevious = previousMonthDate.slice(0, 7) === selectedDate.slice(0, 7);
+  const disablePrevious =
+    previousMonthDate.slice(0, 7) === selectedDate.slice(0, 7);
   const disableNext = nextMonthDate.slice(0, 7) === selectedDate.slice(0, 7);
 
   return (
@@ -331,7 +347,9 @@ function CalendarMonthGrid({
         {cells.map((cell, index) => {
           const calendarDay = cell.date ? dayByDate.get(cell.date) : null;
           const outsideTerm = Boolean(
-            cell.date && ((minDate && cell.date < minDate) || (maxDate && cell.date > maxDate)),
+            cell.date &&
+            ((minDate && cell.date < minDate) ||
+              (maxDate && cell.date > maxDate)),
           );
           const selected = cell.date === selectedDate;
           const dayType = calendarDay?.dayType;
@@ -345,7 +363,10 @@ function CalendarMonthGrid({
                 disabled
                   ? "cursor-default border-transparent bg-transparent text-slate-300"
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
-                !calendarDay && cell.inMonth && !outsideTerm && "border-dashed text-slate-500",
+                !calendarDay &&
+                  cell.inMonth &&
+                  !outsideTerm &&
+                  "border-dashed text-slate-500",
                 selected && "border-primary bg-slate-50 ring-1 ring-primary",
               )}
               disabled={disabled}
@@ -379,10 +400,22 @@ function CalendarMonthGrid({
         })}
       </div>
       <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-400" />วันเรียน</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-400" />วันหยุด</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-amber-400" />ยกเลิก</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-slate-500" />ยังไม่มีข้อมูล</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-emerald-400" />
+          วันเรียน
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-sky-400" />
+          วันหยุด
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-amber-400" />
+          ยกเลิก
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-slate-500" />
+          ยังไม่มีข้อมูล
+        </span>
       </div>
     </div>
   );
@@ -395,23 +428,34 @@ export function AttendanceOperationsPage() {
   const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("date") ?? "")
     ? (searchParams.get("date") as string)
     : getTodayIso();
-  const reconciliationStatusCatalog = useStatusCatalog("ATTENDANCE_RECONCILIATION");
+  const reconciliationStatusCatalog = useStatusCatalog(
+    "ATTENDANCE_RECONCILIATION",
+  );
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const calendarDayCatalog = useStatusCatalog("SCHOOL_CALENDAR_DAY");
   const anomalyCatalog = useStatusCatalog("ATTENDANCE_ANOMALY");
   const queryClient = useQueryClient();
   const user = useAuthSessionStore((state) => state.user);
-  const scope = useMemo(() => resolveAttendanceScopeLock(user?.data_scope), [user]);
-  const canManageCalendar = hasPermission(user?.permissions ?? [], "attendance-dashboard");
+  const scope = useMemo(
+    () => resolveAttendanceScopeLock(user?.data_scope),
+    [user],
+  );
+  const canManageCalendar = can("attendance-dashboard");
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
     subDistrict: searchParams.get("subDistrict") || undefined,
   });
-  const [schoolInput, setSchoolInput] = useState(() => searchParams.get("schoolId") || "");
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") || "",
+  );
   const [termInput, setTermInput] = useState("");
-  const [gradeFilter, setGradeFilter] = useState(() => searchParams.get("grade") || "");
-  const [roomFilter, setRoomFilter] = useState(() => searchParams.get("room") || "");
+  const [gradeFilter, setGradeFilter] = useState(
+    () => searchParams.get("grade") || "",
+  );
+  const [roomFilter, setRoomFilter] = useState(
+    () => searchParams.get("room") || "",
+  );
   const [date, setDate] = useState(initialDate);
   const [calendarDate, setCalendarDate] = useState(initialDate);
   const [page, setPage] = useState(1);
@@ -419,7 +463,9 @@ export function AttendanceOperationsPage() {
   const [anomalyPage, setAnomalyPage] = useState(1);
   const [anomalyRowsPerPage, setAnomalyRowsPerPage] = useState(10);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const [anomalySort, setAnomalySort] = useState<DataTableSortState | undefined>();
+  const [anomalySort, setAnomalySort] = useState<
+    DataTableSortState | undefined
+  >();
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [calendarEdit, setCalendarEdit] = useState<{
@@ -435,16 +481,19 @@ export function AttendanceOperationsPage() {
   const schoolId = scope.isSchoolLocked
     ? String(scope.lockedSchoolId ?? "")
     : schoolInput;
-  const filteredAttendanceExportUrl = buildDataExportContextUrl("attendance_summary", {
-    province: schoolArea.province,
-    district: schoolArea.district,
-    subDistrict: schoolArea.subDistrict,
-    schoolId,
-    grade: gradeFilter,
-    room: roomFilter,
-    dateFrom: date,
-    dateTo: date,
-  });
+  const filteredAttendanceExportUrl = buildDataExportContextUrl(
+    "attendance_summary",
+    {
+      province: schoolArea.province,
+      district: schoolArea.district,
+      subDistrict: schoolArea.subDistrict,
+      schoolId,
+      grade: gradeFilter,
+      room: roomFilter,
+      dateFrom: date,
+      dateTo: date,
+    },
+  );
   const termsQuery = useQuery({
     queryKey: ["attendance-terms", schoolId],
     queryFn: () => attendanceService.getTerms(schoolId),
@@ -460,7 +509,8 @@ export function AttendanceOperationsPage() {
     enabled: Boolean(gradeFilter && schoolId),
   });
   const terms = termsQuery.data ?? [];
-  const selectedTerm = terms.find((term) => term.id === termInput) ?? terms[0] ?? null;
+  const selectedTerm =
+    terms.find((term) => term.id === termInput) ?? terms[0] ?? null;
   const selectedTermId = selectedTerm?.id ?? "";
   const calendarQuery = useQuery({
     queryKey: ["attendance-calendar", selectedTermId],
@@ -468,33 +518,39 @@ export function AttendanceOperationsPage() {
     enabled: Boolean(selectedTermId),
   });
   const effectiveCalendarDate =
-    selectedTerm?.startsOn && selectedTerm.endsOn &&
+    selectedTerm?.startsOn &&
+    selectedTerm.endsOn &&
     (calendarDate < selectedTerm.startsOn || calendarDate > selectedTerm.endsOn)
       ? selectedTerm.startsOn
       : calendarDate;
   const selectedCalendarDay =
-    calendarQuery.data?.find((day) => day.date === effectiveCalendarDate) ?? null;
+    calendarQuery.data?.find((day) => day.date === effectiveCalendarDate) ??
+    null;
   const reconciliationCalendarDay =
     calendarQuery.data?.find((day) => day.date === date) ?? null;
   const reconciliationDateOutOfRange = Boolean(
     selectedTerm?.startsOn &&
-      selectedTerm.endsOn &&
-      (date < selectedTerm.startsOn || date > selectedTerm.endsOn),
+    selectedTerm.endsOn &&
+    (date < selectedTerm.startsOn || date > selectedTerm.endsOn),
   );
-  const reconciliationTermInactive = Boolean(selectedTerm && selectedTerm.status !== "ACTIVE");
+  const reconciliationTermInactive = Boolean(
+    selectedTerm && selectedTerm.status !== "ACTIVE",
+  );
   const waitingForReconciliationCalendar =
     !reconciliationTermInactive && calendarQuery.isLoading;
   const reconciliationCalendarMissing = Boolean(
-    !reconciliationTermInactive && calendarQuery.isSuccess && !reconciliationCalendarDay,
+    !reconciliationTermInactive &&
+    calendarQuery.isSuccess &&
+    !reconciliationCalendarDay,
   );
   const calendarDayType =
     calendarEdit && calendarEdit.calendarDayId === selectedCalendarDay?.id
       ? calendarEdit.dayType
-      : selectedCalendarDay?.dayType ?? "SCHOOL_DAY";
+      : (selectedCalendarDay?.dayType ?? "SCHOOL_DAY");
   const calendarReason =
     calendarEdit && calendarEdit.calendarDayId === selectedCalendarDay?.id
       ? calendarEdit.reason
-      : selectedCalendarDay?.reason ?? "";
+      : (selectedCalendarDay?.reason ?? "");
   const gradeLevelIdFilter =
     gradeFilter && gradeLevelsQuery.data
       ? gradeLevelsQuery.data.find((level) => level.label === gradeFilter)?.id
@@ -521,11 +577,11 @@ export function AttendanceOperationsPage() {
       }),
     enabled: Boolean(
       selectedTermId &&
-        date &&
-        !reconciliationTermInactive &&
-        !reconciliationDateOutOfRange &&
-        !waitingForReconciliationCalendar &&
-        !reconciliationCalendarMissing,
+      date &&
+      !reconciliationTermInactive &&
+      !reconciliationDateOutOfRange &&
+      !waitingForReconciliationCalendar &&
+      !reconciliationCalendarMissing,
     ),
     placeholderData: keepPreviousData,
   });
@@ -563,21 +619,36 @@ export function AttendanceOperationsPage() {
       setTermDialogOpen(false);
       setTermDialogTerm(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance-terms", schoolId] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-terms", schoolId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation-anomalies"],
+        }),
       ]);
     },
   });
   const generateMutation = useMutation({
-    mutationFn: () => attendanceService.generateCalendar(selectedTermId, [1, 2, 3, 4, 5]),
+    mutationFn: () =>
+      attendanceService.generateCalendar(selectedTermId, [1, 2, 3, 4, 5]),
     onSuccess: async () => {
       setCalendarEdit(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-terms", schoolId] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-calendar", selectedTermId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-terms", schoolId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation-anomalies"],
+        }),
       ]);
     },
   });
@@ -592,14 +663,24 @@ export function AttendanceOperationsPage() {
     onSuccess: async () => {
       setCalendarEdit(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-calendar", selectedTermId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation-anomalies"],
+        }),
       ]);
     },
   });
   const anomalyCalendarDayMutation = useMutation({
-    mutationFn: (input: { calendarDayId: string; dayType: CalendarDayType; reason: string }) =>
+    mutationFn: (input: {
+      calendarDayId: string;
+      dayType: CalendarDayType;
+      reason: string;
+    }) =>
       attendanceService.updateCalendarDay(input.calendarDayId, {
         dayType: input.dayType,
         reason: input.reason || undefined,
@@ -607,9 +688,15 @@ export function AttendanceOperationsPage() {
     onSuccess: async () => {
       setCalendarDialogRow(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["attendance-calendar", selectedTermId] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation"] }),
-        queryClient.invalidateQueries({ queryKey: ["attendance-reconciliation-anomalies"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-calendar", selectedTermId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["attendance-reconciliation-anomalies"],
+        }),
       ]);
     },
   });
@@ -647,7 +734,12 @@ export function AttendanceOperationsPage() {
   const sortedAnomalyRows = useMemo(() => {
     if (!anomalySort) return anomalyRows;
     return [...anomalyRows].sort((a, b) => {
-      const result = compareAnomalyRows(a, b, anomalySort.key, anomalyCatalog.items);
+      const result = compareAnomalyRows(
+        a,
+        b,
+        anomalySort.key,
+        anomalyCatalog.items,
+      );
       return anomalySort.direction === "asc" ? result : -result;
     });
   }, [anomalyCatalog.items, anomalyRows, anomalySort]);
@@ -658,25 +750,28 @@ export function AttendanceOperationsPage() {
         variant: "warning" as const,
       }
     : reconciliationDateOutOfRange
-    ? {
-        title: "วันที่ตรวจสอบอยู่นอกช่วงภาคเรียน",
-        description: `เลือกวันที่ระหว่าง ${formatThaiDate(selectedTerm?.startsOn)} ถึง ${formatThaiDate(selectedTerm?.endsOn)}`,
-        variant: "warning" as const,
-      }
-    : reconciliationCalendarMissing
       ? {
-          title: "ยังไม่มีข้อมูลปฏิทินสำหรับวันที่ตรวจสอบ",
-          description: "กด “สร้างปฏิทิน จ.-ศ.” หรือเลือกวันที่อื่นในช่วงภาคเรียน",
+          title: "วันที่ตรวจสอบอยู่นอกช่วงภาคเรียน",
+          description: `เลือกวันที่ระหว่าง ${formatThaiDate(selectedTerm?.startsOn)} ถึง ${formatThaiDate(selectedTerm?.endsOn)}`,
           variant: "warning" as const,
         }
-      : reconciliationCalendarDay && reconciliationCalendarDay.dayType !== "SCHOOL_DAY"
+      : reconciliationCalendarMissing
         ? {
-            title: `วันที่ตรวจสอบเป็น${getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}`,
+            title: "ยังไม่มีข้อมูลปฏิทินสำหรับวันที่ตรวจสอบ",
             description:
-              reconciliationCalendarDay.reason || "วันนี้ไม่มีห้องเรียนที่ต้องเช็กชื่อ",
-            variant: "default" as const,
+              "กด “สร้างปฏิทิน จ.-ศ.” หรือเลือกวันที่อื่นในช่วงภาคเรียน",
+            variant: "warning" as const,
           }
-        : null;
+        : reconciliationCalendarDay &&
+            reconciliationCalendarDay.dayType !== "SCHOOL_DAY"
+          ? {
+              title: `วันที่ตรวจสอบเป็น${getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}`,
+              description:
+                reconciliationCalendarDay.reason ||
+                "วันนี้ไม่มีห้องเรียนที่ต้องเช็กชื่อ",
+              variant: "default" as const,
+            }
+          : null;
 
   function handleSchoolChange(value: string): void {
     setSchoolInput(value);
@@ -816,31 +911,36 @@ export function AttendanceOperationsPage() {
             />
           </ScopeField>
           <ScopeField label="ชั้น" labelHidden>
-            <Combobox
+            <FilterSelect
+              ariaLabel="กรองตามระดับชั้น"
+              className="w-full !w-full"
               disabled={!schoolId}
               onChange={handleGradeFilterChange}
-              options={[
-                { value: "", label: "ทุกชั้น" },
-                ...(gradeLevelsQuery.data ?? []).map((grade) => ({
-                  value: grade.label,
-                  label: grade.label,
-                })),
-              ]}
-              placeholder="ค้นหาชั้น"
               value={gradeFilter}
-            />
+            >
+              <option value="">ทุกชั้น</option>
+              {(gradeLevelsQuery.data ?? []).map((grade) => (
+                <option key={grade.id} value={grade.label}>
+                  {grade.label}
+                </option>
+              ))}
+            </FilterSelect>
           </ScopeField>
           <ScopeField label="ห้อง" labelHidden>
-            <Combobox
+            <FilterSelect
+              ariaLabel="กรองตามห้อง"
+              className="w-full !w-full"
               disabled={!gradeFilter}
               onChange={handleRoomFilterChange}
-              options={[
-                { value: "", label: "ทุกห้อง" },
-                ...(roomsQuery.data ?? []).map(toRoomOption),
-              ]}
-              placeholder="ค้นหาห้อง"
               value={roomFilter}
-            />
+            >
+              <option value="">ทุกห้อง</option>
+              {(roomsQuery.data ?? []).map((room) => (
+                <option key={room} value={room}>
+                  {formatRoomLabel(room)}
+                </option>
+              ))}
+            </FilterSelect>
           </ScopeField>
         </ToolbarFilterGrid>
       </PageToolbar>
@@ -852,7 +952,10 @@ export function AttendanceOperationsPage() {
           title="เลือกโรงเรียน"
         />
       ) : termsQuery.isError ? (
-        <ErrorState title="ไม่สามารถโหลดภาคเรียนได้" onRetry={() => void termsQuery.refetch()} />
+        <ErrorState
+          title="ไม่สามารถโหลดภาคเรียนได้"
+          onRetry={() => void termsQuery.refetch()}
+        />
       ) : termsQuery.isLoading ? (
         <SkeletonTable rows={3} />
       ) : !selectedTerm ? (
@@ -868,15 +971,28 @@ export function AttendanceOperationsPage() {
               <div className="flex h-full flex-col gap-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-2">
-                    <h2 className="text-base font-bold text-slate-900">ภาคเรียนที่เลือก</h2>
+                    <h2 className="text-base font-bold text-slate-900">
+                      ภาคเรียนที่เลือก
+                    </h2>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
-                        variant={getCatalogMeta(termStatusCatalog.items, selectedTerm.status).variant}
+                        variant={
+                          getCatalogMeta(
+                            termStatusCatalog.items,
+                            selectedTerm.status,
+                          ).variant
+                        }
                       >
-                        {getCatalogMeta(termStatusCatalog.items, selectedTerm.status).label}
+                        {
+                          getCatalogMeta(
+                            termStatusCatalog.items,
+                            selectedTerm.status,
+                          ).label
+                        }
                       </Badge>
                       <span className="text-sm font-semibold text-slate-600">
-                        {formatThaiDate(selectedTerm.startsOn)} ถึง {formatThaiDate(selectedTerm.endsOn)}
+                        {formatThaiDate(selectedTerm.startsOn)} ถึง{" "}
+                        {formatThaiDate(selectedTerm.endsOn)}
                       </span>
                     </div>
                   </div>
@@ -896,18 +1012,26 @@ export function AttendanceOperationsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-xs font-semibold text-slate-500">ปฏิทิน</div>
+                    <div className="text-xs font-semibold text-slate-500">
+                      ปฏิทิน
+                    </div>
                     <div className="mt-1 text-2xl font-extrabold text-slate-900">
                       {selectedTerm.calendarDayCount}
                     </div>
-                    <div className="text-xs font-semibold text-slate-500">วัน</div>
+                    <div className="text-xs font-semibold text-slate-500">
+                      วัน
+                    </div>
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-xs font-semibold text-slate-500">วันเรียน</div>
+                    <div className="text-xs font-semibold text-slate-500">
+                      วันเรียน
+                    </div>
                     <div className="mt-1 text-2xl font-extrabold text-slate-900">
                       {selectedTerm.schoolDayCount}
                     </div>
-                    <div className="text-xs font-semibold text-slate-500">วัน</div>
+                    <div className="text-xs font-semibold text-slate-500">
+                      วัน
+                    </div>
                   </div>
                 </div>
                 {canManageCalendar ? (
@@ -929,18 +1053,36 @@ export function AttendanceOperationsPage() {
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <h2 className="text-base font-bold text-slate-900">วันที่ในปฏิทิน</h2>
+                      <h2 className="text-base font-bold text-slate-900">
+                        วันที่ในปฏิทิน
+                      </h2>
                       <div className="flex flex-wrap items-center gap-2">
                         {calendarQuery.isLoading ? (
                           <Badge variant="secondary">กำลังโหลดปฏิทิน</Badge>
                         ) : calendarQuery.isError ? (
-                          <Badge variant="destructive">โหลดปฏิทินไม่สำเร็จ</Badge>
+                          <Badge variant="destructive">
+                            โหลดปฏิทินไม่สำเร็จ
+                          </Badge>
                         ) : selectedCalendarDay ? (
-                          <Badge variant={getCatalogMeta(calendarDayCatalog.items, calendarDayType).variant}>
-                            {getCatalogMeta(calendarDayCatalog.items, calendarDayType).label}
+                          <Badge
+                            variant={
+                              getCatalogMeta(
+                                calendarDayCatalog.items,
+                                calendarDayType,
+                              ).variant
+                            }
+                          >
+                            {
+                              getCatalogMeta(
+                                calendarDayCatalog.items,
+                                calendarDayType,
+                              ).label
+                            }
                           </Badge>
                         ) : (
-                          <Badge variant="warning">ยังไม่มีข้อมูลวันที่นี้</Badge>
+                          <Badge variant="warning">
+                            ยังไม่มีข้อมูลวันที่นี้
+                          </Badge>
                         )}
                         <span className="text-sm font-semibold tabular-nums text-slate-600">
                           {formatThaiDate(effectiveCalendarDate)}
@@ -948,7 +1090,10 @@ export function AttendanceOperationsPage() {
                       </div>
                     </div>
                     {calendarQuery.isError ? (
-                      <RefreshButton onRefresh={() => calendarQuery.refetch()} updatedAt={calendarQuery.dataUpdatedAt} />
+                      <RefreshButton
+                        onRefresh={() => calendarQuery.refetch()}
+                        updatedAt={calendarQuery.dataUpdatedAt}
+                      />
                     ) : null}
                   </div>
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,0.48fr)] xl:items-start">
@@ -968,14 +1113,28 @@ export function AttendanceOperationsPage() {
                     />
                     <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="rounded-lg border border-slate-200 bg-white p-3">
-                        <div className="text-xs font-semibold text-slate-500">วันที่เลือก</div>
+                        <div className="text-xs font-semibold text-slate-500">
+                          วันที่เลือก
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="font-extrabold tabular-nums text-slate-900">
                             {formatThaiDate(effectiveCalendarDate)}
                           </span>
                           {selectedCalendarDay ? (
-                            <Badge variant={getCatalogMeta(calendarDayCatalog.items, calendarDayType).variant}>
-                              {getCatalogMeta(calendarDayCatalog.items, calendarDayType).label}
+                            <Badge
+                              variant={
+                                getCatalogMeta(
+                                  calendarDayCatalog.items,
+                                  calendarDayType,
+                                ).variant
+                              }
+                            >
+                              {
+                                getCatalogMeta(
+                                  calendarDayCatalog.items,
+                                  calendarDayType,
+                                ).label
+                              }
                             </Badge>
                           ) : (
                             <Badge variant="warning">ยังไม่มีข้อมูล</Badge>
@@ -984,7 +1143,11 @@ export function AttendanceOperationsPage() {
                       </div>
                       <ScopeField label="ประเภทวัน">
                         <Select
-                          disabled={calendarQuery.isLoading || calendarQuery.isError || !selectedCalendarDay}
+                          disabled={
+                            calendarQuery.isLoading ||
+                            calendarQuery.isError ||
+                            !selectedCalendarDay
+                          }
                           value={calendarDayType}
                           onChange={(event) => {
                             if (!selectedCalendarDay) return;
@@ -1002,7 +1165,11 @@ export function AttendanceOperationsPage() {
                       </ScopeField>
                       <ScopeField label="เหตุผล">
                         <Input
-                          disabled={calendarQuery.isLoading || calendarQuery.isError || !selectedCalendarDay}
+                          disabled={
+                            calendarQuery.isLoading ||
+                            calendarQuery.isError ||
+                            !selectedCalendarDay
+                          }
                           onChange={(event) => {
                             if (!selectedCalendarDay) return;
                             setCalendarEdit({
@@ -1017,7 +1184,11 @@ export function AttendanceOperationsPage() {
                       </ScopeField>
                       <Button
                         className="w-full"
-                        disabled={calendarQuery.isLoading || calendarQuery.isError || !selectedCalendarDay}
+                        disabled={
+                          calendarQuery.isLoading ||
+                          calendarQuery.isError ||
+                          !selectedCalendarDay
+                        }
                         icon={Save}
                         isLoading={calendarDayMutation.isPending}
                         onClick={() => calendarDayMutation.mutate()}
@@ -1055,13 +1226,27 @@ export function AttendanceOperationsPage() {
           <Card className="p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
-                <h2 className="text-base font-bold text-slate-900">ตรวจความครบถ้วน</h2>
+                <h2 className="text-base font-bold text-slate-900">
+                  ตรวจความครบถ้วน
+                </h2>
                 <div className="flex flex-wrap items-center gap-2">
                   {reconciliationTermInactive ? (
                     <Badge variant="warning">ยังไม่เปิดใช้งาน</Badge>
                   ) : reconciliationCalendarDay ? (
-                    <Badge variant={getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).variant}>
-                      {getCatalogMeta(calendarDayCatalog.items, reconciliationCalendarDay.dayType).label}
+                    <Badge
+                      variant={
+                        getCatalogMeta(
+                          calendarDayCatalog.items,
+                          reconciliationCalendarDay.dayType,
+                        ).variant
+                      }
+                    >
+                      {
+                        getCatalogMeta(
+                          calendarDayCatalog.items,
+                          reconciliationCalendarDay.dayType,
+                        ).label
+                      }
                     </Badge>
                   ) : reconciliationDateOutOfRange ? (
                     <Badge variant="warning">นอกช่วงภาคเรียน</Badge>
@@ -1104,12 +1289,24 @@ export function AttendanceOperationsPage() {
             {reconciliationDateOutOfRange ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {selectedTerm.startsOn ? (
-                  <Button onClick={() => handleDateChange(selectedTerm.startsOn || date)} size="sm" variant="outline">
+                  <Button
+                    onClick={() =>
+                      handleDateChange(selectedTerm.startsOn || date)
+                    }
+                    size="sm"
+                    variant="outline"
+                  >
                     ไปวันแรกของภาคเรียน
                   </Button>
                 ) : null}
                 {selectedTerm.endsOn ? (
-                  <Button onClick={() => handleDateChange(selectedTerm.endsOn || date)} size="sm" variant="outline">
+                  <Button
+                    onClick={() =>
+                      handleDateChange(selectedTerm.endsOn || date)
+                    }
+                    size="sm"
+                    variant="outline"
+                  >
                     ไปวันสุดท้ายของภาคเรียน
                   </Button>
                 ) : null}
@@ -1117,9 +1314,14 @@ export function AttendanceOperationsPage() {
             ) : null}
             <div className="mt-4 min-h-[5.5rem]">
               {reconciliationNotice ? (
-                <Alert className="p-3 shadow-none" variant={reconciliationNotice.variant}>
+                <Alert
+                  className="p-3 shadow-none"
+                  variant={reconciliationNotice.variant}
+                >
                   <AlertTitle>{reconciliationNotice.title}</AlertTitle>
-                  <AlertDescription>{reconciliationNotice.description}</AlertDescription>
+                  <AlertDescription>
+                    {reconciliationNotice.description}
+                  </AlertDescription>
                 </Alert>
               ) : null}
             </div>
@@ -1128,26 +1330,40 @@ export function AttendanceOperationsPage() {
           <SummaryMetrics
             items={[
               {
-                label: getCatalogMeta(reconciliationStatusCatalog.items, "COMPLETED").label,
+                label: getCatalogMeta(
+                  reconciliationStatusCatalog.items,
+                  "COMPLETED",
+                ).label,
                 value: summary.completed,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(reconciliationStatusCatalog.items, "COMPLETED").variant,
+                  getCatalogMeta(reconciliationStatusCatalog.items, "COMPLETED")
+                    .variant,
                 ),
                 icon: CheckCircle2,
               },
               {
-                label: getCatalogMeta(reconciliationStatusCatalog.items, "MISSING").label,
+                label: getCatalogMeta(
+                  reconciliationStatusCatalog.items,
+                  "MISSING",
+                ).label,
                 value: summary.missing,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(reconciliationStatusCatalog.items, "MISSING").variant,
+                  getCatalogMeta(reconciliationStatusCatalog.items, "MISSING")
+                    .variant,
                 ),
                 icon: Clock3,
               },
               {
-                label: getCatalogMeta(reconciliationStatusCatalog.items, "INCOMPLETE").label,
+                label: getCatalogMeta(
+                  reconciliationStatusCatalog.items,
+                  "INCOMPLETE",
+                ).label,
                 value: summary.incomplete,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(reconciliationStatusCatalog.items, "INCOMPLETE").variant,
+                  getCatalogMeta(
+                    reconciliationStatusCatalog.items,
+                    "INCOMPLETE",
+                  ).variant,
                 ),
                 icon: CircleAlert,
               },
@@ -1211,7 +1427,9 @@ export function AttendanceOperationsPage() {
                       <DataTableCell>{row.expectedRosterCount}</DataTableCell>
                       <DataTableCell>{row.recordedCount}</DataTableCell>
                       <DataTableCell>{row.revision ?? "-"}</DataTableCell>
-                      <DataTableCell><Badge variant={meta.variant}>{meta.label}</Badge></DataTableCell>
+                      <DataTableCell>
+                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                      </DataTableCell>
                     </DataTableRow>
                   );
                 })}
@@ -1258,12 +1476,19 @@ export function AttendanceOperationsPage() {
           <Card className="p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-base font-bold text-slate-900">รายการผิดปกติ</h2>
+                <h2 className="text-base font-bold text-slate-900">
+                  รายการผิดปกติ
+                </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  ตรวจ session ที่มีการเช็กชื่อแต่ไม่ตรงกับปฏิทินภาคเรียนที่เปิดใช้งาน
+                  ตรวจ session
+                  ที่มีการเช็กชื่อแต่ไม่ตรงกับปฏิทินภาคเรียนที่เปิดใช้งาน
                 </p>
               </div>
-              <Badge variant={anomalyQuery.data?.totalCount ? "warning" : "secondary"}>
+              <Badge
+                variant={
+                  anomalyQuery.data?.totalCount ? "warning" : "secondary"
+                }
+              >
                 {anomalyQuery.data?.totalCount ?? 0} รายการ
               </Badge>
             </div>
@@ -1272,23 +1497,32 @@ export function AttendanceOperationsPage() {
           <SummaryMetrics
             items={[
               {
-                label: getCatalogMeta(anomalyCatalog.items, "HOLIDAY_ATTENDANCE").label,
+                label: getCatalogMeta(
+                  anomalyCatalog.items,
+                  "HOLIDAY_ATTENDANCE",
+                ).label,
                 value: anomalySummary.holidayAttendance,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(anomalyCatalog.items, "HOLIDAY_ATTENDANCE").variant,
+                  getCatalogMeta(anomalyCatalog.items, "HOLIDAY_ATTENDANCE")
+                    .variant,
                 ),
                 icon: CalendarDays,
               },
               {
-                label: getCatalogMeta(anomalyCatalog.items, "CANCELLED_ATTENDANCE").label,
+                label: getCatalogMeta(
+                  anomalyCatalog.items,
+                  "CANCELLED_ATTENDANCE",
+                ).label,
                 value: anomalySummary.cancelledAttendance,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(anomalyCatalog.items, "CANCELLED_ATTENDANCE").variant,
+                  getCatalogMeta(anomalyCatalog.items, "CANCELLED_ATTENDANCE")
+                    .variant,
                 ),
                 icon: CircleAlert,
               },
               {
-                label: getCatalogMeta(anomalyCatalog.items, "OUT_OF_TERM").label,
+                label: getCatalogMeta(anomalyCatalog.items, "OUT_OF_TERM")
+                  .label,
                 value: anomalySummary.outOfTerm,
                 tone: getSummaryToneFromBadgeVariant(
                   getCatalogMeta(anomalyCatalog.items, "OUT_OF_TERM").variant,
@@ -1296,10 +1530,14 @@ export function AttendanceOperationsPage() {
                 icon: Clock3,
               },
               {
-                label: getCatalogMeta(anomalyCatalog.items, "MISSING_CALENDAR_DAY").label,
+                label: getCatalogMeta(
+                  anomalyCatalog.items,
+                  "MISSING_CALENDAR_DAY",
+                ).label,
                 value: anomalySummary.missingCalendarDay,
                 tone: getSummaryToneFromBadgeVariant(
-                  getCatalogMeta(anomalyCatalog.items, "MISSING_CALENDAR_DAY").variant,
+                  getCatalogMeta(anomalyCatalog.items, "MISSING_CALENDAR_DAY")
+                    .variant,
                 ),
                 icon: CalendarDays,
               },
@@ -1332,7 +1570,16 @@ export function AttendanceOperationsPage() {
           ) : (
             <>
               <DataTable
-                columnWidths={["w-[9%]", "w-[8%]", "w-[9%]", "w-[12%]", "w-[9%]", "w-[8%]", "w-[22%]", "w-[23%]"]}
+                columnWidths={[
+                  "w-[9%]",
+                  "w-[8%]",
+                  "w-[9%]",
+                  "w-[12%]",
+                  "w-[9%]",
+                  "w-[8%]",
+                  "w-[22%]",
+                  "w-[23%]",
+                ]}
                 headings={[
                   { label: "วันที่", sortKey: "date" },
                   { label: "ชั้น", sortKey: "grade" },
@@ -1363,7 +1610,10 @@ export function AttendanceOperationsPage() {
                 sort={anomalySort}
               >
                 {sortedAnomalyRows.map((row) => {
-                  const meta = getCatalogMeta(anomalyCatalog.items, row.anomalyType);
+                  const meta = getCatalogMeta(
+                    anomalyCatalog.items,
+                    row.anomalyType,
+                  );
                   return (
                     <DataTableRow key={row.sessionId}>
                       <DataTableCell className="tabular-nums text-slate-800">
@@ -1372,9 +1622,16 @@ export function AttendanceOperationsPage() {
                       <DataTableCell>{row.grade}</DataTableCell>
                       <DataTableCell>{formatRoomLabel(row.room)}</DataTableCell>
                       <DataTableCell>
-                        <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
+                        <Badge
+                          className="whitespace-nowrap"
+                          variant={meta.variant}
+                        >
+                          {meta.label}
+                        </Badge>
                       </DataTableCell>
-                      <DataTableCell>{row.recordedCount} / {row.expectedRosterCount}</DataTableCell>
+                      <DataTableCell>
+                        {row.recordedCount} / {row.expectedRosterCount}
+                      </DataTableCell>
                       <DataTableCell>{row.revision}</DataTableCell>
                       <DataTableCell className="text-slate-500">
                         <div>{row.calendarReason || "-"}</div>
@@ -1389,7 +1646,11 @@ export function AttendanceOperationsPage() {
                             icon={CalendarDays}
                             onClick={() => setCalendarDialogRow(row)}
                             size="sm"
-                            title={!canManageCalendar ? "ไม่มีสิทธิ์จัดการปฏิทิน" : undefined}
+                            title={
+                              !canManageCalendar
+                                ? "ไม่มีสิทธิ์จัดการปฏิทิน"
+                                : undefined
+                            }
                             variant="outline"
                           >
                             แก้ปฏิทิน
@@ -1410,7 +1671,10 @@ export function AttendanceOperationsPage() {
               </DataTable>
               <TableCardList>
                 {sortedAnomalyRows.map((row) => {
-                  const meta = getCatalogMeta(anomalyCatalog.items, row.anomalyType);
+                  const meta = getCatalogMeta(
+                    anomalyCatalog.items,
+                    row.anomalyType,
+                  );
                   return (
                     <TableCard key={row.sessionId}>
                       <div className="flex flex-col gap-3">
@@ -1423,10 +1687,18 @@ export function AttendanceOperationsPage() {
                               {row.grade} / {formatRoomLabel(row.room)}
                             </div>
                           </div>
-                          <Badge className="whitespace-nowrap" variant={meta.variant}>{meta.label}</Badge>
+                          <Badge
+                            className="whitespace-nowrap"
+                            variant={meta.variant}
+                          >
+                            {meta.label}
+                          </Badge>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
-                          <span>บันทึกแล้ว {row.recordedCount} / {row.expectedRosterCount}</span>
+                          <span>
+                            บันทึกแล้ว {row.recordedCount} /{" "}
+                            {row.expectedRosterCount}
+                          </span>
                           <span>รอบ {row.revision}</span>
                         </div>
                         <div className="space-y-1 text-sm text-slate-500">
@@ -1441,7 +1713,11 @@ export function AttendanceOperationsPage() {
                             icon={CalendarDays}
                             onClick={() => setCalendarDialogRow(row)}
                             size="sm"
-                            title={!canManageCalendar ? "ไม่มีสิทธิ์จัดการปฏิทิน" : undefined}
+                            title={
+                              !canManageCalendar
+                                ? "ไม่มีสิทธิ์จัดการปฏิทิน"
+                                : undefined
+                            }
                             variant="outline"
                           >
                             แก้ปฏิทิน
@@ -1483,7 +1759,9 @@ export function AttendanceOperationsPage() {
           setTermDialogOpen(false);
           setTermDialogTerm(null);
         }}
-        onSubmit={async (values) => { await termMutation.mutateAsync(values); }}
+        onSubmit={async (values) => {
+          await termMutation.mutateAsync(values);
+        }}
         open={termDialogOpen}
         term={termDialogTerm}
       />
@@ -1491,7 +1769,9 @@ export function AttendanceOperationsPage() {
         date={calendarDialogRow?.date ?? ""}
         day={
           calendarDialogRow
-            ? calendarQuery.data?.find((day) => day.date === calendarDialogRow.date) ?? null
+            ? (calendarQuery.data?.find(
+                (day) => day.date === calendarDialogRow.date,
+              ) ?? null)
             : null
         }
         error={anomalyCalendarDayMutation.error}
@@ -1500,9 +1780,14 @@ export function AttendanceOperationsPage() {
         onClose={() => setCalendarDialogRow(null)}
         onGenerateCalendar={() => generateMutation.mutate()}
         onSave={(input) => {
-          const day = calendarQuery.data?.find((item) => item.date === calendarDialogRow?.date);
+          const day = calendarQuery.data?.find(
+            (item) => item.date === calendarDialogRow?.date,
+          );
           if (!day) return;
-          anomalyCalendarDayMutation.mutate({ calendarDayId: day.id, ...input });
+          anomalyCalendarDayMutation.mutate({
+            calendarDayId: day.id,
+            ...input,
+          });
         }}
         open={Boolean(calendarDialogRow)}
       />

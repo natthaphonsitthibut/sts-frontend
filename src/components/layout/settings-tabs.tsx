@@ -3,7 +3,6 @@ import { useRouteTab } from "../../hooks/useRouteTab";
 
 const SETTINGS_TAB_ROUTES = {
   system: "/settings",
-  "student-statuses": "/settings/student-statuses",
 } as const;
 
 /** Route-backed tab strip shared by every page under the settings section. */
@@ -14,10 +13,7 @@ export function SettingsTabs() {
     <Tabs
       aria-label="หมวดการตั้งค่า"
       onChange={setActiveTab}
-      options={[
-        { value: "system", label: "ตั้งค่าระบบ" },
-        { value: "student-statuses", label: "สถานะนักเรียน" },
-      ]}
+      options={[{ value: "system", label: "ตั้งค่าระบบ" }]}
       value={activeTab}
     />
   );

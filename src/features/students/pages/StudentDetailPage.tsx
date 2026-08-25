@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CircleAlert } from "lucide-react";
+import { ArrowLeft, CircleAlert, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { Card, SchoolIcon } from "../../../components/base";
+import { Badge, Card, SchoolIcon } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -105,21 +105,32 @@ export function StudentDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          can("dashboard") && !casesLoading ? (
-            <StudentCaseAction
-              activeCaseCount={activeCases.length}
-              activeCaseId={
-                activeCases.length > 0 ? Number(activeCases[0].id) : null
-              }
-              className="min-w-28"
-              mode="button"
-              studentId={studentId}
-              studentName={
-                `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
-                "นักเรียน"
-              }
-            />
-          ) : null
+          <div className="flex items-center gap-2">
+            {can("dashboard") && !casesLoading ? (
+              <StudentCaseAction
+                activeCaseCount={activeCases.length}
+                activeCaseId={
+                  activeCases.length > 0 ? Number(activeCases[0].id) : null
+                }
+                className="min-w-28"
+                mode="button"
+                studentId={studentId}
+                studentName={
+                  `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+                  "นักเรียน"
+                }
+              />
+            ) : null}
+            {can("manage-students") ? (
+              <NavButton
+                contextual
+                icon={SquarePen}
+                to={`/manage-students/${studentId}/edit`}
+              >
+                แก้ไขข้อมูล
+              </NavButton>
+            ) : null}
+          </div>
         }
         icon={SchoolIcon}
         navigation={
@@ -136,7 +147,8 @@ export function StudentDetailPage() {
       />
 
       <StudentProfileHeader
-        canEditPhoto={can("students")}
+        canEditPhoto={can("students") || can("manage-students")}
+        canRevealPii={can("manage-students")}
         contactsOpen={contactsOpen}
         key={studentId}
         locationOpen={locationOpen}
@@ -153,8 +165,60 @@ export function StudentDetailPage() {
           calendar instead of being measured against it in JS. */}
       <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
         <div className="flex min-h-0 flex-col gap-5">
+          <Card className="p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-bold text-slate-900">
+                  ข้อมูลประกอบการดูแล
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  รายการที่ผ่านการยืนยันแล้วจากข้อมูลนักเรียนและรอบติดตาม
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {profileSummaryQuery.data.careConsiderations.disadvantages
+                  .length +
+                  profileSummaryQuery.data.careConsiderations.disabilities
+                    .length}{" "}
+                รายการ
+              </Badge>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  [
+                    "ความด้อยโอกาส",
+                    profileSummaryQuery.data.careConsiderations.disadvantages,
+                  ],
+                  [
+                    "ความพิการ",
+                    profileSummaryQuery.data.careConsiderations.disabilities,
+                  ],
+                ] as const
+              ).map(([label, items]) => (
+                <section className="rounded-lg bg-slate-50 p-3" key={label}>
+                  <h3 className="text-sm font-semibold text-slate-700">
+                    {label}
+                  </h3>
+                  {items.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {items.map((item) => (
+                        <Badge key={item.code} variant="default">
+                          {item.labelTh}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500">
+                      ไม่มีรายการที่ยืนยันแล้ว
+                    </p>
+                  )}
+                </section>
+              ))}
+            </div>
+          </Card>
           <StudentActivityPanel
-            canManageComments={can("students")}
+            canManageComments={can("manage-students")}
             canViewCaseDetail={can("dashboard")}
             cases={cases}
             casesError={casesError}

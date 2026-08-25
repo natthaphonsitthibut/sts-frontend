@@ -4,6 +4,7 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AraIdDocumentBrand } from "../features/araid/components/AraIdDocumentBrand";
 import {
+  AboutPage,
   AdminAccessPage,
   AraIdSplashPage,
   AraIdLoginPage,
@@ -15,21 +16,19 @@ import {
   AraIdAuthorizePage,
   AuditLogDetailPage,
   AttendanceCheckInPage,
-  MyClassroomsPage,
-  TeacherAttendanceHistoryPage,
-  TeacherAttendanceLinksPage,
+  PublicCheckInPage,
   TeacherLineInvitationPage,
   TeacherLineLinkPage,
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
-  TeacherClassroomPage,
-  TeacherLinkLayout,
-  TeacherStudentProfilePage,
-  TeacherTimetablePage,
   AttendanceOperationsPage,
   CompletedPage,
+  CurriculumGradesPage,
+  CurriculumSubjectFormPage,
+  CurriculumSubjectsPage,
   ClassroomsPage,
+  ClassroomLinksPage,
   ClassroomDetailPage,
   CaseDetailPage,
   CaseReviewDetailPage,
@@ -42,20 +41,20 @@ import {
   ImportQuarantineDetailPage,
   LockedPage,
   MainPage,
-  CurriculumGradesPage,
-  CurriculumSubjectFormPage,
-  CurriculumSubjectsPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
   ManageUserFormPage,
   ManageUsersPage,
+  MasterDataPage,
   NotFoundPage,
   NotificationsPage,
   ProfilePage,
+  PrivacyPolicyPage,
   ReportPage,
   RouteSuspense,
   SchoolStructurePage,
   StudentDetailPage,
+  StudentCreatePage,
   StudentEditPage,
   StudentListPage,
   StudentStatusesPage,
@@ -63,10 +62,11 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TaskGoogleCallbackPage,
   TeacherFormPage,
+  TeacherProfilePage,
   TeacherCommentReportsPage,
   TeachersPage,
-  TimetablePage,
   UserDetailPage,
 } from "./lazy-pages";
 import {
@@ -75,10 +75,6 @@ import {
   LegacyCasesRedirect,
   LegacyRouteRedirect,
   LegacyTaskDetailRedirect,
-  TeacherClassroomDefaultRedirect,
-  TeacherHistoryDefaultRedirect,
-  TimetableDefaultRedirect,
-  AttendanceHistoryDefaultRedirect,
 } from "./route-redirects";
 
 function withSuspense(children: ReactNode): ReactNode {
@@ -88,9 +84,14 @@ function withSuspense(children: ReactNode): ReactNode {
 function protectedElement(
   children: ReactNode,
   permission?: string | string[],
+  options?: { requireGlobalScope?: boolean; role?: string | string[] },
 ): ReactNode {
   return (
-    <ProtectedRoute permission={permission}>
+    <ProtectedRoute
+      permission={permission}
+      requireGlobalScope={options?.requireGlobalScope}
+      role={options?.role}
+    >
       {withSuspense(children)}
     </ProtectedRoute>
   );
@@ -159,23 +160,44 @@ export const router = createBrowserRouter([
       },
       {
         path: "students",
-        element: protectedElement(<StudentListPage />, "students"),
+        element: protectedElement(<StudentListPage mode="view" />, "students"),
       },
       {
-        path: "students/history",
-        element: protectedElement(<StudentListPage />, "students"),
+        path: "manage-students",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
       },
       {
-        path: "students/export",
-        element: protectedElement(<StudentListPage />, "students"),
+        path: "manage-students/history",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
+      },
+      {
+        path: "manage-students/export",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
       },
       {
         path: "students/:id",
-        element: protectedElement(<StudentDetailPage />, "students"),
+        element: protectedElement(<StudentDetailPage />, [
+          "students",
+          "manage-students",
+          "classrooms",
+        ]),
       },
       {
-        path: "students/:id/edit",
-        element: protectedElement(<StudentEditPage />, "students"),
+        path: "manage-students/new",
+        element: protectedElement(<StudentCreatePage />, "manage-students"),
+      },
+      {
+        path: "manage-students/:id/edit",
+        element: protectedElement(<StudentEditPage />, "manage-students"),
       },
       {
         path: "attendance",
@@ -183,7 +205,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance/roster",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/check-in",
@@ -191,19 +213,19 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance/history",
-        element: <AttendanceHistoryDefaultRedirect />,
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/attendance",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/imports",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "attendance/history/delegations",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+        element: <LegacyRouteRedirect to="/attendance/check-in" />,
       },
       {
         path: "cases",
@@ -231,9 +253,13 @@ export const router = createBrowserRouter([
       },
       {
         path: "attendance-links",
+        element: <LegacyRouteRedirect to="/attendance/classroom-links" />,
+      },
+      {
+        path: "attendance/classroom-links",
         element: protectedElement(
-          <TeacherAttendanceLinksPage />,
-          "manage-teacher-access",
+          <ClassroomLinksPage />,
+          "manage-classroom-links",
         ),
       },
       {
@@ -242,18 +268,6 @@ export const router = createBrowserRouter([
           <AttendanceOperationsPage />,
           "attendance-dashboard",
         ),
-      },
-      {
-        path: "timetable",
-        element: protectedElement(<TimetableDefaultRedirect />, "timetable"),
-      },
-      {
-        path: "timetable/mine",
-        element: protectedElement(<TimetablePage />, "timetable"),
-      },
-      {
-        path: "timetable/rooms",
-        element: protectedElement(<TimetablePage />, "timetable"),
       },
       {
         path: "classrooms",
@@ -300,7 +314,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "import-data/quarantine/:id",
-        element: protectedElement(<ImportQuarantineDetailPage />, "import-data"),
+        element: protectedElement(
+          <ImportQuarantineDetailPage />,
+          "import-data",
+        ),
       },
       {
         path: "manage-users",
@@ -328,35 +345,43 @@ export const router = createBrowserRouter([
       },
       {
         path: "curriculum",
-        element: protectedElement(
-          <CurriculumGradesPage />,
-          "manage-curriculum",
-        ),
+        element: protectedElement(<CurriculumGradesPage />, "manage-subjects"),
       },
       {
         path: "curriculum/:gradeLevelId",
         element: protectedElement(
           <CurriculumSubjectsPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
       },
       {
         path: "curriculum/:gradeLevelId/subjects/new",
         element: protectedElement(
           <CurriculumSubjectFormPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
       },
       {
         path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
         element: protectedElement(
           <CurriculumSubjectFormPage />,
-          "manage-curriculum",
+          "manage-subjects",
         ),
       },
       {
+        path: "subjects",
+        element: <LegacyRouteRedirect to="/curriculum" />,
+      },
+      {
+        path: "teachers",
+        element: protectedElement(<TeachersPage mode="view" />, "teachers"),
+      },
+      {
         path: "manage-teachers",
-        element: protectedElement(<TeachersPage />, "manage-teachers"),
+        element: protectedElement(
+          <TeachersPage mode="manage" />,
+          "manage-teachers",
+        ),
       },
       {
         path: "manage-teachers/new",
@@ -365,6 +390,14 @@ export const router = createBrowserRouter([
       {
         path: "manage-teachers/:id/edit",
         element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+      },
+      {
+        path: "teachers/:id",
+        element: protectedElement(<TeacherProfilePage />, [
+          "teachers",
+          "manage-teachers",
+          "manage-classroom-links",
+        ]),
       },
       {
         path: "manage-role-groups",
@@ -397,7 +430,21 @@ export const router = createBrowserRouter([
       },
       {
         path: "settings/student-statuses",
-        element: protectedElement(<StudentStatusesPage />, "settings"),
+        element: <LegacyRouteRedirect to="/master-data/student-statuses" />,
+      },
+      {
+        path: "master-data",
+        element: protectedElement(<MasterDataPage />, "master-data", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
+      },
+      {
+        path: "master-data/student-statuses",
+        element: protectedElement(<StudentStatusesPage />, "master-data", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
       },
       {
         path: "tasks/:taskId",
@@ -419,6 +466,10 @@ export const router = createBrowserRouter([
   {
     path: "/task/:token/report",
     element: withSuspense(<ReportPage />),
+  },
+  {
+    path: "/task/google-callback",
+    element: withSuspense(<TaskGoogleCallbackPage />),
   },
   {
     path: "/task/:token/success",
@@ -460,64 +511,8 @@ export const router = createBrowserRouter([
     element: withSuspense(<TeacherLineLinkResultPage />),
   },
   {
-    path: "/teacher-access",
-    element: withSuspense(<TeacherLinkLayout />),
-    children: [
-      { index: true, element: withSuspense(<MyClassroomsPage />) },
-      {
-        path: "timetable",
-        element: withSuspense(<TeacherTimetablePage />),
-      },
-      {
-        path: "classes/:assignmentId",
-        element: <TeacherClassroomDefaultRedirect />,
-      },
-      {
-        path: "classes/:assignmentId/roster",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "classes/:assignmentId/check-in",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        // Same tab, previous name — kept so links already handed out still open.
-        path: "classes/:assignmentId/attendance",
-        element: <TeacherClassroomDefaultRedirect />,
-      },
-      {
-        path: "attendance/:assignmentId",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "attendance/:assignmentId/roster",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "attendance/:assignmentId/check-in",
-        element: withSuspense(<TeacherClassroomPage />),
-      },
-      {
-        path: "classes/:assignmentId/students/:studentUuid",
-        element: withSuspense(<TeacherStudentProfilePage />),
-      },
-      {
-        path: "classes/:assignmentId/history",
-        element: <TeacherHistoryDefaultRedirect />,
-      },
-      {
-        path: "classes/:assignmentId/history/attendance",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-      {
-        path: "classes/:assignmentId/history/imports",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-      {
-        path: "classes/:assignmentId/history/delegations",
-        element: withSuspense(<TeacherAttendanceHistoryPage />),
-      },
-    ],
+    path: "/check-in",
+    element: withSuspense(<PublicCheckInPage />),
   },
   {
     path: "/araid",
@@ -560,6 +555,14 @@ export const router = createBrowserRouter([
         element: withSuspense(<AraIdAuthorizePage />),
       },
     ],
+  },
+  {
+    path: "/about",
+    element: withSuspense(<AboutPage />),
+  },
+  {
+    path: "/privacy",
+    element: withSuspense(<PrivacyPolicyPage />),
   },
   {
     path: "/login",

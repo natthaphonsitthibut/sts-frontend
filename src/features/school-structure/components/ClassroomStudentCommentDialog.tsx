@@ -21,6 +21,7 @@ import {
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import {
   useCreateClassroomStudentComment,
+  useStudentCommentConcernLevels,
   useStudentProblemCategories,
 } from "../hooks/useSchoolStructure";
 import {
@@ -30,6 +31,7 @@ import {
 } from "../lib/classroom-student-comment-form";
 import type {
   ClassroomRosterStudent,
+  ClassroomStudentCommentConcernLevelOption,
   ClassroomStudentProblemCategoryOption,
 } from "../types/school-structure.types";
 
@@ -44,6 +46,7 @@ interface ClassroomStudentCommentDialogProps {
     | null;
   onOpenChange: (open: boolean) => void;
   problemCategories?: ClassroomStudentProblemCategoryOption[];
+  concernLevels?: ClassroomStudentCommentConcernLevelOption[];
   /**
    * Replaces the authenticated write. Teacher links post through their own
    * grant-scoped endpoint instead of the school-structure API.
@@ -52,6 +55,7 @@ interface ClassroomStudentCommentDialogProps {
     classroomId: number;
     studentUuid: string;
     problemCategory: ClassroomStudentCommentFormValues["problemCategory"];
+    concernLevelCode: ClassroomStudentCommentFormValues["concernLevelCode"];
     problemDescription: string;
   }) => Promise<unknown>;
   isSubmitting?: boolean;
@@ -60,6 +64,7 @@ interface ClassroomStudentCommentDialogProps {
 
 export function ClassroomStudentCommentDialog({
   classroomId,
+  concernLevels: providedConcernLevels,
   isSubmitting,
   onOpenChange,
   problemCategories: providedProblemCategories,
@@ -71,15 +76,23 @@ export function ClassroomStudentCommentDialog({
   const problemCategoriesQuery = useStudentProblemCategories(
     providedProblemCategories === undefined,
   );
+  const concernLevelsQuery = useStudentCommentConcernLevels(
+    providedConcernLevels === undefined,
+  );
   const problemCategories =
     providedProblemCategories ?? problemCategoriesQuery.data ?? [];
+  const concernLevels = providedConcernLevels ?? concernLevelsQuery.data ?? [];
   const form = useForm<ClassroomStudentCommentFormValues>({
-    defaultValues: { problemDescription: "" },
+    defaultValues: { concernLevelCode: "NOTE", problemDescription: "" },
     resolver: zodResolver(classroomStudentCommentFormSchema),
   });
   const selectedProblemCategory = useWatch({
     control: form.control,
     name: "problemCategory",
+  });
+  const selectedConcernLevel = useWatch({
+    control: form.control,
+    name: "concernLevelCode",
   });
   const problemDescription = useWatch({
     control: form.control,
@@ -89,21 +102,25 @@ export function ClassroomStudentCommentDialog({
 
   if (!student) return null;
 
-  const fullName = `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "-";
+  const fullName =
+    `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "-";
 
   function handleOpenChange(nextOpen: boolean): void {
     if (!nextOpen) {
-      form.reset({ problemDescription: "" });
+      form.reset({ concernLevelCode: "NOTE", problemDescription: "" });
       mutation.reset();
     }
     onOpenChange(nextOpen);
   }
 
-  async function handleSubmit(values: ClassroomStudentCommentFormValues): Promise<void> {
+  async function handleSubmit(
+    values: ClassroomStudentCommentFormValues,
+  ): Promise<void> {
     const payload = {
       classroomId,
       studentUuid: student!.studentUuid,
       problemCategory: values.problemCategory,
+      concernLevelCode: values.concernLevelCode,
       problemDescription: values.problemDescription,
     };
     if (submitComment) {
@@ -116,7 +133,10 @@ export function ClassroomStudentCommentDialog({
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="max-w-xl" onClose={() => handleOpenChange(false)}>
+      <DialogContent
+        className="max-w-xl"
+        onClose={() => handleOpenChange(false)}
+      >
         <DialogHeader>
           <DialogTitle icon={MessageSquareText}>ความคิดเห็น</DialogTitle>
         </DialogHeader>
@@ -126,7 +146,9 @@ export function ClassroomStudentCommentDialog({
             <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">
               <StudentAvatar name={fullName} photoUrl={student.photoUrl} />
               <div className="min-w-0">
-                <p className="truncate font-semibold text-slate-900">{fullName}</p>
+                <p className="truncate font-semibold text-slate-900">
+                  {fullName}
+                </p>
                 <p className="mt-0.5 text-sm text-slate-600">
                   รหัสประจำตัว: {student.studentNumber ?? "-"}
                 </p>
@@ -138,7 +160,10 @@ export function ClassroomStudentCommentDialog({
                 หัวข้อปัญหา
               </FormLabel>
               <Select
-                disabled={problemCategoriesQuery.isLoading || problemCategories.length === 0}
+                disabled={
+                  problemCategoriesQuery.isLoading ||
+                  problemCategories.length === 0
+                }
                 id="classroom-student-problem-category"
                 {...registerField(form, "problemCategory")}
               >
@@ -162,7 +187,42 @@ export function ClassroomStudentCommentDialog({
             </FormItem>
 
             <FormItem>
-              <FormLabel htmlFor="classroom-student-problem-description" required>
+              <FormLabel
+                htmlFor="classroom-student-comment-concern-level"
+                required
+              >
+                ระดับข้อสังเกต
+              </FormLabel>
+              <Select
+                disabled={
+                  concernLevelsQuery.isLoading || concernLevels.length === 0
+                }
+                id="classroom-student-comment-concern-level"
+                {...registerField(form, "concernLevelCode")}
+              >
+                {concernLevels.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-sm text-slate-500">
+                บันทึกทั่วไปจะอยู่ในประวัติ
+                แต่ไม่เพิ่มนักเรียนเข้ากลุ่มเฝ้าระวัง
+              </p>
+              <FormMessage<ClassroomStudentCommentFormValues> name="concernLevelCode" />
+              {concernLevelsQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  โหลดระดับข้อสังเกตไม่สำเร็จ กรุณาปิดแล้วเปิดแบบฟอร์มอีกครั้ง
+                </p>
+              ) : null}
+            </FormItem>
+
+            <FormItem>
+              <FormLabel
+                htmlFor="classroom-student-problem-description"
+                required
+              >
                 คำอธิบาย
               </FormLabel>
               <Textarea
@@ -173,9 +233,7 @@ export function ClassroomStudentCommentDialog({
                 {...registerField(form, "problemDescription")}
               />
               <div className="flex items-start justify-between gap-3">
-                <FormMessage<ClassroomStudentCommentFormValues>
-                  name="problemDescription"
-                />
+                <FormMessage<ClassroomStudentCommentFormValues> name="problemDescription" />
                 <p className="shrink-0 text-xs text-slate-500">
                   {problemDescription.length}/2000
                 </p>
@@ -201,11 +259,15 @@ export function ClassroomStudentCommentDialog({
             <Button
               disabled={
                 !selectedProblemCategory ||
+                !selectedConcernLevel ||
                 !problemDescription.trim() ||
-                problemCategories.length === 0
+                problemCategories.length === 0 ||
+                concernLevels.length === 0
               }
               fullWidth
-              isLoading={submitComment ? Boolean(isSubmitting) : mutation.isPending}
+              isLoading={
+                submitComment ? Boolean(isSubmitting) : mutation.isPending
+              }
               loadingText="กำลังบันทึก"
               type="submit"
             >

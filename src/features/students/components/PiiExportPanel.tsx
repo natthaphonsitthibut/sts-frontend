@@ -39,10 +39,14 @@ import {
 } from "../../../components/layout/data-table";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { formatThaiDateTime, formatThaiTimeRemaining } from "../../../lib/date-time";
+import {
+  formatThaiDateTime,
+  formatThaiTimeRemaining,
+} from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
-import { PII_REASON_OPTIONS, isPiiReasonCode } from "../pii.constants";
+import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
+import { isPiiReasonCode } from "../pii.constants";
 import {
   useApprovePiiExportRequest,
   useCreatePiiExportRequest,
@@ -92,7 +96,11 @@ const piiExportSchema = z.object({
     "COORDINATE_AGENCY",
     "OTHER",
   ]),
-  reason_note: z.string().trim().min(3, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร").max(500),
+  reason_note: z
+    .string()
+    .trim()
+    .min(3, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร")
+    .max(500),
 });
 
 type PiiExportFormValues = z.infer<typeof piiExportSchema>;
@@ -135,12 +143,12 @@ function toNumericId(value: string | undefined): number | null {
 function hasScopeValue(scope: PiiExportScope | null): scope is PiiExportScope {
   return Boolean(
     scope?.global ||
-      scope?.provinces?.length ||
-      scope?.districts?.length ||
-      scope?.sub_districts?.length ||
-      scope?.school_ids?.length ||
-      scope?.grade_levels?.length ||
-      scope?.room_ids?.length,
+    scope?.provinces?.length ||
+    scope?.districts?.length ||
+    scope?.sub_districts?.length ||
+    scope?.school_ids?.length ||
+    scope?.grade_levels?.length ||
+    scope?.room_ids?.length,
   );
 }
 
@@ -150,11 +158,16 @@ function formatScopeLabel(scope: PiiExportScope | null): string {
   }
   const parts: string[] = [];
   if (scope.global) parts.push("ทั้งประเทศ");
-  if (scope.provinces?.length) parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
-  if (scope.districts?.length) parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
-  if (scope.sub_districts?.length) parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
-  if (scope.school_ids?.length) parts.push(`โรงเรียน: ${scope.school_ids.join(", ")}`);
-  if (scope.grade_levels?.length) parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
+  if (scope.provinces?.length)
+    parts.push(`จังหวัด: ${scope.provinces.join(", ")}`);
+  if (scope.districts?.length)
+    parts.push(`อำเภอ/เขต: ${scope.districts.join(", ")}`);
+  if (scope.sub_districts?.length)
+    parts.push(`ตำบล/แขวง: ${scope.sub_districts.join(", ")}`);
+  if (scope.school_ids?.length)
+    parts.push(`โรงเรียน: ${scope.school_ids.join(", ")}`);
+  if (scope.grade_levels?.length)
+    parts.push(`ระดับชั้น: ${scope.grade_levels.join(", ")}`);
   if (scope.room_ids?.length) parts.push(`ห้อง: ${scope.room_ids.join(", ")}`);
   return parts.length > 0 ? parts.join(" · ") : "ยังไม่กำหนดขอบเขต";
 }
@@ -209,7 +222,10 @@ function buildPiiExportScope(
     });
   }
   if (actorScope?.districts?.length) {
-    return withClassScope({ provinces: actorScope.provinces, districts: actorScope.districts });
+    return withClassScope({
+      provinces: actorScope.provinces,
+      districts: actorScope.districts,
+    });
   }
   if (actorScope?.provinces?.length) {
     return withClassScope({ provinces: actorScope.provinces });
@@ -229,10 +245,16 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 function requestActorLabel(request: PiiExportRequest): string {
-  return request.requester_name || request.requester_username || `#${request.requester_user_id}`;
+  return (
+    request.requester_name ||
+    request.requester_username ||
+    `#${request.requester_user_id}`
+  );
 }
 
 export function PiiExportPanel(props: PiiExportPanelProps) {
+  const reasonOptionsQuery = usePiiRevealOptions();
+  const reasonOptions = reasonOptionsQuery.options;
   const user = useAuthSessionStore((state) => state.user);
   const form = useForm<PiiExportFormValues>({
     defaultValues: DEFAULT_FORM_VALUES,
@@ -246,12 +268,19 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
   const [serverMessage, setServerMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<PiiExportRequest | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<PiiExportRequest | null>(
+    null,
+  );
   const [rejectReason, setRejectReason] = useState("");
   const actorScope = user?.data_scope as PiiExportScope | undefined;
-  const exportScope = useMemo(() => buildPiiExportScope(props, actorScope), [props, actorScope]);
+  const exportScope = useMemo(
+    () => buildPiiExportScope(props, actorScope),
+    [props, actorScope],
+  );
   const scopeReady = hasScopeValue(exportScope);
-  const scopeLabel = scopeReady ? formatScopeLabel(exportScope) : "ยังไม่กำหนดขอบเขต";
+  const scopeLabel = scopeReady
+    ? formatScopeLabel(exportScope)
+    : "ยังไม่กำหนดขอบเขต";
   const isAdmin = user?.roles?.includes("ADMIN") ?? false;
   const selectedStudents = props.selectedStudents ?? EMPTY_SELECTED_STUDENTS;
   const selectedStudentIds = useMemo(
@@ -270,8 +299,11 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
   const requests = listQuery.data?.data ?? [];
 
   function handleReasonChange(value: string): void {
-    if (isPiiReasonCode(value)) {
-      form.setValue("reason_code", value, { shouldDirty: true, shouldValidate: true });
+    if (isPiiReasonCode(value, reasonOptions)) {
+      form.setValue("reason_code", value, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     }
   }
 
@@ -287,12 +319,20 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
       const result = await createMutation.mutateAsync({
         scope: exportScope,
         include_full_national_id: values.include_full_national_id,
-        selected_student_uuids: willExportSelected ? selectedStudentIds : undefined,
+        selected_student_uuids: willExportSelected
+          ? selectedStudentIds
+          : undefined,
         reason_code: values.reason_code,
         reason_note: values.reason_note.trim(),
       });
-      setSuccessMessage(`ส่งคำขอแล้ว (${result.data.row_estimate ?? 0} แถวโดยประมาณ)`);
-      form.reset({ ...values, reason_note: "", include_full_national_id: false });
+      setSuccessMessage(
+        `ส่งคำขอแล้ว (${result.data.row_estimate ?? 0} แถวโดยประมาณ)`,
+      );
+      form.reset({
+        ...values,
+        reason_note: "",
+        include_full_national_id: false,
+      });
     } catch (error) {
       setServerMessage(getApiErrorMessage(error, "ส่งคำขอส่งออกไม่สำเร็จ"));
     }
@@ -323,7 +363,10 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
       return;
     }
     try {
-      await rejectMutation.mutateAsync({ id: rejectTarget.id, rejected_reason: trimmed });
+      await rejectMutation.mutateAsync({
+        id: rejectTarget.id,
+        rejected_reason: trimmed,
+      });
       setRejectTarget(null);
       setRejectReason("");
       setSuccessMessage("ปฏิเสธคำขอแล้ว");
@@ -345,11 +388,16 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
 
   return (
     <div className="space-y-4">
-      <Dialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && setRejectTarget(null)}>
+      <Dialog
+        open={Boolean(rejectTarget)}
+        onOpenChange={(open) => !open && setRejectTarget(null)}
+      >
         <DialogContent onClose={() => setRejectTarget(null)}>
           <DialogHeader>
             <DialogTitle>ปฏิเสธคำขอส่งออก</DialogTitle>
-            <DialogDescription>{rejectTarget ? requestActorLabel(rejectTarget) : ""}</DialogDescription>
+            <DialogDescription>
+              {rejectTarget ? requestActorLabel(rejectTarget) : ""}
+            </DialogDescription>
           </DialogHeader>
           <DialogBody>
             <FormItem>
@@ -384,13 +432,19 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
           <div>
             <div className="flex items-center gap-2">
               <FileDown className="size-5 text-primary" aria-hidden="true" />
-              <h2 className="text-base font-bold text-slate-900">ส่งออกข้อมูลส่วนบุคคล</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                ส่งออกข้อมูลส่วนบุคคล
+              </h2>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              ขอบเขต: {scopeLabel} · จำนวนที่จะส่งออก {exportCount.toLocaleString("th-TH")} คน
+              ขอบเขต: {scopeLabel} · จำนวนที่จะส่งออก{" "}
+              {exportCount.toLocaleString("th-TH")} คน
             </p>
           </div>
-          <RefreshButton onRefresh={() => listQuery.refetch()} updatedAt={listQuery.dataUpdatedAt} />
+          <RefreshButton
+            onRefresh={() => listQuery.refetch()}
+            updatedAt={listQuery.dataUpdatedAt}
+          />
         </div>
       </section>
 
@@ -408,7 +462,9 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
         <Alert variant="warning">
           <AlertTitle>ลิงก์ดาวน์โหลดแสดงครั้งเดียว</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>ดาวน์โหลดทันทีหลังอนุมัติ หากปิดหน้านี้ต้องสร้างลิงก์ดาวน์โหลดใหม่</span>
+            <span>
+              ดาวน์โหลดทันทีหลังอนุมัติ หากปิดหน้านี้ต้องสร้างลิงก์ดาวน์โหลดใหม่
+            </span>
             <Button
               icon={Download}
               isLoading={downloadMutation.isPending}
@@ -431,17 +487,32 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
           )}
         >
           <div>
-            <div className={cn("font-semibold", willExportSelected ? "text-primary-dark" : "text-slate-900")}>
-              {willExportSelected ? "ส่งออกเฉพาะนักเรียนที่เลือก" : "ส่งออกตามตัวกรองปัจจุบัน"}
+            <div
+              className={cn(
+                "font-semibold",
+                willExportSelected ? "text-primary-dark" : "text-slate-900",
+              )}
+            >
+              {willExportSelected
+                ? "ส่งออกเฉพาะนักเรียนที่เลือก"
+                : "ส่งออกตามตัวกรองปัจจุบัน"}
             </div>
-            <div className={willExportSelected ? "text-primary-dark/80" : "text-slate-600"}>
+            <div
+              className={
+                willExportSelected ? "text-primary-dark/80" : "text-slate-600"
+              }
+            >
               {willExportSelected
                 ? `เลือกไว้ ${selectedCount.toLocaleString("th-TH")} คน`
                 : `รวม ${props.totalCount.toLocaleString("th-TH")} คนในขอบเขตที่แสดงอยู่`}
             </div>
           </div>
           {willExportSelected ? (
-            <Button onClick={props.onClearSelectedStudents} size="sm" variant="outline">
+            <Button
+              onClick={props.onClearSelectedStudents}
+              size="sm"
+              variant="outline"
+            >
               ล้างรายการที่เลือก
             </Button>
           ) : null}
@@ -452,7 +523,8 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
             <div className="flex flex-wrap gap-2">
               {selectedStudents.slice(0, 10).map((student) => (
                 <Badge key={student.id} variant="secondary">
-                  {student.name} · {student.grade || "-"} / {student.room || "-"}
+                  {student.name} · {student.grade || "-"} /{" "}
+                  {student.room || "-"}
                 </Badge>
               ))}
               {selectedCount > 10 ? (
@@ -473,7 +545,8 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
             }
           />
           <p className="mt-1 pl-8 text-xs font-medium text-slate-500">
-            ค่าเริ่มต้นจะปิดบังเลขบัตรประชาชน เลือกเฉพาะกรณีจำเป็นและมีเหตุผลรองรับ
+            ค่าเริ่มต้นจะปิดบังเลขบัตรประชาชน
+            เลือกเฉพาะกรณีจำเป็นและมีเหตุผลรองรับ
           </p>
         </div>
 
@@ -486,7 +559,10 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
               <Combobox
                 id="pii-export-reason"
                 onChange={handleReasonChange}
-                options={PII_REASON_OPTIONS}
+                disabled={
+                  reasonOptionsQuery.isLoading || reasonOptionsQuery.isError
+                }
+                options={reasonOptions}
                 searchable={false}
                 value={reasonCode}
               />
@@ -519,21 +595,34 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
           </div>
         </Form>
 
-        {(includeFullNationalId || exportScope?.global) ? (
+        {includeFullNationalId || exportScope?.global ? (
           <Alert className="mt-4" variant="warning">
             <AlertTriangle className="mr-2 inline size-4" aria-hidden="true" />
-            คำขอนี้มีความเสี่ยงสูง ผู้อนุมัติจะเห็น flag เลขบัตรเต็ม/ขอบเขตกว้างก่อนอนุมัติ
+            คำขอนี้มีความเสี่ยงสูง ผู้อนุมัติจะเห็น flag
+            เลขบัตรเต็ม/ขอบเขตกว้างก่อนอนุมัติ
           </Alert>
         ) : null}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-slate-900">คำขอส่งออกล่าสุด</h2>
-          <Badge variant="secondary">{requests.length.toLocaleString("th-TH")} รายการ</Badge>
+          <h2 className="text-base font-bold text-slate-900">
+            คำขอส่งออกล่าสุด
+          </h2>
+          <Badge variant="secondary">
+            {requests.length.toLocaleString("th-TH")} รายการ
+          </Badge>
         </div>
         <DataTable
-          headings={["เวลา", "ผู้ขอ", "สถานะ", "เหตุผล", "จำนวน", "หมดอายุ/ดาวน์โหลด", "เครื่องมือ"]}
+          headings={[
+            "เวลา",
+            "ผู้ขอ",
+            "สถานะ",
+            "เหตุผล",
+            "จำนวน",
+            "หมดอายุ/ดาวน์โหลด",
+            "เครื่องมือ",
+          ]}
           minWidthClassName="min-w-[1040px]"
           responsive={false}
         >
@@ -547,27 +636,46 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
             requests.map((request) => (
               <DataTableRow key={request.id}>
                 <DataTableCell>
-                  <div className="font-medium text-slate-800">{formatThaiDateTime(request.created_at)}</div>
-                  <div className="text-xs text-slate-500">{request.id.slice(0, 8)}</div>
+                  <div className="font-medium text-slate-800">
+                    {formatThaiDateTime(request.created_at)}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {request.id.slice(0, 8)}
+                  </div>
                 </DataTableCell>
                 <DataTableCell>{requestActorLabel(request)}</DataTableCell>
                 <DataTableCell>
-                  <Badge variant={STATUS_VARIANTS[request.status]}>{STATUS_LABELS[request.status]}</Badge>
+                  <Badge variant={STATUS_VARIANTS[request.status]}>
+                    {STATUS_LABELS[request.status]}
+                  </Badge>
                   {request.include_full_national_id ? (
-                    <div className="mt-1 text-xs font-medium text-warning-700">ขอเลขบัตรเต็ม</div>
+                    <div className="mt-1 text-xs font-medium text-warning-700">
+                      ขอเลขบัตรเต็ม
+                    </div>
                   ) : null}
                 </DataTableCell>
                 <DataTableCell>
-                  <div>{PII_REASON_OPTIONS.find((option) => option.value === request.reason_code)?.label}</div>
-                  <div className="line-clamp-1 text-xs text-slate-500">{request.reason_note}</div>
+                  <div>
+                    {reasonOptions.find(
+                      (option) => option.value === request.reason_code,
+                    )?.label ?? request.reason_code}
+                  </div>
+                  <div className="line-clamp-1 text-xs text-slate-500">
+                    {request.reason_note}
+                  </div>
                 </DataTableCell>
                 <DataTableCell>
-                  {request.selected_student_count && request.selected_student_count > 0
+                  {request.selected_student_count &&
+                  request.selected_student_count > 0
                     ? `${request.selected_student_count.toLocaleString("th-TH")} คนที่เลือก`
                     : `${request.row_estimate?.toLocaleString("th-TH") ?? "-"} คน`}
                 </DataTableCell>
                 <DataTableCell>
-                  <div>{request.downloaded_at ? formatThaiDateTime(request.downloaded_at) : formatThaiTimeRemaining(request.download_expires_at)}</div>
+                  <div>
+                    {request.downloaded_at
+                      ? formatThaiDateTime(request.downloaded_at)
+                      : formatThaiTimeRemaining(request.download_expires_at)}
+                  </div>
                 </DataTableCell>
                 <DataTableCell className="text-right">
                   <div className="flex justify-end gap-2">

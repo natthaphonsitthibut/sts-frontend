@@ -6,6 +6,16 @@ export const AdminAccessPage = lazy(() =>
     default: module.AdminAccessPage,
   })),
 );
+export const AboutPage = lazy(() =>
+  import("../features/public-info/pages/PublicInfoPages").then((module) => ({
+    default: module.AboutPage,
+  })),
+);
+export const PrivacyPolicyPage = lazy(() =>
+  import("../features/public-info/pages/PublicInfoPages").then((module) => ({
+    default: module.PrivacyPolicyPage,
+  })),
+);
 export const AraIdSplashPage = lazy(() =>
   import("../features/araid/pages/AraIdSplashPage").then((module) => ({
     default: module.AraIdSplashPage,
@@ -69,11 +79,14 @@ export const NotificationsPage = lazy(() =>
   ),
 );
 export const AttendanceCheckInPage = lazy(() =>
-  import("../features/attendance/pages/AttendanceCheckInPage").then(
-    (module) => ({
-      default: module.AttendanceCheckInPage,
-    }),
-  ),
+  import("../features/check-in/pages/InternalCheckInPage").then((module) => ({
+    default: module.InternalCheckInPage,
+  })),
+);
+export const PublicCheckInPage = lazy(() =>
+  import("../features/check-in/pages/PublicCheckInPage").then((module) => ({
+    default: module.PublicCheckInPage,
+  })),
 );
 export const AttendanceOperationsPage = lazy(() =>
   import("../features/attendance/pages/AttendanceOperationsPage").then(
@@ -123,6 +136,11 @@ export const TeacherFormPage = lazy(() =>
     default: module.TeacherFormPage,
   })),
 );
+export const TeacherProfilePage = lazy(() =>
+  import("../features/teachers/pages/TeacherProfilePage").then((module) => ({
+    default: module.TeacherProfilePage,
+  })),
+);
 export const ManageUsersPage = lazy(() =>
   import("../features/admin/pages/ManageUsersPage").then((module) => ({
     default: module.ManageUsersPage,
@@ -136,6 +154,11 @@ export const UserDetailPage = lazy(() =>
 export const StudentEditPage = lazy(() =>
   import("../features/students/pages/StudentEditPage").then((module) => ({
     default: module.StudentEditPage,
+  })),
+);
+export const StudentCreatePage = lazy(() =>
+  import("../features/students/pages/StudentCreatePage").then((module) => ({
+    default: module.StudentCreatePage,
   })),
 );
 export const ManageUserFormPage = lazy(() =>
@@ -154,6 +177,11 @@ export const StudentStatusesPage = lazy(() =>
       default: module.StudentStatusesPage,
     }),
   ),
+);
+export const MasterDataPage = lazy(() =>
+  import("../features/master-data/pages/MasterDataPage").then((module) => ({
+    default: module.MasterDataPage,
+  })),
 );
 export const DataExportsPage = lazy(() =>
   import("../features/data-exports/pages/DataExportsPage").then((module) => ({
@@ -177,11 +205,6 @@ export const ImportQuarantineDetailPage = lazy(() =>
     }),
   ),
 );
-export const TimetablePage = lazy(() =>
-  import("../features/timetable/pages/TimetablePage").then((module) => ({
-    default: module.TimetablePage,
-  })),
-);
 export const SchoolStructurePage = lazy(() =>
   import("../features/school-structure/pages/SchoolStructurePage").then(
     (module) => ({
@@ -194,6 +217,11 @@ export const ClassroomsPage = lazy(() =>
     (module) => ({
       default: module.ClassroomsPage,
     }),
+  ),
+);
+export const ClassroomLinksPage = lazy(() =>
+  import("../features/classroom-links/pages/ClassroomLinksPage").then(
+    (module) => ({ default: module.ClassroomLinksPage }),
   ),
 );
 export const ClassroomDetailPage = lazy(() =>
@@ -258,68 +286,13 @@ export const TeacherLineLinkResultPage = lazy(() =>
   ),
 );
 
-export const TeacherAttendanceLinksPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAttendanceLinksPage").then(
-    (module) => ({
-      default: module.TeacherAttendanceLinksPage,
-    }),
-  ),
-);
-
-export const TeacherLinkLayout = lazy(() =>
-  import("../features/teacher-access/pages/TeacherLinkLayout").then(
-    (module) => ({
-      default: module.TeacherLinkLayout,
-    }),
-  ),
-);
-
-export const MyClassroomsPage = lazy(() =>
-  import("../features/teacher-access/pages/MyClassroomsPage").then(
-    (module) => ({
-      default: module.MyClassroomsPage,
-    }),
-  ),
-);
-
-export const TeacherClassroomPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherClassroomPage").then(
-    (module) => ({
-      default: module.TeacherClassroomPage,
-    }),
-  ),
-);
-
-export const TeacherStudentProfilePage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherStudentProfilePage").then(
-    (module) => ({
-      default: module.TeacherStudentProfilePage,
-    }),
-  ),
-);
-
-export const TeacherTimetablePage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherTimetablePage").then(
-    (module) => ({
-      default: module.TeacherTimetablePage,
-    }),
-  ),
-);
-
-export const TeacherAttendanceHistoryPage = lazy(() =>
-  import("../features/teacher-access/pages/TeacherAttendanceHistoryPage").then(
-    (module) => ({
-      default: module.TeacherAttendanceHistoryPage,
-    }),
-  ),
-);
 export const DashboardPage = lazy(() =>
   import("../features/tasks/pages/DashboardPage").then((module) => ({
     default: module.DashboardPage,
   })),
 );
 export const TeacherCommentReportsPage = lazy(() =>
-  import("../features/student-observations/pages/TeacherCommentReportsPage").then(
+  import("../features/teacher-comments/pages/TeacherCommentReportsPage").then(
     (module) => ({
       default: module.TeacherCommentReportsPage,
     }),
@@ -368,6 +341,11 @@ export const TaskDetailPage = lazy(() =>
 export const TaskGuestPage = lazy(() =>
   import("../features/tasks/pages/TaskGuestPage").then((module) => ({
     default: module.TaskGuestPage,
+  })),
+);
+export const TaskGoogleCallbackPage = lazy(() =>
+  import("../features/tasks/pages/TaskGoogleCallbackPage").then((module) => ({
+    default: module.TaskGoogleCallbackPage,
   })),
 );
 

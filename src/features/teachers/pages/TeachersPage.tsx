@@ -20,13 +20,22 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { TeacherTable } from "../components/TeacherTable";
+import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
 import type { DataTableSortState } from "../../../components/layout/data-table";
-import { useDeactivateTeacher, useTeachers } from "../hooks/useTeachers";
-import type { Teacher, TeacherListQuery } from "../types/teachers.types";
+import {
+  useDeactivateTeacher,
+  useTeacherProfiles,
+  useTeachers,
+} from "../hooks/useTeachers";
+import type {
+  TeacherDirectoryItem,
+  TeacherListQuery,
+} from "../types/teachers.types";
 
-const TEACHERS_ICON = PAGE_IDENTITIES["/manage-teachers"].icon;
+const TEACHERS_ICON = PAGE_IDENTITIES["/teachers"].icon;
 
-export function TeachersPage() {
+export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
+  const management = mode === "manage";
   const contextualNavigate = useContextualNavigate();
   const deactivateTeacher = useDeactivateTeacher();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -42,6 +51,11 @@ export function TeachersPage() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [revealTeacher, setRevealTeacher] =
+    useState<TeacherDirectoryItem | null>(null);
+  const [revealedNationalIds, setRevealedNationalIds] = useState<
+    Record<string, string>
+  >({});
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   // A single-school account never sees the filter — its one school is implied.
@@ -66,7 +80,11 @@ export function TeachersPage() {
     [debouncedSearch, page, rowsPerPage, selectedSchoolId, sort],
   );
 
-  const { teachers, meta, isLoading, isError, refetch } = useTeachers(query);
+  const managementQuery = useTeachers(management ? query : null);
+  const directoryQuery = useTeacherProfiles(management ? null : query);
+  const { teachers, meta, isLoading, isError, refetch } = management
+    ? managementQuery
+    : directoryQuery;
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
@@ -85,11 +103,17 @@ export function TeachersPage() {
     setPage(1);
   }
 
-  function openEdit(teacher: Teacher): void {
+  function openEdit(teacher: TeacherDirectoryItem): void {
     contextualNavigate(`/manage-teachers/${teacher.id}/edit`);
   }
 
-  async function handleDeactivate(teacher: Teacher): Promise<void> {
+  function openProfile(teacher: TeacherDirectoryItem): void {
+    contextualNavigate(`/teachers/${teacher.id}`);
+  }
+
+  async function handleDeactivate(
+    teacher: TeacherDirectoryItem,
+  ): Promise<void> {
     const confirmed = await confirm({
       title: "ปิดใช้งานข้อมูลครู",
       description: `ต้องการปิดใช้งาน “${teacher.fullName}” ใช่หรือไม่? ประวัติการสอนและการเช็กชื่อเดิมจะยังคงอยู่`,
@@ -103,20 +127,26 @@ export function TeachersPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton
-            contextual
-            disabled={!selectedSchoolId}
-            icon={Plus}
-            to={`/manage-teachers/new${
-              selectedSchoolId ? `?schoolId=${selectedSchoolId}` : ""
-            }`}
-          >
-            เพิ่มข้อมูล
-          </NavButton>
+          management ? (
+            <NavButton
+              contextual
+              disabled={!selectedSchoolId}
+              icon={Plus}
+              to={`/manage-teachers/new${
+                selectedSchoolId ? `?schoolId=${selectedSchoolId}` : ""
+              }`}
+            >
+              เพิ่มข้อมูล
+            </NavButton>
+          ) : undefined
         }
-        description="เพิ่ม แก้ไข และดูแลข้อมูลคุณครูของโรงเรียน"
+        description={
+          management
+            ? "เพิ่ม แก้ไข และดูแลข้อมูลคุณครูของโรงเรียน"
+            : "ดูข้อมูลและช่องทางติดต่อคุณครูของโรงเรียน"
+        }
         icon={TEACHERS_ICON}
-        title="จัดการข้อมูลคุณครู"
+        title={management ? "จัดการข้อมูลครู" : "รายชื่อครู"}
       />
       <ToolbarControls className="mb-8">
         <SearchInput
@@ -178,19 +208,29 @@ export function TeachersPage() {
           description={
             debouncedSearch
               ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
-              : "เพิ่มข้อมูลคุณครูคนแรกเพื่อเริ่มต้น"
+              : management
+                ? "เพิ่มข้อมูลคุณครูคนแรกเพื่อเริ่มต้น"
+                : "ยังไม่มีข้อมูลคุณครูในโรงเรียนนี้"
           }
           icon={TEACHERS_ICON}
-          title={debouncedSearch ? "ไม่พบคุณครูที่ค้นหา" : "ยังไม่มีข้อมูลคุณครู"}
+          title={
+            debouncedSearch ? "ไม่พบคุณครูที่ค้นหา" : "ยังไม่มีข้อมูลคุณครู"
+          }
         />
       ) : (
         <>
           <TeacherTable
             deactivatingTeacherId={
-              deactivateTeacher.isPending ? deactivateTeacher.variables?.id : null
+              deactivateTeacher.isPending
+                ? deactivateTeacher.variables?.id
+                : null
             }
             onDeactivate={(teacher) => void handleDeactivate(teacher)}
             onEdit={openEdit}
+            onView={openProfile}
+            onRevealNationalId={setRevealTeacher}
+            revealedNationalIds={revealedNationalIds}
+            management={management}
             onSortChange={(nextSort) => {
               setSort(nextSort);
               setPage(1);
@@ -215,6 +255,22 @@ export function TeachersPage() {
       )}
 
       {confirmDialog}
+      {revealTeacher?.citizenId ? (
+        <TeacherNationalIdRevealDialog
+          maskedValue={revealTeacher.citizenId}
+          onOpenChange={(open) => {
+            if (!open) setRevealTeacher(null);
+          }}
+          onRevealed={(nationalId) =>
+            setRevealedNationalIds((current) => ({
+              ...current,
+              [revealTeacher.id]: nationalId,
+            }))
+          }
+          open
+          teacherId={revealTeacher.id}
+        />
+      ) : null}
     </PageShell>
   );
 }

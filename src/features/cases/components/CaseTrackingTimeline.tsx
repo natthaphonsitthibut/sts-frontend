@@ -22,7 +22,6 @@ import {
   TimePicker,
   useConfirm,
 } from "../../../components/base";
-import { appToast } from "../../../components/base/app-toast";
 import { AssignmentSummary } from "../../../components/layout/assignment-summary";
 import {
   TrackingStep,
@@ -99,6 +98,9 @@ function createAssignmentDefaults(): AssignmentFormValues {
   };
 }
 
+/** One word for "the reporter left this blank", matching the forms. */
+const UNANSWERED = "ไม่ระบุ";
+
 function readOnlyDate(value: string | null | undefined): string {
   return value ? formatThaiDate(value) : "-";
 }
@@ -135,8 +137,21 @@ function AssignmentForm({
   const isAssistance = taskType === "ASSIST";
   const trackingOptions = useCaseTrackingOptions();
   const assistanceMeasures = trackingOptions.data?.assistanceMeasures ?? [];
-  const [measureCodes, setMeasureCodes] = useState<string[]>([]);
-  const [measureDetail, setMeasureDetail] = useState("");
+  const proposedAssistanceReview = caseRecord.reviews?.find(
+    (review) => review.review_action === "ASSIST",
+  );
+  const [measureCodes, setMeasureCodes] = useState<string[]>(() =>
+    isAssistance
+      ? (proposedAssistanceReview?.proposed_assistance_measures ?? []).map(
+          (measure) => measure.code,
+        )
+      : [],
+  );
+  const [measureDetail, setMeasureDetail] = useState(
+    isAssistance
+      ? (proposedAssistanceReview?.proposed_assistance_measure_detail ?? "")
+      : "",
+  );
   const measureRequiresDetail = assistanceMeasures.some(
     (measure) => measure.requiresDetail && measureCodes.includes(measure.code),
   );
@@ -162,10 +177,12 @@ function AssignmentForm({
 
   const createAssignment = useMutation({
     mutationFn: (payload: TaskCreatePayload) => taskService.createTask(payload),
+    meta: {
+      successMessage: isAssistance
+        ? "มอบหมายการช่วยเหลือแล้ว"
+        : "มอบหมายติดตามนักเรียนแล้ว",
+    },
     onSuccess: () => {
-      appToast.success(
-        isAssistance ? "มอบหมายการช่วยเหลือแล้ว" : "มอบหมายติดตามนักเรียนแล้ว",
-      );
       onAssigned();
     },
   });
@@ -346,6 +363,7 @@ function AssignmentForm({
                 <MultiSelect
                   ariaLabel="มาตรการการช่วยเหลือ"
                   emptyText="ไม่พบมาตรการการช่วยเหลือ"
+                  id="assignment-assistance-measures"
                   onChange={setMeasureCodes}
                   options={assistanceMeasures.map((measure) => ({
                     value: measure.code,
@@ -466,14 +484,28 @@ type RailStep =
  * latest one.
  */
 function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
+  const proposedAddress =
+    round.updated_student_address ||
+    [
+      round.updated_address_line,
+      round.updated_address_sub_district,
+      round.updated_address_district,
+      round.updated_address_province,
+      round.updated_postal_code,
+    ]
+      .filter(Boolean)
+      .join(" ");
   return (
-    <>
+    <div data-follow-up-report>
       {/* Same split as the guest report form: what the visit found about the
-          home, a divider, then what the visitor concluded. Each block shares
-          its rows across both columns through `grid-rows-subgrid`, so the
-          boxes end level without hand-tuned heights. */}
-      <div className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:row-span-3 lg:grid-rows-subgrid">
+          home, a divider, then what the visitor concluded. Both columns share
+          the same rows through `grid-rows-subgrid`, so the environment note
+          ends on the same line as the last answer beside it instead of a
+          hand-tuned height. The row count below must stay >= the rows either
+          column needs (left 4, right 5): a subgrid silently stacks every extra
+          item into one collapsed row. */}
+      <div className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[repeat(5,auto)]">
+        <div className="grid min-w-0 grid-cols-1 content-start gap-3 sm:grid-cols-2 lg:row-span-5 lg:grid-rows-subgrid">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             วันที่ลงพื้นที่
             <Input
@@ -490,18 +522,26 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
             สถานะของบิดา-มารดา
-            <Input disabled value={round.parental_status_label || "-"} />
+            <Input disabled value={round.parental_status_label || UNANSWERED} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ผู้ปกครอง
-            <Input disabled value={round.guardian_type_label || "-"} />
+            <Input disabled value={round.guardian_type_label || UNANSWERED} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ระบุผู้ปกครอง
-            <Input disabled value={round.guardian_type_detail || "-"} />
+            <Input disabled value={round.guardian_type_detail || UNANSWERED} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ผู้ที่พบ/ติดต่อ
+            <Input disabled value={round.contact_person_name || UNANSWERED} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ช่องทางติดต่อ
+            <Input disabled value={round.contact_channel_label || UNANSWERED} />
           </label>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-3 lg:grid-rows-subgrid">
+        <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-5 lg:grid-rows-subgrid">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             สภาพแวดล้อมรอบที่พัก
             <Input
@@ -509,7 +549,9 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
               value={formatOptionLabels(round.residence_environments)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 lg:row-span-2">
+          {/* Spans the two rows beside `ผู้ปกครอง` / `ระบุผู้ปกครอง` so its
+              bottom edge lands on theirs. */}
+          <label className="flex min-h-24 flex-col gap-1 text-sm font-medium text-slate-700 lg:row-span-2">
             รายละเอียดสภาพแวดล้อมรอบที่พัก
             <Textarea
               className="min-h-24 flex-1 resize-none overflow-y-auto"
@@ -518,15 +560,36 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
               value={round.residence_environment_detail || ""}
             />
           </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ข้อสังเกตด้านความด้อยโอกาส
+            <Input
+              disabled
+              value={formatOptionLabels(round.observed_disadvantage_types)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ข้อสังเกตด้านความพิการ
+            <Input
+              disabled
+              value={formatOptionLabels(round.observed_disability_types)}
+            />
+          </label>
         </div>
       </div>
 
       <Divider className="mb-4 mt-3 bg-slate-200" />
 
-      <div className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
-        <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-2 lg:grid-rows-subgrid">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ผลการติดตาม
+            <Input
+              disabled
+              value={round.task_execution_outcome_label || UNANSWERED}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ประเภทปัญหาที่พบ
             <Input
               disabled
               value={formatFollowUpProblemCategory({
@@ -537,17 +600,41 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ประเภทการขาด
+            <Input
+              disabled
+              value={round.absence_reason_category_label || UNANSWERED}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            สาเหตุการขาด
+            <Input disabled value={round.absence_reason_label || UNANSWERED} />
+          </label>
+          <label className="flex min-h-28 flex-1 flex-col gap-1 text-sm font-medium text-slate-700">
             คำอธิบายเพิ่มเติม
             <Textarea
               className="min-h-28 flex-1 resize-none overflow-y-auto"
               disabled
               rows={4}
-              value={round.cause_detail || ""}
+              value={round.cause_detail || UNANSWERED}
+            />
+          </label>
+          <label className="flex min-h-20 flex-col gap-1 text-sm font-medium text-slate-700">
+            ที่อยู่ปัจจุบัน
+            <Textarea
+              className="min-h-20 resize-none overflow-y-auto"
+              disabled
+              rows={3}
+              value={
+                round.address_changed
+                  ? proposedAddress || "แจ้งเปลี่ยนที่อยู่ แต่ไม่มีรายละเอียด"
+                  : "ไม่เปลี่ยนจากข้อมูลในระบบ"
+              }
             />
           </label>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-2 lg:grid-rows-subgrid">
-          <div className="flex min-w-0 flex-col gap-1 lg:row-span-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-sm font-medium text-slate-700">แนบไฟล์</span>
             <div className="min-h-28 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4">
               <VisitAttachments
@@ -558,6 +645,42 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
           </div>
         </div>
       </div>
+
+      <FollowUpExceptionDetails round={round} />
+    </div>
+  );
+}
+
+/**
+ * What the visit ran into on site: the exception the teacher picked and the
+ * coordinates their device recorded. The current-address answer is always in
+ * the main report grid, so it is not repeated here.
+ */
+function FollowUpExceptionDetails({ round }: { round: CaseFollowUpRound }) {
+  const visitCoordinates =
+    round.visit_lat != null && round.visit_lng != null
+      ? `${round.visit_lat}, ${round.visit_lng}`
+      : null;
+  if (!round.home_visit_exception_label && !visitCoordinates) {
+    return null;
+  }
+  return (
+    <>
+      <Divider className="mb-4 mt-3 bg-slate-200" />
+      <div className="grid gap-3 lg:grid-cols-2">
+        {round.home_visit_exception_label ? (
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            กรณีพิเศษจากการลงพื้นที่
+            <Input disabled value={round.home_visit_exception_label} />
+          </label>
+        ) : null}
+        {visitCoordinates ? (
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            พิกัดที่บันทึกไว้
+            <Input disabled value={visitCoordinates} />
+          </label>
+        ) : null}
+      </div>
     </>
   );
 }
@@ -566,8 +689,8 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
 function AssistanceReportBody({ round }: { round: CaseFollowUpRound }) {
   return (
     <>
-      <div className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)]">
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:row-span-2 lg:grid-rows-subgrid">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 content-start gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             วันที่ช่วยเหลือ
             <Input
@@ -589,8 +712,12 @@ function AssistanceReportBody({ round }: { round: CaseFollowUpRound }) {
               value={formatOptionLabels(round.assistance_measures)}
             />
           </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
+            ผลการช่วยเหลือ
+            <Input disabled value={round.task_execution_outcome_label || "-"} />
+          </label>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-2 lg:grid-rows-subgrid">
+        <div className="flex min-w-0 flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             คำอธิบายเพิ่มเติม
             <Textarea
@@ -600,7 +727,17 @@ function AssistanceReportBody({ round }: { round: CaseFollowUpRound }) {
               value={round.assistance_detail || ""}
             />
           </label>
-          <div className="flex min-w-0 flex-col gap-1">
+          {round.execution_outcome_detail ? (
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              เหตุผลที่ยังไม่สำเร็จ
+              <Textarea
+                className="min-h-20 resize-none"
+                disabled
+                value={round.execution_outcome_detail}
+              />
+            </label>
+          ) : null}
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-sm font-medium text-slate-700">แนบไฟล์</span>
             <div className="min-h-24 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4">
               <VisitAttachments
@@ -766,10 +903,22 @@ export function CaseTrackingTimeline({
   // Which buttons the reviewer gets is data: an action pinned to another phase
   // is not offered, which is what leaves the assistance review with only
   // ปิดเคส and ส่งต่อหน่วยงาน.
-  const reviewActions = (trackingOptions.data?.reviewActions ?? []).filter(
-    (action) =>
-      !action.availablePhaseCode || action.availablePhaseCode === phase,
-  );
+  const reviewActions = (trackingOptions.data?.reviewActions ?? [])
+    .filter(
+      (action) =>
+        !action.availablePhaseCode || action.availablePhaseCode === phase,
+    )
+    .map((action) =>
+      action.code === "ASSIST"
+        ? {
+            ...action,
+            label:
+              assistanceRounds.length > 0
+                ? "มอบหมายช่วยเหลืออีกครั้ง"
+                : "มอบหมายช่วยเหลือ",
+          }
+        : action,
+    );
 
   return (
     <TrackingStepsCard
@@ -903,7 +1052,7 @@ export function CaseTrackingTimeline({
                     ระบุมาตรการ
                     <Input
                       disabled
-                      value={round.assistance_measure_detail || "-"}
+                      value={round.assistance_measure_detail || UNANSWERED}
                     />
                   </label>
                 </div>
@@ -917,17 +1066,6 @@ export function CaseTrackingTimeline({
                     variant="outline"
                   >
                     ยกเลิกการมอบหมาย
-                  </Button>
-                </div>
-              ) : null}
-              {isLive && studentNotFound && canAssign ? (
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    onClick={() => setManualReassign(true)}
-                    type="button"
-                    variant="outline"
-                  >
-                    มอบหมายอีกครั้ง
                   </Button>
                 </div>
               ) : null}
@@ -949,6 +1087,19 @@ export function CaseTrackingTimeline({
             ) : (
               <FollowUpReportBody round={round} />
             )}
+            {studentNotFound &&
+            canAssign &&
+            round.task_id === latestRound?.task_id ? (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={() => setManualReassign(true)}
+                  type="button"
+                  variant="outline"
+                >
+                  มอบหมายอีกครั้ง
+                </Button>
+              </div>
+            ) : null}
             {reviewReady && index === lastReportIndex ? (
               <ReviewActions
                 actions={reviewActions}

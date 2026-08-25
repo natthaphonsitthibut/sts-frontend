@@ -10,7 +10,7 @@ import {
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { taskService } from "../api/task.service";
 import { deleteVisitReportDraft } from "../lib/visit-report-draft";
-import { TaskOtpVerificationGate } from "../components/TaskOtpVerificationGate";
+import { TaskIdentityVerificationGate } from "../components/TaskIdentityVerificationGate";
 import { AssistanceReportPage } from "./AssistanceReportPage";
 import { HomeVisitReportPage } from "./HomeVisitReportPage";
 
@@ -28,7 +28,9 @@ export function ReportPage() {
   const { token = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
-  const [sessionToken, setSessionToken] = useState(() => readMagicToken(token, "local"));
+  const [sessionToken, setSessionToken] = useState(() =>
+    readMagicToken(token, "local"),
+  );
 
   const taskQuery = useQuery({
     queryKey: ["report-task", token, sessionToken],
@@ -41,7 +43,10 @@ export function ReportPage() {
     const status = taskQuery.error as {
       response?: { status?: number; data?: { status?: string } };
     };
-    if (status?.response?.status === 410 || status?.response?.data?.status === "EXPIRED") {
+    if (
+      status?.response?.status === 410 ||
+      status?.response?.data?.status === "EXPIRED"
+    ) {
       void navigate(`/task/${token}/expired`, { replace: true });
     }
     if (status?.response?.data?.status === "COMPLETED") {
@@ -71,7 +76,10 @@ export function ReportPage() {
     return (
       <GuestPageShell contentClassName="max-w-[760px]">
         <Card className="rounded-lg p-6">
-          <FormErrorAlert error={taskQuery.error} fallback="ไม่สามารถโหลดแบบฟอร์มติดตามได้" />
+          <FormErrorAlert
+            error={taskQuery.error}
+            fallback="ไม่สามารถโหลดแบบฟอร์มติดตามได้"
+          />
         </Card>
       </GuestPageShell>
     );
@@ -79,14 +87,31 @@ export function ReportPage() {
 
   const task = taskQuery.data;
   if (task.auth_required) {
-    return <TaskOtpVerificationGate token={token} onVerified={setSessionToken} />;
+    return (
+      <TaskIdentityVerificationGate
+        token={token}
+        onVerified={setSessionToken}
+      />
+    );
   }
 
   // An assistance round reports what help was given, not a home visit, so it
   // gets its own form rather than a mode flag threaded through one.
   if (task.task_type === "ASSIST") {
-    return <AssistanceReportPage sessionToken={sessionToken} task={task} token={token} />;
+    return (
+      <AssistanceReportPage
+        sessionToken={sessionToken}
+        task={task}
+        token={token}
+      />
+    );
   }
 
-  return <HomeVisitReportPage sessionToken={sessionToken} task={task} token={token} />;
+  return (
+    <HomeVisitReportPage
+      sessionToken={sessionToken}
+      task={task}
+      token={token}
+    />
+  );
 }

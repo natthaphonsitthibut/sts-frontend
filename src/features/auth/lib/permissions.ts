@@ -29,6 +29,8 @@ export interface MenuItem {
   route?: string;
   activeRoutes?: string[];
   children?: MenuItem[];
+  scopePolicy?: "global-only";
+  rolePolicy?: "ADMIN";
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -78,18 +80,23 @@ const pageMenuItem = (
   id: string,
   route: keyof typeof PAGE_IDENTITIES,
   permissionId?: string | string[],
+  scopePolicy?: "global-only",
+  rolePolicy?: "ADMIN",
 ): MenuItem => ({
   id,
   label: PAGE_IDENTITIES[route].title,
   iconName: PAGE_IDENTITIES[route].iconName,
   permissionId,
   route,
+  ...(scopePolicy ? { scopePolicy } : {}),
+  ...(rolePolicy ? { rolePolicy } : {}),
 });
 
 export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("home", "/"),
   pageMenuItem("dashboard", "/student-risk-report"),
   pageMenuItem("students", "/students"),
+  pageMenuItem("teachers", "/teachers"),
   pageMenuItem("classrooms", "/classrooms"),
   {
     id: "data-management",
@@ -100,7 +107,7 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("manage-school-structure", "/school-structure"),
       },
       {
-        ...pageMenuItem("manage-curriculum", "/curriculum"),
+        ...pageMenuItem("manage-subjects", "/curriculum"),
       },
       {
         ...pageMenuItem("import-data", "/import-data"),
@@ -115,6 +122,16 @@ export const MENU_ITEMS: MenuItem[] = [
           "attendance-dashboard",
         ),
       },
+      {
+        ...pageMenuItem(
+          "master-data",
+          "/master-data",
+          "master-data",
+          "global-only",
+          "ADMIN",
+        ),
+        activeRoutes: ["/master-data/student-statuses"],
+      },
     ],
   },
   {
@@ -126,10 +143,10 @@ export const MENU_ITEMS: MenuItem[] = [
         ...pageMenuItem("attendance", "/attendance"),
       },
       {
-        ...pageMenuItem("manage-teacher-access", "/attendance-links"),
-      },
-      {
-        ...pageMenuItem("timetable", "/timetable"),
+        ...pageMenuItem(
+          "manage-classroom-links",
+          "/attendance/classroom-links",
+        ),
       },
     ],
   },
@@ -139,10 +156,13 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "users-cog",
     children: [
       {
-        ...pageMenuItem("manage-users-list", "/manage-users"),
+        ...pageMenuItem("manage-students", "/manage-students"),
       },
       {
         ...pageMenuItem("manage-teachers", "/manage-teachers"),
+      },
+      {
+        ...pageMenuItem("manage-users-list", "/manage-users"),
       },
       {
         ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
@@ -185,8 +205,13 @@ export function hasPermission(
 export function filterMenuItems(
   menuItems: MenuItem[],
   userPermissions: string[],
+  dataScope?: DataScope,
+  userRoles: string[] = [],
 ): MenuItem[] {
   const canAccessItem = (item: MenuItem): boolean => {
+    if (item.scopePolicy === "global-only" && dataScope?.global !== true)
+      return false;
+    if (item.rolePolicy && !userRoles.includes(item.rolePolicy)) return false;
     const requiredPermissions = item.permissionId ?? item.id;
     return Array.isArray(requiredPermissions)
       ? requiredPermissions.some((permissionId) =>
@@ -209,8 +234,17 @@ export function filterMenuItems(
     .filter((item): item is MenuItem => item !== null);
 }
 
-export function getFirstAccessibleRoute(userPermissions: string[]): string {
-  const filteredMenuItems = filterMenuItems(MENU_ITEMS, userPermissions);
+export function getFirstAccessibleRoute(
+  userPermissions: string[],
+  dataScope?: DataScope,
+  userRoles: string[] = [],
+): string {
+  const filteredMenuItems = filterMenuItems(
+    MENU_ITEMS,
+    userPermissions,
+    dataScope,
+    userRoles,
+  );
 
   for (const item of filteredMenuItems) {
     if (item.route) {

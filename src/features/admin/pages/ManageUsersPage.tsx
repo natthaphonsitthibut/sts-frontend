@@ -31,7 +31,7 @@ import type {
 const MANAGE_USERS_ICON = PAGE_IDENTITIES["/manage-users"].icon;
 
 /**
- * Teachers moved to จัดการข้อมูลคุณครู and student accounts were retired, so this
+ * Teachers moved to จัดการข้อมูลครู and student accounts were retired, so this
  * page covers staff accounts only — ผู้บริหาร, ผอ. and ผู้ดูแลระบบ.
  */
 const NON_STAFF_ROLES = "TEACHER,STUDENT";

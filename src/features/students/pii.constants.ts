@@ -3,6 +3,7 @@ import type {
   StudentPiiFieldGroup,
   StudentPiiReasonCode,
 } from "./types/students.types";
+import type { PiiRevealReasonOption } from "../privacy/types/privacy.types";
 
 /** Sensitive fields that the student detail can mask + reveal on demand. */
 export const PII_FIELDS: StudentPiiField[] = [
@@ -22,18 +23,9 @@ export const PII_FIELD_GROUPS: Record<StudentPiiField, StudentPiiFieldGroup> = {
   PassportNumber_Onec: "PASSPORT",
 };
 
-/** Reveal reason options (mirror of the backend reason codes). */
-export const PII_REASON_OPTIONS: {
-  value: StudentPiiReasonCode;
-  label: string;
-}[] = [
-  { value: "HOME_VISIT", label: "เยี่ยมบ้าน/ติดตาม" },
-  { value: "CONTACT_PARENT", label: "ติดต่อผู้ปกครอง" },
-  { value: "VERIFY_DATA", label: "ตรวจสอบ/แก้ไขข้อมูล" },
-  { value: "COORDINATE_AGENCY", label: "ประสานหน่วยงาน" },
-  { value: "OTHER", label: "อื่นๆ (ระบุ)" },
-];
-
-export function isPiiReasonCode(value: string): value is StudentPiiReasonCode {
-  return PII_REASON_OPTIONS.some((option) => option.value === value);
+export function isPiiReasonCode(
+  value: string,
+  options: PiiRevealReasonOption[],
+): value is StudentPiiReasonCode {
+  return options.some((option) => option.value === value);
 }

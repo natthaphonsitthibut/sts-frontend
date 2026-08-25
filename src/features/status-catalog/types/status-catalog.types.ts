@@ -2,6 +2,7 @@ import type { BadgeProps } from "../../../components/base";
 
 export type StatusCatalogDomain =
   | "CASE_WORKFLOW"
+  | "CASE_REFERRAL"
   | "STUDENT_RISK_TIER"
   | "USER_ACCOUNT_STATUS"
   | "USER_ACCOUNT_LIFECYCLE"
@@ -35,4 +36,6 @@ export interface StatusCatalogItem {
   sortOrder: number;
 }
 
-export type StatusCatalogs = Partial<Record<StatusCatalogDomain, StatusCatalogItem[]>>;
+export type StatusCatalogs = Partial<
+  Record<StatusCatalogDomain, StatusCatalogItem[]>
+>;

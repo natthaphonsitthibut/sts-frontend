@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileDown, UserRound } from "lucide-react";
+import { FileDown, Plus, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -31,24 +31,30 @@ import type {
 } from "../types/students.types";
 
 const STUDENT_TAB_ROUTES = {
-  list: "/students",
-  history: "/students/history",
-  export: "/students/export",
+  list: "/manage-students",
+  history: "/manage-students/history",
+  export: "/manage-students/export",
 } as const;
 
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 20;
 const ALL_STUDENT_STATUSES = "ALL";
 
-export function StudentListPage() {
+export function StudentListPage({
+  mode = "view",
+}: {
+  mode?: "view" | "manage";
+}) {
+  const management = mode === "manage";
   const navigate = useNavigate();
   const contextualNavigate = useContextualNavigate();
   const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(STUDENT_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
-  const effectiveTab =
-    activeTab === "history" && canViewAuditLog
+  const effectiveTab = !management
+    ? "list"
+    : activeTab === "history" && canViewAuditLog
       ? "history"
       : activeTab === "export"
         ? "export"
@@ -62,13 +68,14 @@ export function StudentListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [grade, setGrade] = useState(() => searchParams.get("grade") || "ALL");
   const [room, setRoom] = useState(() => searchParams.get("room") || "ALL");
-  const [studentStatusCode, setStudentStatusCode] =
-    useState<StudentStatusFilterValue | undefined>(undefined);
+  const [studentStatusCode, setStudentStatusCode] = useState<
+    StudentStatusFilterValue | undefined
+  >(undefined);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
-  const [selectedStudentsById, setSelectedStudentsById] = useState<Map<string, StudentListItem>>(
-    () => new Map(),
-  );
+  const [selectedStudentsById, setSelectedStudentsById] = useState<
+    Map<string, StudentListItem>
+  >(() => new Map());
   const schoolArea = useSchoolAreaFilter({
     province: searchParams.get("province") || undefined,
     district: searchParams.get("district") || undefined,
@@ -96,18 +103,22 @@ export function StudentListPage() {
     () =>
       studentStatuses.find(
         (status) =>
-          status.isEnabled && status.category === "ACTIVE" && status.isActiveForLogin,
+          status.isEnabled &&
+          status.category === "STUDYING" &&
+          status.isActiveForLogin,
       )?.code ??
-      studentStatuses.find((status) => status.isEnabled && status.category === "ACTIVE")
-        ?.code,
+      studentStatuses.find(
+        (status) => status.isEnabled && status.category === "STUDYING",
+      )?.code,
     [studentStatuses],
   );
   const effectiveStudentStatusCode: StudentStatusFilterValue =
-    studentStatusCode ?? (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
+    studentStatusCode ??
+    (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
   const hasResolvedStudentStatusSelection =
     studentStatusCode !== undefined ||
     defaultActiveStatusCode !== undefined ||
-    !studentStatusesQuery.isLoading;
+    studentStatusesQuery.isSuccess;
   const queryStudentStatusCode = hasResolvedStudentStatusSelection
     ? effectiveStudentStatusCode
     : undefined;
@@ -117,7 +128,7 @@ export function StudentListPage() {
   const shouldUseAllEnrollment =
     hasResolvedStudentStatusSelection &&
     (effectiveStudentStatusCode === ALL_STUDENT_STATUSES ||
-      selectedStudentStatus?.category !== "ACTIVE");
+      selectedStudentStatus?.category !== "STUDYING");
   const enrollmentState: StudentEnrollmentState = shouldUseAllEnrollment
     ? "all"
     : "current-active";
@@ -164,7 +175,8 @@ export function StudentListPage() {
     ],
   );
 
-  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } = useStudents(query);
+  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } =
+    useStudents(query);
   const { options } = useStudentFilterOptions({
     schoolId: scope.schoolId || undefined,
     province: schoolArea.province || undefined,
@@ -187,7 +199,8 @@ export function StudentListPage() {
   const selectedGradeLevelId =
     effectiveGrade === "ALL"
       ? null
-      : (scope.gradeLevels.find((level) => level.label === effectiveGrade)?.id ?? null);
+      : (scope.gradeLevels.find((level) => level.label === effectiveGrade)
+          ?.id ?? null);
   const selectedRoomId = effectiveRoom === "ALL" ? undefined : effectiveRoom;
   const filteredRosterExportUrl = buildDataExportContextUrl(
     "student_roster_basic",
@@ -231,7 +244,9 @@ export function StudentListPage() {
     clearSelectedStudents();
   }
 
-  function handleStudentStatusCodeChange(value: StudentStatusFilterValue): void {
+  function handleStudentStatusCodeChange(
+    value: StudentStatusFilterValue,
+  ): void {
     setStudentStatusCode(value);
     setPage(1);
     clearSelectedStudents();
@@ -258,11 +273,18 @@ export function StudentListPage() {
     contextualNavigate(`/students/${studentId}`);
   }
 
+  function editStudent(studentId: string): void {
+    contextualNavigate(`/manage-students/${studentId}/edit`);
+  }
+
   function clearSelectedStudents(): void {
     setSelectedStudentsById(new Map());
   }
 
-  function handleSelectStudent(student: StudentListItem, selected: boolean): void {
+  function handleSelectStudent(
+    student: StudentListItem,
+    selected: boolean,
+  ): void {
     setSelectedStudentsById((current) => {
       const next = new Map(current);
       if (selected) {
@@ -274,7 +296,10 @@ export function StudentListPage() {
     });
   }
 
-  function handleSelectAll(studentsToToggle: readonly StudentListItem[], selected: boolean): void {
+  function handleSelectAll(
+    studentsToToggle: readonly StudentListItem[],
+    selected: boolean,
+  ): void {
     setSelectedStudentsById((current) => {
       const next = new Map(current);
       for (const student of studentsToToggle) {
@@ -293,30 +318,48 @@ export function StudentListPage() {
       {effectiveTab === "list" ? (
         <StudentSearchFilter
           navigation={
-            <Tabs
-              aria-label="โหมดรายชื่อนักเรียน"
-              onChange={setActiveTab}
-              options={tabOptions}
-              value={effectiveTab}
-            />
+            management ? (
+              <Tabs
+                aria-label="โหมดรายชื่อนักเรียน"
+                onChange={setActiveTab}
+                options={tabOptions}
+                value={effectiveTab}
+              />
+            ) : undefined
           }
           exportAction={
-            <>
-              {selectedStudents.length > 0 ? (
-                <Button icon={FileDown} onClick={() => setActiveTab("export")} variant="outline">
-                  ส่งออกที่เลือก ({selectedStudents.length})
-                </Button>
-              ) : null}
-              {can("export-data") ? (
-                <Button
-                  icon={FileDown}
-                  onClick={() => navigate(filteredRosterExportUrl)}
-                  variant="outline"
-                >
-                  ส่งออกตามตัวกรองนี้
-                </Button>
-              ) : null}
-            </>
+            management ? (
+              <>
+                {selectedStudents.length > 0 ? (
+                  <Button
+                    icon={FileDown}
+                    onClick={() => setActiveTab("export")}
+                    variant="outline"
+                  >
+                    ส่งออกที่เลือก ({selectedStudents.length})
+                  </Button>
+                ) : null}
+                {can("export-data") ? (
+                  <Button
+                    icon={FileDown}
+                    onClick={() => navigate(filteredRosterExportUrl)}
+                    variant="outline"
+                  >
+                    ส่งออกตามตัวกรองนี้
+                  </Button>
+                ) : null}
+              </>
+            ) : undefined
+          }
+          createAction={
+            management ? (
+              <Button
+                icon={Plus}
+                onClick={() => contextualNavigate("/manage-students/new")}
+              >
+                เพิ่มนักเรียน
+              </Button>
+            ) : undefined
           }
           grade={effectiveGrade}
           gradeLocked={scope.gradeLocked}
@@ -342,7 +385,9 @@ export function StudentListPage() {
           searchQuery={searchQuery}
           studentStatusCode={effectiveStudentStatusCode}
           studentStatusOptions={studentStatusFilterOptions}
+          isStudentStatusError={studentStatusesQuery.isError}
           isStudentStatusLoading={studentStatusesQuery.isLoading}
+          title={management ? "จัดการนักเรียน" : "รายชื่อนักเรียน"}
         />
       ) : (
         <ListPageToolbar
@@ -369,7 +414,11 @@ export function StudentListPage() {
             />
           }
           icon={UserRound}
-          title={effectiveTab === "export" ? "ส่งออกข้อมูลส่วนบุคคล" : "รายชื่อนักเรียน"}
+          title={
+            effectiveTab === "export"
+              ? "ส่งออกข้อมูลส่วนบุคคล"
+              : "รายชื่อนักเรียน"
+          }
         />
       )}
 
@@ -398,6 +447,12 @@ export function StudentListPage() {
             subDistrict={schoolArea.subDistrict || undefined}
             title="ประวัติข้อมูลนักเรียน"
           />
+        ) : studentStatusesQuery.isError ? (
+          <ErrorState
+            title="ไม่สามารถโหลดสถานะนักเรียนได้"
+            description="เกิดข้อผิดพลาดระหว่างโหลดตัวกรองสถานะนักเรียน กรุณาลองใหม่อีกครั้ง"
+            onRetry={() => studentStatusesQuery.refetch()}
+          />
         ) : isError ? (
           <ErrorState
             title="ไม่สามารถโหลดข้อมูลนักเรียนได้"
@@ -416,6 +471,7 @@ export function StudentListPage() {
           <StudentTable
             onPageChange={setPage}
             onRowClick={openStudent}
+            onEdit={management ? editStudent : undefined}
             onRowsPerPageChange={handleRowsPerPageChange}
             onSelectAll={handleSelectAll}
             onSelectRow={handleSelectStudent}
@@ -423,7 +479,8 @@ export function StudentListPage() {
             rows={students}
             rowsPerPage={rowsPerPage}
             rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-            selectedIds={selectedStudentIds}
+            selectedIds={management ? selectedStudentIds : undefined}
+            management={management}
             totalCount={totalCount}
           />
         )}

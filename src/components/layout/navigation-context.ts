@@ -63,12 +63,6 @@ function findBestMatchingRoute(
 }
 
 export function getDefaultMenuRoute(pathname: string): string | undefined {
-  if (pathname.startsWith("/teacher-access/timetable")) {
-    return "/teacher-access/timetable";
-  }
-  if (pathname.startsWith("/teacher-access")) {
-    return "/teacher-access";
-  }
   return findBestMatchingRoute(pathname, AUTH_MENU_ROUTES) ?? undefined;
 }
 
@@ -82,7 +76,7 @@ const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/data-exports/history": "ประวัติการส่งออก",
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
-  "/settings/student-statuses": "สถานะนักเรียน",
+  "/master-data/student-statuses": "สถานะนักเรียน",
   "/students/export": "ส่งออกข้อมูลนักเรียน",
   "/students/history": "ประวัติรายชื่อนักเรียน",
 };
@@ -93,7 +87,8 @@ export function getNavigationLabel(
 ): string {
   const exactLabel = EXACT_ROUTE_LABELS[pathname];
   if (exactLabel) return exactLabel;
-  if (/^\/students\/[^/]+\/edit$/.test(pathname)) return "แก้ไขข้อมูลนักเรียน";
+  if (/^\/manage-students\/[^/]+\/edit$/.test(pathname))
+    return "แก้ไขข้อมูลนักเรียน";
   if (/^\/students\/[^/]+$/.test(pathname)) return "ข้อมูลนักเรียน";
   if (/^\/cases\/[^/]+\/reviews\/[^/]+$/.test(pathname)) {
     return "รายละเอียดผลการพิจารณา";
@@ -121,17 +116,12 @@ export function getNavigationLabel(
   if (pathname === "/manage-teachers/new") return "เพิ่มข้อมูลคุณครู";
   if (/^\/manage-teachers\/[^/]+\/edit$/.test(pathname))
     return "แก้ไขข้อมูลคุณครู";
+  if (/^\/teachers\/[^/]+$/.test(pathname)) return "ข้อมูลคุณครู";
   if (pathname === "/manage-role-groups/new") return "เพิ่มกลุ่มเมนู";
   if (/^\/manage-role-groups\/[^/]+\/edit$/.test(pathname))
     return "แก้ไขกลุ่มเมนู";
   if (/^\/audit-log\/[^/]+$/.test(pathname)) return "รายละเอียดบันทึกการใช้งาน";
   if (/^\/tasks\/[^/]+$/.test(pathname)) return "รายละเอียดภารกิจ";
-  if (/^\/teacher-access\/classes\/[^/]+\/students\/[^/]+$/.test(pathname)) {
-    return "ข้อมูลนักเรียน";
-  }
-  if (/^\/teacher-access\/classes\/[^/]+\/history$/.test(pathname)) {
-    return "ประวัติการเช็กชื่อ";
-  }
   return fallback || getPageTitle(pathname);
 }
 
@@ -166,10 +156,10 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
     ];
   }
 
-  const studentEdit = /^\/students\/([^/]+)\/edit$/.exec(pathname);
+  const studentEdit = /^\/manage-students\/([^/]+)\/edit$/.exec(pathname);
   if (studentEdit) {
     return [
-      identityCrumb("/students"),
+      identityCrumb("/manage-students"),
       { label: "ข้อมูลนักเรียน", to: `/students/${studentEdit[1]}` },
     ];
   }
@@ -200,22 +190,6 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
       {
         label: "รายวิชาในระดับชั้น",
         to: `/curriculum/${curriculumSubject[1]}`,
-      },
-    ];
-  }
-
-  const teacherStudent =
-    /^\/teacher-access\/classes\/([^/]+)\/students\/[^/]+$/.exec(pathname);
-  const teacherHistory = /^\/teacher-access\/classes\/([^/]+)\/history$/.exec(
-    pathname,
-  );
-  const assignmentId = teacherStudent?.[1] ?? teacherHistory?.[1];
-  if (assignmentId) {
-    return [
-      { label: "ห้องเรียนของฉัน", to: "/teacher-access" },
-      {
-        label: "ห้องเรียน",
-        to: `/teacher-access/classes/${assignmentId}/roster`,
       },
     ];
   }
@@ -354,7 +328,9 @@ export function getSafeBackTarget(location: Location): To {
   if (contextualBack && contextualBack !== currentAppPath(location))
     return contextualBack;
 
-  const studentEdit = /^\/students\/([^/]+)\/edit$/.exec(location.pathname);
+  const studentEdit = /^\/manage-students\/([^/]+)\/edit$/.exec(
+    location.pathname,
+  );
   if (studentEdit) return `/students/${studentEdit[1]}`;
   const userEdit = /^\/manage-users\/([^/]+)\/edit(?:\/permissions)?$/.exec(
     location.pathname,
@@ -364,12 +340,6 @@ export function getSafeBackTarget(location: Location): To {
     location.pathname,
   );
   if (caseReview) return `/cases/${caseReview[1]}`;
-  const teacherChild =
-    /^\/teacher-access\/classes\/([^/]+)\/(?:students\/[^/]+|history)$/.exec(
-      location.pathname,
-    );
-  if (teacherChild) return `/teacher-access/classes/${teacherChild[1]}`;
-
   const parents = getDefaultParentCrumbs(location.pathname);
   return parents.at(-1)?.to ?? "/";
 }

@@ -12,7 +12,13 @@ import {
   Search,
   TriangleAlert,
 } from "lucide-react";
-import { Button, Combobox, HoverTooltip, Tabs } from "../../../components/base";
+import {
+  Badge,
+  Button,
+  Combobox,
+  HoverTooltip,
+  Tabs,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -37,12 +43,16 @@ import {
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { FollowUpSummaryPanel } from "../components/FollowUpSummaryPanel";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
   RiskDashboardQuery,
@@ -183,22 +193,42 @@ function sortToValue(
   return `${sortBy}:${sort.direction}`;
 }
 
-function StudentCell({ row }: { row: RiskDashboardRow }) {
+function StudentCell({
+  canViewStudent,
+  row,
+  showSchoolName,
+}: {
+  canViewStudent: boolean;
+  row: RiskDashboardRow;
+  showSchoolName: boolean;
+}) {
+  const avatar = (
+    <StudentAvatar
+      className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
+      name={row.studentName}
+      photoUrl={row.studentPhotoUrl}
+    />
+  );
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <ContextLink
-        aria-label={`ดูโปรไฟล์ ${row.studentName}`}
-        className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        to={`/students/${row.studentId}`}
-      >
-        <StudentAvatar
-          className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
-          name={row.studentName}
-          photoUrl={row.studentPhotoUrl}
-        />
-      </ContextLink>
+      {canViewStudent ? (
+        <ContextLink
+          aria-label={`ดูโปรไฟล์ ${row.studentName}`}
+          className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          to={`/students/${row.studentId}`}
+        >
+          {avatar}
+        </ContextLink>
+      ) : (
+        <span className="shrink-0">{avatar}</span>
+      )}
       <div className="min-w-0">
         <div className="truncate text-slate-800">{row.studentName}</div>
+        {showSchoolName && row.schoolName ? (
+          <div className="truncate text-xs text-slate-500">
+            {row.schoolName}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -244,7 +274,14 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
   );
 }
 
-function WatchlistRowAction({ row }: { row: RiskDashboardRow }) {
+function WatchlistRowAction({
+  canViewStudent,
+  row,
+}: {
+  canViewStudent: boolean;
+  row: RiskDashboardRow;
+}) {
+  if (!canViewStudent) return null;
   return (
     <DetailLinkButton
       aria-label={`ดูข้อมูลนักเรียน ${row.studentName}`}
@@ -257,7 +294,9 @@ function WatchlistRowAction({ row }: { row: RiskDashboardRow }) {
   );
 }
 
-export function DashboardPage() {
+function StudentRiskDashboardPage() {
+  const { can } = usePermissions();
+  const canViewStudent = can("students");
   const [studentGroup, setStudentGroup] = useRouteTab(
     STUDENT_GROUP_ROUTES,
     "risk",
@@ -348,8 +387,6 @@ export function DashboardPage() {
       sort?.direction,
     ],
   );
-  const requiresSchoolSelection = !scope.schoolLocked && !scope.schoolId;
-
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     const setValue = (key: string, value: string | undefined): void => {
@@ -399,7 +436,6 @@ export function DashboardPage() {
   const riskQuery = useQuery({
     queryKey: ["risk-dashboard", query],
     queryFn: () => riskDashboardService.getRiskDashboard(query),
-    enabled: !requiresSchoolSelection,
     placeholderData: keepPreviousData,
   });
 
@@ -416,7 +452,7 @@ export function DashboardPage() {
         page: 1,
         limit: PAGE_SIZE_OPTIONS[0],
       }),
-    enabled: isWatchlist && !requiresSchoolSelection,
+    enabled: isWatchlist,
     placeholderData: keepPreviousData,
   });
 
@@ -609,13 +645,13 @@ export function DashboardPage() {
                 onChange={handleSchoolChange}
                 onSearchChange={schoolArea.setSchoolSearch}
                 options={[
-                  { value: "", label: "เลือกโรงเรียน" },
+                  { value: "", label: "ทุกโรงเรียนในขอบเขตสิทธิ์" },
                   ...schoolArea.filteredSchools.map((school) => ({
                     value: String(school.id),
                     label: school.name,
                   })),
                 ]}
-                placeholder="ค้นหาโรงเรียน"
+                placeholder="ทุกโรงเรียนในขอบเขตสิทธิ์"
                 value={scope.schoolId}
               />
             </label>
@@ -696,6 +732,7 @@ export function DashboardPage() {
       </PageToolbar>
 
       <div className="space-y-5">
+        <FollowUpSummaryPanel />
         <div className="space-y-4">
           <SummaryMetrics columns={4} items={summaryItems} />
           <Tabs
@@ -754,13 +791,7 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        {requiresSchoolSelection ? (
-          <EmptyState
-            icon={ClipboardList}
-            title="เลือกโรงเรียน"
-            description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงรายงานสถานะนักเรียน"
-          />
-        ) : riskQuery.isError ? (
+        {riskQuery.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดรายงานนักเรียนได้"
             description="กรุณาลองใหม่อีกครั้ง"
@@ -805,7 +836,7 @@ export function DashboardPage() {
                       { label: "ชื่อนักเรียน", sortKey: "name" },
                       { label: "ชั้น", sortKey: "grade" },
                       { label: "ห้อง", sortKey: "room" },
-                      { label: "หัวข้อปัญหา", sortKey: "problemCategory" },
+                      { label: "ข้อสังเกตล่าสุด", sortKey: "problemCategory" },
                       "เครื่องมือ",
                     ]
                   : [
@@ -840,7 +871,11 @@ export function DashboardPage() {
                   <DataTableCell
                     className={isWatchlist ? "text-center" : undefined}
                   >
-                    <StudentCell row={row} />
+                    <StudentCell
+                      canViewStudent={canViewStudent}
+                      row={row}
+                      showSchoolName={!scope.schoolId}
+                    />
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
                     {row.grade || "-"}
@@ -849,11 +884,30 @@ export function DashboardPage() {
                     {row.room || "-"}
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
-                    <p className="line-clamp-2 whitespace-pre-wrap">
-                      {(isWatchlist
-                        ? row.problemCategoryLabel
-                        : row.teacherComment) || "-"}
-                    </p>
+                    {isWatchlist && row.concernLevelCode ? (
+                      <>
+                        <Badge
+                          variant={
+                            getConcernLevelPresentation(row.concernLevelCode)
+                              .variant
+                          }
+                        >
+                          {row.concernLevelLabel ??
+                            getConcernLevelPresentation(row.concernLevelCode)
+                              .label}
+                        </Badge>
+                        <p className="mt-2 font-medium text-slate-800">
+                          {row.problemCategoryLabel || "-"}
+                        </p>
+                        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-slate-600">
+                          {row.teacherComment || "-"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="line-clamp-2 whitespace-pre-wrap">
+                        {row.teacherComment || "-"}
+                      </p>
+                    )}
                   </DataTableCell>
                   {!isWatchlist ? (
                     <>
@@ -886,7 +940,10 @@ export function DashboardPage() {
                       }
                     >
                       {isWatchlist ? (
-                        <WatchlistRowAction row={row} />
+                        <WatchlistRowAction
+                          canViewStudent={canViewStudent}
+                          row={row}
+                        />
                       ) : (
                         <DashboardRowAction row={row} />
                       )}
@@ -925,7 +982,11 @@ export function DashboardPage() {
                       <span className="text-sm text-slate-600">
                         {(page - 1) * rowsPerPage + index + 1}
                       </span>
-                      <StudentCell row={row} />
+                      <StudentCell
+                        canViewStudent={canViewStudent}
+                        row={row}
+                        showSchoolName={!scope.schoolId}
+                      />
                     </div>
                     {row.latestCaseStatus ? (
                       <span className="inline-flex items-center gap-1">
@@ -962,20 +1023,42 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">
-                      {isWatchlist ? "หัวข้อปัญหา" : "หมายเหตุจากครู"}
+                      {isWatchlist ? "ข้อสังเกตล่าสุด" : "หมายเหตุจากครู"}
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                      {(isWatchlist
-                        ? row.problemCategoryLabel
-                        : row.teacherComment) || "-"}
-                    </p>
+                    {isWatchlist && row.concernLevelCode ? (
+                      <div className="mt-1 space-y-1.5">
+                        <Badge
+                          variant={
+                            getConcernLevelPresentation(row.concernLevelCode)
+                              .variant
+                          }
+                        >
+                          {row.concernLevelLabel ??
+                            getConcernLevelPresentation(row.concernLevelCode)
+                              .label}
+                        </Badge>
+                        <p className="font-medium text-slate-800">
+                          {row.problemCategoryLabel || "-"}
+                        </p>
+                        <p className="whitespace-pre-wrap text-sm text-slate-700">
+                          {row.teacherComment || "-"}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                        {row.teacherComment || "-"}
+                      </p>
+                    )}
                   </div>
                   <div
                     className="flex justify-end"
                     onClick={(event) => event.stopPropagation()}
                   >
                     {isWatchlist ? (
-                      <WatchlistRowAction row={row} />
+                      <WatchlistRowAction
+                        canViewStudent={canViewStudent}
+                        row={row}
+                      />
                     ) : (
                       <DashboardRowAction row={row} />
                     )}
@@ -996,6 +1079,26 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+    </PageShell>
+  );
+}
+
+export function DashboardPage() {
+  const roles = useAuthSessionStore((state) => state.user?.roles ?? []);
+  const aggregateOnly =
+    roles.includes("EXECUTIVE") &&
+    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
+
+  if (!aggregateOnly) return <StudentRiskDashboardPage />;
+
+  return (
+    <PageShell>
+      <PageToolbar
+        breadcrumbTrail={[{ label: "หน้าหลัก", to: "/" }]}
+        icon={ClipboardList}
+        title="รายงานสถานะนักเรียน"
+      />
+      <FollowUpSummaryPanel aggregateOnly />
     </PageShell>
   );
 }

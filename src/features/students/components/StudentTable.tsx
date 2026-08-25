@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Eye, SquarePen } from "lucide-react";
 import {
   DataTable,
   DataTableCell,
@@ -7,7 +8,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
-import { Badge, Checkbox } from "../../../components/base";
+import { Badge, Checkbox, IconButton } from "../../../components/base";
 import { Pagination } from "../../../components/layout/pagination";
 import { formatStudentRoom } from "../lib/student-presentation";
 import { StudentAvatar } from "./StudentAvatar";
@@ -22,9 +23,14 @@ interface StudentTableProps {
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rowsPerPage: number) => void;
   onRowClick: (studentId: string) => void;
+  management?: boolean;
+  onEdit?: (studentId: string) => void;
   selectedIds?: ReadonlySet<string>;
   onSelectRow?: (student: StudentListItem, selected: boolean) => void;
-  onSelectAll?: (students: readonly StudentListItem[], selected: boolean) => void;
+  onSelectAll?: (
+    students: readonly StudentListItem[],
+    selected: boolean,
+  ) => void;
 }
 
 function StudentIdentity({
@@ -50,9 +56,7 @@ function StudentIdentity({
         <StudentAvatar name={student.name} photoUrl={student.photo_url} />
       )}
       <div className="min-w-0">
-        <h3 className="truncate text-slate-800">
-          {student.name}
-        </h3>
+        <h3 className="truncate text-slate-800">{student.name}</h3>
       </div>
     </div>
   );
@@ -80,6 +84,8 @@ export function StudentTable({
   onPageChange,
   onRowsPerPageChange,
   onRowClick,
+  management = false,
+  onEdit,
   selectedIds,
   onSelectRow,
   onSelectAll,
@@ -91,7 +97,9 @@ export function StudentTable({
     const indexedRows = rows.map((student, index) => ({ student, index }));
     if (!sort) return indexedRows;
     if (sort.key === "sequence") {
-      return sort.direction === "asc" ? indexedRows : [...indexedRows].reverse();
+      return sort.direction === "asc"
+        ? indexedRows
+        : [...indexedRows].reverse();
     }
     return indexedRows.sort((a, b) => {
       const result = compareText(
@@ -103,7 +111,9 @@ export function StudentTable({
   }, [rows, sort]);
   const sortedStudents = sortedRows.map(({ student }) => student);
   const allSelected =
-    selectable && sortedStudents.length > 0 && sortedStudents.every((student) => selectedIds?.has(student.id));
+    selectable &&
+    sortedStudents.length > 0 &&
+    sortedStudents.every((student) => selectedIds?.has(student.id));
 
   return (
     <div className="flex flex-col gap-2">
@@ -116,7 +126,12 @@ export function StudentTable({
                     <Checkbox
                       aria-label="เลือกนักเรียนทั้งหมดในหน้านี้"
                       checked={allSelected}
-                      onChange={(event) => onSelectAll?.(sortedStudents, event.currentTarget.checked)}
+                      onChange={(event) =>
+                        onSelectAll?.(
+                          sortedStudents,
+                          event.currentTarget.checked,
+                        )
+                      }
                     />
                   ),
                   className: "w-[52px]",
@@ -129,6 +144,9 @@ export function StudentTable({
           { label: "ชั้น", sortKey: "grade" },
           { label: "ห้อง", sortKey: "room" },
           { label: "สถานะ", sortKey: "status" },
+          ...(management
+            ? [{ label: "เครื่องมือ", className: "w-[112px]" }]
+            : []),
         ]}
         minWidthClassName="min-w-[960px]"
         onSortChange={setSort}
@@ -153,7 +171,10 @@ export function StudentTable({
               {baseIndex + index + 1}
             </DataTableCell>
             <DataTableCell>
-              <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
+              <StudentIdentity
+                onOpen={() => onRowClick(student.id)}
+                student={student}
+              />
             </DataTableCell>
             <DataTableCell className="text-slate-600">
               {student.school_name || "-"}
@@ -165,10 +186,30 @@ export function StudentTable({
               {formatStudentRoom(student.room)}
             </DataTableCell>
             <DataTableCell>
-              <Badge variant={student.student_status_badge_variant ?? "secondary"}>
+              <Badge
+                variant={student.student_status_badge_variant ?? "secondary"}
+              >
                 {student.student_status_label || "ยังไม่ได้จับคู่"}
               </Badge>
             </DataTableCell>
+            {management ? (
+              <DataTableCell>
+                <div className="flex items-center justify-end gap-1">
+                  <IconButton
+                    aria-label={`ดูข้อมูลของ ${student.name}`}
+                    icon={Eye}
+                    onClick={() => onRowClick(student.id)}
+                    variant="view"
+                  />
+                  <IconButton
+                    aria-label={`แก้ไขข้อมูลของ ${student.name}`}
+                    icon={SquarePen}
+                    onClick={() => onEdit?.(student.id)}
+                    variant="edit"
+                  />
+                </div>
+              </DataTableCell>
+            ) : null}
           </DataTableRow>
         ))}
       </DataTable>
@@ -181,10 +222,15 @@ export function StudentTable({
                 <Checkbox
                   aria-label={`เลือก ${student.name}`}
                   checked={selectedIds?.has(student.id) ?? false}
-                  onChange={(event) => onSelectRow?.(student, event.currentTarget.checked)}
+                  onChange={(event) =>
+                    onSelectRow?.(student, event.currentTarget.checked)
+                  }
                 />
               ) : null}
-              <StudentIdentity onOpen={() => onRowClick(student.id)} student={student} />
+              <StudentIdentity
+                onOpen={() => onRowClick(student.id)}
+                student={student}
+              />
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-600">
@@ -194,9 +240,28 @@ export function StudentTable({
                 {student.grade || "-"} · {formatStudentRoom(student.room)}
               </span>
             </div>
-            <Badge className="w-fit" variant={student.student_status_badge_variant ?? "secondary"}>
+            <Badge
+              className="w-fit"
+              variant={student.student_status_badge_variant ?? "secondary"}
+            >
               {student.student_status_label || "ยังไม่ได้จับคู่"}
             </Badge>
+            {management ? (
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <IconButton
+                  aria-label={`ดูข้อมูลของ ${student.name}`}
+                  icon={Eye}
+                  onClick={() => onRowClick(student.id)}
+                  variant="view"
+                />
+                <IconButton
+                  aria-label={`แก้ไขข้อมูลของ ${student.name}`}
+                  icon={SquarePen}
+                  onClick={() => onEdit?.(student.id)}
+                  variant="edit"
+                />
+              </div>
+            ) : null}
           </TableCard>
         ))}
       </TableCardList>

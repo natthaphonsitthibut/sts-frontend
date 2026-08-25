@@ -1,4 +1,9 @@
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
@@ -55,7 +60,11 @@ function toIso({ year, month, day }: DateParts): string {
 function parseIso(value: string): DateParts | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
-  return { year: Number(match[1]), month: Number(match[2]) - 1, day: Number(match[3]) };
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]) - 1,
+    day: Number(match[3]),
+  };
 }
 
 function getTodayParts(): DateParts {
@@ -100,7 +109,12 @@ function yearRangeStart(year: number): number {
   return year - (year % 12);
 }
 
-function isMonthOutOfRange(year: number, month: number, min?: string, max?: string): boolean {
+function isMonthOutOfRange(
+  year: number,
+  month: number,
+  min?: string,
+  max?: string,
+): boolean {
   const firstDay = isoOf(year, month, 1);
   const lastDay = isoOf(year, month, daysInMonth(year, month));
   return Boolean((min && lastDay < min) || (max && firstDay > max));
@@ -206,16 +220,26 @@ export function DatePicker({
     const roomAbove = rect.top;
     const opensAbove =
       popoverPlacement === "top" ||
-      (popoverPlacement === "auto" && roomBelow < CALENDAR_POPOVER_HEIGHT && roomAbove > roomBelow);
-    const idealTop = opensAbove ? rect.top - CALENDAR_POPOVER_HEIGHT - 4 : rect.bottom + 4;
+      (popoverPlacement === "auto" &&
+        roomBelow < CALENDAR_POPOVER_HEIGHT &&
+        roomAbove > roomBelow);
+    const idealTop = opensAbove
+      ? rect.top - CALENDAR_POPOVER_HEIGHT - 4
+      : rect.bottom + 4;
     setPopoverStyle({
       left: Math.min(
         Math.max(VIEWPORT_GUTTER, rect.left),
-        Math.max(VIEWPORT_GUTTER, window.innerWidth - CALENDAR_POPOVER_WIDTH - VIEWPORT_GUTTER),
+        Math.max(
+          VIEWPORT_GUTTER,
+          window.innerWidth - CALENDAR_POPOVER_WIDTH - VIEWPORT_GUTTER,
+        ),
       ),
       top: Math.min(
         Math.max(VIEWPORT_GUTTER, idealTop),
-        Math.max(VIEWPORT_GUTTER, window.innerHeight - CALENDAR_POPOVER_HEIGHT - VIEWPORT_GUTTER),
+        Math.max(
+          VIEWPORT_GUTTER,
+          window.innerHeight - CALENDAR_POPOVER_HEIGHT - VIEWPORT_GUTTER,
+        ),
       ),
     });
     setOpen(true);
@@ -232,7 +256,10 @@ export function DatePicker({
     }),
   ];
   const rangeStart = yearRangeStart(view.year);
-  const yearCells = Array.from({ length: 12 }, (_, index) => rangeStart + index);
+  const yearCells = Array.from(
+    { length: 12 },
+    (_, index) => rangeStart + index,
+  );
   const headerLabel =
     calendarView === "day"
       ? `${THAI_MONTH_NAMES[view.month]} ${formatBuddhistYear(view.year)}`
@@ -241,7 +268,10 @@ export function DatePicker({
         : `${formatBuddhistYear(rangeStart)} - ${formatBuddhistYear(rangeStart + 11)}`;
 
   return (
-    <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
+    <div
+      className={cn("relative", open && "z-50", className)}
+      ref={containerRef}
+    >
       <Button
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -269,7 +299,10 @@ export function DatePicker({
         </span>
         <ChevronDown
           aria-hidden="true"
-          className={cn("size-4 text-primary transition-transform", open && "rotate-180")}
+          className={cn(
+            "size-4 text-primary transition-transform",
+            open && "rotate-180",
+          )}
         />
       </Button>
 
@@ -324,11 +357,13 @@ export function DatePicker({
               ))}
               {cells.map((cell, index) => {
                 if (!cell) return <div key={`blank-${index}`} />;
-                const isOutOfRange = (min && cell.iso < min) || (max && cell.iso > max);
+                const isOutOfRange =
+                  (min && cell.iso < min) || (max && cell.iso > max);
                 const isSelected = cell.iso === value;
                 const isToday = cell.iso === todayIso;
                 return (
                   <button
+                    aria-label={cell.iso}
                     className={cn(
                       "flex h-8 items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors",
                       isSelected
@@ -353,13 +388,21 @@ export function DatePicker({
           {calendarView === "month" ? (
             <div className="grid grid-cols-3 gap-2 py-1">
               {THAI_MONTH_NAMES.map((monthName, month) => {
-                const isSelected = selected?.year === view.year && selected.month === month;
-                const isOutOfRange = isMonthOutOfRange(view.year, month, min, max);
+                const isSelected =
+                  selected?.year === view.year && selected.month === month;
+                const isOutOfRange = isMonthOutOfRange(
+                  view.year,
+                  month,
+                  min,
+                  max,
+                );
                 return (
                   <button
                     className={cn(
                       "h-10 rounded-lg px-2 text-sm font-semibold transition-colors",
-                      isSelected ? "bg-primary text-white" : "text-slate-700 hover:bg-slate-100",
+                      isSelected
+                        ? "bg-primary text-white"
+                        : "text-slate-700 hover:bg-slate-100",
                       isOutOfRange && "pointer-events-none opacity-30",
                     )}
                     disabled={isOutOfRange}
@@ -383,7 +426,9 @@ export function DatePicker({
                   <button
                     className={cn(
                       "h-10 rounded-lg text-sm font-semibold tabular-nums transition-colors",
-                      isSelected ? "bg-primary text-white" : "text-slate-700 hover:bg-slate-100",
+                      isSelected
+                        ? "bg-primary text-white"
+                        : "text-slate-700 hover:bg-slate-100",
                       isOutOfRange && "pointer-events-none opacity-30",
                     )}
                     disabled={isOutOfRange}
@@ -400,7 +445,9 @@ export function DatePicker({
 
           <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
             <Button
-              disabled={Boolean((min && todayIso < min) || (max && todayIso > max))}
+              disabled={Boolean(
+                (min && todayIso < min) || (max && todayIso > max),
+              )}
               onClick={selectToday}
               size="sm"
               variant="ghost"

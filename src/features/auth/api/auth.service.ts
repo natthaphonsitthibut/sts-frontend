@@ -5,8 +5,6 @@ import type {
   AraIdLoginChallengeStatus,
   ChangePasswordPayload,
   LoginCredentials,
-  MagicLoginVerifyResponse,
-  MagicOtpVerifyResponse,
   UpdateProfilePayload,
 } from "../types/auth.types";
 
@@ -15,19 +13,20 @@ interface AuthService {
   getMyProfile: () => Promise<AuthUser>;
   getUserProfile: (userId: number) => Promise<AuthUser>;
   updateMyProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
-  updateMyPhoto: (input: { photo?: File; remove?: boolean }) => Promise<AuthUser>;
+  updateMyPhoto: (input: {
+    photo?: File;
+    remove?: boolean;
+  }) => Promise<AuthUser>;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
   createAraIdLoginChallenge: () => Promise<AraIdLoginChallenge>;
-  beginAraIdLoginChallenge: (challengeToken: string) => Promise<{ expiresAt: string }>;
+  beginAraIdLoginChallenge: (
+    challengeToken: string,
+  ) => Promise<{ expiresAt: string }>;
   approveAraIdLoginChallenge: () => Promise<void>;
-  pollAraIdLoginChallenge: (challengeToken: string) => Promise<AraIdLoginChallengeStatus>;
-  requestMagicOtp: (token: string) => Promise<void>;
-  verifyMagicLogin: (
-    token: string,
-    magicSessionToken?: string,
-  ) => Promise<MagicLoginVerifyResponse>;
-  verifyMagicOtp: (token: string, otp: string) => Promise<MagicOtpVerifyResponse>;
+  pollAraIdLoginChallenge: (
+    challengeToken: string,
+  ) => Promise<AraIdLoginChallengeStatus>;
 }
 
 async function login(credentials: LoginCredentials): Promise<AuthUser> {
@@ -53,7 +52,10 @@ async function updateMyProfile(
 }
 
 /** Upload replaces the photo; passing no file with `remove` clears it. */
-async function updateMyPhoto(input: { photo?: File; remove?: boolean }): Promise<AuthUser> {
+async function updateMyPhoto(input: {
+  photo?: File;
+  remove?: boolean;
+}): Promise<AuthUser> {
   const form = new FormData();
   if (input.photo) form.append("photo", input.photo);
   if (input.remove) form.append("removePhoto", "true");
@@ -65,14 +67,18 @@ async function logout(): Promise<void> {
   await apiClient.post("/users/logout");
 }
 
-async function changeOwnPassword(payload: ChangePasswordPayload): Promise<void> {
+async function changeOwnPassword(
+  payload: ChangePasswordPayload,
+): Promise<void> {
   await apiClient.post("/users/me/change-password", payload);
 }
 
 const ARAID_CHALLENGE_HEADER = "x-auth-araid-challenge";
 
 async function createAraIdLoginChallenge(): Promise<AraIdLoginChallenge> {
-  const response = await apiClient.post<{ data: AraIdLoginChallenge }>("/auth/araid/challenge");
+  const response = await apiClient.post<{ data: AraIdLoginChallenge }>(
+    "/auth/araid/challenge",
+  );
   return response.data.data;
 }
 
@@ -102,39 +108,6 @@ async function pollAraIdLoginChallenge(
   return response.data.data;
 }
 
-async function verifyMagicLogin(
-  token: string,
-  magicSessionToken?: string,
-): Promise<MagicLoginVerifyResponse> {
-  const response = magicSessionToken
-    ? await apiClient.get<MagicLoginVerifyResponse>(
-        `/tasks/${token}/login-verify`,
-        {
-          headers: { "x-magic-session": magicSessionToken },
-        },
-      )
-    : await apiClient.get<MagicLoginVerifyResponse>(
-        `/tasks/${token}/login-verify`,
-      );
-
-  return response.data;
-}
-
-async function requestMagicOtp(token: string): Promise<void> {
-  await apiClient.post(`/tasks/${token}/otp`);
-}
-
-async function verifyMagicOtp(
-  token: string,
-  otp: string,
-): Promise<MagicOtpVerifyResponse> {
-  const response = await apiClient.post<MagicOtpVerifyResponse>(
-    `/tasks/${token}/verify`,
-    { otp },
-  );
-  return response.data;
-}
-
 export const authService: AuthService = {
   changeOwnPassword,
   approveAraIdLoginChallenge,
@@ -145,9 +118,6 @@ export const authService: AuthService = {
   login,
   logout,
   pollAraIdLoginChallenge,
-  requestMagicOtp,
   updateMyProfile,
   updateMyPhoto,
-  verifyMagicLogin,
-  verifyMagicOtp,
 };

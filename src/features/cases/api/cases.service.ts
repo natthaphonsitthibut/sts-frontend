@@ -8,6 +8,7 @@ import type {
   CaseReviewResponse,
   OpenCasePayload,
   OpenCaseResponse,
+  ReferralAgencyOption,
 } from "../types/cases.types";
 
 interface CasesService {
@@ -23,6 +24,7 @@ interface CasesService {
     payload: CaseReviewPayload,
   ) => Promise<CaseReviewResponse>;
   getTrackingOptions: () => Promise<CaseTrackingOptions>;
+  getReferralAgencies: () => Promise<ReferralAgencyOption[]>;
   /** Withdraws the assignment the case is waiting on; the case returns to รอมอบหมาย. */
   cancelAssignment: (
     caseId: number,
@@ -69,8 +71,17 @@ async function getTrackingOptions(): Promise<CaseTrackingOptions> {
   return response.data;
 }
 
+async function getReferralAgencies(): Promise<ReferralAgencyOption[]> {
+  const response = await apiClient.get<{
+    success: true;
+    data: ReferralAgencyOption[];
+  }>("/cases/referral-agencies");
+  return response.data.data;
+}
+
 export const casesService: CasesService = {
   getCase,
+  getReferralAgencies,
   openCase,
   reviewCase,
   getTrackingOptions,

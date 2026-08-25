@@ -22,7 +22,9 @@ function SignedOutCard() {
       <h2 className="text-lg font-bold text-araid-brand-deep">
         {copy.home.signedOutTitle}
       </h2>
-      <p className="mt-2 text-sm text-araid-text-muted">{copy.home.signedOutDescription}</p>
+      <p className="mt-2 text-sm text-araid-text-muted">
+        {copy.home.signedOutDescription}
+      </p>
       <Link
         to="/araid/login"
         className="mt-5 inline-flex min-h-11 items-center rounded-full bg-araid-brand px-6 text-sm font-semibold text-white transition-colors hover:bg-araid-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-araid-brand"
@@ -33,7 +35,13 @@ function SignedOutCard() {
   );
 }
 
-function IdentityCard({ profile, expanded }: { profile: AraIdSessionProfile; expanded: boolean }) {
+function IdentityCard({
+  profile,
+  expanded,
+}: {
+  profile: AraIdSessionProfile;
+  expanded: boolean;
+}) {
   const { copy } = useAraIdCopy();
   return (
     <section
@@ -63,7 +71,8 @@ function IdentityCard({ profile, expanded }: { profile: AraIdSessionProfile; exp
             {profile.givenNameTh} {profile.familyNameTh}
           </p>
           <p className="mt-1 truncate text-[0.5625rem] text-slate-600 sm:text-xs">
-            {profile.givenNameEn || profile.givenNameTh} {profile.familyNameEn || profile.familyNameTh}
+            {profile.givenNameEn || profile.givenNameTh}{" "}
+            {profile.familyNameEn || profile.familyNameTh}
           </p>
           <p className="mt-2 text-[0.5625rem] leading-tight text-slate-600 sm:mt-3 sm:text-xs">
             {copy.home.identityNumber}
@@ -75,12 +84,16 @@ function IdentityCard({ profile, expanded }: { profile: AraIdSessionProfile; exp
             <span>
               {copy.home.birthDate}
               <br />
-              <b className="text-araid-card-ink">{profile.dateOfBirth || copy.common.notAvailable}</b>
+              <b className="text-araid-card-ink">
+                {profile.dateOfBirth || copy.common.notAvailable}
+              </b>
             </span>
             <span>
               {copy.home.province}
               <br />
-              <b className="text-araid-card-ink">{profile.provinceName || copy.common.notAvailable}</b>
+              <b className="text-araid-card-ink">
+                {profile.provinceName || copy.common.notAvailable}
+              </b>
             </span>
           </div>
         </div>
@@ -88,7 +101,10 @@ function IdentityCard({ profile, expanded }: { profile: AraIdSessionProfile; exp
           <span className="grid aspect-[3/4] w-full place-items-center rounded-md bg-araid-card-photo text-araid-brand-mid ring-2 ring-white">
             <UserRound className="size-9 sm:size-14" strokeWidth={1.25} />
           </span>
-          <ScanLine className="size-5 text-araid-brand-mid sm:size-6" strokeWidth={1.5} />
+          <ScanLine
+            className="size-5 text-araid-brand-mid sm:size-6"
+            strokeWidth={1.5}
+          />
         </div>
       </div>
     </section>
@@ -111,7 +127,9 @@ export function AraIdHomePage() {
   return (
     <AraIdAppShell>
       <div className="bg-araid-brand-mid text-white">
-        <div className="mx-auto w-full max-w-[90rem] px-4 pb-6 pt-3 sm:px-6 md:px-8 md:pb-8 md:pt-5 lg:px-10">
+        {/* Full-bleed app bar: capping this at 90rem parked the sign-out button
+            mid-air on wide screens instead of at the edge of the content area. */}
+        <div className="w-full px-4 pb-6 pt-3 sm:px-6 md:px-8 md:pb-8 md:pt-5 lg:px-10">
           <header className="flex min-h-12 items-center gap-3">
             <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-white text-araid-brand ring-1 ring-white/70 md:size-12">
               <UserRound className="size-6 md:size-7" strokeWidth={1.55} />
@@ -163,7 +181,9 @@ export function AraIdHomePage() {
                   onClick={() => void profileQuery.refetch()}
                   className="grid size-10 place-items-center rounded-full bg-araid-brand text-white transition-colors hover:bg-araid-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
-                  <RefreshCw className={`size-4 ${profileQuery.isFetching ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`size-4 ${profileQuery.isFetching ? "animate-spin" : ""}`}
+                  />
                 </button>
               </div>
             </div>
@@ -172,7 +192,8 @@ export function AraIdHomePage() {
       </div>
 
       <div className="min-h-full bg-araid-surface px-4 pb-8 pt-7 sm:px-6 md:px-8 md:pt-9 lg:px-10">
-        <div className="mx-auto w-full max-w-[90rem]">
+        {/* Same gutters as the app bar above, so the two never drift apart. */}
+        <div className="w-full">
           {profileQuery.isLoading ? (
             <div className="h-48 max-w-lg animate-pulse rounded-xl bg-white" />
           ) : !profile ? (

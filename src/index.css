@@ -129,6 +129,14 @@
   --color-danger-400: #ef4444;
   --color-danger-700: #991b1b;
 
+  /* Ordered choropleth ramp for risk counts: neutral zero, then increasing
+     luminance/hue contrast from yellow through orange-red to deep red. */
+  --color-risk-map-none: #e5e5e5;
+  --color-risk-map-low: #ffffb2;
+  --color-risk-map-medium: #fecc5c;
+  --color-risk-map-high: #f03b20;
+  --color-risk-map-critical: #bd0026;
+
   /*
    * Reference palette — the design team's Figma color library, kept as its
    * own named set (not folded into Tailwind's built-in amber/orange/purple
@@ -647,5 +655,11 @@ svg.text-slate-900 {
   }
   .animate-value-in {
     animation: value-in 150ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .risk-map-viewport {
+    transition: none !important;
   }
 }

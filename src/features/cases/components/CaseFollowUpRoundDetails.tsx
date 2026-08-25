@@ -1,5 +1,6 @@
 import { FileText } from "lucide-react";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import {
   formatFollowUpProblemCategory,
   formatOptionLabels,
@@ -22,7 +23,7 @@ function RoundDetailItem({
     <div className="rounded-lg bg-slate-50 px-4 py-3">
       <dt className="text-xs font-semibold text-slate-500">{label}</dt>
       <dd className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-800">
-        {value || "-"}
+        {value || "ไม่ระบุ"}
       </dd>
     </div>
   );
@@ -43,7 +44,9 @@ export function VisitAttachments({
   value: string | null | undefined;
 }) {
   if (!value) {
-    return emptyLabel ? <p className="text-sm text-slate-500">{emptyLabel}</p> : null;
+    return emptyLabel ? (
+      <p className="text-sm text-slate-500">{emptyLabel}</p>
+    ) : null;
   }
 
   let paths: string[] = [];
@@ -51,7 +54,8 @@ export function VisitAttachments({
     const parsed: unknown = JSON.parse(value);
     if (Array.isArray(parsed)) {
       paths = parsed.filter(
-        (path): path is string => typeof path === "string" && path.startsWith("/uploads/"),
+        (path): path is string =>
+          typeof path === "string" && path.startsWith("/uploads/"),
       );
     }
   } catch {
@@ -59,7 +63,9 @@ export function VisitAttachments({
   }
 
   if (paths.length === 0) {
-    return emptyLabel ? <p className="text-sm text-slate-500">{emptyLabel}</p> : null;
+    return emptyLabel ? (
+      <p className="text-sm text-slate-500">{emptyLabel}</p>
+    ) : null;
   }
 
   return (
@@ -71,7 +77,11 @@ export function VisitAttachments({
           const isImage = /\.(?:jpe?g|png|webp)$/i.test(path);
           return (
             <a
-              className={isImage ? undefined : "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center text-sm font-semibold text-slate-700"}
+              className={
+                isImage
+                  ? undefined
+                  : "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center text-sm font-semibold text-slate-700"
+              }
               href={attachmentUrl}
               key={path}
               rel="noreferrer"
@@ -86,7 +96,10 @@ export function VisitAttachments({
                 />
               ) : (
                 <>
-                  <FileText className="size-7 text-primary" aria-hidden="true" />
+                  <FileText
+                    className="size-7 text-primary"
+                    aria-hidden="true"
+                  />
                   <span>ไฟล์แนบ {index + 1}</span>
                 </>
               )}
@@ -110,16 +123,62 @@ export function CaseFollowUpRoundDetails({
     );
   }
 
+  if (round.task_type === "ASSIST") {
+    return (
+      <>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          <RoundDetailItem
+            label="ผลการช่วยเหลือ"
+            value={round.task_execution_outcome_label}
+          />
+          <RoundDetailItem
+            label="วันที่ให้ความช่วยเหลือ"
+            value={
+              round.assisted_at ? formatThaiDateTime(round.assisted_at) : null
+            }
+          />
+          <RoundDetailItem
+            label="มาตรการช่วยเหลือ"
+            value={formatOptionLabels(round.assistance_measures)}
+          />
+          <RoundDetailItem
+            label="รายละเอียดการช่วยเหลือ"
+            value={round.assistance_detail}
+          />
+        </dl>
+        <VisitAttachments value={round.photo_paths} />
+      </>
+    );
+  }
+
   return (
     <>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         <RoundDetailItem
-          label="ผลประเมินหลังลงพื้นที่"
+          label="ผลการติดตาม"
+          value={round.task_execution_outcome_label}
+        />
+        {round.non_follow_up_reason_label ? (
+          <RoundDetailItem
+            label="สาเหตุที่ติดตามไม่สำเร็จ"
+            value={round.non_follow_up_reason_label}
+          />
+        ) : null}
+        <RoundDetailItem
+          label="ประเภทปัญหาที่พบ"
           value={formatFollowUpProblemCategory({
             code: round.follow_up_problem_category_code,
             label: round.follow_up_problem_category_label,
             guidance: round.follow_up_problem_category_guidance,
           })}
+        />
+        <RoundDetailItem
+          label="ประเภทการขาด"
+          value={round.absence_reason_category_label}
+        />
+        <RoundDetailItem
+          label="สาเหตุการขาด"
+          value={round.absence_reason_label}
         />
         <RoundDetailItem
           label="ผลหลังการติดตาม"
@@ -146,8 +205,25 @@ export function CaseFollowUpRoundDetails({
           value={round.residence_environment_detail}
         />
         <RoundDetailItem
+          label="ข้อสังเกตด้านความด้อยโอกาส"
+          value={formatOptionLabels(round.observed_disadvantage_types)}
+        />
+        <RoundDetailItem
+          label="ข้อสังเกตด้านความพิการ"
+          value={formatOptionLabels(round.observed_disability_types)}
+        />
+        <RoundDetailItem
           label="รายละเอียดจากการเยี่ยมบ้าน"
           value={round.cause_detail}
+        />
+        <RoundDetailItem
+          label="ที่อยู่ปัจจุบัน"
+          value={
+            round.address_changed
+              ? round.updated_student_address ||
+                "แจ้งเปลี่ยนที่อยู่ แต่ไม่มีรายละเอียด"
+              : "ไม่เปลี่ยนจากข้อมูลในระบบ"
+          }
         />
         <RoundDetailItem label="ข้อเสนอแนะ" value={round.recommendation} />
         {round.resolution_outcome ? (

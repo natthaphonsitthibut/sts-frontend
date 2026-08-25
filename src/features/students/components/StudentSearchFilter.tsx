@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import { Users } from "lucide-react";
 import {
-  FilterCombobox,
   FilterSelect,
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { RefreshButton } from "../../../components/layout/refresh-button";
-import { toRoomOption } from "../../../lib/room-presentation";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import type { StudentStatusFilterValue } from "../types/students.types";
 
 export interface StudentStatusFilterOption {
@@ -28,13 +27,16 @@ interface StudentSearchFilterProps {
   studentStatusCode: StudentStatusFilterValue;
   onStudentStatusCodeChange: (value: StudentStatusFilterValue) => void;
   studentStatusOptions: StudentStatusFilterOption[];
+  isStudentStatusError?: boolean;
   isStudentStatusLoading?: boolean;
   schoolFilters?: ReactNode;
   navigation?: ReactNode;
   exportAction?: ReactNode;
+  createAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
   updatedAt: number;
   onClearFilters: () => void;
+  title?: string;
 }
 
 export function StudentSearchFilter({
@@ -51,24 +53,28 @@ export function StudentSearchFilter({
   studentStatusCode,
   onStudentStatusCodeChange,
   studentStatusOptions,
+  isStudentStatusError = false,
   isStudentStatusLoading = false,
   schoolFilters,
   navigation,
   exportAction,
+  createAction,
   onRefresh,
   updatedAt,
   onClearFilters,
+  title = "รายชื่อนักเรียน",
 }: StudentSearchFilterProps) {
   return (
     <ListPageToolbar
       icon={Users}
-      title="รายชื่อนักเรียน"
+      title={title}
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       navigation={navigation}
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
           {exportAction}
+          {createAction}
         </div>
       }
       onClearFilters={onClearFilters}
@@ -81,43 +87,54 @@ export function StudentSearchFilter({
         <>
           {schoolFilters}
 
-          <FilterCombobox
+          <FilterSelect
             ariaLabel="กรองตามระดับชั้น"
             disabled={gradeLocked}
             onChange={onGradeChange}
-            options={[
-              { value: "ALL", label: "ทุกชั้น" },
-              ...gradeOptions.map((option) => ({ value: option, label: option })),
-            ]}
-            placeholder="ค้นหาระดับชั้น"
             value={grade}
-          />
+          >
+            <option value="ALL">ทุกชั้น</option>
+            {gradeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </FilterSelect>
 
-          <FilterCombobox
+          <FilterSelect
             ariaLabel="กรองตามห้อง"
             disabled={roomLocked}
             onChange={onRoomChange}
-            options={[
-              { value: "ALL", label: "ทุกห้อง" },
-              ...roomOptions.map(toRoomOption),
-            ]}
-            placeholder="ค้นหาห้อง"
             value={room}
-          />
+          >
+            <option value="ALL">ทุกห้อง</option>
+            {roomOptions.map((option) => (
+              <option key={option} value={option}>
+                {formatRoomLabel(option)}
+              </option>
+            ))}
+          </FilterSelect>
 
           <FilterSelect
             ariaLabel="กรองตามสถานะการเรียน"
-            onChange={(value) => onStudentStatusCodeChange(value as StudentStatusFilterValue)}
+            disabled={isStudentStatusError || isStudentStatusLoading}
+            onChange={(value) =>
+              onStudentStatusCodeChange(value as StudentStatusFilterValue)
+            }
             value={studentStatusCode}
           >
-            {isStudentStatusLoading && studentStatusOptions.length === 0 ? (
+            {isStudentStatusError ? (
+              <option value={studentStatusCode}>โหลดสถานะไม่สำเร็จ</option>
+            ) : isStudentStatusLoading ? (
               <option value={studentStatusCode}>กำลังโหลดสถานะ...</option>
             ) : null}
-            {studentStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {isStudentStatusError || isStudentStatusLoading
+              ? null
+              : studentStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
           </FilterSelect>
         </>
       }

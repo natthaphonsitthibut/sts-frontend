@@ -32,9 +32,9 @@ export function CauseCategoryChart({ distribution }: CauseCategoryChartProps) {
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             {total > 0
-              ? `อ้างอิงจากข้อมูลการลงพื้นที่ทั้งหมด ${total.toLocaleString(
+              ? `อ้างอิงจากรายงานลงพื้นที่ทั้งหมด ${total.toLocaleString(
                   "th-TH",
-                )} รายการ ในขอบเขตปัจจุบัน`
+                )} รายการ รวมรายการที่ยังไม่ระบุสาเหตุ ในขอบเขตปัจจุบัน`
               : "ไม่มีข้อมูลในขอบเขตปัจจุบัน"}
           </p>
         </div>
@@ -66,7 +66,7 @@ export function CauseCategoryChart({ distribution }: CauseCategoryChartProps) {
                   "จำนวน",
                 ]}
                 contentStyle={{
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-lg)",
                   border: "none",
                   boxShadow:
                     "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",

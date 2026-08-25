@@ -12,7 +12,10 @@ import type { StatusCatalogItem } from "../../status-catalog/types/status-catalo
 import { getAttendanceStatusPresentation } from "../lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../types/attendance.types";
 
-type RecordableAttendanceStatus = Exclude<AttendanceSelectionStatus, "NONE">;
+export type RecordableAttendanceStatus = Exclude<
+  AttendanceSelectionStatus,
+  "NONE"
+>;
 
 const ATTENDANCE_STATUSES: readonly RecordableAttendanceStatus[] = [
   "P_PRESENT",
@@ -24,6 +27,7 @@ const ATTENDANCE_STATUSES: readonly RecordableAttendanceStatus[] = [
 export interface AttendanceRosterTableRow {
   id: string;
   name: string;
+  order?: number;
   studentNumber?: string | null;
   avatar: ReactNode;
 }
@@ -46,7 +50,7 @@ interface AttendanceRosterTableProps {
  * so the row doesn't reflow; mobile splits the row evenly (`flex-1`) so the
  * group stays reachable without horizontal scroll.
  */
-function AttendanceStatusButtons({
+export function AttendanceStatusButtons({
   buttonClassName,
   catalog,
   current,
@@ -81,13 +85,14 @@ function AttendanceStatusButtons({
           <button
             aria-pressed={selected}
             className={cn(
-              "inline-flex h-11 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
+              "inline-flex h-9 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60",
               selected
                 ? presentation.pillActiveClass
                 : `bg-white ${presentation.pillIdleClass}`,
               buttonClassName,
             )}
             disabled={disabled}
+            data-default-mark={status === "P_PRESENT" ? "true" : undefined}
             key={status}
             onClick={() => onStatusChange(studentId, status)}
             type="button"
@@ -132,9 +137,14 @@ export function AttendanceRosterTable({
           const current = selections[student.id] ?? "NONE";
           const isUnmarked = current === "NONE";
           return (
-            <DataTableRow data-attendance-mark={current} key={student.id}>
+            <DataTableRow
+              className="scroll-mt-24"
+              data-attendance-mark={current}
+              data-check-in-row={student.id}
+              key={student.id}
+            >
               <DataTableCell className="tabular-nums">
-                {index + 1}
+                {student.order ?? index + 1}
               </DataTableCell>
               <DataTableCell>
                 <div className="flex justify-center">{student.avatar}</div>
@@ -169,22 +179,30 @@ export function AttendanceRosterTable({
           const current = selections[student.id] ?? "NONE";
           const isUnmarked = current === "NONE";
           return (
-            <TableCard data-attendance-mark={current} key={student.id}>
+            <TableCard
+              className="scroll-mt-24"
+              data-attendance-mark={current}
+              data-check-in-row={student.id}
+              key={student.id}
+            >
               <div className="flex items-center gap-3">
-                <span className="w-5 shrink-0 text-center text-xs tabular-nums text-slate-400">
-                  {index + 1}
+                <span className="w-5 shrink-0 text-center text-sm font-medium tabular-nums text-slate-500">
+                  {student.order ?? index + 1}
                 </span>
                 {student.avatar}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900">
+                  <p className="truncate text-base font-bold text-slate-900">
                     {student.name}
                   </p>
-                  <p className="tabular-nums text-xs text-slate-500">
-                    {student.studentNumber ?? "-"}
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    รหัสประจำตัว{" "}
+                    <span className="tabular-nums text-sm">
+                      {student.studentNumber ?? "-"}
+                    </span>
                   </p>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-2.5">
                 <AttendanceStatusButtons
                   buttonClassName="flex-1"
                   catalog={catalog}

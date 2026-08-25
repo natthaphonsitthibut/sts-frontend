@@ -1,6 +1,5 @@
 import type { PaginatedSearchQuery } from "../../../lib/pagination";
 
-/** Grade-level card on จัดการข้อมูลหลักสูตร. */
 export interface CurriculumGrade {
   gradeLevelId: number;
   gradeLabel: string;
@@ -8,38 +7,21 @@ export interface CurriculumGrade {
   subjectCount: number;
 }
 
-/** The teachers covering one set of classrooms — a "จัดสรรครูผู้สอน" block.
- * Teachers who share the exact same rooms arrive as a single block. */
-export interface CurriculumTeacherBlock {
-  teachers: Array<{ teacherMembershipId: string; teacherName: string }>;
-  classrooms: Array<{ id: string; label: string }>;
-}
-
-/** Flat teacher × classroom row for the ห้องเรียน / ครูผู้สอน table. */
-export interface CurriculumCoverage {
-  id: string;
-  teacherMembershipId: string;
-  teacherName: string;
-  classroomId: string;
-  classroomLabel: string;
+export interface CurriculumClassroom {
+  id: number;
+  label: string;
 }
 
 export interface CurriculumSubject {
-  id: string;
+  id: number;
   schoolId: number;
-  schoolTermId: string;
   gradeLevelId: number;
   gradeLabel: string;
   subjectId: number;
   subjectCode: string;
   subjectName: string;
-  contentFileName: string | null;
-  contentFileSizeBytes: number | null;
-  /** App-served URL; the endpoint redirects to a short-lived signed URL. */
-  contentUrl: string | null;
-  curriculumStatus: "ACTIVE" | "INACTIVE";
-  teachers: CurriculumTeacherBlock[];
-  coverage: CurriculumCoverage[];
+  status: "ACTIVE" | "INACTIVE";
+  classrooms: CurriculumClassroom[];
 }
 
 export interface CurriculumGradeQuery {
@@ -58,7 +40,7 @@ export interface CurriculumSubjectPayload {
   schoolId: number;
   termId: number;
   gradeLevelId: number;
-  subjectCode: string;
-  subjectName: string;
-  teachers: Array<{ teacherMembershipIds: number[]; classroomIds: number[] }>;
+  code: string;
+  nameTh: string;
+  classroomIds: number[];
 }

@@ -110,7 +110,8 @@ export function TeacherLineAraIdAuthorizePage() {
       <MagicAuthCard showProfile={false} title="ยืนยันผ่าน AraID ไม่สำเร็จ">
         <Alert variant="destructive">
           <AlertDescription>
-            ข้อมูล AraID ไม่ตรงกับครูในโรงเรียนของลิงก์ หรือเวลาทำรายการหมดแล้ว
+            ข้อมูล AraID ไม่ตรงกับครูประจำชั้นที่มีสถานะใช้งานในโรงเรียนของลิงก์
+            หรือเวลาทำรายการหมดแล้ว
           </AlertDescription>
         </Alert>
         <Button

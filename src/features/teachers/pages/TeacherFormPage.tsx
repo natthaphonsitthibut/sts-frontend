@@ -20,6 +20,7 @@ import {
   type PhotoPickerValue,
 } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import {
   ErrorState,
   FormActions,
@@ -31,10 +32,12 @@ import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { useSaveTeacher, useTeacher } from "../hooks/useTeachers";
 import {
   EMPTY_TEACHER_FORM,
+  teacherEditFormSchema,
   teacherFormSchema,
   type TeacherFormValues,
 } from "../schemas/teacher.schema";
 import type { Teacher } from "../types/teachers.types";
+import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
 
 const TEACHERS_PATH = "/manage-teachers";
 
@@ -48,7 +51,7 @@ function toDefaults(teacher: Teacher | null): TeacherFormValues {
   return {
     firstName: teacher.firstName,
     lastName: teacher.lastName,
-    citizenId: teacher.citizenId ?? "",
+    citizenId: "",
     phone: teacher.phone ?? "",
     email: teacher.email ?? "",
     lineId: teacher.lineId ?? "",
@@ -64,22 +67,26 @@ function optionalText(value: string): string | undefined {
 function TeacherForm({
   teacher,
   schoolId,
+  backTarget,
 }: {
   teacher: Teacher | null;
   schoolId: number;
+  backTarget: ReturnType<typeof useSafeBackTarget>;
 }) {
   const navigate = useNavigate();
   const saveTeacher = useSaveTeacher();
   const [photo, setPhoto] = useState<PhotoPickerValue>(
     EMPTY_PHOTO_PICKER_VALUE,
   );
+  const [nationalIdUnlocked, setNationalIdUnlocked] = useState(!teacher);
+  const [revealOpen, setRevealOpen] = useState(false);
   const form = useForm<TeacherFormValues>({
     defaultValues: toDefaults(teacher),
-    resolver: zodResolver(teacherFormSchema),
+    resolver: zodResolver(teacher ? teacherEditFormSchema : teacherFormSchema),
   });
 
   function goBack(): void {
-    void navigate(teachersListPath(schoolId));
+    void navigate(backTarget);
   }
 
   function handleSubmit(values: TeacherFormValues): void {
@@ -177,12 +184,24 @@ function TeacherForm({
               <FormLabel htmlFor="citizenId" required>
                 เลขบัตรประชาชน
               </FormLabel>
-              <NumericInput
-                id="citizenId"
-                maxLength={13}
-                placeholder="XXXXXXXXXXXXX"
-                {...registerField(form, "citizenId")}
-              />
+              <div className="flex gap-2">
+                <NumericInput
+                  disabled={Boolean(teacher) && !nationalIdUnlocked}
+                  id="citizenId"
+                  maxLength={13}
+                  placeholder={teacher?.citizenId ?? "XXXXXXXXXXXXX"}
+                  {...registerField(form, "citizenId")}
+                />
+                {teacher && !nationalIdUnlocked && teacher.citizenId ? (
+                  <Button
+                    onClick={() => setRevealOpen(true)}
+                    type="button"
+                    variant="outline"
+                  >
+                    แสดง
+                  </Button>
+                ) : null}
+              </div>
               <FormMessage<TeacherFormValues> name="citizenId" />
             </FormItem>
 
@@ -213,6 +232,18 @@ function TeacherForm({
           บันทึก
         </Button>
       </FormActions>
+      {teacher?.citizenId ? (
+        <TeacherNationalIdRevealDialog
+          maskedValue={teacher.citizenId}
+          onOpenChange={setRevealOpen}
+          onRevealed={(nationalId) => {
+            form.setValue("citizenId", nationalId, { shouldDirty: false });
+            setNationalIdUnlocked(true);
+          }}
+          open={revealOpen}
+          teacherId={teacher.id}
+        />
+      ) : null}
     </Form>
   );
 }
@@ -221,6 +252,7 @@ export function TeacherFormPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const safeBackTarget = useSafeBackTarget();
   const isEdit = Boolean(id);
   const { data: teacher = null, isLoading, isError } = useTeacher(id ?? null);
 
@@ -235,11 +267,7 @@ export function TeacherFormPage() {
       <PageToolbar
         description="กรอกข้อมูลรายละเอียดของคุณครู"
         navigation={
-          <NavButton
-            icon={ArrowLeft}
-            to={teachersListPath(schoolId)}
-            variant="outline"
-          >
+          <NavButton icon={ArrowLeft} to={safeBackTarget} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
@@ -265,7 +293,11 @@ export function TeacherFormPage() {
           title="ยังไม่ได้เลือกโรงเรียน"
         />
       ) : (
-        <TeacherForm schoolId={schoolId} teacher={teacher} />
+        <TeacherForm
+          backTarget={safeBackTarget}
+          schoolId={schoolId}
+          teacher={teacher}
+        />
       )}
     </PageShell>
   );

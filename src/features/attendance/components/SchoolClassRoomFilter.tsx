@@ -1,6 +1,8 @@
-import { Combobox } from "../../../components/base";
-import { FilterCombobox } from "../../../components/layout/page-primitives";
-import { toRoomOption } from "../../../lib/room-presentation";
+import {
+  FilterCombobox,
+  FilterSelect,
+} from "../../../components/layout/page-primitives";
+import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
 import { SchoolAreaSchoolFilter } from "./SchoolAreaSchoolFilter";
@@ -80,31 +82,34 @@ export function SchoolClassRoomFilter({
         />
       ) : null}
       {!scope.gradeLocked ? (
-        <Combobox
+        <FilterSelect
+          ariaLabel="กรองตามระดับชั้น"
           disabled={disabled || !scope.schoolId}
           onChange={onGradeChange}
-          options={[
-            { value: "", label: emptyOptionLabels?.grade ?? "ทุกชั้น" },
-            ...scope.gradeLevels.map((grade) => ({
-              value: grade.label,
-              label: grade.label,
-            })),
-          ]}
-          placeholder="ค้นหาชั้น"
           value={scope.grade}
-        />
+        >
+          <option value="">{emptyOptionLabels?.grade ?? "ทุกชั้น"}</option>
+          {scope.gradeLevels.map((grade) => (
+            <option key={grade.id} value={grade.label}>
+              {grade.label}
+            </option>
+          ))}
+        </FilterSelect>
       ) : null}
       {!scope.roomLocked ? (
-        <Combobox
+        <FilterSelect
+          ariaLabel="กรองตามห้อง"
           disabled={disabled || !scope.grade}
           onChange={onRoomChange}
-          options={[
-            { value: "", label: emptyOptionLabels?.room ?? "ทุกห้อง" },
-            ...scope.rooms.map(toRoomOption),
-          ]}
-          placeholder="ค้นหาห้อง"
           value={scope.room}
-        />
+        >
+          <option value="">{emptyOptionLabels?.room ?? "ทุกห้อง"}</option>
+          {scope.rooms.map((room) => (
+            <option key={room} value={room}>
+              {formatRoomLabel(room)}
+            </option>
+          ))}
+        </FilterSelect>
       ) : null}
     </>
   );

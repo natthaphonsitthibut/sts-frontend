@@ -41,7 +41,6 @@ export function AttendanceSessionDetailDialog({
     date,
     enabled: open,
   });
-
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
@@ -68,7 +67,7 @@ export function AttendanceSessionDetailDialog({
           ) : (
             <AttendanceStudentTable
               disabled
-              onStatusChange={() => {}}
+              onStatusChange={() => undefined}
               selections={detail.selections}
               students={detail.students}
             />

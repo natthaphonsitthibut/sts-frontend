@@ -16,6 +16,7 @@ import type {
   NotificationReadStatus,
 } from "../types/notifications.types";
 import { NotificationListItem } from "./NotificationListItem";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 interface NotificationCenterPanelProps {
   onOpenChange: (open: boolean) => void;
@@ -38,6 +39,7 @@ export function NotificationCenterPanel({
   onOpenChange,
   open,
 }: NotificationCenterPanelProps) {
+  const { can } = usePermissions();
   const [status, setStatus] = useState<NotificationReadStatus>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [locallyReadIds, setLocallyReadIds] = useState<Set<string>>(
@@ -127,7 +129,7 @@ export function NotificationCenterPanel({
   }
 
   function handleOpenRelated(notification: NotificationItem): void {
-    const route = getNotificationRoute(notification);
+    const route = can("dashboard") ? getNotificationRoute(notification) : null;
     if (!route) return;
     handleOpenChange(false);
     contextualNavigate(route);
@@ -154,7 +156,7 @@ export function NotificationCenterPanel({
       // content-sized tray would shrink under the cursor on every tab press.
       className="absolute right-0 top-full z-50 mt-2 flex h-[min(38rem,calc(100dvh-5rem))] w-[min(32rem,calc(100vw-5rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-700 shadow-lg"
       id="notification-center"
-      role="dialog"
+      role="region"
     >
       <div className="flex min-h-14 items-start justify-between gap-2 border-b border-slate-200 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -240,7 +242,9 @@ export function NotificationCenterPanel({
         ) : (
           <ul className="space-y-3">
             {displayedNotifications.map((notification) => {
-              const route = getNotificationRoute(notification);
+              const route = can("dashboard")
+                ? getNotificationRoute(notification)
+                : null;
               return (
                 <NotificationListItem
                   className="overflow-hidden rounded-lg border border-slate-200 bg-white"

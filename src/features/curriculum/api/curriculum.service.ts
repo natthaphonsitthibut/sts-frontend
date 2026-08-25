@@ -16,85 +16,77 @@ interface Envelope<T> {
   data?: T;
 }
 
-async function getGrades(query: CurriculumGradeQuery): Promise<CurriculumGrade[]> {
-  const params: Record<string, string> = { schoolId: String(query.schoolId) };
-  if (query.termId) params.termId = String(query.termId);
-  const searchTerm = query.searchTerm?.trim();
-  if (searchTerm) params.searchTerm = searchTerm;
-
-  const response = await apiClient.get<Envelope<CurriculumGrade[]>>("/curriculum/grades", {
-    params,
-  });
-  return response.data?.data ?? [];
+async function getGrades(
+  query: CurriculumGradeQuery,
+): Promise<CurriculumGrade[]> {
+  const response = await apiClient.get<Envelope<CurriculumGrade[]>>(
+    "/subjects/school-catalog/grades",
+    { params: query },
+  );
+  return response.data.data ?? [];
 }
 
 async function getSubjects(
   query: CurriculumSubjectQuery,
 ): Promise<PaginatedResult<CurriculumSubject>> {
-  const params: Record<string, string> = toPaginationParams(query);
-  params.schoolId = String(query.schoolId);
-  params.termId = String(query.termId);
-  params.gradeLevelId = String(query.gradeLevelId);
-  const searchTerm = query.searchTerm?.trim();
-  if (searchTerm) params.searchTerm = searchTerm;
-
-  const response = await apiClient.get("/curriculum/subjects", { params });
+  const response = await apiClient.get(
+    "/subjects/school-catalog/grade-subjects",
+    {
+      params: { ...toPaginationParams(query), ...query },
+    },
+  );
   return normalizePaginatedResponse<CurriculumSubject>(response.data, query);
 }
 
-async function getSubject(id: string): Promise<CurriculumSubject> {
+async function getSubject(
+  id: number,
+  query: CurriculumSubjectQuery,
+): Promise<CurriculumSubject> {
   const response = await apiClient.get<Envelope<CurriculumSubject>>(
-    `/curriculum/subjects/${encodeURIComponent(id)}`,
+    `/subjects/school-catalog/grade-subjects/${id}`,
+    { params: query },
   );
-  const subject = response.data?.data;
-  if (!subject) throw new Error("ไม่พบรายวิชาในหลักสูตร");
-  return subject;
+  if (!response.data.data) throw new Error("ไม่พบรายวิชาในระดับชั้นนี้");
+  return response.data.data;
 }
 
-async function createSubject(payload: CurriculumSubjectPayload): Promise<CurriculumSubject> {
+async function createSubject(
+  payload: CurriculumSubjectPayload,
+): Promise<CurriculumSubject> {
   const response = await apiClient.post<Envelope<CurriculumSubject>>(
-    "/curriculum/subjects",
+    "/subjects/school-catalog/grade-subjects",
     payload,
   );
-  const subject = response.data?.data;
-  if (!subject) throw new Error("บันทึกรายวิชาไม่สำเร็จ");
-  return subject;
+  if (!response.data.data) throw new Error("บันทึกรายวิชาไม่สำเร็จ");
+  return response.data.data;
 }
 
 async function updateSubject(
-  id: string,
+  id: number,
   payload: CurriculumSubjectPayload,
 ): Promise<CurriculumSubject> {
   const response = await apiClient.put<Envelope<CurriculumSubject>>(
-    `/curriculum/subjects/${encodeURIComponent(id)}`,
+    `/subjects/school-catalog/grade-subjects/${id}`,
     payload,
   );
-  const subject = response.data?.data;
-  if (!subject) throw new Error("บันทึกรายวิชาไม่สำเร็จ");
-  return subject;
+  if (!response.data.data) throw new Error("บันทึกรายวิชาไม่สำเร็จ");
+  return response.data.data;
 }
 
-/** Upload replaces the PDF; passing no file with `remove` clears it. */
-async function updateSubjectContent(
-  id: string,
-  input: { content?: File; remove?: boolean },
+async function deleteSubject(
+  id: number,
+  query: CurriculumSubjectQuery,
 ): Promise<void> {
-  const form = new FormData();
-  if (input.content) form.append("content", input.content);
-  if (input.remove) form.append("removeContent", "true");
-  await apiClient.patch(`/curriculum/subjects/${encodeURIComponent(id)}/content`, form);
-}
-
-async function deleteSubject(id: string): Promise<void> {
-  await apiClient.delete(`/curriculum/subjects/${encodeURIComponent(id)}`);
+  await apiClient.delete(`/subjects/school-catalog/grade-subjects/${id}`, {
+    params: query,
+  });
 }
 
 export const curriculumService = {
-  getGrades,
-  getSubjects,
-  getSubject,
   createSubject,
-  updateSubject,
-  updateSubjectContent,
   deleteSubject,
+  getGrades,
+  getSubject,
+  getSubjects,
+  updateSubject,
 };

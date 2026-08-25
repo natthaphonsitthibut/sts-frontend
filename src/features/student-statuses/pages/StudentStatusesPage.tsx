@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { CirclePlus, Pencil, PowerOff } from "lucide-react";
-import { Badge, Button, FormErrorAlert, SchoolIcon, useConfirm } from "../../../components/base";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  FormErrorAlert,
+  SchoolIcon,
+  useConfirm,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -18,7 +25,7 @@ import {
   PageShell,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { SettingsTabs } from "../../../components/layout/settings-tabs";
+import { MasterDataTabs } from "../../../components/layout/master-data-tabs";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentStatusDialog } from "../components/StudentStatusDialog";
@@ -66,7 +73,11 @@ export function StudentStatusesPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<DataTableSortState | undefined>({ key: "sortOrder", direction: "asc" });
+  const [includeInactive, setIncludeInactive] = useState(true);
+  const [sort, setSort] = useState<DataTableSortState | undefined>({
+    key: "sortOrder",
+    direction: "asc",
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<StudentStatus | null>(null);
   const debouncedSearch = useDebouncedValue(search);
@@ -75,8 +86,14 @@ export function StudentStatusesPage() {
   const query = useStudentStatuses({
     page,
     limit,
+    includeInactive,
     searchTerm: debouncedSearch || undefined,
-    sortBy: sort?.key as "code" | "labelTh" | "category" | "sortOrder" | undefined,
+    sortBy: sort?.key as
+      | "code"
+      | "labelTh"
+      | "category"
+      | "sortOrder"
+      | undefined,
     sortDirection: sort?.direction,
   });
   const rows = query.data?.items ?? [];
@@ -95,9 +112,10 @@ export function StudentStatusesPage() {
   async function handleDisable(status: StudentStatus): Promise<void> {
     const accepted = await confirm({
       title: "ปิดใช้งานสถานะนี้?",
-      description: status.usageCount > 0
-        ? `สถานะนี้ถูกอ้างอิง ${status.usageCount.toLocaleString("th-TH")} รายการ ข้อมูลเดิมจะยังอยู่และจะไม่มีการลบ Case`
-        : "สถานะจะไม่ถูกลบและสามารถเปิดใช้งานใหม่จากหน้าแก้ไขได้",
+      description:
+        status.usageCount > 0
+          ? `สถานะนี้ถูกอ้างอิง ${status.usageCount.toLocaleString("th-TH")} รายการ ข้อมูลเดิมจะยังอยู่และจะไม่มีการลบ Case`
+          : "สถานะจะไม่ถูกลบและสามารถเปิดใช้งานใหม่จากหน้าแก้ไขได้",
       confirmText: "ปิดใช้งาน",
       variant: "destructive",
     });
@@ -107,15 +125,37 @@ export function StudentStatusesPage() {
   return (
     <PageShell>
       <ListPageToolbar
-        actions={<><SettingsTabs /><Button icon={CirclePlus} onClick={openCreate}>เพิ่มสถานะ</Button></>}
-        tableActions={<RefreshButton onRefresh={() => query.refetch()} updatedAt={query.dataUpdatedAt} />}
-        onClearFilters={() => {
-          setSearch("");
-          setPage(1);
-        }}
+        actions={
+          <>
+            <MasterDataTabs />
+            <Button
+              className="min-w-32 justify-center"
+              icon={CirclePlus}
+              onClick={openCreate}
+            >
+              เพิ่มสถานะ
+            </Button>
+          </>
+        }
+        tableActions={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Checkbox
+              checked={includeInactive}
+              label="แสดงรายการปิดใช้งาน"
+              onChange={(event) => {
+                setIncludeInactive(event.target.checked);
+                setPage(1);
+              }}
+            />
+            <RefreshButton
+              onRefresh={() => query.refetch()}
+              updatedAt={query.dataUpdatedAt}
+            />
+          </div>
+        }
         description="จัดการความหมายและนโยบายอ้างอิง โดยยังไม่เปลี่ยนการเข้าสู่ระบบหรือสร้างเคสติดตามอัตโนมัติ"
         icon={SchoolIcon}
-        title="ข้อมูลพื้นฐานสถานะนักเรียน"
+        title="สถานะนักเรียน"
         search={{
           value: search,
           onChange: (value) => {
@@ -133,16 +173,25 @@ export function StudentStatusesPage() {
       />
 
       {query.isError || categoryCatalog.isError || flagCatalog.isError ? (
-        <ErrorState title="ไม่สามารถโหลดสถานะนักเรียนได้" onRetry={() => {
-          void query.refetch();
-          categoryCatalog.refetch();
-          flagCatalog.refetch();
-        }} />
-      ) : query.isLoading || categoryCatalog.isLoading || flagCatalog.isLoading ? (
+        <ErrorState
+          title="ไม่สามารถโหลดสถานะนักเรียนได้"
+          onRetry={() => {
+            void query.refetch();
+            categoryCatalog.refetch();
+            flagCatalog.refetch();
+          }}
+        />
+      ) : query.isLoading ||
+        categoryCatalog.isLoading ||
+        flagCatalog.isLoading ? (
         <SkeletonStack lines={5} />
       ) : rows.length === 0 ? (
         <EmptyState
-          description={search ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด" : "เพิ่มสถานะแรกเพื่อเริ่มจัดหมวดหมู่นักเรียน"}
+          description={
+            search
+              ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
+              : "เพิ่มสถานะแรกเพื่อเริ่มจัดหมวดหมู่นักเรียน"
+          }
           icon={SchoolIcon}
           title={search ? "ไม่พบสถานะที่ค้นหา" : "ยังไม่มีสถานะนักเรียน"}
         />
@@ -167,22 +216,43 @@ export function StudentStatusesPage() {
             {rows.map((status) => (
               <DataTableRow key={status.code}>
                 <DataTableCell>{status.code}</DataTableCell>
-                <DataTableCell className="text-slate-800">{status.labelTh}</DataTableCell>
-                <DataTableCell>
-                  {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}
+                <DataTableCell className="text-slate-800">
+                  {status.labelTh}
                 </DataTableCell>
-                <DataTableCell><StatusFlags catalog={flagCatalog.items} status={status} /></DataTableCell>
-                <DataTableCell>{status.usageCount.toLocaleString("th-TH")} รายการ</DataTableCell>
+                <DataTableCell>
+                  {findStatusCatalogItem(categoryCatalog.items, status.category)
+                    ?.label ?? status.category}
+                </DataTableCell>
+                <DataTableCell>
+                  <StatusFlags catalog={flagCatalog.items} status={status} />
+                </DataTableCell>
+                <DataTableCell>
+                  {status.usageCount.toLocaleString("th-TH")} รายการ
+                </DataTableCell>
                 <DataTableCell>
                   <div className="flex gap-2">
-                    <Button aria-label={`แก้ไข ${status.labelTh}`} icon={Pencil} onClick={() => openEdit(status)} size="sm" variant="outline">แก้ไข</Button>
+                    <Button
+                      aria-label={`แก้ไข ${status.labelTh}`}
+                      icon={Pencil}
+                      onClick={() => openEdit(status)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      แก้ไข
+                    </Button>
                     <Button
                       aria-label={`ปิดใช้งาน ${status.labelTh}`}
                       disabled={!status.isEnabled}
                       icon={PowerOff}
-                      onClick={() => { void handleDisable(status); }}
+                      onClick={() => {
+                        void handleDisable(status);
+                      }}
                       size="sm"
-                      title={!status.isEnabled ? "สถานะนี้ปิดใช้งานอยู่แล้ว" : undefined}
+                      title={
+                        !status.isEnabled
+                          ? "สถานะนี้ปิดใช้งานอยู่แล้ว"
+                          : undefined
+                      }
                       variant="destructive"
                     >
                       ปิด
@@ -196,18 +266,41 @@ export function StudentStatusesPage() {
             {rows.map((status) => (
               <TableCard className="space-y-3" key={status.code}>
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="text-slate-800">{status.labelTh}</p><p className="text-sm text-slate-500">รหัส {status.code} · {findStatusCatalogItem(categoryCatalog.items, status.category)?.label ?? status.category}</p></div>
-                  <Button aria-label={`แก้ไข ${status.labelTh}`} icon={Pencil} onClick={() => openEdit(status)} size="sm" variant="outline">แก้ไข</Button>
+                  <div>
+                    <p className="text-slate-800">{status.labelTh}</p>
+                    <p className="text-sm text-slate-500">
+                      รหัส {status.code} ·{" "}
+                      {findStatusCatalogItem(
+                        categoryCatalog.items,
+                        status.category,
+                      )?.label ?? status.category}
+                    </p>
+                  </div>
+                  <Button
+                    aria-label={`แก้ไข ${status.labelTh}`}
+                    icon={Pencil}
+                    onClick={() => openEdit(status)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    แก้ไข
+                  </Button>
                 </div>
                 <StatusFlags catalog={flagCatalog.items} status={status} />
-                <p className="text-sm text-slate-500">ใช้งานอยู่ {status.usageCount.toLocaleString("th-TH")} รายการ</p>
+                <p className="text-sm text-slate-500">
+                  ใช้งานอยู่ {status.usageCount.toLocaleString("th-TH")} รายการ
+                </p>
                 <Button
                   className="w-full"
                   disabled={!status.isEnabled}
                   icon={PowerOff}
-                  onClick={() => { void handleDisable(status); }}
+                  onClick={() => {
+                    void handleDisable(status);
+                  }}
                   size="sm"
-                  title={!status.isEnabled ? "สถานะนี้ปิดใช้งานอยู่แล้ว" : undefined}
+                  title={
+                    !status.isEnabled ? "สถานะนี้ปิดใช้งานอยู่แล้ว" : undefined
+                  }
                   variant="destructive"
                 >
                   ปิดใช้งาน
@@ -217,7 +310,10 @@ export function StudentStatusesPage() {
           </TableCardList>
           <Pagination
             onPageChange={setPage}
-            onRowsPerPageChange={(value) => { setLimit(value); setPage(1); }}
+            onRowsPerPageChange={(value) => {
+              setLimit(value);
+              setPage(1);
+            }}
             page={page}
             rowsPerPage={limit}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
@@ -227,7 +323,11 @@ export function StudentStatusesPage() {
         </div>
       )}
 
-      <StudentStatusDialog onOpenChange={setDialogOpen} open={dialogOpen} status={selected} />
+      <StudentStatusDialog
+        onOpenChange={setDialogOpen}
+        open={dialogOpen}
+        status={selected}
+      />
       {dialog}
     </PageShell>
   );

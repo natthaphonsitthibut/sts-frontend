@@ -28,16 +28,10 @@ export function AraIdLoginPage() {
     challengeToken?: string;
     returnTo?: string;
     scope?: AraIdChallengeScope;
-    verificationIntent?:
-      | "LINE_LINK"
-      | "LINE_LINK_QR"
-      | "TEACHER_ACCESS"
-      | "TEACHER_ACCESS_QR";
+    verificationIntent?: "LINE_LINK" | "LINE_LINK_QR" | "ARAID_CHALLENGE_QR";
   } | null;
-  const verifiesTeacherAccess =
-    routeState?.verificationIntent === "TEACHER_ACCESS";
-  const verifiesTeacherAccessQr =
-    routeState?.verificationIntent === "TEACHER_ACCESS_QR" &&
+  const verifiesAraIdChallengeQr =
+    routeState?.verificationIntent === "ARAID_CHALLENGE_QR" &&
     routeState.returnTo === "/araid/authorize" &&
     Boolean(routeState.challengeToken);
   const verifiesLineLink =
@@ -49,15 +43,14 @@ export function AraIdLoginPage() {
       routeState.returnTo ?? "",
     ) &&
     Boolean(routeState.challengeToken);
-  const backTo = verifiesTeacherAccess
-    ? "/teacher-access"
-    : verifiesTeacherAccessQr || verifiesLineLink || verifiesLineLinkQr
+  const backTo =
+    verifiesAraIdChallengeQr || verifiesLineLink || verifiesLineLinkQr
       ? routeState.returnTo!
       : "/araid";
   // /araid/authorize has no hash to recover the challenge from once we've
   // navigated away from it client-side, unlike the LINE QR flow, which keeps
   // its challenge token in returnTo's hash — hand it back explicitly.
-  const backState = verifiesTeacherAccessQr
+  const backState = verifiesAraIdChallengeQr
     ? { challengeToken: routeState?.challengeToken, scope: routeState?.scope }
     : undefined;
 
@@ -70,10 +63,7 @@ export function AraIdLoginPage() {
     void navigate("/araid/pin", {
       state: {
         identityNumber,
-        ...(verifiesTeacherAccess ||
-        verifiesTeacherAccessQr ||
-        verifiesLineLink ||
-        verifiesLineLinkQr
+        ...(verifiesAraIdChallengeQr || verifiesLineLink || verifiesLineLinkQr
           ? {
               challengeToken: routeState?.challengeToken,
               returnTo: routeState?.returnTo,

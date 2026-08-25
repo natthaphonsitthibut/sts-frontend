@@ -12,7 +12,12 @@ export interface StudentListItem {
   school_id?: number | string;
   student_status_label?: string;
   student_status_category?: string;
-  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
+  student_status_badge_variant?:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "success"
+    | "warning";
   total_late?: number;
   total_absent?: number;
 }
@@ -65,6 +70,10 @@ export interface StudentDetail extends Record<string, unknown> {
   SchoolID_Onec?: number | string;
   AcademicYear_Onec?: number | string;
   Semester_Onec?: number | string;
+  classroom_id?: number | string;
+  school_term_id?: number | string;
+  student_number?: string | null;
+  student_status_code?: number | null;
   GPAX_Onec?: number | string;
   term_gpa?: number | string | null;
   school_name?: string;
@@ -76,7 +85,12 @@ export interface StudentDetail extends Record<string, unknown> {
   homeroom_teacher_name?: string | null;
   student_status_label?: string;
   student_status_category?: string;
-  student_status_badge_variant?: "default" | "secondary" | "destructive" | "success" | "warning";
+  student_status_badge_variant?:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "success"
+    | "warning";
   masked_fields?: string[];
   /** Pre-built Thai home address (from student_term) for visit-form prefill. */
   address?: string;
@@ -107,7 +121,11 @@ export interface StudentAccountSummary {
   user_id: number;
   username: string;
   status: string;
-  lifecycle_status: "PENDING_FIRST_LOGIN" | "ACTIVE" | "TEMP_PASSWORD_EXPIRED" | "DISABLED";
+  lifecycle_status:
+    | "PENDING_FIRST_LOGIN"
+    | "ACTIVE"
+    | "TEMP_PASSWORD_EXPIRED"
+    | "DISABLED";
   must_change_password: boolean;
 }
 
@@ -149,6 +167,9 @@ export interface StudentUpdatePayload {
   FirstName_Onec?: string;
   MiddleName_Onec?: string | null;
   LastName_Onec?: string;
+  student_number?: string | null;
+  student_status_code?: number;
+  term_gpa?: number | null;
   address_house_no?: string | null;
   VillageNumber_Onec?: string | null;
   Street_Onec?: string | null;
@@ -166,6 +187,32 @@ export interface StudentUpdatePayload {
     line_id?: string | null;
   };
   guardians?: StudentGuardianInput[];
+}
+
+export interface StudentCreatePayload extends StudentUpdatePayload {
+  PersonID_Onec: string;
+  PassportNumber_Onec?: string | null;
+  FirstName_Onec: string;
+  LastName_Onec: string;
+  classroom_id: number;
+  student_status_code: number;
+}
+
+export interface StudentManagementClassroomOption {
+  id: string;
+  schoolId: number;
+  schoolName: string;
+  schoolTermId: string;
+  academicYear: number;
+  semester: number;
+  gradeLevelId: number;
+  gradeLabel: string;
+  roomCode: string;
+  roomName: string | null;
+}
+
+export interface StudentManagementOptions {
+  classrooms: StudentManagementClassroomOption[];
 }
 
 export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";
@@ -246,6 +293,10 @@ export interface StudentProfileSummary {
     termGpa: number | null;
     cumulativeGpax: number | null;
   };
+  careConsiderations: {
+    disadvantages: Array<{ code: string; labelTh: string; recordedAt: string }>;
+    disabilities: Array<{ code: string; labelTh: string; recordedAt: string }>;
+  };
   attendance: {
     ratePercent: number | null;
     counts: {
@@ -261,7 +312,6 @@ export interface StudentProfileSummary {
 
 export interface StudentSubjectAttendanceRecord {
   date: string;
-  period: number;
   subjectCode: string | null;
   subjectName: string | null;
   statusCode: number;
@@ -269,6 +319,8 @@ export interface StudentSubjectAttendanceRecord {
   statusLabel: string;
   statusBadgeVariant: string;
   recordedAt: string | null;
+  checkingStartedAt: string | null;
+  submittedAt: string | null;
   recordedBy: string | null;
 }
 

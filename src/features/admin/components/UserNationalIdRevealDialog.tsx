@@ -15,10 +15,8 @@ import {
   Input,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import {
-  PII_REASON_OPTIONS,
-  isPiiReasonCode,
-} from "../../students/pii.constants";
+import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
+import { isPiiReasonCode } from "../../students/pii.constants";
 import { adminService } from "../api/admin.service";
 
 interface UserNationalIdRevealDialogProps {
@@ -38,6 +36,11 @@ export function UserNationalIdRevealDialog({
   const [reasonNote, setReasonNote] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const reasonOptionsQuery = usePiiRevealOptions();
+  const reasonOptions = reasonOptionsQuery.options;
+  const selectedReason = reasonOptions.find(
+    (option) => option.value === reasonCode,
+  );
 
   function close(): void {
     setReasonCode("");
@@ -48,11 +51,11 @@ export function UserNationalIdRevealDialog({
   }
 
   async function reveal(): Promise<void> {
-    if (!isPiiReasonCode(reasonCode)) {
+    if (!isPiiReasonCode(reasonCode, reasonOptions)) {
       setError("กรุณาเลือกเหตุผลในการแสดงข้อมูล");
       return;
     }
-    if (reasonCode === "OTHER" && !reasonNote.trim()) {
+    if (selectedReason?.requiresNote && !reasonNote.trim()) {
       setError("กรุณาระบุเหตุผลเพิ่มเติม");
       return;
     }
@@ -66,9 +69,7 @@ export function UserNationalIdRevealDialog({
       onRevealed(result.PersonID_Onec);
       close();
     } catch (requestError) {
-      setError(
-        getApiErrorMessage(requestError, "ไม่สามารถแสดงเลขบัตรได้"),
-      );
+      setError(getApiErrorMessage(requestError, "ไม่สามารถแสดงเลขบัตรได้"));
     } finally {
       setSubmitting(false);
     }
@@ -92,6 +93,13 @@ export function UserNationalIdRevealDialog({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
+          {reasonOptionsQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                โหลดรายการเหตุผลไม่สำเร็จ กรุณาลองอีกครั้ง
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <div className="space-y-2">
             <FormLabel htmlFor="user-national-id-reason" required>
               เหตุผลในการแสดงข้อมูล
@@ -99,7 +107,10 @@ export function UserNationalIdRevealDialog({
             <Combobox
               id="user-national-id-reason"
               onChange={setReasonCode}
-              options={PII_REASON_OPTIONS}
+              disabled={
+                reasonOptionsQuery.isLoading || reasonOptionsQuery.isError
+              }
+              options={reasonOptions}
               placeholder="เลือกเหตุผล"
               searchable={false}
               value={reasonCode}
@@ -108,7 +119,7 @@ export function UserNationalIdRevealDialog({
           <div className="space-y-2">
             <FormLabel
               htmlFor="user-national-id-note"
-              required={reasonCode === "OTHER"}
+              required={selectedReason?.requiresNote === true}
             >
               รายละเอียดเพิ่มเติม
             </FormLabel>
@@ -117,7 +128,9 @@ export function UserNationalIdRevealDialog({
               maxLength={500}
               onChange={(event) => setReasonNote(event.target.value)}
               placeholder={
-                reasonCode === "OTHER" ? "ระบุเหตุผลเพิ่มเติม" : "ระบุได้ถ้ามี"
+                selectedReason?.requiresNote
+                  ? "ระบุเหตุผลเพิ่มเติม"
+                  : "ระบุได้ถ้ามี"
               }
               value={reasonNote}
             />

@@ -69,49 +69,51 @@ async function resolveInvitation(
   );
 }
 
-async function requestInvitationOtp(token: string): Promise<string> {
-  const result = await invitationPost<{ message: string }>(
-    "/line/link/invitation/otp/request",
+async function startGroupGoogle(token: string): Promise<string> {
+  const result = await invitationPost<{ authorizationUrl: string }>(
+    "/line/link/google/start",
     { token },
-    "ส่งรหัส OTP ไม่สำเร็จ",
+    "เปิด Google Login ไม่สำเร็จ",
   );
-  return result.message;
+  return result.authorizationUrl;
 }
 
-async function verifyInvitationOtp(
-  token: string,
-  code: string,
-): Promise<{ bindingToken: string; teacherName: string }> {
-  return invitationPost(
-    "/line/link/invitation/otp/verify",
-    { token, code },
-    "ยืนยันรหัสไม่สำเร็จ",
+async function startInvitationGoogle(token: string): Promise<string> {
+  const result = await invitationPost<{ authorizationUrl: string }>(
+    "/line/link/invitation/google/start",
+    { token },
+    "เปิด Google Login ไม่สำเร็จ",
   );
+  return result.authorizationUrl;
 }
 
-/** Identical whether or not the address belongs to a teacher, by design. */
-async function requestOtp(token: string, email: string): Promise<string> {
-  const result = await invitationPost<{ message: string }>(
-    "/line/link/otp/request",
-    { token, email },
-    "ส่งรหัส OTP ไม่สำเร็จ",
-  );
-  return result.message;
-}
-
-async function verifyOtp(
+async function startDevelopmentGroupGoogle(
   token: string,
   email: string,
-  code: string,
-): Promise<{ bindingToken: string; teacherName: string }> {
-  return invitationPost(
-    "/line/link/otp/verify",
-    { token, email, code },
-    "ยืนยันรหัสไม่สำเร็จ",
+): Promise<string> {
+  const result = await invitationPost<{ authorizationUrl: string }>(
+    "/line/link/google/development",
+    { token, email },
+    "ตรวจสอบอีเมลครูไม่สำเร็จ",
   );
+  return result.authorizationUrl;
 }
 
-async function createAraIdChallenge(token: string): Promise<TeacherLineAraIdChallenge> {
+async function startDevelopmentInvitationGoogle(
+  token: string,
+  email: string,
+): Promise<string> {
+  const result = await invitationPost<{ authorizationUrl: string }>(
+    "/line/link/invitation/google/development",
+    { token, email },
+    "ตรวจสอบอีเมลครูไม่สำเร็จ",
+  );
+  return result.authorizationUrl;
+}
+
+async function createAraIdChallenge(
+  token: string,
+): Promise<TeacherLineAraIdChallenge> {
   return invitationPost(
     "/line/link/araid/challenge",
     { token },
@@ -147,7 +149,9 @@ async function approveAraIdChallenge(): Promise<void> {
   );
 }
 
-async function pollAraIdChallenge(challengeToken: string): Promise<
+async function pollAraIdChallenge(
+  challengeToken: string,
+): Promise<
   | { status: "PENDING" }
   | { status: "IN_PROGRESS"; expiresAt: string }
   | { status: "APPROVED"; bindingToken: string; teacherName: string }
@@ -183,10 +187,10 @@ export const teacherLineService = {
   approveAraIdChallenge,
   pollAraIdChallenge,
   resolveInvitation,
-  requestInvitationOtp,
-  verifyInvitationOtp,
-  requestOtp,
-  verifyOtp,
+  startGroupGoogle,
+  startInvitationGoogle,
+  startDevelopmentGroupGoogle,
+  startDevelopmentInvitationGoogle,
   isEnabled,
   startAuthorization,
 };

@@ -53,6 +53,22 @@ export interface CaseTrackingOptions {
     guidance: string | null;
   }>;
   assistanceMeasures: AssistanceMeasureOption[];
+  executionOutcomes: Array<{
+    code: "SUCCEEDED" | "NOT_SUCCEEDED";
+    label: string;
+    /** How a follow-up round says it: พบนักเรียน / ไม่พบนักเรียน. */
+    visitLabel: string;
+  }>;
+  nonFollowUpReasons: Array<{ code: string; label: string }>;
+  absenceReasons: Array<{
+    code: string;
+    label: string;
+    categoryCode: string | null;
+    categoryLabel: string | null;
+  }>;
+  disadvantageTypes: Array<{ code: string; label: string }>;
+  disabilityTypes: Array<{ code: string; label: string }>;
+  contactChannels: Array<{ code: string; label: string }>;
   parentalStatuses: Array<{ code: string; label: string }>;
   guardianTypes: Array<{
     code: string;
@@ -86,6 +102,11 @@ export interface CaseFollowUpRound {
   assistance_measure_detail?: string | null;
   assisted_at?: string | null;
   assistance_detail?: string | null;
+  task_execution_outcome_code?: "SUCCEEDED" | "NOT_SUCCEEDED" | null;
+  task_execution_outcome_label?: string | null;
+  execution_outcome_detail?: string | null;
+  non_follow_up_reason_code?: string | null;
+  non_follow_up_reason_label?: string | null;
   created_at: string;
   initial_assignee?: string | null;
   assignment_starts_at?: string | null;
@@ -102,13 +123,21 @@ export interface CaseFollowUpRound {
   follow_up_problem_category_code?: string | null;
   follow_up_problem_category_label?: string | null;
   follow_up_problem_category_guidance?: string | null;
+  absence_reason_code?: string | null;
+  absence_reason_label?: string | null;
+  absence_reason_category_label?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
   guardian_type_code?: string | null;
   guardian_type_label?: string | null;
   guardian_type_detail?: string | null;
+  contact_person_name?: string | null;
+  contact_channel_code?: string | null;
+  contact_channel_label?: string | null;
   residence_environments?: Array<{ code: string; label: string }> | null;
   residence_environment_detail?: string | null;
+  observed_disadvantage_types?: Array<{ code: string; label: string }> | null;
+  observed_disability_types?: Array<{ code: string; label: string }> | null;
   cause_detail?: string | null;
   recommendation?: string | null;
   visit_lat?: number | null;
@@ -116,6 +145,7 @@ export interface CaseFollowUpRound {
   photo_paths?: string | null;
   address_changed?: boolean;
   home_visit_exception_code?: string | null;
+  home_visit_exception_label?: string | null;
   updated_student_address?: string | null;
   updated_address_line?: string | null;
   updated_address_province?: string | null;
@@ -173,6 +203,20 @@ export interface CaseRecord {
   follow_up_rounds?: CaseFollowUpRound[];
   reviews?: CaseReviewRecord[];
   risk_signals?: CaseRiskSignal[];
+  referrals?: CaseReferralRecord[];
+}
+
+export interface CaseReferralRecord {
+  id: string;
+  case_review_id: string;
+  referral_agency_id: number;
+  agency_name: string;
+  agency_kind_code: string;
+  agency_kind_label: string;
+  status_code: string;
+  referred_at: string;
+  referred_by: string | null;
+  referral_note: string | null;
 }
 
 export interface OpenCasePayload {
@@ -197,12 +241,27 @@ export interface CaseReviewRecord {
   reviewed_at: string;
   review_note: string | null;
   review_summary?: string | null;
+  proposed_assistance_measures?: Array<{ code: string; label: string }>;
+  proposed_assistance_measure_detail?: string | null;
 }
 
 export interface CaseReviewPayload {
   review_action: CaseReviewAction;
   review_note: string;
   resolution_outcome?: CaseResolutionOutcome | null;
+  referral_agency_id?: number | null;
+  assistance_measure_codes?: string[] | null;
+  assistance_measure_detail?: string | null;
+}
+
+export interface ReferralAgencyOption {
+  id: number;
+  agencyName: string;
+  agencyKindCode: string;
+  agencyKindLabel: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  websiteUrl: string | null;
 }
 
 export interface CaseReviewResponse {

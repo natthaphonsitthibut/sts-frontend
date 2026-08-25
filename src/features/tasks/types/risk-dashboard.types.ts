@@ -47,6 +47,8 @@ export interface RiskDashboardRow {
    * that has simply never been assigned yet. */
   latestCaseHadAssignment: boolean;
   problemCategoryLabel: string | null;
+  concernLevelCode: "NOTE" | "WATCH" | "CONCERN" | null;
+  concernLevelLabel: string | null;
   teacherComment: string | null;
 }
 

@@ -88,14 +88,3 @@ export interface AraIdLoginChallengeStatus {
   status: "PENDING" | "IN_PROGRESS" | "APPROVED";
   expiresAt?: string;
 }
-
-export interface MagicLoginVerifyResponse extends Partial<AuthUser> {
-  otp_required?: boolean;
-  email?: string;
-  assigned_to_name?: string;
-  expires_at?: string | null;
-}
-
-export interface MagicOtpVerifyResponse {
-  session_token?: string;
-}

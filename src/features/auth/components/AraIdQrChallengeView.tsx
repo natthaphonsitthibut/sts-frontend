@@ -19,7 +19,10 @@ interface AraIdQrChallengeViewProps {
 }
 
 function remainingTime(expiresAt: string): number {
-  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1_000));
+  return Math.max(
+    0,
+    Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1_000),
+  );
 }
 
 export function AraIdQrChallengeView({
@@ -34,7 +37,9 @@ export function AraIdQrChallengeView({
   schoolName,
   verificationUrl,
 }: AraIdQrChallengeViewProps) {
-  const [secondsLeft, setSecondsLeft] = useState(() => remainingTime(expiresAt));
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    remainingTime(expiresAt),
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -70,12 +75,19 @@ export function AraIdQrChallengeView({
               ด้วย <AraIdWordmark className="inline text-xs" />
             </div>
             <p className="mx-auto mt-4 max-w-xs text-lg font-semibold leading-6">
-              ระบบติดตามนักเรียน
-              {schoolName ? <><br />{schoolName}</> : null}
+              ระบบติดตามผู้เรียน
+              {schoolName ? (
+                <>
+                  <br />
+                  {schoolName}
+                </>
+              ) : null}
             </p>
             <p className="mt-2 flex items-center justify-center gap-1.5 text-sm font-semibold">
               <Clock3 aria-hidden="true" className="size-4" />
-              {isInProgress ? "กำลังยืนยันตัวตน…" : `หมดเวลาใน : ${minutes}:${seconds}`}
+              {isInProgress
+                ? "กำลังยืนยันตัวตน…"
+                : `หมดเวลาใน : ${minutes}:${seconds}`}
             </p>
 
             <div className="relative mx-auto mt-4 w-fit bg-white p-3">
