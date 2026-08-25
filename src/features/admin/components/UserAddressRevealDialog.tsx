@@ -18,7 +18,8 @@ import {
 import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
 import { joinAddressParts } from "../../../components/address/address-format";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import { PII_REASON_OPTIONS, isPiiReasonCode } from "../../students/pii.constants";
+import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
+import { isPiiReasonCode } from "../../students/pii.constants";
 import { adminService } from "../api/admin.service";
 import type { UserAddressDetail } from "../types/admin.types";
 
@@ -38,6 +39,11 @@ export function UserAddressRevealDialog({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [address, setAddress] = useState<UserAddressDetail | null>(null);
+  const reasonOptionsQuery = usePiiRevealOptions();
+  const reasonOptions = reasonOptionsQuery.options;
+  const selectedReason = reasonOptions.find(
+    (option) => option.value === reasonCode,
+  );
 
   function close(): void {
     setReasonCode("");
@@ -49,11 +55,11 @@ export function UserAddressRevealDialog({
   }
 
   async function reveal(): Promise<void> {
-    if (!isPiiReasonCode(reasonCode)) {
+    if (!isPiiReasonCode(reasonCode, reasonOptions)) {
       setError("กรุณาเลือกเหตุผลในการแสดงข้อมูล");
       return;
     }
-    if (reasonCode === "OTHER" && !reasonNote.trim()) {
+    if (selectedReason?.requiresNote && !reasonNote.trim()) {
       setError("กรุณาระบุเหตุผลเพิ่มเติม");
       return;
     }
@@ -73,9 +79,16 @@ export function UserAddressRevealDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
+    >
       <DialogContent
-        className={address ? "max-h-[90vh] max-w-5xl overflow-y-auto" : "w-[min(92vw,440px)]"}
+        className={
+          address
+            ? "max-h-[90vh] max-w-5xl overflow-y-auto"
+            : "w-[min(92vw,440px)]"
+        }
         onClose={close}
       >
         <DialogHeader>
@@ -95,6 +108,13 @@ export function UserAddressRevealDialog({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : null}
+            {reasonOptionsQuery.isError ? (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  โหลดรายการเหตุผลไม่สำเร็จ กรุณาลองอีกครั้ง
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <div className="space-y-2">
               <FormLabel htmlFor="user-address-reason" required>
                 เหตุผลในการแสดงข้อมูล
@@ -102,21 +122,31 @@ export function UserAddressRevealDialog({
               <Combobox
                 id="user-address-reason"
                 onChange={(value) => setReasonCode(value)}
-                options={PII_REASON_OPTIONS}
+                disabled={
+                  reasonOptionsQuery.isLoading || reasonOptionsQuery.isError
+                }
+                options={reasonOptions}
                 placeholder="เลือกเหตุผล"
                 searchable={false}
                 value={reasonCode}
               />
             </div>
             <div className="space-y-2">
-              <FormLabel htmlFor="user-address-note" required={reasonCode === "OTHER"}>
+              <FormLabel
+                htmlFor="user-address-note"
+                required={selectedReason?.requiresNote === true}
+              >
                 รายละเอียดเพิ่มเติม
               </FormLabel>
               <Input
                 id="user-address-note"
                 maxLength={500}
                 onChange={(event) => setReasonNote(event.target.value)}
-                placeholder={reasonCode === "OTHER" ? "ระบุเหตุผลเพิ่มเติม" : "ระบุได้ถ้ามี"}
+                placeholder={
+                  selectedReason?.requiresNote
+                    ? "ระบุเหตุผลเพิ่มเติม"
+                    : "ระบุได้ถ้ามี"
+                }
                 value={reasonNote}
               />
             </div>
@@ -176,7 +206,9 @@ function UserAddressMap({
       ].map(([label, value]) => (
         <div key={label}>
           <dt className="text-xs font-medium text-slate-500">{label}</dt>
-          <dd className="mt-1 font-semibold text-slate-800">{display(value)}</dd>
+          <dd className="mt-1 font-semibold text-slate-800">
+            {display(value)}
+          </dd>
         </div>
       ))}
     </dl>

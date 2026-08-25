@@ -4,6 +4,7 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AraIdDocumentBrand } from "../features/araid/components/AraIdDocumentBrand";
 import {
+  AboutPage,
   AdminAccessPage,
   AraIdSplashPage,
   AraIdLoginPage,
@@ -48,6 +49,7 @@ import {
   NotFoundPage,
   NotificationsPage,
   ProfilePage,
+  PrivacyPolicyPage,
   ReportPage,
   RouteSuspense,
   SchoolStructurePage,
@@ -59,7 +61,9 @@ import {
   SystemSettingsPage,
   TaskDetailPage,
   TaskGuestPage,
+  TaskGoogleCallbackPage,
   TeacherFormPage,
+  TeacherProfilePage,
   TeacherCommentReportsPage,
   TeachersPage,
   UserDetailPage,
@@ -155,23 +159,40 @@ export const router = createBrowserRouter([
       },
       {
         path: "students",
-        element: protectedElement(<StudentListPage />, "students"),
+        element: protectedElement(<StudentListPage mode="view" />, "students"),
       },
       {
-        path: "students/history",
-        element: protectedElement(<StudentListPage />, "students"),
+        path: "manage-students",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
       },
       {
-        path: "students/export",
-        element: protectedElement(<StudentListPage />, "students"),
+        path: "manage-students/history",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
+      },
+      {
+        path: "manage-students/export",
+        element: protectedElement(
+          <StudentListPage mode="manage" />,
+          "manage-students",
+        ),
       },
       {
         path: "students/:id",
-        element: protectedElement(<StudentDetailPage />, "students"),
+        element: protectedElement(<StudentDetailPage />, [
+          "students",
+          "manage-students",
+          "classrooms",
+        ]),
       },
       {
-        path: "students/:id/edit",
-        element: protectedElement(<StudentEditPage />, "students"),
+        path: "manage-students/:id/edit",
+        element: protectedElement(<StudentEditPage />, "manage-students"),
       },
       {
         path: "attendance",
@@ -242,18 +263,6 @@ export const router = createBrowserRouter([
           <AttendanceOperationsPage />,
           "attendance-dashboard",
         ),
-      },
-      {
-        path: "timetable",
-        element: <LegacyRouteRedirect to="/curriculum" />,
-      },
-      {
-        path: "timetable/mine",
-        element: <LegacyRouteRedirect to="/curriculum" />,
-      },
-      {
-        path: "timetable/rooms",
-        element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
         path: "classrooms",
@@ -359,8 +368,15 @@ export const router = createBrowserRouter([
         element: <LegacyRouteRedirect to="/curriculum" />,
       },
       {
+        path: "teachers",
+        element: protectedElement(<TeachersPage mode="view" />, "teachers"),
+      },
+      {
         path: "manage-teachers",
-        element: protectedElement(<TeachersPage />, "manage-teachers"),
+        element: protectedElement(
+          <TeachersPage mode="manage" />,
+          "manage-teachers",
+        ),
       },
       {
         path: "manage-teachers/new",
@@ -369,6 +385,14 @@ export const router = createBrowserRouter([
       {
         path: "manage-teachers/:id/edit",
         element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+      },
+      {
+        path: "teachers/:id",
+        element: protectedElement(<TeacherProfilePage />, [
+          "teachers",
+          "manage-teachers",
+          "manage-classroom-links",
+        ]),
       },
       {
         path: "manage-role-groups",
@@ -439,6 +463,10 @@ export const router = createBrowserRouter([
     element: withSuspense(<ReportPage />),
   },
   {
+    path: "/task/google-callback",
+    element: withSuspense(<TaskGoogleCallbackPage />),
+  },
+  {
     path: "/task/:token/success",
     element: withSuspense(<SuccessPage />),
   },
@@ -482,10 +510,6 @@ export const router = createBrowserRouter([
     element: withSuspense(<PublicCheckInPage />),
   },
   {
-    path: "/teacher-access/*",
-    element: <LegacyRouteRedirect to="/check-in" />,
-  },
-  {
     path: "/araid",
     element: <AraIdDocumentBrand />,
     children: [
@@ -526,6 +550,14 @@ export const router = createBrowserRouter([
         element: withSuspense(<AraIdAuthorizePage />),
       },
     ],
+  },
+  {
+    path: "/about",
+    element: withSuspense(<AboutPage />),
+  },
+  {
+    path: "/privacy",
+    element: withSuspense(<PrivacyPolicyPage />),
   },
   {
     path: "/login",

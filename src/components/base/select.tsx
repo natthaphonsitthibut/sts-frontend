@@ -72,6 +72,7 @@ export function Select({
 }: SelectProps) {
   const innerRef = useRef<HTMLSelectElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [internalValue, setInternalValue] = useState(
     defaultValue === undefined ? "" : String(defaultValue),
@@ -84,8 +85,11 @@ export function Select({
     options[0]?.label ??
     "";
 
-  function emitBlur(event: FocusEvent<HTMLButtonElement>): void {
-    window.setTimeout(() => setOpen(false), 120);
+  function emitBlur(event: FocusEvent<HTMLElement>): void {
+    window.setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement))
+        setOpen(false);
+    }, 0);
     onBlur?.(event as unknown as FocusEvent<HTMLSelectElement>);
   }
 
@@ -102,10 +106,48 @@ export function Select({
     } as unknown as ChangeEvent<HTMLSelectElement>);
   }
 
+  function focusOption(position: "first" | "last" | "selected"): void {
+    window.requestAnimationFrame(() => {
+      const optionButtons = Array.from(
+        containerRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="option"]:not(:disabled)',
+        ) ?? [],
+      );
+      const selectedIndex = options.findIndex(
+        (option) => option.value === selectedValue,
+      );
+      const index =
+        position === "first"
+          ? 0
+          : position === "last"
+            ? optionButtons.length - 1
+            : Math.max(0, selectedIndex);
+      optionButtons[index]?.focus();
+    });
+  }
+
+  function selectOption(nextValue: string): void {
+    emitChange(nextValue);
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
   useDismissable(open, containerRef, () => setOpen(false));
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      onBlur={emitBlur}
+      onKeyDown={(event) => {
+        if (open && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          triggerRef.current?.focus();
+        }
+      }}
+      ref={containerRef}
+    >
       <select
         aria-hidden="true"
         aria-label={props["aria-label"]}
@@ -120,7 +162,9 @@ export function Select({
           // react-hook-form writes the reset value while registering the ref.
           // Synchronize in the commit callback, never by reading refs in render.
           if (!controlled && element) {
-            setInternalValue((current) => (element.value === current ? current : element.value));
+            setInternalValue((current) =>
+              element.value === current ? current : element.value,
+            );
           }
         }}
         required={required}
@@ -132,6 +176,7 @@ export function Select({
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls={id ? `${id}-listbox` : undefined}
         aria-invalid={props["aria-invalid"]}
         aria-label={props["aria-label"]}
         className={cn(
@@ -140,8 +185,26 @@ export function Select({
         )}
         disabled={disabled}
         id={id}
-        onBlur={emitBlur}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (
+            ["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(
+              event.key,
+            )
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!open) setOpen(true);
+            focusOption(
+              event.key === "ArrowUp" || event.key === "End"
+                ? "last"
+                : event.key === "Home"
+                  ? "first"
+                  : "selected",
+            );
+          }
+        }}
+        ref={triggerRef}
         type="button"
       >
         <span className="block min-w-0 flex-1 truncate">{selectedLabel}</span>
@@ -157,6 +220,7 @@ export function Select({
       {open && !disabled ? (
         <ul
           className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+          id={id ? `${id}-listbox` : undefined}
           role="listbox"
         >
           {options.map((option) => (
@@ -164,13 +228,42 @@ export function Select({
               <button
                 className={cn(
                   "block min-h-10 w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500",
-                  option.value === selectedValue && "bg-slate-50 font-medium text-primary",
+                  option.value === selectedValue &&
+                    "bg-slate-50 font-medium text-primary",
                 )}
                 disabled={option.disabled}
+                aria-selected={option.value === selectedValue}
+                onClick={() => selectOption(option.value)}
+                onKeyDown={(event) => {
+                  const enabledOptions = Array.from(
+                    containerRef.current?.querySelectorAll<HTMLButtonElement>(
+                      '[role="option"]:not(:disabled)',
+                    ) ?? [],
+                  );
+                  const currentIndex = enabledOptions.indexOf(
+                    event.currentTarget,
+                  );
+                  const nextIndex =
+                    event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? enabledOptions.length - 1
+                        : event.key === "ArrowDown"
+                          ? Math.min(
+                              enabledOptions.length - 1,
+                              currentIndex + 1,
+                            )
+                          : event.key === "ArrowUp"
+                            ? Math.max(0, currentIndex - 1)
+                            : -1;
+                  if (nextIndex >= 0) {
+                    event.preventDefault();
+                    enabledOptions[nextIndex]?.focus();
+                  }
+                }}
                 onMouseDown={(event) => {
                   event.preventDefault();
-                  emitChange(option.value);
-                  setOpen(false);
+                  selectOption(option.value);
                 }}
                 role="option"
                 type="button"

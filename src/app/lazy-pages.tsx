@@ -6,6 +6,16 @@ export const AdminAccessPage = lazy(() =>
     default: module.AdminAccessPage,
   })),
 );
+export const AboutPage = lazy(() =>
+  import("../features/public-info/pages/PublicInfoPages").then((module) => ({
+    default: module.AboutPage,
+  })),
+);
+export const PrivacyPolicyPage = lazy(() =>
+  import("../features/public-info/pages/PublicInfoPages").then((module) => ({
+    default: module.PrivacyPolicyPage,
+  })),
+);
 export const AraIdSplashPage = lazy(() =>
   import("../features/araid/pages/AraIdSplashPage").then((module) => ({
     default: module.AraIdSplashPage,
@@ -124,6 +134,11 @@ export const TeachersPage = lazy(() =>
 export const TeacherFormPage = lazy(() =>
   import("../features/teachers/pages/TeacherFormPage").then((module) => ({
     default: module.TeacherFormPage,
+  })),
+);
+export const TeacherProfilePage = lazy(() =>
+  import("../features/teachers/pages/TeacherProfilePage").then((module) => ({
+    default: module.TeacherProfilePage,
   })),
 );
 export const ManageUsersPage = lazy(() =>
@@ -272,7 +287,7 @@ export const DashboardPage = lazy(() =>
   })),
 );
 export const TeacherCommentReportsPage = lazy(() =>
-  import("../features/student-observations/pages/TeacherCommentReportsPage").then(
+  import("../features/teacher-comments/pages/TeacherCommentReportsPage").then(
     (module) => ({
       default: module.TeacherCommentReportsPage,
     }),
@@ -321,6 +336,11 @@ export const TaskDetailPage = lazy(() =>
 export const TaskGuestPage = lazy(() =>
   import("../features/tasks/pages/TaskGuestPage").then((module) => ({
     default: module.TaskGuestPage,
+  })),
+);
+export const TaskGoogleCallbackPage = lazy(() =>
+  import("../features/tasks/pages/TaskGoogleCallbackPage").then((module) => ({
+    default: module.TaskGoogleCallbackPage,
   })),
 );
 

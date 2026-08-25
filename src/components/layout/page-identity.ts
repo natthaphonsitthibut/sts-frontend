@@ -96,7 +96,9 @@ export const PAGE_IDENTITIES = {
   "/import-data": createIdentity("นำเข้าข้อมูล", "file-import"),
   "/import-data/history": createIdentity("นำเข้าข้อมูล", "file-import"),
   "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),
-  "/manage-teachers": createIdentity("จัดการข้อมูลคุณครู", "users-round"),
+  "/teachers": createIdentity("รายชื่อครู", "users-round"),
+  "/manage-students": createIdentity("จัดการนักเรียน", "users-round"),
+  "/manage-teachers": createIdentity("จัดการข้อมูลครู", "users-round"),
   "/manage-users": createIdentity("จัดการผู้ใช้งาน", "users"),
   "/master-data": createIdentity("ข้อมูลพื้นฐาน", "file-spreadsheet"),
   "/master-data/student-statuses": createIdentity(

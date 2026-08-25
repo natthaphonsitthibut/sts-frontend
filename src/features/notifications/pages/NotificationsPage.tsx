@@ -23,8 +23,10 @@ import {
 } from "../hooks/useNotifications";
 import { getNotificationRoute } from "../lib/notification-navigation";
 import type { NotificationItem } from "../types/notifications.types";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 export function NotificationsPage() {
+  const { can } = usePermissions();
   const contextualNavigate = useContextualNavigate();
   const hasMarkedSeen = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -74,7 +76,7 @@ export function NotificationsPage() {
     if (!notification.read_at) {
       markRead.mutate(notification.id);
     }
-    const route = getNotificationRoute(notification);
+    const route = can("dashboard") ? getNotificationRoute(notification) : null;
     if (route) {
       contextualNavigate(route);
     }

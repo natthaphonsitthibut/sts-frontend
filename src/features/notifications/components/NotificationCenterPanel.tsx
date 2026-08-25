@@ -16,6 +16,7 @@ import type {
   NotificationReadStatus,
 } from "../types/notifications.types";
 import { NotificationListItem } from "./NotificationListItem";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 interface NotificationCenterPanelProps {
   onOpenChange: (open: boolean) => void;
@@ -38,6 +39,7 @@ export function NotificationCenterPanel({
   onOpenChange,
   open,
 }: NotificationCenterPanelProps) {
+  const { can } = usePermissions();
   const [status, setStatus] = useState<NotificationReadStatus>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [locallyReadIds, setLocallyReadIds] = useState<Set<string>>(
@@ -127,7 +129,7 @@ export function NotificationCenterPanel({
   }
 
   function handleOpenRelated(notification: NotificationItem): void {
-    const route = getNotificationRoute(notification);
+    const route = can("dashboard") ? getNotificationRoute(notification) : null;
     if (!route) return;
     handleOpenChange(false);
     contextualNavigate(route);
@@ -240,7 +242,9 @@ export function NotificationCenterPanel({
         ) : (
           <ul className="space-y-3">
             {displayedNotifications.map((notification) => {
-              const route = getNotificationRoute(notification);
+              const route = can("dashboard")
+                ? getNotificationRoute(notification)
+                : null;
               return (
                 <NotificationListItem
                   className="overflow-hidden rounded-lg border border-slate-200 bg-white"
