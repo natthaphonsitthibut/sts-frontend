@@ -1,5 +1,5 @@
 import { Copy, Link2, MessageCircle, Power, RefreshCw } from "lucide-react";
-import { Badge, Button, Checkbox } from "../../../components/base";
+import { Avatar, Badge, Button, Checkbox } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -10,8 +10,9 @@ import {
 import type {
   ClassroomLinkDelivery,
   ClassroomLinkListItem,
-  ClassroomLinkSessionStatus,
 } from "../types/classroom-links.types";
+import { formatThaiDateTime } from "../../../lib/date-time";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { formatClassLabel } from "../../../lib/room-presentation";
 
 interface ClassroomLinksTableProps {
@@ -24,23 +25,7 @@ interface ClassroomLinksTableProps {
   onResendLine: (row: ClassroomLinkListItem) => void;
   onRotate: (row: ClassroomLinkListItem) => void;
   onDeactivate: (row: ClassroomLinkListItem) => void;
-}
-
-function formatDateTime(value: string | null): string {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatSessionStatus(status: ClassroomLinkSessionStatus): string {
-  return {
-    OPEN: "กำลังเช็กชื่อ",
-    SUBMITTED: "ส่งแล้ว",
-    REOPENED: "เปิดแก้ไข",
-    VOIDED: "ยกเลิก",
-  }[status];
+  onOpenTeacher?: (teacherId: string) => void;
 }
 
 function linkStatus(status: ClassroomLinkListItem["status"]) {
@@ -70,6 +55,47 @@ function deliveryStatus(delivery: ClassroomLinkDelivery | null) {
   return <Badge variant="secondary">ยังไม่ได้ส่ง</Badge>;
 }
 
+function HomeroomTeacher({
+  onOpenTeacher,
+  row,
+}: {
+  onOpenTeacher?: (teacherId: string) => void;
+  row: ClassroomLinkListItem;
+}) {
+  if (!row.homeroomTeacherName) {
+    return <span className="text-slate-500">ยังไม่ได้กำหนดครูประจำชั้น</span>;
+  }
+  const avatar = (
+    <Avatar
+      gradientName={row.homeroomTeacherName}
+      imageAlt={`รูปประจำตัวของ ${row.homeroomTeacherName}`}
+      imageUrl={resolveApiMediaUrl(row.homeroomTeacherPhotoUrl)}
+    />
+  );
+  const canOpenTeacher = Boolean(row.homeroomTeacherId && onOpenTeacher);
+  return (
+    <div className="flex min-w-0 items-center gap-3" data-homeroom-teacher>
+      {canOpenTeacher ? (
+        <button
+          aria-label={`เปิดข้อมูลคุณครู ${row.homeroomTeacherName}`}
+          className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          onClick={() => onOpenTeacher?.(row.homeroomTeacherId!)}
+          type="button"
+        >
+          {avatar}
+        </button>
+      ) : (
+        <span className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-slate-300">
+          {avatar}
+        </span>
+      )}
+      <span className="min-w-0 font-medium text-slate-800">
+        {row.homeroomTeacherName}
+      </span>
+    </div>
+  );
+}
+
 function RowActions({
   row,
   pending,
@@ -78,7 +104,10 @@ function RowActions({
   onResendLine,
   onRotate,
   onDeactivate,
-}: Omit<ClassroomLinksTableProps, "rows" | "selected" | "onSelectionChange"> & {
+}: Omit<
+  ClassroomLinksTableProps,
+  "rows" | "selected" | "onSelectionChange" | "onOpenTeacher"
+> & {
   row: ClassroomLinkListItem;
 }) {
   const isPending = (action: string) =>
@@ -124,7 +153,7 @@ function RowActions({
         size="sm"
         variant="outline"
       >
-        หมุนลิงก์
+        สร้างลิงก์ใหม่
       </Button>
       <Button
         icon={Power}
@@ -140,7 +169,7 @@ function RowActions({
 }
 
 export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
-  const { rows, selected, onSelectionChange } = props;
+  const { onOpenTeacher, rows, selected, onSelectionChange } = props;
   const selectable = rows.filter((row) => row.status !== "ACTIVE");
   const allSelected =
     selectable.length > 0 &&
@@ -181,11 +210,9 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           "ครูประจำชั้น",
           "สถานะลิงก์",
           "สถานะ LINE",
-          "เวลาลิงก์",
-          "รอบล่าสุด",
           "เครื่องมือ",
         ]}
-        minWidthClassName="min-w-[1360px]"
+        minWidthClassName="min-w-[1080px]"
         responsiveBreakpoint="lg"
       >
         {rows.map((row) => (
@@ -207,12 +234,14 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
               <div className="font-semibold text-slate-900">
                 {row.roomNumber}
               </div>
-              <div className="mt-0.5 text-xs text-slate-500">
-                {row.roomName || "—"}
-              </div>
+              {row.roomName ? (
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {row.roomName}
+                </div>
+              ) : null}
             </DataTableCell>
             <DataTableCell>
-              {row.homeroomTeacherName || "ยังไม่ได้กำหนดครูประจำชั้น"}
+              <HomeroomTeacher onOpenTeacher={onOpenTeacher} row={row} />
             </DataTableCell>
             <DataTableCell>{linkStatus(row.status)}</DataTableCell>
             <DataTableCell>
@@ -220,32 +249,10 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                 {deliveryStatus(row.lineDelivery)}
                 {row.lineDelivery?.deliveredAt ? (
                   <div className="text-xs text-slate-500">
-                    {formatDateTime(row.lineDelivery.deliveredAt)}
+                    {formatThaiDateTime(row.lineDelivery.deliveredAt)}
                   </div>
                 ) : null}
               </div>
-            </DataTableCell>
-            <DataTableCell>
-              <div>ออก {formatDateTime(row.issuedAt)}</div>
-              <div className="mt-0.5 text-xs text-slate-500">
-                หมุน {formatDateTime(row.rotatedAt)}
-              </div>
-              <div className="mt-0.5 text-xs text-slate-500">
-                ใช้ {formatDateTime(row.lastUsedAt)}
-              </div>
-            </DataTableCell>
-            <DataTableCell>
-              {row.latestSession ? (
-                <div>
-                  <div>{formatDateTime(row.latestSession.submittedAt)}</div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    {row.latestSession.attendanceDate} ·{" "}
-                    {formatSessionStatus(row.latestSession.status)}
-                  </div>
-                </div>
-              ) : (
-                "—"
-              )}
             </DataTableCell>
             <DataTableCell className="min-w-[360px] text-right">
               <RowActions row={row} {...props} />
@@ -273,32 +280,12 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                   </div>
                   {linkStatus(row.status)}
                 </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {row.homeroomTeacherName || "ยังไม่ได้กำหนดครูประจำชั้น"}
+                <div className="mt-2 text-sm">
+                  <HomeroomTeacher onOpenTeacher={onOpenTeacher} row={row} />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {deliveryStatus(row.lineDelivery)}
                 </div>
-                <dl className="mt-3 grid gap-1 text-xs text-slate-500">
-                  <div className="flex justify-between gap-3">
-                    <dt>ออกลิงก์</dt>
-                    <dd>{formatDateTime(row.issuedAt)}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt>หมุนล่าสุด</dt>
-                    <dd>{formatDateTime(row.rotatedAt)}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt>ใช้งานล่าสุด</dt>
-                    <dd>{formatDateTime(row.lastUsedAt)}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt>รอบเช็กชื่อล่าสุด</dt>
-                    <dd>
-                      {formatDateTime(row.latestSession?.submittedAt ?? null)}
-                    </dd>
-                  </div>
-                </dl>
                 <div className="mt-4 border-t border-slate-100 pt-4">
                   <RowActions row={row} {...props} />
                 </div>

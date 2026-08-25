@@ -9,8 +9,8 @@ import { AraIdQrChallengeView } from "./AraIdQrChallengeView";
 /**
  * Staff AraID login, shaped like the identity check a guest link shows: the page
  * swaps to this full screen instead of growing a panel under the password form,
- * and the screen itself is the same `AraIdQrChallengeView` the teacher-access,
- * teacher-line and task-link panels render.
+ * and the screen itself is the same `AraIdQrChallengeView` rendered by the
+ * teacher-line and task-link panels.
  */
 export function AraIdLoginChallengePanel({
   challenge,

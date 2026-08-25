@@ -1,13 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link2, Plus } from "lucide-react";
+import {
+  CalendarClock,
+  Link2,
+  Link2Off,
+  Pencil,
+  Plus,
+  Share2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   appToast,
   Button,
+  DateTimePicker,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   FormErrorAlert,
+  IconButton,
+  Label,
   useConfirm,
 } from "../../../components/base";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
 import {
@@ -23,27 +41,49 @@ import {
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import { formatClassLabel } from "../../../lib/room-presentation";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
+import { teacherLineService } from "../../teacher-line/api/teacher-line.service";
 import { ClassroomLinksTable } from "../components/ClassroomLinksTable";
 import {
   useBulkCreateClassroomLinks,
+  useClassroomLineGroupInvitation,
   useClassroomLinks,
   useDeactivateClassroomLink,
+  useIssueClassroomLineGroupInvitation,
   useRedisplayClassroomLink,
+  useRevokeClassroomLineGroupInvitation,
   useResendClassroomLinkLine,
   useRotateClassroomLink,
+  useUpdateClassroomLineGroupInvitation,
 } from "../hooks/useClassroomLinks";
 import type {
   ClassroomLinkListItem,
   ClassroomLinkStatus,
+  ClassroomLineGroupInvitation,
 } from "../types/classroom-links.types";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
 
+function toLocalDateTimeValue(date: Date): string {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function initialLineGroupSchedule(): { startsAt: string; expiresAt: string } {
+  const startsAt = new Date();
+  const expiresAt = new Date(startsAt.getTime() + 7 * 86_400_000);
+  return {
+    startsAt: toLocalDateTimeValue(startsAt),
+    expiresAt: toLocalDateTimeValue(expiresAt),
+  };
+}
+
 export function ClassroomLinksPage() {
+  const contextualNavigate = useContextualNavigate();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const [schoolInput, setSchoolInput] = useState("");
@@ -57,6 +97,13 @@ export function ClassroomLinksPage() {
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  const [sharedLineInvitation, setSharedLineInvitation] =
+    useState<ClassroomLineGroupInvitation | null>(null);
+  const [lineDialogOpen, setLineDialogOpen] = useState(false);
+  const [lineDialogMode, setLineDialogMode] = useState<"CREATE" | "EDIT">(
+    "CREATE",
+  );
+  const [lineSchedule, setLineSchedule] = useState(initialLineGroupSchedule);
   const [pending, setPending] = useState<{
     action: string;
     id: string | number;
@@ -73,6 +120,10 @@ export function ClassroomLinksPage() {
   const gradeLevelsQuery = useQuery({
     queryKey: ["classroom-links", "grade-levels"],
     queryFn: attendanceLookupService.getGradeLevels,
+  });
+  const lineEnabledQuery = useQuery({
+    queryKey: ["line-link", "status"],
+    queryFn: teacherLineService.isEnabled,
   });
   const terms = termsQuery.data ?? [];
   const selectedTerm =
@@ -105,6 +156,10 @@ export function ClassroomLinksPage() {
   const rotate = useRotateClassroomLink();
   const deactivate = useDeactivateClassroomLink();
   const resendLine = useResendClassroomLinkLine();
+  const lineInvitation = useClassroomLineGroupInvitation(schoolId);
+  const issueLineInvitation = useIssueClassroomLineGroupInvitation();
+  const updateLineInvitation = useUpdateClassroomLineGroupInvitation();
+  const revokeLineInvitation = useRevokeClassroomLineGroupInvitation();
   const rows = linksQuery.data?.data ?? [];
 
   function resetListState(): void {
@@ -138,6 +193,7 @@ export function ClassroomLinksPage() {
         result.data.length === 1 &&
         result.data[0].accessUrl
       ) {
+        setSharedLineInvitation(null);
         setSharedUrl(result.data[0].accessUrl);
       }
       setSelected(new Set());
@@ -162,6 +218,7 @@ export function ClassroomLinksPage() {
     if (!row.id) return;
     setPending({ action: "copy", id: row.id });
     try {
+      setSharedLineInvitation(null);
       setSharedUrl((await redisplay.mutateAsync(row.id)).accessUrl);
     } catch {
       // Mutation state is rendered by FormErrorAlert.
@@ -173,18 +230,19 @@ export function ClassroomLinksPage() {
   async function handleRotate(row: ClassroomLinkListItem): Promise<void> {
     if (!row.id) return;
     const accepted = await confirm({
-      title: `หมุนลิงก์ ${formatClassLabel(row.gradeLabel, row.roomNumber)}?`,
+      title: `สร้างลิงก์ใหม่ให้ ${formatClassLabel(row.gradeLabel, row.roomNumber)}?`,
       description:
-        "ลิงก์เดิมจะหยุดใช้งานทันที หลังหมุนแล้วต้องส่งหรือแชร์ลิงก์ใหม่",
-      confirmText: "หมุนลิงก์",
+        "ลิงก์เดิมจะหยุดใช้งานทันที หลังสร้างแล้วต้องส่งหรือแชร์ลิงก์ใหม่",
+      confirmText: "สร้างลิงก์ใหม่",
       variant: "destructive",
     });
     if (!accepted) return;
     setPending({ action: "rotate", id: row.id });
     try {
       const result = await rotate.mutateAsync(row.id);
+      setSharedLineInvitation(null);
       setSharedUrl(result.accessUrl);
-      appToast.success("หมุนลิงก์แล้ว กรุณาส่งลิงก์ใหม่ให้ผู้ใช้งาน");
+      appToast.success("สร้างลิงก์ใหม่แล้ว กรุณาส่งลิงก์ใหม่ให้ผู้ใช้งาน");
     } catch {
       // Mutation state is rendered by FormErrorAlert.
     } finally {
@@ -229,12 +287,82 @@ export function ClassroomLinksPage() {
     }
   }
 
+  function openCreateLineInvitation(): void {
+    setLineDialogMode("CREATE");
+    setLineSchedule(initialLineGroupSchedule());
+    issueLineInvitation.reset();
+    setLineDialogOpen(true);
+  }
+
+  function openEditLineInvitation(): void {
+    const invitation = lineInvitation.data;
+    if (!invitation) return;
+    setLineDialogMode("EDIT");
+    setLineSchedule({
+      startsAt: toLocalDateTimeValue(new Date(invitation.startsAt)),
+      expiresAt: toLocalDateTimeValue(new Date(invitation.expiresAt)),
+    });
+    updateLineInvitation.reset();
+    setLineDialogOpen(true);
+  }
+
+  async function saveLineInvitation(): Promise<void> {
+    if (!schoolId) return;
+    const startsAt = new Date(lineSchedule.startsAt);
+    const expiresAt = new Date(lineSchedule.expiresAt);
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      !Number.isFinite(expiresAt.getTime()) ||
+      expiresAt <= startsAt
+    ) {
+      return;
+    }
+    const input = {
+      schoolId,
+      startsAt: startsAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    };
+    const result =
+      lineDialogMode === "EDIT" && lineInvitation.data
+        ? await updateLineInvitation.mutateAsync({
+            ...input,
+            invitationId: lineInvitation.data.id,
+          })
+        : await issueLineInvitation.mutateAsync(input);
+    setLineDialogOpen(false);
+    setSharedLineInvitation(result);
+    setSharedUrl(result.url);
+  }
+
+  async function closeLineInvitation(): Promise<void> {
+    const invitation = lineInvitation.data;
+    if (!schoolId || !invitation) return;
+    const accepted = await confirm({
+      title: "ปิดลิงก์ยืนยัน LINE?",
+      description:
+        "ครูจะใช้ลิงก์กลางนี้ยืนยันบัญชี LINE ไม่ได้ทันที ลิงก์ห้องเรียนที่สร้างไว้ไม่ถูกลบ",
+      confirmText: "ปิดลิงก์",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    await revokeLineInvitation.mutateAsync({
+      invitationId: invitation.id,
+      schoolId,
+    });
+    setSharedLineInvitation(null);
+    setSharedUrl(null);
+  }
+
   const actionError =
     bulkCreate.error ??
     redisplay.error ??
     rotate.error ??
     deactivate.error ??
-    resendLine.error;
+    resendLine.error ??
+    lineInvitation.error ??
+    issueLineInvitation.error ??
+    updateLineInvitation.error ??
+    revokeLineInvitation.error;
   const pageError =
     schoolsQuery.error ??
     termsQuery.error ??
@@ -251,6 +379,20 @@ export function ClassroomLinksPage() {
       <PageToolbar
         actions={
           <div className="flex flex-wrap justify-end gap-2">
+            {lineEnabledQuery.data === true ? (
+              <Button
+                disabled={
+                  !schoolId ||
+                  lineInvitation.isPending ||
+                  Boolean(lineInvitation.data)
+                }
+                icon={Link2}
+                onClick={openCreateLineInvitation}
+                variant="outline"
+              >
+                สร้างลิงก์ยืนยัน LINE
+              </Button>
+            ) : null}
             <Button
               disabled={selected.size === 0}
               icon={Plus}
@@ -272,6 +414,54 @@ export function ClassroomLinksPage() {
         }
         title="จัดการลิงก์ห้องเรียน"
       />
+
+      {lineInvitation.data ? (
+        <section className="mb-4 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                ลิงก์ยืนยัน LINE กลาง
+                {lineInvitation.data.status === "PENDING"
+                  ? " (รอเวลาเริ่ม)"
+                  : " เปิดใช้งาน"}
+              </h2>
+              <p className="mt-0.5 text-sm text-slate-600">
+                ใช้ได้เฉพาะครูประจำชั้นของ {lineInvitation.data.schoolName} ·
+                เริ่ม {formatThaiDateTime(lineInvitation.data.startsAt)} ·
+                หมดอายุ {formatThaiDateTime(lineInvitation.data.expiresAt)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <IconButton
+                aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
+                icon={Pencil}
+                onClick={openEditLineInvitation}
+                title="แก้ไขวันเวลา"
+                variant="edit"
+              />
+              <IconButton
+                aria-label="แชร์ลิงก์ยืนยัน LINE"
+                icon={Share2}
+                onClick={() => {
+                  if (!lineInvitation.data) return;
+                  setSharedLineInvitation(lineInvitation.data);
+                  setSharedUrl(lineInvitation.data.url);
+                }}
+                title="แชร์ลิงก์"
+                variant="share"
+              />
+              <IconButton
+                aria-label="ปิดลิงก์ยืนยัน LINE"
+                disabled={revokeLineInvitation.isPending}
+                icon={Link2Off}
+                onClick={() => void closeLineInvitation()}
+                title="ปิดลิงก์"
+                variant="lock"
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <ToolbarControls className="mb-6">
         <SearchInput
@@ -413,6 +603,9 @@ export function ClassroomLinksPage() {
             onCopy={(row) => void handleCopy(row)}
             onCreate={(row) => void createLinks([row.classroomId])}
             onDeactivate={(row) => void handleDeactivate(row)}
+            onOpenTeacher={(teacherId) =>
+              contextualNavigate(`/teachers/${teacherId}`)
+            }
             onResendLine={(row) => void handleResendLine(row)}
             onRotate={(row) => void handleRotate(row)}
             onSelectionChange={setSelected}
@@ -440,14 +633,98 @@ export function ClassroomLinksPage() {
       )}
 
       <LinkShareDialog
-        description="ลิงก์นี้เปิดได้เฉพาะห้องเรียนที่กำหนด ครูที่ active ในโรงเรียนต้องยืนยันตัวตนก่อนเช็กชื่อ"
+        description={
+          sharedLineInvitation
+            ? `ใช้ได้เฉพาะครูประจำชั้น · เริ่ม ${formatThaiDateTime(sharedLineInvitation.startsAt)} · หมดอายุ ${formatThaiDateTime(sharedLineInvitation.expiresAt)}`
+            : "ลิงก์นี้เปิดได้เฉพาะห้องเรียนที่กำหนด ครูที่มีสถานะใช้งานในโรงเรียนต้องยืนยันตัวตนก่อนเช็กชื่อ"
+        }
         link={sharedUrl ?? ""}
         onOpenChange={(open) => {
-          if (!open) setSharedUrl(null);
+          if (!open) {
+            setSharedUrl(null);
+            setSharedLineInvitation(null);
+          }
         }}
         open={Boolean(sharedUrl)}
-        title="คัดลอกหรือแชร์ลิงก์ห้องเรียน"
+        title={
+          sharedLineInvitation
+            ? "แชร์ลิงก์ยืนยัน LINE"
+            : "คัดลอกหรือแชร์ลิงก์ห้องเรียน"
+        }
       />
+      <Dialog onOpenChange={setLineDialogOpen} open={lineDialogOpen}>
+        <DialogContent
+          className="max-w-xl"
+          onClose={() => setLineDialogOpen(false)}
+        >
+          <DialogHeader>
+            <DialogTitle icon={CalendarClock}>
+              {lineDialogMode === "EDIT"
+                ? "แก้ไขอายุลิงก์ยืนยัน LINE"
+                : "กำหนดอายุลิงก์ยืนยัน LINE"}
+            </DialogTitle>
+            <DialogDescription>
+              ลิงก์นี้ใช้ได้เฉพาะครูประจำชั้นที่มีสถานะใช้งานในโรงเรียนที่เลือก
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <FormErrorAlert
+              error={
+                lineDialogMode === "EDIT"
+                  ? updateLineInvitation.error
+                  : issueLineInvitation.error
+              }
+              fallback="บันทึกลิงก์ยืนยัน LINE ไม่สำเร็จ"
+            />
+            <div>
+              <Label required>วันและเวลาเริ่ม</Label>
+              <DateTimePicker
+                ariaLabel="วันและเวลาเริ่ม"
+                onChange={(startsAt) =>
+                  setLineSchedule((current) => ({ ...current, startsAt }))
+                }
+                value={lineSchedule.startsAt}
+              />
+            </div>
+            <div>
+              <Label required>วันและเวลาหมดอายุ</Label>
+              <DateTimePicker
+                ariaLabel="วันและเวลาหมดอายุ"
+                min={lineSchedule.startsAt}
+                onChange={(expiresAt) =>
+                  setLineSchedule((current) => ({ ...current, expiresAt }))
+                }
+                value={lineSchedule.expiresAt}
+              />
+            </div>
+            {new Date(lineSchedule.expiresAt) <=
+            new Date(lineSchedule.startsAt) ? (
+              <p className="text-sm text-danger" role="alert">
+                วันหมดอายุต้องอยู่หลังวันเริ่ม
+              </p>
+            ) : null}
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={() => setLineDialogOpen(false)} variant="outline">
+              ยกเลิก
+            </Button>
+            <Button
+              disabled={
+                new Date(lineSchedule.expiresAt) <=
+                new Date(lineSchedule.startsAt)
+              }
+              isLoading={
+                lineDialogMode === "EDIT"
+                  ? updateLineInvitation.isPending
+                  : issueLineInvitation.isPending
+              }
+              onClick={() => void saveLineInvitation()}
+            >
+              {lineDialogMode === "EDIT" ? "บันทึก" : "สร้างลิงก์"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {confirmDialog}
     </PageShell>
   );

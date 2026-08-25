@@ -4,10 +4,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, Button } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
-import {
-  useApproveTeacherAccessAraIdChallenge,
-  useBeginTeacherAccessAraIdChallenge,
-} from "../../teacher-access/hooks/useTeacherAccess";
 import { taskService } from "../../tasks/api/task.service";
 import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
@@ -22,13 +18,11 @@ function readChallengeToken(): string {
   return /^[A-Za-z0-9_-]{40,64}$/.test(token) ? token : "";
 }
 
-function readChallengeScope(): AraIdChallengeScope {
+function readChallengeScope(): AraIdChallengeScope | null {
   const scope = new URLSearchParams(window.location.hash.slice(1))
     .get("scope")
     ?.trim();
-  return scope === "task-link" || scope === "admin-login"
-    ? scope
-    : "teacher-access";
+  return scope === "task-link" || scope === "admin-login" ? scope : null;
 }
 
 export function AraIdAuthorizePage() {
@@ -42,17 +36,14 @@ export function AraIdAuthorizePage() {
   const [challengeToken] = useState(
     () => routeState?.challengeToken ?? readChallengeToken(),
   );
-  const [scope] = useState<AraIdChallengeScope>(
+  const [scope] = useState<AraIdChallengeScope | null>(
     () => routeState?.scope ?? readChallengeScope(),
   );
   const [completed, setCompleted] = useState(false);
   const attempted = useRef(false);
   const session = useAraIdSession();
-  const teacherAccessBegin = useBeginTeacherAccessAraIdChallenge();
-  const teacherAccessApprove = useApproveTeacherAccessAraIdChallenge();
   // These run on mount to resolve a challenge, so the global mutation toast
-  // would announce "บันทึกแล้ว" for what is only a lookup, exactly like the
-  // teacher-access hooks that already opt out.
+  // must not announce "บันทึกแล้ว" for what is only a lookup.
   const taskBegin = useMutation({
     mutationFn: (token: string) => taskService.beginTaskAraIdChallenge(token),
     meta: { suppressSuccessToast: true },
@@ -69,21 +60,12 @@ export function AraIdAuthorizePage() {
     mutationFn: authService.approveAraIdLoginChallenge,
     meta: { suppressSuccessToast: true },
   });
-  const begin =
-    scope === "task-link"
-      ? taskBegin
-      : scope === "admin-login"
-        ? adminLoginBegin
-        : teacherAccessBegin;
-  const approve =
-    scope === "task-link"
-      ? taskApprove
-      : scope === "admin-login"
-        ? adminLoginApprove
-        : teacherAccessApprove;
+  const begin = scope === "admin-login" ? adminLoginBegin : taskBegin;
+  const approve = scope === "admin-login" ? adminLoginApprove : taskApprove;
 
   useEffect(() => {
-    if (!challengeToken || session.isPending || attempted.current) return;
+    if (!challengeToken || !scope || session.isPending || attempted.current)
+      return;
     if (begin.isIdle) {
       begin.mutate(challengeToken);
       return;
@@ -97,7 +79,7 @@ export function AraIdAuthorizePage() {
           challengeToken,
           scope,
           returnTo: "/araid/authorize",
-          verificationIntent: "TEACHER_ACCESS_QR",
+          verificationIntent: "ARAID_CHALLENGE_QR",
         },
       });
       return;
@@ -110,7 +92,7 @@ export function AraIdAuthorizePage() {
           challengeToken,
           scope,
           returnTo: "/araid/authorize",
-          verificationIntent: "TEACHER_ACCESS_QR",
+          verificationIntent: "ARAID_CHALLENGE_QR",
           reauthenticate: true,
         },
       });
@@ -136,7 +118,7 @@ export function AraIdAuthorizePage() {
     <main className="grid min-h-dvh place-items-center bg-araid-brand px-5 py-10 font-araid">
       <section className="araid-screen-enter w-full max-w-md rounded-3xl bg-white px-6 py-10 text-center shadow-2xl sm:px-10">
         <AraIdWordmark className="text-3xl text-araid-brand-deep drop-shadow-none" />
-        {!challengeToken ? (
+        {!challengeToken || !scope ? (
           <Alert className="mt-8" variant="warning">
             <AlertDescription>
               ลิงก์ยืนยันไม่ครบถ้วน กรุณาสแกน QR หรือเปิดลิงก์ใหม่อีกครั้ง

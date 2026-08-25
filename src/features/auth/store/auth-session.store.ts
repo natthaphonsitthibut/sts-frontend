@@ -48,9 +48,7 @@ function getStorage(target: ResolvedAuthStorageTarget): Storage | null {
   return target === "session" ? window.sessionStorage : window.localStorage;
 }
 
-function getInactiveStorage(
-  target: ResolvedAuthStorageTarget,
-): Storage | null {
+function getInactiveStorage(target: ResolvedAuthStorageTarget): Storage | null {
   return getStorage(target === "session" ? "local" : "session");
 }
 
@@ -61,7 +59,7 @@ function hasStoredAuthData(storage: Storage | null): boolean {
 
   return Boolean(
     storage.getItem(AUTH_USER_STORAGE_KEY) ||
-      storage.getItem(ADMIN_ACCESS_STORAGE_KEY) === "true",
+    storage.getItem(ADMIN_ACCESS_STORAGE_KEY) === "true",
   );
 }
 
@@ -98,7 +96,7 @@ function resolveStoredAuthTarget(): ResolvedAuthStorageTarget | null {
 function resolvePersistTarget(
   target: AuthStorageTarget = "auto",
 ): ResolvedAuthStorageTarget {
-  return target === "auto" ? resolveStoredAuthTarget() ?? "local" : target;
+  return target === "auto" ? (resolveStoredAuthTarget() ?? "local") : target;
 }
 
 function syncAuthSessionState(): AuthSessionSnapshot {
@@ -233,7 +231,7 @@ export const useAuthSessionStore = create<AuthSessionState>((set, get) => ({
     }
 
     try {
-      const refreshedUser = await authService.getUserProfile(currentUser.id);
+      const refreshedUser = await authService.getMyProfile();
       saveAuthSession(refreshedUser, {
         target,
         hasAdminAccess: session.hasAdminAccess,

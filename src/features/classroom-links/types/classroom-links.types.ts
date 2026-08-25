@@ -48,7 +48,10 @@ export interface ClassroomLinkListItem {
   gradeLabel: string;
   roomNumber: string;
   roomName: string;
+  homeroomTeacherId: string | null;
   homeroomTeacherName: string | null;
+  /** Guarded app route; production redirects to a short-lived signed URL. */
+  homeroomTeacherPhotoUrl: string | null;
   lineDelivery: ClassroomLinkDelivery | null;
   status: ClassroomLinkStatus;
   issuedAt: string | null;
@@ -93,4 +96,20 @@ export interface BulkCreateClassroomLinksResult {
       created: boolean;
     }
   >;
+}
+
+export interface ClassroomLineGroupInvitation {
+  id: string;
+  schoolId: number;
+  schoolName: string;
+  url: string;
+  startsAt: string;
+  expiresAt: string;
+  status: "PENDING" | "ACTIVE";
+}
+
+export interface ClassroomLineGroupInvitationInput {
+  schoolId: number;
+  startsAt: string;
+  expiresAt: string;
 }

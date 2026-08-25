@@ -76,20 +76,13 @@ export function AraIdPinPage() {
     identityNumber?: string;
     returnTo?: string;
     scope?: AraIdChallengeScope;
-    verificationIntent?:
-      | "LINE_LINK"
-      | "LINE_LINK_QR"
-      | "TEACHER_ACCESS"
-      | "TEACHER_ACCESS_QR";
+    verificationIntent?: "LINE_LINK" | "LINE_LINK_QR" | "ARAID_CHALLENGE_QR";
     reauthenticate?: boolean;
   } | null;
   const identityNumber = routeState?.identityNumber;
   const reauthenticate = Boolean(routeState?.reauthenticate);
-  const verifiesTeacherAccess =
-    routeState?.verificationIntent === "TEACHER_ACCESS" &&
-    routeState.returnTo === "/teacher-access";
-  const verifiesTeacherAccessQr =
-    routeState?.verificationIntent === "TEACHER_ACCESS_QR" &&
+  const verifiesAraIdChallengeQr =
+    routeState?.verificationIntent === "ARAID_CHALLENGE_QR" &&
     routeState.returnTo === "/araid/authorize" &&
     Boolean(routeState.challengeToken);
   const verifiesLineLink =
@@ -127,32 +120,28 @@ export function AraIdPinPage() {
         });
       }
       void navigate(
-        verifiesTeacherAccess
-          ? "/teacher-access"
-          : verifiesTeacherAccessQr
-            ? "/araid/authorize"
-            : verifiesLineLink
+        verifiesAraIdChallengeQr
+          ? "/araid/authorize"
+          : verifiesLineLink
+            ? routeState.returnTo!
+            : verifiesLineLinkQr
               ? routeState.returnTo!
-              : verifiesLineLinkQr
-                ? routeState.returnTo!
-                : "/araid/home",
+              : "/araid/home",
         {
           replace: true,
-          state: verifiesTeacherAccess
-            ? { araIdVerificationComplete: true }
-            : verifiesTeacherAccessQr
-              ? {
-                  challengeToken: routeState?.challengeToken,
-                  // Without the scope the authorize screen falls back to
-                  // teacher-access and looks the challenge up under the wrong key.
-                  scope: routeState?.scope,
-                  araIdPinVerified: true,
-                }
-              : verifiesLineLink
-                ? { araIdVerificationComplete: true }
-                : verifiesLineLinkQr
-                  ? { challengeToken: routeState.challengeToken }
-                  : undefined,
+          state: verifiesAraIdChallengeQr
+            ? {
+                challengeToken: routeState?.challengeToken,
+                // The authorize screen needs the original flow key after the
+                // login/PIN detour.
+                scope: routeState?.scope,
+                araIdPinVerified: true,
+              }
+            : verifiesLineLink
+              ? { araIdVerificationComplete: true }
+              : verifiesLineLinkQr
+                ? { challengeToken: routeState.challengeToken }
+                : undefined,
         },
       );
     } catch (cause) {

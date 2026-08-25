@@ -96,6 +96,7 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("home", "/"),
   pageMenuItem("dashboard", "/student-risk-report"),
   pageMenuItem("students", "/students"),
+  pageMenuItem("teachers", "/teachers"),
   pageMenuItem("classrooms", "/classrooms"),
   {
     id: "data-management",
@@ -155,10 +156,13 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "users-cog",
     children: [
       {
-        ...pageMenuItem("manage-users-list", "/manage-users"),
+        ...pageMenuItem("manage-students", "/manage-students"),
       },
       {
         ...pageMenuItem("manage-teachers", "/manage-teachers"),
+      },
+      {
+        ...pageMenuItem("manage-users-list", "/manage-users"),
       },
       {
         ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
