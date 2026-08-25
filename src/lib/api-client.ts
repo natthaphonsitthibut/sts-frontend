@@ -58,15 +58,13 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
-  const onTeacherAccessGuestPage =
-    typeof window !== "undefined" &&
-    (window.location.pathname === "/teacher-access" ||
-      window.location.pathname === "/check-in");
+  const onPublicCheckInPage =
+    typeof window !== "undefined" && window.location.pathname === "/check-in";
 
   // Public magic-link flows authenticate with short-lived signed tokens via
   // headers; the staff session is carried entirely by the httpOnly cookie.
   if (
-    !onTeacherAccessGuestPage &&
+    !onPublicCheckInPage &&
     currentUser?.virtual_login &&
     currentUser.magic_link_token
   ) {
@@ -111,7 +109,6 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
         window.location.pathname.startsWith("/araid") ||
-        window.location.pathname === "/teacher-access" ||
         window.location.pathname === "/check-in" ||
         window.location.pathname.startsWith("/apply/");
 

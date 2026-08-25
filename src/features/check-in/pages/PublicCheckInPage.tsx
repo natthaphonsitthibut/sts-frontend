@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { FormErrorAlert } from "../../../components/base";
+import { appConfig } from "../../../config/env";
+import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import {
-  ExternalLink,
-  IdCard,
-  LogIn,
-  RefreshCw,
-  ShieldCheck,
-} from "lucide-react";
-import { Button, FormErrorAlert, StsLogo } from "../../../components/base";
+  ErrorState,
+  SkeletonCards,
+} from "../../../components/layout/page-primitives";
 import { formatClassLabel } from "../../../lib/room-presentation";
+import { AraIdQrChallengeView } from "../../auth/components/AraIdQrChallengeView";
+import { IdentityMethodChoice } from "../../auth/components/IdentityMethodChoice";
+import { DevelopmentGoogleEmailForm } from "../../auth/components/DevelopmentGoogleEmailForm";
+import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
 import { checkInService } from "../api/check-in.service";
 
@@ -26,6 +29,7 @@ export function PublicCheckInPage() {
     () => ++publicContextRevision,
   );
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [showDevelopmentGoogle, setShowDevelopmentGoogle] = useState(false);
   const handledApproval = useRef(false);
   const contextQuery = useQuery({
     queryKey: ["check-in", "public-context", Boolean(token), tokenRevision],
@@ -33,11 +37,21 @@ export function PublicCheckInPage() {
     retry: false,
   });
   const googleMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (email?: string) => {
       if (!token) throw new Error("กรุณาเปิดจากลิงก์ห้องเรียน");
+      if (email) {
+        await checkInService.verifyDevelopmentGoogle(token, email);
+        return null;
+      }
       return await checkInService.startGoogle(token);
     },
-    onSuccess: (authorizationUrl) => window.location.assign(authorizationUrl),
+    onSuccess: (authorizationUrl) => {
+      if (authorizationUrl) {
+        window.location.assign(authorizationUrl);
+        return;
+      }
+      void contextQuery.refetch();
+    },
   });
   const araIdMutation = useMutation({
     mutationFn: async () => {
@@ -109,141 +123,111 @@ export function PublicCheckInPage() {
     challengeStatus.error;
   const context = contextQuery.error ? undefined : contextQuery.data;
 
-  return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <StsLogo className="size-11" />
-            <div>
-              <p className="text-sm font-bold text-primary">STS</p>
-              <h1 className="text-xl font-extrabold text-slate-950">
-                เช็กชื่อห้องเรียน
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <ShieldCheck
-              className="size-4 text-emerald-600"
-              aria-hidden="true"
-            />
-            ยืนยันตัวตนครูของโรงเรียนก่อนใช้งาน
-          </div>
-        </header>
+  if (contextQuery.isLoading) {
+    return (
+      <GuestPageShell as="main" showProfile={false}>
+        <SkeletonCards count={4} />
+      </GuestPageShell>
+    );
+  }
 
-        <FormErrorAlert
-          className="mb-4"
-          error={error}
-          fallback="เปิดลิงก์ห้องเรียนไม่สำเร็จ"
+  if (!context) {
+    return (
+      <GuestPageShell
+        as="main"
+        centered
+        contentClassName="max-w-lg"
+        showProfile={false}
+      >
+        <ErrorState
+          description="ลิงก์อาจหมดอายุ ถูกปิด หรือถูกสร้างใหม่แล้ว กรุณาขอลิงก์ใหม่จากโรงเรียน"
+          onRetry={() => void contextQuery.refetch()}
+          title="ลิงก์นี้ใช้งานไม่ได้"
         />
+      </GuestPageShell>
+    );
+  }
 
-        {contextQuery.isLoading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500 shadow-sm">
-            กำลังตรวจสอบลิงก์ห้องเรียน…
-          </div>
-        ) : !context ? (
-          <div className="rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-950">
-              ลิงก์นี้ใช้งานไม่ได้
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              ลิงก์อาจหมดอายุ ถูกปิด หรือถูกเปลี่ยนแล้ว
-              กรุณาขอลิงก์ใหม่จากโรงเรียน
-            </p>
-            <Button
-              className="mt-5"
-              icon={RefreshCw}
-              onClick={() => {
-                void contextQuery.refetch();
+  if (context.authentication.status === "REQUIRED" && challenge) {
+    return (
+      <AraIdQrChallengeView
+        expiresAt={challenge.expiresAt}
+        hasStatusError={challengeStatus.isError}
+        isInProgress={challengeStatus.data?.status === "IN_PROGRESS"}
+        isRefreshing={araIdMutation.isPending}
+        onBack={() => {
+          setChallengeToken(null);
+          araIdMutation.reset();
+        }}
+        onRefresh={() => {
+          setChallengeToken(null);
+          void araIdMutation.mutateAsync().catch(() => undefined);
+        }}
+        qrDataUrl={challenge.qrDataUrl}
+        referenceCode={challenge.referenceCode}
+        schoolName={context.school.name}
+        verificationUrl={challenge.verificationUrl}
+      />
+    );
+  }
+
+  if (context.authentication.status === "REQUIRED") {
+    return (
+      <MagicAuthCard
+        cardContentClassName="min-h-[23.625rem]"
+        showProfile={false}
+        subtitle={`${context.school.name} · ${formatClassLabel(
+          context.classroom.gradeLabel,
+          context.classroom.roomNumber,
+        )}`}
+        title="ยืนยันตัวตนเพื่อเข้าใช้งาน"
+      >
+        <div className="space-y-4">
+          <FormErrorAlert
+            error={error}
+            fallback="ยืนยันตัวตนไม่สำเร็จ กรุณาลองใหม่"
+          />
+          {showDevelopmentGoogle ? (
+            <DevelopmentGoogleEmailForm
+              isSubmitting={googleMutation.isPending}
+              onBack={() => {
+                googleMutation.reset();
+                setShowDevelopmentGoogle(false);
               }}
-              variant="outline"
-            >
-              ลองอีกครั้ง
-            </Button>
-          </div>
-        ) : context.authentication.status === "REQUIRED" ? (
-          <section className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg sm:p-8">
-            <div className="mb-6 text-center">
-              <p className="text-sm font-semibold text-slate-500">
-                {context.school.name}
-              </p>
-              <h2 className="mt-1 text-2xl font-extrabold text-slate-950">
-                {formatClassLabel(
-                  context.classroom.gradeLabel,
-                  context.classroom.roomNumber,
-                )}
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                ครูที่มีสถานะใช้งานในโรงเรียนนี้ทุกคนสามารถยืนยันตัวตนและเช็กชื่อได้
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button
-                fullWidth
-                icon={LogIn}
-                isLoading={googleMutation.isPending}
-                onClick={() => {
-                  void googleMutation.mutateAsync().catch(() => undefined);
-                }}
-              >
-                ยืนยันด้วย Google
-              </Button>
-              <Button
-                fullWidth
-                icon={IdCard}
-                isLoading={araIdMutation.isPending}
-                onClick={() => {
-                  void araIdMutation.mutateAsync().catch(() => undefined);
-                }}
-                variant="outline"
-              >
-                ยืนยันด้วย AraID
-              </Button>
-            </div>
-            {challenge ? (
-              <div className="mt-6 rounded-xl border border-primary/20 bg-primary-soft p-4 text-center">
-                <img
-                  alt="QR สำหรับยืนยันตัวตนด้วย AraID"
-                  className="mx-auto size-52 rounded-lg bg-white p-2"
-                  src={challenge.qrDataUrl}
-                />
-                <p className="mt-3 text-sm font-bold text-slate-900">
-                  รหัสอ้างอิง {challenge.referenceCode}
-                </p>
-                <p className="mt-1 text-xs text-slate-600">
-                  {challengeStatus.data?.status === "IN_PROGRESS"
-                    ? "กำลังยืนยันตัวตนใน AraID…"
-                    : "สแกน QR หรือเปิด AraID แล้วหน้านี้จะเข้าสู่ห้องอัตโนมัติ"}
-                </p>
-                <Button
-                  className="mt-3"
-                  icon={ExternalLink}
-                  onClick={() =>
-                    window.open(
-                      challenge.verificationUrl,
-                      "_blank",
-                      "noopener,noreferrer",
-                    )
-                  }
-                  variant="outline"
-                >
-                  เปิด AraID
-                </Button>
-              </div>
-            ) : null}
-          </section>
-        ) : (
-          <>
-            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              ยืนยันแล้ว: <strong>{context.authentication.displayName}</strong>
-            </div>
-            <CheckInWorkspace
-              access="PUBLIC_LINK"
-              classroomId={context.classroom.id}
+              onSubmit={(email) => googleMutation.mutate(email)}
             />
-          </>
-        )}
+          ) : (
+            <IdentityMethodChoice
+              araIdDescription="ยืนยันด้วย AraID และเลขประจำตัวที่ผูกกับข้อมูลครู"
+              disabled={googleMutation.isPending || araIdMutation.isPending}
+              emailDescription="ยืนยันด้วย Google และบัญชีของครู"
+              emailLabel="Google"
+              onChooseAraId={() => {
+                void araIdMutation.mutateAsync().catch(() => undefined);
+              }}
+              onChooseEmail={() => {
+                if (appConfig.isDevelopment) {
+                  setShowDevelopmentGoogle(true);
+                  return;
+                }
+                googleMutation.mutate(undefined);
+              }}
+            />
+          )}
+        </div>
+      </MagicAuthCard>
+    );
+  }
+
+  return (
+    <GuestPageShell as="main" showProfile={false}>
+      <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        ยืนยันแล้ว: <strong>{context.authentication.displayName}</strong>
       </div>
-    </main>
+      <CheckInWorkspace
+        access="PUBLIC_LINK"
+        classroomId={context.classroom.id}
+      />
+    </GuestPageShell>
   );
 }

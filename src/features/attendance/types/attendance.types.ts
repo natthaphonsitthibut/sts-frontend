@@ -48,43 +48,6 @@ export interface AttendanceHistoryRecord {
   marked_at?: string | null;
 }
 
-export interface AttendanceSaveRecord {
-  student_id: string;
-  status: AttendanceSelectionStatus;
-  /** When the teacher tapped this status, ISO 8601; server clamps it. */
-  marked_at?: string | null;
-}
-
-/** One student's mark held locally while a check-in is in progress. */
-export interface AttendanceMark {
-  status: Exclude<AttendanceSelectionStatus, "NONE">;
-  markedAt: string;
-}
-
-export interface AttendanceMarksSaveResponse {
-  session: { id: string; status: AttendanceSessionStatus; revision: number };
-  expectedRosterCount: number;
-  recordedCount: number;
-}
-
-export interface AttendanceAutoCase {
-  case_id: number;
-  student_name: string;
-  student_school: string;
-  reason_flagged: string;
-}
-
-export interface AttendanceSaveResponse {
-  success: boolean;
-  newCases?: AttendanceAutoCase[];
-  calendarConfigured?: boolean;
-  session?: {
-    id: string;
-    status: AttendanceSessionStatus;
-    revision: number;
-  };
-}
-
 export type SchoolTermStatus = "DRAFT" | "ACTIVE" | "CLOSED";
 export type CalendarDayType = "SCHOOL_DAY" | "HOLIDAY" | "CANCELLED";
 export type AttendanceSessionStatus =
@@ -92,31 +55,6 @@ export type AttendanceSessionStatus =
   | "SUBMITTED"
   | "REOPENED"
   | "VOIDED";
-
-export interface AttendanceSession {
-  id: string;
-  status: AttendanceSessionStatus;
-  revision: number;
-  expectedRosterCount: number;
-  recordedCount: number;
-  submittedAt: string | null;
-  correctionReason: string | null;
-}
-
-export interface AttendanceSessionContext {
-  calendarConfigured: boolean;
-  term: {
-    id: string;
-    academicYear: number;
-    semester: number;
-    status: SchoolTermStatus;
-  } | null;
-  dayType: CalendarDayType | null;
-  expectedRosterCount: number;
-  session: AttendanceSession | null;
-}
-
-export type AttendanceSessionKind = "SUBJECT";
 
 export interface SchoolTerm {
   id: string;

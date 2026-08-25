@@ -119,8 +119,6 @@ export function useCheckInWorkspace({
               {
                 status: exceptions.get(student.id)?.status ?? "P_PRESENT",
                 markedAt: result.submittedAt ?? result.checkingStartedAt,
-                absenceReasonCode:
-                  exceptions.get(student.id)?.absenceReasonCode ?? null,
               },
             ]),
           ),
@@ -161,10 +159,6 @@ export function useCheckInWorkspace({
         marks.set(studentId, {
           status,
           markedAt,
-          absenceReasonCode:
-            status === "P_ABSENT"
-              ? (previous?.absenceReasonCode ?? "UNKNOWN")
-              : null,
         });
         return {
           ...active,
@@ -192,26 +186,6 @@ export function useCheckInWorkspace({
       return { ...active, marks, history: active.history.slice(0, -1) };
     });
   }, [draft.session?.readOnly, selectionKey]);
-
-  const setAbsenceReason = useCallback(
-    (studentId: string, absenceReasonCode: string) => {
-      if (draft.session?.readOnly) return;
-      setDraftState((current) => {
-        const active =
-          current.key === selectionKey ? current : emptyDraft(selectionKey);
-        const previous = active.marks.get(studentId);
-        if (!previous || previous.status !== "P_ABSENT") return active;
-        const marks = new Map(active.marks);
-        marks.set(studentId, { ...previous, absenceReasonCode });
-        return {
-          ...active,
-          marks,
-          history: [...active.history, { changes: [{ studentId, previous }] }],
-        };
-      });
-    },
-    [draft.session?.readOnly, selectionKey],
-  );
 
   const clear = useCallback(
     (studentId: string) => {
@@ -281,10 +255,6 @@ export function useCheckInWorkspace({
           studentId,
           status: markValue.status as "P_ABSENT" | "P_LATE" | "P_LEAVE",
           markedAt: markValue.markedAt,
-          absenceReasonCode:
-            markValue.status === "P_ABSENT"
-              ? (markValue.absenceReasonCode ?? "UNKNOWN")
-              : null,
         }));
       return checkInService.submitSession({
         access,
@@ -357,7 +327,6 @@ export function useCheckInWorkspace({
     setClassroomSubjectId: selectSubject,
     setDate: selectDate,
     setMode,
-    setAbsenceReason,
     submit: submitMutation.mutateAsync,
     submitting: submitMutation.isPending,
     undo,

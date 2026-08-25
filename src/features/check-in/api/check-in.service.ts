@@ -52,6 +52,21 @@ async function startGoogle(token: string): Promise<string> {
   return result.authorizationUrl;
 }
 
+async function verifyDevelopmentGoogle(
+  token: string,
+  email: string,
+): Promise<void> {
+  await publicTokenRequest(
+    () =>
+      apiClient.post<DataEnvelope<{ authenticated: true }>>(
+        "/check-in/auth/google/development",
+        { email },
+        { headers: { [TOKEN_HEADER]: token } },
+      ),
+    "ตรวจสอบอีเมลครูไม่สำเร็จ",
+  );
+}
+
 async function createAraIdChallenge(token: string): Promise<AraIdChallenge> {
   return await publicTokenRequest(
     () =>
@@ -145,7 +160,6 @@ async function submitSession(input: {
     studentId: string;
     status: AttendanceExceptionStatus;
     markedAt: string;
-    absenceReasonCode?: string | null;
   }>;
 }): Promise<CheckInSession> {
   const response = await apiClient.post<DataEnvelope<CheckInSession>>(
@@ -187,6 +201,7 @@ export const checkInService = {
   getStudentPhoto,
   pollAraIdChallenge,
   startGoogle,
+  verifyDevelopmentGoogle,
   startSession,
   submitSession,
 };

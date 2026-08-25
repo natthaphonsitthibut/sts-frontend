@@ -43,11 +43,6 @@ export interface CheckInOptions {
     code: string;
     nameTh: string;
   }>;
-  absenceReasons: Array<{
-    code: string;
-    labelTh: string;
-    categoryCode: string | null;
-  }>;
 }
 
 export interface CheckInStudent {
@@ -77,14 +72,12 @@ export interface CheckInSession {
   exceptions: Array<{
     studentId: string;
     status: AttendanceExceptionStatus;
-    absenceReasonCode: string | null;
   }>;
 }
 
 export interface LocalCheckInMark {
   status: CheckInMarkStatus;
   markedAt: string;
-  absenceReasonCode?: string | null;
 }
 
 export interface AraIdChallenge {
