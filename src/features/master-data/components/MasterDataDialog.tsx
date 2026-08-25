@@ -307,7 +307,7 @@ export function MasterDataDialog({
                       required={code !== "UNKNOWN"}
                       htmlFor="master-category"
                     >
-                      หมวดสาเหตุ
+                      ประเภทการขาด
                     </FormLabel>
                     <Select
                       id="master-category"

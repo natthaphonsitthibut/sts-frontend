@@ -272,7 +272,7 @@ export function MasterDataPage() {
                           .filter(Boolean)
                           .join(" · ") || "-"
                       : [
-                          coded?.categoryCode,
+                          coded?.categoryLabelTh,
                           coded?.sourceOnecCode
                             ? `ONEC ${coded.sourceOnecCode}`
                             : null,

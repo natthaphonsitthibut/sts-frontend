@@ -1,7 +1,7 @@
 import type { PaginationMeta } from "../../../lib/pagination";
 
 export const MASTER_DATA_CATALOGS = [
-  { id: "absence-reason-categories", label: "หมวดสาเหตุการขาด" },
+  { id: "absence-reason-categories", label: "ประเภทการขาด" },
   { id: "absence-reasons", label: "สาเหตุการขาด", category: true },
   { id: "disadvantage-types", label: "ประเภทความด้อยโอกาส", sourceOnec: true },
   { id: "disability-types", label: "ประเภทความพิการ", sourceOnec: true },
@@ -23,6 +23,7 @@ export interface CodedMasterDataItem {
   sortOrder: number;
   isActive: boolean;
   categoryCode: string | null;
+  categoryLabelTh: string | null;
   sourceOnecCode: number | null;
   requiresDetail: boolean | null;
   usageCount: number;
