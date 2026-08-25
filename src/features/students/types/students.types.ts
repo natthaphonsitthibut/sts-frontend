@@ -279,7 +279,6 @@ export interface StudentProfileSummary {
 
 export interface StudentSubjectAttendanceRecord {
   date: string;
-  period: number;
   subjectCode: string | null;
   subjectName: string | null;
   statusCode: number;
@@ -287,6 +286,8 @@ export interface StudentSubjectAttendanceRecord {
   statusLabel: string;
   statusBadgeVariant: string;
   recordedAt: string | null;
+  checkingStartedAt: string | null;
+  submittedAt: string | null;
   recordedBy: string | null;
 }
 

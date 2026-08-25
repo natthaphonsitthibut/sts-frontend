@@ -51,18 +51,33 @@ export function formatThaiDateTime(value?: string | Date | null): string {
  * Thai date then clock time with seconds. Every surface that shows "when this
  * happened" reads from here so the three tabs cannot drift apart.
  */
-export function formatThaiDateTimeWithSeconds(value?: string | Date | null): string {
+export function formatThaiDateTimeWithSeconds(
+  value?: string | Date | null,
+): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return `${thaiDateFormatter.format(date)} ${thaiTimeWithSecondsFormatter.format(date)} น.`;
 }
 
-export function formatThaiTimeWithSeconds(value?: string | Date | null): string {
+export function formatThaiTimeWithSeconds(
+  value?: string | Date | null,
+): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return `${thaiTimeWithSecondsFormatter.format(date)} น.`;
+}
+
+export function formatThaiTimeRange(
+  startsAt?: string | Date | null,
+  endsAt?: string | Date | null,
+): string {
+  if (!startsAt || !endsAt) return "-";
+  const start = startsAt instanceof Date ? startsAt : new Date(startsAt);
+  const end = endsAt instanceof Date ? endsAt : new Date(endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
+  return `${thaiTimeWithSecondsFormatter.format(start)}–${thaiTimeWithSecondsFormatter.format(end)} น.`;
 }
 
 /** Clock time only (`HH:mm`) in the canonical Thailand timezone. */

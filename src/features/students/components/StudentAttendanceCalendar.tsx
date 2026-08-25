@@ -11,7 +11,10 @@ import {
   ErrorState,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { formatThaiTimeWithSeconds } from "../../../lib/date-time";
+import {
+  formatThaiTimeRange,
+  formatThaiTimeWithSeconds,
+} from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import {
   ATTENDANCE_STATUS_STYLE,
@@ -344,25 +347,32 @@ export function StudentAttendanceCalendar({
               />
             ) : (
               <ul className="divide-y divide-slate-200">
-                {subjectQuery.data.map((record) => {
+                {subjectQuery.data.map((record, index) => {
                   const status = normalizeAttendanceSelectionStatus(
                     record.statusInternalCode || record.statusCode,
                   );
                   return (
                     <li
                       className="flex items-center justify-between gap-4 py-3 text-sm"
-                      key={`${record.date}-${record.period}`}
+                      key={`${record.date}-${record.subjectCode ?? index}`}
                     >
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-900">
                           {record.subjectName ??
                             record.subjectCode ??
-                            `คาบที่ ${record.period}`}
+                            "ไม่ระบุรายวิชา"}
                         </div>
                         <div className="mt-0.5 text-xs text-slate-500">
-                          คาบที่ {record.period} ·{" "}
-                          {formatThaiTimeWithSeconds(record.recordedAt)} ·
-                          ผู้เช็กชื่อ {record.recordedBy ?? "-"}
+                          {record.checkingStartedAt && record.submittedAt
+                            ? formatThaiTimeRange(
+                                record.checkingStartedAt,
+                                record.submittedAt,
+                              )
+                            : record.recordedAt
+                              ? formatThaiTimeWithSeconds(record.recordedAt)
+                              : "ไม่พบเวลาบันทึก"}{" "}
+                          · ผู้เช็กชื่อ{" "}
+                          {record.recordedBy ?? "ไม่พบข้อมูลผู้เช็กชื่อ"}
                         </div>
                       </div>
                       <Badge
