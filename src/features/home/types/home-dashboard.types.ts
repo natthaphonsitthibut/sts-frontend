@@ -76,6 +76,7 @@ export interface HomeDashboardRiskAreaPoint {
   key: string;
   label: string;
   count: number;
+  areaCode: string | null;
   targetFilter: {
     province?: string;
     district?: string;

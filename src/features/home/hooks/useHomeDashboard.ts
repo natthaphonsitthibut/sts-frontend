@@ -11,16 +11,6 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
     placeholderData: keepPreviousData,
   });
 
-  const nationalSummaryQuery = useQuery({
-    queryKey: [
-      ...HOME_DASHBOARD_QUERY_KEY,
-      "summary",
-      { period: filters.period },
-    ],
-    queryFn: () => homeDashboardService.getSummary({ period: filters.period }),
-    placeholderData: keepPreviousData,
-  });
-
   const filterOptionsQuery = useQuery({
     queryKey: [...HOME_DASHBOARD_QUERY_KEY, "filter-options", filters],
     queryFn: () => homeDashboardService.getFilterOptions(filters),
@@ -29,7 +19,6 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
 
   return {
     summary: summaryQuery.data,
-    nationalSummary: nationalSummaryQuery.data,
     filterOptions: filterOptionsQuery.data,
     isLoading: summaryQuery.isLoading,
     isFetching: summaryQuery.isFetching || filterOptionsQuery.isFetching,
@@ -41,7 +30,6 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
     ),
     refetch: () => {
       void summaryQuery.refetch();
-      void nationalSummaryQuery.refetch();
       void filterOptionsQuery.refetch();
     },
     refetchFilterOptions: () => filterOptionsQuery.refetch(),

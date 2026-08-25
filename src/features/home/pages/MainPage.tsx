@@ -416,7 +416,6 @@ export function MainPage() {
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
   const {
     summary,
-    nationalSummary,
     filterOptions,
     isLoading,
     isError,
@@ -503,18 +502,16 @@ export function MainPage() {
                 }
               >
                 <GeoMapSVG
-                  data={
-                    nationalSummary?.riskAreaRanking?.dimension === "PROVINCE"
-                      ? nationalSummary.riskAreaRanking.items
+                  backLabel={riskAreaBackAction?.label}
+                  disabled={schoolLocked}
+                  filters={filters}
+                  onBack={
+                    riskAreaBackAction
+                      ? () => updateFilter(riskAreaBackAction.next)
                       : undefined
                   }
-                  focusedProvince={filters.province}
-                  onProvinceClick={
-                    schoolLocked
-                      ? undefined
-                      : (provinceName) =>
-                          updateFilter({ province: provinceName })
-                  }
+                  onSelect={schoolLocked ? undefined : updateFilter}
+                  ranking={summary.riskAreaRanking}
                 />
               </Suspense>
 

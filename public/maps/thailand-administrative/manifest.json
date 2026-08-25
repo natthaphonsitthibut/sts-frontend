@@ -1,0 +1,40 @@
+{
+  "canonical": {
+    "authority": "DOPA CCAATT",
+    "asOf": "2023-09-01",
+    "sha256": "5977e39e689d229668dabb2ff47f1a1a4bec341bd1efa0792cb45cad8e16d6e9",
+    "counts": {
+      "provinces": 77,
+      "districts": 928,
+      "subDistricts": 7436
+    }
+  },
+  "geometry": {
+    "authority": "Royal Thai Survey Department / OCHA COD via mapthai",
+    "asOf": "2019-11-06",
+    "license": "CC BY 3.0 IGO",
+    "source": "https://github.com/ReynoldsWJ55/thailand-canonical-admin-names/releases/tag/v1.0.2",
+    "sha256": {
+      "adm1": "34abbc739f8d3c92bfe68ee43c51313d89ae26643806f2e7daf5c68423bbaf9e",
+      "adm2": "1a1d85b08ff32f57da9cdb42f6a3283ec70bdbaf7d76735298962457cad7beef",
+      "adm3": "bcaa7af449c894513b8ed119e10afc19c9a589d0f00ec06c609c41d0f3eef659",
+      "bma": "5845fc2d1eb6ffe8432babbd2b88e93fd1ec0922d32a8e251f27935f1a173e86"
+    },
+    "counts": {
+      "provinces": 77,
+      "districts": 928,
+      "subDistricts": 7436
+    },
+    "currentCoverage": true,
+    "bangkokOverlay": {
+      "authority": "Bangkok Metropolitan Administration (BMA)",
+      "source": "https://district.bangkok.go.th/arcgis/rest/services/bma/SEDBasemap/MapServer/13",
+      "count": 180
+    },
+    "movedCodeRemap": {
+      "from": "530306",
+      "to": "530407",
+      "name": "ท่าแฝก"
+    }
+  }
+}
