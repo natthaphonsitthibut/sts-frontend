@@ -196,9 +196,11 @@ function sortToValue(
 function StudentCell({
   canViewStudent,
   row,
+  showSchoolName,
 }: {
   canViewStudent: boolean;
   row: RiskDashboardRow;
+  showSchoolName: boolean;
 }) {
   const avatar = (
     <StudentAvatar
@@ -222,6 +224,11 @@ function StudentCell({
       )}
       <div className="min-w-0">
         <div className="truncate text-slate-800">{row.studentName}</div>
+        {showSchoolName && row.schoolName ? (
+          <div className="truncate text-xs text-slate-500">
+            {row.schoolName}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -864,7 +871,11 @@ function StudentRiskDashboardPage() {
                   <DataTableCell
                     className={isWatchlist ? "text-center" : undefined}
                   >
-                    <StudentCell canViewStudent={canViewStudent} row={row} />
+                    <StudentCell
+                      canViewStudent={canViewStudent}
+                      row={row}
+                      showSchoolName={!scope.schoolId}
+                    />
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
                     {row.grade || "-"}
@@ -971,7 +982,11 @@ function StudentRiskDashboardPage() {
                       <span className="text-sm text-slate-600">
                         {(page - 1) * rowsPerPage + index + 1}
                       </span>
-                      <StudentCell canViewStudent={canViewStudent} row={row} />
+                      <StudentCell
+                        canViewStudent={canViewStudent}
+                        row={row}
+                        showSchoolName={!scope.schoolId}
+                      />
                     </div>
                     {row.latestCaseStatus ? (
                       <span className="inline-flex items-center gap-1">
