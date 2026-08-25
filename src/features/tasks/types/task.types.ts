@@ -39,7 +39,6 @@ export interface TaskCreatePayload {
   target_room?: string | null;
   subject?: string | null;
   subject_id?: number | null;
-  timetable_slot_ids?: number[];
   target_school_id?: number | null;
   role?: string | null;
   permissions?: string[];
@@ -124,6 +123,18 @@ export interface TaskAccessTask {
     follow_up_problem_category_guidance?: string | null;
     exception_label?: string | null;
   }>;
+  prefill?: {
+    source_submission_id: number;
+    source_round_number: number;
+    source_submitted_at: string | null;
+    parental_status_code: string | null;
+    guardian_type_code: string | null;
+    guardian_type_detail: string | null;
+    contact_person_name: string | null;
+    contact_channel_code: string | null;
+    residence_environment_codes: string[];
+    residence_environment_detail: string | null;
+  };
   /** Composed workflow label (`รอติดตาม : ให้ความช่วยเหลือ`) for the card header. */
   case_display_status_label?: string | null;
   auth_required?: boolean;
@@ -135,13 +146,6 @@ export interface TaskSubmitResponse {
   error?: string;
   message?: string;
   session_token?: string;
-}
-
-export interface TaskOtpChallenge {
-  success: boolean;
-  method: "EMAIL";
-  maskedEmail: string;
-  expiresAt: string;
 }
 
 export type TaskLinkAdminAction = "lock" | "unlock";
@@ -176,6 +180,9 @@ export interface TaskSubmission {
   follow_up_problem_category_code?: string | null;
   follow_up_problem_category_label?: string | null;
   follow_up_problem_category_guidance?: string | null;
+  absence_reason_code?: string | null;
+  absence_reason_label?: string | null;
+  absence_reason_category_label?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
   guardian_type_code?: string | null;

@@ -173,6 +173,19 @@ export function CaseFollowUpRoundDetails({
           })}
         />
         <RoundDetailItem
+          label="สาเหตุการขาด"
+          value={
+            round.absence_reason_label
+              ? [
+                  round.absence_reason_category_label,
+                  round.absence_reason_label,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : null
+          }
+        />
+        <RoundDetailItem
           label="ผลหลังการติดตาม"
           value={optionLabel(round.follow_up_decision)}
         />
@@ -195,6 +208,14 @@ export function CaseFollowUpRoundDetails({
         <RoundDetailItem
           label="รายละเอียดสภาพแวดล้อมรอบที่พัก"
           value={round.residence_environment_detail}
+        />
+        <RoundDetailItem
+          label="ข้อสังเกตด้านความด้อยโอกาส"
+          value={formatOptionLabels(round.observed_disadvantage_types)}
+        />
+        <RoundDetailItem
+          label="ข้อสังเกตด้านความพิการ"
+          value={formatOptionLabels(round.observed_disability_types)}
         />
         <RoundDetailItem
           label="รายละเอียดจากการเยี่ยมบ้าน"

@@ -10,6 +10,7 @@ import {
   DialogTitle,
   FormErrorAlert,
   Label,
+  MultiSelect,
   Select,
   Textarea,
 } from "../../../components/base";
@@ -39,9 +40,10 @@ export function CaseStatusUpdateDialog({
   const updateCase = useUpdateCase();
   const [note, setNote] = useState("");
   const [referralAgencyId, setReferralAgencyId] = useState("");
-  const [observationDecision, setObservationDecision] = useState<
-    "" | "APPROVE" | "REJECT"
-  >("");
+  const [assistanceMeasureCodes, setAssistanceMeasureCodes] = useState<
+    string[]
+  >([]);
+  const [assistanceMeasureDetail, setAssistanceMeasureDetail] = useState("");
   const referralAgencies = useReferralAgencies(
     open && presetAction === "REFER_AGENCY",
   );
@@ -49,7 +51,8 @@ export function CaseStatusUpdateDialog({
   function closeDialog(): void {
     setNote("");
     setReferralAgencyId("");
-    setObservationDecision("");
+    setAssistanceMeasureCodes([]);
+    setAssistanceMeasureDetail("");
     updateCase.reset();
     onOpenChange(false);
   }
@@ -57,16 +60,34 @@ export function CaseStatusUpdateDialog({
   const selectedAction = (optionsQuery.data?.reviewActions ?? []).find(
     (option) => option.code === presetAction,
   );
+  const hasAssistanceHistory = Boolean(
+    caseRecord?.follow_up_rounds?.some((round) => round.task_type === "ASSIST"),
+  );
+  const selectedActionLabel =
+    selectedAction?.code === "ASSIST"
+      ? hasAssistanceHistory
+        ? "มอบหมายช่วยเหลืออีกครั้ง"
+        : "มอบหมายช่วยเหลือ"
+      : selectedAction?.label;
   const hasPermission =
     Boolean(selectedAction) &&
     can("dashboard") &&
     can(selectedAction?.requiredPermission || "");
+  const assistanceMeasures = optionsQuery.data?.assistanceMeasures ?? [];
+  const assistanceMeasureRequiresDetail = assistanceMeasures.some(
+    (measure) =>
+      measure.requiresDetail && assistanceMeasureCodes.includes(measure.code),
+  );
   const submitDisabled =
     !caseRecord ||
     !presetAction ||
     !selectedAction ||
     !hasPermission ||
     !note.trim() ||
+    (presetAction === "ASSIST" && assistanceMeasureCodes.length === 0) ||
+    (presetAction === "ASSIST" &&
+      assistanceMeasureRequiresDetail &&
+      !assistanceMeasureDetail.trim()) ||
     (presetAction === "REFER_AGENCY" && !referralAgencyId) ||
     optionsQuery.isLoading;
 
@@ -81,7 +102,12 @@ export function CaseStatusUpdateDialog({
           resolution_outcome: null,
           referral_agency_id:
             presetAction === "REFER_AGENCY" ? Number(referralAgencyId) : null,
-          care_observation_decision: observationDecision || null,
+          assistance_measure_codes:
+            presetAction === "ASSIST" ? assistanceMeasureCodes : null,
+          assistance_measure_detail:
+            presetAction === "ASSIST" && assistanceMeasureRequiresDetail
+              ? assistanceMeasureDetail.trim()
+              : null,
         },
       },
       {
@@ -103,7 +129,7 @@ export function CaseStatusUpdateDialog({
       <DialogContent className="w-[min(92vw,460px)]" onClose={closeDialog}>
         <DialogHeader>
           <DialogTitle>
-            {selectedAction?.label || "พิจารณาผลการติดตาม"}
+            {selectedActionLabel || "พิจารณาผลการติดตาม"}
           </DialogTitle>
           <DialogDescription>
             {caseRecord
@@ -127,19 +153,6 @@ export function CaseStatusUpdateDialog({
               </p>
             ) : null}
 
-            <div className="space-y-2">
-              <Label required htmlFor="case-note">
-                เหตุผลการพิจารณา
-              </Label>
-              <Textarea
-                id="case-note"
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="ระบุเหตุผลและข้อสรุปจากการติดตาม"
-                required
-                value={note}
-              />
-            </div>
-
             {presetAction === "REFER_AGENCY" ? (
               <div className="space-y-2">
                 <Label required htmlFor="referral-agency">
@@ -160,26 +173,63 @@ export function CaseStatusUpdateDialog({
               </div>
             ) : null}
 
+            {presetAction === "ASSIST" ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label required>มาตรการช่วยเหลือที่เสนอ</Label>
+                  <MultiSelect
+                    id="proposed-assistance-measures"
+                    onChange={(codes) => {
+                      setAssistanceMeasureCodes(codes);
+                      const stillRequiresDetail = assistanceMeasures.some(
+                        (measure) =>
+                          measure.requiresDetail &&
+                          codes.includes(measure.code),
+                      );
+                      if (!stillRequiresDetail) setAssistanceMeasureDetail("");
+                    }}
+                    options={assistanceMeasures.map((measure) => ({
+                      value: measure.code,
+                      label: measure.label,
+                    }))}
+                    placeholder="เลือกได้มากกว่าหนึ่งมาตรการ"
+                    value={assistanceMeasureCodes}
+                  />
+                  <p className="text-xs leading-5 text-slate-500">
+                    ระบบจะนำรายการนี้ไปเติมเป็นค่าเริ่มต้นในขั้นมอบหมายงาน
+                    และยังแก้ไขได้
+                  </p>
+                </div>
+                {assistanceMeasureRequiresDetail ? (
+                  <div className="space-y-2">
+                    <Label required htmlFor="assistance-measure-detail">
+                      รายละเอียดมาตรการ
+                    </Label>
+                    <Textarea
+                      id="assistance-measure-detail"
+                      maxLength={2000}
+                      onChange={(event) =>
+                        setAssistanceMeasureDetail(event.target.value)
+                      }
+                      placeholder="ระบุรายละเอียดมาตรการที่เลือก"
+                      value={assistanceMeasureDetail}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
-              <Label htmlFor="care-observation-decision">
-                ตรวจข้อสังเกตด้านการดูแลนักเรียน
+              <Label required htmlFor="case-note">
+                เหตุผลการพิจารณา
               </Label>
-              <Select
-                id="care-observation-decision"
-                onChange={(event) =>
-                  setObservationDecision(
-                    event.target.value as "" | "APPROVE" | "REJECT",
-                  )
-                }
-                value={observationDecision}
-              >
-                <option value="">ยังไม่พิจารณาในครั้งนี้</option>
-                <option value="APPROVE">ยืนยันและเพิ่มในข้อมูลนักเรียน</option>
-                <option value="REJECT">ไม่ยืนยันข้อสังเกต</option>
-              </Select>
-              <p className="text-xs leading-5 text-slate-500">
-                ใช้กับข้อสังเกตความด้อยโอกาสหรือความพิการที่ยังรอพิจารณาในเคสนี้
-              </p>
+              <Textarea
+                id="case-note"
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="ระบุเหตุผลและข้อสรุปจากการติดตาม"
+                required
+                value={note}
+              />
             </div>
           </div>
         </DialogBody>

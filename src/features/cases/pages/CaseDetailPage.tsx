@@ -30,8 +30,10 @@ import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import type { CaseReviewAction } from "../types/cases.types";
 import { VisitMapPreview } from "../../tasks/components/VisitMapPreview";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 export function CaseDetailPage() {
+  const { can } = usePermissions();
   const safeBackTarget = useSafeBackTarget();
   const { caseId: caseIdParam } = useParams<{ caseId: string }>();
   const caseId = Number(caseIdParam);
@@ -121,7 +123,7 @@ export function CaseDetailPage() {
           </NavButton>
         }
         actions={
-          caseRecord.student_id ? (
+          caseRecord.student_id && can("students") ? (
             <NavButton
               className="w-36"
               contextual

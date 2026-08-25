@@ -74,14 +74,15 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
   },
 };
 
-const UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION: CaseTrackingStatusPresentation = {
-  badgeClassName: "text-slate-600",
-  icon: Clock3,
-  iconSurfaceClassName: "bg-slate-600 text-white",
-  label: "ไม่ระบุสถานะ",
-  summaryTone: "default",
-  textClassName: "text-slate-500",
-};
+const UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION: CaseTrackingStatusPresentation =
+  {
+    badgeClassName: "text-slate-600",
+    icon: Clock3,
+    iconSurfaceClassName: "bg-slate-600 text-white",
+    label: "ไม่ระบุสถานะ",
+    summaryTone: "default",
+    textClassName: "text-slate-500",
+  };
 
 export function getCaseTrackingStatusPresentation(
   status?: string | null,
@@ -92,7 +93,10 @@ export function getCaseTrackingStatusPresentation(
   return UNKNOWN_CASE_TRACKING_STATUS_PRESENTATION;
 }
 
-export function getCaseReason(reason?: string | null, fallback?: string | null): string {
+export function getCaseReason(
+  reason?: string | null,
+  fallback?: string | null,
+): string {
   return reason || fallback || "-";
 }
 
@@ -108,7 +112,9 @@ export function formatCaseDate(value: string): string {
 export function formatOptionLabels(
   options?: Array<{ code: string; label: string }> | null,
 ): string {
-  if (!options || options.length === 0) return "-";
+  // The forms let a reporter answer "ไม่ระบุ"; an empty multi-select means the
+  // same thing, so the read-only views say it with the same word.
+  if (!options || options.length === 0) return "ไม่ระบุ";
   return options.map((option) => option.label).join(", ");
 }
 
@@ -122,8 +128,12 @@ export function formatFollowUpProblemCategory(category: {
   return category.guidance ? `${label} (${category.guidance})` : label;
 }
 
-export function isFollowUpLinkExpired(assignmentEndsAt?: string | null): boolean {
+export function isFollowUpLinkExpired(
+  assignmentEndsAt?: string | null,
+): boolean {
   if (!assignmentEndsAt) return false;
   const expiresAt = new Date(assignmentEndsAt);
-  return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now();
+  return (
+    !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()
+  );
 }
