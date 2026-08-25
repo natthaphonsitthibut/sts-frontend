@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, type To } from "react-router-dom";
+import { useLocation, useNavigate, type To } from "react-router-dom";
 import { Button, type ButtonProps } from "../base";
 import {
   useContextualNavigationState,
   useSafeBackTarget,
+  createBreadcrumbNavigationState,
 } from "./navigation-context";
 
 interface NavButtonProps extends Omit<ButtonProps, "onClick"> {
@@ -26,8 +27,14 @@ const SPIN_BEFORE_NAV_MS = 400;
  * the page transitions — so changing pages always gives the same loading feedback
  * as the login/refresh buttons.
  */
-export function NavButton({ contextual = false, isLoading, to, ...props }: NavButtonProps) {
+export function NavButton({
+  contextual = false,
+  isLoading,
+  to,
+  ...props
+}: NavButtonProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const safeBackTarget = useSafeBackTarget();
   const contextualState = useContextualNavigationState();
   const [navigating, setNavigating] = useState(false);
@@ -45,7 +52,18 @@ export function NavButton({ contextual = false, isLoading, to, ...props }: NavBu
           navigate(to);
         }
       } else {
-        navigate(to, contextual ? { state: contextualState } : undefined);
+        const breadcrumbState =
+          typeof to === "string"
+            ? createBreadcrumbNavigationState(location, to)
+            : undefined;
+        navigate(
+          to,
+          contextual
+            ? { state: contextualState }
+            : breadcrumbState
+              ? { state: breadcrumbState }
+              : undefined,
+        );
       }
       // A numeric history navigation can legitimately be a no-op (for example,
       // a directly opened detail page). Do not leave the button spinning when

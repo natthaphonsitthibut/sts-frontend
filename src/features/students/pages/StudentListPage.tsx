@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileDown, UserRound } from "lucide-react";
+import { FileDown, Plus, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Tabs } from "../../../components/base";
 import {
@@ -273,6 +273,10 @@ export function StudentListPage({
     contextualNavigate(`/students/${studentId}`);
   }
 
+  function editStudent(studentId: string): void {
+    contextualNavigate(`/manage-students/${studentId}/edit`);
+  }
+
   function clearSelectedStudents(): void {
     setSelectedStudentsById(new Map());
   }
@@ -345,6 +349,16 @@ export function StudentListPage({
                   </Button>
                 ) : null}
               </>
+            ) : undefined
+          }
+          createAction={
+            management ? (
+              <Button
+                icon={Plus}
+                onClick={() => contextualNavigate("/manage-students/new")}
+              >
+                เพิ่มนักเรียน
+              </Button>
             ) : undefined
           }
           grade={effectiveGrade}
@@ -457,6 +471,7 @@ export function StudentListPage({
           <StudentTable
             onPageChange={setPage}
             onRowClick={openStudent}
+            onEdit={management ? editStudent : undefined}
             onRowsPerPageChange={handleRowsPerPageChange}
             onSelectAll={handleSelectAll}
             onSelectRow={handleSelectStudent}
@@ -465,6 +480,7 @@ export function StudentListPage({
             rowsPerPage={rowsPerPage}
             rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
             selectedIds={management ? selectedStudentIds : undefined}
+            management={management}
             totalCount={totalCount}
           />
         )}

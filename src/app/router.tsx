@@ -54,6 +54,7 @@ import {
   RouteSuspense,
   SchoolStructurePage,
   StudentDetailPage,
+  StudentCreatePage,
   StudentEditPage,
   StudentListPage,
   StudentStatusesPage,
@@ -189,6 +190,10 @@ export const router = createBrowserRouter([
           "manage-students",
           "classrooms",
         ]),
+      },
+      {
+        path: "manage-students/new",
+        element: protectedElement(<StudentCreatePage />, "manage-students"),
       },
       {
         path: "manage-students/:id/edit",

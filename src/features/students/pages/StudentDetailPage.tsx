@@ -147,7 +147,7 @@ export function StudentDetailPage() {
       />
 
       <StudentProfileHeader
-        canEditPhoto={can("manage-students")}
+        canEditPhoto={can("students") || can("manage-students")}
         canRevealPii={can("manage-students")}
         contactsOpen={contactsOpen}
         key={studentId}

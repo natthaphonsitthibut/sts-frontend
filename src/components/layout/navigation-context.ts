@@ -159,7 +159,7 @@ function getDynamicParentCrumbs(pathname: string): NavigationCrumb[] | null {
   const studentEdit = /^\/manage-students\/([^/]+)\/edit$/.exec(pathname);
   if (studentEdit) {
     return [
-      identityCrumb("/students"),
+      identityCrumb("/manage-students"),
       { label: "ข้อมูลนักเรียน", to: `/students/${studentEdit[1]}` },
     ];
   }

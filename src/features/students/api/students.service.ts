@@ -14,6 +14,8 @@ import type {
   StudentListQuery,
   StudentListResult,
   StudentUpdatePayload,
+  StudentCreatePayload,
+  StudentManagementOptions,
   CreatePiiExportRequestPayload,
   PiiExportDownloadResult,
   PiiExportRequestListQuery,
@@ -108,7 +110,12 @@ interface StudentsService {
     payload: RejectPiiExportRequestPayload,
   ) => Promise<PiiExportRequestResponse>;
   downloadPiiExportCsv: (token: string) => Promise<PiiExportDownloadResult>;
-  updateStudent: (studentId: string, payload: StudentUpdatePayload) => Promise<StudentDetail>;
+  updateStudent: (
+    studentId: string,
+    payload: StudentUpdatePayload,
+  ) => Promise<StudentDetail>;
+  createStudent: (payload: StudentCreatePayload) => Promise<StudentDetail>;
+  getManagementOptions: () => Promise<StudentManagementOptions>;
   getStudentCasesById: (studentId: string) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
@@ -116,7 +123,9 @@ interface StudentsService {
   getStudentAttendanceSummary: (
     studentId: string,
   ) => Promise<StudentAttendanceSummaryResponse>;
-  getStudentProfileSummary: (studentId: string) => Promise<StudentProfileSummary>;
+  getStudentProfileSummary: (
+    studentId: string,
+  ) => Promise<StudentProfileSummary>;
   getStudentSubjectAttendance: (
     studentId: string,
     date: string,
@@ -319,7 +328,9 @@ async function createPiiExportRequest(
   return response.data;
 }
 
-async function approvePiiExportRequest(id: string): Promise<PiiExportRequestResponse> {
+async function approvePiiExportRequest(
+  id: string,
+): Promise<PiiExportRequestResponse> {
   const response = await apiClient.post<PiiExportRequestResponse>(
     `/students/pii-export-requests/${id}/approve`,
   );
@@ -341,7 +352,9 @@ function getPiiExportFilename(contentDisposition: string | undefined): string {
   return match?.[1] ?? "pii-export.csv";
 }
 
-async function downloadPiiExportCsv(token: string): Promise<PiiExportDownloadResult> {
+async function downloadPiiExportCsv(
+  token: string,
+): Promise<PiiExportDownloadResult> {
   const response = await apiClient.get<Blob>("/students/pii-export-download", {
     params: { token },
     responseType: "blob",
@@ -356,8 +369,25 @@ async function updateStudent(
   studentId: string,
   payload: StudentUpdatePayload,
 ): Promise<StudentDetail> {
-  const response = await apiClient.patch<StudentDetail>(`/students/${studentId}`, payload);
+  const response = await apiClient.patch<StudentDetail>(
+    `/students/${studentId}`,
+    payload,
+  );
   return response.data;
+}
+
+async function createStudent(
+  payload: StudentCreatePayload,
+): Promise<StudentDetail> {
+  const response = await apiClient.post<StudentDetail>("/students", payload);
+  return response.data;
+}
+
+async function getManagementOptions(): Promise<StudentManagementOptions> {
+  const response = await apiClient.get<DataEnvelope<StudentManagementOptions>>(
+    "/students/management-options",
+  );
+  return response.data.data ?? { classrooms: [] };
 }
 
 /** Upload replaces the photo; passing no file with `remove` clears it. */
@@ -423,7 +453,9 @@ async function getStudentAttendanceSummary(
   return { records: summaryRecords, stats };
 }
 
-async function getStudentProfileSummary(studentId: string): Promise<StudentProfileSummary> {
+async function getStudentProfileSummary(
+  studentId: string,
+): Promise<StudentProfileSummary> {
   const response = await apiClient.get<DataEnvelope<StudentProfileSummary>>(
     `/students/${encodeURIComponent(studentId)}/profile-summary`,
   );
@@ -437,10 +469,11 @@ async function getStudentSubjectAttendance(
   studentId: string,
   date: string,
 ): Promise<StudentSubjectAttendanceRecord[]> {
-  const response = await apiClient.get<DataEnvelope<StudentSubjectAttendanceRecord[]>>(
-    `/students/${encodeURIComponent(studentId)}/attendance-subjects`,
-    { params: { date } },
-  );
+  const response = await apiClient.get<
+    DataEnvelope<StudentSubjectAttendanceRecord[]>
+  >(`/students/${encodeURIComponent(studentId)}/attendance-subjects`, {
+    params: { date },
+  });
   return response.data.data ?? [];
 }
 
@@ -455,6 +488,8 @@ export const studentsService: StudentsService = {
   rejectPiiExportRequest,
   downloadPiiExportCsv,
   updateStudent,
+  createStudent,
+  getManagementOptions,
   updateStudentPhoto,
   getStudentCasesById,
   getStudentAttendance,

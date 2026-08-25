@@ -156,6 +156,11 @@ export const StudentEditPage = lazy(() =>
     default: module.StudentEditPage,
   })),
 );
+export const StudentCreatePage = lazy(() =>
+  import("../features/students/pages/StudentCreatePage").then((module) => ({
+    default: module.StudentCreatePage,
+  })),
+);
 export const ManageUserFormPage = lazy(() =>
   import("../features/admin/pages/ManageUserFormPage").then((module) => ({
     default: module.ManageUserFormPage,

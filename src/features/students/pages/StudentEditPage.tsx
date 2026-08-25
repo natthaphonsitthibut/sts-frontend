@@ -2,6 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  GraduationCap,
+  IdCard,
   Phone,
   Plus,
   Save,
@@ -16,7 +18,7 @@ import {
   useWatch,
   type UseFormReturn,
 } from "react-hook-form";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import {
   Button,
@@ -47,7 +49,10 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
-import { useSafeBackTarget } from "../../../components/layout/navigation-context";
+import {
+  createBreadcrumbNavigationState,
+  useSafeBackTarget,
+} from "../../../components/layout/navigation-context";
 import {
   AddressFormSection,
   type AddressFieldNames,
@@ -65,6 +70,16 @@ import type {
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { studentsService } from "../api/students.service";
+import { useStudentStatuses } from "../../student-statuses/hooks/useStudentStatuses";
+import { maskSensitiveIdentifier } from "../../../lib/pii-presentation";
+import { SensitiveValueToggleButton } from "../../../components/security/SensitiveValueToggleButton";
+import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
+import { PII_FIELD_LABELS } from "../pii.constants";
+import { StudentPiiRevealDialog } from "../components/StudentPiiRevealDialog";
+import type {
+  StudentPiiField,
+  StudentPiiRevealResponse,
+} from "../types/students.types";
 
 const optionalPhone = z
   .string()
@@ -111,6 +126,15 @@ const schema = z.object({
   FirstName_Onec: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
   MiddleName_Onec: z.string().trim().max(100),
   LastName_Onec: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
+  student_number: z.string().trim().max(50),
+  student_status_code: z.string(),
+  term_gpa: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || (Number(value) >= 0 && Number(value) <= 4),
+      "เกรดเฉลี่ยต้องอยู่ระหว่าง 0.00–4.00",
+    ),
   address_house_no: z.string().trim().max(100),
   VillageNumber_Onec: z.string().trim().max(100),
   Street_Onec: z.string().trim().max(150),
@@ -150,6 +174,9 @@ const EMPTY_VALUES: FormValues = {
   FirstName_Onec: "",
   MiddleName_Onec: "",
   LastName_Onec: "",
+  student_number: "",
+  student_status_code: "",
+  term_gpa: "",
   address_house_no: "",
   VillageNumber_Onec: "",
   Street_Onec: "",
@@ -268,10 +295,19 @@ function StudentContactSection({
 export function StudentEditPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const safeBackTarget = useSafeBackTarget();
   const { student, isLoading, isError, refetch } = useStudent(id || undefined);
   const updateStudent = useUpdateStudent(id);
+  const statusesQuery = useStudentStatuses({
+    page: 1,
+    limit: 50,
+    sortBy: "sortOrder",
+    sortDirection: "asc",
+  });
+  const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
+  const piiReveal = useTimedSensitiveReveal<StudentPiiField>(id);
   const [photo, setPhoto] = useState<PhotoPickerValue>(
     EMPTY_PHOTO_PICKER_VALUE,
   );
@@ -369,6 +405,9 @@ export function StudentEditPage() {
         line_id: guardian.line_id ?? "",
         is_primary: guardian.is_primary,
       })),
+      student_number: String(student.student_number ?? ""),
+      student_status_code: String(student.student_status_code ?? ""),
+      term_gpa: String(student.term_gpa ?? ""),
     });
   }, [form, student]);
 
@@ -377,6 +416,11 @@ export function StudentEditPage() {
       FirstName_Onec: values.FirstName_Onec.trim(),
       MiddleName_Onec: nullable(values.MiddleName_Onec),
       LastName_Onec: values.LastName_Onec.trim(),
+      student_number: nullable(values.student_number),
+      student_status_code: values.student_status_code
+        ? Number(values.student_status_code)
+        : undefined,
+      term_gpa: values.term_gpa === "" ? null : Number(values.term_gpa),
       address_house_no: nullable(values.address_house_no),
       VillageNumber_Onec: nullable(
         stripAddressPrefix("หมู่", values.VillageNumber_Onec),
@@ -417,7 +461,37 @@ export function StudentEditPage() {
         remove: photo.removed,
       });
     }
+    goBack();
+  }
+
+  function goBack(): void {
+    if (typeof safeBackTarget === "string") {
+      const state = createBreadcrumbNavigationState(location, safeBackTarget);
+      void navigate(safeBackTarget, state ? { state } : undefined);
+      return;
+    }
     void navigate(safeBackTarget);
+  }
+
+  function piiValue(field: StudentPiiField): string {
+    const revealed = piiReveal.values[field];
+    if (piiReveal.visibleFields[field] && revealed !== undefined)
+      return revealed;
+    return maskSensitiveIdentifier(student?.[field]) || "ไม่ระบุ";
+  }
+
+  function togglePii(field: StudentPiiField): void {
+    if (piiReveal.visibleFields[field]) {
+      piiReveal.hide(field);
+    } else if (piiReveal.values[field] !== undefined) {
+      piiReveal.showCached(field);
+    } else {
+      setRevealField(field);
+    }
+  }
+
+  function handlePiiRevealed(values: StudentPiiRevealResponse["values"]): void {
+    piiReveal.reveal(values);
   }
 
   return (
@@ -477,6 +551,128 @@ export function StudentEditPage() {
                     </FormItem>
                   ))}
                 </div>
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="mb-5 flex items-center gap-2">
+                <IdCard className="size-5 text-slate-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-slate-800">
+                  ข้อมูลระบุตัวตน
+                </h2>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(["PersonID_Onec", "PassportNumber_Onec"] as const).map(
+                  (field) => {
+                    const hasValue =
+                      (student.masked_fields ?? []).includes(field) ||
+                      Boolean(student[field]);
+                    return (
+                      <div
+                        className="rounded-lg border border-slate-200 px-4 py-3"
+                        key={field}
+                      >
+                        <div className="text-sm text-slate-500">
+                          {PII_FIELD_LABELS[field]}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-3">
+                          <span className="font-medium tabular-nums text-slate-800">
+                            {piiValue(field)}
+                          </span>
+                          {hasValue ? (
+                            <SensitiveValueToggleButton
+                              isVisible={
+                                piiReveal.visibleFields[field] === true
+                              }
+                              label={PII_FIELD_LABELS[field]}
+                              onClick={() => togglePii(field)}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                เลขระบุตัวตนเป็นข้อมูลอ่อนไหว การเปิดดูจะถูกบันทึกพร้อมเหตุผล
+              </p>
+            </Card>
+            <Card className="p-6">
+              <div className="mb-5 flex items-center gap-2">
+                <GraduationCap
+                  className="size-5 text-slate-700"
+                  aria-hidden="true"
+                />
+                <h2 className="text-lg font-bold text-slate-800">
+                  ข้อมูลการเรียน
+                </h2>
+              </div>
+              <div className="mb-5 grid gap-3 rounded-lg border border-slate-200 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <span className="text-slate-500">โรงเรียน</span>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {String(student.school_name ?? "ไม่ระบุ")}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500">ปี/ภาคเรียน</span>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {student.AcademicYear_Onec ?? "ไม่ระบุ"}/
+                    {student.Semester_Onec ?? "ไม่ระบุ"}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500">ระดับชั้น</span>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {String(student.grade_label ?? student.grade ?? "ไม่ระบุ")}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500">ห้อง</span>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {String(student.room ?? "ไม่ระบุ")}
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormItem>
+                  <FormLabel htmlFor="student_number">
+                    เลขประจำตัวนักเรียน
+                  </FormLabel>
+                  <Input
+                    id="student_number"
+                    {...registerField(form, "student_number")}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="student_status_code">
+                    สถานะนักเรียน
+                  </FormLabel>
+                  <Select
+                    disabled={statusesQuery.isLoading}
+                    id="student_status_code"
+                    {...registerField(form, "student_status_code")}
+                  >
+                    <option value="">ไม่ระบุ</option>
+                    {(statusesQuery.data?.items ?? [])
+                      .filter((status) => status.isEnabled)
+                      .map((status) => (
+                        <option key={status.code} value={status.code}>
+                          {status.labelTh}
+                        </option>
+                      ))}
+                  </Select>
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="term_gpa">เกรดเฉลี่ยภาคเรียน</FormLabel>
+                  <Input
+                    id="term_gpa"
+                    inputMode="decimal"
+                    placeholder="0.00–4.00"
+                    {...registerField(form, "term_gpa")}
+                  />
+                  <FormMessage<FormValues> name="term_gpa" />
+                </FormItem>
               </div>
             </Card>
             <AddressFormSection
@@ -708,7 +904,7 @@ export function StudentEditPage() {
             </Card>
             <FormActions>
               <Button
-                onClick={() => void navigate(safeBackTarget)}
+                onClick={goBack}
                 size="lg"
                 type="button"
                 variant="outline"
@@ -728,6 +924,18 @@ export function StudentEditPage() {
           </div>
         </Form>
       )}
+      {student ? (
+        <StudentPiiRevealDialog
+          field={revealField}
+          maskedValue={revealField ? piiValue(revealField) : ""}
+          onOpenChange={(open) => {
+            if (!open) setRevealField(null);
+          }}
+          onRevealed={handlePiiRevealed}
+          open={revealField !== null}
+          studentId={id}
+        />
+      ) : null}
     </PageShell>
   );
 }

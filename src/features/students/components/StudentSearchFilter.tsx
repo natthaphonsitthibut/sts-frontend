@@ -32,6 +32,7 @@ interface StudentSearchFilterProps {
   schoolFilters?: ReactNode;
   navigation?: ReactNode;
   exportAction?: ReactNode;
+  createAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
   updatedAt: number;
   onClearFilters: () => void;
@@ -57,6 +58,7 @@ export function StudentSearchFilter({
   schoolFilters,
   navigation,
   exportAction,
+  createAction,
   onRefresh,
   updatedAt,
   onClearFilters,
@@ -72,6 +74,7 @@ export function StudentSearchFilter({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
           {exportAction}
+          {createAction}
         </div>
       }
       onClearFilters={onClearFilters}
