@@ -115,13 +115,6 @@ function readOnlyTime(value: string | null | undefined): string {
   }).format(new Date(value));
 }
 
-function absenceReasonLabel(round: CaseFollowUpRound): string {
-  if (!round.absence_reason_label) return UNANSWERED;
-  return round.absence_reason_category_label
-    ? `${round.absence_reason_category_label} · ${round.absence_reason_label}`
-    : round.absence_reason_label;
-}
-
 function toIsoDateTime(date: string, time: string): string {
   return new Date(`${date}T${time}:00+07:00`).toISOString();
 }
@@ -491,6 +484,17 @@ type RailStep =
  * latest one.
  */
 function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
+  const proposedAddress =
+    round.updated_student_address ||
+    [
+      round.updated_address_line,
+      round.updated_address_sub_district,
+      round.updated_address_district,
+      round.updated_address_province,
+      round.updated_postal_code,
+    ]
+      .filter(Boolean)
+      .join(" ");
   return (
     <div data-follow-up-report>
       {/* Same split as the guest report form: what the visit found about the
@@ -579,7 +583,10 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
         <div className="flex min-w-0 flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ผลการติดตาม
-            <Input disabled value={round.task_execution_outcome_label || "-"} />
+            <Input
+              disabled
+              value={round.task_execution_outcome_label || UNANSWERED}
+            />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ประเภทปัญหาที่พบ
@@ -593,8 +600,15 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            ประเภทการขาด
+            <Input
+              disabled
+              value={round.absence_reason_category_label || UNANSWERED}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             สาเหตุการขาด
-            <Input disabled value={absenceReasonLabel(round)} />
+            <Input disabled value={round.absence_reason_label || UNANSWERED} />
           </label>
           <label className="flex min-h-28 flex-1 flex-col gap-1 text-sm font-medium text-slate-700">
             คำอธิบายเพิ่มเติม
@@ -602,7 +616,20 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
               className="min-h-28 flex-1 resize-none overflow-y-auto"
               disabled
               rows={4}
-              value={round.cause_detail || ""}
+              value={round.cause_detail || UNANSWERED}
+            />
+          </label>
+          <label className="flex min-h-20 flex-col gap-1 text-sm font-medium text-slate-700">
+            ที่อยู่ปัจจุบัน
+            <Textarea
+              className="min-h-20 resize-none overflow-y-auto"
+              disabled
+              rows={3}
+              value={
+                round.address_changed
+                  ? proposedAddress || "แจ้งเปลี่ยนที่อยู่ แต่ไม่มีรายละเอียด"
+                  : "ไม่เปลี่ยนจากข้อมูลในระบบ"
+              }
             />
           </label>
         </div>
@@ -625,34 +652,16 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
 }
 
 /**
- * What the visit ran into on site: the exception the teacher picked, the
- * address they proposed instead, and the coordinates their device recorded.
- * These stay out of the main answer grid because a normal visit has none of
- * them — showing four empty boxes would read as missing data.
+ * What the visit ran into on site: the exception the teacher picked and the
+ * coordinates their device recorded. The current-address answer is always in
+ * the main report grid, so it is not repeated here.
  */
 function FollowUpExceptionDetails({ round }: { round: CaseFollowUpRound }) {
-  const proposedAddress =
-    round.updated_student_address ||
-    [
-      round.updated_address_line,
-      round.updated_address_sub_district,
-      round.updated_address_district,
-      round.updated_address_province,
-      round.updated_postal_code,
-    ]
-      .filter(Boolean)
-      .join(" ") ||
-    null;
   const visitCoordinates =
     round.visit_lat != null && round.visit_lng != null
       ? `${round.visit_lat}, ${round.visit_lng}`
       : null;
-  const showProposedAddress = Boolean(round.address_changed && proposedAddress);
-  if (
-    !round.home_visit_exception_label &&
-    !visitCoordinates &&
-    !showProposedAddress
-  ) {
+  if (!round.home_visit_exception_label && !visitCoordinates) {
     return null;
   }
   return (
@@ -669,17 +678,6 @@ function FollowUpExceptionDetails({ round }: { round: CaseFollowUpRound }) {
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             พิกัดที่บันทึกไว้
             <Input disabled value={visitCoordinates} />
-          </label>
-        ) : null}
-        {showProposedAddress ? (
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 lg:col-span-2">
-            ที่อยู่ใหม่ที่เสนอให้อัปเดต
-            <Textarea
-              className="min-h-20 resize-none"
-              disabled
-              rows={2}
-              value={proposedAddress ?? ""}
-            />
           </label>
         ) : null}
       </div>

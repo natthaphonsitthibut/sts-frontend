@@ -124,7 +124,7 @@ export function formatFollowUpProblemCategory(category: {
   guidance?: string | null;
 }): string {
   const label = category.label || category.code;
-  if (!label) return "-";
+  if (!label) return "ไม่ระบุ";
   return category.guidance ? `${label} (${category.guidance})` : label;
 }
 

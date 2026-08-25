@@ -23,7 +23,7 @@ function RoundDetailItem({
     <div className="rounded-lg bg-slate-50 px-4 py-3">
       <dt className="text-xs font-semibold text-slate-500">{label}</dt>
       <dd className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-800">
-        {value || "-"}
+        {value || "ไม่ระบุ"}
       </dd>
     </div>
   );
@@ -165,7 +165,7 @@ export function CaseFollowUpRoundDetails({
           />
         ) : null}
         <RoundDetailItem
-          label="ผลประเมินหลังลงพื้นที่"
+          label="ประเภทปัญหาที่พบ"
           value={formatFollowUpProblemCategory({
             code: round.follow_up_problem_category_code,
             label: round.follow_up_problem_category_label,
@@ -173,17 +173,12 @@ export function CaseFollowUpRoundDetails({
           })}
         />
         <RoundDetailItem
+          label="ประเภทการขาด"
+          value={round.absence_reason_category_label}
+        />
+        <RoundDetailItem
           label="สาเหตุการขาด"
-          value={
-            round.absence_reason_label
-              ? [
-                  round.absence_reason_category_label,
-                  round.absence_reason_label,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : null
-          }
+          value={round.absence_reason_label}
         />
         <RoundDetailItem
           label="ผลหลังการติดตาม"
@@ -220,6 +215,15 @@ export function CaseFollowUpRoundDetails({
         <RoundDetailItem
           label="รายละเอียดจากการเยี่ยมบ้าน"
           value={round.cause_detail}
+        />
+        <RoundDetailItem
+          label="ที่อยู่ปัจจุบัน"
+          value={
+            round.address_changed
+              ? round.updated_student_address ||
+                "แจ้งเปลี่ยนที่อยู่ แต่ไม่มีรายละเอียด"
+              : "ไม่เปลี่ยนจากข้อมูลในระบบ"
+          }
         />
         <RoundDetailItem label="ข้อเสนอแนะ" value={round.recommendation} />
         {round.resolution_outcome ? (

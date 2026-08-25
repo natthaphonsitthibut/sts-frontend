@@ -413,6 +413,12 @@ export function HomeVisitReportPage({
           report.problemCategoryCode,
         );
       }
+      if (report.absenceReasonCategoryCode) {
+        formData.set(
+          "absence_reason_category_code",
+          report.absenceReasonCategoryCode,
+        );
+      }
       if (report.absenceReasonCode) {
         formData.set("absence_reason_code", report.absenceReasonCode);
       }
@@ -1182,26 +1188,58 @@ export function HomeVisitReportPage({
                   {values.contactPersonName || "ไม่ระบุ"}
                 </dd>
               </div>
-              <div>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 sm:col-span-2">
                 <dt className="text-xs font-semibold text-slate-500">
-                  ประเภทปัญหา
+                  ปัญหาที่พบ
                 </dt>
-                <dd className="mt-1">{categoryLabel}</dd>
+                <dd className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  <span>
+                    <span className="text-slate-500">ประเภทปัญหา:</span>{" "}
+                    {categoryLabel}
+                  </span>
+                  <span className="whitespace-pre-wrap">
+                    <span className="text-slate-500">คำอธิบายเพิ่มเติม:</span>{" "}
+                    {values.causeDetail || "ไม่ระบุ"}
+                  </span>
+                </dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold text-slate-500">
-                  ประเภทการขาด
-                </dt>
-                <dd className="mt-1">{absenceReasonCategoryLabel}</dd>
-              </div>
-              <div>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 sm:col-span-2">
                 <dt className="text-xs font-semibold text-slate-500">
                   สาเหตุการขาด
                 </dt>
-                <dd className="mt-1">{absenceReasonLabel}</dd>
+                <dd className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  <span>
+                    <span className="text-slate-500">ประเภทการขาด:</span>{" "}
+                    {absenceReasonCategoryLabel}
+                  </span>
+                  <span>
+                    <span className="text-slate-500">สาเหตุ:</span>{" "}
+                    {absenceReasonLabel}
+                  </span>
+                </dd>
               </div>
             </>
           )}
+          {!studentNotFound ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-semibold text-slate-500">
+                ที่อยู่ปัจจุบัน
+              </dt>
+              <dd className="mt-1 whitespace-pre-wrap">
+                {addressChanged
+                  ? [
+                      values.updatedAddressLine,
+                      values.updatedAddressSubDistrict,
+                      values.updatedAddressDistrict,
+                      values.updatedAddressProvince,
+                      values.updatedPostalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : "ไม่เปลี่ยนจากข้อมูลในระบบ"}
+              </dd>
+            </div>
+          ) : null}
           <div className="sm:col-span-2">
             <dt className="text-xs font-semibold text-slate-500">หลักฐาน</dt>
             <dd className="mt-1">
