@@ -380,8 +380,6 @@ function StudentRiskDashboardPage() {
       sort?.direction,
     ],
   );
-  const requiresSchoolSelection = !scope.schoolLocked && !scope.schoolId;
-
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     const setValue = (key: string, value: string | undefined): void => {
@@ -431,7 +429,6 @@ function StudentRiskDashboardPage() {
   const riskQuery = useQuery({
     queryKey: ["risk-dashboard", query],
     queryFn: () => riskDashboardService.getRiskDashboard(query),
-    enabled: !requiresSchoolSelection,
     placeholderData: keepPreviousData,
   });
 
@@ -448,7 +445,7 @@ function StudentRiskDashboardPage() {
         page: 1,
         limit: PAGE_SIZE_OPTIONS[0],
       }),
-    enabled: isWatchlist && !requiresSchoolSelection,
+    enabled: isWatchlist,
     placeholderData: keepPreviousData,
   });
 
@@ -641,13 +638,13 @@ function StudentRiskDashboardPage() {
                 onChange={handleSchoolChange}
                 onSearchChange={schoolArea.setSchoolSearch}
                 options={[
-                  { value: "", label: "เลือกโรงเรียน" },
+                  { value: "", label: "ทุกโรงเรียนในขอบเขตสิทธิ์" },
                   ...schoolArea.filteredSchools.map((school) => ({
                     value: String(school.id),
                     label: school.name,
                   })),
                 ]}
-                placeholder="ค้นหาโรงเรียน"
+                placeholder="ทุกโรงเรียนในขอบเขตสิทธิ์"
                 value={scope.schoolId}
               />
             </label>
@@ -787,13 +784,7 @@ function StudentRiskDashboardPage() {
           </div>
         ) : null}
 
-        {requiresSchoolSelection ? (
-          <EmptyState
-            icon={ClipboardList}
-            title="เลือกโรงเรียน"
-            description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงรายงานสถานะนักเรียน"
-          />
-        ) : riskQuery.isError ? (
+        {riskQuery.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดรายงานนักเรียนได้"
             description="กรุณาลองใหม่อีกครั้ง"
