@@ -1,8 +1,8 @@
 import type { BadgeProps } from "../../../components/base";
-import type { ObservationConcernLevel } from "../types/student-observation.types";
+import type { CommentConcernLevel } from "../types/teacher-comment.types";
 
-export const observationConcernOptions: Array<{
-  value: "ALL" | ObservationConcernLevel;
+export const concernLevelOptions: Array<{
+  value: "ALL" | CommentConcernLevel;
   label: string;
 }> = [
   { value: "ALL", label: "ทุกระดับข้อสังเกต" },
@@ -11,9 +11,10 @@ export const observationConcernOptions: Array<{
   { value: "CONCERN", label: "น่ากังวล" },
 ];
 
-export function getObservationConcernPresentation(
-  level: ObservationConcernLevel,
-): { label: string; variant: BadgeProps["variant"] } {
+export function getConcernLevelPresentation(level: CommentConcernLevel): {
+  label: string;
+  variant: BadgeProps["variant"];
+} {
   if (level === "CONCERN") return { label: "น่ากังวล", variant: "destructive" };
   if (level === "WATCH") return { label: "ควรเฝ้าดู", variant: "warning" };
   return { label: "บันทึกทั่วไป", variant: "secondary" };

@@ -258,6 +258,15 @@ export function useStudentProblemCategories(enabled = true) {
   });
 }
 
+export function useStudentCommentConcernLevels(enabled = true) {
+  return useQuery({
+    queryKey: [KEY, "student-comment-concern-levels"],
+    queryFn: schoolStructureService.listStudentCommentConcernLevels,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useStudentClassroomComments(studentTermId: string) {
   return useQuery({
     queryKey: [KEY, "student-comments", studentTermId],

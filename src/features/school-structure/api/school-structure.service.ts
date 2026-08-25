@@ -4,6 +4,8 @@ import type {
   ClassroomStudentCommentResult,
   ClassroomStudentProblemCategory,
   ClassroomStudentProblemCategoryOption,
+  ClassroomStudentCommentConcernLevel,
+  ClassroomStudentCommentConcernLevelOption,
   CreateClassroomInput,
   UpdateClassroomInput,
   PaginatedClassroomRoster,
@@ -234,6 +236,7 @@ async function createStudentComment(input: {
   classroomId: number;
   studentUuid: string;
   problemCategory: ClassroomStudentProblemCategory;
+  concernLevelCode: ClassroomStudentCommentConcernLevel;
   problemDescription: string;
 }): Promise<ClassroomStudentCommentResult> {
   const response = await apiClient.post<
@@ -242,6 +245,7 @@ async function createStudentComment(input: {
     `/school-structure/classrooms/${input.classroomId}/students/${encodeURIComponent(input.studentUuid)}/comments`,
     {
       problemCategory: input.problemCategory,
+      concernLevelCode: input.concernLevelCode,
       problemDescription: input.problemDescription,
     },
   );
@@ -255,6 +259,15 @@ async function listStudentProblemCategories(): Promise<
     DataEnvelope<ClassroomStudentProblemCategoryOption[]>
   >("/school-structure/student-problem-categories");
   return response.data.data;
+}
+
+async function listStudentCommentConcernLevels(): Promise<
+  ClassroomStudentCommentConcernLevelOption[]
+> {
+  const response = await apiClient.get<
+    DataEnvelope<ClassroomStudentCommentConcernLevelOption[]>
+  >("/school-structure/student-comment-concern-levels");
+  return response.data.data ?? [];
 }
 
 async function listStudentClassroomComments(
@@ -335,6 +348,7 @@ export const schoolStructureService = {
   createHomeroomAssignment,
   listRoster,
   listStudentProblemCategories,
+  listStudentCommentConcernLevels,
   createStudentComment,
   listStudentClassroomComments,
   listClassroomDailyAttendance,

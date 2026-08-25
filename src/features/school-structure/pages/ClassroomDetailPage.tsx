@@ -1,7 +1,13 @@
 import { Download, MessageSquareText, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Badge, Button, IconButton, Skeleton, Tabs } from "../../../components/base";
+import {
+  Badge,
+  Button,
+  IconButton,
+  Skeleton,
+  Tabs,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,

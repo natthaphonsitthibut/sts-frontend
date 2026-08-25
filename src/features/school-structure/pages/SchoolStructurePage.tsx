@@ -72,7 +72,7 @@ import type { SchoolClassroom } from "../types/school-structure.types";
 /**
  * Term, classroom and homeroom-teacher setup for a school.
  *
- * Deliberately narrow: the teacher roster lives on /manage-teachers and the
+ * Deliberately narrow: the teacher roster lives on /teachers and the
  * student roster on /classrooms/:classroomId, so this page only owns the
  * structure those pages read.
  */

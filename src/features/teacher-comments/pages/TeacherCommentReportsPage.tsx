@@ -1,5 +1,6 @@
 import { MessageSquareText } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -21,14 +22,17 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
 import { RiskReportTabs } from "../components/RiskReportTabs";
-import { useTeacherComments } from "../hooks/useStudentObservations";
+import { useTeacherComments } from "../hooks/useTeacherComments";
+import { getConcernLevelPresentation } from "../lib/comment-presentation";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 
 /**
  * ความคิดเห็นจากคุณครู — every comment teachers wrote about a student, across
- * the actor's scope. This is the same input that puts a student on เฝ้าระวัง,
- * so the list doubles as the audit trail for that status.
+ * the actor's scope. NOTE remains history-only; WATCH and CONCERN also feed the
+ * separately scoped watchlist.
  */
 export function TeacherCommentReportsPage() {
+  const { can } = usePermissions();
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -100,7 +104,9 @@ export function TeacherCommentReportsPage() {
                   <p className="mt-1 text-xs text-slate-500">
                     {row.schoolName}
                     {row.gradeLabel ? ` · ${row.gradeLabel}` : ""}
-                    {row.roomNo ? `/${formatRoomLabel(row.roomNo).replace("ห้อง ", "")}` : ""}
+                    {row.roomNo
+                      ? `/${formatRoomLabel(row.roomNo).replace("ห้อง ", "")}`
+                      : ""}
                   </p>
                 </DataTableCell>
                 <DataTableCell>
@@ -111,6 +117,14 @@ export function TeacherCommentReportsPage() {
                         guidance: row.problemCategoryGuidance,
                       })}
                     </p>
+                    <Badge
+                      variant={
+                        getConcernLevelPresentation(row.concernLevelCode)
+                          .variant
+                      }
+                    >
+                      {row.concernLevelLabel}
+                    </Badge>
                     <p className="line-clamp-2 whitespace-pre-wrap">
                       {row.problemDescription}
                     </p>
@@ -124,12 +138,14 @@ export function TeacherCommentReportsPage() {
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
-                    <DetailLinkButton
-                      aria-label={`เปิดข้อมูลนักเรียน ${row.studentName}`}
-                      iconOnly
-                      title="เปิดข้อมูลนักเรียน"
-                      to={`/students/${row.studentUuid}`}
-                    />
+                    {can("students") ? (
+                      <DetailLinkButton
+                        aria-label={`เปิดข้อมูลนักเรียน ${row.studentName}`}
+                        iconOnly
+                        title="เปิดข้อมูลนักเรียน"
+                        to={`/students/${row.studentUuid}`}
+                      />
+                    ) : null}
                   </div>
                 </DataTableCell>
               </DataTableRow>
