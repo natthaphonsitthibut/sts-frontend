@@ -13,7 +13,6 @@ import {
 } from "../../../components/layout/page-primitives";
 import { formatThaiTimeWithSeconds } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
-import { useTeacherStudentSubjectAttendance } from "../../teacher-access/hooks/useTeacherAccess";
 import {
   ATTENDANCE_STATUS_STYLE,
   normalizeAttendanceSelectionStatus,
@@ -97,11 +96,6 @@ interface StudentAttendanceCalendarProps {
   studentId: string;
   summary: StudentProfileSummary;
   /**
-   * When rendered inside a teacher link there is no session, so the per-day
-   * subject breakdown is read through the link's own grant-scoped endpoint.
-   */
-  teacherLinkAssignmentId?: number;
-  /**
    * Reports the rendered height of the title + calendar grid (excluding the
    * day's subject list below it), so a caller can match another column's
    * height to the calendar only, not the whole card.
@@ -112,7 +106,6 @@ interface StudentAttendanceCalendarProps {
 export function StudentAttendanceCalendar({
   studentId,
   summary,
-  teacherLinkAssignmentId,
   onCalendarBoxHeightChange,
 }: StudentAttendanceCalendarProps) {
   const cardWrapperRef = useRef<HTMLDivElement>(null);
@@ -157,18 +150,10 @@ export function StudentAttendanceCalendar({
     return new Date(date.getFullYear(), date.getMonth(), 1);
   });
 
-  const authenticatedSubjectQuery = useStudentSubjectAttendance(
-    teacherLinkAssignmentId ? undefined : studentId,
-    hasTermBounds && !teacherLinkAssignmentId ? selectedDate : undefined,
+  const subjectQuery = useStudentSubjectAttendance(
+    studentId,
+    hasTermBounds ? selectedDate : undefined,
   );
-  const linkSubjectQuery = useTeacherStudentSubjectAttendance(
-    teacherLinkAssignmentId,
-    teacherLinkAssignmentId ? studentId : undefined,
-    hasTermBounds && teacherLinkAssignmentId ? selectedDate : undefined,
-  );
-  const subjectQuery = (
-    teacherLinkAssignmentId ? linkSubjectQuery : authenticatedSubjectQuery
-  ) as typeof authenticatedSubjectQuery;
   const calendarCells = useMemo(() => {
     const year = visibleMonth.getFullYear();
     const month = visibleMonth.getMonth();

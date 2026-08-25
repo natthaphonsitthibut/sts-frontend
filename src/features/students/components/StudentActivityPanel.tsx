@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { History, LineChart, MessageSquareText } from "lucide-react";
-import { Button, Card, IconButton, Tabs } from "../../../components/base";
+import {
+  Badge,
+  Button,
+  Card,
+  IconButton,
+  Tabs,
+} from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -12,6 +18,7 @@ import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
 import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
+import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import {
   StudentActivityTimeline,
   type StudentTimelineEntry,
@@ -58,20 +65,27 @@ export function StudentActivityPanel({
   const [showAllCases, setShowAllCases] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
   const commentsQuery = useStudentClassroomComments(studentId);
-  const comments = useMemo(() => commentsQuery.data?.data ?? [], [commentsQuery.data]);
+  const comments = useMemo(
+    () => commentsQuery.data?.data ?? [],
+    [commentsQuery.data],
+  );
 
   // student_term.classroom_id decides which roster a comment is filed under;
   // without it the write has no destination, so the action stays hidden.
   const classroomId = Number(student.classroom_id ?? 0);
   const fullName =
-    `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() || "ไม่ระบุชื่อ";
+    `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+    "ไม่ระบุชื่อ";
 
   const sortedCases = useMemo(
     () =>
       [...cases].sort((left, right) => {
         if (left.status === "OPEN" && right.status !== "OPEN") return -1;
         if (left.status !== "OPEN" && right.status === "OPEN") return 1;
-        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+        return (
+          new Date(right.created_at).getTime() -
+          new Date(left.created_at).getTime()
+        );
       }),
     [cases],
   );
@@ -90,6 +104,7 @@ export function StudentActivityPanel({
             label: comment.problemCategoryLabel,
             guidance: comment.problemCategoryGuidance,
           })}`,
+          `ระดับข้อสังเกต: ${comment.concernLevelLabel}`,
           `คำอธิบาย: ${comment.problemDescription}`,
         ],
       })),
@@ -123,7 +138,10 @@ export function StudentActivityPanel({
   );
 
   return (
-    <Card className="relative flex min-h-0 flex-1 flex-col p-5" data-student-activity-panel>
+    <Card
+      className="relative flex min-h-0 flex-1 flex-col p-5"
+      data-student-activity-panel
+    >
       <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
         <Tabs
           aria-label="มุมมองความเคลื่อนไหวของนักเรียน"
@@ -191,7 +209,10 @@ export function StudentActivityPanel({
           ) : (
             <ul className="space-y-3">
               {comments.map((comment) => (
-                <li className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={comment.id}>
+                <li
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                  key={comment.id}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-slate-500">
                     <strong className="text-sm font-bold text-slate-800">
                       ผู้รายงาน: {comment.authorDisplayName}
@@ -201,15 +222,27 @@ export function StudentActivityPanel({
                     </time>
                   </div>
                   <div className="mt-2 space-y-1 text-sm leading-6 text-slate-700">
+                    <Badge
+                      variant={
+                        getConcernLevelPresentation(comment.concernLevelCode)
+                          .variant
+                      }
+                    >
+                      {comment.concernLevelLabel}
+                    </Badge>
                     <p>
-                      <span className="font-medium text-slate-800">หัวข้อปัญหา:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        หัวข้อปัญหา:
+                      </span>{" "}
                       {formatProblemCategoryOption({
                         label: comment.problemCategoryLabel,
                         guidance: comment.problemCategoryGuidance,
                       })}
                     </p>
                     <p className="whitespace-pre-wrap">
-                      <span className="font-medium text-slate-800">คำอธิบาย:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        คำอธิบาย:
+                      </span>{" "}
                       {comment.problemDescription}
                     </p>
                   </div>
@@ -223,7 +256,10 @@ export function StudentActivityPanel({
           casesLoading ? (
             <SkeletonStack className="py-2" lines={3} />
           ) : casesError ? (
-            <ErrorState onRetry={onRetryCases} title="โหลดประวัติการติดตามไม่สำเร็จ" />
+            <ErrorState
+              onRetry={onRetryCases}
+              title="โหลดประวัติการติดตามไม่สำเร็จ"
+            />
           ) : sortedCases.length === 0 ? (
             <EmptyState
               className="border-none py-6 shadow-none"
@@ -281,7 +317,9 @@ export function StudentActivityPanel({
           )
         ) : null}
 
-        {tab === TAB_TIMELINE ? <StudentActivityTimeline entries={timelineEntries} /> : null}
+        {tab === TAB_TIMELINE ? (
+          <StudentActivityTimeline entries={timelineEntries} />
+        ) : null}
       </div>
 
       <ClassroomStudentCommentDialog
@@ -296,7 +334,9 @@ export function StudentActivityPanel({
                 firstName: student.FirstName_Onec ?? null,
                 lastName: student.LastName_Onec ?? null,
                 studentNumber:
-                  typeof student.student_number === "string" ? student.student_number : null,
+                  typeof student.student_number === "string"
+                    ? student.student_number
+                    : null,
               }
             : null
         }

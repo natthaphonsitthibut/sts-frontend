@@ -35,6 +35,7 @@ interface StudentSearchFilterProps {
   onRefresh: () => Promise<unknown> | unknown;
   updatedAt: number;
   onClearFilters: () => void;
+  title?: string;
 }
 
 export function StudentSearchFilter({
@@ -59,11 +60,12 @@ export function StudentSearchFilter({
   onRefresh,
   updatedAt,
   onClearFilters,
+  title = "รายชื่อนักเรียน",
 }: StudentSearchFilterProps) {
   return (
     <ListPageToolbar
       icon={Users}
-      title="รายชื่อนักเรียน"
+      title={title}
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       navigation={navigation}
       tableActions={

@@ -20,11 +20,11 @@ import {
   registerField,
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
 import { studentsService } from "../api/students.service";
 import {
   PII_FIELD_GROUPS,
   PII_FIELD_LABELS,
-  PII_REASON_OPTIONS,
   isPiiReasonCode,
 } from "../pii.constants";
 import type {
@@ -71,11 +71,16 @@ export function StudentPiiRevealDialog({
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reasonCode, setReasonCode] = useState<StudentPiiReasonCode | "">("");
+  const reasonOptionsQuery = usePiiRevealOptions();
+  const reasonOptions = reasonOptionsQuery.options;
   const form = useForm<RevealFormValues>({
     defaultValues: DEFAULT_FORM_VALUES,
   });
   const { clearErrors, reset, setError, setValue } = form;
-  const noteRequired = reasonCode === "OTHER";
+  const selectedReason = reasonOptions.find(
+    (option) => option.value === reasonCode,
+  );
+  const noteRequired = selectedReason?.requiresNote === true;
   const fieldLabel = field ? PII_FIELD_LABELS[field] : "";
 
   function closeDialog(): void {
@@ -87,7 +92,9 @@ export function StudentPiiRevealDialog({
   }
 
   function handleReasonChange(nextValue: string): void {
-    const nextReasonCode = isPiiReasonCode(nextValue) ? nextValue : "";
+    const nextReasonCode = isPiiReasonCode(nextValue, reasonOptions)
+      ? nextValue
+      : "";
     setServerError("");
     setReasonCode(nextReasonCode);
     setValue("reason_code", nextReasonCode, { shouldDirty: true });
@@ -99,7 +106,7 @@ export function StudentPiiRevealDialog({
       return;
     }
 
-    if (!isPiiReasonCode(values.reason_code)) {
+    if (!isPiiReasonCode(values.reason_code, reasonOptions)) {
       setError("reason_code", {
         type: "required",
         message: "กรุณาเลือกเหตุผล",
@@ -108,7 +115,7 @@ export function StudentPiiRevealDialog({
     }
 
     const reasonNote = values.reason_note.trim();
-    if (values.reason_code === "OTHER" && !reasonNote) {
+    if (selectedReason?.requiresNote && !reasonNote) {
       setError("reason_note", {
         type: "required",
         message: "กรุณาระบุเหตุผลเพิ่มเติม",
@@ -165,6 +172,13 @@ export function StudentPiiRevealDialog({
                   <AlertDescription>{serverError}</AlertDescription>
                 </Alert>
               ) : null}
+              {reasonOptionsQuery.isError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    โหลดรายการเหตุผลไม่สำเร็จ กรุณาลองอีกครั้ง
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <FormItem>
                 <FormLabel htmlFor="pii-reveal-reason" required>
@@ -177,7 +191,10 @@ export function StudentPiiRevealDialog({
                   id="pii-reveal-reason"
                   name="reason_code"
                   onChange={handleReasonChange}
-                  options={PII_REASON_OPTIONS}
+                  disabled={
+                    reasonOptionsQuery.isLoading || reasonOptionsQuery.isError
+                  }
+                  options={reasonOptions}
                   placeholder="เลือกเหตุผล"
                   searchable={false}
                   value={reasonCode}

@@ -1,8 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Phone, Plus, Save, Trash2, UserRound, Users } from "lucide-react";
-import { useEffect, type ChangeEvent } from "react";
-import { useFieldArray, useForm, useWatch, type UseFormReturn } from "react-hook-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  Phone,
+  Plus,
+  Save,
+  Trash2,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import {
+  useFieldArray,
+  useForm,
+  useWatch,
+  type UseFormReturn,
+} from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -19,10 +32,20 @@ import {
   FormMessage,
   IconButton,
   Input,
+  EMPTY_PHOTO_PICKER_VALUE,
+  PersonIcon,
+  PhotoPicker,
   registerField,
   Select,
+  type PhotoPickerValue,
 } from "../../../components/base";
-import { ErrorState, PageShell, PageToolbar, SkeletonStack } from "../../../components/layout/page-primitives";
+import {
+  ErrorState,
+  FormActions,
+  PageShell,
+  PageToolbar,
+  SkeletonStack,
+} from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import {
@@ -40,6 +63,8 @@ import type {
   StudentUpdatePayload,
 } from "../types/students.types";
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
+import { studentsService } from "../api/students.service";
 
 const optionalPhone = z
   .string()
@@ -50,9 +75,12 @@ const optionalPhone = z
 const optionalEmail = z
   .string()
   .trim()
-  .refine((value) => value === "" || z.string().email().safeParse(value).success, {
-    message: "รูปแบบอีเมลไม่ถูกต้อง",
-  });
+  .refine(
+    (value) => value === "" || z.string().email().safeParse(value).success,
+    {
+      message: "รูปแบบอีเมลไม่ถูกต้อง",
+    },
+  );
 
 const guardianSchema = z
   .object({
@@ -91,25 +119,52 @@ const schema = z.object({
   ProvinceNameThai_Onec: z.string().trim().max(100),
   DistrictNameThai_Onec: z.string().trim().max(100),
   SubDistrictNameThai_Onec: z.string().trim().max(100),
-  PostalCode_Onec: z.string().trim().refine((value) => value === "" || /^\d{5}$/.test(value), "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก"),
+  PostalCode_Onec: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || /^\d{5}$/.test(value),
+      "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
+    ),
   address_latitude: nullableLatitude,
   address_longitude: nullableLongitude,
 });
 type FormValues = z.infer<typeof schema>;
 
 const TEXT_KEYS = [
-  "FirstName_Onec", "MiddleName_Onec", "LastName_Onec",
-  "address_house_no", "VillageNumber_Onec", "Street_Onec", "Soi_Onec", "Trok_Onec",
-  "ProvinceNameThai_Onec", "DistrictNameThai_Onec", "SubDistrictNameThai_Onec",
+  "FirstName_Onec",
+  "MiddleName_Onec",
+  "LastName_Onec",
+  "address_house_no",
+  "VillageNumber_Onec",
+  "Street_Onec",
+  "Soi_Onec",
+  "Trok_Onec",
+  "ProvinceNameThai_Onec",
+  "DistrictNameThai_Onec",
+  "SubDistrictNameThai_Onec",
   "PostalCode_Onec",
 ] as const;
 
 const EMPTY_VALUES: FormValues = {
-  FirstName_Onec: "", MiddleName_Onec: "", LastName_Onec: "",
-  address_house_no: "", VillageNumber_Onec: "", Street_Onec: "", Soi_Onec: "", Trok_Onec: "",
-  ProvinceNameThai_Onec: "", DistrictNameThai_Onec: "", SubDistrictNameThai_Onec: "",
-  PostalCode_Onec: "", address_latitude: null, address_longitude: null,
-  contact_phone: "", contact_email: "", contact_line_id: "", guardians: [],
+  FirstName_Onec: "",
+  MiddleName_Onec: "",
+  LastName_Onec: "",
+  address_house_no: "",
+  VillageNumber_Onec: "",
+  Street_Onec: "",
+  Soi_Onec: "",
+  Trok_Onec: "",
+  ProvinceNameThai_Onec: "",
+  DistrictNameThai_Onec: "",
+  SubDistrictNameThai_Onec: "",
+  PostalCode_Onec: "",
+  address_latitude: null,
+  address_longitude: null,
+  contact_phone: "",
+  contact_email: "",
+  contact_line_id: "",
+  guardians: [],
 };
 
 type GuardianFormValue = FormValues["guardians"][number];
@@ -127,12 +182,17 @@ function emptyGuardian(relation: StudentGuardianRelation): GuardianFormValue {
   };
 }
 
-function splitLegacyGuardianName(fullName: string): Pick<GuardianFormValue, "first_name" | "last_name"> {
+function splitLegacyGuardianName(
+  fullName: string,
+): Pick<GuardianFormValue, "first_name" | "last_name"> {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length < 2) {
     return { first_name: parts[0] ?? "", last_name: "" };
   }
-  return { first_name: parts.slice(0, -1).join(" "), last_name: parts.at(-1) ?? "" };
+  return {
+    first_name: parts.slice(0, -1).join(" "),
+    last_name: parts.at(-1) ?? "",
+  };
 }
 
 const ADDRESS_NAMES: AddressFieldNames<FormValues> = {
@@ -170,35 +230,35 @@ function StudentContactSection({
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <FormItem>
-              <FormLabel htmlFor="contact_phone">เบอร์โทร</FormLabel>
-              <Input
-                disabled={disabled}
-                id="contact_phone"
-                inputMode="numeric"
-                {...registerField(form, "contact_phone")}
-              />
-              <FormMessage<FormValues> name="contact_phone" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="contact_email">อีเมล</FormLabel>
-              <Input
-                disabled={disabled}
-                id="contact_email"
-                type="email"
-                {...registerField(form, "contact_email")}
-              />
-              <FormMessage<FormValues> name="contact_email" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="contact_line_id">LINE ID</FormLabel>
-              <Input
-                disabled={disabled}
-                id="contact_line_id"
-                {...registerField(form, "contact_line_id")}
-              />
-              <FormMessage<FormValues> name="contact_line_id" />
-            </FormItem>
+          <FormItem>
+            <FormLabel htmlFor="contact_phone">เบอร์โทร</FormLabel>
+            <Input
+              disabled={disabled}
+              id="contact_phone"
+              inputMode="numeric"
+              {...registerField(form, "contact_phone")}
+            />
+            <FormMessage<FormValues> name="contact_phone" />
+          </FormItem>
+          <FormItem>
+            <FormLabel htmlFor="contact_email">อีเมล</FormLabel>
+            <Input
+              disabled={disabled}
+              id="contact_email"
+              type="email"
+              {...registerField(form, "contact_email")}
+            />
+            <FormMessage<FormValues> name="contact_email" />
+          </FormItem>
+          <FormItem>
+            <FormLabel htmlFor="contact_line_id">LINE ID</FormLabel>
+            <Input
+              disabled={disabled}
+              id="contact_line_id"
+              {...registerField(form, "contact_line_id")}
+            />
+            <FormMessage<FormValues> name="contact_line_id" />
+          </FormItem>
         </div>
       </CardContent>
     </Card>
@@ -208,23 +268,46 @@ function StudentContactSection({
 export function StudentEditPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const safeBackTarget = useSafeBackTarget();
   const { student, isLoading, isError, refetch } = useStudent(id || undefined);
   const updateStudent = useUpdateStudent(id);
-  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: EMPTY_VALUES });
-  const guardianArray = useFieldArray({ control: form.control, name: "guardians" });
+  const [photo, setPhoto] = useState<PhotoPickerValue>(
+    EMPTY_PHOTO_PICKER_VALUE,
+  );
+  const updatePhoto = useMutation({
+    mutationFn: (input: { photo?: File; remove?: boolean }) =>
+      studentsService.updateStudentPhoto(id, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["student", id] });
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: EMPTY_VALUES,
+  });
+  const guardianArray = useFieldArray({
+    control: form.control,
+    name: "guardians",
+  });
   // Watched so each row can show/hide its ระบุความสัมพันธ์ field as the
   // relation select changes.
   const guardianValues = useWatch({ control: form.control, name: "guardians" });
 
   function addGuardian(): void {
     const existing = form.getValues("guardians");
-    const relation: StudentGuardianRelation = !existing.some((g) => g.relation === "FATHER")
+    const relation: StudentGuardianRelation = !existing.some(
+      (g) => g.relation === "FATHER",
+    )
       ? "FATHER"
       : !existing.some((g) => g.relation === "MOTHER")
         ? "MOTHER"
         : "GUARDIAN";
-    guardianArray.append({ ...emptyGuardian(relation), is_primary: existing.length === 0 });
+    guardianArray.append({
+      ...emptyGuardian(relation),
+      is_primary: existing.length === 0,
+    });
   }
 
   const locationQuery = useQuery({
@@ -239,7 +322,10 @@ export function StudentEditPage() {
       form.setValue("address_latitude", result.lat, { shouldDirty: true });
       form.setValue("address_longitude", result.lng, { shouldDirty: true });
       if (result.postalCode) {
-        form.setValue("PostalCode_Onec", result.postalCode, { shouldDirty: true, shouldValidate: true });
+        form.setValue("PostalCode_Onec", result.postalCode, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
       }
     },
     throwOnError: false,
@@ -248,13 +334,24 @@ export function StudentEditPage() {
   useEffect(() => {
     if (!student) return;
     form.reset({
-      ...(Object.fromEntries(TEXT_KEYS.map((key) => [key, String(student[key] ?? "")])) as Pick<FormValues, (typeof TEXT_KEYS)[number]>),
-      VillageNumber_Onec: stripAddressPrefix("หมู่", student.VillageNumber_Onec),
+      ...(Object.fromEntries(
+        TEXT_KEYS.map((key) => [key, String(student[key] ?? "")]),
+      ) as Pick<FormValues, (typeof TEXT_KEYS)[number]>),
+      VillageNumber_Onec: stripAddressPrefix(
+        "หมู่",
+        student.VillageNumber_Onec,
+      ),
       Street_Onec: stripAddressPrefix("ถนน", student.Street_Onec),
       Soi_Onec: stripAddressPrefix("ซอย", student.Soi_Onec),
       Trok_Onec: stripAddressPrefix("ตรอก", student.Trok_Onec),
-      address_latitude: typeof student.address_latitude === "number" ? student.address_latitude : null,
-      address_longitude: typeof student.address_longitude === "number" ? student.address_longitude : null,
+      address_latitude:
+        typeof student.address_latitude === "number"
+          ? student.address_latitude
+          : null,
+      address_longitude:
+        typeof student.address_longitude === "number"
+          ? student.address_longitude
+          : null,
       contact_phone: student.contact?.phone ?? "",
       contact_email: student.contact?.email ?? "",
       contact_line_id: student.contact?.line_id ?? "",
@@ -262,9 +359,11 @@ export function StudentEditPage() {
         relation: guardian.relation,
         relation_note: guardian.relation_note ?? "",
         first_name:
-          guardian.first_name ?? splitLegacyGuardianName(guardian.full_name).first_name,
+          guardian.first_name ??
+          splitLegacyGuardianName(guardian.full_name).first_name,
         last_name:
-          guardian.last_name ?? splitLegacyGuardianName(guardian.full_name).last_name,
+          guardian.last_name ??
+          splitLegacyGuardianName(guardian.full_name).last_name,
         phone: guardian.phone ?? "",
         email: guardian.email ?? "",
         line_id: guardian.line_id ?? "",
@@ -279,7 +378,9 @@ export function StudentEditPage() {
       MiddleName_Onec: nullable(values.MiddleName_Onec),
       LastName_Onec: values.LastName_Onec.trim(),
       address_house_no: nullable(values.address_house_no),
-      VillageNumber_Onec: nullable(stripAddressPrefix("หมู่", values.VillageNumber_Onec)),
+      VillageNumber_Onec: nullable(
+        stripAddressPrefix("หมู่", values.VillageNumber_Onec),
+      ),
       Street_Onec: nullable(stripAddressPrefix("ถนน", values.Street_Onec)),
       Soi_Onec: nullable(stripAddressPrefix("ซอย", values.Soi_Onec)),
       Trok_Onec: nullable(stripAddressPrefix("ตรอก", values.Trok_Onec)),
@@ -297,7 +398,10 @@ export function StudentEditPage() {
       // Guardian list is a full replacement.
       guardians: values.guardians.map((guardian) => ({
         relation: guardian.relation,
-        relation_note: guardian.relation === "GUARDIAN" ? nullable(guardian.relation_note) : null,
+        relation_note:
+          guardian.relation === "GUARDIAN"
+            ? nullable(guardian.relation_note)
+            : null,
         first_name: guardian.first_name.trim(),
         last_name: guardian.last_name.trim(),
         phone: nullable(guardian.phone),
@@ -307,6 +411,12 @@ export function StudentEditPage() {
       })),
     };
     await updateStudent.mutateAsync(payload);
+    if (photo.file || photo.removed) {
+      await updatePhoto.mutateAsync({
+        photo: photo.file ?? undefined,
+        remove: photo.removed,
+      });
+    }
     void navigate(safeBackTarget);
   }
 
@@ -314,42 +424,78 @@ export function StudentEditPage() {
     <PageShell>
       <PageToolbar
         icon={UserRound}
-        navigation={<NavButton icon={ArrowLeft} to={-1} variant="outline">ย้อนกลับ</NavButton>}
+        navigation={
+          <NavButton icon={ArrowLeft} to={safeBackTarget} variant="outline">
+            ย้อนกลับ
+          </NavButton>
+        }
         title="แก้ไขข้อมูลนักเรียน"
       />
-      {isLoading ? <SkeletonStack lines={8} /> : isError || !student ? (
+      {isLoading ? (
+        <SkeletonStack lines={8} />
+      ) : isError || !student ? (
         <ErrorState onRetry={refetch} title="ไม่สามารถโหลดข้อมูลนักเรียน" />
       ) : (
         <Form form={form} onSubmit={submit}>
           <div className="space-y-5">
-            <FormErrorAlert error={updateStudent.error} fallback="บันทึกข้อมูลไม่สำเร็จ" />
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <UserRound className="size-5 text-primary" aria-hidden="true" />
-                  ข้อมูลส่วนตัว
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(["FirstName_Onec", "MiddleName_Onec", "LastName_Onec"] as const).map((name, index) => (
-                  <FormItem key={name}>
-                    <FormLabel htmlFor={name} required={index !== 1}>{["ชื่อ", "ชื่อกลาง", "นามสกุล"][index]}</FormLabel>
-                    <Input id={name} {...registerField(form, name)} />
-                    <FormMessage<FormValues> name={name} />
-                  </FormItem>
-                ))}
-              </CardContent>
+            <FormErrorAlert
+              error={updateStudent.error ?? updatePhoto.error}
+              fallback="บันทึกข้อมูลไม่สำเร็จ"
+            />
+            <Card className="p-6">
+              <div className="mb-6 flex items-center gap-2">
+                <PersonIcon
+                  className="size-5 text-slate-700"
+                  aria-hidden="true"
+                />
+                <h2 className="text-lg font-bold text-slate-800">
+                  ข้อมูลทั่วไป
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+                <PhotoPicker
+                  disabled={updateStudent.isPending || updatePhoto.isPending}
+                  label="รูปประจำตัวนักเรียน"
+                  onChange={setPhoto}
+                  storedUrl={resolveApiMediaUrl(student.photo_url ?? null)}
+                  value={photo}
+                />
+                <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                  {(
+                    [
+                      "FirstName_Onec",
+                      "MiddleName_Onec",
+                      "LastName_Onec",
+                    ] as const
+                  ).map((name, index) => (
+                    <FormItem key={name}>
+                      <FormLabel htmlFor={name} required={index !== 1}>
+                        {["ชื่อ", "ชื่อกลาง", "นามสกุล"][index]}
+                      </FormLabel>
+                      <Input id={name} {...registerField(form, name)} />
+                      <FormMessage<FormValues> name={name} />
+                    </FormItem>
+                  ))}
+                </div>
+              </div>
             </Card>
             <AddressFormSection
               catalog={locationQuery.data}
               disabled={updateStudent.isPending}
               form={form}
-              geocodeError={geocode.isError ? (
-                <FormErrorAlert error={geocode.error} fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่" />
-              ) : null}
+              geocodeError={
+                geocode.isError ? (
+                  <FormErrorAlert
+                    error={geocode.error}
+                    fallback="ค้นหาพิกัดไม่สำเร็จ กรุณาลองใหม่หรือปักหมุดบนแผนที่"
+                  />
+                ) : null
+              }
               isGeocoding={geocode.isPending}
               names={ADDRESS_NAMES}
-              onGeocode={async (address) => Boolean(await geocode.mutateAsync(address))}
+              onGeocode={async (address) =>
+                Boolean(await geocode.mutateAsync(address))
+              }
               title="ที่อยู่บ้านนักเรียน"
             />
             <StudentContactSection
@@ -364,7 +510,10 @@ export function StudentEditPage() {
                     ข้อมูลผู้ปกครอง
                   </span>
                   <Button
-                    disabled={updateStudent.isPending || guardianArray.fields.length >= 10}
+                    disabled={
+                      updateStudent.isPending ||
+                      guardianArray.fields.length >= 10
+                    }
                     icon={Plus}
                     onClick={addGuardian}
                     type="button"
@@ -381,11 +530,18 @@ export function StudentEditPage() {
                     เพื่อบันทึกบิดา มารดา หรือผู้ปกครองอื่นพร้อมช่องทางติดต่อ
                   </p>
                 ) : null}
-                <FormMessage<FormValues> name="guardians" className="min-h-0 empty:hidden" />
+                <FormMessage<FormValues>
+                  name="guardians"
+                  className="min-h-0 empty:hidden"
+                />
                 {guardianArray.fields.map((field, index) => {
-                  const relation = guardianValues?.[index]?.relation ?? "GUARDIAN";
+                  const relation =
+                    guardianValues?.[index]?.relation ?? "GUARDIAN";
                   return (
-                    <div key={field.id} className="rounded-lg border border-slate-200 p-4">
+                    <div
+                      key={field.id}
+                      className="rounded-lg border border-slate-200 p-4"
+                    >
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <span className="text-sm font-bold text-slate-800">
                           {GUARDIAN_RELATION_LABELS[relation]}
@@ -407,80 +563,124 @@ export function StudentEditPage() {
                           <Select
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.relation`}
-                            {...registerField(form, `guardians.${index}.relation`)}
+                            {...registerField(
+                              form,
+                              `guardians.${index}.relation`,
+                            )}
                           >
                             <option value="FATHER">บิดา</option>
                             <option value="MOTHER">มารดา</option>
                             <option value="GUARDIAN">ผู้ปกครอง (อื่น ๆ)</option>
                           </Select>
-                          <FormMessage<FormValues> name={`guardians.${index}.relation`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.relation`}
+                          />
                         </FormItem>
                         {relation === "GUARDIAN" ? (
                           <FormItem>
-                            <FormLabel htmlFor={`guardians.${index}.relation_note`} required>
+                            <FormLabel
+                              htmlFor={`guardians.${index}.relation_note`}
+                              required
+                            >
                               ระบุความสัมพันธ์
                             </FormLabel>
                             <Input
                               disabled={updateStudent.isPending}
                               id={`guardians.${index}.relation_note`}
                               placeholder="เช่น ยาย ลุง พี่สาว"
-                              {...registerField(form, `guardians.${index}.relation_note`)}
+                              {...registerField(
+                                form,
+                                `guardians.${index}.relation_note`,
+                              )}
                             />
-                            <FormMessage<FormValues> name={`guardians.${index}.relation_note`} />
+                            <FormMessage<FormValues>
+                              name={`guardians.${index}.relation_note`}
+                            />
                           </FormItem>
                         ) : null}
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.first_name`} required>
+                          <FormLabel
+                            htmlFor={`guardians.${index}.first_name`}
+                            required
+                          >
                             ชื่อ
                           </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.first_name`}
                             autoComplete="given-name"
-                            {...registerField(form, `guardians.${index}.first_name`)}
+                            {...registerField(
+                              form,
+                              `guardians.${index}.first_name`,
+                            )}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.first_name`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.first_name`}
+                          />
                         </FormItem>
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.last_name`} required>
+                          <FormLabel
+                            htmlFor={`guardians.${index}.last_name`}
+                            required
+                          >
                             นามสกุล
                           </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.last_name`}
                             autoComplete="family-name"
-                            {...registerField(form, `guardians.${index}.last_name`)}
+                            {...registerField(
+                              form,
+                              `guardians.${index}.last_name`,
+                            )}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.last_name`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.last_name`}
+                          />
                         </FormItem>
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.phone`}>เบอร์โทร</FormLabel>
+                          <FormLabel htmlFor={`guardians.${index}.phone`}>
+                            เบอร์โทร
+                          </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.phone`}
                             inputMode="numeric"
                             {...registerField(form, `guardians.${index}.phone`)}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.phone`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.phone`}
+                          />
                         </FormItem>
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.email`}>อีเมล</FormLabel>
+                          <FormLabel htmlFor={`guardians.${index}.email`}>
+                            อีเมล
+                          </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.email`}
                             type="email"
                             {...registerField(form, `guardians.${index}.email`)}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.email`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.email`}
+                          />
                         </FormItem>
                         <FormItem>
-                          <FormLabel htmlFor={`guardians.${index}.line_id`}>LINE ID</FormLabel>
+                          <FormLabel htmlFor={`guardians.${index}.line_id`}>
+                            LINE ID
+                          </FormLabel>
                           <Input
                             disabled={updateStudent.isPending}
                             id={`guardians.${index}.line_id`}
-                            {...registerField(form, `guardians.${index}.line_id`)}
+                            {...registerField(
+                              form,
+                              `guardians.${index}.line_id`,
+                            )}
                           />
-                          <FormMessage<FormValues> name={`guardians.${index}.line_id`} />
+                          <FormMessage<FormValues>
+                            name={`guardians.${index}.line_id`}
+                          />
                         </FormItem>
                       </div>
                       <Checkbox
@@ -492,7 +692,10 @@ export function StudentEditPage() {
                             if (!event.target.checked) return;
                             form.getValues("guardians").forEach((_, other) => {
                               if (other !== index) {
-                                form.setValue(`guardians.${other}.is_primary`, false);
+                                form.setValue(
+                                  `guardians.${other}.is_primary`,
+                                  false,
+                                );
                               }
                             });
                           },
@@ -503,9 +706,25 @@ export function StudentEditPage() {
                 })}
               </CardContent>
             </Card>
-            <div className="flex justify-end">
-              <Button icon={Save} isLoading={updateStudent.isPending} loadingText="กำลังบันทึก" type="submit">บันทึกข้อมูล</Button>
-            </div>
+            <FormActions>
+              <Button
+                onClick={() => void navigate(safeBackTarget)}
+                size="lg"
+                type="button"
+                variant="outline"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                icon={Save}
+                isLoading={updateStudent.isPending || updatePhoto.isPending}
+                loadingText="กำลังบันทึก"
+                size="lg"
+                type="submit"
+              >
+                บันทึกข้อมูล
+              </Button>
+            </FormActions>
           </div>
         </Form>
       )}

@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
-import { Award, ClipboardList, GraduationCap, MapPin, PhoneCall } from "lucide-react";
+import {
+  Award,
+  ClipboardList,
+  GraduationCap,
+  MapPin,
+  PhoneCall,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -19,10 +25,7 @@ import { maskSensitiveIdentifier } from "../../../lib/pii-presentation";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../api/students.service";
 import { RISK_TIER_PRESENTATION } from "../lib/risk-tier-presentation";
-import {
-  PII_FIELD_GROUPS,
-  PII_FIELD_LABELS,
-} from "../pii.constants";
+import { PII_FIELD_GROUPS, PII_FIELD_LABELS } from "../pii.constants";
 import type {
   StudentDetail,
   StudentProfileSummary,
@@ -39,6 +42,7 @@ type PiiRevealMode = "reasoned" | "direct";
 interface StudentProfileHeaderProps {
   /** Enables the photo upload affordance; read-only surfaces leave it off. */
   canEditPhoto?: boolean;
+  canRevealPii?: boolean;
   contactsOpen?: boolean;
   locationOpen?: boolean;
   onOpenContacts?: () => void;
@@ -66,9 +70,13 @@ function MetricCard({
     <div className="flex min-h-16 items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 sm:min-h-20 sm:px-5">
       <div className="min-w-0">
         <div className="text-xs font-medium text-slate-500">{label}</div>
-        <div className="mt-0.5 text-2xl font-bold tabular-nums text-slate-950">{value}</div>
+        <div className="mt-0.5 text-2xl font-bold tabular-nums text-slate-950">
+          {value}
+        </div>
       </div>
-      <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${iconSurfaceClassName}`}>
+      <span
+        className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${iconSurfaceClassName}`}
+      >
         <Icon className={`size-5 ${iconClassName}`} aria-hidden="true" />
       </span>
     </div>
@@ -84,6 +92,7 @@ function toDisplay(value: unknown): string {
 
 export function StudentProfileHeader({
   canEditPhoto = false,
+  canRevealPii = false,
   contactsOpen = false,
   locationOpen = false,
   onOpenContacts,
@@ -136,7 +145,10 @@ export function StudentProfileHeader({
 
   function hasPiiValue(field: StudentPiiField): boolean {
     const value = student[field];
-    return maskedFields.includes(field) || (value !== null && value !== undefined && value !== "");
+    return (
+      maskedFields.includes(field) ||
+      (value !== null && value !== undefined && value !== "")
+    );
   }
 
   function isMasked(field: StudentPiiField): boolean {
@@ -204,7 +216,7 @@ export function StudentProfileHeader({
         <span className="font-medium tabular-nums text-slate-800">
           {getFieldValue(field)}
         </span>
-        {maskable ? (
+        {maskable && canRevealPii ? (
           <span className="ml-2 inline-flex align-middle">
             <SensitiveValueToggleButton
               disabled={directRevealing !== null}
@@ -297,7 +309,9 @@ export function StudentProfileHeader({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2 text-sm">
-                <span className="font-medium text-slate-600">สถานะความเสี่ยง:</span>
+                <span className="font-medium text-slate-600">
+                  สถานะความเสี่ยง:
+                </span>
                 <Badge
                   className={riskPresentation.outlineClassName}
                   data-student-risk-tier={student.risk_tier ?? "NORMAL"}
@@ -335,18 +349,20 @@ export function StudentProfileHeader({
         </div>
       </Card>
 
-      <StudentPiiRevealDialog
-        field={revealField}
-        maskedValue={revealField ? getFieldValue(revealField) : ""}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRevealField(null);
-          }
-        }}
-        onRevealed={handleRevealed}
-        open={revealField !== null}
-        studentId={studentId}
-      />
+      {canRevealPii ? (
+        <StudentPiiRevealDialog
+          field={revealField}
+          maskedValue={revealField ? getFieldValue(revealField) : ""}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRevealField(null);
+            }
+          }}
+          onRevealed={handleRevealed}
+          open={revealField !== null}
+          studentId={studentId}
+        />
+      ) : null}
     </>
   );
 }

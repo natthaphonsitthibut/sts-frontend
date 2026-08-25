@@ -31,24 +31,30 @@ import type {
 } from "../types/students.types";
 
 const STUDENT_TAB_ROUTES = {
-  list: "/students",
-  history: "/students/history",
-  export: "/students/export",
+  list: "/manage-students",
+  history: "/manage-students/history",
+  export: "/manage-students/export",
 } as const;
 
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 20;
 const ALL_STUDENT_STATUSES = "ALL";
 
-export function StudentListPage() {
+export function StudentListPage({
+  mode = "view",
+}: {
+  mode?: "view" | "manage";
+}) {
+  const management = mode === "manage";
   const navigate = useNavigate();
   const contextualNavigate = useContextualNavigate();
   const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const [activeTab, setActiveTab] = useRouteTab(STUDENT_TAB_ROUTES, "list");
   const canViewAuditLog = can("audit-log");
-  const effectiveTab =
-    activeTab === "history" && canViewAuditLog
+  const effectiveTab = !management
+    ? "list"
+    : activeTab === "history" && canViewAuditLog
       ? "history"
       : activeTab === "export"
         ? "export"
@@ -308,34 +314,38 @@ export function StudentListPage() {
       {effectiveTab === "list" ? (
         <StudentSearchFilter
           navigation={
-            <Tabs
-              aria-label="โหมดรายชื่อนักเรียน"
-              onChange={setActiveTab}
-              options={tabOptions}
-              value={effectiveTab}
-            />
+            management ? (
+              <Tabs
+                aria-label="โหมดรายชื่อนักเรียน"
+                onChange={setActiveTab}
+                options={tabOptions}
+                value={effectiveTab}
+              />
+            ) : undefined
           }
           exportAction={
-            <>
-              {selectedStudents.length > 0 ? (
-                <Button
-                  icon={FileDown}
-                  onClick={() => setActiveTab("export")}
-                  variant="outline"
-                >
-                  ส่งออกที่เลือก ({selectedStudents.length})
-                </Button>
-              ) : null}
-              {can("export-data") ? (
-                <Button
-                  icon={FileDown}
-                  onClick={() => navigate(filteredRosterExportUrl)}
-                  variant="outline"
-                >
-                  ส่งออกตามตัวกรองนี้
-                </Button>
-              ) : null}
-            </>
+            management ? (
+              <>
+                {selectedStudents.length > 0 ? (
+                  <Button
+                    icon={FileDown}
+                    onClick={() => setActiveTab("export")}
+                    variant="outline"
+                  >
+                    ส่งออกที่เลือก ({selectedStudents.length})
+                  </Button>
+                ) : null}
+                {can("export-data") ? (
+                  <Button
+                    icon={FileDown}
+                    onClick={() => navigate(filteredRosterExportUrl)}
+                    variant="outline"
+                  >
+                    ส่งออกตามตัวกรองนี้
+                  </Button>
+                ) : null}
+              </>
+            ) : undefined
           }
           grade={effectiveGrade}
           gradeLocked={scope.gradeLocked}
@@ -363,6 +373,7 @@ export function StudentListPage() {
           studentStatusOptions={studentStatusFilterOptions}
           isStudentStatusError={studentStatusesQuery.isError}
           isStudentStatusLoading={studentStatusesQuery.isLoading}
+          title={management ? "จัดการนักเรียน" : "รายชื่อนักเรียน"}
         />
       ) : (
         <ListPageToolbar
@@ -453,7 +464,7 @@ export function StudentListPage() {
             rows={students}
             rowsPerPage={rowsPerPage}
             rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-            selectedIds={selectedStudentIds}
+            selectedIds={management ? selectedStudentIds : undefined}
             totalCount={totalCount}
           />
         )}

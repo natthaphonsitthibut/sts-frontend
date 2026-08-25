@@ -1,7 +1,6 @@
 export type ImportTarget =
   | "school_teacher_membership"
   | "school_classroom"
-  | "classroom_teacher_assignment"
   | "student_term";
 
 export interface SchoolRosterImportContext {

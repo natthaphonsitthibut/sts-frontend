@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CircleAlert } from "lucide-react";
+import { ArrowLeft, CircleAlert, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Badge, Card, SchoolIcon } from "../../../components/base";
 import {
@@ -105,21 +105,32 @@ export function StudentDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          can("dashboard") && !casesLoading ? (
-            <StudentCaseAction
-              activeCaseCount={activeCases.length}
-              activeCaseId={
-                activeCases.length > 0 ? Number(activeCases[0].id) : null
-              }
-              className="min-w-28"
-              mode="button"
-              studentId={studentId}
-              studentName={
-                `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
-                "นักเรียน"
-              }
-            />
-          ) : null
+          <div className="flex items-center gap-2">
+            {can("dashboard") && !casesLoading ? (
+              <StudentCaseAction
+                activeCaseCount={activeCases.length}
+                activeCaseId={
+                  activeCases.length > 0 ? Number(activeCases[0].id) : null
+                }
+                className="min-w-28"
+                mode="button"
+                studentId={studentId}
+                studentName={
+                  `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||
+                  "นักเรียน"
+                }
+              />
+            ) : null}
+            {can("manage-students") ? (
+              <NavButton
+                contextual
+                icon={SquarePen}
+                to={`/manage-students/${studentId}/edit`}
+              >
+                แก้ไขข้อมูล
+              </NavButton>
+            ) : null}
+          </div>
         }
         icon={SchoolIcon}
         navigation={
@@ -136,7 +147,8 @@ export function StudentDetailPage() {
       />
 
       <StudentProfileHeader
-        canEditPhoto={can("students")}
+        canEditPhoto={can("manage-students")}
+        canRevealPii={can("manage-students")}
         contactsOpen={contactsOpen}
         key={studentId}
         locationOpen={locationOpen}
@@ -206,7 +218,7 @@ export function StudentDetailPage() {
             </div>
           </Card>
           <StudentActivityPanel
-            canManageComments={can("students")}
+            canManageComments={can("manage-students")}
             canViewCaseDetail={can("dashboard")}
             cases={cases}
             casesError={casesError}
