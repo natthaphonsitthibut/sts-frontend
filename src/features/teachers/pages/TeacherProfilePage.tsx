@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, Eye, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import {
-  Avatar,
+  AvatarPhotoEditor,
   Badge,
   Button,
   Card,
@@ -27,7 +27,7 @@ import {
 } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
-import { useTeacherProfile } from "../hooks/useTeachers";
+import { useTeacherProfile, useUpdateTeacherPhoto } from "../hooks/useTeachers";
 
 function ReadOnlyField({
   action,
@@ -75,6 +75,7 @@ export function TeacherProfilePage() {
     user?.permissions ?? [],
   );
   const canEdit = hasPermission(permissions, "manage-teachers");
+  const updatePhoto = useUpdateTeacherPhoto(id ?? null);
   const canOpenDirectory = hasPermission(permissions, "teachers");
   const canRevealNationalId = canEdit || canOpenDirectory;
   const fallbackBack = canEdit
@@ -153,16 +154,16 @@ export function TeacherProfilePage() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
               <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                <Avatar
-                  className="size-36 text-4xl"
-                  gradientName={teacher.fullName}
-                  imageAlt={`รูปประจำตัวของ ${teacher.fullName}`}
-                  imageUrl={resolveApiMediaUrl(teacher.photoUrl)}
+                <AvatarPhotoEditor
+                  avatarClassName="size-36 text-4xl"
+                  editable={canEdit}
+                  isSubmitting={updatePhoto.isPending}
+                  label="รูปประจำตัวคุณครู"
+                  name={teacher.fullName}
+                  onRemove={() => updatePhoto.mutate({ remove: true })}
+                  onSelect={(photo) => updatePhoto.mutate({ photo })}
+                  photoUrl={resolveApiMediaUrl(teacher.photoUrl)}
                 />
-                <p className="mt-4 text-sm font-semibold text-slate-700">
-                  รูปประจำตัวคุณครู
-                </p>
-                <p className="mt-1 text-xs text-slate-500">ดูได้อย่างเดียว</p>
               </div>
 
               <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">

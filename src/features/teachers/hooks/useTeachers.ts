@@ -81,6 +81,22 @@ export function useTeacherProfile(id: string | null) {
   });
 }
 
+/**
+ * The profile page saves the photo on its own — there is no surrounding form to
+ * submit it with, so every teacher list/profile view is refreshed once storage
+ * points at the new file.
+ */
+export function useUpdateTeacherPhoto(id: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { photo?: File; remove?: boolean }>({
+    mutationFn: (input) => teachersService.updateTeacherPhoto(id!, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [TEACHERS_QUERY_KEY] });
+    },
+    throwOnError: false,
+  });
+}
+
 interface SaveTeacherVariables {
   id: string | null;
   payload: TeacherCreatePayload;
