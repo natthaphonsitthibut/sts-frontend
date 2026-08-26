@@ -166,24 +166,35 @@ export function SchoolStructurePage() {
   const schoolId = schools.length === 1 ? String(schools[0].id) : schoolInput;
   const selectedSchoolId = Number(schoolId) || null;
   const multipleSchools = schools.length > 1;
-  useSyncedSearchParams({
-    schoolId: multipleSchools ? schoolInput || undefined : undefined,
-    termId: termInput || undefined,
-    gradeId: gradeFilter || undefined,
-    sort: serializeSortSearchParam(sort, defaultSort),
-    page: page > 1 ? page : undefined,
-    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
-  });
-
   const termsQuery = useQuery({
     queryKey: ["school-structure", "terms", selectedSchoolId],
     queryFn: () => attendanceService.getTerms(selectedSchoolId!),
     enabled: selectedSchoolId !== null,
   });
   const terms = useMemo(() => termsQuery.data ?? [], [termsQuery.data]);
-  const selectedTermId = Number(termInput || terms[0]?.id || 0) || undefined;
-  const selectedTerm =
-    terms.find((term) => Number(term.id) === selectedTermId) ?? null;
+  // A termId carried in the URL can name another school's term or one that was
+  // deleted. Resolve it against the terms this school actually has and fall back
+  // to the first one, so nothing downstream queries or writes with a foreign id.
+  const selectedTerm = useMemo(() => {
+    if (terms.length === 0) return null;
+    return terms.find((term) => String(term.id) === termInput) ?? terms[0];
+  }, [terms, termInput]);
+  const selectedTermId = selectedTerm
+    ? Number(selectedTerm.id) || undefined
+    : undefined;
+
+  useSyncedSearchParams({
+    schoolId: multipleSchools ? schoolInput || undefined : undefined,
+    termId: termInput
+      ? terms.length > 0
+        ? selectedTerm?.id
+        : termInput
+      : undefined,
+    gradeId: gradeFilter || undefined,
+    sort: serializeSortSearchParam(sort, defaultSort),
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   const gradeLevelsQuery = useQuery({
     queryKey: ["school-structure", "grade-levels"],
