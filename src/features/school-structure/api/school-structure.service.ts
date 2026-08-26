@@ -212,13 +212,15 @@ async function listAssignments(
   return response.data.data ?? [];
 }
 
-async function createHomeroomAssignment(input: {
+async function setHomeroomTeachers(input: {
   classroomId: number;
-  teacherMembershipId: number;
-}): Promise<ClassroomTeacherAssignment> {
-  const response = await apiClient.post<
-    DataEnvelope<ClassroomTeacherAssignment>
-  >("/school-structure/assignments", { ...input, assignmentKind: "HOMEROOM" });
+  teacherMembershipIds: number[];
+}): Promise<ClassroomTeacherAssignment[]> {
+  const response = await apiClient.put<
+    DataEnvelope<ClassroomTeacherAssignment[]>
+  >(`/school-structure/classrooms/${input.classroomId}/homeroom-teachers`, {
+    teacherMembershipIds: input.teacherMembershipIds,
+  });
   return response.data.data;
 }
 
@@ -345,7 +347,7 @@ export const schoolStructureService = {
   listTeachers,
   listTeacherOptions,
   listAssignments,
-  createHomeroomAssignment,
+  setHomeroomTeachers,
   listRoster,
   listStudentProblemCategories,
   listStudentCommentConcernLevels,

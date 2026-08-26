@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   DoorOpen,
   Plus,
@@ -49,6 +50,13 @@ import {
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import {
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import {
   SchoolTermDialog,
@@ -59,7 +67,7 @@ import type { SchoolTerm } from "../../attendance/types/attendance.types";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import {
-  useCreateHomeroomAssignment,
+  useSetHomeroomTeachers,
   useCreateSchoolClassroom,
   useDeleteSchoolClassroom,
   useSchoolClassrooms,
@@ -77,21 +85,52 @@ import type { SchoolClassroom } from "../types/school-structure.types";
  * structure those pages read.
  */
 export function SchoolStructurePage() {
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
 
-  const [schoolInput, setSchoolInput] = useState("");
-  const [termInput, setTermInput] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") ?? "",
+  );
+  const [termInput, setTermInput] = useState(
+    () => searchParams.get("termId") ?? "",
+  );
+  const [gradeFilter, setGradeFilter] = useState(
+    () => searchParams.get("gradeId") ?? "",
+  );
+  const [searchInput, setSearchInput] = useRememberedState(
+    "school-structure:search",
+    "",
+  );
+  const [search, setSearch] = useState(() => searchInput.trim());
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const defaultSort: DataTableSortState = {
     key: "grade",
     direction: "asc",
-  });
+  };
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(
+      searchParams,
+      "sort",
+      ["room", "grade", "students", "homeroomTeacher"],
+      defaultSort,
+    ),
+  );
 
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
@@ -105,12 +144,18 @@ export function SchoolStructurePage() {
   // Room the classroom dialog is editing; null = creating a new room.
   const [editingClassroom, setEditingClassroom] =
     useState<SchoolClassroom | null>(null);
-  const [teacherMembershipId, setTeacherMembershipId] = useState("");
+  const [teacherMembershipIds, setTeacherMembershipIds] = useState<string[]>([
+    "",
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      const nextSearch = searchInput.trim();
+      setSearch((current) => {
+        if (current === nextSearch) return current;
+        setPage(1);
+        return nextSearch;
+      });
     }, 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
@@ -121,6 +166,14 @@ export function SchoolStructurePage() {
   const schoolId = schools.length === 1 ? String(schools[0].id) : schoolInput;
   const selectedSchoolId = Number(schoolId) || null;
   const multipleSchools = schools.length > 1;
+  useSyncedSearchParams({
+    schoolId: multipleSchools ? schoolInput || undefined : undefined,
+    termId: termInput || undefined,
+    gradeId: gradeFilter || undefined,
+    sort: serializeSortSearchParam(sort, defaultSort),
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   const termsQuery = useQuery({
     queryKey: ["school-structure", "terms", selectedSchoolId],
@@ -172,7 +225,7 @@ export function SchoolStructurePage() {
   const createClassroom = useCreateSchoolClassroom();
   const updateClassroom = useUpdateSchoolClassroom();
   const deleteClassroom = useDeleteSchoolClassroom();
-  const createAssignment = useCreateHomeroomAssignment();
+  const setHomeroomTeachers = useSetHomeroomTeachers();
   const saveTerm = useMutation({
     mutationFn: (values: SchoolTermFormValues) =>
       attendanceService.upsertTerm({ ...values, schoolId: selectedSchoolId! }),
@@ -211,8 +264,12 @@ export function SchoolStructurePage() {
 
   function openAssignmentDialog(room: SchoolClassroom): void {
     setAssigningClassroom(room);
-    setTeacherMembershipId("");
-    createAssignment.reset();
+    setTeacherMembershipIds(
+      room.homeroomTeachers.length > 0
+        ? room.homeroomTeachers.map((teacher) => teacher.teacherMembershipId)
+        : [""],
+    );
+    setHomeroomTeachers.reset();
   }
 
   async function submitClassroom(event: React.FormEvent<HTMLFormElement>) {
@@ -242,12 +299,13 @@ export function SchoolStructurePage() {
 
   async function submitAssignment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!assigningClassroom || !teacherMembershipId) return;
-    await createAssignment.mutateAsync({
+    if (!assigningClassroom) return;
+    const selectedIds = teacherMembershipIds.filter(Boolean).map(Number);
+    await setHomeroomTeachers.mutateAsync({
       classroomId: Number(assigningClassroom.id),
-      teacherMembershipId: Number(teacherMembershipId),
+      teacherMembershipIds: selectedIds,
     });
-    setTeacherMembershipId("");
+    setTeacherMembershipIds([""]);
     setAssigningClassroom(null);
   }
 
@@ -266,16 +324,12 @@ export function SchoolStructurePage() {
     return (
       <div className="flex items-center justify-center gap-1">
         <Button
-          aria-label={`${room.homeroomTeacherName ? "เปลี่ยนครูประจำชั้น" : "กำหนดครูประจำชั้น"} ${roomLabel}`}
-          disabled={teacherOptions.length === 0}
+          aria-label={`จัดการครูประจำชั้น ${roomLabel}`}
           icon={UserPlus}
           onClick={() => openAssignmentDialog(room)}
-          title={
-            teacherOptions.length === 0 ? "ยังไม่มีครูในโรงเรียนนี้" : undefined
-          }
           variant="outline"
         >
-          {room.homeroomTeacherName ? "เปลี่ยนครู" : "กำหนดครู"}
+          จัดการครู
         </Button>
         <IconButton
           aria-label={`แก้ไขห้อง ${roomLabel}`}
@@ -663,23 +717,22 @@ export function SchoolStructurePage() {
 
       <Dialog
         onOpenChange={(open) => {
-          if (!open) setAssigningClassroom(null);
+          if (!open) {
+            setAssigningClassroom(null);
+            setTeacherMembershipIds([""]);
+          }
         }}
         open={Boolean(assigningClassroom)}
       >
         <DialogContent onClose={() => setAssigningClassroom(null)}>
           <DialogHeader>
-            <DialogTitle>
-              {assigningClassroom?.homeroomTeacherName
-                ? "เปลี่ยนครูประจำชั้น"
-                : "กำหนดครูประจำชั้น"}
-            </DialogTitle>
+            <DialogTitle>จัดการครูประจำชั้น</DialogTitle>
           </DialogHeader>
           <form onSubmit={(event) => void submitAssignment(event)}>
             <DialogBody className="space-y-4">
               <FormErrorAlert
-                error={createAssignment.error}
-                fallback="ไม่สามารถกำหนดครูประจำชั้นได้"
+                error={setHomeroomTeachers.error}
+                fallback="ไม่สามารถบันทึกครูประจำชั้นได้"
               />
               <p className="text-sm text-slate-600">
                 {assigningClassroom
@@ -688,42 +741,92 @@ export function SchoolStructurePage() {
                       formatRoomLabel(assigningClassroom.roomCode)
                     }`
                   : ""}
-                {assigningClassroom?.homeroomTeacherName
-                  ? ` · ปัจจุบัน ${assigningClassroom.homeroomTeacherName}`
-                  : ""}
               </p>
-              <div>
-                <FormLabel htmlFor="homeroom-teacher" required>
-                  ครูประจำชั้น
-                </FormLabel>
-                <Combobox
-                  ariaLabel="ครูประจำชั้น"
-                  emptyText="ไม่พบครู"
-                  id="homeroom-teacher"
-                  onChange={setTeacherMembershipId}
-                  options={teacherOptions.map((teacher) => ({
-                    value: String(teacher.id),
-                    label: teacher.displayName,
-                  }))}
-                  placeholder="ค้นหาชื่อครู"
-                  value={teacherMembershipId}
-                />
+              <div className="space-y-3">
+                {teacherMembershipIds.map((membershipId, index) => (
+                  <div className="flex items-end gap-2" key={index}>
+                    <div className="min-w-0 flex-1">
+                      <FormLabel htmlFor={`homeroom-teacher-${index}`}>
+                        ครูประจำชั้นคนที่ {index + 1}
+                      </FormLabel>
+                      <Combobox
+                        ariaLabel={`ครูประจำชั้นคนที่ ${index + 1}`}
+                        emptyText="ไม่พบครู"
+                        id={`homeroom-teacher-${index}`}
+                        onChange={(value) =>
+                          setTeacherMembershipIds((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index ? value : item,
+                            ),
+                          )
+                        }
+                        options={teacherOptions
+                          .filter(
+                            (teacher) =>
+                              String(teacher.id) === membershipId ||
+                              !teacherMembershipIds.includes(
+                                String(teacher.id),
+                              ),
+                          )
+                          .map((teacher) => ({
+                            value: String(teacher.id),
+                            label: teacher.displayName,
+                          }))}
+                        placeholder="ค้นหาชื่อครู"
+                        value={membershipId}
+                      />
+                    </div>
+                    {index === 1 || membershipId ? (
+                      <IconButton
+                        aria-label={`ลบครูประจำชั้นคนที่ ${index + 1}`}
+                        icon={Trash2}
+                        onClick={() =>
+                          setTeacherMembershipIds((current) => {
+                            const next = current.filter(
+                              (_, itemIndex) => itemIndex !== index,
+                            );
+                            return next.length > 0 ? next : [""];
+                          })
+                        }
+                        type="button"
+                        variant="delete"
+                      />
+                    ) : null}
+                  </div>
+                ))}
+                {teacherMembershipIds.length < 2 ? (
+                  <IconButton
+                    aria-label="เพิ่มครูประจำชั้นคนที่ 2"
+                    icon={Plus}
+                    onClick={() =>
+                      setTeacherMembershipIds((current) => [...current, ""])
+                    }
+                    type="button"
+                    variant="outline"
+                  />
+                ) : null}
+                <p className="text-xs text-slate-500">
+                  เลือกได้สูงสุด 2 คน หรือเว้นว่างเพื่อถอดครูประจำชั้นทั้งหมด
+                </p>
               </div>
             </DialogBody>
             <DialogFooter>
               <Button
-                onClick={() => setAssigningClassroom(null)}
+                onClick={() => {
+                  setAssigningClassroom(null);
+                  setTeacherMembershipIds([""]);
+                }}
                 type="button"
                 variant="outline"
               >
                 ยกเลิก
               </Button>
               <Button
-                isLoading={createAssignment.isPending}
+                isLoading={setHomeroomTeachers.isPending}
                 loadingText="กำลังบันทึก"
                 type="submit"
               >
-                บันทึกการมอบหมาย
+                บันทึก
               </Button>
             </DialogFooter>
           </form>
