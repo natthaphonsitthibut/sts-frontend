@@ -215,6 +215,10 @@ export interface StudentManagementOptions {
   classrooms: StudentManagementClassroomOption[];
 }
 
+export interface StudentNationalIdCorrectionPayload {
+  newNationalId: string;
+}
+
 export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";
 
 export type StudentPiiFieldGroup = "NATIONAL_ID" | "PASSPORT";

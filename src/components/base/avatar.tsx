@@ -26,7 +26,8 @@ export function Avatar({
   ...props
 }: AvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
-  const activeImageUrl = imageUrl && imageUrl !== failedImageUrl ? imageUrl : null;
+  const activeImageUrl =
+    imageUrl && imageUrl !== failedImageUrl ? imageUrl : null;
   // Opt in by presence, not truthiness: an empty name still resolves to the
   // palette's neutral colour rather than falling back to the plain grey chip.
   const useGradient = !activeImageUrl && gradientName !== undefined;
@@ -39,8 +40,8 @@ export function Avatar({
     <div
       data-slot="avatar"
       className={cn(
-        "relative flex size-10 shrink-0 overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700",
-        useGradient && "font-extrabold shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
+        "relative flex size-10 shrink-0 overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
+        useGradient && "font-extrabold",
         className,
       )}
       style={gradientStyle ? { ...gradientStyle, ...style } : style}
@@ -49,7 +50,7 @@ export function Avatar({
       {activeImageUrl ? (
         <img
           alt={imageAlt}
-          className="h-full w-full object-cover"
+          className="block h-full w-full object-cover"
           data-avatar-image
           onError={() => setFailedImageUrl(activeImageUrl)}
           src={activeImageUrl}

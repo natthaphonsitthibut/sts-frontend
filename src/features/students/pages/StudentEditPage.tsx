@@ -76,6 +76,7 @@ import { SensitiveValueToggleButton } from "../../../components/security/Sensiti
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { PII_FIELD_LABELS } from "../pii.constants";
 import { StudentPiiRevealDialog } from "../components/StudentPiiRevealDialog";
+import { StudentNationalIdCorrectionDialog } from "../components/StudentNationalIdCorrectionDialog";
 import type {
   StudentPiiField,
   StudentPiiRevealResponse,
@@ -307,6 +308,8 @@ export function StudentEditPage() {
     sortDirection: "asc",
   });
   const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
+  const [nationalIdCorrectionOpen, setNationalIdCorrectionOpen] =
+    useState(false);
   const piiReveal = useTimedSensitiveReveal<StudentPiiField>(id);
   const [photo, setPhoto] = useState<PhotoPickerValue>(
     EMPTY_PHOTO_PICKER_VALUE,
@@ -538,13 +541,22 @@ export function StudentEditPage() {
                   {(
                     [
                       "FirstName_Onec",
-                      "MiddleName_Onec",
                       "LastName_Onec",
+                      "MiddleName_Onec",
                     ] as const
-                  ).map((name, index) => (
+                  ).map((name) => (
                     <FormItem key={name}>
-                      <FormLabel htmlFor={name} required={index !== 1}>
-                        {["ชื่อ", "ชื่อกลาง", "นามสกุล"][index]}
+                      <FormLabel
+                        htmlFor={name}
+                        required={name !== "MiddleName_Onec"}
+                      >
+                        {
+                          {
+                            FirstName_Onec: "ชื่อ",
+                            LastName_Onec: "นามสกุล",
+                            MiddleName_Onec: "ชื่อกลาง",
+                          }[name]
+                        }
                       </FormLabel>
                       <Input id={name} {...registerField(form, name)} />
                       <FormMessage<FormValues> name={name} />
@@ -574,19 +586,33 @@ export function StudentEditPage() {
                         <div className="text-sm text-slate-500">
                           {PII_FIELD_LABELS[field]}
                         </div>
-                        <div className="mt-1 flex items-center justify-between gap-3">
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
                           <span className="font-medium tabular-nums text-slate-800">
                             {piiValue(field)}
                           </span>
-                          {hasValue ? (
-                            <SensitiveValueToggleButton
-                              isVisible={
-                                piiReveal.visibleFields[field] === true
-                              }
-                              label={PII_FIELD_LABELS[field]}
-                              onClick={() => togglePii(field)}
-                            />
-                          ) : null}
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {hasValue ? (
+                              <SensitiveValueToggleButton
+                                isVisible={
+                                  piiReveal.visibleFields[field] === true
+                                }
+                                label={PII_FIELD_LABELS[field]}
+                                onClick={() => togglePii(field)}
+                              />
+                            ) : null}
+                            {field === "PersonID_Onec" ? (
+                              <Button
+                                onClick={() =>
+                                  setNationalIdCorrectionOpen(true)
+                                }
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                              >
+                                แก้ไขเลขบัตร
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     );
@@ -924,6 +950,14 @@ export function StudentEditPage() {
           </div>
         </Form>
       )}
+      {student ? (
+        <StudentNationalIdCorrectionDialog
+          onCorrected={() => piiReveal.clear("PersonID_Onec")}
+          onOpenChange={setNationalIdCorrectionOpen}
+          open={nationalIdCorrectionOpen}
+          studentId={id}
+        />
+      ) : null}
       {student ? (
         <StudentPiiRevealDialog
           field={revealField}

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PII_REVEAL_TTL_MS } from "../lib/pii-presentation";
 
 type SensitiveValues<Field extends string> = Partial<Record<Field, string>>;
-type SensitiveVisibility<Field extends string> = Partial<Record<Field, boolean>>;
+type SensitiveVisibility<Field extends string> = Partial<
+  Record<Field, boolean>
+>;
 
 interface SensitiveRevealState<Field extends string> {
   scopeKey: string;
@@ -10,7 +12,9 @@ interface SensitiveRevealState<Field extends string> {
   visibleFields: SensitiveVisibility<Field>;
 }
 
-export function useTimedSensitiveReveal<Field extends string>(scopeKey: string) {
+export function useTimedSensitiveReveal<Field extends string>(
+  scopeKey: string,
+) {
   const [state, setState] = useState<SensitiveRevealState<Field>>({
     scopeKey,
     values: {},
@@ -40,68 +44,97 @@ export function useTimedSensitiveReveal<Field extends string>(scopeKey: string) 
     };
   }, [scopeKey]);
 
-  const reveal = useCallback((revealedValues: SensitiveValues<Field>): void => {
-    const revealedFields = (Object.keys(revealedValues) as Field[]).filter(
-      (field) => typeof revealedValues[field] === "string",
-    );
+  const reveal = useCallback(
+    (revealedValues: SensitiveValues<Field>): void => {
+      const revealedFields = (Object.keys(revealedValues) as Field[]).filter(
+        (field) => typeof revealedValues[field] === "string",
+      );
 
-    setState((current) => {
-      const currentValues: SensitiveValues<Field> =
-        current.scopeKey === scopeKey ? current.values : {};
-      const nextVisibleFields: SensitiveVisibility<Field> =
-        current.scopeKey === scopeKey ? { ...current.visibleFields } : {};
+      setState((current) => {
+        const currentValues: SensitiveValues<Field> =
+          current.scopeKey === scopeKey ? current.values : {};
+        const nextVisibleFields: SensitiveVisibility<Field> =
+          current.scopeKey === scopeKey ? { ...current.visibleFields } : {};
+        for (const field of revealedFields) {
+          nextVisibleFields[field] = true;
+        }
+        return {
+          scopeKey,
+          values: { ...currentValues, ...revealedValues },
+          visibleFields: nextVisibleFields,
+        };
+      });
+
       for (const field of revealedFields) {
-        nextVisibleFields[field] = true;
+        window.clearTimeout(timersRef.current.get(field));
+        const timer = window.setTimeout(() => {
+          timersRef.current.delete(field);
+          setState((current) => {
+            if (current.scopeKey !== scopeKey) return current;
+            const nextValues = { ...current.values };
+            const nextVisibleFields = { ...current.visibleFields };
+            delete nextValues[field];
+            delete nextVisibleFields[field];
+            return {
+              ...current,
+              values: nextValues,
+              visibleFields: nextVisibleFields,
+            };
+          });
+        }, PII_REVEAL_TTL_MS);
+        timersRef.current.set(field, timer);
       }
-      return {
-        scopeKey,
-        values: { ...currentValues, ...revealedValues },
-        visibleFields: nextVisibleFields,
-      };
-    });
+    },
+    [scopeKey],
+  );
 
-    for (const field of revealedFields) {
+  const hide = useCallback(
+    (field: Field): void => {
+      setState((current) =>
+        current.scopeKey === scopeKey
+          ? {
+              ...current,
+              visibleFields: { ...current.visibleFields, [field]: false },
+            }
+          : current,
+      );
+    },
+    [scopeKey],
+  );
+
+  const showCached = useCallback(
+    (field: Field): void => {
+      setState((current) =>
+        current.scopeKey === scopeKey
+          ? {
+              ...current,
+              visibleFields: { ...current.visibleFields, [field]: true },
+            }
+          : current,
+      );
+    },
+    [scopeKey],
+  );
+
+  const clear = useCallback(
+    (field: Field): void => {
       window.clearTimeout(timersRef.current.get(field));
-      const timer = window.setTimeout(() => {
-        timersRef.current.delete(field);
-        setState((current) => {
-          if (current.scopeKey !== scopeKey) return current;
-          const nextValues = { ...current.values };
-          const nextVisibleFields = { ...current.visibleFields };
-          delete nextValues[field];
-          delete nextVisibleFields[field];
-          return {
-            ...current,
-            values: nextValues,
-            visibleFields: nextVisibleFields,
-          };
-        });
-      }, PII_REVEAL_TTL_MS);
-      timersRef.current.set(field, timer);
-    }
-  }, [scopeKey]);
-
-  const hide = useCallback((field: Field): void => {
-    setState((current) =>
-      current.scopeKey === scopeKey
-        ? {
-            ...current,
-            visibleFields: { ...current.visibleFields, [field]: false },
-          }
-        : current,
-    );
-  }, [scopeKey]);
-
-  const showCached = useCallback((field: Field): void => {
-    setState((current) =>
-      current.scopeKey === scopeKey
-        ? {
-            ...current,
-            visibleFields: { ...current.visibleFields, [field]: true },
-          }
-        : current,
-    );
-  }, [scopeKey]);
+      timersRef.current.delete(field);
+      setState((current) => {
+        if (current.scopeKey !== scopeKey) return current;
+        const nextValues = { ...current.values };
+        const nextVisibleFields = { ...current.visibleFields };
+        delete nextValues[field];
+        delete nextVisibleFields[field];
+        return {
+          ...current,
+          values: nextValues,
+          visibleFields: nextVisibleFields,
+        };
+      });
+    },
+    [scopeKey],
+  );
 
   const values: SensitiveValues<Field> =
     state.scopeKey === scopeKey ? state.values : {};
@@ -109,6 +142,7 @@ export function useTimedSensitiveReveal<Field extends string>(scopeKey: string) 
     state.scopeKey === scopeKey ? state.visibleFields : {};
 
   return {
+    clear,
     hide,
     reveal,
     showCached,

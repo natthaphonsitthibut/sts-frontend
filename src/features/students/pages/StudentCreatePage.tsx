@@ -199,13 +199,13 @@ export function StudentCreatePage() {
                 <FormMessage<FormValues> name="FirstName_Onec" />
               </FormItem>
               <FormItem>
-                <FormLabel>ชื่อกลาง</FormLabel>
-                <Input {...registerField(form, "MiddleName_Onec")} />
-              </FormItem>
-              <FormItem>
                 <FormLabel required>นามสกุล</FormLabel>
                 <Input {...registerField(form, "LastName_Onec")} />
                 <FormMessage<FormValues> name="LastName_Onec" />
+              </FormItem>
+              <FormItem>
+                <FormLabel>ชื่อกลาง</FormLabel>
+                <Input {...registerField(form, "MiddleName_Onec")} />
               </FormItem>
             </div>
           </Card>
