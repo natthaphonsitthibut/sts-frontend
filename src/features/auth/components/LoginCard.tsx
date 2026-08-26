@@ -16,7 +16,11 @@ export function LoginCard({
   onAraIdLogin,
 }: LoginCardProps) {
   return (
-    <div className="relative pt-[clamp(13rem,26vh,21rem)]">
+    // The brand mark is absolutely positioned at the top of this box, so the
+    // padding has to clear its height (clamp(10rem,18vh,14rem)) and nothing
+    // more. The extra air it used to reserve pushed the card past the fold on a
+    // 1440x900 laptop once the Sarabun type ramp made the form taller.
+    <div className="relative pt-[clamp(11rem,22vh,18rem)]">
       <div className="absolute left-1/2 top-0 -translate-x-1/2">
         <LoginBrandMark />
       </div>
