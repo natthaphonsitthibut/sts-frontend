@@ -2,12 +2,8 @@ import { apiClient } from "../../../lib/api-client";
 import { normalizeAttendanceSelectionStatus } from "../lib/attendance-presentation";
 import type {
   AttendanceHistoryRecord,
-  AttendanceReconciliationResponse,
-  AttendanceSessionAnomaliesResponse,
   AttendanceStudent,
   AttendanceStudentQuery,
-  CalendarDayType,
-  SchoolCalendarDay,
   SchoolTerm,
   SchoolTermStatus,
 } from "../types/attendance.types";
@@ -24,6 +20,7 @@ interface AttendanceService {
   ) => Promise<AttendanceHistoryRecord[]>;
   getTerms: (schoolId: string | number) => Promise<SchoolTerm[]>;
   upsertTerm: (input: {
+    termId?: string;
     schoolId: number;
     academicYear: number;
     semester: number;
@@ -31,30 +28,7 @@ interface AttendanceService {
     endsOn: string;
     status: SchoolTermStatus;
   }) => Promise<SchoolTerm>;
-  generateCalendar: (
-    termId: string,
-    schoolDays: number[],
-  ) => Promise<SchoolCalendarDay[]>;
-  getCalendar: (termId: string) => Promise<SchoolCalendarDay[]>;
-  updateCalendarDay: (
-    calendarDayId: string,
-    input: { dayType: CalendarDayType; reason?: string },
-  ) => Promise<SchoolCalendarDay>;
-  getReconciliation: (query: {
-    termId: string;
-    date: string;
-    page?: number;
-    limit?: number;
-    gradeLevelId?: number;
-    room?: number;
-  }) => Promise<AttendanceReconciliationResponse>;
-  getReconciliationAnomalies: (query: {
-    termId: string;
-    page?: number;
-    limit?: number;
-    gradeLevelId?: number;
-    room?: number;
-  }) => Promise<AttendanceSessionAnomaliesResponse>;
+  deleteTerm: (termId: string) => Promise<string>;
 }
 
 async function getStudents(
@@ -105,6 +79,7 @@ async function getTerms(schoolId: string | number): Promise<SchoolTerm[]> {
 }
 
 async function upsertTerm(input: {
+  termId?: string;
   schoolId: number;
   academicYear: number;
   semester: number;
@@ -112,66 +87,21 @@ async function upsertTerm(input: {
   endsOn: string;
   status: SchoolTermStatus;
 }): Promise<SchoolTerm> {
+  const { termId, ...rest } = input;
   const response = await apiClient.post<DataEnvelope<SchoolTerm>>(
     "/attendance/terms",
-    input,
+    // Editing sends the row id so a changed year or semester rewrites the term
+    // the user opened instead of creating a second one beside it.
+    termId ? { ...rest, termId: Number(termId) } : rest,
   );
   return response.data.data;
 }
 
-async function generateCalendar(
-  termId: string,
-  schoolDays: number[],
-): Promise<SchoolCalendarDay[]> {
-  const response = await apiClient.post<DataEnvelope<SchoolCalendarDay[]>>(
-    `/attendance/terms/${encodeURIComponent(termId)}/calendar/generate`,
-    { schoolDays },
+async function deleteTerm(termId: string): Promise<string> {
+  const response = await apiClient.delete<DataEnvelope<{ id: string }>>(
+    `/attendance/terms/${encodeURIComponent(termId)}`,
   );
-  return response.data.data || [];
-}
-
-async function getCalendar(termId: string): Promise<SchoolCalendarDay[]> {
-  const response = await apiClient.get<DataEnvelope<SchoolCalendarDay[]>>(
-    "/attendance/calendar",
-    { params: { termId } },
-  );
-  return response.data.data || [];
-}
-
-async function updateCalendarDay(
-  calendarDayId: string,
-  input: { dayType: CalendarDayType; reason?: string },
-): Promise<SchoolCalendarDay> {
-  const response = await apiClient.patch<DataEnvelope<SchoolCalendarDay>>(
-    `/attendance/calendar-days/${encodeURIComponent(calendarDayId)}`,
-    input,
-  );
-  return response.data.data;
-}
-
-async function getReconciliation(query: {
-  termId: string;
-  date: string;
-  page?: number;
-  limit?: number;
-}): Promise<AttendanceReconciliationResponse> {
-  const response = await apiClient.get<AttendanceReconciliationResponse>(
-    "/attendance/reconciliation",
-    { params: query },
-  );
-  return response.data;
-}
-
-async function getReconciliationAnomalies(query: {
-  termId: string;
-  page?: number;
-  limit?: number;
-}): Promise<AttendanceSessionAnomaliesResponse> {
-  const response = await apiClient.get<AttendanceSessionAnomaliesResponse>(
-    "/attendance/reconciliation/anomalies",
-    { params: query },
-  );
-  return response.data;
+  return response.data.data.id;
 }
 
 export const attendanceService: AttendanceService = {
@@ -179,9 +109,5 @@ export const attendanceService: AttendanceService = {
   getHistory,
   getTerms,
   upsertTerm,
-  generateCalendar,
-  getCalendar,
-  updateCalendarDay,
-  getReconciliation,
-  getReconciliationAnomalies,
+  deleteTerm,
 };

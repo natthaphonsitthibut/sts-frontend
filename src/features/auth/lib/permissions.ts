@@ -117,13 +117,6 @@ export const MENU_ITEMS: MenuItem[] = [
       },
       {
         ...pageMenuItem(
-          "attendance-operations",
-          "/attendance-operations",
-          "attendance-dashboard",
-        ),
-      },
-      {
-        ...pageMenuItem(
           "master-data",
           "/master-data",
           "master-data",
@@ -169,7 +162,7 @@ export const MENU_ITEMS: MenuItem[] = [
       },
     ],
   },
-  pageMenuItem("settings", "/settings"),
+  pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
 ];
 
 /**

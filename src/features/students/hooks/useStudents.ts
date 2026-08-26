@@ -23,10 +23,13 @@ interface UseStudentsResult {
   refetch: () => void;
 }
 
-export function useStudents(query: StudentListQuery = {}): UseStudentsResult {
+export function useStudents(
+  query: StudentListQuery | null = {},
+): UseStudentsResult {
   const result = useQuery({
     queryKey: [STUDENTS_QUERY_KEY, query],
-    queryFn: () => studentsService.getStudents(query),
+    queryFn: () => studentsService.getStudents(query!),
+    enabled: query !== null,
     // Keep the previous page visible while the next one loads so the table does
     // not flash an empty state between paginated fetches.
     placeholderData: keepPreviousData,
@@ -40,7 +43,9 @@ export function useStudents(query: StudentListQuery = {}): UseStudentsResult {
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
-      void result.refetch();
+      if (query !== null) {
+        void result.refetch();
+      }
     },
   };
 }
@@ -60,11 +65,12 @@ export function useStudentFilterOptions(
     | "grade"
     | "studentStatusCode"
     | "enrollmentState"
-  > = {},
+  > | null = {},
 ): UseStudentFilterOptionsResult {
   const result = useQuery({
     queryKey: [STUDENT_FILTER_OPTIONS_QUERY_KEY, query],
-    queryFn: () => studentsService.getFilterOptions(query),
+    queryFn: () => studentsService.getFilterOptions(query!),
+    enabled: query !== null,
     // Filter options change rarely (only on import/student mutations); avoid
     // refetching them on every page or filter change.
     staleTime: 5 * 60 * 1000,

@@ -247,8 +247,7 @@ export function StudentProfileHeader({
         </h2>
         <div className="mt-4 flex flex-col items-center gap-5 sm:mt-5 sm:gap-6 md:flex-row md:items-start">
           <AvatarPhotoEditor
-            avatarClassName="shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-            className="shrink-0"
+            className="w-full shrink-0 md:w-48"
             editable={canEditPhoto}
             isSubmitting={updatePhoto.isPending}
             label="รูปประจำตัวนักเรียน"
@@ -258,7 +257,7 @@ export function StudentProfileHeader({
             photoUrl={resolveApiMediaUrl(student.photo_url ?? null)}
           />
 
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0 flex-1">
             <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
               <div className="w-full text-center md:text-left">
                 <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">

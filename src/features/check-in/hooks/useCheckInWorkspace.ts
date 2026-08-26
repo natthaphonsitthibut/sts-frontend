@@ -79,7 +79,7 @@ export function useCheckInWorkspace({
     (item) => item.classroomSubjectId === requestedSubjectId,
   )
     ? requestedSubjectId
-    : (subjects[0]?.classroomSubjectId ?? null);
+    : null;
   const selectionKey = `${access}:${classroomId ?? "public"}:${date}:${classroomSubjectId ?? ""}`;
   const draft =
     draftState.key === selectionKey ? draftState : emptyDraft(selectionKey);
@@ -243,6 +243,7 @@ export function useCheckInWorkspace({
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      if (!classroomSubjectId) throw new Error("กรุณาเลือกวิชา");
       const roster = rosterQuery.data ?? [];
       if (!roster.length) throw new Error("ห้องเรียนนี้ไม่มีนักเรียน");
       if (draft.marks.size !== roster.length) {
@@ -285,6 +286,15 @@ export function useCheckInWorkspace({
   function selectSubject(next: number | null): void {
     startMutation.reset();
     submitMutation.reset();
+    if (next && !classroomSubjectId) {
+      const unassignedKey = `${access}:${classroomId ?? "public"}:${date}:`;
+      const assignedKey = `${access}:${classroomId ?? "public"}:${date}:${next}`;
+      setDraftState((current) =>
+        current.key === unassignedKey && !current.session
+          ? { ...current, key: assignedKey }
+          : current,
+      );
+    }
     setClassroomSubjectId(next);
   }
 

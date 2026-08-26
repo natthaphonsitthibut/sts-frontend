@@ -34,11 +34,7 @@ export interface HomeDashboardMetric {
 
 export interface HomeDashboardAttentionItem {
   id: string;
-  kind:
-    | "ATTENDANCE_INCOMPLETE"
-    | "RISK_HIGH"
-    | "CASE_OVERDUE"
-    | "CASE_PENDING_REVIEW";
+  kind: "RISK_HIGH" | "CASE_OVERDUE" | "CASE_PENDING_REVIEW";
   label: string;
   reason: string;
   count: number;

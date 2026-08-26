@@ -24,12 +24,17 @@ function unique(values: Array<string | undefined>): string[] {
  * returns nothing for an unscoped/own-only actor, so no flow ever pulls the
  * whole country's schools. Selecting a level resets the levels below it.
  */
-export function useSchoolAreaFilter(initial: {
-  province?: string;
-  district?: string;
-  subDistrict?: string;
-  schoolSearch?: string;
-} = {}) {
+export function useSchoolAreaFilter(
+  initial: {
+    province?: string;
+    district?: string;
+    subDistrict?: string;
+    schoolSearch?: string;
+    /** Skip the geographic catalog for school-only pickers. */
+    includeLocations?: boolean;
+  } = {},
+) {
+  const includeLocations = initial.includeLocations ?? true;
   const [province, setProvinceState] = useState(initial.province ?? "");
   const [district, setDistrictState] = useState(initial.district ?? "");
   const [subDistrict, setSubDistrict] = useState(initial.subDistrict ?? "");
@@ -38,6 +43,7 @@ export function useSchoolAreaFilter(initial: {
   const locationsQuery = useQuery({
     queryKey: ["attendance-locations"],
     queryFn: attendanceLookupService.getLocations,
+    enabled: includeLocations,
   });
   const catalog = locationsQuery.data;
 
@@ -147,8 +153,14 @@ export function useSchoolAreaFilter(initial: {
       schoolsQuery.dataUpdatedAt,
     ),
     isLoading:
-      locationsQuery.isLoading || (schoolsEnabled && schoolsQuery.isLoading),
-    isError: locationsQuery.isError || schoolsQuery.isError,
-    refetch: () => Promise.all([locationsQuery.refetch(), schoolsQuery.refetch()]),
+      (includeLocations && locationsQuery.isLoading) ||
+      (schoolsEnabled && schoolsQuery.isLoading),
+    isError:
+      (includeLocations && locationsQuery.isError) || schoolsQuery.isError,
+    refetch: () =>
+      Promise.all([
+        ...(includeLocations ? [locationsQuery.refetch()] : []),
+        schoolsQuery.refetch(),
+      ]),
   };
 }

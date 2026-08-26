@@ -42,6 +42,11 @@ import {
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import {
+  readOptionalPositiveIntegerSearchParam,
+  readPositiveIntegerSearchParam,
+} from "../../../hooks/useSyncedSearchParams";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
@@ -303,19 +308,35 @@ function StudentRiskDashboardPage() {
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const isWatchlist = studentGroup === "watchlist";
-  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(
-    () => Number(searchParams.get("limit")) || DEFAULT_PAGE_SIZE,
+  // Free text may contain a student's name or identifier, so it intentionally
+  // stays in memory instead of being written to the URL with categorical filters.
+  const [search, setSearch] = useRememberedState(
+    "student-risk-report:search",
+    "",
   );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     parseRiskSort(searchParams.get("sort")),
   );
   const [academicYearInput, setAcademicYearInput] = useState<
     number | undefined
-  >(() => Number(searchParams.get("academicYear")) || undefined);
-  const [semesterInput, setSemesterInput] = useState<number | undefined>(
-    () => Number(searchParams.get("semester")) || undefined,
+  >(() => readOptionalPositiveIntegerSearchParam(searchParams, "academicYear"));
+  const [semesterInput, setSemesterInput] = useState<number | undefined>(() =>
+    readOptionalPositiveIntegerSearchParam(searchParams, "semester"),
   );
   const [caseStatus, setCaseStatus] = useState<
     RiskDashboardQuery["caseStatus"]
@@ -402,7 +423,9 @@ function StudentRiskDashboardPage() {
     setValue("academicYear", academicYear ? String(academicYear) : undefined);
     setValue("semester", semester ? String(semester) : undefined);
     setValue("caseStatus", isWatchlist ? undefined : caseStatus);
-    setValue("search", search.trim() || undefined);
+    // Legacy versions persisted free-text search in the URL. Remove it without
+    // reading it back so names or identifiers do not remain in browser history.
+    setValue("search", undefined);
     setValue(
       "sort",
       sortToValue(sort) === "default" ? undefined : sortToValue(sort),
@@ -426,7 +449,6 @@ function StudentRiskDashboardPage() {
     scope.roomLocked,
     scope.schoolId,
     scope.schoolLocked,
-    search,
     searchParams,
     semester,
     setSearchParams,
@@ -645,13 +667,13 @@ function StudentRiskDashboardPage() {
                 onChange={handleSchoolChange}
                 onSearchChange={schoolArea.setSchoolSearch}
                 options={[
-                  { value: "", label: "ทุกโรงเรียนในขอบเขตสิทธิ์" },
+                  { value: "", label: "โรงเรียนทั้งหมด" },
                   ...schoolArea.filteredSchools.map((school) => ({
                     value: String(school.id),
                     label: school.name,
                   })),
                 ]}
-                placeholder="ทุกโรงเรียนในขอบเขตสิทธิ์"
+                placeholder="โรงเรียนทั้งหมด"
                 value={scope.schoolId}
               />
             </label>

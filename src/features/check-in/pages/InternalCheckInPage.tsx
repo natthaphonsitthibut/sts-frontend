@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { School } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Combobox, FormErrorAlert, Select } from "../../../components/base";
 import {
   EmptyState,
@@ -8,6 +9,7 @@ import {
   PageToolbar,
 } from "../../../components/layout/page-primitives";
 import { formatRoomLabel } from "../../../lib/room-presentation";
+import { useSyncedSearchParams } from "../../../hooks/useSyncedSearchParams";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import {
   useSchoolClassroomOptions,
@@ -16,11 +18,18 @@ import {
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
 
 export function InternalCheckInPage() {
+  const [searchParams] = useSearchParams();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState("");
-  const [gradeInput, setGradeInput] = useState("");
-  const [classroomInput, setClassroomInput] = useState("");
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") ?? "",
+  );
+  const [gradeInput, setGradeInput] = useState(
+    () => searchParams.get("gradeId") ?? "",
+  );
+  const [classroomInput, setClassroomInput] = useState(
+    () => searchParams.get("classroomId") ?? "",
+  );
   const schoolId =
     Number(schools.length === 1 ? schools[0]?.id : schoolInput) || null;
   const termsQuery = useQuery({
@@ -55,6 +64,11 @@ export function InternalCheckInPage() {
       )
     : [];
   const classroomId = Number(classroomInput) || null;
+  useSyncedSearchParams({
+    schoolId: schools.length > 1 ? schoolInput || undefined : undefined,
+    gradeId: gradeInput || undefined,
+    classroomId: classroomInput || undefined,
+  });
 
   return (
     <PageShell>

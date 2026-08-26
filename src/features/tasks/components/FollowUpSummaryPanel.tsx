@@ -246,7 +246,7 @@ export function FollowUpSummaryPanel({
                     className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
                     to={`/cases/${referral.caseId}`}
                   >
-                    เปิดเคส{" "}
+                    ดูรายละเอียดการส่งต่อ{" "}
                     <ExternalLink className="size-4" aria-hidden="true" />
                   </ContextLink>
                 </article>

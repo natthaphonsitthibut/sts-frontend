@@ -86,11 +86,9 @@ export const PAGE_IDENTITIES = {
   "/": createIdentity("หน้าหลัก", "home"),
   "/attendance": createIdentity("เช็กชื่อ", "edit"),
   "/attendance/classroom-links": createIdentity("จัดการลิงก์ห้องเรียน", "link"),
-  // Not `calendar-check` — that one is the "ระบบเช็กชื่อ" sidebar group icon.
-  "/attendance-operations": createIdentity("ความครบถ้วน", "fact-check"),
   "/classrooms": createIdentity("ห้องเรียนทั้งหมด", "school-building"),
-  "/curriculum": createIdentity("จัดการหลักสูตร", "file-spreadsheet"),
-  "/subjects": createIdentity("จัดการหลักสูตร", "file-spreadsheet"),
+  "/curriculum": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
+  "/subjects": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
   "/data-exports": createIdentity("ส่งออกข้อมูล", "download"),
   "/data-exports/history": createIdentity("ส่งออกข้อมูล", "download"),
   "/import-data": createIdentity("นำเข้าข้อมูล", "file-import"),
@@ -98,6 +96,8 @@ export const PAGE_IDENTITIES = {
   "/manage-role-groups": createIdentity("จัดการกลุ่มเมนู", "users-cog"),
   "/teachers": createIdentity("รายชื่อครู", "users-round"),
   "/manage-students": createIdentity("จัดการนักเรียน", "users-round"),
+  "/manage-students/export": createIdentity("จัดการนักเรียน", "users-round"),
+  "/manage-students/history": createIdentity("จัดการนักเรียน", "users-round"),
   "/manage-teachers": createIdentity("จัดการข้อมูลครู", "users-round"),
   "/manage-users": createIdentity("จัดการผู้ใช้งาน", "users"),
   "/master-data": createIdentity("ข้อมูลพื้นฐาน", "file-spreadsheet"),
@@ -124,7 +124,6 @@ export const PAGE_IDENTITIES = {
     "clipboard-check",
   ),
   "/students": createIdentity("รายชื่อนักเรียน", "user-graduate"),
-  "/students/history": createIdentity("รายชื่อนักเรียน", "user-graduate"),
 } as const satisfies Record<string, PageIdentity>;
 
 export function getPageIdentity(pathname: string): PageIdentity | undefined {

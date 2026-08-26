@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CirclePlus, Pencil, PowerOff } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -27,6 +28,11 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import {
+  readBooleanSearchParam,
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { MasterDataDialog } from "../components/MasterDataDialog";
 import {
@@ -45,11 +51,32 @@ import {
 type MasterDataItem = CodedMasterDataItem | ReferralAgencyItem;
 
 export function MasterDataPage() {
-  const [catalog, setCatalog] = useState<MasterDataCatalog>("absence-reasons");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(true);
+  const [searchParams] = useSearchParams();
+  const [catalog, setCatalog] = useState<MasterDataCatalog>(() => {
+    const value = searchParams.get("catalog");
+    return MASTER_DATA_CATALOGS.some((item) => item.id === value)
+      ? (value as MasterDataCatalog)
+      : "absence-reasons";
+  });
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [limit, setLimit] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const [includeInactive, setIncludeInactive] = useState(() =>
+    readBooleanSearchParam(searchParams, "inactive", true),
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<MasterDataItem | null>(null);
   const debouncedSearch = useDebouncedValue(search);
@@ -99,6 +126,14 @@ export function MasterDataPage() {
   }, [categoryCatalog.data, selected]);
   const dependencyFailed = needsCategoryCatalog && categoryCatalog.isError;
   const dependencyLoading = needsCategoryCatalog && categoryCatalog.isLoading;
+
+  useSyncedSearchParams({
+    catalog: catalog === "absence-reasons" ? undefined : catalog,
+    search: search.trim() || undefined,
+    inactive: includeInactive ? undefined : false,
+    page: page > 1 ? page : undefined,
+    limit: limit !== DEFAULT_PAGE_SIZE ? limit : undefined,
+  });
 
   function selectCatalog(next: MasterDataCatalog): void {
     setCatalog(next);

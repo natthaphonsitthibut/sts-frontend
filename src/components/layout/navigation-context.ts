@@ -77,8 +77,8 @@ const EXACT_ROUTE_LABELS: Record<string, string> = {
   "/import-data/history": "ประวัติการนำเข้า",
   "/import-data/quarantine": "รายการรอตรวจสอบ",
   "/master-data/student-statuses": "สถานะนักเรียน",
-  "/students/export": "ส่งออกข้อมูลนักเรียน",
-  "/students/history": "ประวัติรายชื่อนักเรียน",
+  "/manage-students/export": "ส่งออกข้อมูลนักเรียน",
+  "/manage-students/history": "ประวัติรายชื่อนักเรียน",
 };
 
 export function getNavigationLabel(

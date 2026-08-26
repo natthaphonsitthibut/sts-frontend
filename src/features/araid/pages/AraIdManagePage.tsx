@@ -10,10 +10,22 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { appToast, Button, Input, Select, Skeleton, useConfirm } from "../../../components/base";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  appToast,
+  Button,
+  Input,
+  Select,
+  Skeleton,
+  useConfirm,
+} from "../../../components/base";
 import { Pagination } from "../../../components/layout/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { AraIdRecordDialog } from "../components/AraIdRecordDialog";
 import {
@@ -23,18 +35,46 @@ import {
 } from "../hooks/useAraId";
 import type { AraIdRecord, AraIdRecordSummary } from "../types/araid.types";
 
-function fullName(record: Pick<AraIdRecordSummary, "titleTh" | "givenNameTh" | "familyNameTh">): string {
+const ROWS_PER_PAGE_OPTIONS = [10, 20, 50] as const;
+
+function fullName(
+  record: Pick<AraIdRecordSummary, "titleTh" | "givenNameTh" | "familyNameTh">,
+): string {
   return `${record.titleTh ?? ""}${record.givenNameTh} ${record.familyNameTh}`;
 }
 
 export function AraIdManagePage() {
+  const [searchParams] = useSearchParams();
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const [search, setSearch] = useState("");
-  const [recordStatus, setRecordStatus] = useState<"" | "ACTIVE" | "INACTIVE">("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
+  // This search accepts a national identifier, so it intentionally never goes
+  // into the URL or browser storage. Categorical filters and pagination do.
+  const [search, setSearch] = useRememberedState("araid-manage:search", "");
+  const [recordStatus, setRecordStatus] = useState<"" | "ACTIVE" | "INACTIVE">(
+    () => {
+      const value = searchParams.get("status");
+      return value === "ACTIVE" || value === "INACTIVE" ? value : "";
+    },
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(searchParams, "limit", 20);
+    return ROWS_PER_PAGE_OPTIONS.includes(
+      value as (typeof ROWS_PER_PAGE_OPTIONS)[number],
+    )
+      ? value
+      : 20;
+  });
+  useSyncedSearchParams({
+    status: recordStatus || undefined,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== 20 ? rowsPerPage : undefined,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<AraIdRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<AraIdRecord | null>(
+    null,
+  );
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const recordsQuery = useAraIdRecords({
     page,
@@ -66,18 +106,27 @@ export function AraIdManagePage() {
   async function toggleStatus(record: AraIdRecordSummary): Promise<void> {
     const nextStatus = record.recordStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     const accepted = await confirm({
-      title: nextStatus === "ACTIVE" ? "เปิดใช้งานข้อมูล AraID?" : "ปิดใช้งานข้อมูล AraID?",
-      description: nextStatus === "ACTIVE"
-        ? `${fullName(record)} จะกลับมาเข้าสู่ระบบด้วย AraID ได้`
-        : `${fullName(record)} จะเข้าสู่ระบบและยืนยันตัวตนด้วย AraID ไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง`,
+      title:
+        nextStatus === "ACTIVE"
+          ? "เปิดใช้งานข้อมูล AraID?"
+          : "ปิดใช้งานข้อมูล AraID?",
+      description:
+        nextStatus === "ACTIVE"
+          ? `${fullName(record)} จะกลับมาเข้าสู่ระบบด้วย AraID ได้`
+          : `${fullName(record)} จะเข้าสู่ระบบและยืนยันตัวตนด้วย AraID ไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง`,
       confirmText: nextStatus === "ACTIVE" ? "เปิดใช้งาน" : "ปิดใช้งาน",
       variant: nextStatus === "ACTIVE" ? "default" : "destructive",
     });
     if (!accepted) return;
 
     try {
-      await updateStatus.mutateAsync({ id: record.id, recordStatus: nextStatus });
-      appToast.success(nextStatus === "ACTIVE" ? "เปิดใช้งานแล้ว" : "ปิดใช้งานแล้ว");
+      await updateStatus.mutateAsync({
+        id: record.id,
+        recordStatus: nextStatus,
+      });
+      appToast.success(
+        nextStatus === "ACTIVE" ? "เปิดใช้งานแล้ว" : "ปิดใช้งานแล้ว",
+      );
     } catch (error) {
       appToast.error(getApiErrorMessage(error, "เปลี่ยนสถานะไม่สำเร็จ"));
     }
@@ -95,8 +144,12 @@ export function AraIdManagePage() {
             <ArrowLeft className="size-5" />
           </Link>
           <div className="text-center">
-            <h1 className="text-base font-bold text-araid-brand-deep sm:text-lg">จัดการข้อมูล AraID</h1>
-            <p className="hidden text-xs text-slate-500 sm:block">สร้างและดูแลข้อมูลสำหรับเข้าใช้งาน</p>
+            <h1 className="text-base font-bold text-araid-brand-deep sm:text-lg">
+              จัดการข้อมูล AraID
+            </h1>
+            <p className="hidden text-xs text-slate-500 sm:block">
+              สร้างและดูแลข้อมูลสำหรับเข้าใช้งาน
+            </p>
           </div>
         </div>
       </header>
@@ -104,10 +157,15 @@ export function AraIdManagePage() {
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-araid-brand">ศูนย์จัดการข้อมูล</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">ข้อมูลผู้ใช้งาน AraID</h2>
+            <p className="text-sm font-semibold text-araid-brand">
+              ศูนย์จัดการข้อมูล
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+              ข้อมูลผู้ใช้งาน AraID
+            </h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              เพิ่มข้อมูลที่จำเป็นสำหรับเข้าสู่ระบบก่อน แล้วค่อยเติมข้อมูลติดต่อหรือที่อยู่ภายหลังได้
+              เพิ่มข้อมูลที่จำเป็นสำหรับเข้าสู่ระบบก่อน
+              แล้วค่อยเติมข้อมูลติดต่อหรือที่อยู่ภายหลังได้
             </p>
           </div>
           <Button
@@ -130,7 +188,9 @@ export function AraIdManagePage() {
                 </span>
                 <div>
                   <p className="text-xs text-slate-500">ข้อมูลทั้งหมด</p>
-                  <p className="text-base font-bold tabular-nums text-slate-900">{counts.total}</p>
+                  <p className="text-base font-bold tabular-nums text-slate-900">
+                    {counts.total}
+                  </p>
                 </div>
               </div>
               <div className="h-9 w-px bg-slate-200" />
@@ -140,14 +200,19 @@ export function AraIdManagePage() {
                 </span>
                 <div>
                   <p className="text-xs text-slate-500">พร้อมใช้งาน</p>
-                  <p className="text-base font-bold tabular-nums text-slate-900">{counts.active}</p>
+                  <p className="text-base font-bold tabular-nums text-slate-900">
+                    {counts.active}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
               <div className="relative flex-1">
-                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                />
                 <Input
                   aria-label="ค้นหาข้อมูล AraID"
                   className="h-11 pl-9"
@@ -163,7 +228,9 @@ export function AraIdManagePage() {
                 aria-label="กรองสถานะข้อมูล AraID"
                 className="h-11 sm:w-40"
                 onChange={(event) => {
-                  setRecordStatus(event.target.value as "" | "ACTIVE" | "INACTIVE");
+                  setRecordStatus(
+                    event.target.value as "" | "ACTIVE" | "INACTIVE",
+                  );
                   setPage(1);
                 }}
                 value={recordStatus}
@@ -178,8 +245,12 @@ export function AraIdManagePage() {
           {recordsQuery.isError ? (
             <div className="p-6 sm:p-10">
               <div className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
-                <h3 className="text-sm font-bold text-amber-900">ต้องเข้าสู่ระบบผู้ดูแลก่อน</h3>
-                <p className="mt-1 text-sm text-amber-800">หน้านี้ใช้สิทธิ์ผู้ดูแล STS เพื่อป้องกันข้อมูลส่วนบุคคล</p>
+                <h3 className="text-sm font-bold text-amber-900">
+                  ต้องเข้าสู่ระบบผู้ดูแลก่อน
+                </h3>
+                <p className="mt-1 text-sm text-amber-800">
+                  หน้านี้ใช้สิทธิ์ผู้ดูแล STS เพื่อป้องกันข้อมูลส่วนบุคคล
+                </p>
                 <Link
                   to="/login?next=%2Faraid%2Fmanage"
                   className="mt-4 inline-flex min-h-10 items-center rounded-lg bg-amber-900 px-4 text-sm font-semibold text-white"
@@ -203,10 +274,16 @@ export function AraIdManagePage() {
                 {search ? "ไม่พบข้อมูลที่ค้นหา" : "ยังไม่มีข้อมูล AraID"}
               </h3>
               <p className="mt-1 text-sm text-slate-500">
-                {search ? "ลองเปลี่ยนชื่อ เลขประจำตัว หรือจังหวัดที่ใช้ค้นหา" : "เริ่มต้นโดยเพิ่มข้อมูลผู้ใช้งานคนแรก"}
+                {search
+                  ? "ลองเปลี่ยนชื่อ เลขประจำตัว หรือจังหวัดที่ใช้ค้นหา"
+                  : "เริ่มต้นโดยเพิ่มข้อมูลผู้ใช้งานคนแรก"}
               </p>
               {!search && (
-                <Button className="mt-5 bg-araid-brand hover:bg-araid-brand-deep" icon={Plus} onClick={openCreate}>
+                <Button
+                  className="mt-5 bg-araid-brand hover:bg-araid-brand-deep"
+                  icon={Plus}
+                  onClick={openCreate}
+                >
                   เพิ่มข้อมูล
                 </Button>
               )}
@@ -226,16 +303,33 @@ export function AraIdManagePage() {
                   </thead>
                   <tbody className="divide-y divide-araid-border">
                     {records.map((record) => (
-                      <tr key={record.id} className="transition-colors hover:bg-araid-surface-hover">
+                      <tr
+                        key={record.id}
+                        className="transition-colors hover:bg-araid-surface-hover"
+                      >
                         <td className="px-5 py-4">
-                          <p className="font-semibold text-slate-900">{fullName(record)}</p>
-                          <p className="mt-0.5 text-xs text-slate-500">{record.givenNameEn || record.familyNameEn ? `${record.givenNameEn ?? ""} ${record.familyNameEn ?? ""}`.trim() : "—"}</p>
+                          <p className="font-semibold text-slate-900">
+                            {fullName(record)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {record.givenNameEn || record.familyNameEn
+                              ? `${record.givenNameEn ?? ""} ${record.familyNameEn ?? ""}`.trim()
+                              : "—"}
+                          </p>
                         </td>
-                        <td className="px-5 py-4 font-mono text-sm text-slate-700">{record.identityNumberMasked}</td>
-                        <td className="px-5 py-4 text-sm text-slate-600">{record.provinceName || "—"}</td>
+                        <td className="px-5 py-4 font-mono text-sm text-slate-700">
+                          {record.identityNumberMasked}
+                        </td>
+                        <td className="px-5 py-4 text-sm text-slate-600">
+                          {record.provinceName || "—"}
+                        </td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${record.recordStatus === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-araid-border text-slate-600"}`}>
-                            {record.recordStatus === "ACTIVE" ? "พร้อมใช้งาน" : "ปิดใช้งาน"}
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${record.recordStatus === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-araid-border text-slate-600"}`}
+                          >
+                            {record.recordStatus === "ACTIVE"
+                              ? "พร้อมใช้งาน"
+                              : "ปิดใช้งาน"}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -246,7 +340,9 @@ export function AraIdManagePage() {
                               onClick={() => void openEdit(record)}
                               size="sm"
                               variant="outline"
-                            >แก้ไข</Button>
+                            >
+                              แก้ไข
+                            </Button>
                             <Button
                               aria-label={`${record.recordStatus === "ACTIVE" ? "ปิด" : "เปิด"}ใช้งาน ${fullName(record)}`}
                               className="h-9"
@@ -254,9 +350,15 @@ export function AraIdManagePage() {
                               icon={Power}
                               onClick={() => void toggleStatus(record)}
                               size="sm"
-                              variant={record.recordStatus === "ACTIVE" ? "destructive" : "outline"}
+                              variant={
+                                record.recordStatus === "ACTIVE"
+                                  ? "destructive"
+                                  : "outline"
+                              }
                             >
-                              {record.recordStatus === "ACTIVE" ? "ปิดใช้" : "เปิดใช้"}
+                              {record.recordStatus === "ACTIVE"
+                                ? "ปิดใช้"
+                                : "เปิดใช้"}
                             </Button>
                           </div>
                         </td>
@@ -274,14 +376,23 @@ export function AraIdManagePage() {
                         <UserRound className="size-5" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-slate-900">{fullName(record)}</h3>
-                        <p className="mt-1 font-mono text-xs text-slate-600">{record.identityNumberMasked}</p>
+                        <h3 className="truncate text-sm font-bold text-slate-900">
+                          {fullName(record)}
+                        </h3>
+                        <p className="mt-1 font-mono text-xs text-slate-600">
+                          {record.identityNumberMasked}
+                        </p>
                         <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                          <MapPin className="size-3.5" /> {record.provinceName || "ไม่ระบุจังหวัด"}
+                          <MapPin className="size-3.5" />{" "}
+                          {record.provinceName || "ไม่ระบุจังหวัด"}
                         </p>
                       </div>
-                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${record.recordStatus === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-araid-border text-slate-600"}`}>
-                        {record.recordStatus === "ACTIVE" ? "พร้อมใช้งาน" : "ปิดใช้งาน"}
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${record.recordStatus === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-araid-border text-slate-600"}`}
+                      >
+                        {record.recordStatus === "ACTIVE"
+                          ? "พร้อมใช้งาน"
+                          : "ปิดใช้งาน"}
                       </span>
                     </div>
                     <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
@@ -290,15 +401,23 @@ export function AraIdManagePage() {
                         icon={Pencil}
                         onClick={() => void openEdit(record)}
                         variant="outline"
-                      >แก้ไขข้อมูล</Button>
+                      >
+                        แก้ไขข้อมูล
+                      </Button>
                       <Button
                         aria-label={`${record.recordStatus === "ACTIVE" ? "ปิด" : "เปิด"}ใช้งาน ${fullName(record)}`}
                         disabled={updateStatus.isPending}
                         icon={Power}
                         onClick={() => void toggleStatus(record)}
-                        variant={record.recordStatus === "ACTIVE" ? "destructive" : "outline"}
+                        variant={
+                          record.recordStatus === "ACTIVE"
+                            ? "destructive"
+                            : "outline"
+                        }
                       >
-                        {record.recordStatus === "ACTIVE" ? "ปิดใช้" : "เปิดใช้"}
+                        {record.recordStatus === "ACTIVE"
+                          ? "ปิดใช้"
+                          : "เปิดใช้"}
                       </Button>
                     </div>
                   </article>
@@ -313,7 +432,7 @@ export function AraIdManagePage() {
                   }}
                   page={page}
                   rowsPerPage={rowsPerPage}
-                  rowsPerPageOptions={[10, 20, 50]}
+                  rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
                   totalCount={totalCount}
                   unitLabel="ข้อมูล"
                 />
@@ -323,7 +442,11 @@ export function AraIdManagePage() {
         </section>
       </div>
 
-      <AraIdRecordDialog onOpenChange={setDialogOpen} open={dialogOpen} record={selectedRecord} />
+      <AraIdRecordDialog
+        onOpenChange={setDialogOpen}
+        open={dialogOpen}
+        record={selectedRecord}
+      />
       {confirmDialog}
     </main>
   );

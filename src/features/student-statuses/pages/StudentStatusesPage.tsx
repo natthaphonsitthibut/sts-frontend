@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CirclePlus, Pencil, PowerOff } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -27,6 +28,13 @@ import {
 } from "../../../components/layout/page-primitives";
 import { MasterDataTabs } from "../../../components/layout/master-data-tabs";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import {
+  readBooleanSearchParam,
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentStatusDialog } from "../components/StudentStatusDialog";
 import {
@@ -68,16 +76,40 @@ function StatusFlags({
 }
 
 export function StudentStatusesPage() {
+  const [searchParams] = useSearchParams();
   const categoryCatalog = useStatusCatalog("STUDENT_STATUS_CATEGORY");
   const flagCatalog = useStatusCatalog("STUDENT_STATUS_FLAG");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(true);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [limit, setLimit] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const [includeInactive, setIncludeInactive] = useState(() =>
+    readBooleanSearchParam(searchParams, "inactive", true),
+  );
+  const defaultSort: DataTableSortState = {
     key: "sortOrder",
     direction: "asc",
-  });
+  };
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(
+      searchParams,
+      "sort",
+      ["code", "labelTh", "category", "sortOrder"],
+      defaultSort,
+    ),
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<StudentStatus | null>(null);
   const debouncedSearch = useDebouncedValue(search);
@@ -98,6 +130,13 @@ export function StudentStatusesPage() {
   });
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.meta.totalCount ?? 0;
+  useSyncedSearchParams({
+    search: search.trim() || undefined,
+    inactive: includeInactive ? undefined : false,
+    sort: serializeSortSearchParam(sort, defaultSort),
+    page: page > 1 ? page : undefined,
+    limit: limit !== DEFAULT_PAGE_SIZE ? limit : undefined,
+  });
 
   function openCreate(): void {
     setSelected(null);

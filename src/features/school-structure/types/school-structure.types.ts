@@ -70,6 +70,12 @@ export interface SchoolClassroom {
   coverImageScale: number;
   isFavorite: boolean;
   homeroomTeacherName: string | null;
+  homeroomTeachers: Array<{
+    teacherMembershipId: string;
+    teacherId: string;
+    teacherName: string;
+    isPrimary: boolean;
+  }>;
   studentCount: number;
 }
 
@@ -129,6 +135,7 @@ export interface ClassroomTeacherAssignment {
   subjectName: string | null;
   assignmentKind: "HOMEROOM" | "SUBJECT";
   assignmentStatus: StructureStatus;
+  isPrimary: boolean;
   effectiveOn: string | null;
   effectiveUntil: string | null;
 }

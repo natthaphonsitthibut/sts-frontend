@@ -1,5 +1,5 @@
-import { Eye, SquarePen, Trash2 } from "lucide-react";
-import { Avatar, Button, IconButton } from "../../../components/base";
+import { SquarePen, Trash2 } from "lucide-react";
+import { Avatar, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -17,8 +17,6 @@ interface TeacherTableProps {
   startIndex: number;
   management?: boolean;
   onView: (teacher: TeacherDirectoryItem) => void;
-  onRevealNationalId: (teacher: TeacherDirectoryItem) => void;
-  revealedNationalIds?: Record<string, string>;
   onEdit?: (teacher: TeacherDirectoryItem) => void;
   onDeactivate?: (teacher: TeacherDirectoryItem) => void;
   deactivatingTeacherId?: string | null;
@@ -93,8 +91,6 @@ export function TeacherTable({
   startIndex,
   management = false,
   onView,
-  onRevealNationalId,
-  revealedNationalIds = {},
   onEdit,
   onDeactivate,
   deactivatingTeacherId,
@@ -108,22 +104,27 @@ export function TeacherTable({
           "ลำดับ",
           "รูปประจำตัว",
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
-          { label: "เลขบัตรประชาชน", sortKey: "citizenId" },
           { label: "เบอร์โทรศัพท์", sortKey: "phone" },
           { label: "ไอดีไลน์", sortKey: "lineId" },
           { label: "อีเมล", sortKey: "email" },
           ...(management ? ["เครื่องมือ"] : []),
         ]}
-        columnWidths={[
-          "w-[7%]",
-          "w-[9%]",
-          "w-[19%]",
-          "w-[15%]",
-          "w-[13%]",
-          "w-[13%]",
-          "w-[16%]",
-          "w-[8%]",
-        ]}
+        // Widths total 100% per variant: a shorter total leaves the fixed-layout
+        // table narrower than its shell, which cuts the header bar and row rules
+        // short of the right edge.
+        columnWidths={
+          management
+            ? [
+                "w-[6%]",
+                "w-[9%]",
+                "w-[20%]",
+                "w-[12%]",
+                "w-[15%]",
+                "w-[28%]",
+                "w-[10%]",
+              ]
+            : ["w-[6%]", "w-[10%]", "w-[22%]", "w-[13%]", "w-[17%]", "w-[32%]"]
+        }
         minWidthClassName="min-w-[1080px]"
         onSortChange={onSortChange}
         sort={sort}
@@ -139,27 +140,10 @@ export function TeacherTable({
             <DataTableCell className="text-slate-800">
               {teacher.fullName}
             </DataTableCell>
-            <DataTableCell>
-              <div className="flex items-center gap-2">
-                <span>
-                  {revealedNationalIds[teacher.id] ?? teacher.citizenId ?? "-"}
-                </span>
-                {teacher.citizenId ? (
-                  <Button
-                    aria-label={`แสดงเลขบัตรประชาชนของ ${teacher.fullName}`}
-                    icon={Eye}
-                    onClick={() => onRevealNationalId(teacher)}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    แสดง
-                  </Button>
-                ) : null}
-              </div>
-            </DataTableCell>
             <DataTableCell>{teacher.phone || "-"}</DataTableCell>
-            <DataTableCell>{teacher.lineId || "-"}</DataTableCell>
+            <DataTableCell className="truncate">
+              {teacher.lineId || "-"}
+            </DataTableCell>
             <DataTableCell className="truncate">
               {teacher.email || "-"}
             </DataTableCell>
@@ -187,9 +171,6 @@ export function TeacherTable({
                   <div className="truncate text-slate-800">
                     {teacher.fullName}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
-                    {teacher.citizenId || "ไม่มีเลขบัตรประชาชน"}
-                  </div>
                 </div>
               </div>
               {management ? (
@@ -202,28 +183,6 @@ export function TeacherTable({
               ) : null}
             </div>
             <dl className="mt-3 grid grid-cols-1 gap-1 rounded-md bg-slate-50 p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">เลขบัตรประชาชน</dt>
-                <dd className="flex items-center gap-2 text-slate-700">
-                  <span>
-                    {revealedNationalIds[teacher.id] ??
-                      teacher.citizenId ??
-                      "-"}
-                  </span>
-                  {teacher.citizenId ? (
-                    <Button
-                      aria-label={`แสดงเลขบัตรประชาชนของ ${teacher.fullName}`}
-                      icon={Eye}
-                      onClick={() => onRevealNationalId(teacher)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      แสดง
-                    </Button>
-                  ) : null}
-                </dd>
-              </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">เบอร์โทรศัพท์</dt>
                 <dd className="text-slate-700">{teacher.phone || "-"}</dd>

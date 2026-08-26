@@ -1,5 +1,6 @@
 import { MessageSquareText } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/base";
 import {
   DataTable,
@@ -17,6 +18,11 @@ import {
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatRoomLabel } from "../../../lib/room-presentation";
@@ -33,9 +39,30 @@ import { usePermissions } from "../../auth/hooks/usePermissions";
  */
 export function TeacherCommentReportsPage() {
   const { can } = usePermissions();
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [search, setSearch] = useRememberedState(
+    "teacher-comment-reports:search",
+    "",
+  );
+  useSyncedSearchParams({
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
   const debouncedSearch = useDebouncedValue(search, 300);
   const comments = useTeacherComments({
     page,

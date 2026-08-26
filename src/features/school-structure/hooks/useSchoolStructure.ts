@@ -199,10 +199,10 @@ export function useClassroomAssignments(classroomId?: number) {
   });
 }
 
-export function useCreateHomeroomAssignment() {
+export function useSetHomeroomTeachers() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: schoolStructureService.createHomeroomAssignment,
+    mutationFn: schoolStructureService.setHomeroomTeachers,
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [KEY, "assignments"] }),

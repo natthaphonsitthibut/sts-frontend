@@ -22,7 +22,6 @@ import {
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
-  AttendanceOperationsPage,
   CompletedPage,
   CurriculumGradesPage,
   CurriculumSubjectFormPage,
@@ -183,6 +182,17 @@ export const router = createBrowserRouter([
           "manage-students",
         ),
       },
+      // The history and export tabs moved to the management page. Without these
+      // the retired paths fall into `students/:id` and ask the API for a student
+      // called "history".
+      {
+        path: "students/history",
+        element: <LegacyRouteRedirect to="/manage-students/history" />,
+      },
+      {
+        path: "students/export",
+        element: <LegacyRouteRedirect to="/manage-students/export" />,
+      },
       {
         path: "students/:id",
         element: protectedElement(<StudentDetailPage />, [
@@ -260,13 +270,6 @@ export const router = createBrowserRouter([
         element: protectedElement(
           <ClassroomLinksPage />,
           "manage-classroom-links",
-        ),
-      },
-      {
-        path: "attendance-operations",
-        element: protectedElement(
-          <AttendanceOperationsPage />,
-          "attendance-dashboard",
         ),
       },
       {
@@ -425,8 +428,13 @@ export const router = createBrowserRouter([
         element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
       {
+        // System settings are one shared set of values for every school, so the
+        // page follows the same boundary as its API: ADMIN with national scope.
         path: "settings",
-        element: protectedElement(<SystemSettingsPage />, "settings"),
+        element: protectedElement(<SystemSettingsPage />, "settings", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
       },
       {
         path: "settings/student-statuses",

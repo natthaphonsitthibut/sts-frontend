@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Eye, RefreshCw, Search, SquarePen, UserCheck, X } from "lucide-react";
+import {
+  CheckCircle2,
+  Eye,
+  RefreshCw,
+  Search,
+  SquarePen,
+  UserCheck,
+  X,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -20,6 +28,12 @@ import {
 import { EmptyState } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
+import { useSearchParams } from "react-router-dom";
+import {
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -244,9 +258,7 @@ function ImportQuarantineTable({
                 {item.schoolName ?? `โรงเรียน ${item.schoolId ?? "-"}`}
               </div>
             </DataTableCell>
-            <DataTableCell>
-              {item.reasonLabel}
-            </DataTableCell>
+            <DataTableCell>{item.reasonLabel}</DataTableCell>
             <DataTableCell>
               ปี {item.student.academicYear}
               <br />
@@ -254,11 +266,17 @@ function ImportQuarantineTable({
             </DataTableCell>
             <DataTableCell>
               {item.status === "PENDING" ? (
-                <Badge className="whitespace-nowrap" variant={item.resolution.variant}>
+                <Badge
+                  className="whitespace-nowrap"
+                  variant={item.resolution.variant}
+                >
                   {item.resolution.label}
                 </Badge>
               ) : (
-                <Badge className="whitespace-nowrap" variant={item.statusBadgeVariant}>
+                <Badge
+                  className="whitespace-nowrap"
+                  variant={item.statusBadgeVariant}
+                >
                   {item.statusLabel}
                 </Badge>
               )}
@@ -338,7 +356,9 @@ interface CandidateResolverProps {
 }
 
 function contextValue(value: string | number | null | undefined): string {
-  return value === null || value === undefined || value === "" ? "-" : String(value);
+  return value === null || value === undefined || value === ""
+    ? "-"
+    : String(value);
 }
 
 function gradeValue(context: ImportQuarantinePersonContext): string {
@@ -389,7 +409,9 @@ function PersonContextFields({
     {
       label: "ชื่อ-นามสกุล",
       value: `${candidate.firstName} ${candidate.lastName}`,
-      sourceValue: source ? `${source.firstName} ${source.lastName}` : undefined,
+      sourceValue: source
+        ? `${source.firstName} ${source.lastName}`
+        : undefined,
     },
     {
       label: "โรงเรียน",
@@ -480,8 +502,9 @@ function CandidateResolver({
         {response && response.meta.totalCount > response.meta.visibleCount ? (
           <Alert variant="warning">
             <AlertDescription>
-              พบ {response.meta.totalCount} โปรไฟล์ แสดงได้ {response.meta.visibleCount}{" "}
-              ตามขอบเขตข้อมูลของคุณ โปรไฟล์ที่อยู่นอกขอบเขตจะไม่สามารถเลือกได้
+              พบ {response.meta.totalCount} โปรไฟล์ แสดงได้{" "}
+              {response.meta.visibleCount} ตามขอบเขตข้อมูลของคุณ
+              โปรไฟล์ที่อยู่นอกขอบเขตจะไม่สามารถเลือกได้
             </AlertDescription>
           </Alert>
         ) : null}
@@ -494,13 +517,19 @@ function CandidateResolver({
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <div className="rounded-lg border border-primary/20 bg-slate-50 p-4">
               <div className="mb-3">
-                <div className="font-bold text-slate-900">ข้อมูลจากแถว import</div>
-                <div className="text-xs text-slate-500">{importRow.personIdMasked}</div>
+                <div className="font-bold text-slate-900">
+                  ข้อมูลจากแถว import
+                </div>
+                <div className="text-xs text-slate-500">
+                  {importRow.personIdMasked}
+                </div>
               </div>
               <PersonContextFields candidate={importRow} />
             </div>
             <fieldset className="space-y-3" disabled={isResolving}>
-              <legend className="mb-2 font-bold text-slate-900">โปรไฟล์ที่เลือกได้</legend>
+              <legend className="mb-2 font-bold text-slate-900">
+                โปรไฟล์ที่เลือกได้
+              </legend>
               {response.items.map((candidate) => {
                 const checked = selectedCandidateKey === candidate.candidateKey;
                 return (
@@ -517,7 +546,9 @@ function CandidateResolver({
                       checked={checked}
                       className="mt-1 size-4 shrink-0 accent-primary"
                       name="quarantine-candidate"
-                      onChange={() => onSelectedCandidateChange(candidate.candidateKey)}
+                      onChange={() =>
+                        onSelectedCandidateChange(candidate.candidateKey)
+                      }
                       type="radio"
                       value={candidate.candidateKey}
                     />
@@ -525,7 +556,10 @@ function CandidateResolver({
                       <div className="mb-3 text-xs text-slate-500">
                         {candidate.personIdMasked}
                       </div>
-                      <PersonContextFields candidate={candidate} source={importRow} />
+                      <PersonContextFields
+                        candidate={candidate}
+                        source={importRow}
+                      />
                     </div>
                   </label>
                 );
@@ -580,13 +614,28 @@ export function ImportQuarantinePanel({
   showRetryBanner,
 }: ImportQuarantinePanelProps) {
   const contextualNavigate = useContextualNavigate();
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [searchParams] = useSearchParams();
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "quarantineSort", [
+      "student",
+      "school",
+      "reason",
+      "term",
+      "status",
+    ]),
+  );
+  useSyncedSearchParams({
+    quarantineSort: serializeSortSearchParam(sort),
+  });
   const [selectedId, setSelectedId] = useState<string>();
   const [selectedCandidateKey, setSelectedCandidateKey] = useState("");
   const [rejectId, setRejectId] = useState<string>();
   const [fixId, setFixId] = useState<string>();
   const candidates = useImportQuarantineCandidates(selectedId);
-  const retrySummary = useRetryableImportQuarantineSummary(filters, showRetryBanner);
+  const retrySummary = useRetryableImportQuarantineSummary(
+    filters,
+    showRetryBanner,
+  );
   const retryReadyMutation = useRetryReadyImportQuarantine();
   const resolveMutation = useResolveImportQuarantine();
   const fixMutation = useFixImportQuarantineValues();
@@ -673,8 +722,10 @@ export function ImportQuarantinePanel({
         <Alert variant="warning">
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              {retryEligibleLabel} {retrySummary.data?.readyCount.toLocaleString("en-US")} จาก{" "}
-              {query.data?.meta.totalCount.toLocaleString("en-US") ?? "-"} รายการ
+              {retryEligibleLabel}{" "}
+              {retrySummary.data?.readyCount.toLocaleString("en-US")} จาก{" "}
+              {query.data?.meta.totalCount.toLocaleString("en-US") ?? "-"}{" "}
+              รายการ
             </span>
             <Button
               className="shrink-0"
@@ -693,19 +744,27 @@ export function ImportQuarantinePanel({
       {showRetryBanner && retrySummary.isError ? (
         <Alert variant="destructive">
           <AlertDescription>
-            {getApiErrorMessage(retrySummary.error, "ตรวจสอบรายการที่พร้อมนำเข้าไม่สำเร็จ")}
+            {getApiErrorMessage(
+              retrySummary.error,
+              "ตรวจสอบรายการที่พร้อมนำเข้าไม่สำเร็จ",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       {retryReadyMutation.isError ? (
         <Alert variant="destructive">
           <AlertDescription>
-            {getApiErrorMessage(retryReadyMutation.error, "ตรวจซ้ำรายการแบบชุดไม่สำเร็จ")}
+            {getApiErrorMessage(
+              retryReadyMutation.error,
+              "ตรวจซ้ำรายการแบบชุดไม่สำเร็จ",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       {retryReadyMutation.isSuccess &&
-      retryReadyMutation.data.items.some((result) => result.outcome !== "IMPORTED") ? (
+      retryReadyMutation.data.items.some(
+        (result) => result.outcome !== "IMPORTED",
+      ) ? (
         <Alert variant="warning">
           <AlertDescription>
             <div className="font-semibold">
@@ -764,7 +823,9 @@ export function ImportQuarantinePanel({
             setSelectedCandidateKey("");
           }}
           onSortChange={setSort}
-          onViewDetail={(id) => contextualNavigate(`/import-data/quarantine/${id}`)}
+          onViewDetail={(id) =>
+            contextualNavigate(`/import-data/quarantine/${id}`)
+          }
           sort={sort}
         />
       ) : null}
@@ -790,7 +851,10 @@ export function ImportQuarantinePanel({
       <ImportQuarantineFixDialog
         error={
           fixMutation.isError
-            ? getApiErrorMessage(fixMutation.error, "แก้ไขและนำเข้ารายการไม่สำเร็จ")
+            ? getApiErrorMessage(
+                fixMutation.error,
+                "แก้ไขและนำเข้ารายการไม่สำเร็จ",
+              )
             : undefined
         }
         isPending={fixMutation.isPending}

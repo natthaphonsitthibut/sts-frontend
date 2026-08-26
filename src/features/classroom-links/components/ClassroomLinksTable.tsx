@@ -1,5 +1,13 @@
-import { Copy, Link2, MessageCircle, Power, RefreshCw } from "lucide-react";
-import { Avatar, Badge, Button, Checkbox } from "../../../components/base";
+import {
+  Copy,
+  Link2,
+  LoaderCircle,
+  MessageCircle,
+  Power,
+  RefreshCw,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Avatar, Badge, Checkbox, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -62,37 +70,98 @@ function HomeroomTeacher({
   onOpenTeacher?: (teacherId: string) => void;
   row: ClassroomLinkListItem;
 }) {
-  if (!row.homeroomTeacherName) {
+  const teachers =
+    row.homeroomTeachers ??
+    (row.homeroomTeacherId && row.homeroomTeacherName
+      ? [
+          {
+            teacherId: row.homeroomTeacherId,
+            teacherName: row.homeroomTeacherName,
+            photoUrl: row.homeroomTeacherPhotoUrl,
+            isPrimary: true,
+          },
+        ]
+      : []);
+  if (teachers.length === 0) {
     return <span className="text-slate-500">ยังไม่ได้กำหนดครูประจำชั้น</span>;
   }
-  const avatar = (
-    <Avatar
-      gradientName={row.homeroomTeacherName}
-      imageAlt={`รูปประจำตัวของ ${row.homeroomTeacherName}`}
-      imageUrl={resolveApiMediaUrl(row.homeroomTeacherPhotoUrl)}
-    />
-  );
-  const canOpenTeacher = Boolean(row.homeroomTeacherId && onOpenTeacher);
   return (
-    <div className="flex min-w-0 items-center gap-3" data-homeroom-teacher>
-      {canOpenTeacher ? (
-        <button
-          aria-label={`เปิดข้อมูลคุณครู ${row.homeroomTeacherName}`}
-          className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          onClick={() => onOpenTeacher?.(row.homeroomTeacherId!)}
-          type="button"
-        >
-          {avatar}
-        </button>
-      ) : (
-        <span className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-slate-300">
-          {avatar}
-        </span>
-      )}
-      <span className="min-w-0 font-medium text-slate-800">
-        {row.homeroomTeacherName}
-      </span>
+    <div
+      className="flex min-w-0 flex-wrap items-center gap-y-2"
+      data-homeroom-teacher
+    >
+      {teachers.map((teacher, index) => {
+        const avatar = (
+          <Avatar
+            gradientName={teacher.teacherName}
+            imageAlt={`รูปประจำตัวของ ${teacher.teacherName}`}
+            imageUrl={resolveApiMediaUrl(teacher.photoUrl)}
+          />
+        );
+        return (
+          <div
+            className="inline-flex min-w-0 items-center"
+            key={teacher.teacherId}
+          >
+            {index > 0 ? <span className="mx-2 text-slate-400">,</span> : null}
+            <span className="inline-flex min-w-0 items-center gap-2">
+              {onOpenTeacher ? (
+                <button
+                  aria-label={`เปิดข้อมูลคุณครู ${teacher.teacherName}`}
+                  className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() => onOpenTeacher(teacher.teacherId)}
+                  type="button"
+                >
+                  {avatar}
+                </button>
+              ) : (
+                <span className="shrink-0 rounded-full">{avatar}</span>
+              )}
+              <span className="font-medium text-slate-800">
+                {teacher.teacherName}
+              </span>
+            </span>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/**
+ * Row actions are icon-only: four labelled buttons overflow the action column on
+ * a laptop, and the label is still available to hover, focus and screen readers.
+ * The refresh action keeps its own glyph while it spins; the rest swap to the
+ * shared loader, matching `Button`'s loading motion.
+ */
+function ActionIconButton({
+  busy = false,
+  disabled = false,
+  icon,
+  label,
+  onClick,
+  spinOwnIcon = false,
+  variant,
+}: {
+  busy?: boolean;
+  disabled?: boolean;
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  spinOwnIcon?: boolean;
+  variant: "share" | "contact" | "credential" | "lock" | "view";
+}) {
+  return (
+    <IconButton
+      aria-busy={busy}
+      aria-label={label}
+      disabled={disabled || busy}
+      icon={busy && !spinOwnIcon ? LoaderCircle : icon}
+      iconClassName={busy ? "animate-spin" : undefined}
+      onClick={onClick}
+      title={label}
+      variant={variant}
+    />
   );
 }
 
@@ -115,55 +184,49 @@ function RowActions({
     String(pending.id) === String(row.id ?? row.classroomId);
   if (row.status !== "ACTIVE" || !row.id) {
     return (
-      <Button
-        icon={Link2}
-        isLoading={isPending("create")}
-        onClick={() => onCreate(row)}
-        size="sm"
-      >
-        สร้างลิงก์
-      </Button>
+      <div className="flex justify-end">
+        <ActionIconButton
+          busy={isPending("create")}
+          icon={Link2}
+          label="สร้างลิงก์"
+          onClick={() => onCreate(row)}
+          variant="view"
+        />
+      </div>
     );
   }
   return (
-    <div className="flex flex-wrap justify-end gap-2">
-      <Button
+    <div className="flex justify-end gap-1.5">
+      <ActionIconButton
+        busy={isPending("copy")}
         icon={Copy}
-        isLoading={isPending("copy")}
+        label="คัดลอกลิงก์"
         onClick={() => onCopy(row)}
-        size="sm"
-        variant="outline"
-      >
-        คัดลอก
-      </Button>
-      <Button
+        variant="share"
+      />
+      <ActionIconButton
+        busy={isPending("line")}
         disabled={!row.lineDelivery?.canRetry}
         icon={MessageCircle}
-        isLoading={isPending("line")}
+        label="ส่งลิงก์ผ่าน LINE"
         onClick={() => onResendLine(row)}
-        size="sm"
-        variant="outline"
-      >
-        ส่ง LINE
-      </Button>
-      <Button
+        variant="contact"
+      />
+      <ActionIconButton
+        busy={isPending("rotate")}
         icon={RefreshCw}
-        isLoading={isPending("rotate")}
+        label="สร้างลิงก์ใหม่"
         onClick={() => onRotate(row)}
-        size="sm"
-        variant="outline"
-      >
-        สร้างลิงก์ใหม่
-      </Button>
-      <Button
+        spinOwnIcon
+        variant="credential"
+      />
+      <ActionIconButton
+        busy={isPending("deactivate")}
         icon={Power}
-        isLoading={isPending("deactivate")}
+        label="ปิดลิงก์"
         onClick={() => onDeactivate(row)}
-        size="sm"
-        variant="destructive"
-      >
-        ปิด
-      </Button>
+        variant="lock"
+      />
     </div>
   );
 }
@@ -212,7 +275,16 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           "สถานะ LINE",
           "เครื่องมือ",
         ]}
-        minWidthClassName="min-w-[1080px]"
+        columnWidths={[
+          "w-[4%]",
+          "w-[6%]",
+          "w-[8%]",
+          "w-[30%]",
+          "w-[12%]",
+          "w-[13%]",
+          "w-[27%]",
+        ]}
+        minWidthClassName="min-w-[1200px]"
         responsiveBreakpoint="lg"
       >
         {rows.map((row) => (
@@ -254,7 +326,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                 ) : null}
               </div>
             </DataTableCell>
-            <DataTableCell className="min-w-[360px] text-right">
+            <DataTableCell className="min-w-[300px] text-right">
               <RowActions row={row} {...props} />
             </DataTableCell>
           </DataTableRow>

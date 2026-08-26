@@ -29,9 +29,8 @@ export interface RiskDashboardRow {
   absenceResetAfterDate: string | null;
   lateCount: number;
   subjectLateCount: number;
-  schoolDayCount: number;
-  weightedAbsenceDays: number;
-  weightedAttendancePercent: number | null;
+  recordedDayCount: number;
+  attendanceRatePercent: number | null;
   riskTier: RiskDashboardTier;
   riskScore: number;
   openCaseCount: number;

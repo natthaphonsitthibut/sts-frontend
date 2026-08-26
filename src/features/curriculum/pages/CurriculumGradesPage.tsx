@@ -15,6 +15,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useCurriculumGrades } from "../hooks/useCurriculum";
+import { useSyncedSearchParams } from "../../../hooks/useSyncedSearchParams";
 
 const PAGE_ICON = PAGE_IDENTITIES["/curriculum"].icon;
 
@@ -36,8 +37,12 @@ export function CurriculumGradesPage() {
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchInput, setSearchInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [searchTerm, setSearchTerm] = useState(
+    () => searchParams.get("search") ?? "",
+  );
   const selectedSchoolValue =
     schools.length === 1
       ? String(schools[0]?.id ?? "")
@@ -45,12 +50,13 @@ export function CurriculumGradesPage() {
   const schoolId = Number(selectedSchoolValue) || null;
 
   useEffect(() => {
-    const timer = window.setTimeout(
-      () => setSearchTerm(searchInput.trim()),
-      300,
-    );
+    const timer = window.setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
+
+  useSyncedSearchParams({ search: searchInput.trim() || undefined });
 
   const gradesQuery = useCurriculumGrades(
     schoolId ? { schoolId, searchTerm: searchTerm || undefined } : null,
@@ -74,9 +80,14 @@ export function CurriculumGradesPage() {
             ariaLabel="กรองตามโรงเรียน"
             emptyText="ไม่พบโรงเรียน"
             onChange={(value) => {
-              setSearchParams(value ? { schoolId: value } : {}, {
-                replace: true,
-              });
+              setSearchParams(
+                (params) => {
+                  if (value) params.set("schoolId", value);
+                  else params.delete("schoolId");
+                  return params;
+                },
+                { replace: true },
+              );
             }}
             options={schools.map((school) => ({
               value: String(school.id),

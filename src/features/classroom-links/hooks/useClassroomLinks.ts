@@ -22,6 +22,10 @@ export function useBulkCreateClassroomLinks() {
   return useMutation({
     mutationFn: classroomLinksService.bulkCreate,
     onSuccess: refresh,
+    // Every action on the page reports its own outcome (rooms ready, LINE
+    // delivery, link closed), so the generic "บันทึกแล้ว" toast would stack a
+    // second toast on top of it.
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -37,6 +41,7 @@ export function useRotateClassroomLink() {
   return useMutation({
     mutationFn: classroomLinksService.rotate,
     onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -45,6 +50,7 @@ export function useDeactivateClassroomLink() {
   return useMutation({
     mutationFn: classroomLinksService.deactivate,
     onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
   });
 }
 
@@ -53,6 +59,7 @@ export function useResendClassroomLinkLine() {
   return useMutation({
     mutationFn: classroomLinksService.resendLine,
     onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
   });
 }
 
