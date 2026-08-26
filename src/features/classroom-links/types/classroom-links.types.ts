@@ -52,6 +52,12 @@ export interface ClassroomLinkListItem {
   homeroomTeacherName: string | null;
   /** Guarded app route; production redirects to a short-lived signed URL. */
   homeroomTeacherPhotoUrl: string | null;
+  homeroomTeachers?: Array<{
+    teacherId: string;
+    teacherName: string;
+    photoUrl: string | null;
+    isPrimary: boolean;
+  }>;
   lineDelivery: ClassroomLinkDelivery | null;
   status: ClassroomLinkStatus;
   issuedAt: string | null;

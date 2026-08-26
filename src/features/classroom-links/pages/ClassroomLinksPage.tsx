@@ -8,6 +8,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   appToast,
   Button,
@@ -40,6 +41,11 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { formatClassLabel } from "../../../lib/room-presentation";
@@ -84,17 +90,46 @@ function initialLineGroupSchedule(): { startsAt: string; expiresAt: string } {
 
 export function ClassroomLinksPage() {
   const contextualNavigate = useContextualNavigate();
+  const [searchParams] = useSearchParams();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState("");
-  const [termInput, setTermInput] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") ?? "",
+  );
+  const [termInput, setTermInput] = useState(
+    () => searchParams.get("termId") ?? "",
+  );
+  const [searchInput, setSearchInput] = useRememberedState(
+    "classroom-links:search",
+    "",
+  );
   const search = useDebouncedValue(searchInput.trim());
-  const [gradeInput, setGradeInput] = useState("");
-  const [linkStatusInput, setLinkStatusInput] = useState("");
-  const [homeroomInput, setHomeroomInput] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [gradeInput, setGradeInput] = useState(
+    () => searchParams.get("gradeId") ?? "",
+  );
+  const [linkStatusInput, setLinkStatusInput] = useState(() => {
+    const value = searchParams.get("linkStatus") ?? "";
+    return ["ACTIVE", "INACTIVE", "NOT_CREATED"].includes(value) ? value : "";
+  });
+  const [homeroomInput, setHomeroomInput] = useState(() => {
+    const value = searchParams.get("homeroom") ?? "";
+    return ["ASSIGNED", "UNASSIGNED"].includes(value) ? value : "";
+  });
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
   const [sharedLineInvitation, setSharedLineInvitation] =
@@ -161,6 +196,15 @@ export function ClassroomLinksPage() {
   const updateLineInvitation = useUpdateClassroomLineGroupInvitation();
   const revokeLineInvitation = useRevokeClassroomLineGroupInvitation();
   const rows = linksQuery.data?.data ?? [];
+  useSyncedSearchParams({
+    schoolId: schools.length > 1 ? schoolInput || undefined : undefined,
+    termId: termInput || undefined,
+    gradeId: gradeInput || undefined,
+    linkStatus: linkStatusInput || undefined,
+    homeroom: homeroomInput || undefined,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   function resetListState(): void {
     setPage(1);
