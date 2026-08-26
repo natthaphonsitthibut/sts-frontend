@@ -428,8 +428,13 @@ export const router = createBrowserRouter([
         element: protectedElement(<AuditLogDetailPage />, "audit-log"),
       },
       {
+        // System settings are one shared set of values for every school, so the
+        // page follows the same boundary as its API: ADMIN with national scope.
         path: "settings",
-        element: protectedElement(<SystemSettingsPage />, "settings"),
+        element: protectedElement(<SystemSettingsPage />, "settings", {
+          requireGlobalScope: true,
+          role: "ADMIN",
+        }),
       },
       {
         path: "settings/student-statuses",
