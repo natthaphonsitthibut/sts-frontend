@@ -104,46 +104,50 @@ export function ConversationalReportFlow({
         </p>
       </div>
 
-      <div className="grid min-h-[22rem] px-4 py-6 sm:px-6 sm:py-8">
-        {steps.map((item, index) => {
-          const active = index === currentIndex;
-          return (
-            <div
-              aria-hidden={!active}
-              className={cn(
-                "col-start-1 row-start-1 mx-auto w-full max-w-3xl transition-opacity duration-200 motion-reduce:transition-none",
-                active
-                  ? "visible opacity-100"
-                  : "invisible pointer-events-none opacity-0",
-              )}
-              data-conversational-step={active ? item.id : undefined}
-              key={item.id}
-            >
-              <div className="mb-6">
-                <div className="flex items-center gap-2">
-                  <h2
-                    className="text-balance text-xl font-bold leading-8 text-slate-900 outline-none sm:text-2xl"
-                    ref={active ? headingRef : undefined}
-                    tabIndex={active ? -1 : undefined}
-                  >
-                    {item.title}
-                  </h2>
-                  {item.optional ? (
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                      ไม่บังคับ
-                    </span>
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
+        <div className="relative min-h-[13rem] sm:min-h-[22rem]">
+          {steps.map((item, index) => {
+            const active = index === currentIndex;
+            return (
+              <div
+                aria-hidden={!active}
+                className={cn(
+                  // Inactive steps stay mounted but leave the layout flow, so
+                  // the card is only as tall as the step being answered.
+                  "mx-auto w-full max-w-3xl transition-opacity duration-200 motion-reduce:transition-none",
+                  active
+                    ? "relative visible opacity-100"
+                    : "invisible pointer-events-none absolute inset-0 opacity-0",
+                )}
+                data-conversational-step={active ? item.id : undefined}
+                key={item.id}
+              >
+                <div className="mb-5 sm:mb-6">
+                  <div className="flex items-center gap-2">
+                    <h2
+                      className="text-balance text-xl font-bold leading-8 text-slate-900 outline-none sm:text-2xl"
+                      ref={active ? headingRef : undefined}
+                      tabIndex={active ? -1 : undefined}
+                    >
+                      {item.title}
+                    </h2>
+                    {item.optional ? (
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                        ไม่บังคับ
+                      </span>
+                    ) : null}
+                  </div>
+                  {item.description ? (
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                      {item.description}
+                    </p>
                   ) : null}
                 </div>
-                {item.description ? (
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                    {item.description}
-                  </p>
-                ) : null}
+                {item.content}
               </div>
-              {item.content}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 sm:px-6">
