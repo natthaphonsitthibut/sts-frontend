@@ -242,11 +242,32 @@ export function SchoolStructurePage() {
       setTermDialogTerm(null);
     },
   });
+  const deleteTerm = useMutation({
+    mutationFn: (termId: string) => attendanceService.deleteTerm(termId),
+    onSuccess: async () => {
+      setTermInput("");
+      await queryClient.invalidateQueries({
+        queryKey: ["school-structure", "terms", selectedSchoolId],
+      });
+    },
+  });
 
   function openTermDialog(term: SchoolTerm | null): void {
     saveTerm.reset();
     setTermDialogTerm(term);
     setTermDialogOpen(true);
+  }
+
+  async function handleDeleteTerm(): Promise<void> {
+    if (!selectedTerm || selectedTerm.status !== "DRAFT") return;
+    deleteTerm.reset();
+    const accepted = await confirm({
+      title: "ลบภาคเรียนนี้?",
+      description: `${formatSchoolTermLabel(selectedTerm, termStatusCatalog.items)} ลบได้เฉพาะภาคเรียนร่างที่ยังไม่มีข้อมูลใช้งาน`,
+      confirmText: "ลบภาคเรียน",
+      variant: "destructive",
+    });
+    if (accepted) deleteTerm.mutate(selectedTerm.id);
   }
 
   function handleSchoolChange(value: string): void {
@@ -384,6 +405,25 @@ export function SchoolStructurePage() {
               แก้ภาคเรียน
             </Button>
             <Button
+              disabled={
+                !selectedTerm ||
+                selectedTerm.status !== "DRAFT" ||
+                deleteTerm.isPending
+              }
+              icon={Trash2}
+              onClick={() => void handleDeleteTerm()}
+              title={
+                selectedTerm && selectedTerm.status !== "DRAFT"
+                  ? "ภาคเรียนที่เปิดหรือปิดแล้วให้เก็บประวัติไว้"
+                  : !selectedTerm
+                    ? "เลือกภาคเรียนก่อนจึงจะลบได้"
+                    : undefined
+              }
+              variant="destructive"
+            >
+              ลบภาคเรียน
+            </Button>
+            <Button
               disabled={!selectedTermId}
               icon={Plus}
               onClick={() => openClassroomDialog(null)}
@@ -461,6 +501,10 @@ export function SchoolStructurePage() {
       <FormErrorAlert
         error={deleteClassroom.error}
         fallback="ไม่สามารถลบห้องได้"
+      />
+      <FormErrorAlert
+        error={deleteTerm.error}
+        fallback="ไม่สามารถลบภาคเรียนได้"
       />
 
       {schoolsQuery.isError ? (
