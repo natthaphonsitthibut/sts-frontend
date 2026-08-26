@@ -182,6 +182,17 @@ export const router = createBrowserRouter([
           "manage-students",
         ),
       },
+      // The history and export tabs moved to the management page. Without these
+      // the retired paths fall into `students/:id` and ask the API for a student
+      // called "history".
+      {
+        path: "students/history",
+        element: <LegacyRouteRedirect to="/manage-students/history" />,
+      },
+      {
+        path: "students/export",
+        element: <LegacyRouteRedirect to="/manage-students/export" />,
+      },
       {
         path: "students/:id",
         element: protectedElement(<StudentDetailPage />, [
