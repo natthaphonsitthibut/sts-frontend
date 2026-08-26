@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Badge,
   DatePicker,
@@ -16,11 +17,22 @@ import {
   TableCardList,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
-import { EmptyState, ErrorState } from "../../../components/layout/page-primitives";
+import {
+  EmptyState,
+  ErrorState,
+} from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readIsoDateSearchParam,
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
@@ -55,7 +67,6 @@ interface AuditLogPanelProps {
   className?: string;
   detailTo?: (entry: AuditLogEntry) => string;
 }
-
 
 function getAuditLogSortValue(entry: AuditLogEntry, key: string): string {
   if (key === "time") return entry.createdAt;
@@ -161,7 +172,17 @@ function AuditLogTable({
   showActionColumn: boolean;
   showReferenceColumn: boolean;
 }) {
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [searchParams] = useSearchParams();
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "auditSort", [
+      "time",
+      "action",
+      "actor",
+      "reference",
+      "details",
+    ]),
+  );
+  useSyncedSearchParams({ auditSort: serializeSortSearchParam(sort) });
   const hasExtraColumns = showActionColumn || showReferenceColumn;
   const sortedEntries = useMemo(() => {
     if (!sort) return entries;
@@ -189,10 +210,20 @@ function AuditLogTable({
         ]}
         columnWidths={[
           "w-[14%]",
-          ...(showActionColumn ? [showReferenceColumn ? "w-[22%]" : "w-[24%]"] : []),
-          hasExtraColumns ? (showReferenceColumn ? "w-[14%]" : "w-[16%]") : "w-[26%]",
+          ...(showActionColumn
+            ? [showReferenceColumn ? "w-[22%]" : "w-[24%]"]
+            : []),
+          hasExtraColumns
+            ? showReferenceColumn
+              ? "w-[14%]"
+              : "w-[16%]"
+            : "w-[26%]",
           ...(showReferenceColumn ? ["w-[18%]"] : []),
-          showReferenceColumn ? "w-[17%]" : showActionColumn ? "w-[31%]" : "w-[45%]",
+          showReferenceColumn
+            ? "w-[17%]"
+            : showActionColumn
+              ? "w-[31%]"
+              : "w-[45%]",
           "w-[15%]",
         ]}
         minWidthClassName="min-w-full"
@@ -229,7 +260,10 @@ function AuditLogTable({
               </DataTableCell>
             ) : null}
             <DataTableCell className="text-sm text-slate-600">
-              <div className="line-clamp-2 break-words" title={formatAuditLogDetails(entry.details)}>
+              <div
+                className="line-clamp-2 break-words"
+                title={formatAuditLogDetails(entry.details)}
+              >
                 {formatAuditLogDetails(entry.details)}
               </div>
             </DataTableCell>
@@ -252,8 +286,13 @@ function AuditLogTable({
           return (
             <TableCard key={entry.id} className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                {showActionColumn ? <Badge variant="secondary">{entry.actionLabel}</Badge> : null}
-                <time className="text-sm font-medium tabular-nums text-slate-600" dateTime={entry.createdAt}>
+                {showActionColumn ? (
+                  <Badge variant="secondary">{entry.actionLabel}</Badge>
+                ) : null}
+                <time
+                  className="text-sm font-medium tabular-nums text-slate-600"
+                  dateTime={entry.createdAt}
+                >
                   {formatThaiDateTime(entry.createdAt)}
                 </time>
               </div>
@@ -267,10 +306,7 @@ function AuditLogTable({
                 {formatAuditLogDetails(entry.details)}
               </div>
               <div className="flex justify-end">
-                <DetailLinkButton
-                  size="sm"
-                  to={detailTo(entry)}
-                >
+                <DetailLinkButton size="sm" to={detailTo(entry)}>
                   ดูรายละเอียด
                 </DetailLinkButton>
               </div>
@@ -301,16 +337,68 @@ export function AuditLogPanel({
   targetType,
   title,
 }: AuditLogPanelProps) {
+  const [searchParams] = useSearchParams();
   const scopeKey = `${province || ""}|${district || ""}|${subDistrict || ""}|${schoolId || ""}|${taskType || ""}|${targetType || ""}|${targetId || ""}|${caseId || ""}`;
-  const [pageState, setPageState] = useState({ page: 1, scopeKey });
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [action, setAction] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [pageState, setPageState] = useState({
+    page: readPositiveIntegerSearchParam(searchParams, "auditPage", 1),
+    scopeKey,
+  });
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "auditLimit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [searchTerm, setSearchTerm] = useRememberedState(
+    `audit-log:${scopeKey}:search`,
+    "",
+  );
+  const [action, setAction] = useState(
+    () => searchParams.get("auditAction") ?? "",
+  );
+  const [dateFrom, setDateFrom] = useState(() =>
+    readIsoDateSearchParam(searchParams, "auditFrom"),
+  );
+  const [dateTo, setDateTo] = useState(() =>
+    readIsoDateSearchParam(searchParams, "auditTo"),
+  );
+  const hasValidDateRange = !dateFrom || !dateTo || dateFrom <= dateTo;
+  const normalizedDateFrom = hasValidDateRange ? dateFrom : "";
+  const normalizedDateTo = hasValidDateRange ? dateTo : "";
+  const actionCatalog = useAuditLogActions({ domain, taskType }, !fixedAction);
+  const actionOptions = useMemo(() => {
+    const options = actionCatalog.data ?? [];
+    return actionValues
+      ? options.filter((option) => actionValues.includes(option.value))
+      : options;
+  }, [actionCatalog.data, actionValues]);
+  const validatedAction =
+    !action || actionOptions.some((option) => option.value === action)
+      ? action
+      : "";
+  const normalizedAction = actionCatalog.isSuccess ? validatedAction : action;
+
   const debouncedSearchTerm = useDebouncedValue(searchTerm.trim(), 350);
-  const hasActiveFilter = Boolean(debouncedSearchTerm || action || dateFrom || dateTo);
+  const hasActiveFilter = Boolean(
+    debouncedSearchTerm ||
+    normalizedAction ||
+    normalizedDateFrom ||
+    normalizedDateTo,
+  );
   const page = pageState.scopeKey === scopeKey ? pageState.page : 1;
+  useSyncedSearchParams({
+    auditAction: fixedAction ? undefined : normalizedAction || undefined,
+    auditFrom: normalizedDateFrom || undefined,
+    auditTo: normalizedDateTo || undefined,
+    auditPage: page > 1 ? page : undefined,
+    auditLimit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   const query = useMemo(
     () => ({
@@ -323,18 +411,20 @@ export function AuditLogPanel({
       taskType,
       targetType,
       targetId,
-      action: fixedAction || action || undefined,
+      action:
+        fixedAction ||
+        (actionCatalog.isSuccess ? validatedAction || undefined : undefined),
       searchTerm: debouncedSearchTerm || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
+      dateFrom: normalizedDateFrom || undefined,
+      dateTo: normalizedDateTo || undefined,
       page,
       limit: rowsPerPage,
     }),
     [
-      action,
+      actionCatalog.isSuccess,
       caseId,
-      dateFrom,
-      dateTo,
+      normalizedDateFrom,
+      normalizedDateTo,
       debouncedSearchTerm,
       district,
       domain,
@@ -347,15 +437,11 @@ export function AuditLogPanel({
       taskType,
       targetId,
       targetType,
+      validatedAction,
     ],
   );
 
   const auditLog = useAuditLog(query);
-  const actionCatalog = useAuditLogActions({ domain, taskType }, !fixedAction);
-  const actionOptions = useMemo(() => {
-    const options = actionCatalog.data ?? [];
-    return actionValues ? options.filter((option) => actionValues.includes(option.value)) : options;
-  }, [actionCatalog.data, actionValues]);
   const totalCount = auditLog.meta?.totalCount ?? auditLog.entries.length;
 
   function resetPageAnd(run: () => void): void {
@@ -377,27 +463,36 @@ export function AuditLogPanel({
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h2 className="text-xl font-extrabold text-slate-900">{title}</h2>
-            {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+            {description ? (
+              <p className="mt-1 text-sm text-slate-500">{description}</p>
+            ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
             <span className="text-sm font-semibold text-slate-500">
-              {auditLog.isFetching ? "กำลังอัปเดต" : `${totalCount.toLocaleString("en-US")} รายการ`}
+              {auditLog.isFetching
+                ? "กำลังอัปเดต"
+                : `${totalCount.toLocaleString("en-US")} รายการ`}
             </span>
-            <RefreshButton onRefresh={auditLog.refetch} updatedAt={auditLog.dataUpdatedAt} />
+            <RefreshButton
+              onRefresh={auditLog.refetch}
+              updatedAt={auditLog.dataUpdatedAt}
+            />
             <ClearFiltersButton onClear={clearFilters} />
           </div>
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-4">
           <AuditLogFilters
-            action={action}
+            action={normalizedAction}
             actionOptions={fixedAction ? [] : actionOptions}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
+            dateFrom={normalizedDateFrom}
+            dateTo={normalizedDateTo}
             onActionChange={(value) => resetPageAnd(() => setAction(value))}
             onDateFromChange={(value) => resetPageAnd(() => setDateFrom(value))}
             onDateToChange={(value) => resetPageAnd(() => setDateTo(value))}
-            onSearchTermChange={(value) => resetPageAnd(() => setSearchTerm(value))}
+            onSearchTermChange={(value) =>
+              resetPageAnd(() => setSearchTerm(value))
+            }
             searchTerm={searchTerm}
           />
         </div>
@@ -418,8 +513,16 @@ export function AuditLogPanel({
       ) : auditLog.entries.length === 0 ? (
         <EmptyState
           icon={Search}
-          title={hasActiveFilter ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการทำรายการ"}
-          description={hasActiveFilter ? "ลองปรับตัวกรองหรือคำค้นหาใหม่อีกครั้ง" : undefined}
+          title={
+            hasActiveFilter
+              ? "ไม่พบประวัติที่ค้นหา"
+              : "ยังไม่มีประวัติการทำรายการ"
+          }
+          description={
+            hasActiveFilter
+              ? "ลองปรับตัวกรองหรือคำค้นหาใหม่อีกครั้ง"
+              : undefined
+          }
         />
       ) : (
         <AuditLogTable
@@ -437,7 +540,9 @@ export function AuditLogPanel({
           rowsPerPageOptions={PAGE_SIZE_OPTIONS}
           totalCount={totalCount}
           unitLabel="รายการ"
-          onPageChange={(nextPage) => setPageState({ page: nextPage, scopeKey })}
+          onPageChange={(nextPage) =>
+            setPageState({ page: nextPage, scopeKey })
+          }
           onRowsPerPageChange={(nextRowsPerPage) => {
             setRowsPerPage(nextRowsPerPage);
             setPageState({ page: 1, scopeKey });

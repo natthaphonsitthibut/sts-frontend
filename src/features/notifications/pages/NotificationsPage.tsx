@@ -14,6 +14,10 @@ import { RefreshButton } from "../../../components/layout/refresh-button";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { NotificationListItem } from "../components/NotificationListItem";
 import {
   useMarkAllRead,
@@ -32,8 +36,25 @@ export function NotificationsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get("status");
   const unreadOnly = status === "unread";
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  useSyncedSearchParams({
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
   const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications(
     {
       status: unreadOnly ? "unread" : "all",
@@ -63,7 +84,11 @@ export function NotificationsPage() {
   }, [data, markAllSeen]);
 
   function handleFilterChange(value: string): void {
-    setSearchParams({ status: value === "unread" ? "unread" : "all" });
+    setSearchParams((params) => {
+      params.set("status", value === "unread" ? "unread" : "all");
+      params.delete("page");
+      return params;
+    });
     setPage(1);
   }
 

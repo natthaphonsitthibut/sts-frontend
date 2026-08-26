@@ -17,10 +17,16 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { TeacherTable } from "../components/TeacherTable";
-import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 import {
   useDeactivateTeacher,
@@ -47,15 +53,33 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
   // a multi-school user back to the picker.
   const [searchParams, setSearchParams] = useSearchParams();
   const schoolInput = searchParams.get("schoolId") ?? "";
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
-  const [revealTeacher, setRevealTeacher] =
-    useState<TeacherDirectoryItem | null>(null);
-  const [revealedNationalIds, setRevealedNationalIds] = useState<
-    Record<string, string>
-  >({});
+  const [searchQuery, setSearchQuery] = useRememberedState(
+    "teachers:search",
+    "",
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "sort", [
+      "name",
+      "phone",
+      "lineId",
+      "email",
+    ]),
+  );
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   // A single-school account never sees the filter — its one school is implied.
@@ -63,6 +87,12 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
     schools.length === 1 ? String(schools[0].id) : schoolInput;
   const selectedSchoolId = Number(selectedSchoolValue) || null;
   const multipleSchools = schools.length > 1;
+
+  useSyncedSearchParams({
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+    sort: serializeSortSearchParam(sort),
+  });
 
   const query = useMemo<TeacherListQuery | null>(
     () =>
@@ -228,8 +258,6 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
             onDeactivate={(teacher) => void handleDeactivate(teacher)}
             onEdit={openEdit}
             onView={openProfile}
-            onRevealNationalId={setRevealTeacher}
-            revealedNationalIds={revealedNationalIds}
             management={management}
             onSortChange={(nextSort) => {
               setSort(nextSort);
@@ -255,22 +283,6 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
       )}
 
       {confirmDialog}
-      {revealTeacher?.citizenId ? (
-        <TeacherNationalIdRevealDialog
-          maskedValue={revealTeacher.citizenId}
-          onOpenChange={(open) => {
-            if (!open) setRevealTeacher(null);
-          }}
-          onRevealed={(nationalId) =>
-            setRevealedNationalIds((current) => ({
-              ...current,
-              [revealTeacher.id]: nationalId,
-            }))
-          }
-          open
-          teacherId={revealTeacher.id}
-        />
-      ) : null}
     </PageShell>
   );
 }

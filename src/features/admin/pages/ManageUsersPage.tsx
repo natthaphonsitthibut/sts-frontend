@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { FormErrorAlert } from "../../../components/base";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import {
   EmptyState,
   ErrorState,
@@ -38,16 +46,41 @@ const NON_STAFF_ROLES = "TEACHER,STUDENT";
 
 export function ManageUsersPage() {
   const contextualNavigate = useContextualNavigate();
+  const [searchParams] = useSearchParams();
   const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
   const deactivateAccount = useDeactivateAccount();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [searchQuery, setSearchQuery] = useRememberedState(
+    "manage-users:search",
+    "",
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "sort", ["name", "role", "affiliation"]),
+  );
   const [deactivationTarget, setDeactivationTarget] =
     useState<ManagedUser | null>(null);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+
+  useSyncedSearchParams({
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+    sort: serializeSortSearchParam(sort),
+  });
 
   const query = useMemo(
     () => ({

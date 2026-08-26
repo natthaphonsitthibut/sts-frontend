@@ -1,6 +1,6 @@
 import { Download, MessageSquareText, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -30,7 +30,14 @@ import {
   PAGE_IDENTITIES,
 } from "../../../components/layout/page-identity";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
+import {
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -52,6 +59,7 @@ const STUDENTS_ICON = PAGE_IDENTITIES["/students"].icon;
 
 export function ClassroomDetailPage() {
   const contextualNavigate = useContextualNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const { classroomId = "" } = useParams();
   const [tab, setTab] = useRouteTab(
@@ -61,14 +69,43 @@ export function ClassroomDetailPage() {
     },
     "roster",
   );
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [search, setSearch] = useRememberedState(
+    `classroom-detail:${classroomId}:search`,
+    "",
+  );
+  const [status, setStatus] = useState(() => {
+    const value = searchParams.get("status") ?? "";
+    return RISK_TIER_ORDER.includes(value as (typeof RISK_TIER_ORDER)[number])
+      ? value
+      : "";
+  });
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const defaultSort: DataTableSortState = {
     key: "name",
     direction: "asc",
-  });
+  };
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(
+      searchParams,
+      "sort",
+      ["studentNumber", "name", "comment", "status"],
+      defaultSort,
+    ),
+  );
   const [exportOpen, setExportOpen] = useState(false);
   const [commentStudent, setCommentStudent] =
     useState<ClassroomRosterStudent | null>(null);
@@ -98,6 +135,12 @@ export function ClassroomDetailPage() {
     [rosterQuery.data?.data],
   );
   const visibleRoster = roster;
+  useSyncedSearchParams({
+    status: status || undefined,
+    sort: serializeSortSearchParam(sort, defaultSort),
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   if (classroomQuery.isLoading) {
     return (

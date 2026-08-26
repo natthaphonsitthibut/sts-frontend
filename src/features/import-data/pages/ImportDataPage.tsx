@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
+import {
   CheckCircle2,
   ChevronDown,
   Download,
@@ -34,6 +38,7 @@ import {
   ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -601,21 +606,39 @@ export function ImportDataPage() {
     return Number.isInteger(value) && value > 0 ? value : undefined;
   };
   const [importSchoolId, setImportSchoolId] = useState(() =>
-    String(positiveSearchParam("schoolId") ?? ""),
+    String(
+      positiveSearchParam("importSchoolId") ??
+        positiveSearchParam("schoolId") ??
+        "",
+    ),
   );
   const [importSchoolTermId, setImportSchoolTermId] = useState(() =>
-    String(positiveSearchParam("schoolTermId") ?? ""),
+    String(
+      positiveSearchParam("importTermId") ??
+        positiveSearchParam("schoolTermId") ??
+        "",
+    ),
   );
   const [importClassroomId, setImportClassroomId] = useState(() =>
-    String(positiveSearchParam("classroomId") ?? ""),
+    String(
+      positiveSearchParam("importClassroomId") ??
+        positiveSearchParam("classroomId") ??
+        "",
+    ),
   );
-  const [importGrade, setImportGrade] = useState("");
+  const [importGrade, setImportGrade] = useState(
+    () => searchParams.get("importGrade") ?? "",
+  );
   const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
   const importCatalog = useImportCatalog();
-  const importArea = useSchoolAreaFilter();
+  const importArea = useSchoolAreaFilter({
+    province: searchParams.get("importProvince") || undefined,
+    district: searchParams.get("importDistrict") || undefined,
+    subDistrict: searchParams.get("importSubDistrict") || undefined,
+  });
   const scopedSchoolsQuery = useScopedSchools();
   const importSchool = Number(importSchoolId) || undefined;
   const importTermsQuery = useQuery({
@@ -666,8 +689,14 @@ export function ImportDataPage() {
     "import",
   );
   const [file, setFile] = useState<File | null>(null);
-  const [requestedTarget, setRequestedTarget] =
-    useState<ImportTarget>("student_term");
+  const [requestedTarget, setRequestedTarget] = useState<ImportTarget>(() => {
+    const value = searchParams.get("importTarget");
+    return value === "school_teacher_membership" ||
+      value === "school_classroom" ||
+      value === "student_term"
+      ? value
+      : "student_term";
+  });
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [mappingDirty, setMappingDirty] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -739,15 +768,40 @@ export function ImportDataPage() {
     resetImportPreview();
   }
 
-  const [quarantinePage, setQuarantinePage] = useState(1);
+  const [quarantinePage, setQuarantinePage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "quarantinePage", 1),
+  );
   const [quarantineRowsPerPage, setQuarantineRowsPerPage] =
-    useState<QuarantinePageSize>(20);
-  const [quarantineStatus, setQuarantineStatus] =
-    useState<QuarantineStatus>("PENDING");
-  const [quarantineReasonCode, setQuarantineReasonCode] = useState("");
-  const [quarantineSearch, setQuarantineSearch] = useState("");
-  const quarantineArea = useSchoolAreaFilter();
-  const quarantineScope = useScopeCascade({ lockToActorScope: true });
+    useState<QuarantinePageSize>(() => {
+      const value = readPositiveIntegerSearchParam(
+        searchParams,
+        "quarantineLimit",
+        20,
+      );
+      return value === 10 || value === 20 || value === 50 ? value : 20;
+    });
+  const [quarantineStatus, setQuarantineStatus] = useState<QuarantineStatus>(
+    () => {
+      const value = searchParams.get("quarantineStatus");
+      return value === "RESOLVED" || value === "REJECTED" ? value : "PENDING";
+    },
+  );
+  const [quarantineReasonCode, setQuarantineReasonCode] = useState(
+    () => searchParams.get("quarantineReason") ?? "",
+  );
+  const [quarantineSearch, setQuarantineSearch] = useRememberedState(
+    "import-quarantine:search",
+    "",
+  );
+  const quarantineArea = useSchoolAreaFilter({
+    province: searchParams.get("quarantineProvince") || undefined,
+    district: searchParams.get("quarantineDistrict") || undefined,
+    subDistrict: searchParams.get("quarantineSubDistrict") || undefined,
+  });
+  const quarantineScope = useScopeCascade({
+    lockToActorScope: true,
+    initialSchoolId: searchParams.get("quarantineSchoolId") || undefined,
+  });
   const debouncedQuarantineSearch = useDebouncedValue(
     quarantineSearch.trim(),
     350,
@@ -755,21 +809,60 @@ export function ImportDataPage() {
   const quarantineSchoolId = quarantineScope.schoolId
     ? Number(quarantineScope.schoolId)
     : undefined;
+  const quarantineLookups = useImportQuarantineLookups();
+  // Reason codes are served by the API, so a code taken from the URL is only
+  // trusted once the lookups confirm it exists — sending an unknown code makes
+  // the quarantine calls fail with 400. Until they load, the list stays idle
+  // instead of querying with a code that may turn out to be invalid.
+  const quarantineReasonsLoaded = Boolean(quarantineLookups.data);
+  const quarantineReasonKnown = Boolean(
+    quarantineLookups.data?.reasons.some(
+      (reason) => reason.code === quarantineReasonCode,
+    ),
+  );
+  const quarantineReasonReady =
+    !quarantineReasonCode || quarantineReasonsLoaded;
+  const activeQuarantineReasonCode =
+    quarantineReasonsLoaded && !quarantineReasonKnown
+      ? ""
+      : quarantineReasonCode;
+  useSyncedSearchParams({
+    importTarget:
+      requestedTarget === "student_term" ? undefined : requestedTarget,
+    importProvince: importArea.province || undefined,
+    importDistrict: importArea.district || undefined,
+    importSubDistrict: importArea.subDistrict || undefined,
+    importSchoolId: importSchoolId || undefined,
+    importTermId: importSchoolTermId || undefined,
+    importGrade: importGrade || undefined,
+    importClassroomId: importClassroomId || undefined,
+    quarantineProvince: quarantineArea.province || undefined,
+    quarantineDistrict: quarantineArea.district || undefined,
+    quarantineSubDistrict: quarantineArea.subDistrict || undefined,
+    quarantineSchoolId: quarantineScope.schoolLocked
+      ? undefined
+      : quarantineScope.schoolId || undefined,
+    quarantineStatus:
+      quarantineStatus === "PENDING" ? undefined : quarantineStatus,
+    quarantineReason: activeQuarantineReasonCode || undefined,
+    quarantinePage: quarantinePage > 1 ? quarantinePage : undefined,
+    quarantineLimit:
+      quarantineRowsPerPage !== 20 ? quarantineRowsPerPage : undefined,
+  });
   const quarantineQuery = useImportQuarantine(
     {
       page: quarantinePage,
       limit: quarantineRowsPerPage,
       status: quarantineStatus,
-      reasonCode: quarantineReasonCode || undefined,
+      reasonCode: activeQuarantineReasonCode || undefined,
       search: debouncedQuarantineSearch || undefined,
       province: quarantineArea.province || undefined,
       district: quarantineArea.district || undefined,
       subDistrict: quarantineArea.subDistrict || undefined,
       schoolId: quarantineSchoolId,
     },
-    activeTab === "quarantine",
+    activeTab === "quarantine" && quarantineReasonReady,
   );
-  const quarantineLookups = useImportQuarantineLookups();
   const exportQuarantine = useExportImportQuarantine();
   const retryEligibleLabel =
     quarantineLookups.data?.resolutionStates.find(
@@ -802,7 +895,7 @@ export function ImportDataPage() {
     try {
       const blob = await exportQuarantine.mutateAsync({
         status: quarantineStatus,
-        reasonCode: quarantineReasonCode || undefined,
+        reasonCode: activeQuarantineReasonCode || undefined,
         search: debouncedQuarantineSearch || undefined,
         province: quarantineArea.province || undefined,
         district: quarantineArea.district || undefined,
@@ -970,7 +1063,7 @@ export function ImportDataPage() {
                   })),
                 ]}
                 placeholder="ค้นหาสาเหตุ"
-                value={quarantineReasonCode}
+                value={activeQuarantineReasonCode}
               />
               <FilterSelect
                 ariaLabel="กรองตามสถานะ"
@@ -1404,7 +1497,7 @@ export function ImportDataPage() {
           ) : null}
           <ImportQuarantinePanel
             filters={{
-              reasonCode: quarantineReasonCode || undefined,
+              reasonCode: activeQuarantineReasonCode || undefined,
               search: debouncedQuarantineSearch || undefined,
               province: quarantineArea.province || undefined,
               district: quarantineArea.district || undefined,
@@ -1413,7 +1506,7 @@ export function ImportDataPage() {
             }}
             key={[
               quarantineStatus,
-              quarantineReasonCode,
+              activeQuarantineReasonCode,
               debouncedQuarantineSearch,
               quarantineArea.province,
               quarantineArea.district,

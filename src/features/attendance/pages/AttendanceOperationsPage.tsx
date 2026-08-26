@@ -35,6 +35,12 @@ import {
 } from "../../../components/base";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
+import {
   DataTable,
   DataTableCell,
   DataTableRow,
@@ -449,7 +455,9 @@ export function AttendanceOperationsPage() {
   const [schoolInput, setSchoolInput] = useState(
     () => searchParams.get("schoolId") || "",
   );
-  const [termInput, setTermInput] = useState("");
+  const [termInput, setTermInput] = useState(
+    () => searchParams.get("termId") || "",
+  );
   const [gradeFilter, setGradeFilter] = useState(
     () => searchParams.get("grade") || "",
   );
@@ -457,15 +465,62 @@ export function AttendanceOperationsPage() {
     () => searchParams.get("room") || "",
   );
   const [date, setDate] = useState(initialDate);
-  const [calendarDate, setCalendarDate] = useState(initialDate);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [anomalyPage, setAnomalyPage] = useState(1);
-  const [anomalyRowsPerPage, setAnomalyRowsPerPage] = useState(10);
-  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const value = searchParams.get("calendarDate") ?? "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : initialDate;
+  });
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [anomalyPage, setAnomalyPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "anomalyPage", 1),
+  );
+  const [anomalyRowsPerPage, setAnomalyRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "anomalyLimit",
+      10,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : 10;
+  });
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "sort", [
+      "grade",
+      "room",
+      "expected",
+      "recorded",
+      "revision",
+      "status",
+    ]),
+  );
   const [anomalySort, setAnomalySort] = useState<
     DataTableSortState | undefined
-  >();
+  >(() =>
+    readSortSearchParam(searchParams, "anomalySort", [
+      "date",
+      "grade",
+      "room",
+      "type",
+      "recorded",
+      "revision",
+    ]),
+  );
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termDialogTerm, setTermDialogTerm] = useState<SchoolTerm | null>(null);
   const [calendarEdit, setCalendarEdit] = useState<{
@@ -512,6 +567,23 @@ export function AttendanceOperationsPage() {
   const selectedTerm =
     terms.find((term) => term.id === termInput) ?? terms[0] ?? null;
   const selectedTermId = selectedTerm?.id ?? "";
+  useSyncedSearchParams({
+    province: schoolArea.province || undefined,
+    district: schoolArea.district || undefined,
+    subDistrict: schoolArea.subDistrict || undefined,
+    schoolId: scope.isSchoolLocked ? undefined : schoolInput || undefined,
+    termId: selectedTermId || undefined,
+    grade: gradeFilter || undefined,
+    room: roomFilter || undefined,
+    date: date === getTodayIso() ? undefined : date,
+    calendarDate: calendarDate === date ? undefined : calendarDate,
+    sort: serializeSortSearchParam(sort),
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+    anomalySort: serializeSortSearchParam(anomalySort),
+    anomalyPage: anomalyPage > 1 ? anomalyPage : undefined,
+    anomalyLimit: anomalyRowsPerPage !== 10 ? anomalyRowsPerPage : undefined,
+  });
   const calendarQuery = useQuery({
     queryKey: ["attendance-calendar", selectedTermId],
     queryFn: () => attendanceService.getCalendar(selectedTermId),

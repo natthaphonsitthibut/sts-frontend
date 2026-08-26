@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Skeleton } from "../../../components/base";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -13,6 +14,11 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { ClassroomCard } from "../components/ClassroomCard";
 import { ClassroomCardDialog } from "../components/ClassroomCardDialog";
@@ -43,19 +49,43 @@ function ClassroomCardSkeleton() {
 }
 
 export function ClassroomsPage() {
+  const [searchParams] = useSearchParams();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [customizingClassroom, setCustomizingClassroom] = useState<SchoolClassroom | null>(null);
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") ?? "",
+  );
+  const [searchInput, setSearchInput] = useRememberedState(
+    "classrooms:search",
+    "",
+  );
+  const [search, setSearch] = useState(() => searchInput.trim());
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const [customizingClassroom, setCustomizingClassroom] =
+    useState<SchoolClassroom | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      const nextSearch = searchInput.trim();
+      setSearch((current) => {
+        if (current === nextSearch) return current;
+        setPage(1);
+        return nextSearch;
+      });
     }, 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
@@ -68,7 +98,9 @@ export function ClassroomsPage() {
     enabled: selectedSchoolId !== null,
   });
   const currentTerm =
-    termsQuery.data?.find((term) => term.status === "ACTIVE") ?? termsQuery.data?.[0] ?? null;
+    termsQuery.data?.find((term) => term.status === "ACTIVE") ??
+    termsQuery.data?.[0] ??
+    null;
   const classroomsQuery = useSchoolClassrooms(
     selectedSchoolId && currentTerm
       ? {
@@ -86,13 +118,21 @@ export function ClassroomsPage() {
   const presentationMutation = useUpdateClassroomPresentation();
   const classrooms = classroomsQuery.data?.data ?? [];
   const multipleSchools = schools.length > 1;
+  useSyncedSearchParams({
+    schoolId: multipleSchools ? schoolInput || undefined : undefined,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   function handleSchoolChange(value: string): void {
     setSchoolInput(value);
     setPage(1);
   }
 
-  function handleFavoriteChange(classroom: SchoolClassroom, isFavorite: boolean): void {
+  function handleFavoriteChange(
+    classroom: SchoolClassroom,
+    isFavorite: boolean,
+  ): void {
     favoriteMutation.mutate({ classroomId: classroom.id, isFavorite });
   }
 
@@ -109,8 +149,10 @@ export function ClassroomsPage() {
     });
   }
 
-  const isInitialLoading = schoolsQuery.isLoading || (selectedSchoolId && termsQuery.isLoading);
-  const pageError = schoolsQuery.error ?? termsQuery.error ?? classroomsQuery.error;
+  const isInitialLoading =
+    schoolsQuery.isLoading || (selectedSchoolId && termsQuery.isLoading);
+  const pageError =
+    schoolsQuery.error ?? termsQuery.error ?? classroomsQuery.error;
 
   return (
     <PageShell>
@@ -127,7 +169,10 @@ export function ClassroomsPage() {
             ariaLabel="กรองตามโรงเรียน"
             emptyText="ไม่พบโรงเรียน"
             onChange={handleSchoolChange}
-            options={schools.map((school) => ({ value: String(school.id), label: school.name }))}
+            options={schools.map((school) => ({
+              value: String(school.id),
+              label: school.name,
+            }))}
             placeholder="เลือกโรงเรียน"
             value={schoolId}
           />

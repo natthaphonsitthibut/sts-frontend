@@ -5,19 +5,24 @@ import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
+  FilterCombobox,
   ListPageToolbar,
   PageShell,
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
-import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
+import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useStudentStatuses } from "../../student-statuses/hooks/useStudentStatuses";
 import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
@@ -65,25 +70,41 @@ export function StudentListPage({
     ...(canViewAuditLog ? [{ value: "history", label: "ประวัติ" }] : []),
   ];
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useRememberedState(
+    "student-list:search",
+    "",
+  );
   const [grade, setGrade] = useState(() => searchParams.get("grade") || "ALL");
   const [room, setRoom] = useState(() => searchParams.get("room") || "ALL");
   const [studentStatusCode, setStudentStatusCode] = useState<
     StudentStatusFilterValue | undefined
-  >(undefined);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
+  >(() => searchParams.get("studentStatus") ?? undefined);
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_ROWS_PER_PAGE,
+    );
+    return ROWS_PER_PAGE_OPTIONS.includes(
+      value as (typeof ROWS_PER_PAGE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_ROWS_PER_PAGE;
+  });
   const [selectedStudentsById, setSelectedStudentsById] = useState<
     Map<string, StudentListItem>
   >(() => new Map());
-  const schoolArea = useSchoolAreaFilter({
-    province: searchParams.get("province") || undefined,
-    district: searchParams.get("district") || undefined,
-    subDistrict: searchParams.get("subDistrict") || undefined,
-  });
+  const schoolsQuery = useScopedSchools();
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const fallbackSchoolId =
+    schools.length === 1 ? String(schools[0].id) : undefined;
   const scope = useScopeCascade({
     lockToActorScope: true,
     initialSchoolId: searchParams.get("schoolId") || undefined,
+    fallbackSchoolId,
     initialGrade: searchParams.get("grade") || undefined,
     initialRoom: searchParams.get("room") || undefined,
   });
@@ -112,13 +133,19 @@ export function StudentListPage({
       )?.code,
     [studentStatuses],
   );
+  const isRequestedStudentStatusValid =
+    studentStatusCode === undefined ||
+    studentStatusCode === ALL_STUDENT_STATUSES ||
+    studentStatuses.some((status) => String(status.code) === studentStatusCode);
+  const normalizedStudentStatusCode =
+    studentStatusesQuery.isSuccess && !isRequestedStudentStatusValid
+      ? undefined
+      : studentStatusCode;
+
   const effectiveStudentStatusCode: StudentStatusFilterValue =
-    studentStatusCode ??
+    normalizedStudentStatusCode ??
     (defaultActiveStatusCode ? String(defaultActiveStatusCode) : "ALL");
-  const hasResolvedStudentStatusSelection =
-    studentStatusCode !== undefined ||
-    defaultActiveStatusCode !== undefined ||
-    studentStatusesQuery.isSuccess;
+  const hasResolvedStudentStatusSelection = studentStatusesQuery.isSuccess;
   const queryStudentStatusCode = hasResolvedStudentStatusSelection
     ? effectiveStudentStatusCode
     : undefined;
@@ -144,27 +171,46 @@ export function StudentListPage({
   );
   const effectiveGrade = scope.gradeLocked ? scope.grade : grade;
   const effectiveRoom = scope.roomLocked ? scope.room : room;
+  const selectedSchoolId = schools.some(
+    (school) => String(school.id) === scope.schoolId,
+  )
+    ? scope.schoolId
+    : "";
+  const showSchoolSelector = !scope.schoolLocked && schools.length > 1;
+
+  useSyncedSearchParams({
+    province: undefined,
+    district: undefined,
+    subDistrict: undefined,
+    schoolId: showSchoolSelector ? selectedSchoolId || undefined : undefined,
+    grade:
+      scope.gradeLocked || effectiveGrade === "ALL"
+        ? undefined
+        : effectiveGrade,
+    room:
+      scope.roomLocked || effectiveRoom === "ALL" ? undefined : effectiveRoom,
+    studentStatus: normalizedStudentStatusCode,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_ROWS_PER_PAGE ? rowsPerPage : undefined,
+  });
 
   // Server is the source of truth for filtering, sorting and the page slice.
-  const query = useMemo<StudentListQuery>(
-    () => ({
-      schoolId: scope.schoolId || undefined,
-      province: schoolArea.province || undefined,
-      district: schoolArea.district || undefined,
-      subDistrict: schoolArea.subDistrict || undefined,
-      grade: effectiveGrade,
-      room: effectiveRoom,
-      enrollmentState,
-      studentStatusCode: queryStudentStatusCode,
-      searchTerm: debouncedSearch || undefined,
-      page,
-      limit: rowsPerPage,
-    }),
+  const query = useMemo<StudentListQuery | null>(
+    () =>
+      selectedSchoolId
+        ? {
+            schoolId: selectedSchoolId,
+            grade: effectiveGrade,
+            room: effectiveRoom,
+            enrollmentState,
+            studentStatusCode: queryStudentStatusCode,
+            searchTerm: debouncedSearch || undefined,
+            page,
+            limit: rowsPerPage,
+          }
+        : null,
     [
-      scope.schoolId,
-      schoolArea.province,
-      schoolArea.district,
-      schoolArea.subDistrict,
+      selectedSchoolId,
       effectiveGrade,
       effectiveRoom,
       enrollmentState,
@@ -177,15 +223,16 @@ export function StudentListPage({
 
   const { students, meta, isLoading, isError, refetch, dataUpdatedAt } =
     useStudents(query);
-  const { options } = useStudentFilterOptions({
-    schoolId: scope.schoolId || undefined,
-    province: schoolArea.province || undefined,
-    district: schoolArea.district || undefined,
-    subDistrict: schoolArea.subDistrict || undefined,
-    grade: effectiveGrade,
-    studentStatusCode: queryStudentStatusCode,
-    enrollmentState,
-  });
+  const { options } = useStudentFilterOptions(
+    selectedSchoolId
+      ? {
+          schoolId: selectedSchoolId,
+          grade: effectiveGrade,
+          studentStatusCode: queryStudentStatusCode,
+          enrollmentState,
+        }
+      : null,
+  );
 
   const totalCount = meta?.totalCount ?? 0;
   const selectedStudents = useMemo(
@@ -205,10 +252,7 @@ export function StudentListPage({
   const filteredRosterExportUrl = buildDataExportContextUrl(
     "student_roster_basic",
     {
-      province: schoolArea.province,
-      district: schoolArea.district,
-      subDistrict: schoolArea.subDistrict,
-      schoolId: scope.schoolId,
+      schoolId: selectedSchoolId,
       grade: effectiveGrade === "ALL" ? undefined : effectiveGrade,
       room: effectiveRoom === "ALL" ? undefined : effectiveRoom,
     },
@@ -263,8 +307,8 @@ export function StudentListPage({
     setGrade("ALL");
     setRoom("ALL");
     setStudentStatusCode(undefined);
-    schoolArea.setProvince("");
-    scope.reset();
+    scope.setGrade("");
+    scope.setRoom("");
     setPage(1);
     clearSelectedStudents();
   }
@@ -341,6 +385,7 @@ export function StudentListPage({
                 ) : null}
                 {can("export-data") ? (
                   <Button
+                    disabled={!selectedSchoolId}
                     icon={FileDown}
                     onClick={() => navigate(filteredRosterExportUrl)}
                     variant="outline"
@@ -354,6 +399,7 @@ export function StudentListPage({
           createAction={
             management ? (
               <Button
+                disabled={!selectedSchoolId}
                 icon={Plus}
                 onClick={() => contextualNavigate("/manage-students/new")}
               >
@@ -362,7 +408,7 @@ export function StudentListPage({
             ) : undefined
           }
           grade={effectiveGrade}
-          gradeLocked={scope.gradeLocked}
+          gradeLocked={scope.gradeLocked || !selectedSchoolId}
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
@@ -372,15 +418,24 @@ export function StudentListPage({
           onSearchChange={handleSearchChange}
           onStudentStatusCodeChange={handleStudentStatusCodeChange}
           room={effectiveRoom}
-          roomLocked={scope.roomLocked}
+          roomLocked={
+            scope.roomLocked || !selectedSchoolId || effectiveGrade === "ALL"
+          }
           roomOptions={options.rooms}
           schoolFilters={
-            <SchoolAreaSchoolFilter
-              area={schoolArea}
-              onSchoolChange={handleSchoolChange}
-              schoolId={scope.schoolId}
-              schoolLocked={scope.schoolLocked}
-            />
+            showSchoolSelector ? (
+              <FilterCombobox
+                ariaLabel="กรองตามโรงเรียน"
+                emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
+                onChange={handleSchoolChange}
+                options={schools.map((school) => ({
+                  value: String(school.id),
+                  label: school.name,
+                }))}
+                placeholder="เลือกโรงเรียน"
+                value={selectedSchoolId}
+              />
+            ) : null
           }
           searchQuery={searchQuery}
           studentStatusCode={effectiveStudentStatusCode}
@@ -406,12 +461,19 @@ export function StudentListPage({
           }
           onClearFilters={handleClearFilters}
           filters={
-            <SchoolAreaSchoolFilter
-              area={schoolArea}
-              onSchoolChange={handleSchoolChange}
-              schoolId={scope.schoolId}
-              schoolLocked={scope.schoolLocked}
-            />
+            showSchoolSelector ? (
+              <FilterCombobox
+                ariaLabel="กรองตามโรงเรียน"
+                emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
+                onChange={handleSchoolChange}
+                options={schools.map((school) => ({
+                  value: String(school.id),
+                  label: school.name,
+                }))}
+                placeholder="เลือกโรงเรียน"
+                value={selectedSchoolId}
+              />
+            ) : null
           }
           icon={UserRound}
           title={
@@ -423,28 +485,40 @@ export function StudentListPage({
       )}
 
       <div className="space-y-5">
-        {effectiveTab === "export" ? (
+        {schoolsQuery.isError ? (
+          <ErrorState
+            description="ไม่สามารถโหลดข้อมูลโรงเรียนที่จำเป็นสำหรับหน้านี้ได้"
+            onRetry={() => void schoolsQuery.refetch()}
+            title="โหลดข้อมูลไม่สำเร็จ"
+          />
+        ) : schoolsQuery.isLoading ? (
+          <SkeletonTable />
+        ) : schools.length === 0 ? (
+          <EmptyState
+            description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
+            icon={UserRound}
+            title="ไม่พบโรงเรียนในขอบเขต"
+          />
+        ) : !selectedSchoolId ? (
+          <EmptyState
+            description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงรายชื่อนักเรียน"
+            icon={UserRound}
+            title="เลือกโรงเรียน"
+          />
+        ) : effectiveTab === "export" ? (
           <PiiExportPanel
-            district={schoolArea.district || undefined}
             gradeLevelId={selectedGradeLevelId}
-            province={schoolArea.province || undefined}
             roomId={selectedRoomId}
-            schoolId={scope.schoolId || undefined}
+            schoolId={selectedSchoolId}
             selectedStudents={selectedStudents}
             onClearSelectedStudents={clearSelectedStudents}
-            subDistrict={schoolArea.subDistrict || undefined}
             totalCount={totalCount}
           />
-        ) : null}
-
-        {effectiveTab === "history" ? (
+        ) : effectiveTab === "history" ? (
           <AuditLogPanel
             description="ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
-            district={schoolArea.district || undefined}
             domain="students"
-            province={schoolArea.province || undefined}
-            schoolId={scope.schoolId ? Number(scope.schoolId) : undefined}
-            subDistrict={schoolArea.subDistrict || undefined}
+            schoolId={Number(selectedSchoolId)}
             title="ประวัติข้อมูลนักเรียน"
           />
         ) : studentStatusesQuery.isError ? (

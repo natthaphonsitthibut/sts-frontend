@@ -1,6 +1,12 @@
 import { ArrowLeft, Download, History, School } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button, DatePicker, IconButton, Skeleton } from "../../../components/base";
+import { useSearchParams } from "react-router-dom";
+import {
+  Button,
+  DatePicker,
+  IconButton,
+  Skeleton,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -17,6 +23,14 @@ import {
 import { Pagination } from "../../../components/layout/pagination";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
+import {
+  readIsoDateSearchParam,
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -90,7 +104,9 @@ function studentName(student: ClassroomStudentAttendanceSummary): string {
   return `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "-";
 }
 
-function summaryStatus(student: ClassroomStudentAttendanceSummary): AttendanceSelectionStatus {
+function summaryStatus(
+  student: ClassroomStudentAttendanceSummary,
+): AttendanceSelectionStatus {
   if (student.presentCount > 0) return "P_PRESENT";
   if (student.lateCount > 0) return "P_LATE";
   if (student.leaveCount > 0) return "P_LEAVE";
@@ -99,7 +115,12 @@ function summaryStatus(student: ClassroomStudentAttendanceSummary): AttendanceSe
 }
 
 /** Display order for the pill row: มา / สาย / ลา / ขาด. */
-const PILL_STATUSES: AttendanceSelectionStatus[] = ["P_PRESENT", "P_LATE", "P_LEAVE", "P_ABSENT"];
+const PILL_STATUSES: AttendanceSelectionStatus[] = [
+  "P_PRESENT",
+  "P_LATE",
+  "P_LEAVE",
+  "P_ABSENT",
+];
 
 function AttendanceStatusPills({
   catalog,
@@ -115,7 +136,9 @@ function AttendanceStatusPills({
         return (
           <span
             className={`inline-flex h-9 w-20 items-center justify-center rounded-full border text-sm font-medium ${
-              status === value ? presentation.pillActiveClass : `bg-white ${presentation.pillIdleClass}`
+              status === value
+                ? presentation.pillActiveClass
+                : `bg-white ${presentation.pillIdleClass}`
             }`}
             key={value}
           >
@@ -152,21 +175,79 @@ export function ClassroomAttendanceHistory({
   subjects,
 }: ClassroomAttendanceHistoryProps) {
   const contextualNavigate = useContextualNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
-  const [view, setView] = useState<HistoryView>("DAILY");
-  const [ownSubjectId, setOwnSubjectId] = useState("");
+  const initialView: HistoryView =
+    searchParams.get("historyView") === "STUDENT" ? "STUDENT" : "DAILY";
+  const [view, setView] = useState<HistoryView>(initialView);
+  const [ownSubjectId, setOwnSubjectId] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "historySubjectId",
+      0,
+    );
+    return value > 0 ? String(value) : "";
+  });
   const subjectId = controlledSubjectId ?? ownSubjectId;
   const setSubjectId = onSubjectIdChange ?? setOwnSubjectId;
   const attendanceStatusCatalog = useStatusCatalog("ATTENDANCE_RECORD").items;
-  const [selectedStudent, setSelectedStudent] = useState<ClassroomStudentAttendanceSummary | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [date, setDate] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>(() => defaultSummarySort("DAILY"));
+  const [selectedStudent, setSelectedStudent] =
+    useState<ClassroomStudentAttendanceSummary | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(
+    () => readIsoDateSearchParam(searchParams, "historyDay") || null,
+  );
+  const [search, setSearch] = useRememberedState(
+    `classroom-attendance-history:${classroomId}:search`,
+    "",
+  );
+  const [date, setDate] = useState(() =>
+    readIsoDateSearchParam(searchParams, "historyDate"),
+  );
+  const initialDateFrom = readIsoDateSearchParam(searchParams, "historyFrom");
+  const initialDateTo = readIsoDateSearchParam(searchParams, "historyTo");
+  const hasValidInitialDateRange =
+    !initialDateFrom || !initialDateTo || initialDateFrom <= initialDateTo;
+  const [dateFrom, setDateFrom] = useState(
+    hasValidInitialDateRange ? initialDateFrom : "",
+  );
+  const [dateTo, setDateTo] = useState(
+    hasValidInitialDateRange ? initialDateTo : "",
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "historyPage", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "historyLimit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const initialSort = defaultSummarySort(initialView);
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(
+      searchParams,
+      "historySort",
+      [
+        "date",
+        "time",
+        "recordedBy",
+        "studentNumber",
+        "name",
+        "status",
+        "present",
+        "late",
+        "leave",
+        "absent",
+      ],
+      initialSort,
+    ),
+  );
   const [exportOpen, setExportOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const baseParams = {
@@ -201,16 +282,33 @@ export function ClassroomAttendanceHistory({
       : null,
   );
   const studentDaysQuery = useStudentAttendanceDays(
-    selectedStudent ? { ...baseParams, view: "STUDENT", studentUuid: selectedStudent.studentUuid } : null,
+    selectedStudent
+      ? {
+          ...baseParams,
+          view: "STUDENT",
+          studentUuid: selectedStudent.studentUuid,
+        }
+      : null,
   );
   const activeQuery = selectedStudent
     ? studentDaysQuery
     : selectedDay
       ? studentQuery
       : view === "DAILY"
-      ? dailyQuery
-      : studentQuery;
+        ? dailyQuery
+        : studentQuery;
   const totalCount = activeQuery.data?.meta.totalCount ?? 0;
+  useSyncedSearchParams({
+    historyView: view === "DAILY" ? undefined : view,
+    historySubjectId: subjectId || undefined,
+    historyDay: selectedDay || undefined,
+    historyDate: date || undefined,
+    historyFrom: dateFrom || undefined,
+    historyTo: dateTo || undefined,
+    historySort: serializeSortSearchParam(sort, defaultSummarySort(view)),
+    historyPage: page > 1 ? page : undefined,
+    historyLimit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   function resetFilters(): void {
     setSearch("");
@@ -244,11 +342,13 @@ export function ClassroomAttendanceHistory({
     ? STUDENT_DAY_COLUMNS
     : selectedDay
       ? DAILY_DETAIL_COLUMNS
-    : view === "DAILY"
-      ? DAILY_COLUMNS
-      : STUDENT_COLUMNS;
+      : view === "DAILY"
+        ? DAILY_COLUMNS
+        : STUDENT_COLUMNS;
 
-  async function loadExportRows(exportDateRange?: ExportDateRange): Promise<Record<string, string>[]> {
+  async function loadExportRows(
+    exportDateRange?: ExportDateRange,
+  ): Promise<Record<string, string>[]> {
     const exportParams = {
       ...baseParams,
       date: selectedDay ?? undefined,
@@ -279,34 +379,42 @@ export function ClassroomAttendanceHistory({
         date: formatNumericThaiDate(row.date),
         time: row.time ?? "-",
         recordedBy: row.recordedBy,
-        status: getAttendanceStatusPresentation(row.status, attendanceStatusCatalog).shortLabel,
+        status: getAttendanceStatusPresentation(
+          row.status,
+          attendanceStatusCatalog,
+        ).shortLabel,
       }));
     }
     if (selectedDay) {
-      const first = await schoolStructureService.listClassroomStudentAttendance({
-        ...exportParams,
-        view: "STUDENT",
-        date: selectedDay,
-        page: 1,
-        limit: 50,
-      });
-      const rows = [...first.data];
-      for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
-        const next = await schoolStructureService.listClassroomStudentAttendance({
+      const first = await schoolStructureService.listClassroomStudentAttendance(
+        {
           ...exportParams,
           view: "STUDENT",
           date: selectedDay,
-          page: nextPage,
+          page: 1,
           limit: 50,
-        });
+        },
+      );
+      const rows = [...first.data];
+      for (let nextPage = 2; nextPage <= first.meta.totalPages; nextPage += 1) {
+        const next =
+          await schoolStructureService.listClassroomStudentAttendance({
+            ...exportParams,
+            view: "STUDENT",
+            date: selectedDay,
+            page: nextPage,
+            limit: 50,
+          });
         rows.push(...next.data);
       }
       return rows.map((row, index) => ({
         order: String(index + 1),
         studentNumber: row.studentNumber ?? "-",
         name: studentName(row),
-        status: getAttendanceStatusPresentation(summaryStatus(row), attendanceStatusCatalog)
-          .shortLabel,
+        status: getAttendanceStatusPresentation(
+          summaryStatus(row),
+          attendanceStatusCatalog,
+        ).shortLabel,
       }));
     }
     if (view === "DAILY") {
@@ -368,17 +476,27 @@ export function ClassroomAttendanceHistory({
     : selectedDay
       ? "ประวัติการเช็กชื่อรายวัน"
       : undefined;
-  const rows = useMemo(() => activeQuery.data?.data ?? [], [activeQuery.data?.data]);
+  const rows = useMemo(
+    () => activeQuery.data?.data ?? [],
+    [activeQuery.data?.data],
+  );
 
   return (
     <div>
       {title ? (
         <div className="mb-5 flex items-center gap-3">
-          <IconButton aria-label="กลับไปหน้าสรุป" icon={ArrowLeft} onClick={returnToSummary} variant="outline" />
+          <IconButton
+            aria-label="กลับไปหน้าสรุป"
+            icon={ArrowLeft}
+            onClick={returnToSummary}
+            variant="outline"
+          />
           <div>
             <h2 className="text-xl font-bold text-slate-900">{title}</h2>
             <p className="text-sm text-slate-600">
-              {selectedStudent ? studentName(selectedStudent) : formatNumericThaiDate(selectedDay!)}
+              {selectedStudent
+                ? studentName(selectedStudent)
+                : formatNumericThaiDate(selectedDay!)}
             </p>
           </div>
         </div>
@@ -390,7 +508,10 @@ export function ClassroomAttendanceHistory({
             // sm:flex-none because SearchInput grows by default; the date box
             // beside it is a fixed 270px and the two must read as one pair.
             className="w-[270px] max-w-full sm:flex-none"
-            onChange={(value) => { setSearch(value); setPage(1); }}
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
             placeholder={selectedStudent ? "ค้นหาผู้เช็กชื่อ" : "ค้นหา"}
             value={search}
           />
@@ -401,7 +522,10 @@ export function ClassroomAttendanceHistory({
               <DatePicker
                 ariaLabel="วันเริ่ม"
                 max={dateTo || undefined}
-                onChange={(value) => { setDateFrom(value); setPage(1); }}
+                onChange={(value) => {
+                  setDateFrom(value);
+                  setPage(1);
+                }}
                 placeholder="วันเริ่ม"
                 value={dateFrom}
               />
@@ -410,7 +534,10 @@ export function ClassroomAttendanceHistory({
               <DatePicker
                 ariaLabel="วันจบ"
                 min={dateFrom || undefined}
-                onChange={(value) => { setDateTo(value); setPage(1); }}
+                onChange={(value) => {
+                  setDateTo(value);
+                  setPage(1);
+                }}
                 placeholder="วันจบ"
                 value={dateTo}
               />
@@ -420,7 +547,10 @@ export function ClassroomAttendanceHistory({
           <div className="w-[270px] max-w-full">
             <DatePicker
               ariaLabel="วันที่เช็กชื่อ"
-              onChange={(value) => { setSelectedDay(value); setPage(1); }}
+              onChange={(value) => {
+                setSelectedDay(value);
+                setPage(1);
+              }}
               placeholder="วันที่"
               value={selectedDay}
             />
@@ -430,7 +560,10 @@ export function ClassroomAttendanceHistory({
           <div className="w-[270px] max-w-full">
             <DatePicker
               ariaLabel="กรองวันที่เช็กชื่อ"
-              onChange={(value) => { setDate(value); setPage(1); }}
+              onChange={(value) => {
+                setDate(value);
+                setPage(1);
+              }}
               placeholder="วันที่"
               value={date}
             />
@@ -478,9 +611,16 @@ export function ClassroomAttendanceHistory({
       {activeQuery.isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : activeQuery.isError ? (
-        <ErrorState description="ไม่สามารถโหลดประวัติการเช็กชื่อได้" onRetry={() => void activeQuery.refetch()} />
+        <ErrorState
+          description="ไม่สามารถโหลดประวัติการเช็กชื่อได้"
+          onRetry={() => void activeQuery.refetch()}
+        />
       ) : rows.length === 0 ? (
-        <EmptyState description="ลองเปลี่ยนวันที่หรือคำค้นหา" icon={School} title="ไม่มีประวัติการเช็กชื่อ" />
+        <EmptyState
+          description="ลองเปลี่ยนวันที่หรือคำค้นหา"
+          icon={School}
+          title="ไม่มีประวัติการเช็กชื่อ"
+        />
       ) : selectedStudent ? (
         <DataTable
           headings={[
@@ -488,21 +628,44 @@ export function ClassroomAttendanceHistory({
             { label: "วันที่", sortKey: "date" },
             { label: "เวลา", sortKey: "time" },
             { label: "ผู้เช็กชื่อ", sortKey: "recordedBy" },
-            { label: "สถานะการเข้าเรียน", sortKey: "status", className: "text-center" },
+            {
+              label: "สถานะการเข้าเรียน",
+              sortKey: "status",
+              className: "text-center",
+            },
           ]}
           minWidthClassName="min-w-[900px]"
           onSortChange={handleSortChange}
           responsive={false}
           sort={sort}
-          footer={<HistoryPagination page={page} rowsPerPage={rowsPerPage} setPage={setPage} setRowsPerPage={setRowsPerPage} totalCount={totalCount} />}
+          footer={
+            <HistoryPagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              setPage={setPage}
+              setRowsPerPage={setRowsPerPage}
+              totalCount={totalCount}
+            />
+          }
         >
           {studentDaysQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.id}>
-              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell className="tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
-              <DataTableCell className="tabular-nums">{row.time ?? "-"}</DataTableCell>
+              <DataTableCell>
+                {(page - 1) * rowsPerPage + index + 1}
+              </DataTableCell>
+              <DataTableCell className="tabular-nums">
+                {formatNumericThaiDate(row.date)}
+              </DataTableCell>
+              <DataTableCell className="tabular-nums">
+                {row.time ?? "-"}
+              </DataTableCell>
               <DataTableCell>{row.recordedBy}</DataTableCell>
-              <DataTableCell><AttendanceStatusPills catalog={attendanceStatusCatalog} status={row.status} /></DataTableCell>
+              <DataTableCell>
+                <AttendanceStatusPills
+                  catalog={attendanceStatusCatalog}
+                  status={row.status}
+                />
+              </DataTableCell>
             </DataTableRow>
           ))}
         </DataTable>
@@ -513,21 +676,60 @@ export function ClassroomAttendanceHistory({
             { label: "รูปประจำตัว", className: "text-center" },
             { label: "รหัสประจำตัว", sortKey: "studentNumber" },
             { label: "ชื่อ-นามสกุล", sortKey: "name" },
-            { label: "สถานะการเข้าเรียน", sortKey: "status", className: "text-center" },
+            {
+              label: "สถานะการเข้าเรียน",
+              sortKey: "status",
+              className: "text-center",
+            },
           ]}
           minWidthClassName="min-w-[900px]"
           onSortChange={handleSortChange}
           responsive={false}
           sort={sort}
-          footer={<HistoryPagination page={page} rowsPerPage={rowsPerPage} setPage={setPage} setRowsPerPage={setRowsPerPage} totalCount={totalCount} />}
+          footer={
+            <HistoryPagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              setPage={setPage}
+              setRowsPerPage={setRowsPerPage}
+              totalCount={totalCount}
+            />
+          }
         >
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
-              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => contextualNavigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} photoUrl={row.photoUrl} /></button></div></DataTableCell>
-              <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
-              <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
-              <DataTableCell><AttendanceStatusPills catalog={attendanceStatusCatalog} status={summaryStatus(row)} /></DataTableCell>
+              <DataTableCell>
+                {(page - 1) * rowsPerPage + index + 1}
+              </DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">
+                  <button
+                    aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`}
+                    className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    onClick={() =>
+                      contextualNavigate(`/students/${row.studentUuid}`)
+                    }
+                    type="button"
+                  >
+                    <StudentAvatar
+                      name={studentName(row)}
+                      photoUrl={row.photoUrl}
+                    />
+                  </button>
+                </div>
+              </DataTableCell>
+              <DataTableCell className="tabular-nums">
+                {row.studentNumber ?? "-"}
+              </DataTableCell>
+              <DataTableCell className="font-medium text-slate-900">
+                {studentName(row)}
+              </DataTableCell>
+              <DataTableCell>
+                <AttendanceStatusPills
+                  catalog={attendanceStatusCatalog}
+                  status={summaryStatus(row)}
+                />
+              </DataTableCell>
             </DataTableRow>
           ))}
         </DataTable>
@@ -547,18 +749,45 @@ export function ClassroomAttendanceHistory({
           onSortChange={handleSortChange}
           responsive={false}
           sort={sort}
-          footer={<HistoryPagination page={page} rowsPerPage={rowsPerPage} setPage={setPage} setRowsPerPage={setRowsPerPage} totalCount={totalCount} />}
+          footer={
+            <HistoryPagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              setPage={setPage}
+              setRowsPerPage={setRowsPerPage}
+              totalCount={totalCount}
+            />
+          }
         >
           {dailyQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.date}>
-              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell className="tabular-nums">{formatNumericThaiDate(row.date)}</DataTableCell>
+              <DataTableCell>
+                {(page - 1) * rowsPerPage + index + 1}
+              </DataTableCell>
+              <DataTableCell className="tabular-nums">
+                {formatNumericThaiDate(row.date)}
+              </DataTableCell>
               <DataTableCell>{row.recordedBy}</DataTableCell>
               <DataTableCell>{row.presentCount}</DataTableCell>
               <DataTableCell>{row.lateCount}</DataTableCell>
               <DataTableCell>{row.leaveCount}</DataTableCell>
               <DataTableCell>{row.absentCount}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><IconButton aria-label={`ดูรายละเอียดวันที่ ${formatNumericThaiDate(row.date)}`} icon={History} onClick={() => { setSelectedDay(row.date); setSearch(""); setDate(""); setSort({ key: "name", direction: "asc" }); setPage(1); }} variant="edit" /></div></DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">
+                  <IconButton
+                    aria-label={`ดูรายละเอียดวันที่ ${formatNumericThaiDate(row.date)}`}
+                    icon={History}
+                    onClick={() => {
+                      setSelectedDay(row.date);
+                      setSearch("");
+                      setDate("");
+                      setSort({ key: "name", direction: "asc" });
+                      setPage(1);
+                    }}
+                    variant="edit"
+                  />
+                </div>
+              </DataTableCell>
             </DataTableRow>
           ))}
         </DataTable>
@@ -579,19 +808,62 @@ export function ClassroomAttendanceHistory({
           onSortChange={handleSortChange}
           responsive={false}
           sort={sort}
-          footer={<HistoryPagination page={page} rowsPerPage={rowsPerPage} setPage={setPage} setRowsPerPage={setRowsPerPage} totalCount={totalCount} />}
+          footer={
+            <HistoryPagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              setPage={setPage}
+              setRowsPerPage={setRowsPerPage}
+              totalCount={totalCount}
+            />
+          }
         >
           {studentQuery.data!.data.map((row, index) => (
             <DataTableRow key={row.studentUuid}>
-              <DataTableCell>{(page - 1) * rowsPerPage + index + 1}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><button aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`} className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => contextualNavigate(`/students/${row.studentUuid}`)} type="button"><StudentAvatar name={studentName(row)} photoUrl={row.photoUrl} /></button></div></DataTableCell>
-              <DataTableCell className="tabular-nums">{row.studentNumber ?? "-"}</DataTableCell>
-              <DataTableCell className="font-medium text-slate-900">{studentName(row)}</DataTableCell>
+              <DataTableCell>
+                {(page - 1) * rowsPerPage + index + 1}
+              </DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">
+                  <button
+                    aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`}
+                    className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    onClick={() =>
+                      contextualNavigate(`/students/${row.studentUuid}`)
+                    }
+                    type="button"
+                  >
+                    <StudentAvatar
+                      name={studentName(row)}
+                      photoUrl={row.photoUrl}
+                    />
+                  </button>
+                </div>
+              </DataTableCell>
+              <DataTableCell className="tabular-nums">
+                {row.studentNumber ?? "-"}
+              </DataTableCell>
+              <DataTableCell className="font-medium text-slate-900">
+                {studentName(row)}
+              </DataTableCell>
               <DataTableCell>{row.presentCount}</DataTableCell>
               <DataTableCell>{row.lateCount}</DataTableCell>
               <DataTableCell>{row.leaveCount}</DataTableCell>
               <DataTableCell>{row.absentCount}</DataTableCell>
-              <DataTableCell><div className="flex justify-center"><IconButton aria-label={`ดูประวัติของ ${studentName(row)}`} icon={History} onClick={() => { setSelectedStudent(row); setSort({ key: "date", direction: "desc" }); resetFilters(); }} variant="edit" /></div></DataTableCell>
+              <DataTableCell>
+                <div className="flex justify-center">
+                  <IconButton
+                    aria-label={`ดูประวัติของ ${studentName(row)}`}
+                    icon={History}
+                    onClick={() => {
+                      setSelectedStudent(row);
+                      setSort({ key: "date", direction: "desc" });
+                      resetFilters();
+                    }}
+                    variant="edit"
+                  />
+                </div>
+              </DataTableCell>
             </DataTableRow>
           ))}
         </DataTable>
@@ -614,7 +886,13 @@ export function ClassroomAttendanceHistory({
         loadRows={loadExportRows}
         onOpenChange={setExportOpen}
         open={exportOpen}
-        title={selectedStudent ? `ประวัติการเช็กชื่อ ${studentName(selectedStudent)}` : selectedDay ? `ประวัติการเช็กชื่อ ${formatNumericThaiDate(selectedDay)}` : `ประวัติการเช็กชื่อ ห้อง ${classroomLabel}`}
+        title={
+          selectedStudent
+            ? `ประวัติการเช็กชื่อ ${studentName(selectedStudent)}`
+            : selectedDay
+              ? `ประวัติการเช็กชื่อ ${formatNumericThaiDate(selectedDay)}`
+              : `ประวัติการเช็กชื่อ ห้อง ${classroomLabel}`
+        }
       />
     </div>
   );
@@ -637,7 +915,10 @@ function HistoryPagination({
     <div className="px-4 pb-4">
       <Pagination
         onPageChange={setPage}
-        onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(1); }}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(1);
+        }}
         page={page}
         rowsPerPage={rowsPerPage}
         rowsPerPageOptions={PAGE_SIZE_OPTIONS}

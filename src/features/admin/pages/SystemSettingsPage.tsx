@@ -10,6 +10,7 @@ import {
   SkeletonStack,
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import { SystemSettingCard } from "../components/SystemSettingCard";
 import { SettingsTabs } from "../../../components/layout/settings-tabs";
 import { getApiErrorMessage } from "../../../lib/api-error";
@@ -26,7 +27,10 @@ export function SystemSettingsPage() {
     key: string;
     message: string;
   } | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useRememberedState(
+    "system-settings:search",
+    "",
+  );
 
   const filteredSettings = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -34,11 +38,7 @@ export function SystemSettingsPage() {
       return settings;
     }
     return settings.filter((setting) =>
-      [
-        setting.setting_key,
-        setting.setting_value,
-        setting.description,
-      ]
+      [setting.setting_key, setting.setting_value, setting.description]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -47,7 +47,8 @@ export function SystemSettingsPage() {
   }, [settings, searchQuery]);
 
   const groupedSettings = useMemo(() => {
-    const groups: { title: string | null; items: typeof filteredSettings }[] = [];
+    const groups: { title: string | null; items: typeof filteredSettings }[] =
+      [];
     for (const setting of filteredSettings) {
       const title = setting.group ?? null;
       const lastGroup = groups[groups.length - 1];

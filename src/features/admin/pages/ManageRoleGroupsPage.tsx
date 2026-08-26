@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Button, useConfirm } from "../../../components/base";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
@@ -15,24 +16,26 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useRememberedState } from "../../../hooks/useRememberedState";
 import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-} from "../../../lib/pagination";
+  readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { RoleGroupDialog } from "../components/RoleGroupDialog";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import { useRolesCatalog } from "../hooks/useUsers";
-import type {
-  RoleDefinition,
-  RoleGroupListQuery,
-} from "../types/admin.types";
+import type { RoleDefinition, RoleGroupListQuery } from "../types/admin.types";
 
 const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
 
 export function ManageRoleGroupsPage() {
+  const [searchParams] = useSearchParams();
   const deleteRoleGroup = useDeleteRoleGroup();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const schoolsQuery = useScopedSchools();
@@ -49,14 +52,35 @@ export function ManageRoleGroupsPage() {
     refetch: refetchPermissionCatalog,
   } = usePermissionCatalog();
 
-  const [schoolInput, setSchoolInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
-  const [sort, setSort] = useState<DataTableSortState | undefined>({
+  const [schoolInput, setSchoolInput] = useState(
+    () => searchParams.get("schoolId") ?? "",
+  );
+  const [searchQuery, setSearchQuery] = useRememberedState(
+    "manage-role-groups:search",
+    "",
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
+  const defaultSort: DataTableSortState = {
     key: "group",
     direction: "asc",
-  });
+  };
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "sort", ["group", "menus"], defaultSort),
+  );
   const [dialogRoleGroup, setDialogRoleGroup] = useState<
     RoleDefinition | null | undefined
   >(undefined);
@@ -65,8 +89,16 @@ export function ManageRoleGroupsPage() {
   const selectedSchoolValue =
     schools.length === 1 ? String(schools[0].id) : schoolInput;
   const selectedSchoolId = Number(selectedSchoolValue) || null;
-  const selectedSchool = schools.find((school) => school.id === selectedSchoolId);
+  const selectedSchool = schools.find(
+    (school) => school.id === selectedSchoolId,
+  );
   const multipleSchools = schools.length > 1;
+  useSyncedSearchParams({
+    schoolId: multipleSchools ? schoolInput || undefined : undefined,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+    sort: serializeSortSearchParam(sort, defaultSort),
+  });
   const query = useMemo<RoleGroupListQuery | null>(
     () =>
       selectedSchoolId
@@ -75,20 +107,16 @@ export function ManageRoleGroupsPage() {
             page,
             limit: rowsPerPage,
             schoolId: selectedSchoolId,
-            sortBy: sort?.key === "menus" ? "menus" : sort ? "group" : undefined,
+            sortBy:
+              sort?.key === "menus" ? "menus" : sort ? "group" : undefined,
             sortDirection: sort?.direction,
           }
         : null,
     [debouncedSearch, page, rowsPerPage, selectedSchoolId, sort],
   );
 
-  const {
-    roleGroups,
-    meta,
-    isLoading,
-    isError,
-    refetch,
-  } = useRoleGroups(query);
+  const { roleGroups, meta, isLoading, isError, refetch } =
+    useRoleGroups(query);
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
