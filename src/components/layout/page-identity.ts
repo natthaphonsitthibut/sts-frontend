@@ -86,8 +86,6 @@ export const PAGE_IDENTITIES = {
   "/": createIdentity("หน้าหลัก", "home"),
   "/attendance": createIdentity("เช็กชื่อ", "edit"),
   "/attendance/classroom-links": createIdentity("จัดการลิงก์ห้องเรียน", "link"),
-  // Not `calendar-check` — that one is the "ระบบเช็กชื่อ" sidebar group icon.
-  "/attendance-operations": createIdentity("ความครบถ้วน", "fact-check"),
   "/classrooms": createIdentity("ห้องเรียนทั้งหมด", "school-building"),
   "/curriculum": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
   "/subjects": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),

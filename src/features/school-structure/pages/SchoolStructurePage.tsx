@@ -228,7 +228,11 @@ export function SchoolStructurePage() {
   const setHomeroomTeachers = useSetHomeroomTeachers();
   const saveTerm = useMutation({
     mutationFn: (values: SchoolTermFormValues) =>
-      attendanceService.upsertTerm({ ...values, schoolId: selectedSchoolId! }),
+      attendanceService.upsertTerm({
+        ...values,
+        schoolId: selectedSchoolId!,
+        termId: termDialogTerm?.id,
+      }),
     onSuccess: async (term) => {
       await queryClient.invalidateQueries({
         queryKey: ["school-structure", "terms", selectedSchoolId],

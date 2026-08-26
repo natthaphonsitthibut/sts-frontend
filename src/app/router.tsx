@@ -22,7 +22,6 @@ import {
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
-  AttendanceOperationsPage,
   CompletedPage,
   CurriculumGradesPage,
   CurriculumSubjectFormPage,
@@ -260,13 +259,6 @@ export const router = createBrowserRouter([
         element: protectedElement(
           <ClassroomLinksPage />,
           "manage-classroom-links",
-        ),
-      },
-      {
-        path: "attendance-operations",
-        element: protectedElement(
-          <AttendanceOperationsPage />,
-          "attendance-dashboard",
         ),
       },
       {

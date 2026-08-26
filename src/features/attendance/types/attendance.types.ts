@@ -49,13 +49,6 @@ export interface AttendanceHistoryRecord {
 }
 
 export type SchoolTermStatus = "DRAFT" | "ACTIVE" | "CLOSED";
-export type CalendarDayType = "SCHOOL_DAY" | "HOLIDAY" | "CANCELLED";
-export type AttendanceSessionStatus =
-  | "OPEN"
-  | "SUBMITTED"
-  | "REOPENED"
-  | "VOIDED";
-
 export interface SchoolTerm {
   id: string;
   schoolId: number;
@@ -65,70 +58,4 @@ export interface SchoolTerm {
   startsOn: string | null;
   endsOn: string | null;
   status: SchoolTermStatus;
-  calendarDayCount: number;
-  schoolDayCount: number;
-}
-
-export interface SchoolCalendarDay {
-  id: string;
-  termId: string;
-  date: string;
-  dayType: CalendarDayType;
-  reason: string | null;
-  source: "GENERATED" | "MANUAL" | "IMPORT" | "BACKFILL";
-}
-
-export interface AttendanceReconciliationItem {
-  gradeLevelId: number;
-  grade: string;
-  room: number;
-  expectedRosterCount: number;
-  recordedCount: number;
-  sessionId: string | null;
-  sessionStatus: AttendanceSessionStatus | null;
-  revision: number | null;
-  operationalStatus: "COMPLETED" | "MISSING" | "INCOMPLETE";
-}
-
-export interface AttendanceReconciliationResponse {
-  rows: AttendanceReconciliationItem[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  dayType: CalendarDayType | null;
-  summary: { completed: number; missing: number; incomplete: number };
-}
-
-export type AttendanceSessionAnomalyType =
-  | "HOLIDAY_ATTENDANCE"
-  | "CANCELLED_ATTENDANCE"
-  | "OUT_OF_TERM"
-  | "MISSING_CALENDAR_DAY";
-
-export interface AttendanceSessionAnomalyItem {
-  sessionId: string;
-  date: string;
-  gradeLevelId: number;
-  grade: string;
-  room: number;
-  expectedRosterCount: number;
-  recordedCount: number;
-  sessionStatus: AttendanceSessionStatus;
-  revision: number;
-  dayType: CalendarDayType | null;
-  calendarReason: string | null;
-  anomalyType: AttendanceSessionAnomalyType;
-}
-
-export interface AttendanceSessionAnomaliesResponse {
-  rows: AttendanceSessionAnomalyItem[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  summary: {
-    holidayAttendance: number;
-    cancelledAttendance: number;
-    outOfTerm: number;
-    missingCalendarDay: number;
-  };
 }
