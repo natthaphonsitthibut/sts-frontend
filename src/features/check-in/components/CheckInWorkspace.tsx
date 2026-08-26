@@ -6,18 +6,10 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Check,
-  Grid2X2,
-  Send,
-  Table2,
-  Undo2,
-  UserRound,
-  X,
-} from "lucide-react";
+import { Check, Grid2X2, Send, Table2, Undo2, X } from "lucide-react";
 import {
   appToast,
+  Avatar,
   Badge,
   Button,
   Combobox,
@@ -26,7 +18,6 @@ import {
   Label,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
-import { getAvatarGradient } from "../../../lib/avatar-gradient";
 import { formatClassLabel } from "../../../lib/room-presentation";
 import {
   AttendanceRosterTable,
@@ -87,68 +78,28 @@ function StudentPhoto({
   display?: "AVATAR" | "CARD";
   student: CheckInStudent;
 }) {
-  const photoQuery = useQuery({
-    queryKey: [
-      "check-in",
-      access,
-      classroomId ?? null,
-      "photo",
-      student.id,
-      student.photoVersion,
-    ],
-    queryFn: async () =>
-      URL.createObjectURL(
-        await checkInService.getStudentPhoto({
-          access,
-          classroomId,
-          studentId: student.id,
-        }),
-      ),
-    enabled: student.hasPhoto,
-    gcTime: 0,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-
-  useEffect(() => {
-    const currentUrl = photoQuery.data;
-    if (!currentUrl) return;
-    return () => URL.revokeObjectURL(currentUrl);
-  }, [photoQuery.data]);
-
   const fullName = `${student.firstName} ${student.lastName}`.trim();
-  const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
+  const photoUrl = student.hasPhoto
+    ? checkInService.getStudentPhotoUrl({
+        access,
+        classroomId,
+        studentId: student.id,
+        photoVersion: student.photoVersion,
+      })
+    : null;
   return (
-    <div
+    <Avatar
       className={cn(
-        "relative flex items-center justify-center overflow-hidden text-white",
-        display === "AVATAR" ? "size-12 rounded-full" : "h-full w-full",
+        "text-white",
+        display === "AVATAR"
+          ? "size-12 text-sm"
+          : "h-full w-full rounded-none text-7xl",
       )}
-      style={getAvatarGradient(fullName)}
-    >
-      <span
-        className={cn(
-          "font-black",
-          display === "AVATAR" ? "text-sm" : "text-7xl drop-shadow-lg",
-        )}
-        aria-hidden="true"
-      >
-        {initials || (
-          <UserRound className={display === "AVATAR" ? "size-5" : "size-20"} />
-        )}
-      </span>
-      {photoQuery.data ? (
-        <img
-          alt={`รูปประจำตัว ${fullName}`}
-          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-200 motion-reduce:transition-none"
-          draggable={false}
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-          onLoad={(event) => event.currentTarget.classList.add("opacity-100")}
-          src={photoQuery.data}
-        />
-      ) : null}
-    </div>
+      fallback={fullName.charAt(0) || "?"}
+      gradientName={fullName}
+      imageAlt={`รูปประจำตัว ${fullName}`}
+      imageUrl={photoUrl}
+    />
   );
 }
 
@@ -688,20 +639,22 @@ export function CheckInWorkspace({
             />
           </div>
           <div>
-            <Label htmlFor="check-in-subject">วิชา</Label>
+            <Label htmlFor="check-in-subject" required>
+              วิชา
+            </Label>
             <Combobox
               ariaLabel="วิชา"
               disabled={!workspace.options?.subjects.length}
               emptyText="ไม่พบวิชา"
               id="check-in-subject"
               onChange={(value) =>
-                workspace.setClassroomSubjectId(Number(value))
+                workspace.setClassroomSubjectId(value ? Number(value) : null)
               }
               options={(workspace.options?.subjects ?? []).map((subject) => ({
                 label: subject.nameTh,
                 value: String(subject.classroomSubjectId),
               }))}
-              placeholder="ค้นหาชื่อวิชา"
+              placeholder="เลือกวิชา"
               value={
                 workspace.classroomSubjectId
                   ? String(workspace.classroomSubjectId)

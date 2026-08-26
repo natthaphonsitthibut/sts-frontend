@@ -171,26 +171,25 @@ async function submitSession(input: {
   return response.data.data;
 }
 
-async function getStudentPhoto(input: {
+function getStudentPhotoUrl(input: {
   access: "INTERNAL" | "PUBLIC_LINK";
   classroomId?: number;
   studentId: string;
-}): Promise<Blob> {
-  const response = await apiClient.get<Blob>(
-    input.access === "INTERNAL"
-      ? "/attendance/check-in/student-photo"
-      : "/check-in/student-photo",
-    {
-      params: {
-        studentId: input.studentId,
-        ...(input.access === "INTERNAL"
-          ? { classroomId: input.classroomId }
-          : {}),
-      },
-      responseType: "blob",
+  photoVersion?: string | null;
+}): string {
+  return apiClient.getUri({
+    url:
+      input.access === "INTERNAL"
+        ? "/attendance/check-in/student-photo"
+        : "/check-in/student-photo",
+    params: {
+      studentId: input.studentId,
+      ...(input.access === "INTERNAL"
+        ? { classroomId: input.classroomId }
+        : {}),
+      ...(input.photoVersion ? { v: input.photoVersion } : {}),
     },
-  );
-  return response.data;
+  });
 }
 
 export const checkInService = {
@@ -198,7 +197,7 @@ export const checkInService = {
   getOptions,
   getPublicContext,
   getRoster,
-  getStudentPhoto,
+  getStudentPhotoUrl,
   pollAraIdChallenge,
   startGoogle,
   verifyDevelopmentGoogle,
