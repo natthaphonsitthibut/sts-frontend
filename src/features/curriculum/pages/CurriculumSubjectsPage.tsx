@@ -4,6 +4,7 @@ import { ArrowLeft, BookOpen, Plus } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
@@ -15,6 +16,10 @@ import {
   ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import {
+  readPositiveIntegerSearchParam,
+  useSyncedSearchParams,
+} from "../../../hooks/useSyncedSearchParams";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
@@ -33,14 +38,30 @@ const CURRICULUM_PATH = "/curriculum";
 export function CurriculumSubjectsPage() {
   const { gradeLevelId } = useParams<{ gradeLevelId: string }>();
   const navigate = useNavigate();
+  const contextualNavigate = useContextualNavigate();
   const [searchParams] = useSearchParams();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
   const schoolId = Number(searchParams.get("schoolId")) || null;
   const gradeId = Number(gradeLevelId) || null;
-  const [termInput, setTermInput] = useState("");
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [termInput, setTermInput] = useState(
+    () => searchParams.get("termId") ?? "",
+  );
+  const [page, setPage] = useState(() =>
+    readPositiveIntegerSearchParam(searchParams, "page", 1),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(() => {
+    const value = readPositiveIntegerSearchParam(
+      searchParams,
+      "limit",
+      DEFAULT_PAGE_SIZE,
+    );
+    return PAGE_SIZE_OPTIONS.includes(
+      value as (typeof PAGE_SIZE_OPTIONS)[number],
+    )
+      ? value
+      : DEFAULT_PAGE_SIZE;
+  });
 
   const termsQuery = useQuery({
     queryKey: ["curriculum", "terms", schoolId],
@@ -67,10 +88,14 @@ export function CurriculumSubjectsPage() {
   const subjectsQuery = useCurriculumSubjects(query);
   const deleteSubject = useDeleteCurriculumSubject(query);
   const gradeLabel = subjectsQuery.subjects[0]?.gradeLabel ?? "";
-  const backPath = `${CURRICULUM_PATH}${schoolId ? `?schoolId=${schoolId}` : ""}`;
+  useSyncedSearchParams({
+    termId: termInput || undefined,
+    page: page > 1 ? page : undefined,
+    limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+  });
 
   function openEdit(subject: CurriculumSubject): void {
-    void navigate(
+    contextualNavigate(
       `${CURRICULUM_PATH}/${gradeId}/subjects/${subject.id}/edit?schoolId=${schoolId}&termId=${selectedTermId}`,
     );
   }
@@ -114,7 +139,7 @@ export function CurriculumSubjectsPage() {
         }
         description="กำหนดรายวิชาและห้องเรียนที่ใช้เช็กชื่อในระดับชั้นนี้"
         navigation={
-          <NavButton icon={ArrowLeft} to={backPath} variant="outline">
+          <NavButton icon={ArrowLeft} to={-1} variant="outline">
             ย้อนกลับ
           </NavButton>
         }
