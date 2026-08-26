@@ -194,18 +194,31 @@ export function StudentCreatePage() {
                 />
               </FormItem>
               <FormItem>
-                <FormLabel required>ชื่อ</FormLabel>
-                <Input {...registerField(form, "FirstName_Onec")} />
+                <FormLabel htmlFor="student-first-name" required>
+                  ชื่อ
+                </FormLabel>
+                <Input
+                  id="student-first-name"
+                  {...registerField(form, "FirstName_Onec")}
+                />
                 <FormMessage<FormValues> name="FirstName_Onec" />
               </FormItem>
               <FormItem>
-                <FormLabel required>นามสกุล</FormLabel>
-                <Input {...registerField(form, "LastName_Onec")} />
+                <FormLabel htmlFor="student-last-name" required>
+                  นามสกุล
+                </FormLabel>
+                <Input
+                  id="student-last-name"
+                  {...registerField(form, "LastName_Onec")}
+                />
                 <FormMessage<FormValues> name="LastName_Onec" />
               </FormItem>
               <FormItem>
-                <FormLabel>ชื่อกลาง</FormLabel>
-                <Input {...registerField(form, "MiddleName_Onec")} />
+                <FormLabel htmlFor="student-middle-name">ชื่อกลาง</FormLabel>
+                <Input
+                  id="student-middle-name"
+                  {...registerField(form, "MiddleName_Onec")}
+                />
               </FormItem>
             </div>
           </Card>
@@ -217,9 +230,13 @@ export function StudentCreatePage() {
             </h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <FormItem className="sm:col-span-2">
-                <FormLabel required>โรงเรียน ปีการศึกษา ชั้น และห้อง</FormLabel>
+                <FormLabel htmlFor="student-classroom" required>
+                  โรงเรียน ปีการศึกษา ชั้น และห้อง
+                </FormLabel>
                 <Combobox
+                  ariaLabel="โรงเรียน ปีการศึกษา ชั้น และห้อง"
                   disabled={optionsQuery.isLoading}
+                  id="student-classroom"
                   emptyText="ไม่พบห้องเรียนที่เปิดใช้งานในขอบเขตของคุณ"
                   onChange={(value) =>
                     form.setValue("classroom_id", value, {
@@ -234,13 +251,22 @@ export function StudentCreatePage() {
                 <FormMessage<FormValues> name="classroom_id" />
               </FormItem>
               <FormItem>
-                <FormLabel>เลขประจำตัวนักเรียน</FormLabel>
-                <Input {...registerField(form, "student_number")} />
+                <FormLabel htmlFor="student-number">
+                  เลขประจำตัวนักเรียน
+                </FormLabel>
+                <Input
+                  id="student-number"
+                  {...registerField(form, "student_number")}
+                />
               </FormItem>
               <FormItem>
-                <FormLabel required>สถานะนักเรียน</FormLabel>
+                <FormLabel htmlFor="student-status" required>
+                  สถานะนักเรียน
+                </FormLabel>
                 <Combobox
+                  ariaLabel="สถานะนักเรียน"
                   disabled={statusesQuery.isLoading}
+                  id="student-status"
                   onChange={(value) =>
                     form.setValue("student_status_code", value, {
                       shouldDirty: true,
@@ -254,8 +280,11 @@ export function StudentCreatePage() {
                 <FormMessage<FormValues> name="student_status_code" />
               </FormItem>
               <FormItem>
-                <FormLabel>เกรดเฉลี่ยภาคเรียน</FormLabel>
+                <FormLabel htmlFor="student-term-gpa">
+                  เกรดเฉลี่ยภาคเรียน
+                </FormLabel>
                 <Input
+                  id="student-term-gpa"
                   inputMode="decimal"
                   placeholder="0.00–4.00"
                   {...registerField(form, "term_gpa")}
@@ -271,21 +300,29 @@ export function StudentCreatePage() {
             </h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               <FormItem>
-                <FormLabel>เบอร์โทร</FormLabel>
+                <FormLabel htmlFor="student-contact-phone">เบอร์โทร</FormLabel>
                 <Input
+                  id="student-contact-phone"
                   inputMode="numeric"
                   {...registerField(form, "contact_phone")}
                 />
                 <FormMessage<FormValues> name="contact_phone" />
               </FormItem>
               <FormItem>
-                <FormLabel>อีเมล</FormLabel>
-                <Input type="email" {...registerField(form, "contact_email")} />
+                <FormLabel htmlFor="student-contact-email">อีเมล</FormLabel>
+                <Input
+                  id="student-contact-email"
+                  type="email"
+                  {...registerField(form, "contact_email")}
+                />
                 <FormMessage<FormValues> name="contact_email" />
               </FormItem>
               <FormItem>
-                <FormLabel>LINE ID</FormLabel>
-                <Input {...registerField(form, "contact_line_id")} />
+                <FormLabel htmlFor="student-contact-line-id">LINE ID</FormLabel>
+                <Input
+                  id="student-contact-line-id"
+                  {...registerField(form, "contact_line_id")}
+                />
               </FormItem>
             </div>
           </Card>
