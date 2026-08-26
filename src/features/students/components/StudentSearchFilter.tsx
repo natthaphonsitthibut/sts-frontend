@@ -34,6 +34,7 @@ interface StudentSearchFilterProps {
   exportAction?: ReactNode;
   createAction?: ReactNode;
   onRefresh: () => Promise<unknown> | unknown;
+  refreshDisabled?: boolean;
   updatedAt: number;
   onClearFilters: () => void;
   title?: string;
@@ -60,6 +61,7 @@ export function StudentSearchFilter({
   exportAction,
   createAction,
   onRefresh,
+  refreshDisabled = false,
   updatedAt,
   onClearFilters,
   title = "รายชื่อนักเรียน",
@@ -72,7 +74,11 @@ export function StudentSearchFilter({
       navigation={navigation}
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
+          <RefreshButton
+            disabled={refreshDisabled}
+            onRefresh={onRefresh}
+            updatedAt={updatedAt}
+          />
           {exportAction}
           {createAction}
         </div>
@@ -82,6 +88,30 @@ export function StudentSearchFilter({
         value: searchQuery,
         onChange: onSearchChange,
         placeholder: "ค้นหาชื่อนักเรียน...",
+        after: (
+          <FilterSelect
+            ariaLabel="กรองตามสถานะการเรียน"
+            className="sm:w-[220px]"
+            disabled={isStudentStatusError || isStudentStatusLoading}
+            onChange={(value) =>
+              onStudentStatusCodeChange(value as StudentStatusFilterValue)
+            }
+            value={studentStatusCode}
+          >
+            {isStudentStatusError ? (
+              <option value={studentStatusCode}>โหลดสถานะไม่สำเร็จ</option>
+            ) : isStudentStatusLoading ? (
+              <option value={studentStatusCode}>กำลังโหลดสถานะ...</option>
+            ) : null}
+            {isStudentStatusError || isStudentStatusLoading
+              ? null
+              : studentStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+          </FilterSelect>
+        ),
       }}
       filters={
         <>
@@ -113,28 +143,6 @@ export function StudentSearchFilter({
                 {formatRoomLabel(option)}
               </option>
             ))}
-          </FilterSelect>
-
-          <FilterSelect
-            ariaLabel="กรองตามสถานะการเรียน"
-            disabled={isStudentStatusError || isStudentStatusLoading}
-            onChange={(value) =>
-              onStudentStatusCodeChange(value as StudentStatusFilterValue)
-            }
-            value={studentStatusCode}
-          >
-            {isStudentStatusError ? (
-              <option value={studentStatusCode}>โหลดสถานะไม่สำเร็จ</option>
-            ) : isStudentStatusLoading ? (
-              <option value={studentStatusCode}>กำลังโหลดสถานะ...</option>
-            ) : null}
-            {isStudentStatusError || isStudentStatusLoading
-              ? null
-              : studentStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
           </FilterSelect>
         </>
       }

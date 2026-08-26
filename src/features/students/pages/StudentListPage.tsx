@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { FileDown, Plus, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Tabs } from "../../../components/base";
+import { Button, Combobox, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   ListPageToolbar,
   PageShell,
   SkeletonTable,
@@ -18,11 +17,11 @@ import {
   readPositiveIntegerSearchParam,
   useSyncedSearchParams,
 } from "../../../hooks/useSyncedSearchParams";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
-import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useStudentStatuses } from "../../student-statuses/hooks/useStudentStatuses";
 import { PiiExportPanel } from "../components/PiiExportPanel";
 import { StudentSearchFilter } from "../components/StudentSearchFilter";
@@ -97,14 +96,11 @@ export function StudentListPage({
   const [selectedStudentsById, setSelectedStudentsById] = useState<
     Map<string, StudentListItem>
   >(() => new Map());
-  const schoolsQuery = useScopedSchools();
-  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const fallbackSchoolId =
-    schools.length === 1 ? String(schools[0].id) : undefined;
+  const schoolArea = useSchoolAreaFilter({ includeLocations: false });
+  const schools = schoolArea.filteredSchools;
   const scope = useScopeCascade({
     lockToActorScope: true,
     initialSchoolId: searchParams.get("schoolId") || undefined,
-    fallbackSchoolId,
     initialGrade: searchParams.get("grade") || undefined,
     initialRoom: searchParams.get("room") || undefined,
   });
@@ -171,12 +167,8 @@ export function StudentListPage({
   );
   const effectiveGrade = scope.gradeLocked ? scope.grade : grade;
   const effectiveRoom = scope.roomLocked ? scope.room : room;
-  const selectedSchoolId = schools.some(
-    (school) => String(school.id) === scope.schoolId,
-  )
-    ? scope.schoolId
-    : "";
-  const showSchoolSelector = !scope.schoolLocked && schools.length > 1;
+  const selectedSchoolId = scope.schoolId;
+  const showSchoolSelector = !scope.schoolLocked;
 
   useSyncedSearchParams({
     province: undefined,
@@ -307,6 +299,7 @@ export function StudentListPage({
     setGrade("ALL");
     setRoom("ALL");
     setStudentStatusCode(undefined);
+    schoolArea.setSchoolSearch("");
     scope.setGrade("");
     scope.setRoom("");
     setPage(1);
@@ -412,6 +405,7 @@ export function StudentListPage({
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
           onRefresh={refetch}
+          refreshDisabled={!selectedSchoolId}
           updatedAt={dataUpdatedAt}
           onClearFilters={handleClearFilters}
           onRoomChange={handleRoomChange}
@@ -424,10 +418,12 @@ export function StudentListPage({
           roomOptions={options.rooms}
           schoolFilters={
             showSchoolSelector ? (
-              <FilterCombobox
+              <Combobox
                 ariaLabel="กรองตามโรงเรียน"
+                className="w-full"
                 emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
                 onChange={handleSchoolChange}
+                onSearchChange={schoolArea.setSchoolSearch}
                 options={schools.map((school) => ({
                   value: String(school.id),
                   label: school.name,
@@ -462,10 +458,12 @@ export function StudentListPage({
           onClearFilters={handleClearFilters}
           filters={
             showSchoolSelector ? (
-              <FilterCombobox
+              <Combobox
                 ariaLabel="กรองตามโรงเรียน"
+                className="w-full"
                 emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
                 onChange={handleSchoolChange}
+                onSearchChange={schoolArea.setSchoolSearch}
                 options={schools.map((school) => ({
                   value: String(school.id),
                   label: school.name,
@@ -485,15 +483,17 @@ export function StudentListPage({
       )}
 
       <div className="space-y-5">
-        {schoolsQuery.isError ? (
+        {schoolArea.isError ? (
           <ErrorState
             description="ไม่สามารถโหลดข้อมูลโรงเรียนที่จำเป็นสำหรับหน้านี้ได้"
-            onRetry={() => void schoolsQuery.refetch()}
+            onRetry={() => void schoolArea.refetch()}
             title="โหลดข้อมูลไม่สำเร็จ"
           />
-        ) : schoolsQuery.isLoading ? (
+        ) : schoolArea.isLoading ? (
           <SkeletonTable />
-        ) : schools.length === 0 ? (
+        ) : !scope.schoolLocked &&
+          !schoolArea.schoolSearch.trim() &&
+          schools.length === 0 ? (
           <EmptyState
             description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
             icon={UserRound}
