@@ -29,6 +29,7 @@ import {
 } from "../../attendance/lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { checkInService } from "../api/check-in.service";
+import { ClassroomStudentProfileDialog } from "./ClassroomStudentProfileDialog";
 import { useCheckInWorkspace } from "../hooks/useCheckInWorkspace";
 import type {
   CheckInAccess,
@@ -111,6 +112,7 @@ function CheckInTable({
   marks,
   onClear,
   onMark,
+  onOpenProfile,
   roster,
 }: {
   access: CheckInAccess;
@@ -120,6 +122,7 @@ function CheckInTable({
   marks: Map<string, LocalCheckInMark>;
   onClear: (studentId: string) => void;
   onMark: (studentId: string, status: CheckInMarkStatus) => void;
+  onOpenProfile?: (student: CheckInStudent) => void;
   roster: CheckInStudent[];
 }) {
   function markAndAdvance(studentId: string, status: CheckInMarkStatus): void {
@@ -154,7 +157,23 @@ function CheckInTable({
         name: `${student.firstName} ${student.lastName}`.trim(),
         order: roster.findIndex((item) => item.id === student.id) + 1,
         studentNumber: student.studentNumber,
-        avatar: (
+        avatar: onOpenProfile ? (
+          // The avatar is the way into the student's profile, the same as on
+          // the staff roster.
+          <button
+            aria-label={`เปิดข้อมูลนักเรียน ${`${student.firstName} ${student.lastName}`.trim()}`}
+            className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            onClick={() => onOpenProfile(student)}
+            type="button"
+          >
+            <StudentPhoto
+              access={access}
+              classroomId={classroomId}
+              display="AVATAR"
+              student={student}
+            />
+          </button>
+        ) : (
           <StudentPhoto
             access={access}
             classroomId={classroomId}
@@ -542,6 +561,11 @@ export function CheckInWorkspace({
 }) {
   const workspace = useCheckInWorkspace({ access, classroomId });
   const [autoAdvance, setAutoAdvance] = useState(readAutoAdvance);
+  // Only the classroom link has a profile of its own to open; the staff screens
+  // reach the full page at /students/:id instead.
+  const [profileStudent, setProfileStudent] = useState<CheckInStudent | null>(
+    null,
+  );
   const [announcement, setAnnouncement] = useState("");
   const submitAreaRef = useRef<HTMLDivElement>(null);
   const room = workspace.options?.classroom;
@@ -768,6 +792,9 @@ export function CheckInWorkspace({
           marks={workspace.marks}
           onClear={clearStudent}
           onMark={markStudent}
+          onOpenProfile={
+            access === "PUBLIC_LINK" ? setProfileStudent : undefined
+          }
           roster={workspace.roster}
         />
       ) : (
@@ -824,6 +851,12 @@ export function CheckInWorkspace({
         ปุ่มลัดโหมดการ์ด: ลูกศรขวา {<Check className="inline size-3" />}{" "}
         มาเรียน, ลูกศรซ้าย {<X className="inline size-3" />} ขาดเรียน
       </p>
+
+      <ClassroomStudentProfileDialog
+        onOpenChange={(next) => !next && setProfileStudent(null)}
+        photoVersion={profileStudent?.photoVersion}
+        studentId={profileStudent?.id ?? null}
+      />
     </div>
   );
 }

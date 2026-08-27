@@ -1,5 +1,11 @@
 export { Alert, AlertDescription, AlertTitle, type AlertProps } from "./alert";
 export { appToast, type AppToastMutationMeta } from "./app-toast";
+export { attachmentKindOf, type AttachmentKind } from "./attachment-kind";
+export {
+  AttachmentViewer,
+  type AttachmentViewerItem,
+  type AttachmentViewerProps,
+} from "./attachment-viewer";
 export { Avatar, type AvatarProps } from "./avatar";
 export {
   AvatarPhotoEditor,

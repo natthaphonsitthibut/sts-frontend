@@ -36,7 +36,11 @@ export function PublicCheckInPage() {
     queryFn: () => checkInService.getPublicContext(token),
     retry: false,
   });
+  // Choosing an identity provider is a lookup, not a save: without this the
+  // global mutation toast announces "บันทึกแล้ว" the moment the teacher picks
+  // Gmail or AraID.
   const googleMutation = useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: async (email?: string) => {
       if (!token) throw new Error("กรุณาเปิดจากลิงก์ห้องเรียน");
       if (email) {
@@ -54,6 +58,7 @@ export function PublicCheckInPage() {
     },
   });
   const araIdMutation = useMutation({
+    meta: { suppressSuccessToast: true },
     mutationFn: async () => {
       if (!token) throw new Error("กรุณาเปิดจากลิงก์ห้องเรียน");
       return await checkInService.createAraIdChallenge(token);

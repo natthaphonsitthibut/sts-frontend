@@ -20,6 +20,7 @@ import {
   ATTENDANCE_STATUS_STYLE,
   normalizeAttendanceSelectionStatus,
 } from "../../attendance/lib/attendance-presentation";
+import { type StudentReadSource } from "../api/students.service";
 import { useStudentSubjectAttendance } from "../hooks/useStudentProfileSummary";
 import type {
   StudentProfileAttendanceDay,
@@ -98,6 +99,8 @@ const ATTENDANCE_LEGEND: Array<{
 interface StudentAttendanceCalendarProps {
   studentId: string;
   summary: StudentProfileSummary;
+  /** Which guarded namespace answers the per-day subject reads. */
+  source?: StudentReadSource;
   /**
    * Reports the rendered height of the title + calendar grid (excluding the
    * day's subject list below it), so a caller can match another column's
@@ -109,6 +112,7 @@ interface StudentAttendanceCalendarProps {
 export function StudentAttendanceCalendar({
   studentId,
   summary,
+  source = "INTERNAL",
   onCalendarBoxHeightChange,
 }: StudentAttendanceCalendarProps) {
   const cardWrapperRef = useRef<HTMLDivElement>(null);
@@ -156,6 +160,7 @@ export function StudentAttendanceCalendar({
   const subjectQuery = useStudentSubjectAttendance(
     studentId,
     hasTermBounds ? selectedDate : undefined,
+    source,
   );
   const calendarCells = useMemo(() => {
     const year = visibleMonth.getFullYear();

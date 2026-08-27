@@ -91,7 +91,10 @@ interface StudentsService {
       | "enrollmentState"
     >,
   ) => Promise<StudentFilterOptions>;
-  getStudentById: (studentId: string) => Promise<StudentDetail>;
+  getStudentById: (
+    studentId: string,
+    source?: StudentReadSource,
+  ) => Promise<StudentDetail>;
   updateStudentPhoto: (
     studentId: string,
     input: { photo?: File; remove?: boolean },
@@ -99,6 +102,7 @@ interface StudentsService {
   revealStudentPii: (
     studentId: string,
     payload: StudentPiiRevealRequest,
+    source?: StudentReadSource,
   ) => Promise<StudentPiiRevealResponse>;
   listPiiExportRequests: (
     query?: PiiExportRequestListQuery,
@@ -121,20 +125,46 @@ interface StudentsService {
   ) => Promise<StudentDetail>;
   createStudent: (payload: StudentCreatePayload) => Promise<StudentDetail>;
   getManagementOptions: () => Promise<StudentManagementOptions>;
-  getStudentCasesById: (studentId: string) => Promise<StudentCase[]>;
+  getStudentCasesById: (
+    studentId: string,
+    source?: StudentReadSource,
+  ) => Promise<StudentCase[]>;
   getStudentAttendance: (
     studentId: string,
+    source?: StudentReadSource,
   ) => Promise<StudentAttendanceCalendarRecord[]>;
   getStudentAttendanceSummary: (
     studentId: string,
   ) => Promise<StudentAttendanceSummaryResponse>;
   getStudentProfileSummary: (
     studentId: string,
+    source?: StudentReadSource,
   ) => Promise<StudentProfileSummary>;
   getStudentSubjectAttendance: (
     studentId: string,
     date: string,
+    source?: StudentReadSource,
   ) => Promise<StudentSubjectAttendanceRecord[]>;
+}
+
+/**
+ * Where a student read is served from. A classroom link has no user account, so
+ * its own guarded namespace answers the same reads bounded by the link's room —
+ * the shapes are identical, which is why one fetcher serves both.
+ */
+export type StudentReadSource = "INTERNAL" | "CLASSROOM_LINK";
+
+const STUDENT_READ_BASE: Record<StudentReadSource, string> = {
+  INTERNAL: "/students",
+  CLASSROOM_LINK: "/classroom/students",
+};
+
+function studentPath(
+  source: StudentReadSource,
+  studentId: string,
+  suffix = "",
+): string {
+  return `${STUDENT_READ_BASE[source]}/${encodeURIComponent(studentId)}${suffix}`;
 }
 
 function normalizeArrayResponse<T>(
@@ -281,17 +311,23 @@ async function getFilterOptions(
   };
 }
 
-async function getStudentById(studentId: string): Promise<StudentDetail> {
-  const response = await apiClient.get<StudentDetail>(`/students/${studentId}`);
+async function getStudentById(
+  studentId: string,
+  source: StudentReadSource = "INTERNAL",
+): Promise<StudentDetail> {
+  const response = await apiClient.get<StudentDetail>(
+    studentPath(source, studentId),
+  );
   return response.data;
 }
 
 async function revealStudentPii(
   studentId: string,
   payload: StudentPiiRevealRequest,
+  source: StudentReadSource = "INTERNAL",
 ): Promise<StudentPiiRevealResponse> {
   const response = await apiClient.post<StudentPiiRevealResponse>(
-    `/students/${studentId}/pii-reveal`,
+    studentPath(source, studentId, "/pii-reveal"),
     payload,
   );
   return response.data;
@@ -421,20 +457,29 @@ async function updateStudentPhoto(
   return response.data;
 }
 
-async function getStudentCasesById(studentId: string): Promise<StudentCase[]> {
+async function getStudentCasesById(
+  studentId: string,
+  source: StudentReadSource = "INTERNAL",
+): Promise<StudentCase[]> {
   const response = await apiClient.get<
     StudentCase[] | DataEnvelope<StudentCase[]>
-  >(`/students/${encodeURIComponent(studentId)}/cases`);
+  >(studentPath(source, studentId, "/cases"));
   return normalizeArrayResponse(response.data);
 }
 
 async function getStudentAttendance(
   studentId: string,
+  source: StudentReadSource = "INTERNAL",
 ): Promise<StudentAttendanceCalendarRecord[]> {
   const response = await apiClient.get<
     | StudentAttendanceCalendarRecord[]
     | DataEnvelope<StudentAttendanceCalendarRecord[]>
-  >(`/students/attendance/${studentId}`);
+  >(
+    // The staff route keeps its historic `/students/attendance/:id` shape.
+    source === "INTERNAL"
+      ? `/students/attendance/${encodeURIComponent(studentId)}`
+      : studentPath(source, studentId, "/attendance"),
+  );
   return normalizeArrayResponse(response.data);
 }
 
@@ -471,9 +516,10 @@ async function getStudentAttendanceSummary(
 
 async function getStudentProfileSummary(
   studentId: string,
+  source: StudentReadSource = "INTERNAL",
 ): Promise<StudentProfileSummary> {
   const response = await apiClient.get<DataEnvelope<StudentProfileSummary>>(
-    `/students/${encodeURIComponent(studentId)}/profile-summary`,
+    studentPath(source, studentId, "/profile-summary"),
   );
   if (!response.data.data) {
     throw new Error("Student profile summary response is missing data");
@@ -484,10 +530,11 @@ async function getStudentProfileSummary(
 async function getStudentSubjectAttendance(
   studentId: string,
   date: string,
+  source: StudentReadSource = "INTERNAL",
 ): Promise<StudentSubjectAttendanceRecord[]> {
   const response = await apiClient.get<
     DataEnvelope<StudentSubjectAttendanceRecord[]>
-  >(`/students/${encodeURIComponent(studentId)}/attendance-subjects`, {
+  >(studentPath(source, studentId, "/attendance-subjects"), {
     params: { date },
   });
   return response.data.data ?? [];

@@ -519,8 +519,16 @@ export const router = createBrowserRouter([
     element: withSuspense(<TeacherLineLinkResultPage />),
   },
   {
-    path: "/check-in",
+    // A classroom link opens the whole classroom — roster, attendance, student
+    // profiles — so it lives at /classroom. Links already handed out point at
+    // /check-in and keep working through the redirect below, which carries the
+    // token in the hash across untouched.
+    path: "/classroom",
     element: withSuspense(<PublicCheckInPage />),
+  },
+  {
+    path: "/check-in",
+    element: <LegacyRouteRedirect to="/classroom" />,
   },
   {
     path: "/araid",

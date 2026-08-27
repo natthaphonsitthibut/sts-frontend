@@ -23,7 +23,10 @@ import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal"
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { maskSensitiveIdentifier } from "../../../lib/pii-presentation";
 import { formatRoomLabel } from "../../../lib/room-presentation";
-import { studentsService } from "../api/students.service";
+import {
+  studentsService,
+  type StudentReadSource,
+} from "../api/students.service";
 import { RISK_TIER_PRESENTATION } from "../lib/risk-tier-presentation";
 import { PII_FIELD_GROUPS, PII_FIELD_LABELS } from "../pii.constants";
 import type {
@@ -47,6 +50,13 @@ interface StudentProfileHeaderProps {
   locationOpen?: boolean;
   onOpenContacts?: () => void;
   onOpenLocation?: () => void;
+  /**
+   * Overrides where the photo is fetched from. A classroom link cannot call the
+   * staff photo route, so it passes its own link-scoped URL instead.
+   */
+  photoUrl?: string | null;
+  /** Which guarded namespace answers reveals for this surface. */
+  source?: StudentReadSource;
   student: StudentDetail;
   studentId: string;
   piiRevealMode?: PiiRevealMode;
@@ -97,6 +107,8 @@ export function StudentProfileHeader({
   locationOpen = false,
   onOpenContacts,
   onOpenLocation,
+  photoUrl,
+  source = "INTERNAL",
   student,
   studentId,
   piiRevealMode = "reasoned",
@@ -179,9 +191,11 @@ export function StudentProfileHeader({
     setDirectError("");
     setDirectRevealing(field);
     try {
-      const response = await studentsService.revealStudentPii(studentId, {
-        field_group: PII_FIELD_GROUPS[field],
-      });
+      const response = await studentsService.revealStudentPii(
+        studentId,
+        { field_group: PII_FIELD_GROUPS[field] },
+        source,
+      );
       handleRevealed(response.values);
     } catch (error) {
       setDirectError(
@@ -254,7 +268,7 @@ export function StudentProfileHeader({
             name={fullName}
             onRemove={() => updatePhoto.mutate({ remove: true })}
             onSelect={(photo) => updatePhoto.mutate({ photo })}
-            photoUrl={resolveApiMediaUrl(student.photo_url ?? null)}
+            photoUrl={photoUrl ?? resolveApiMediaUrl(student.photo_url ?? null)}
           />
 
           <div className="w-full min-w-0 flex-1">
@@ -359,6 +373,7 @@ export function StudentProfileHeader({
           }}
           onRevealed={handleRevealed}
           open={revealField !== null}
+          source={source}
           studentId={studentId}
         />
       ) : null}

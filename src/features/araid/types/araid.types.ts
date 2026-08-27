@@ -85,4 +85,12 @@ export interface AraIdSessionProfile extends Omit<
 }
 
 /** Which active flow owns an AraID QR challenge. */
-export type AraIdChallengeScope = "task-link" | "admin-login";
+/**
+ * Scopes a scanned AraID QR can carry. Each one is issued by a different flow
+ * and approved through that flow's own endpoints, so the authorize page picks
+ * the right pair from this value.
+ */
+export type AraIdChallengeScope =
+  | "task-link"
+  | "admin-login"
+  | "classroom-check-in";

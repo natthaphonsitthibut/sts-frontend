@@ -32,8 +32,7 @@ import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { useSaveTeacher, useTeacher } from "../hooks/useTeachers";
 import {
   EMPTY_TEACHER_FORM,
-  teacherEditFormSchema,
-  teacherFormSchema,
+  teacherFormResolverSchema,
   type TeacherFormValues,
 } from "../schemas/teacher.schema";
 import type { Teacher } from "../types/teachers.types";
@@ -82,7 +81,7 @@ function TeacherForm({
   const [revealOpen, setRevealOpen] = useState(false);
   const form = useForm<TeacherFormValues>({
     defaultValues: toDefaults(teacher),
-    resolver: zodResolver(teacher ? teacherEditFormSchema : teacherFormSchema),
+    resolver: zodResolver(teacherFormResolverSchema(Boolean(teacher))),
   });
 
   function goBack(): void {

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, Button } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { checkInService } from "../../check-in/api/check-in.service";
 import { taskService } from "../../tasks/api/task.service";
 import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
@@ -22,7 +23,11 @@ function readChallengeScope(): AraIdChallengeScope | null {
   const scope = new URLSearchParams(window.location.hash.slice(1))
     .get("scope")
     ?.trim();
-  return scope === "task-link" || scope === "admin-login" ? scope : null;
+  return scope === "task-link" ||
+    scope === "admin-login" ||
+    scope === "classroom-check-in"
+    ? scope
+    : null;
 }
 
 export function AraIdAuthorizePage() {
@@ -60,8 +65,27 @@ export function AraIdAuthorizePage() {
     mutationFn: authService.approveAraIdLoginChallenge,
     meta: { suppressSuccessToast: true },
   });
-  const begin = scope === "admin-login" ? adminLoginBegin : taskBegin;
-  const approve = scope === "admin-login" ? adminLoginApprove : taskApprove;
+  const checkInBegin = useMutation({
+    mutationFn: (token: string) => checkInService.beginAraIdChallenge(token),
+    meta: { suppressSuccessToast: true },
+  });
+  const checkInApprove = useMutation({
+    mutationFn: () => checkInService.approveAraIdChallenge(),
+    meta: { suppressSuccessToast: true },
+  });
+  // Every scope is approved through the endpoints of the flow that issued it.
+  const begin =
+    scope === "admin-login"
+      ? adminLoginBegin
+      : scope === "classroom-check-in"
+        ? checkInBegin
+        : taskBegin;
+  const approve =
+    scope === "admin-login"
+      ? adminLoginApprove
+      : scope === "classroom-check-in"
+        ? checkInApprove
+        : taskApprove;
 
   useEffect(() => {
     if (!challengeToken || !scope || session.isPending || attempted.current)
