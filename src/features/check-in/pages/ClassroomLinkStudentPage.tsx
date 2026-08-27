@@ -7,6 +7,7 @@ import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import {
   EmptyState,
   ErrorState,
+  PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { getNavigationContext } from "../../../components/layout/navigation-context";
@@ -80,20 +81,20 @@ export function ClassroomLinkStudentPage() {
       ย้อนกลับ
     </NavButton>
   );
-
   const activeCases = cases.filter((studentCase) =>
     ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
   );
   const studentName =
     `${student?.FirstName_Onec ?? ""} ${student?.LastName_Onec ?? ""}`.trim() ||
     "นักเรียน";
+  // The same toolbar the staff profile uses, so the back button and the primary
+  // action sit exactly where a teacher already expects them. The breadcrumb is
+  // off because it leads into the app, and whoever holds a link has no page in
+  // there to go back to.
   const header = (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-xl font-extrabold text-slate-950">ข้อมูลนักเรียน</h1>
-      <div className="flex items-center gap-2">
-        {/* Opening a case is offered here for the same reason a reveal is: the
-            link knows exactly which teacher is asking. */}
-        {student && studentId && !casesLoading ? (
+    <PageToolbar
+      actions={
+        student && studentId && !casesLoading ? (
           <StudentCaseAction
             activeCaseCount={activeCases.length}
             activeCaseId={
@@ -105,10 +106,12 @@ export function ClassroomLinkStudentPage() {
             studentId={studentId}
             studentName={studentName}
           />
-        ) : null}
-        {backButton}
-      </div>
-    </div>
+        ) : undefined
+      }
+      hideBreadcrumb
+      navigation={backButton}
+      title="ข้อมูลนักเรียน"
+    />
   );
 
   if (isLoading || summaryQuery.isLoading) {
