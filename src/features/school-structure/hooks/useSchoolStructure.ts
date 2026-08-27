@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schoolStructureService } from "../api/school-structure.service";
+import type { StudentReadSource } from "../../students/api/students.service";
 import { importService } from "../../import-data/api/import.service";
 import type {
   CreateClassroomInput,
@@ -267,11 +268,17 @@ export function useStudentCommentConcernLevels(enabled = true) {
   });
 }
 
-export function useStudentClassroomComments(studentTermId: string) {
+export function useStudentClassroomComments(
+  studentTermId: string,
+  source: StudentReadSource = "INTERNAL",
+) {
   return useQuery({
-    queryKey: [KEY, "student-comments", studentTermId],
+    queryKey: [KEY, "student-comments", studentTermId, source],
     queryFn: () =>
-      schoolStructureService.listStudentClassroomComments(studentTermId),
+      schoolStructureService.listStudentClassroomComments(
+        studentTermId,
+        source,
+      ),
     enabled: Boolean(studentTermId),
   });
 }
