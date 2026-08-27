@@ -1,4 +1,9 @@
 import { apiClient } from "../../../lib/api-client";
+import type {
+  ClassroomStudentCommentConcernLevelOption,
+  ClassroomStudentProblemCategoryOption,
+  StudentClassroomCommentsResponse,
+} from "../../school-structure/types/school-structure.types";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import type {
   AraIdChallenge,
@@ -216,7 +221,54 @@ function getStudentPhotoUrl(input: {
   });
 }
 
+/**
+ * The comment pickers and the write, both under the link's own namespace. The
+ * shapes match the staff endpoints exactly, which is what lets the one comment
+ * dialog serve both surfaces.
+ */
+async function getCommentOptions(): Promise<{
+  problemCategories: ClassroomStudentProblemCategoryOption[];
+  concernLevels: ClassroomStudentCommentConcernLevelOption[];
+}> {
+  const response = await apiClient.get<
+    DataEnvelope<{
+      problemCategories: ClassroomStudentProblemCategoryOption[];
+      concernLevels: ClassroomStudentCommentConcernLevelOption[];
+    }>
+  >("/classroom/students/comment-options");
+  return response.data.data ?? { problemCategories: [], concernLevels: [] };
+}
+
+async function createComment(input: {
+  studentUuid: string;
+  problemCategory: string;
+  concernLevelCode: string;
+  problemDescription: string;
+}): Promise<unknown> {
+  const response = await apiClient.post(
+    `/classroom/students/${encodeURIComponent(input.studentUuid)}/comments`,
+    {
+      problemCategory: input.problemCategory,
+      concernLevelCode: input.concernLevelCode,
+      problemDescription: input.problemDescription,
+    },
+  );
+  return response.data;
+}
+
+async function listComments(
+  studentUuid: string,
+): Promise<StudentClassroomCommentsResponse> {
+  const response = await apiClient.get<StudentClassroomCommentsResponse>(
+    `/classroom/students/${encodeURIComponent(studentUuid)}/comments`,
+  );
+  return response.data;
+}
+
 export const checkInService = {
+  createComment,
+  getCommentOptions,
+  listComments,
   createAraIdChallenge,
   getOptions,
   getPublicContext,

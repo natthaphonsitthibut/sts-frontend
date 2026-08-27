@@ -60,9 +60,12 @@ apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
   // The classroom link page moved to /classroom; /check-in is still reachable
   // while old links redirect through it, so both count as the public page.
+  // The link surface is more than one page now — the roster opens a student
+  // profile under /classroom/students/:id — so every path under it counts.
   const onPublicCheckInPage =
     typeof window !== "undefined" &&
     (window.location.pathname === "/classroom" ||
+      window.location.pathname.startsWith("/classroom/") ||
       window.location.pathname === "/check-in");
 
   // Public magic-link flows authenticate with short-lived signed tokens via
@@ -113,7 +116,7 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
         window.location.pathname.startsWith("/araid") ||
-        window.location.pathname === "/classroom" ||
+        window.location.pathname.startsWith("/classroom") ||
         window.location.pathname === "/check-in" ||
         window.location.pathname.startsWith("/apply/");
 

@@ -1,4 +1,5 @@
 import { apiClient } from "../../../lib/api-client";
+import type { StudentReadSource } from "../../students/api/students.service";
 import type {
   ClassroomTeacherAssignment,
   ClassroomStudentCommentResult,
@@ -274,9 +275,14 @@ async function listStudentCommentConcernLevels(): Promise<
 
 async function listStudentClassroomComments(
   studentTermId: string,
+  source: StudentReadSource = "INTERNAL",
 ): Promise<StudentClassroomCommentsResponse> {
   const response = await apiClient.get<StudentClassroomCommentsResponse>(
-    `/students/${encodeURIComponent(studentTermId)}/classroom-comments`,
+    // A classroom link cannot call the staff route; its own namespace answers
+    // the same list, bounded by the classroom the link belongs to.
+    source === "INTERNAL"
+      ? `/students/${encodeURIComponent(studentTermId)}/classroom-comments`
+      : `/classroom/students/${encodeURIComponent(studentTermId)}/comments`,
   );
   return response.data;
 }

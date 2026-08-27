@@ -284,8 +284,12 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           "w-[13%]",
           "w-[27%]",
         ]}
+        // The table is 1200px wide, so it may only appear on a viewport that
+        // can hold it — below `xl` the cards take over. Showing it earlier cut
+        // the เครื่องมือ column off the right edge, which read as the buttons
+        // disappearing.
         minWidthClassName="min-w-[1200px]"
-        responsiveBreakpoint="lg"
+        responsiveBreakpoint="xl"
       >
         {rows.map((row) => (
           <DataTableRow key={row.classroomId}>
@@ -333,7 +337,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
         ))}
       </DataTable>
 
-      <TableCardList desktopBreakpoint="lg">
+      <TableCardList desktopBreakpoint="xl">
         {rows.map((row) => (
           <TableCard key={row.classroomId}>
             <div className="flex items-start gap-3">

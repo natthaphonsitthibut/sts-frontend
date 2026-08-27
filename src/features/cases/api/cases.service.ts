@@ -1,4 +1,5 @@
 import { apiClient } from "../../../lib/api-client";
+import type { StudentReadSource } from "../../students/api/students.service";
 import type {
   CancelCaseAssignmentPayload,
   CancelCaseAssignmentResponse,
@@ -13,7 +14,10 @@ import type {
 
 interface CasesService {
   getCase: (caseId: number) => Promise<CaseDetailResponse>;
-  openCase: (payload: OpenCasePayload) => Promise<OpenCaseResponse>;
+  openCase: (
+    payload: OpenCasePayload,
+    source?: StudentReadSource,
+  ) => Promise<OpenCaseResponse>;
   /**
    * The backend has no raw "set status" endpoint — a case's status is driven
    * server-side by a review action plus an optional
@@ -37,8 +41,20 @@ async function getCase(caseId: number): Promise<CaseDetailResponse> {
   return response.data;
 }
 
-async function openCase(payload: OpenCasePayload): Promise<OpenCaseResponse> {
-  const response = await apiClient.post<OpenCaseResponse>("/cases", payload);
+async function openCase(
+  payload: OpenCasePayload,
+  source: StudentReadSource = "INTERNAL",
+): Promise<OpenCaseResponse> {
+  // A classroom link has no account to check `dashboard` against, so it opens
+  // the case through its own namespace, where the link's classroom is the
+  // boundary and the case records the teacher who signed in.
+  const response =
+    source === "INTERNAL"
+      ? await apiClient.post<OpenCaseResponse>("/cases", payload)
+      : await apiClient.post<OpenCaseResponse>(
+          `/classroom/students/${encodeURIComponent(payload.student_id)}/cases`,
+          { reason: payload.reason },
+        );
   return response.data;
 }
 

@@ -16,6 +16,7 @@ import {
   AraIdAuthorizePage,
   AuditLogDetailPage,
   AttendanceCheckInPage,
+  ClassroomLinkStudentPage,
   PublicCheckInPage,
   TeacherLineInvitationPage,
   TeacherLineLinkPage,
@@ -525,6 +526,13 @@ export const router = createBrowserRouter([
     // token in the hash across untouched.
     path: "/classroom",
     element: withSuspense(<PublicCheckInPage />),
+  },
+  {
+    // The profile behind a student on the link's roster. A page, not a dialog:
+    // the roster it opens from is one, and the back button has to land on the
+    // tab it came from.
+    path: "/classroom/students/:studentId",
+    element: withSuspense(<ClassroomLinkStudentPage />),
   },
   {
     path: "/check-in",

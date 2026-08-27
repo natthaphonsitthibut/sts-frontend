@@ -16,6 +16,7 @@ import {
 import { formatThaiDate } from "../../../lib/date-time";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { useStudentCases } from "../../students/hooks/useStudentCases";
+import type { StudentReadSource } from "../../students/api/students.service";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { OpenCaseDialog } from "./OpenCaseDialog";
 
@@ -26,6 +27,8 @@ interface StudentCaseActionProps {
   initialReason?: string;
   disabled?: boolean;
   mode?: "icon" | "button";
+  /** Which guarded namespace answers the case reads and the write. */
+  source?: StudentReadSource;
   studentId: string;
   studentName: string;
 }
@@ -37,6 +40,7 @@ export function StudentCaseAction({
   initialReason,
   disabled = false,
   mode = "icon",
+  source = "INTERNAL",
   studentId,
   studentName,
 }: StudentCaseActionProps) {
@@ -48,7 +52,7 @@ export function StudentCaseAction({
     isError: casesError,
     isLoading: casesLoading,
     refetch: refetchCases,
-  } = useStudentCases(studentId, caseListDialogOpen);
+  } = useStudentCases(studentId, caseListDialogOpen, source);
   const activeCases = useMemo(
     () =>
       cases.filter((studentCase) =>
@@ -143,17 +147,19 @@ export function StudentCaseAction({
                           เปิดเมื่อ {formatThaiDate(studentCase.created_at)}
                         </p>
                       </div>
-                      <Button
-                        className="shrink-0"
-                        onClick={() => {
-                          setCaseListDialogOpen(false);
-                          contextualNavigate(`/cases/${studentCase.id}`);
-                        }}
-                        size="sm"
-                        variant="outline"
-                      >
-                        ดูรายละเอียด
-                      </Button>
+                      {source === "INTERNAL" ? (
+                        <Button
+                          className="shrink-0"
+                          onClick={() => {
+                            setCaseListDialogOpen(false);
+                            contextualNavigate(`/cases/${studentCase.id}`);
+                          }}
+                          size="sm"
+                          variant="outline"
+                        >
+                          ดูรายละเอียด
+                        </Button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -192,8 +198,14 @@ export function StudentCaseAction({
       <OpenCaseDialog
         initialReason={initialReason}
         onOpenChange={setOpenCaseDialogOpen}
-        onOpened={(caseRecord) => contextualNavigate(`/cases/${caseRecord.id}`)}
+        // The case detail page lives inside the app; a link holder stays on the
+        // profile they opened the case from, where the list refreshes itself.
+        onOpened={(caseRecord) => {
+          if (source === "INTERNAL")
+            contextualNavigate(`/cases/${caseRecord.id}`);
+        }}
         open={openCaseDialogOpen}
+        source={source}
         studentId={studentId}
         studentName={studentName}
       />

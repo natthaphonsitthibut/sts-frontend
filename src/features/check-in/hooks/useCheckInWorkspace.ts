@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { checkInService } from "../api/check-in.service";
 import type {
@@ -43,6 +43,53 @@ function emptyDraft(key: string): DraftState {
   return { key, marks: new Map(), history: [], session: null };
 }
 
+// Marking is interrupted work: a teacher opens a student's profile mid-roll and
+// comes back. The draft therefore outlives the component, and sessionStorage is
+// the right shelf for it — it belongs to this tab, this session, this device,
+// and never travels anywhere.
+const DRAFT_KEY_PREFIX = "sts_check_in_draft:";
+
+interface SerializedDraft {
+  marks: Array<[string, LocalCheckInMark]>;
+  history: DraftState["history"];
+  session: CheckInSession | null;
+}
+
+function readStoredDraft(key: string): DraftState {
+  if (typeof window === "undefined" || !key) return emptyDraft(key);
+  try {
+    const raw = window.sessionStorage.getItem(`${DRAFT_KEY_PREFIX}${key}`);
+    if (!raw) return emptyDraft(key);
+    const parsed = JSON.parse(raw) as SerializedDraft;
+    return {
+      key,
+      marks: new Map(parsed.marks ?? []),
+      history: parsed.history ?? [],
+      session: parsed.session ?? null,
+    };
+  } catch {
+    return emptyDraft(key);
+  }
+}
+
+function storeDraft(draft: DraftState): void {
+  if (typeof window === "undefined" || !draft.key) return;
+  try {
+    const payload: SerializedDraft = {
+      marks: [...draft.marks.entries()],
+      history: draft.history,
+      session: draft.session,
+    };
+    window.sessionStorage.setItem(
+      `${DRAFT_KEY_PREFIX}${draft.key}`,
+      JSON.stringify(payload),
+    );
+  } catch {
+    // A tab with storage blocked still checks attendance; it just cannot leave
+    // the page and come back to it.
+  }
+}
+
 export function useCheckInWorkspace({
   access,
   classroomId,
@@ -81,8 +128,17 @@ export function useCheckInWorkspace({
     ? requestedSubjectId
     : null;
   const selectionKey = `${access}:${classroomId ?? "public"}:${date}:${classroomSubjectId ?? ""}`;
-  const draft =
-    draftState.key === selectionKey ? draftState : emptyDraft(selectionKey);
+  // Restoring is keyed by the same selection the draft was written under, so a
+  // different day or subject never picks up someone else's marks.
+  const restoredDraft = useMemo(
+    () => readStoredDraft(selectionKey),
+    [selectionKey],
+  );
+  const draft = draftState.key === selectionKey ? draftState : restoredDraft;
+  useEffect(() => {
+    if (draft.key !== selectionKey) return;
+    storeDraft(draft);
+  }, [draft, selectionKey]);
 
   const startMutation = useMutation({
     mutationFn: () => {

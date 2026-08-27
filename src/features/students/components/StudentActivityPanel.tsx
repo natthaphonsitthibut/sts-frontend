@@ -17,6 +17,8 @@ import { formatThaiDateTimeWithSeconds } from "../../../lib/date-time";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
 import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
+import type { ComponentProps } from "react";
+import type { StudentReadSource } from "../api/students.service";
 import { formatProblemCategoryOption } from "../../school-structure/lib/classroom-student-comment-form";
 import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import {
@@ -42,6 +44,23 @@ interface StudentActivityPanelProps {
   casesError: boolean;
   casesLoading: boolean;
   onRetryCases: () => void;
+  /** Which guarded namespace answers the comment reads and writes. */
+  source?: StudentReadSource;
+  /**
+   * Everything the comment dialog needs when the surface has no account behind
+   * it — a classroom link brings its own catalogs and its own write. Left out
+   * on the staff pages, where the dialog reaches the API itself.
+   */
+  commentWriter?: Partial<
+    Pick<
+      ComponentProps<typeof ClassroomStudentCommentDialog>,
+      | "concernLevels"
+      | "isSubmitting"
+      | "problemCategories"
+      | "submitComment"
+      | "submitError"
+    >
+  >;
   student: StudentDetail;
   studentId: string;
 }
@@ -54,17 +73,19 @@ interface StudentActivityPanelProps {
 export function StudentActivityPanel({
   canManageComments,
   canViewCaseDetail,
+  commentWriter,
   cases,
   casesError,
   casesLoading,
   onRetryCases,
+  source = "INTERNAL",
   student,
   studentId,
 }: StudentActivityPanelProps) {
   const [tab, setTab] = useState<string>(TAB_COMMENTS);
   const [showAllCases, setShowAllCases] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
-  const commentsQuery = useStudentClassroomComments(studentId);
+  const commentsQuery = useStudentClassroomComments(studentId, source);
   const comments = useMemo(
     () => commentsQuery.data?.data ?? [],
     [commentsQuery.data],
@@ -324,6 +345,7 @@ export function StudentActivityPanel({
 
       <ClassroomStudentCommentDialog
         classroomId={classroomId}
+        {...commentWriter}
         onOpenChange={(open) => {
           if (!open) setCommentOpen(false);
         }}
