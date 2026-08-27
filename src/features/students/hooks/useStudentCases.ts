@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { studentsService } from "../api/students.service";
+import {
+  studentsService,
+  type StudentReadSource,
+} from "../api/students.service";
 import type { StudentCase } from "../types/students.types";
 
 export const STUDENT_CASES_QUERY_KEY = "student-cases";
@@ -16,10 +19,12 @@ interface UseStudentCasesResult {
 export function useStudentCases(
   studentId: string | undefined,
   enabled = true,
+  source: StudentReadSource = "INTERNAL",
 ): UseStudentCasesResult {
   const result = useQuery({
-    queryKey: [STUDENT_CASES_QUERY_KEY, studentId],
-    queryFn: () => studentsService.getStudentCasesById(studentId as string),
+    queryKey: [STUDENT_CASES_QUERY_KEY, studentId, source],
+    queryFn: () =>
+      studentsService.getStudentCasesById(studentId as string, source),
     enabled: Boolean(studentId) && enabled,
   });
 

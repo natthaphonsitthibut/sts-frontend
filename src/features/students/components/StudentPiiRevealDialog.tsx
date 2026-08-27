@@ -21,7 +21,10 @@ import {
 } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
-import { studentsService } from "../api/students.service";
+import {
+  studentsService,
+  type StudentReadSource,
+} from "../api/students.service";
 import {
   PII_FIELD_GROUPS,
   PII_FIELD_LABELS,
@@ -39,6 +42,8 @@ interface StudentPiiRevealDialogProps {
   onOpenChange: (open: boolean) => void;
   onRevealed: (values: StudentPiiRevealResponse["values"]) => void;
   open: boolean;
+  /** Which guarded namespace records and answers the reveal. */
+  source?: StudentReadSource;
   studentId: string;
 }
 
@@ -66,12 +71,13 @@ export function StudentPiiRevealDialog({
   onOpenChange,
   onRevealed,
   open,
+  source = "INTERNAL",
   studentId,
 }: StudentPiiRevealDialogProps) {
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reasonCode, setReasonCode] = useState<StudentPiiReasonCode | "">("");
-  const reasonOptionsQuery = usePiiRevealOptions();
+  const reasonOptionsQuery = usePiiRevealOptions(source);
   const reasonOptions = reasonOptionsQuery.options;
   const form = useForm<RevealFormValues>({
     defaultValues: DEFAULT_FORM_VALUES,
@@ -127,11 +133,15 @@ export function StudentPiiRevealDialog({
     setServerError("");
 
     try {
-      const response = await studentsService.revealStudentPii(studentId, {
-        field_group: PII_FIELD_GROUPS[field],
-        reason_code: values.reason_code,
-        reason_note: reasonNote || undefined,
-      });
+      const response = await studentsService.revealStudentPii(
+        studentId,
+        {
+          field_group: PII_FIELD_GROUPS[field],
+          reason_code: values.reason_code,
+          reason_note: reasonNote || undefined,
+        },
+        source,
+      );
       onRevealed(response.values);
       closeDialog();
     } catch (error) {
