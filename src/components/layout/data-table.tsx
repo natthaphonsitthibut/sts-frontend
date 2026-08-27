@@ -51,13 +51,28 @@ interface DataTableProps {
    */
   responsive?: boolean;
   /** Breakpoint where the desktop table replaces its paired card list. */
-  responsiveBreakpoint?: "md" | "lg";
+  responsiveBreakpoint?: "md" | "lg" | "xl";
   /** `<tr>` rows for the table body. */
   children: ReactNode;
   /** Extra content rendered after the table inside the shell (e.g. empty state). */
   footer?: ReactNode;
   className?: string;
 }
+
+// A table only appears once the viewport can hold its full width; below that
+// its paired card list takes over. Keeping the two halves in one map is what
+// stops a table from being shown at a width that cuts its last column off.
+const RESPONSIVE_TABLE_CLASS = {
+  md: "hidden md:block",
+  lg: "hidden lg:block",
+  xl: "hidden xl:block",
+} as const;
+
+const RESPONSIVE_CARD_CLASS = {
+  md: "md:hidden",
+  lg: "lg:hidden",
+  xl: "xl:hidden",
+} as const;
 
 function isHeadingConfig(
   heading: DataTableHeadingInput,
@@ -105,10 +120,7 @@ export function DataTable({
       data-slot="data-table"
       className={cn(
         "overflow-hidden rounded-lg border border-slate-200 bg-white",
-        responsive &&
-          (responsiveBreakpoint === "lg"
-            ? "hidden lg:block"
-            : "hidden md:block"),
+        responsive && RESPONSIVE_TABLE_CLASS[responsiveBreakpoint],
         className,
       )}
     >
@@ -178,7 +190,8 @@ export function DataTable({
                           aria-label={config.ariaLabel}
                           className={cn(
                             "-mx-1.5 -my-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-white transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary",
-                            isActiveSort && "bg-primary-dark text-white hover:bg-primary-dark",
+                            isActiveSort &&
+                              "bg-primary-dark text-white hover:bg-primary-dark",
                           )}
                           onClick={() =>
                             onSortChange(
@@ -225,7 +238,10 @@ export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
   // is the same height regardless of 1-line vs 2-line cell content.
   return (
     <td
-      className={cn("h-[60px] px-4 align-middle text-sm text-slate-600", className)}
+      className={cn(
+        "h-[60px] px-4 align-middle text-sm text-slate-600",
+        className,
+      )}
       {...props}
     />
   );
@@ -233,7 +249,7 @@ export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
 
 /** Mobile counterpart wrapper — a vertical stack shown only below `md`. */
 interface TableCardListProps extends ComponentProps<"div"> {
-  desktopBreakpoint?: "md" | "lg";
+  desktopBreakpoint?: "md" | "lg" | "xl";
 }
 
 export function TableCardList({
@@ -246,7 +262,7 @@ export function TableCardList({
       data-slot="table-card-list"
       className={cn(
         "flex flex-col gap-3",
-        desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden",
+        RESPONSIVE_CARD_CLASS[desktopBreakpoint],
         className,
       )}
       {...props}
