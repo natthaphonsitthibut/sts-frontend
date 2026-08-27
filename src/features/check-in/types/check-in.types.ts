@@ -16,6 +16,8 @@ export interface CheckInContext {
         status: "AUTHENTICATED";
         provider: "GOOGLE" | "THAID";
         displayName: string;
+        /** Guarded route + version stamp, like every other photo in the app. */
+        photoUrl: string | null;
       }
     | {
         status: "REQUIRED";
@@ -52,6 +54,9 @@ export interface CheckInStudent {
   lastName: string;
   hasPhoto: boolean;
   photoVersion: string | null;
+  /** Shown on the roster tab, the same two columns the staff roster carries. */
+  riskTier: string;
+  teacherComment: string | null;
 }
 
 export interface CheckInSession {

@@ -6,6 +6,8 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { Check, Grid2X2, Send, Table2, Undo2, X } from "lucide-react";
 import {
   appToast,
@@ -16,6 +18,7 @@ import {
   DatePicker,
   FormErrorAlert,
   Label,
+  Tabs,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 import { formatClassLabel } from "../../../lib/room-presentation";
@@ -29,7 +32,9 @@ import {
 } from "../../attendance/lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { checkInService } from "../api/check-in.service";
-import { ClassroomStudentProfileDialog } from "./ClassroomStudentProfileDialog";
+import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
+import { ClassroomRosterTab } from "./ClassroomRosterTab";
+import { useClassroomLinkComments } from "../hooks/useClassroomLinkComments";
 import { useCheckInWorkspace } from "../hooks/useCheckInWorkspace";
 import type {
   CheckInAccess,
@@ -561,11 +566,33 @@ export function CheckInWorkspace({
 }) {
   const workspace = useCheckInWorkspace({ access, classroomId });
   const [autoAdvance, setAutoAdvance] = useState(readAutoAdvance);
-  // Only the classroom link has a profile of its own to open; the staff screens
-  // reach the full page at /students/:id instead.
-  const [profileStudent, setProfileStudent] = useState<CheckInStudent | null>(
+  const [commentStudent, setCommentStudent] = useState<CheckInStudent | null>(
     null,
   );
+  // The tab lives in the URL so leaving for a student profile and coming back
+  // lands on the tab that was open — the back target is the URL itself.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "roster" ? "roster" : "attendance";
+  const contextualNavigate = useContextualNavigate();
+
+  function setTab(next: string): void {
+    const params = new URLSearchParams(searchParams);
+    if (next === "attendance") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
+  const linkComments = useClassroomLinkComments(access === "PUBLIC_LINK");
+
+  function openStudent(student: CheckInStudent): void {
+    // Two doors onto the same profile: the staff page reaches the app's own
+    // student page, the link its own copy inside the link surface.
+    contextualNavigate(
+      access === "PUBLIC_LINK"
+        ? `/classroom/students/${student.id}`
+        : `/students/${student.id}`,
+    );
+  }
   const [announcement, setAnnouncement] = useState("");
   const submitAreaRef = useRef<HTMLDivElement>(null);
   const room = workspace.options?.classroom;
@@ -651,7 +678,10 @@ export function CheckInWorkspace({
             )}
           </div>
         ) : null}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div
+          className="grid gap-3 sm:grid-cols-2"
+          hidden={tab !== "attendance"}
+        >
           <div>
             <Label htmlFor="check-in-date">วันที่</Label>
             <DatePicker
@@ -689,173 +719,228 @@ export function CheckInWorkspace({
         </div>
       </div>
 
-      <FormErrorAlert
-        error={workspace.loadError}
-        fallback="โหลดข้อมูลเช็กชื่อไม่สำเร็จ"
-      />
-      <FormErrorAlert
-        autoDismissMs={8_000}
-        dismissible
-        error={workspace.actionError}
-        fallback="บันทึกการเช็กชื่อไม่สำเร็จ"
+      <Tabs
+        aria-label="ข้อมูลห้องเรียน"
+        className="flex w-full"
+        onChange={setTab}
+        options={[
+          { value: "roster", label: "รายชื่อ" },
+          { value: "attendance", label: "เช็กชื่อ" },
+        ]}
+        value={tab}
       />
 
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-4" aria-live="polite">
-          {summary.map(([label, value, color]) => (
-            <div key={label}>
-              <p className="text-xs font-semibold text-slate-500">{label}</p>
-              <p className={cn("text-xl font-extrabold tabular-nums", color)}>
-                {value}
-                <span className="text-sm font-semibold text-slate-400">
-                  /{workspace.counts.total}
-                </span>
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2" role="group" aria-label="รูปแบบการเช็กชื่อ">
-          <Button
-            icon={Table2}
-            onClick={() => workspace.setMode("TABLE")}
-            variant={workspace.mode === "TABLE" ? "default" : "outline"}
-          >
-            ตาราง
-          </Button>
-          <Button
-            icon={Grid2X2}
-            onClick={() => workspace.setMode("CARD")}
-            variant={workspace.mode === "CARD" ? "default" : "outline"}
-          >
-            การ์ด
-          </Button>
-        </div>
-      </div>
-
-      {workspace.mode === "TABLE" ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            className="w-40 shrink-0"
-            disabled={
-              readOnly || workspace.counts.marked === workspace.counts.total
-            }
-            icon={Check}
-            onClick={() => {
-              workspace.markRemainingPresent();
-              setAnnouncement(
-                `ระบุคนที่เหลือ ${workspace.counts.total - workspace.counts.marked} คนเป็นมาแล้ว`,
-              );
-            }}
-            size="sm"
-          >
-            มาทั้งหมด
-            {workspace.counts.marked < workspace.counts.total
-              ? ` (${workspace.counts.total - workspace.counts.marked})`
-              : ""}
-          </Button>
-          <label className="flex items-center justify-end gap-2 text-sm font-semibold text-slate-600">
-            <input
-              checked={autoAdvance}
-              className="size-4 accent-primary"
-              onChange={(event) => {
-                setAutoAdvance(event.target.checked);
-                window.localStorage.setItem(
-                  AUTO_ADVANCE_KEY,
-                  String(event.target.checked),
-                );
-              }}
-              type="checkbox"
+      {tab === "roster" ? (
+        <ClassroomRosterTab
+          isLoading={workspace.isLoading}
+          onComment={setCommentStudent}
+          onOpenStudent={openStudent}
+          renderAvatar={(student) => (
+            <StudentPhoto
+              access={access}
+              classroomId={classroomId}
+              display="AVATAR"
+              student={student}
             />
-            ย้ายคนที่เช็กแล้วไว้ท้ายรายการ
-          </label>
-        </div>
-      ) : (
-        <p className="text-center text-sm text-slate-500">
-          ปัดขวาเพื่อระบุ “มา” ปัดซ้ายเพื่อระบุ “ขาด” หรือใช้ปุ่มด้านล่าง
-        </p>
-      )}
-
-      {workspace.isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
-          กำลังเตรียมรายชื่อนักเรียน…
-        </div>
-      ) : workspace.roster.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
-          ห้องเรียนนี้ยังไม่มีนักเรียนที่ใช้งานได้
-        </div>
-      ) : workspace.mode === "TABLE" ? (
-        <CheckInTable
-          access={access}
-          autoAdvance={autoAdvance}
-          classroomId={classroomId}
-          disabled={readOnly}
-          marks={workspace.marks}
-          onClear={clearStudent}
-          onMark={markStudent}
-          onOpenProfile={
-            access === "PUBLIC_LINK" ? setProfileStudent : undefined
-          }
+          )}
           roster={workspace.roster}
         />
       ) : (
-        <CheckInCards
-          access={access}
-          classroomId={classroomId}
-          disabled={readOnly}
-          key={`${workspace.date}:${workspace.classroomSubjectId}`}
-          marks={workspace.marks}
-          onMark={markStudent}
-          onReview={() => workspace.setMode("TABLE")}
-          roster={workspace.roster}
-        />
+        <>
+          <FormErrorAlert
+            error={workspace.loadError}
+            fallback="โหลดข้อมูลเช็กชื่อไม่สำเร็จ"
+          />
+          <FormErrorAlert
+            autoDismissMs={8_000}
+            dismissible
+            error={workspace.actionError}
+            fallback="บันทึกการเช็กชื่อไม่สำเร็จ"
+          />
+
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-4" aria-live="polite">
+              {summary.map(([label, value, color]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-slate-500">
+                    {label}
+                  </p>
+                  <p
+                    className={cn("text-xl font-extrabold tabular-nums", color)}
+                  >
+                    {value}
+                    <span className="text-sm font-semibold text-slate-400">
+                      /{workspace.counts.total}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div
+              className="flex gap-2"
+              role="group"
+              aria-label="รูปแบบการเช็กชื่อ"
+            >
+              <Button
+                icon={Table2}
+                onClick={() => workspace.setMode("TABLE")}
+                variant={workspace.mode === "TABLE" ? "default" : "outline"}
+              >
+                ตาราง
+              </Button>
+              <Button
+                icon={Grid2X2}
+                onClick={() => workspace.setMode("CARD")}
+                variant={workspace.mode === "CARD" ? "default" : "outline"}
+              >
+                การ์ด
+              </Button>
+            </div>
+          </div>
+
+          {workspace.mode === "TABLE" ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                className="w-40 shrink-0"
+                disabled={
+                  readOnly || workspace.counts.marked === workspace.counts.total
+                }
+                icon={Check}
+                onClick={() => {
+                  workspace.markRemainingPresent();
+                  setAnnouncement(
+                    `ระบุคนที่เหลือ ${workspace.counts.total - workspace.counts.marked} คนเป็นมาแล้ว`,
+                  );
+                }}
+                size="sm"
+              >
+                มาทั้งหมด
+                {workspace.counts.marked < workspace.counts.total
+                  ? ` (${workspace.counts.total - workspace.counts.marked})`
+                  : ""}
+              </Button>
+              <label className="flex items-center justify-end gap-2 text-sm font-semibold text-slate-600">
+                <input
+                  checked={autoAdvance}
+                  className="size-4 accent-primary"
+                  onChange={(event) => {
+                    setAutoAdvance(event.target.checked);
+                    window.localStorage.setItem(
+                      AUTO_ADVANCE_KEY,
+                      String(event.target.checked),
+                    );
+                  }}
+                  type="checkbox"
+                />
+                ย้ายคนที่เช็กแล้วไว้ท้ายรายการ
+              </label>
+            </div>
+          ) : (
+            <p className="text-center text-sm text-slate-500">
+              ปัดขวาเพื่อระบุ “มา” ปัดซ้ายเพื่อระบุ “ขาด” หรือใช้ปุ่มด้านล่าง
+            </p>
+          )}
+
+          {workspace.isLoading ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
+              กำลังเตรียมรายชื่อนักเรียน…
+            </div>
+          ) : workspace.roster.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
+              ห้องเรียนนี้ยังไม่มีนักเรียนที่ใช้งานได้
+            </div>
+          ) : workspace.mode === "TABLE" ? (
+            <CheckInTable
+              access={access}
+              autoAdvance={autoAdvance}
+              classroomId={classroomId}
+              disabled={readOnly}
+              marks={workspace.marks}
+              onClear={clearStudent}
+              onMark={markStudent}
+              onOpenProfile={openStudent}
+              roster={workspace.roster}
+            />
+          ) : (
+            <CheckInCards
+              access={access}
+              classroomId={classroomId}
+              disabled={readOnly}
+              key={`${workspace.date}:${workspace.classroomSubjectId}`}
+              marks={workspace.marks}
+              onMark={markStudent}
+              onReview={() => workspace.setMode("TABLE")}
+              roster={workspace.roster}
+            />
+          )}
+
+          <div
+            className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+            ref={submitAreaRef}
+          >
+            <p className="text-sm text-slate-600">
+              {readOnly
+                ? `ส่งผลแล้ว ${workspace.session?.submittedAt ? new Date(workspace.session.submittedAt).toLocaleString("th-TH") : ""}`
+                : workspace.counts.marked < workspace.counts.total
+                  ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
+                  : "ตรวจครบแล้ว พร้อมส่งผล"}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                disabled={!workspace.history.length || readOnly}
+                icon={Undo2}
+                onClick={workspace.undo}
+                variant="outline"
+              >
+                ย้อนกลับ
+              </Button>
+              <Button
+                disabled={!readyToSubmit}
+                icon={Send}
+                isLoading={workspace.submitting}
+                onClick={() => {
+                  void submit().catch(() => undefined);
+                }}
+              >
+                ส่งผลเช็กชื่อ
+              </Button>
+            </div>
+          </div>
+
+          <p aria-live="polite" className="sr-only">
+            {announcement}
+          </p>
+
+          <p className="sr-only">
+            ปุ่มลัดโหมดการ์ด: ลูกศรขวา {<Check className="inline size-3" />}{" "}
+            มาเรียน, ลูกศรซ้าย {<X className="inline size-3" />} ขาดเรียน
+          </p>
+        </>
       )}
 
-      <div
-        className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between"
-        ref={submitAreaRef}
-      >
-        <p className="text-sm text-slate-600">
-          {readOnly
-            ? `ส่งผลแล้ว ${workspace.session?.submittedAt ? new Date(workspace.session.submittedAt).toLocaleString("th-TH") : ""}`
-            : workspace.counts.marked < workspace.counts.total
-              ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
-              : "ตรวจครบแล้ว พร้อมส่งผล"}
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button
-            disabled={!workspace.history.length || readOnly}
-            icon={Undo2}
-            onClick={workspace.undo}
-            variant="outline"
-          >
-            ย้อนกลับ
-          </Button>
-          <Button
-            disabled={!readyToSubmit}
-            icon={Send}
-            isLoading={workspace.submitting}
-            onClick={() => {
-              void submit().catch(() => undefined);
-            }}
-          >
-            ส่งผลเช็กชื่อ
-          </Button>
-        </div>
-      </div>
-
-      <p aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
-
-      <p className="sr-only">
-        ปุ่มลัดโหมดการ์ด: ลูกศรขวา {<Check className="inline size-3" />}{" "}
-        มาเรียน, ลูกศรซ้าย {<X className="inline size-3" />} ขาดเรียน
-      </p>
-
-      <ClassroomStudentProfileDialog
-        onOpenChange={(next) => !next && setProfileStudent(null)}
-        photoVersion={profileStudent?.photoVersion}
-        studentId={profileStudent?.id ?? null}
+      {/* The one comment dialog both surfaces use. A link has no account, so it
+          hands the dialog its own catalogs and its own write; the staff page
+          lets the dialog reach the school-structure API itself. */}
+      <ClassroomStudentCommentDialog
+        classroomId={workspace.options?.classroom.id ?? classroomId ?? 0}
+        concernLevels={linkComments.concernLevels}
+        isSubmitting={linkComments.isSubmitting}
+        onOpenChange={(open) => {
+          if (!open) setCommentStudent(null);
+        }}
+        problemCategories={linkComments.problemCategories}
+        submitComment={linkComments.submitComment}
+        submitError={linkComments.submitError}
+        student={
+          commentStudent
+            ? {
+                studentUuid: commentStudent.id,
+                studentNumber: commentStudent.studentNumber,
+                firstName: commentStudent.firstName,
+                lastName: commentStudent.lastName,
+              }
+            : null
+        }
       />
     </div>
   );

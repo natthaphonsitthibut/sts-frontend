@@ -225,10 +225,14 @@ export function PublicCheckInPage() {
   }
 
   return (
-    <GuestPageShell as="main" showProfile={false}>
-      <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-        ยืนยันแล้ว: <strong>{context.authentication.displayName}</strong>
-      </div>
+    // Who is signed in belongs in the header popover, the same place it sits on
+    // every other page — not in a banner pinned above the work.
+    <GuestPageShell
+      as="main"
+      profileAffiliation={context.school.name}
+      profileName={context.authentication.displayName}
+      profilePhotoUrl={context.authentication.photoUrl}
+    >
       <CheckInWorkspace
         access="PUBLIC_LINK"
         classroomId={context.classroom.id}

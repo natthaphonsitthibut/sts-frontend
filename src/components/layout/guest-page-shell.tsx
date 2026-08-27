@@ -13,6 +13,8 @@ interface GuestPageShellProps extends ComponentProps<"div"> {
   /** สังกัด for the link holder — their school. */
   profileAffiliation?: string | null;
   profileName?: string | null;
+  /** The link holder's own photo; falls back to initials like the app header. */
+  profilePhotoUrl?: string | null;
   /** ตำแหน่ง for the link holder; teachers reach every link as คุณครู. */
   profileRoleLabel?: string | null;
   showHeader?: boolean;
@@ -28,6 +30,7 @@ export function GuestPageShell({
   contentClassName,
   profileAffiliation,
   profileName,
+  profilePhotoUrl,
   profileRoleLabel = "คุณครู",
   showHeader = true,
   showProfile = true,
@@ -57,6 +60,7 @@ export function GuestPageShell({
                 canEditProfile={false}
                 canSignOut={false}
                 displayName={profileName ?? "ผู้รับมอบหมาย"}
+                photoUrl={profilePhotoUrl ?? null}
                 roleLabel={profileRoleLabel}
               />
             ) : null}
