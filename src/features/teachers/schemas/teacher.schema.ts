@@ -21,6 +21,18 @@ export const teacherEditFormSchema = teacherFormSchema.extend({
 
 export type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
+/**
+ * Hands the form one schema *type* rather than a union of two. Both variants
+ * parse to `TeacherFormValues`, but a ternary between two distinct `ZodObject`s
+ * leaves `zodResolver` with no overload to pick and makes the resolver's
+ * transformed type drift away from the one `useForm` was given.
+ */
+export function teacherFormResolverSchema(
+  isEdit: boolean,
+): z.ZodType<TeacherFormValues, TeacherFormValues> {
+  return isEdit ? teacherEditFormSchema : teacherFormSchema;
+}
+
 export const EMPTY_TEACHER_FORM: TeacherFormValues = {
   firstName: "",
   lastName: "",
