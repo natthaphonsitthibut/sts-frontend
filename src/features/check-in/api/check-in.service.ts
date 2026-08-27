@@ -33,7 +33,7 @@ async function publicTokenRequest<T>(
 async function getPublicContext(token?: string): Promise<CheckInContext> {
   return await publicTokenRequest(
     () =>
-      apiClient.get<DataEnvelope<CheckInContext>>("/check-in/context", {
+      apiClient.get<DataEnvelope<CheckInContext>>("/classroom/context", {
         headers: token ? { [TOKEN_HEADER]: token } : undefined,
       }),
     "เปิดลิงก์ห้องเรียนไม่สำเร็จ",
@@ -44,7 +44,7 @@ async function startGoogle(token: string): Promise<string> {
   const result = await publicTokenRequest(
     () =>
       apiClient.get<DataEnvelope<{ authorizationUrl: string }>>(
-        "/check-in/auth/google/start",
+        "/classroom/auth/google/start",
         { headers: { [TOKEN_HEADER]: token } },
       ),
     "เริ่มยืนยันด้วย Google ไม่สำเร็จ",
@@ -59,7 +59,7 @@ async function verifyDevelopmentGoogle(
   await publicTokenRequest(
     () =>
       apiClient.post<DataEnvelope<{ authenticated: true }>>(
-        "/check-in/auth/google/development",
+        "/classroom/auth/google/development",
         { email },
         { headers: { [TOKEN_HEADER]: token } },
       ),
@@ -71,11 +71,35 @@ async function createAraIdChallenge(token: string): Promise<AraIdChallenge> {
   return await publicTokenRequest(
     () =>
       apiClient.post<DataEnvelope<AraIdChallenge>>(
-        "/check-in/auth/araid/challenge",
+        "/classroom/auth/araid/challenge",
         undefined,
         { headers: { [TOKEN_HEADER]: token } },
       ),
     "เริ่มยืนยันด้วย AraID ไม่สำเร็จ",
+  );
+}
+
+async function beginAraIdChallenge(
+  challengeToken: string,
+): Promise<{ expiresAt: string }> {
+  return await publicTokenRequest(
+    () =>
+      apiClient.post<DataEnvelope<{ expiresAt: string }>>(
+        "/classroom/auth/araid/challenge/begin",
+        undefined,
+        { headers: { "x-araid-challenge": challengeToken } },
+      ),
+    "เริ่มยืนยัน AraID ไม่สำเร็จ",
+  );
+}
+
+async function approveAraIdChallenge(): Promise<void> {
+  await publicTokenRequest(
+    () =>
+      apiClient.post<DataEnvelope<{ approved: true }>>(
+        "/classroom/auth/araid/challenge/approve",
+      ),
+    "ยืนยัน AraID ไม่สำเร็จ",
   );
 }
 
@@ -86,7 +110,7 @@ async function pollAraIdChallenge(challengeToken: string): Promise<{
     () =>
       apiClient.post<
         DataEnvelope<{ status: "PENDING" | "IN_PROGRESS" | "APPROVED" }>
-      >("/check-in/auth/araid/challenge/status", undefined, {
+      >("/classroom/auth/araid/challenge/status", undefined, {
         headers: { "x-araid-challenge": challengeToken },
       }),
     "ตรวจสอบสถานะ AraID ไม่สำเร็จ",
@@ -101,7 +125,7 @@ async function getOptions(input: {
   const response = await apiClient.get<DataEnvelope<CheckInOptions>>(
     input.access === "INTERNAL"
       ? "/attendance/check-in/options"
-      : "/check-in/subjects",
+      : "/classroom/subjects",
     {
       params: {
         date: input.date,
@@ -121,7 +145,7 @@ async function getRoster(input: {
   const response = await apiClient.get<DataEnvelope<CheckInStudent[]>>(
     input.access === "INTERNAL"
       ? "/attendance/check-in/roster"
-      : "/check-in/roster",
+      : "/classroom/roster",
     {
       params:
         input.access === "INTERNAL"
@@ -141,7 +165,7 @@ async function startSession(input: {
   const response = await apiClient.post<DataEnvelope<CheckInSession>>(
     input.access === "INTERNAL"
       ? "/attendance/check-in/sessions/start"
-      : "/check-in/sessions/start",
+      : "/classroom/sessions/start",
     {
       date: input.date,
       classroomSubjectId: input.classroomSubjectId,
@@ -165,7 +189,7 @@ async function submitSession(input: {
   const response = await apiClient.post<DataEnvelope<CheckInSession>>(
     input.access === "INTERNAL"
       ? `/attendance/check-in/sessions/${input.sessionId}/submit`
-      : `/check-in/sessions/${input.sessionId}/submit`,
+      : `/classroom/sessions/${input.sessionId}/submit`,
     { exceptions: input.exceptions },
   );
   return response.data.data;
@@ -181,7 +205,7 @@ function getStudentPhotoUrl(input: {
     url:
       input.access === "INTERNAL"
         ? "/attendance/check-in/student-photo"
-        : "/check-in/student-photo",
+        : "/classroom/student-photo",
     params: {
       studentId: input.studentId,
       ...(input.access === "INTERNAL"
@@ -197,6 +221,8 @@ export const checkInService = {
   getOptions,
   getPublicContext,
   getRoster,
+  approveAraIdChallenge,
+  beginAraIdChallenge,
   getStudentPhotoUrl,
   pollAraIdChallenge,
   startGoogle,

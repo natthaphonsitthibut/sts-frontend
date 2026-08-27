@@ -58,8 +58,12 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
+  // The classroom link page moved to /classroom; /check-in is still reachable
+  // while old links redirect through it, so both count as the public page.
   const onPublicCheckInPage =
-    typeof window !== "undefined" && window.location.pathname === "/check-in";
+    typeof window !== "undefined" &&
+    (window.location.pathname === "/classroom" ||
+      window.location.pathname === "/check-in");
 
   // Public magic-link flows authenticate with short-lived signed tokens via
   // headers; the staff session is carried entirely by the httpOnly cookie.
@@ -109,6 +113,7 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
         window.location.pathname.startsWith("/araid") ||
+        window.location.pathname === "/classroom" ||
         window.location.pathname === "/check-in" ||
         window.location.pathname.startsWith("/apply/");
 
