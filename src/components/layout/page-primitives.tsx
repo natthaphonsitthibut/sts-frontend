@@ -336,6 +336,17 @@ export function PageToolbar({
                   )}
                 </nav>
               ) : null}
+              {hideBreadcrumb && navigation ? (
+                // The breadcrumb normally holds the left of this row, so
+                // `justify-between` puts the back button on the right. A page
+                // that hides its breadcrumb — a link surface, which has no trail
+                // into the app — still needs that side filled, or the button
+                // slides over to the left.
+                <span
+                  aria-hidden="true"
+                  className="hidden sm:block sm:flex-1"
+                />
+              ) : null}
               {navigation ? (
                 <div
                   className={cn(
@@ -356,7 +367,10 @@ export function PageToolbar({
               button) shifts the heading down on some pages only. */}
           <div
             className={cn(
-              !hideBreadcrumb && "mt-2",
+              // Spacing belongs to the row above, not to the breadcrumb: a page
+              // that hides its breadcrumb but keeps a back button still has a
+              // row up there, and without this the two sit on top of each other.
+              (!hideBreadcrumb || navigation) && "mt-2",
               "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
             )}
           >
