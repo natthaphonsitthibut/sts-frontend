@@ -80,20 +80,38 @@ export function AppBrand({
   className?: string;
   label?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
-  to?: string;
+  /**
+   * Where the brand leads. `null` renders it as plain text — a surface with
+   * nowhere of its own to go back to (a link page has no home inside the app)
+   * must not offer a link that lands its holder on the sign-in screen.
+   */
+  to?: string | null;
 }) {
+  const content = (
+    <>
+      <StsLogo aria-hidden="true" className="size-9 shrink-0" />
+      <span className="truncate text-xl font-bold text-primary">{label}</span>
+    </>
+  );
+  // `select-none` so the brand behaves the same everywhere: dragging across it
+  // moves nothing and highlights nothing, exactly as the anchor version does
+  // inside the app.
+  const shared = "flex min-w-0 select-none items-center gap-3 rounded-lg";
+  if (to === null) {
+    return <span className={cn(shared, className)}>{content}</span>;
+  }
   return (
     <Link
       aria-label="กลับหน้าหลัก"
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        shared,
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         className,
       )}
       onClick={onClick}
       to={to}
     >
-      <StsLogo aria-hidden="true" className="size-9 shrink-0" />
-      <span className="truncate text-xl font-bold text-primary">{label}</span>
+      {content}
     </Link>
   );
 }

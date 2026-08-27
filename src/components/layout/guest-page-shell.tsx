@@ -41,9 +41,12 @@ export function GuestPageShell({
       {showHeader ? (
         <header className="h-16 border-b border-slate-200 bg-white">
           <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6">
+            {/* Not a link: whoever holds a link has no account, so following
+                the brand only lands them on the sign-in screen. */}
             <AppBrand
               className="max-w-xs sm:max-w-sm"
               label="ระบบติดตามผู้เรียน"
+              to={null}
             />
             {showProfile ? (
               // Same popover as the signed-in header, minus the two actions a
