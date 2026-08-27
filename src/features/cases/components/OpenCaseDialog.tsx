@@ -19,6 +19,7 @@ import {
   registerField,
 } from "../../../components/base";
 import { useOpenCase } from "../hooks/useOpenCase";
+import type { StudentReadSource } from "../../students/api/students.service";
 import {
   openCaseSchema,
   type OpenCaseFormValues,
@@ -27,6 +28,8 @@ import type { CaseRecord } from "../types/cases.types";
 
 interface OpenCaseDialogProps {
   initialReason?: string;
+  /** Which guarded namespace opens the case. */
+  source?: StudentReadSource;
   open: boolean;
   studentId: string;
   studentName: string;
@@ -39,10 +42,11 @@ export function OpenCaseDialog({
   onOpenChange,
   onOpened,
   open,
+  source = "INTERNAL",
   studentId,
   studentName,
 }: OpenCaseDialogProps) {
-  const openCase = useOpenCase();
+  const openCase = useOpenCase(source);
   const resetOpenCase = openCase.reset;
   const form = useForm<OpenCaseFormValues>({
     defaultValues: { reason: initialReason },
@@ -82,7 +86,8 @@ export function OpenCaseDialog({
         <DialogHeader>
           <DialogTitle>เปิดเคสติดตามนักเรียน</DialogTitle>
           <DialogDescription>
-            {studentName} · ระบบจะใช้ข้อมูลโรงเรียน ชั้น และห้องจากระเบียนนักเรียนปัจจุบัน
+            {studentName} · ระบบจะใช้ข้อมูลโรงเรียน ชั้น
+            และห้องจากระเบียนนักเรียนปัจจุบัน
           </DialogDescription>
         </DialogHeader>
         <Form form={form} onSubmit={handleSubmit}>
