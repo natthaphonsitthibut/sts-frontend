@@ -1,4 +1,10 @@
+import { useMemo, useState } from "react";
 import { FileText } from "lucide-react";
+import {
+  AttachmentViewer,
+  attachmentKindOf,
+  type AttachmentViewerItem,
+} from "../../../components/base";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import {
@@ -30,9 +36,10 @@ function RoundDetailItem({
 }
 
 function resolveVisitAttachmentUrl(path: string): string {
-  // `FilesController` checks permission and then mints a short-lived signed
-  // storage URL, just like the profile-photo routes. Keep the storage key out
-  // of the public URL and let a fresh guarded request happen after every reload.
+  // `FilesController` checks permission and then streams the file back itself,
+  // so it decides the content type and disposition the browser sees. Keep the
+  // storage key out of the public URL and let a fresh guarded request happen
+  // after every reload.
   return resolveApiMediaUrl(`/api${path}`) ?? path;
 }
 
@@ -43,26 +50,34 @@ export function VisitAttachments({
   emptyLabel?: string;
   value: string | null | undefined;
 }) {
-  if (!value) {
-    return emptyLabel ? (
-      <p className="text-sm text-slate-500">{emptyLabel}</p>
-    ) : null;
-  }
-
-  let paths: string[] = [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      paths = parsed.filter(
-        (path): path is string =>
-          typeof path === "string" && path.startsWith("/uploads/"),
-      );
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const items = useMemo<AttachmentViewerItem[]>(() => {
+    let paths: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(value ?? "");
+      if (Array.isArray(parsed)) {
+        paths = parsed.filter(
+          (path): path is string =>
+            typeof path === "string" && path.startsWith("/uploads/"),
+        );
+      }
+    } catch {
+      paths = [];
     }
-  } catch {
-    paths = [];
-  }
+    return paths.map((path, index) => {
+      // `lastIndexOf` returns -1 for an extensionless key, and slicing on that
+      // would tack the last character of the path onto the name.
+      const dot = path.lastIndexOf(".");
+      const extension = dot > path.lastIndexOf("/") ? path.slice(dot) : "";
+      return {
+        kind: attachmentKindOf(path),
+        name: `ไฟล์แนบการติดตาม ${index + 1}${extension}`,
+        url: resolveVisitAttachmentUrl(path),
+      };
+    });
+  }, [value]);
 
-  if (paths.length === 0) {
+  if (items.length === 0) {
     return emptyLabel ? (
       <p className="text-sm text-slate-500">{emptyLabel}</p>
     ) : null;
@@ -72,41 +87,55 @@ export function VisitAttachments({
     <div className="mt-4">
       <h4 className="text-sm font-semibold text-slate-700">ไฟล์แนบการติดตาม</h4>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {paths.map((path, index) => {
-          const attachmentUrl = resolveVisitAttachmentUrl(path);
-          const isImage = /\.(?:jpe?g|png|webp)$/i.test(path);
-          return (
-            <a
-              className={
-                isImage
-                  ? undefined
-                  : "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center text-sm font-semibold text-slate-700"
+        {items.map((item, index) => (
+          <a
+            aria-label={`เปิดดู${item.name}`}
+            className={
+              item.kind === "image"
+                ? "block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                : "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center text-sm font-semibold text-slate-700 transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            }
+            href={item.url}
+            key={item.url}
+            onClick={(event) => {
+              // A plain click opens the in-page viewer; ctrl/cmd/middle clicks
+              // and "open in new tab" keep the browser's own behaviour, which
+              // now renders the file instead of downloading it.
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return;
               }
-              href={attachmentUrl}
-              key={path}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {isImage ? (
-                <img
-                  alt={`ไฟล์แนบการติดตาม ${index + 1}`}
-                  className="aspect-video w-full rounded-lg border border-slate-200 object-cover"
-                  loading="lazy"
-                  src={attachmentUrl}
-                />
-              ) : (
-                <>
-                  <FileText
-                    className="size-7 text-primary"
-                    aria-hidden="true"
-                  />
-                  <span>ไฟล์แนบ {index + 1}</span>
-                </>
-              )}
-            </a>
-          );
-        })}
+              event.preventDefault();
+              setViewerIndex(index);
+            }}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {item.kind === "image" ? (
+              <img
+                alt={item.name}
+                className="aspect-video w-full rounded-lg border border-slate-200 object-cover transition-opacity hover:opacity-90"
+                loading="lazy"
+                src={item.url}
+              />
+            ) : (
+              <>
+                <FileText className="size-7 text-primary" aria-hidden="true" />
+                <span>ไฟล์แนบ {index + 1}</span>
+              </>
+            )}
+          </a>
+        ))}
       </div>
+      <AttachmentViewer
+        index={viewerIndex}
+        items={items}
+        onIndexChange={setViewerIndex}
+      />
     </div>
   );
 }
