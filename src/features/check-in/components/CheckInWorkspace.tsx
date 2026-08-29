@@ -55,6 +55,15 @@ const STATUS_CONFIG = ATTENDANCE_RECORD_STATUSES.map((status) => {
   };
 });
 const AUTO_ADVANCE_KEY = "sts_check_in_auto_advance";
+/**
+ * How long a freshly picked status stays put before the roster moves on.
+ * Marking is the only moment the choice is visible, and both surfaces would
+ * otherwise erase it on the same frame it appears — the table row jumps to
+ * the end of the list, the card flies off. One readable beat: long enough to
+ * see which of the four pills filled in, short enough that checking a class
+ * of forty still feels like tapping down a list.
+ */
+const SELECTION_HOLD_MS = 320;
 
 function readAutoAdvance(): boolean {
   if (typeof window === "undefined") return true;
@@ -130,6 +139,37 @@ function CheckInTable({
   onOpenProfile?: (student: CheckInStudent) => void;
   roster: CheckInStudent[];
 }) {
+  // Only auto-advance reorders the list, so only auto-advance needs the hold:
+  // a just-marked student keeps their place for `SELECTION_HOLD_MS` and then
+  // drops to the end. With the option off, rows never move and the filled
+  // pill is already visible where it was tapped.
+  const [heldIds, setHeldIds] = useState<readonly string[]>([]);
+  const holdTimers = useRef(new Map<string, number>());
+
+  useEffect(
+    () => () => {
+      for (const timer of holdTimers.current.values()) {
+        window.clearTimeout(timer);
+      }
+    },
+    [],
+  );
+
+  function holdRowInPlace(studentId: string): void {
+    const running = holdTimers.current.get(studentId);
+    if (running !== undefined) window.clearTimeout(running);
+    setHeldIds((current) =>
+      current.includes(studentId) ? current : [...current, studentId],
+    );
+    holdTimers.current.set(
+      studentId,
+      window.setTimeout(() => {
+        holdTimers.current.delete(studentId);
+        setHeldIds((current) => current.filter((id) => id !== studentId));
+      }, SELECTION_HOLD_MS),
+    );
+  }
+
   function markAndAdvance(studentId: string, status: CheckInMarkStatus): void {
     const current = marks.get(studentId)?.status;
     if (current === status) {
@@ -137,12 +177,17 @@ function CheckInTable({
       return;
     }
     onMark(studentId, status);
+    if (autoAdvance) holdRowInPlace(studentId);
   }
 
   const displayedRoster = autoAdvance
     ? [
-        ...roster.filter((student) => !marks.has(student.id)),
-        ...roster.filter((student) => marks.has(student.id)),
+        ...roster.filter(
+          (student) => !marks.has(student.id) || heldIds.includes(student.id),
+        ),
+        ...roster.filter(
+          (student) => marks.has(student.id) && !heldIds.includes(student.id),
+        ),
       ]
     : roster;
   const selections = Object.fromEntries(
@@ -239,12 +284,19 @@ function CheckInCards({
 }) {
   const [departingId, setDepartingId] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
+  // The status the buttons below the deck are showing as picked, while the
+  // card waits out `SELECTION_HOLD_MS` before leaving. Swiping never sets it:
+  // the drag, the tilt and the stamp already say what was chosen.
+  const [pendingStatus, setPendingStatus] = useState<CheckInMarkStatus | null>(
+    null,
+  );
   const cardRef = useRef<HTMLElement>(null);
   const nextCardRef = useRef<HTMLElement>(null);
   const presentOverlayRef = useRef<HTMLDivElement>(null);
   const absentOverlayRef = useRef<HTMLDivElement>(null);
   const animationFrame = useRef<number | null>(null);
   const transitionTimer = useRef<number | null>(null);
+  const holdTimer = useRef<number | null>(null);
   const transitionLock = useRef(false);
   const interacted = useRef(false);
   const drag = useRef<{
@@ -277,6 +329,7 @@ function CheckInCards({
         cancelAnimationFrame(animationFrame.current);
       if (transitionTimer.current !== null)
         window.clearTimeout(transitionTimer.current);
+      if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
     },
     [],
   );
@@ -372,6 +425,24 @@ function CheckInCards({
       setTransitioning(false);
       transitionLock.current = false;
     }, delay || 1);
+  }
+
+  /**
+   * The button path onto the same departure the swipe uses, one beat later.
+   * Tapping a status would otherwise destroy its own feedback — the card
+   * flies off on the frame the button fills in, so nothing is left to read.
+   * Holding the pressed button lit first makes the four-way choice visible;
+   * a second tap during the hold is ignored rather than queued, so a
+   * mis-tap resolves to exactly one status.
+   */
+  function markFromButton(status: CheckInMarkStatus): void {
+    if (!active || disabled || transitionLock.current || pendingStatus) return;
+    setPendingStatus(status);
+    holdTimer.current = window.setTimeout(() => {
+      holdTimer.current = null;
+      setPendingStatus(null);
+      markActive(status);
+    }, SELECTION_HOLD_MS);
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>): void {
@@ -477,7 +548,15 @@ function CheckInCards({
             <article
               aria-label={`นักเรียนคนที่ ${progressNumber} จาก ${roster.length}: ${student.firstName} ${student.lastName}`}
               className={cn(
-                "absolute inset-0 touch-pan-y select-none overflow-hidden rounded-3xl bg-white shadow-xl outline-none transition-[transform,opacity] duration-200 ease-[cubic-bezier(.22,1,.36,1)] will-change-transform motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-primary/40",
+                // `touch-pinch-zoom` (no pan at all) rather than `pan-y`: with
+                // vertical panning allowed the browser could claim a slightly
+                // diagonal swipe as a page scroll, cancel the pointer stream
+                // mid-drag, and leave the card snapping back while the page
+                // slid — the gesture read as unreliable on a phone. Now a
+                // finger that lands on the card only ever swipes the card;
+                // the page still scrolls from anywhere around it, and pinch
+                // to zoom the photo keeps working.
+                "absolute inset-0 touch-pinch-zoom select-none overflow-hidden rounded-3xl bg-white shadow-xl outline-none transition-[transform,opacity] duration-200 ease-[cubic-bezier(.22,1,.36,1)] will-change-transform motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-primary/40",
                 isActive && "cursor-grab active:cursor-grabbing",
                 !isActive && "pointer-events-none",
               )}
@@ -545,10 +624,13 @@ function CheckInCards({
         <AttendanceStatusButtons
           buttonClassName="flex-1"
           catalog={[]}
-          current="NONE"
+          current={pendingStatus ?? "NONE"}
+          // Not disabled during the hold on purpose — `disabled` dims the
+          // pills, which would mute the very confirmation the hold exists to
+          // show. `markFromButton` ignores the extra taps instead.
           disabled={disabled || transitioning}
-          isUnmarked
-          onStatusChange={(_studentId, status) => markActive(status)}
+          isUnmarked={pendingStatus === null}
+          onStatusChange={(_studentId, status) => markFromButton(status)}
           studentId={active.id}
           studentName={`${active.firstName} ${active.lastName}`.trim()}
         />
