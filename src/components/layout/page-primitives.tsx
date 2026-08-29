@@ -240,9 +240,13 @@ export function PageToolbar({
             tone === "primary" ? "min-h-20 p-5" : "py-1",
           )}
         >
-          {!hideBreadcrumb || navigation ? (
+          {/* The home page is the one place the breadcrumb and the title say
+              the same single word — the trail has nowhere to go back to and the
+              heading repeats it. Both are dropped there and nowhere else, so
+              every other page still opens with "หน้าหลัก > …" as before. */}
+          {(!hideBreadcrumb && !isHomePage) || navigation ? (
             <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
-              {!hideBreadcrumb ? (
+              {!hideBreadcrumb && !isHomePage ? (
                 <nav
                   aria-label="เส้นทางนำทาง"
                   data-page-breadcrumb
@@ -384,14 +388,16 @@ export function PageToolbar({
             )}
           >
             <div className="min-w-0 flex-1">
-              <h1
-                className={cn(
-                  "text-xl font-semibold leading-8",
-                  toneClasses.title,
-                )}
-              >
-                {toolbarTitle}
-              </h1>
+              {isHomePage ? null : (
+                <h1
+                  className={cn(
+                    "text-xl font-semibold leading-8",
+                    toneClasses.title,
+                  )}
+                >
+                  {toolbarTitle}
+                </h1>
+              )}
             </div>
             {actions ? (
               <div
