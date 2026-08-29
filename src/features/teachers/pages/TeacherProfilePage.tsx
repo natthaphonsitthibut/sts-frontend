@@ -31,17 +31,19 @@ import { useTeacherProfile, useUpdateTeacherPhoto } from "../hooks/useTeachers";
 
 function ReadOnlyField({
   action,
+  className,
   id,
   label,
   value,
 }: {
   action?: ReactNode;
+  className?: string;
   id: string;
   label: string;
   value: string | null;
 }) {
   return (
-    <FormItem>
+    <FormItem className={className}>
       <FormLabel htmlFor={id}>{label}</FormLabel>
       <div className="flex gap-2">
         <Input
@@ -167,6 +169,14 @@ export function TeacherProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                {/* Which school this teacher belongs to is the first thing an
+                    area administrator needs, and the profile never said it. */}
+                <ReadOnlyField
+                  className="sm:col-span-2"
+                  id="teacher-profile-school"
+                  label="โรงเรียน"
+                  value={teacher.schoolName}
+                />
                 <ReadOnlyField
                   id="teacher-profile-first-name"
                   label="ชื่อ"

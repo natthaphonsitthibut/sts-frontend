@@ -37,6 +37,7 @@ import {
 } from "../schemas/teacher.schema";
 import type { Teacher } from "../types/teachers.types";
 import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
+import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 
 const TEACHERS_PATH = "/manage-teachers";
 
@@ -66,10 +67,12 @@ function optionalText(value: string): string | undefined {
 function TeacherForm({
   teacher,
   schoolId,
+  schoolName,
   backTarget,
 }: {
   teacher: Teacher | null;
   schoolId: number;
+  schoolName: string | null;
   backTarget: ReturnType<typeof useSafeBackTarget>;
 }) {
   const navigate = useNavigate();
@@ -132,6 +135,17 @@ function TeacherForm({
           />
 
           <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+            <FormItem className="sm:col-span-2">
+              <FormLabel htmlFor="teacher-school">โรงเรียน</FormLabel>
+              <Input
+                className="cursor-default bg-slate-50 text-slate-800"
+                disabled
+                id="teacher-school"
+                readOnly
+                value={schoolName || "-"}
+              />
+            </FormItem>
+
             <FormItem>
               <FormLabel htmlFor="firstName" required>
                 ชื่อ
@@ -260,6 +274,16 @@ export function TeacherFormPage() {
   const schoolId = isEdit
     ? (teacher?.schoolId ?? null)
     : Number(searchParams.get("schoolId")) || null;
+  // The form cannot move a teacher between schools, so the school is context
+  // rather than a field — but leaving it off the page meant an administrator
+  // editing across several schools had nothing on screen saying which one this
+  // is. On create the teacher record does not exist yet, so the name comes from
+  // the scoped school list the picker on the previous page used.
+  const schoolsQuery = useScopedSchools();
+  const schoolName =
+    teacher?.schoolName ??
+    schoolsQuery.data?.find((school) => school.id === schoolId)?.name ??
+    null;
 
   return (
     <PageShell>
@@ -295,6 +319,7 @@ export function TeacherFormPage() {
         <TeacherForm
           backTarget={safeBackTarget}
           schoolId={schoolId}
+          schoolName={schoolName}
           teacher={teacher}
         />
       )}
