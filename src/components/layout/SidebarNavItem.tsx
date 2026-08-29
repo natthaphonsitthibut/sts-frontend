@@ -26,11 +26,18 @@ interface SidebarNavItemProps {
  * `max-w-full` (a percentage) can't interpolate to `0px`; the negative margin
  * cancels the row's `gap-3` so a zero-width label leaves the icon perfectly
  * centered. Text stays in the accessibility tree in both states.
+ *
+ * The expanded cap must stay wider than the widest label slot any rail can
+ * offer (mobile sheet `w-72` minus the nav/row padding ≈ 216px, desktop
+ * `w-64` less than that). A tighter cap leaves free space inside the row,
+ * which the row's `justify-center` then centers — and rows with a chevron
+ * reserve an extra `mr-7`, so they would centre by a different amount and
+ * their icons would sit left of every other row's.
  */
 function navLabelClassName(collapsed: boolean): string {
   return cn(
     "truncate transition-[opacity,max-width,margin] duration-300 ease-out motion-reduce:transition-none",
-    collapsed ? "-ml-3 max-w-0 opacity-0" : "max-w-48 opacity-100",
+    collapsed ? "-ml-3 max-w-0 opacity-0" : "max-w-64 opacity-100",
   );
 }
 
