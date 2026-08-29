@@ -37,7 +37,6 @@ import {
   DataTableCell,
   DataTableRow,
 } from "../../../components/layout/data-table";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import {
   formatThaiDateTime,
@@ -441,10 +440,6 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
               {exportCount.toLocaleString("th-TH")} คน
             </p>
           </div>
-          <RefreshButton
-            onRefresh={() => listQuery.refetch()}
-            updatedAt={listQuery.dataUpdatedAt}
-          />
         </div>
       </section>
 

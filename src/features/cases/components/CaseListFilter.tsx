@@ -4,7 +4,6 @@ import {
   FilterSelect,
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
 
 interface CaseListFilterProps {
@@ -15,8 +14,6 @@ interface CaseListFilterProps {
   schoolFilters?: ReactNode;
   navigation?: ReactNode;
   exportAction?: ReactNode;
-  onRefresh: () => Promise<unknown> | unknown;
-  updatedAt: number;
   onClearFilters: () => void;
   statuses: readonly StatusCatalogItem[];
   showStatusFilter?: boolean;
@@ -30,8 +27,6 @@ export function CaseListFilter({
   schoolFilters,
   navigation,
   exportAction,
-  onRefresh,
-  updatedAt,
   onClearFilters,
   statuses,
   showStatusFilter = true,
@@ -42,12 +37,7 @@ export function CaseListFilter({
       title="เคสติดตามนักเรียน"
       description="ติดตามรายงานแต่ละรอบจนปิดเคส"
       navigation={navigation}
-      tableActions={
-        <>
-          <RefreshButton onRefresh={onRefresh} updatedAt={updatedAt} />
-          {exportAction}
-        </>
-      }
+      tableActions={<>{exportAction}</>}
       onClearFilters={onClearFilters}
       search={{
         value: searchQuery,

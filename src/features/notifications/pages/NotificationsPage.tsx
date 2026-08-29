@@ -10,7 +10,6 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
@@ -55,13 +54,11 @@ export function NotificationsPage() {
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
   });
-  const { data, isError, isLoading, refetch, dataUpdatedAt } = useNotifications(
-    {
-      status: unreadOnly ? "unread" : "all",
-      page,
-      limit: rowsPerPage,
-    },
-  );
+  const { data, isError, isLoading, refetch } = useNotifications({
+    status: unreadOnly ? "unread" : "all",
+    page,
+    limit: rowsPerPage,
+  });
   const markAllSeen = useMarkAllSeen();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
@@ -146,7 +143,6 @@ export function NotificationsPage() {
         description="รายการเหตุการณ์สำคัญตามขอบเขตข้อมูลและสิทธิ์ของบัญชีนี้"
         footerActions={
           <>
-            <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
             <ClearFiltersButton
               onClear={() => {
                 setSearchParams({ status: "all" });
