@@ -31,7 +31,9 @@ export interface FollowUpSummary {
 export interface ReferralDrilldownRow {
   id: string;
   caseId: number;
+  studentId: string | null;
   studentName: string;
+  studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
   statusCode: string;

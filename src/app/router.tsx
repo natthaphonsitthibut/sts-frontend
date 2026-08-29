@@ -123,6 +123,10 @@ export const router = createBrowserRouter([
         element: protectedElement(<DashboardPage />, "dashboard"),
       },
       {
+        path: "student-risk-report/referrals",
+        element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
         path: "student-risk-report/teacher-comments",
         element: protectedElement(<TeacherCommentReportsPage />, "students"),
       },

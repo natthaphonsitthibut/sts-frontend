@@ -42,6 +42,9 @@ async function getRiskDashboard(
   if (query.semester) {
     params.semester = String(query.semester);
   }
+  if (query.concernLevel) {
+    params.concernLevel = query.concernLevel;
+  }
   if (query.caseStatus) {
     params.caseStatus = query.caseStatus;
   }
@@ -78,9 +81,15 @@ async function getFollowUpSummary(): Promise<FollowUpSummary> {
 async function getReferralDrilldown(
   page = 1,
   limit = 20,
+  filters: { statusCode?: string; searchTerm?: string } = {},
 ): Promise<ReferralDrilldownResult> {
   const response = await apiClient.get("/dashboard/referrals", {
-    params: { page, limit },
+    params: {
+      page,
+      limit,
+      statusCode: filters.statusCode || undefined,
+      searchTerm: filters.searchTerm || undefined,
+    },
   });
   return normalizePaginatedResponse<ReferralDrilldownRow>(response.data, {
     page,

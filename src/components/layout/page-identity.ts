@@ -119,6 +119,10 @@ export const PAGE_IDENTITIES = {
     "รายงานสถานะนักเรียน",
     "chart-line",
   ),
+  "/student-risk-report/referrals": createIdentity(
+    "รายงานสถานะนักเรียน",
+    "chart-line",
+  ),
   "/student-risk-report/teacher-comments": createIdentity(
     "ความคิดเห็นจากคุณครู",
     "clipboard-check",
