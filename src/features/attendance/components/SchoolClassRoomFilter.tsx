@@ -6,6 +6,7 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
   SCOPE_ALL_LABEL,
   SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
 } from "../../../lib/scope-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
@@ -80,6 +81,7 @@ export function SchoolClassRoomFilter({
           options={area.filteredSchools.map((school) => ({
             value: String(school.id),
             label: school.name,
+            description: formatSchoolArea(school),
           }))}
           placeholder={emptyOptionLabels?.school ?? SCOPE_REQUIRED_LABEL.school}
           value={scope.schoolId}

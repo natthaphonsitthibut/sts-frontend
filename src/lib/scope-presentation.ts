@@ -1,3 +1,5 @@
+import { formatClassLabel } from "./room-presentation";
+
 /**
  * The words every scope filter uses for its own levels.
  *
@@ -46,3 +48,97 @@ export const SCOPE_REQUIRED_LABEL: Record<ScopeLevel, string> = {
   grade: "เลือกชั้น",
   room: "เลือกห้อง",
 };
+
+/** The levels currently in force, however the page came by them. */
+export interface ScopeSummaryInput {
+  province?: string | null;
+  district?: string | null;
+  subDistrict?: string | null;
+  schoolName?: string | null;
+  grade?: string | null;
+  room?: string | null;
+  /** Only pages that let the user pick a term carry these. */
+  academicYear?: number | string | null;
+  semester?: number | string | null;
+}
+
+function clean(value: string | null | undefined): string {
+  return (value ?? "").trim();
+}
+
+/**
+ * The scope in force, as the one or two phrases worth putting on screen.
+ *
+ * Every level the user walked through is *not* worth showing: a school already
+ * says which province it is in, so once one is picked the geography is noise —
+ * the reason the server's own six-part "เชียงใหม่ / สันทราย / … / ห้อง 3" reads
+ * as a wall. What survives is the deepest place plus the classroom, at most two
+ * phrases.
+ *
+ * The place keeps its province when it is an area rather than a school, because
+ * a district on its own is genuinely ambiguous — "เมือง" names a district in
+ * every one of the 77 provinces. Levels are quoted exactly as the filter's own
+ * option reads them, never re-worded and never prefixed: the stored values
+ * already carry their own "จังหวัด"/"อำเภอ"/"เขต" wording inconsistently (the
+ * area-code migration has to strip it to match rows), so a hand-added "อ." can
+ * land on a value that reads "เขตบางรัก" and produce "อ.เขตบางรัก".
+ */
+export function formatScopeSummary(scope: ScopeSummaryInput): string[] {
+  const province = clean(scope.province);
+  const area = clean(scope.subDistrict) || clean(scope.district);
+  const schoolName = clean(scope.schoolName);
+  const grade = clean(scope.grade);
+  const room = clean(scope.room);
+
+  const place = schoolName
+    ? schoolName
+    : area
+      ? province
+        ? `${province} › ${area}`
+        : area
+      : province || SCOPE_ALL_LABEL.province;
+
+  const classroom = grade || room ? formatClassLabel(grade, room) : "";
+
+  // A term is only worth naming once the user has moved off the default: a page
+  // sitting on the current year says nothing by repeating it, while a page
+  // showing 2566 must not look like it is showing today.
+  const academicYear = clean(
+    scope.academicYear == null ? "" : String(scope.academicYear),
+  );
+  const semester = clean(scope.semester == null ? "" : String(scope.semester));
+
+  return [
+    place,
+    ...(classroom && classroom !== "-" ? [classroom] : []),
+    ...(academicYear ? [`ปีการศึกษา ${academicYear}`] : []),
+    ...(semester ? [`ภาคเรียนที่ ${semester}`] : []),
+  ];
+}
+
+/**
+ * Where a school is, as the second line of its option in a picker.
+ *
+ * School names are not unique in Thailand — the same name recurs across
+ * provinces — so a list of names alone can offer two rows an admin cannot tell
+ * apart. This line separates them, and because the picker searches it too, it
+ * doubles as the way to reach a district's schools by typing the district
+ * rather than walking a province → district → sub-district cascade.
+ *
+ * Deepest first, and no "จ."/"อ." prefixes: the stored values already carry
+ * that wording inconsistently, so adding it produces "อ.เขตบางรัก".
+ */
+export function formatSchoolArea(school: {
+  province?: string | null;
+  district?: string | null;
+  /** `/attendance/schools` spells it this way; the school-structure API camelCases it. */
+  sub_district?: string | null;
+  subDistrict?: string | null;
+}): string | undefined {
+  const parts = [
+    clean(school.subDistrict ?? school.sub_district),
+    clean(school.district),
+    clean(school.province),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}

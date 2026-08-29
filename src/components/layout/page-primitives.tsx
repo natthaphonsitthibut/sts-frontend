@@ -79,6 +79,14 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
    */
   breadcrumbTrail?: Array<{ label: string; to: string; icon?: LucideIcon }>;
   parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
+  /**
+   * Which slice of the school system the page is showing — a `ScopeFilterField`
+   * in practice. It sits in the header rather than among the filters because it
+   * is page context, not one filter among peers: it states the answer even for
+   * an actor whose scope is fixed and who has nothing to choose. One slot, so
+   * it lands in the same place on every page.
+   */
+  scope?: ReactNode;
   title?: ReactNode;
   /**
    * Crumb text for the current page when the title carries more than the page's
@@ -122,6 +130,7 @@ export function PageToolbar({
   icon: Icon,
   navigation,
   parentBreadcrumb,
+  scope,
   title,
   tone = "default",
   ...props
@@ -393,6 +402,9 @@ export function PageToolbar({
               </div>
             ) : null}
           </div>
+          {scope ? (
+            <div className="mt-2 flex min-w-0 pb-1 sm:mt-3">{scope}</div>
+          ) : null}
         </div>
       </section>
       {hasAttachedSurface ? (
@@ -603,7 +615,12 @@ type ListPageToolbarControlProps =
   | {
       search?: undefined;
       filters?: undefined;
-      onClearFilters?: never;
+      /**
+       * Allowed with no search or filters because `scope` is a control too: a
+       * page whose only narrowing is the scope field still has something for a
+       * reset to clear.
+       */
+      onClearFilters?: () => void;
     }
   | {
       /** Optional search box — rendered first in the controls row. */

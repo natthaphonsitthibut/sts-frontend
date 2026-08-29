@@ -7,6 +7,16 @@ import { Input } from "./input";
 export interface ComboboxOption {
   value: string;
   label: string;
+  /**
+   * A second line under the label, and part of what typing searches.
+   *
+   * For anything whose name is not unique on its own — school names repeat
+   * across the country — this is what tells two identical rows apart, and it
+   * lets the list be narrowed by something the label does not contain (typing
+   * a district name to reach its schools). Only the label is echoed back as
+   * the chosen value, so a summary elsewhere still reads as the plain name.
+   */
+  description?: string;
 }
 
 export interface ComboboxProps {
@@ -67,11 +77,16 @@ export function Combobox({
     setOpen(true);
   }
 
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
+  const selectedLabel =
+    options.find((option) => option.value === value)?.label ?? "";
   const effectiveTerm = searchable ? query.trim().toLowerCase() : "";
   const filtered = useMemo(() => {
     const matched = effectiveTerm
-      ? options.filter((option) => option.label.toLowerCase().includes(effectiveTerm))
+      ? options.filter((option) =>
+          `${option.label} ${option.description ?? ""}`
+            .toLowerCase()
+            .includes(effectiveTerm),
+        )
       : options;
     return matched.slice(0, MAX_VISIBLE);
   }, [options, effectiveTerm]);
@@ -82,11 +97,17 @@ export function Combobox({
   });
 
   return (
-    <div className={cn("relative", open && "z-50", className)} ref={containerRef}>
+    <div
+      className={cn("relative", open && "z-50", className)}
+      ref={containerRef}
+    >
       <Input
         aria-label={ariaLabel}
         aria-invalid={ariaInvalid}
-        className={cn("pr-10", !searchable && "cursor-pointer caret-transparent")}
+        className={cn(
+          "pr-10",
+          !searchable && "cursor-pointer caret-transparent",
+        )}
         disabled={disabled}
         id={id}
         name={name}
@@ -136,7 +157,8 @@ export function Combobox({
                 <button
                   className={cn(
                     "block w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
-                    option.value === value && "bg-slate-50 font-medium text-primary",
+                    option.value === value &&
+                      "bg-slate-50 font-medium text-primary",
                   )}
                   onClick={(event) => {
                     // Cancel the click's default action so a wrapping <label>
@@ -160,6 +182,11 @@ export function Combobox({
                   type="button"
                 >
                   {option.label}
+                  {option.description ? (
+                    <span className="mt-0.5 block truncate text-xs font-normal text-slate-500">
+                      {option.description}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             ))

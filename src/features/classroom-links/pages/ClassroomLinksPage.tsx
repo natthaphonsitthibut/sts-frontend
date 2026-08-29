@@ -17,12 +17,14 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
+  Combobox,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   FormErrorAlert,
   IconButton,
   Label,
+  Select,
   useConfirm,
 } from "../../../components/base";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
@@ -32,7 +34,6 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   FilterSelect,
   PageShell,
   PageToolbar,
@@ -71,7 +72,12 @@ import type {
   ClassroomLinkStatus,
   ClassroomLineGroupInvitation,
 } from "../types/classroom-links.types";
-import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import {
+  SCOPE_ALL_LABEL,
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
 
@@ -457,8 +463,108 @@ export function ClassroomLinksPage() {
             </Button>
           </div>
         }
+        scope={
+          <ScopeFilterField
+            editable={schools.length > 1}
+            scope={{
+              schoolName: schools.find(
+                (school) => String(school.id) === schoolInput,
+              )?.name,
+              grade: (gradeLevelsQuery.data ?? []).find(
+                (grade) => String(grade.id) === gradeInput,
+              )?.label,
+            }}
+          >
+            <Combobox
+              ariaLabel="เลือกโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={(value) => {
+                setSchoolInput(value);
+                setTermInput("");
+                resetListState();
+              }}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_REQUIRED_LABEL.school}
+              value={schoolInput}
+            />
+            <Select
+              aria-label="กรองระดับชั้น"
+              onChange={(event) => {
+                setGradeInput(event.target.value);
+                resetListState();
+              }}
+              value={gradeInput}
+            >
+              <option value="">{SCOPE_ALL_LABEL.grade}</option>
+              {(gradeLevelsQuery.data ?? []).map((grade) => (
+                <option key={grade.id} value={String(grade.id)}>
+                  {grade.label}
+                </option>
+              ))}
+            </Select>
+          </ScopeFilterField>
+        }
         title="จัดการลิงก์ห้องเรียน"
-      />
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[420px]"
+            onChange={(value) => {
+              setSearchInput(value);
+              resetListState();
+            }}
+            placeholder="ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น"
+            value={searchInput}
+          />
+          <FilterSelect
+            ariaLabel="เลือกภาคเรียน"
+            disabled={!schoolId || terms.length === 0}
+            onChange={(value) => {
+              setTermInput(value);
+              resetListState();
+            }}
+            value={selectedTerm?.id ?? ""}
+          >
+            {terms.length === 0 ? (
+              <option value="">ยังไม่มีภาคเรียน</option>
+            ) : null}
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                ปีการศึกษา {term.academicYear}/{term.semester}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            ariaLabel="กรองสถานะลิงก์"
+            onChange={(value) => {
+              setLinkStatusInput(value);
+              resetListState();
+            }}
+            value={linkStatusInput}
+          >
+            <option value="">ทุกสถานะลิงก์</option>
+            <option value="ACTIVE">ใช้งานอยู่</option>
+            <option value="INACTIVE">ปิดใช้งาน</option>
+            <option value="NOT_CREATED">ยังไม่ได้สร้าง</option>
+          </FilterSelect>
+          <FilterSelect
+            ariaLabel="กรองครูประจำชั้น"
+            onChange={(value) => {
+              setHomeroomInput(value);
+              resetListState();
+            }}
+            value={homeroomInput}
+          >
+            <option value="">ครูประจำชั้นทั้งหมด</option>
+            <option value="ASSIGNED">กำหนดแล้ว</option>
+            <option value="UNASSIGNED">ยังไม่ได้กำหนด</option>
+          </FilterSelect>
+        </ToolbarControls>
+      </PageToolbar>
 
       {lineInvitation.data ? (
         <section className="mb-4 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
@@ -507,93 +613,6 @@ export function ClassroomLinksPage() {
           </div>
         </section>
       ) : null}
-
-      <ToolbarControls className="mb-6">
-        <SearchInput
-          className="sm:max-w-[420px]"
-          onChange={(value) => {
-            setSearchInput(value);
-            resetListState();
-          }}
-          placeholder="ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น"
-          value={searchInput}
-        />
-        {schools.length > 1 ? (
-          <FilterCombobox
-            ariaLabel="เลือกโรงเรียน"
-            emptyText="ไม่พบโรงเรียน"
-            onChange={(value) => {
-              setSchoolInput(value);
-              setTermInput("");
-              resetListState();
-            }}
-            options={schools.map((school) => ({
-              value: String(school.id),
-              label: school.name,
-            }))}
-            placeholder="เลือกโรงเรียน"
-            value={schoolInput}
-          />
-        ) : null}
-        <FilterSelect
-          ariaLabel="เลือกภาคเรียน"
-          disabled={!schoolId || terms.length === 0}
-          onChange={(value) => {
-            setTermInput(value);
-            resetListState();
-          }}
-          value={selectedTerm?.id ?? ""}
-        >
-          {terms.length === 0 ? (
-            <option value="">ยังไม่มีภาคเรียน</option>
-          ) : null}
-          {terms.map((term) => (
-            <option key={term.id} value={term.id}>
-              ปีการศึกษา {term.academicYear}/{term.semester}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          ariaLabel="กรองระดับชั้น"
-          onChange={(value) => {
-            setGradeInput(value);
-            resetListState();
-          }}
-          value={gradeInput}
-        >
-          <option value="">{SCOPE_ALL_LABEL.grade}</option>
-          {(gradeLevelsQuery.data ?? []).map((grade) => (
-            <option key={grade.id} value={String(grade.id)}>
-              {grade.label}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          ariaLabel="กรองสถานะลิงก์"
-          onChange={(value) => {
-            setLinkStatusInput(value);
-            resetListState();
-          }}
-          value={linkStatusInput}
-        >
-          <option value="">ทุกสถานะลิงก์</option>
-          <option value="ACTIVE">ใช้งานอยู่</option>
-          <option value="INACTIVE">ปิดใช้งาน</option>
-          <option value="NOT_CREATED">ยังไม่ได้สร้าง</option>
-        </FilterSelect>
-        <FilterSelect
-          ariaLabel="กรองครูประจำชั้น"
-          onChange={(value) => {
-            setHomeroomInput(value);
-            resetListState();
-          }}
-          value={homeroomInput}
-        >
-          <option value="">ครูประจำชั้นทั้งหมด</option>
-          <option value="ASSIGNED">กำหนดแล้ว</option>
-          <option value="UNASSIGNED">ยังไม่ได้กำหนด</option>
-        </FilterSelect>
-      </ToolbarControls>
 
       <FormErrorAlert
         className="mb-4"

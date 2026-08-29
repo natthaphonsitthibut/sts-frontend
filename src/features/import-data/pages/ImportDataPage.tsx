@@ -40,7 +40,6 @@ import {
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -79,6 +78,8 @@ import {
   type QuarantineStatus,
 } from "../types/import.types";
 import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
 
 function isStudentPreview(
   preview: AnyImportPreviewResult,
@@ -807,6 +808,11 @@ export function ImportDataPage() {
     quarantineSearch.trim(),
     350,
   );
+  const quarantineSummary = useScopeSummary(quarantineArea, {
+    schoolId: quarantineScope.schoolId,
+    grade: "",
+    room: "",
+  });
   const quarantineSchoolId = quarantineScope.schoolId
     ? Number(quarantineScope.schoolId)
     : undefined;
@@ -1016,7 +1022,6 @@ export function ImportDataPage() {
           />
         }
         icon={FileSpreadsheet}
-        onClearFilters={clearQuarantineFilters}
         title="นำเข้าข้อมูล"
         description={
           activeTab === "import"
@@ -1037,9 +1042,13 @@ export function ImportDataPage() {
               }
             : undefined
         }
-        filters={
+        scope={
           activeTab === "quarantine" ? (
-            <>
+            <ScopeFilterField
+              editable={!quarantineScope.schoolLocked}
+              onClear={clearQuarantineFilters}
+              scope={quarantineSummary}
+            >
               <SchoolAreaSchoolFilter
                 area={quarantineArea}
                 onSchoolChange={(nextSchoolId) => {
@@ -1049,6 +1058,12 @@ export function ImportDataPage() {
                 schoolId={quarantineScope.schoolId}
                 schoolLocked={quarantineScope.schoolLocked}
               />
+            </ScopeFilterField>
+          ) : undefined
+        }
+        filters={
+          activeTab === "quarantine" ? (
+            <>
               <FilterCombobox
                 ariaLabel="กรองตามสาเหตุ"
                 className="sm:w-[320px]"
@@ -1089,10 +1104,6 @@ export function ImportDataPage() {
         tableActions={
           activeTab === "quarantine" ? (
             <>
-              <RefreshButton
-                onRefresh={() => quarantineQuery.refetch()}
-                updatedAt={quarantineQuery.dataUpdatedAt}
-              />
               <Button
                 icon={Download}
                 isLoading={exportQuarantine.isPending}
@@ -1119,7 +1130,7 @@ export function ImportDataPage() {
                 <SchoolAreaSchoolFilter
                   area={importArea}
                   onSchoolChange={selectImportSchool}
-                  schoolEmptyLabel="เลือกโรงเรียน"
+                  schoolEmptyLabel={SCOPE_REQUIRED_LABEL.school}
                   schoolId={importSchoolId}
                   selectedSchoolFallback={selectedImportSchool}
                 />

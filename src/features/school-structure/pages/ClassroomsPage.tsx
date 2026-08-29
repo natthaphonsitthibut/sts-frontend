@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Skeleton } from "../../../components/base";
+import { Combobox, Skeleton } from "../../../components/base";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   PageToolbar,
   PageShell,
   SearchInput,
@@ -32,6 +31,11 @@ import type {
   ClassroomCardCoverColor,
   SchoolClassroom,
 } from "../types/school-structure.types";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import {
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 
 const CLASSROOMS_ICON = PAGE_IDENTITIES["/classrooms"].icon;
 
@@ -156,28 +160,41 @@ export function ClassroomsPage() {
 
   return (
     <PageShell>
-      <PageToolbar title="ห้องเรียนทั้งหมด" />
-      <ToolbarControls className="mb-8">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={setSearchInput}
-          placeholder="ค้นหา"
-          value={searchInput}
-        />
-        {multipleSchools ? (
-          <FilterCombobox
-            ariaLabel="กรองตามโรงเรียน"
-            emptyText="ไม่พบโรงเรียน"
-            onChange={handleSchoolChange}
-            options={schools.map((school) => ({
-              value: String(school.id),
-              label: school.name,
-            }))}
-            placeholder="เลือกโรงเรียน"
-            value={schoolId}
+      <PageToolbar
+        scope={
+          <ScopeFilterField
+            editable={multipleSchools}
+            scope={{
+              schoolName: schools.find(
+                (school) => String(school.id) === schoolId,
+              )?.name,
+            }}
+          >
+            <Combobox
+              ariaLabel="กรองตามโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={handleSchoolChange}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_REQUIRED_LABEL.school}
+              value={schoolId}
+            />
+          </ScopeFilterField>
+        }
+        title="ห้องเรียนทั้งหมด"
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={setSearchInput}
+            placeholder="ค้นหา"
+            value={searchInput}
           />
-        ) : null}
-      </ToolbarControls>
+        </ToolbarControls>
+      </PageToolbar>
 
       {pageError ? (
         <ErrorState

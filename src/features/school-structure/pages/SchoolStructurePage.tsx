@@ -40,7 +40,6 @@ import {
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   FilterSelect,
   PageShell,
   PageToolbar,
@@ -76,7 +75,12 @@ import {
   useUpdateSchoolClassroom,
 } from "../hooks/useSchoolStructure";
 import type { SchoolClassroom } from "../types/school-structure.types";
-import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import {
+  SCOPE_ALL_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
 
 /**
  * Term, classroom and homeroom-teacher setup for a school.
@@ -449,66 +453,76 @@ export function SchoolStructurePage() {
             </Button>
           </>
         }
+        scope={
+          <ScopeFilterField
+            editable={multipleSchools}
+            scope={{
+              schoolName: schools.find(
+                (school) => String(school.id) === schoolId,
+              )?.name,
+            }}
+          >
+            <Combobox
+              ariaLabel="กรองตามโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={handleSchoolChange}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_REQUIRED_LABEL.school}
+              value={schoolId}
+            />
+          </ScopeFilterField>
+        }
         description="ตั้งภาคเรียน เพิ่มหรือแก้ไขห้อง และกำหนดครูประจำชั้นของโรงเรียนที่คุณดูแล"
         title="จัดการภาคเรียนและห้องเรียน"
-      />
-
-      <ToolbarControls className="mb-8">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={setSearchInput}
-          placeholder="ค้นหาห้อง"
-          value={searchInput}
-        />
-        {multipleSchools ? (
-          <FilterCombobox
-            ariaLabel="กรองตามโรงเรียน"
-            emptyText="ไม่พบโรงเรียน"
-            onChange={handleSchoolChange}
-            options={schools.map((school) => ({
-              value: String(school.id),
-              label: school.name,
-            }))}
-            placeholder="เลือกโรงเรียน"
-            value={schoolId}
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={setSearchInput}
+            placeholder="ค้นหาห้อง"
+            value={searchInput}
           />
-        ) : null}
-        <FilterSelect
-          ariaLabel="เลือกภาคเรียน"
-          className="sm:w-[220px]"
-          disabled={!selectedSchoolId || terms.length === 0}
-          onChange={(value) => {
-            setTermInput(value);
-            setPage(1);
-          }}
-          value={String(selectedTermId ?? "")}
-        >
-          {terms.length === 0 ? (
-            <option value="">ยังไม่มีภาคเรียน</option>
-          ) : null}
-          {terms.map((term) => (
-            <option key={term.id} value={term.id}>
-              {formatSchoolTermLabel(term, termStatusCatalog.items)}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          ariaLabel="กรองตามระดับชั้น"
-          disabled={!selectedSchoolId}
-          onChange={(value) => {
-            setGradeFilter(value);
-            setPage(1);
-          }}
-          value={gradeFilter}
-        >
-          <option value="">{SCOPE_ALL_LABEL.grade}</option>
-          {(gradeLevelsQuery.data ?? []).map((grade) => (
-            <option key={grade.id} value={String(grade.id)}>
-              {grade.label}
-            </option>
-          ))}
-        </FilterSelect>
-      </ToolbarControls>
+          <FilterSelect
+            ariaLabel="เลือกภาคเรียน"
+            className="sm:w-[220px]"
+            disabled={!selectedSchoolId || terms.length === 0}
+            onChange={(value) => {
+              setTermInput(value);
+              setPage(1);
+            }}
+            value={String(selectedTermId ?? "")}
+          >
+            {terms.length === 0 ? (
+              <option value="">ยังไม่มีภาคเรียน</option>
+            ) : null}
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {formatSchoolTermLabel(term, termStatusCatalog.items)}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            ariaLabel="กรองตามระดับชั้น"
+            disabled={!selectedSchoolId}
+            onChange={(value) => {
+              setGradeFilter(value);
+              setPage(1);
+            }}
+            value={gradeFilter}
+          >
+            <option value="">{SCOPE_ALL_LABEL.grade}</option>
+            {(gradeLevelsQuery.data ?? []).map((grade) => (
+              <option key={grade.id} value={String(grade.id)}>
+                {grade.label}
+              </option>
+            ))}
+          </FilterSelect>
+        </ToolbarControls>
+      </PageToolbar>
 
       <FormErrorAlert
         error={deleteClassroom.error}

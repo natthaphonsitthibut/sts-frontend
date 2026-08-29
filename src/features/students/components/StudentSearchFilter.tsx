@@ -4,10 +4,14 @@ import {
   FilterSelect,
   ListPageToolbar,
 } from "../../../components/layout/page-primitives";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { formatRoomLabel } from "../../../lib/room-presentation";
+import { Select } from "../../../components/base";
 import type { StudentStatusFilterValue } from "../types/students.types";
-import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import {
+  SCOPE_ALL_LABEL,
+  type ScopeSummaryInput,
+} from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 export interface StudentStatusFilterOption {
   value: StudentStatusFilterValue;
@@ -31,12 +35,14 @@ interface StudentSearchFilterProps {
   isStudentStatusError?: boolean;
   isStudentStatusLoading?: boolean;
   schoolFilters?: ReactNode;
+  /** The scope in force, for the header summary. */
+  scope: ScopeSummaryInput;
+  /** False when the actor's own data scope fixes school, grade and room. */
+  scopeEditable?: boolean;
+  onClearScope?: () => void;
   navigation?: ReactNode;
   exportAction?: ReactNode;
   createAction?: ReactNode;
-  onRefresh: () => Promise<unknown> | unknown;
-  refreshDisabled?: boolean;
-  updatedAt: number;
   onClearFilters: () => void;
   title?: string;
 }
@@ -58,12 +64,12 @@ export function StudentSearchFilter({
   isStudentStatusError = false,
   isStudentStatusLoading = false,
   schoolFilters,
+  scope,
+  scopeEditable = true,
+  onClearScope,
   navigation,
   exportAction,
   createAction,
-  onRefresh,
-  refreshDisabled = false,
-  updatedAt,
   onClearFilters,
   title = "รายชื่อนักเรียน",
 }: StudentSearchFilterProps) {
@@ -75,16 +81,10 @@ export function StudentSearchFilter({
       navigation={navigation}
       tableActions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <RefreshButton
-            disabled={refreshDisabled}
-            onRefresh={onRefresh}
-            updatedAt={updatedAt}
-          />
           {exportAction}
           {createAction}
         </div>
       }
-      onClearFilters={onClearFilters}
       search={{
         value: searchQuery,
         onChange: onSearchChange,
@@ -114,14 +114,18 @@ export function StudentSearchFilter({
           </FilterSelect>
         ),
       }}
-      filters={
-        <>
+      scope={
+        <ScopeFilterField
+          editable={scopeEditable}
+          onClear={onClearScope ?? onClearFilters}
+          scope={scope}
+        >
           {schoolFilters}
 
-          <FilterSelect
-            ariaLabel="กรองตามระดับชั้น"
+          <Select
+            aria-label="กรองตามระดับชั้น"
             disabled={gradeLocked}
-            onChange={onGradeChange}
+            onChange={(event) => onGradeChange(event.target.value)}
             value={grade}
           >
             <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
@@ -130,12 +134,12 @@ export function StudentSearchFilter({
                 {option}
               </option>
             ))}
-          </FilterSelect>
+          </Select>
 
-          <FilterSelect
-            ariaLabel="กรองตามห้อง"
+          <Select
+            aria-label="กรองตามห้อง"
             disabled={roomLocked}
-            onChange={onRoomChange}
+            onChange={(event) => onRoomChange(event.target.value)}
             value={room}
           >
             <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
@@ -144,8 +148,8 @@ export function StudentSearchFilter({
                 {formatRoomLabel(option)}
               </option>
             ))}
-          </FilterSelect>
-        </>
+          </Select>
+        </ScopeFilterField>
       }
     />
   );

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { FormErrorAlert, useConfirm } from "../../../components/base";
+import { Combobox, FormErrorAlert, useConfirm } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -9,7 +9,6 @@ import { useContextualNavigate } from "../../../components/layout/navigation-con
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   PageShell,
   PageToolbar,
   SearchInput,
@@ -37,6 +36,11 @@ import type {
   TeacherDirectoryItem,
   TeacherListQuery,
 } from "../types/teachers.types";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import {
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 
 const TEACHERS_ICON = PAGE_IDENTITIES["/teachers"].icon;
 
@@ -156,6 +160,29 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
   return (
     <PageShell>
       <PageToolbar
+        scope={
+          <ScopeFilterField
+            editable={multipleSchools}
+            scope={{
+              schoolName: schools.find(
+                (school) => String(school.id) === selectedSchoolValue,
+              )?.name,
+            }}
+          >
+            <Combobox
+              ariaLabel="กรองตามโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={handleSchoolChange}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_REQUIRED_LABEL.school}
+              value={selectedSchoolValue}
+            />
+          </ScopeFilterField>
+        }
         actions={
           management ? (
             <NavButton
@@ -177,28 +204,16 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
         }
         icon={TEACHERS_ICON}
         title={management ? "จัดการข้อมูลครู" : "รายชื่อครู"}
-      />
-      <ToolbarControls className="mb-8">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={handleSearchChange}
-          placeholder="ค้นหา"
-          value={searchQuery}
-        />
-        {multipleSchools ? (
-          <FilterCombobox
-            ariaLabel="กรองตามโรงเรียน"
-            emptyText="ไม่พบโรงเรียน"
-            onChange={handleSchoolChange}
-            options={schools.map((school) => ({
-              value: String(school.id),
-              label: school.name,
-            }))}
-            placeholder="เลือกโรงเรียน"
-            value={selectedSchoolValue}
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={handleSearchChange}
+            placeholder="ค้นหา"
+            value={searchQuery}
           />
-        ) : null}
-      </ToolbarControls>
+        </ToolbarControls>
+      </PageToolbar>
 
       <FormErrorAlert
         error={deactivateTeacher.error}

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Skeleton } from "../../../components/base";
+import { Combobox, Skeleton } from "../../../components/base";
 import { ContextLink } from "../../../components/layout/context-link";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import {
   EmptyState,
   ErrorState,
-  FilterCombobox,
   PageShell,
   PageToolbar,
   SearchInput,
@@ -16,6 +15,11 @@ import {
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useCurriculumGrades } from "../hooks/useCurriculum";
 import { useSyncedSearchParams } from "../../../hooks/useSyncedSearchParams";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import {
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 
 const PAGE_ICON = PAGE_IDENTITIES["/curriculum"].icon;
 
@@ -65,39 +69,50 @@ export function CurriculumGradesPage() {
   return (
     <PageShell>
       <PageToolbar
+        scope={
+          <ScopeFilterField
+            editable={schools.length > 1}
+            scope={{
+              schoolName: schools.find(
+                (school) => String(school.id) === selectedSchoolValue,
+              )?.name,
+            }}
+          >
+            <Combobox
+              ariaLabel="กรองตามโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={(value) => {
+                setSearchParams(
+                  (params) => {
+                    if (value) params.set("schoolId", value);
+                    else params.delete("schoolId");
+                    return params;
+                  },
+                  { replace: true },
+                );
+              }}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_REQUIRED_LABEL.school}
+              value={selectedSchoolValue}
+            />
+          </ScopeFilterField>
+        }
         description="ดูและจัดการรายวิชาในหลักสูตรของแต่ละระดับชั้น"
         title="จัดการข้อมูลหลักสูตร"
-      />
-      <ToolbarControls className="mb-8">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={setSearchInput}
-          placeholder="ค้นหาระดับชั้น"
-          value={searchInput}
-        />
-        {schools.length > 1 ? (
-          <FilterCombobox
-            ariaLabel="กรองตามโรงเรียน"
-            emptyText="ไม่พบโรงเรียน"
-            onChange={(value) => {
-              setSearchParams(
-                (params) => {
-                  if (value) params.set("schoolId", value);
-                  else params.delete("schoolId");
-                  return params;
-                },
-                { replace: true },
-              );
-            }}
-            options={schools.map((school) => ({
-              value: String(school.id),
-              label: school.name,
-            }))}
-            placeholder="เลือกโรงเรียน"
-            value={selectedSchoolValue}
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={setSearchInput}
+            placeholder="ค้นหาระดับชั้น"
+            value={searchInput}
           />
-        ) : null}
-      </ToolbarControls>
+        </ToolbarControls>
+      </PageToolbar>
 
       {schoolsQuery.isError || gradesQuery.isError ? (
         <ErrorState

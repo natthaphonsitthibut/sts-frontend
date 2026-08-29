@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { FormErrorAlert } from "../../../components/base";
+import { Combobox, FormErrorAlert } from "../../../components/base";
+import {
+  formatSchoolArea,
+  SCOPE_ALL_LABEL,
+} from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import {
@@ -75,6 +81,20 @@ export function ManageUsersPage() {
   const [deactivationTarget, setDeactivationTarget] =
     useState<ManagedUser | null>(null);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  // Staff accounts are spread across every school an admin oversees, so this
+  // list narrows by the same scope as every other list in the app. The users
+  // API already accepts each level; only the page had never sent them.
+  const schoolsQuery = useScopedSchools();
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const [schoolInput, setSchoolInput] = useRememberedState(
+    "manage-users:school",
+    "",
+  );
+  const selectedSchoolValue =
+    schools.length === 1 ? String(schools[0].id) : schoolInput;
+  const selectedSchool = schools.find(
+    (school) => String(school.id) === selectedSchoolValue,
+  );
 
   useSyncedSearchParams({
     page: page > 1 ? page : undefined,
@@ -85,13 +105,14 @@ export function ManageUsersPage() {
   const query = useMemo(
     () => ({
       searchTerm: debouncedSearch || undefined,
+      schoolId: selectedSchoolValue || undefined,
       excludeRole: NON_STAFF_ROLES,
       page,
       limit: rowsPerPage,
       sortBy: sort?.key as "name" | "role" | "affiliation" | undefined,
       sortOrder: sort?.direction,
     }),
-    [debouncedSearch, page, rowsPerPage, sort],
+    [debouncedSearch, page, rowsPerPage, selectedSchoolValue, sort],
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
@@ -133,16 +154,43 @@ export function ManageUsersPage() {
         }
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         icon={MANAGE_USERS_ICON}
+        scope={
+          <ScopeFilterField
+            editable={schools.length > 1}
+            onClear={() => {
+              setSchoolInput("");
+              setPage(1);
+            }}
+            scope={{ schoolName: selectedSchool?.name }}
+          >
+            <Combobox
+              ariaLabel="กรองตามโรงเรียน"
+              emptyText="ไม่พบโรงเรียน"
+              onChange={(value) => {
+                setSchoolInput(value);
+                setPage(1);
+              }}
+              options={schools.map((school) => ({
+                value: String(school.id),
+                label: school.name,
+                description: formatSchoolArea(school),
+              }))}
+              placeholder={SCOPE_ALL_LABEL.school}
+              value={selectedSchoolValue}
+            />
+          </ScopeFilterField>
+        }
         title="จัดการผู้ใช้งาน"
-      />
-      <ToolbarControls className="mb-8">
-        <SearchInput
-          className="sm:max-w-[560px]"
-          onChange={handleSearchChange}
-          placeholder="ค้นหา"
-          value={searchQuery}
-        />
-      </ToolbarControls>
+      >
+        <ToolbarControls>
+          <SearchInput
+            className="sm:max-w-[560px]"
+            onChange={handleSearchChange}
+            placeholder="ค้นหา"
+            value={searchQuery}
+          />
+        </ToolbarControls>
+      </PageToolbar>
 
       <FormErrorAlert
         error={deactivateAccount.error}

@@ -152,29 +152,29 @@ export function CurriculumSubjectsPage() {
             ? `จัดการข้อมูลหลักสูตร (${gradeLabel})`
             : "จัดการข้อมูลหลักสูตร"
         }
-      />
-
-      <ToolbarControls className="mb-8">
-        <FilterSelect
-          ariaLabel="เลือกภาคเรียน"
-          className="sm:w-[260px]"
-          disabled={terms.length === 0}
-          onChange={(value) => {
-            setTermInput(value);
-            setPage(1);
-          }}
-          value={String(selectedTermId ?? "")}
-        >
-          {terms.length === 0 ? (
-            <option value="">ยังไม่มีภาคเรียน</option>
-          ) : null}
-          {terms.map((term) => (
-            <option key={term.id} value={term.id}>
-              {formatSchoolTermLabel(term, termStatusCatalog.items)}
-            </option>
-          ))}
-        </FilterSelect>
-      </ToolbarControls>
+      >
+        <ToolbarControls>
+          <FilterSelect
+            ariaLabel="เลือกภาคเรียน"
+            className="sm:w-[260px]"
+            disabled={terms.length === 0}
+            onChange={(value) => {
+              setTermInput(value);
+              setPage(1);
+            }}
+            value={String(selectedTermId ?? "")}
+          >
+            {terms.length === 0 ? (
+              <option value="">ยังไม่มีภาคเรียน</option>
+            ) : null}
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {formatSchoolTermLabel(term, termStatusCatalog.items)}
+              </option>
+            ))}
+          </FilterSelect>
+        </ToolbarControls>
+      </PageToolbar>
 
       <FormErrorAlert
         error={deleteSubject.error}

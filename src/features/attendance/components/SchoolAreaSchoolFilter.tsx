@@ -1,5 +1,8 @@
 import { Combobox, type ComboboxOption } from "../../../components/base";
-import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import {
+  SCOPE_ALL_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 
 interface SchoolAreaSchoolFilterProps {
@@ -139,6 +142,7 @@ export function SchoolAreaSchoolFilter({
             ...area.filteredSchools.map((school) => ({
               value: String(school.id),
               label: school.name,
+              description: formatSchoolArea(school),
             })),
           ]}
           placeholder={schoolPlaceholder}

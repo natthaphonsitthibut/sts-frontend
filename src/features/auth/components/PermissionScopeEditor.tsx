@@ -33,6 +33,7 @@ import {
 import {
   SCOPE_ALL_LABEL,
   SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
 } from "../../../lib/scope-presentation";
 
 export interface ScopeSelectionLabels {
@@ -472,6 +473,7 @@ export function PermissionScopeEditor({
                         ...schools.map((school) => ({
                           value: String(school.id),
                           label: school.name,
+                          description: formatSchoolArea(school),
                         })),
                       ]}
                       placeholder="ค้นหาโรงเรียน"
