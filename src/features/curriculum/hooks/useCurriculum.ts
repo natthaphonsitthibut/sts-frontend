@@ -12,6 +12,7 @@ import type {
   CurriculumSubject,
   CurriculumSubjectPayload,
   CurriculumSubjectQuery,
+  CurriculumSubjectTeachersPayload,
 } from "../types/curriculum.types";
 
 export const CURRICULUM_QUERY_KEY = "curriculum";
@@ -79,6 +80,16 @@ export function useSaveCurriculumSubject() {
       id
         ? curriculumService.updateSubject(id, payload)
         : curriculumService.createSubject(payload),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [CURRICULUM_QUERY_KEY] });
+    },
+  });
+}
+
+export function useSaveCurriculumSubjectTeachers() {
+  const client = useQueryClient();
+  return useMutation<void, Error, CurriculumSubjectTeachersPayload>({
+    mutationFn: (payload) => curriculumService.saveSubjectTeachers(payload),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [CURRICULUM_QUERY_KEY] });
     },
