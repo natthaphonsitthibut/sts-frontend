@@ -34,6 +34,7 @@ import {
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import type { StudentReadSource } from "../../students/api/students.service";
 import { schoolStructureService } from "../api/school-structure.service";
 import { getAttendanceStatusPresentation } from "../../attendance/lib/attendance-presentation";
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
@@ -165,16 +166,27 @@ interface ClassroomAttendanceHistoryProps {
    */
   subjectId?: string;
   onSubjectIdChange?: (subjectId: string) => void;
+  /**
+   * Which surface is asking. A classroom link reads through its own namespace
+   * and reaches its own copy of the student profile; the app uses the staff
+   * routes. Everything else on the screen is the same, on purpose.
+   */
+  source?: StudentReadSource;
 }
 
 export function ClassroomAttendanceHistory({
   classroomId,
   classroomLabel,
   onSubjectIdChange,
+  source = "INTERNAL",
   subjectId: controlledSubjectId,
   subjects,
 }: ClassroomAttendanceHistoryProps) {
   const contextualNavigate = useContextualNavigate();
+  const studentPath = (studentUuid: string) =>
+    source === "INTERNAL"
+      ? `/students/${studentUuid}`
+      : `/classroom/students/${studentUuid}`;
   const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const initialView: HistoryView =
@@ -252,6 +264,7 @@ export function ClassroomAttendanceHistory({
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const baseParams = {
     classroomId,
+    source,
     view,
     subjectId: subjectId ? Number(subjectId) : undefined,
     date: date || undefined,
@@ -707,7 +720,7 @@ export function ClassroomAttendanceHistory({
                     aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`}
                     className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     onClick={() =>
-                      contextualNavigate(`/students/${row.studentUuid}`)
+                      contextualNavigate(studentPath(row.studentUuid))
                     }
                     type="button"
                   >
@@ -829,7 +842,7 @@ export function ClassroomAttendanceHistory({
                     aria-label={`เปิดข้อมูลนักเรียน ${studentName(row)}`}
                     className="rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     onClick={() =>
-                      contextualNavigate(`/students/${row.studentUuid}`)
+                      contextualNavigate(studentPath(row.studentUuid))
                     }
                     type="button"
                   >
