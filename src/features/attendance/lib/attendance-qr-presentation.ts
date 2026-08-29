@@ -6,10 +6,8 @@ export type AttendanceQrRecordStatus = "P_PRESENT" | "P_LATE";
  * A QR means the student is physically with the teacher. Leave and absence
  * remain teacher-recorded exceptions in the roster, never scanner choices.
  */
-export const ATTENDANCE_QR_RECORD_STATUSES: readonly AttendanceQrRecordStatus[] = [
-  "P_PRESENT",
-  "P_LATE",
-];
+export const ATTENDANCE_QR_RECORD_STATUSES: readonly AttendanceQrRecordStatus[] =
+  ["P_PRESENT", "P_LATE"];
 
 export interface AttendanceQrScanCandidate {
   name: string;
@@ -34,5 +32,7 @@ export function getAttendanceQrCandidateValue(
   candidate: AttendanceQrScanCandidate,
   source: AttendanceQrScanSource,
 ): string {
-  return source === "studentNumber" ? candidate.studentNumber ?? "" : candidate.name;
+  return source === "studentNumber"
+    ? (candidate.studentNumber ?? "")
+    : candidate.name;
 }
