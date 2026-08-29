@@ -27,6 +27,16 @@ interface SchoolAreaSchoolFilterProps {
   hideSchool?: boolean;
 }
 
+/**
+ * A level with one value or none is not a choice — the single value is already
+ * implied by the actor's own scope, and rendering it just adds a control that
+ * can only be set to what is true anyway. Hidden levels stay unset, which the
+ * school query reads as "no narrowing here", so results are unaffected.
+ */
+function offersAChoice(values: string[]): boolean {
+  return values.length > 1;
+}
+
 function toOptions(values: string[], emptyLabel: string): ComboboxOption[] {
   return [
     { value: "", label: emptyLabel },
@@ -79,11 +89,18 @@ export function SchoolAreaSchoolFilter({
         }
       : null;
 
+  // A level the actor cannot move within is not shown at all — a greyed-out
+  // control still takes a row and still invites a click that does nothing. A
+  // locked school fixes its province, district and sub-district too, so those
+  // go with it; what remains on screen is exactly what this account can narrow.
+  const showArea = !hideArea && !schoolLocked;
+  const showSchool = !hideSchool && !schoolLocked;
+
   return (
     <>
-      {!hideArea ? (
+      {showArea && offersAChoice(area.provinces) ? (
         <Combobox
-          disabled={disabled || schoolLocked}
+          disabled={disabled}
           onChange={(next) => {
             area.setProvince(next);
             onProvinceChange?.(next);
@@ -96,9 +113,11 @@ export function SchoolAreaSchoolFilter({
           value={area.province}
         />
       ) : null}
-      {!hideArea ? (
+      {showArea && offersAChoice(area.districts) ? (
         <Combobox
-          disabled={disabled || schoolLocked || !area.province}
+          disabled={
+            disabled || (offersAChoice(area.provinces) && !area.province)
+          }
           onChange={(next) => {
             area.setDistrict(next);
             onDistrictChange?.(next);
@@ -110,9 +129,11 @@ export function SchoolAreaSchoolFilter({
           value={area.district}
         />
       ) : null}
-      {!hideArea ? (
+      {showArea && offersAChoice(area.subDistricts) ? (
         <Combobox
-          disabled={disabled || schoolLocked || !area.district}
+          disabled={
+            disabled || (offersAChoice(area.districts) && !area.district)
+          }
           onChange={(next) => {
             area.setSubDistrict(next);
             onSubDistrictChange?.(next);
@@ -123,10 +144,10 @@ export function SchoolAreaSchoolFilter({
           value={area.subDistrict}
         />
       ) : null}
-      {!hideSchool ? (
+      {showSchool ? (
         <Combobox
           ariaLabel={schoolPlaceholder}
-          disabled={disabled || schoolLocked}
+          disabled={disabled}
           emptyText={
             schoolEmptyText ??
             (area.schoolsEnabled

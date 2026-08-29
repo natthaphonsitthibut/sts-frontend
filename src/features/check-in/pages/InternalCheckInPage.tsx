@@ -103,25 +103,29 @@ export function InternalCheckInPage() {
               : "",
           }}
         >
-          <label className="grid gap-1 text-sm font-semibold text-slate-700">
-            โรงเรียน
-            <Combobox
-              ariaLabel="โรงเรียน"
-              disabled={schools.length <= 1}
-              onChange={(value) => {
-                setSchoolInput(value);
-                setGradeInput("");
-                setClassroomInput("");
-              }}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder="ค้นหาโรงเรียน"
-              value={schoolId ? String(schoolId) : ""}
-            />
-          </label>
+          {/* One school is not a choice — the scope field's summary already
+              names it, so the picker is offered only when there is something to
+              pick between. */}
+          {schools.length > 1 ? (
+            <label className="grid gap-1 text-sm font-semibold text-slate-700">
+              โรงเรียน
+              <Combobox
+                ariaLabel="โรงเรียน"
+                onChange={(value) => {
+                  setSchoolInput(value);
+                  setGradeInput("");
+                  setClassroomInput("");
+                }}
+                options={schools.map((school) => ({
+                  value: String(school.id),
+                  label: school.name,
+                  description: formatSchoolArea(school),
+                }))}
+                placeholder="ค้นหาโรงเรียน"
+                value={schoolId ? String(schoolId) : ""}
+              />
+            </label>
+          ) : null}
           <label className="grid gap-1 text-sm font-semibold text-slate-700">
             ชั้น
             <Select

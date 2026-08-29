@@ -765,38 +765,45 @@ function StudentRiskDashboardPage() {
                 />
               </label>
             ) : null}
-            <label className="space-y-1 text-sm text-slate-800">
-              ระดับชั้น
-              <Select
-                aria-label="ระดับชั้น"
-                disabled={!scope.schoolId || scope.gradeLocked}
-                onChange={(event) => handleGradeChange(event.target.value)}
-                value={scope.grade}
-              >
-                <option value="">{SCOPE_ALL_LABEL.grade}</option>
-                {scope.gradeLevels.map((grade) => (
-                  <option key={grade.id} value={grade.label}>
-                    {grade.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="space-y-1 text-sm text-slate-800">
-              ห้อง
-              <Select
-                aria-label="ห้อง"
-                disabled={!scope.grade || scope.roomLocked}
-                onChange={(event) => handleRoomChange(event.target.value)}
-                value={scope.room}
-              >
-                <option value="">{SCOPE_ALL_LABEL.room}</option>
-                {scope.rooms.map((room) => (
-                  <option key={room} value={room}>
-                    {formatRoomLabel(room)}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            {/* A level the actor's scope fixes is not offered at all, the same
+                as the school above it — the summary on the button already says
+                what it is. */}
+            {scope.gradeLocked ? null : (
+              <label className="space-y-1 text-sm text-slate-800">
+                ระดับชั้น
+                <Select
+                  aria-label="ระดับชั้น"
+                  disabled={!scope.schoolId}
+                  onChange={(event) => handleGradeChange(event.target.value)}
+                  value={scope.grade}
+                >
+                  <option value="">{SCOPE_ALL_LABEL.grade}</option>
+                  {scope.gradeLevels.map((grade) => (
+                    <option key={grade.id} value={grade.label}>
+                      {grade.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+            {scope.roomLocked ? null : (
+              <label className="space-y-1 text-sm text-slate-800">
+                ห้อง
+                <Select
+                  aria-label="ห้อง"
+                  disabled={!scope.grade}
+                  onChange={(event) => handleRoomChange(event.target.value)}
+                  value={scope.room}
+                >
+                  <option value="">{SCOPE_ALL_LABEL.room}</option>
+                  {scope.rooms.map((room) => (
+                    <option key={room} value={room}>
+                      {formatRoomLabel(room)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
             <label className="space-y-1 text-sm text-slate-800">
               ปีการศึกษา
               <Select
