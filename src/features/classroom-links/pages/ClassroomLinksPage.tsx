@@ -71,6 +71,7 @@ import type {
   ClassroomLinkStatus,
   ClassroomLineGroupInvitation,
 } from "../types/classroom-links.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
 
@@ -560,7 +561,7 @@ export function ClassroomLinksPage() {
           }}
           value={gradeInput}
         >
-          <option value="">ทุกระดับชั้น</option>
+          <option value="">{SCOPE_ALL_LABEL.grade}</option>
           {(gradeLevelsQuery.data ?? []).map((grade) => (
             <option key={grade.id} value={String(grade.id)}>
               {grade.label}

@@ -76,6 +76,7 @@ import {
   useUpdateSchoolClassroom,
 } from "../hooks/useSchoolStructure";
 import type { SchoolClassroom } from "../types/school-structure.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 /**
  * Term, classroom and homeroom-teacher setup for a school.
@@ -500,7 +501,7 @@ export function SchoolStructurePage() {
           }}
           value={gradeFilter}
         >
-          <option value="">ทุกชั้น</option>
+          <option value="">{SCOPE_ALL_LABEL.grade}</option>
           {(gradeLevelsQuery.data ?? []).map((grade) => (
             <option key={grade.id} value={String(grade.id)}>
               {grade.label}

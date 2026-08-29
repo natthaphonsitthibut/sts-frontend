@@ -43,6 +43,7 @@ import type {
   HomeDashboardMetric,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 
@@ -267,7 +268,7 @@ function DashboardFilterBar({
   return (
     <ToolbarFilterGrid>
       <FilterCombobox
-        allLabel="ทุกจังหวัด"
+        allLabel={SCOPE_ALL_LABEL.province}
         ariaLabel="จังหวัด"
         options={safeOptions.provinces}
         value={filters.province}
@@ -275,7 +276,7 @@ function DashboardFilterBar({
         disabled={schoolLocked}
       />
       <FilterCombobox
-        allLabel="ทุกอำเภอ/เขต"
+        allLabel={SCOPE_ALL_LABEL.district}
         ariaLabel="อำเภอ/เขต"
         options={safeOptions.districts}
         value={filters.district}
@@ -283,7 +284,7 @@ function DashboardFilterBar({
         disabled={schoolLocked || !filters.province}
       />
       <FilterCombobox
-        allLabel="ทุกตำบล/แขวง"
+        allLabel={SCOPE_ALL_LABEL.subDistrict}
         ariaLabel="ตำบล/แขวง"
         options={safeOptions.subDistricts}
         value={filters.subDistrict}
@@ -291,7 +292,7 @@ function DashboardFilterBar({
         disabled={schoolLocked || !filters.district}
       />
       <FilterCombobox
-        allLabel="ทุกโรงเรียน"
+        allLabel={SCOPE_ALL_LABEL.school}
         ariaLabel="โรงเรียน"
         options={safeOptions.schools}
         value={filters.schoolId}
@@ -306,7 +307,7 @@ function DashboardFilterBar({
         disabled={!filters.schoolId}
         value={filters.grade ?? ""}
       >
-        <option value="">ทุกชั้น</option>
+        <option value="">{SCOPE_ALL_LABEL.grade}</option>
         {safeOptions.grades.map((option) => (
           <option key={option.value} value={String(option.value)}>
             {option.label}
@@ -319,7 +320,7 @@ function DashboardFilterBar({
         disabled={!filters.grade}
         value={filters.room ?? ""}
       >
-        <option value="">ทุกห้อง</option>
+        <option value="">{SCOPE_ALL_LABEL.room}</option>
         {safeOptions.rooms.map((option) => (
           <option key={option.value} value={String(option.value)}>
             {formatRoomLabel(option.value)}

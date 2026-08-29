@@ -7,6 +7,7 @@ import {
 import { RefreshButton } from "../../../components/layout/refresh-button";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import type { StudentStatusFilterValue } from "../types/students.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 export interface StudentStatusFilterOption {
   value: StudentStatusFilterValue;
@@ -123,7 +124,7 @@ export function StudentSearchFilter({
             onChange={onGradeChange}
             value={grade}
           >
-            <option value="ALL">ทุกชั้น</option>
+            <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
             {gradeOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -137,7 +138,7 @@ export function StudentSearchFilter({
             onChange={onRoomChange}
             value={room}
           >
-            <option value="ALL">ทุกห้อง</option>
+            <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
             {roomOptions.map((option) => (
               <option key={option} value={option}>
                 {formatRoomLabel(option)}

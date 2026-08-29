@@ -6,6 +6,7 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { studentsService } from "../../students/api/students.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 export interface SelectedStudent {
   /** Opaque linked-student identifier, or null when the name was typed manually. */
@@ -206,7 +207,7 @@ export function StudentPicker({
               disabled={disabled}
               onChange={handleProvince}
               options={[
-                { value: "", label: "ทุกจังหวัด" },
+                { value: "", label: SCOPE_ALL_LABEL.province },
                 ...area.provinces.map((name) => ({ value: name, label: name })),
               ]}
               placeholder="ค้นหาจังหวัด"
@@ -216,7 +217,7 @@ export function StudentPicker({
               disabled={disabled || !area.province}
               onChange={handleDistrict}
               options={[
-                { value: "", label: "ทุกอำเภอ/เขต" },
+                { value: "", label: SCOPE_ALL_LABEL.district },
                 ...area.districts.map((name) => ({ value: name, label: name })),
               ]}
               placeholder="ค้นหาอำเภอ/เขต"
@@ -226,7 +227,7 @@ export function StudentPicker({
               disabled={disabled || !area.district}
               onChange={handleSubDistrict}
               options={[
-                { value: "", label: "ทุกตำบล/แขวง" },
+                { value: "", label: SCOPE_ALL_LABEL.subDistrict },
                 ...area.subDistricts.map((name) => ({
                   value: name,
                   label: name,
@@ -300,7 +301,7 @@ export function StudentPicker({
             disabled={disabled}
             onChange={handleProvince}
             options={[
-              { value: "", label: "ทุกจังหวัด" },
+              { value: "", label: SCOPE_ALL_LABEL.province },
               ...area.provinces.map((name) => ({ value: name, label: name })),
             ]}
             placeholder="ค้นหาจังหวัด"
@@ -310,7 +311,7 @@ export function StudentPicker({
             disabled={disabled || !area.province}
             onChange={handleDistrict}
             options={[
-              { value: "", label: "ทุกอำเภอ/เขต" },
+              { value: "", label: SCOPE_ALL_LABEL.district },
               ...area.districts.map((name) => ({ value: name, label: name })),
             ]}
             placeholder="ค้นหาอำเภอ/เขต"
@@ -320,7 +321,7 @@ export function StudentPicker({
             disabled={disabled || !area.district}
             onChange={handleSubDistrict}
             options={[
-              { value: "", label: "ทุกตำบล/แขวง" },
+              { value: "", label: SCOPE_ALL_LABEL.subDistrict },
               ...area.subDistricts.map((name) => ({
                 value: name,
                 label: name,
@@ -352,7 +353,10 @@ export function StudentPicker({
             }
             onChange={handleSchool}
             onSearchChange={area.setSchoolSearch}
-            options={[{ value: "", label: "ทุกโรงเรียน" }, ...schoolOptions]}
+            options={[
+              { value: "", label: SCOPE_ALL_LABEL.school },
+              ...schoolOptions,
+            ]}
             placeholder="ค้นหาโรงเรียน"
             value={scope.schoolId}
           />
@@ -363,7 +367,7 @@ export function StudentPicker({
           onChange={(event) => scope.setGrade(event.target.value)}
           value={scope.grade}
         >
-          <option value="">ทุกชั้น</option>
+          <option value="">{SCOPE_ALL_LABEL.grade}</option>
           {scope.gradeLevels.map((grade) => (
             <option key={grade.id} value={grade.label}>
               {grade.label}
@@ -376,7 +380,7 @@ export function StudentPicker({
           onChange={(event) => scope.setRoom(event.target.value)}
           value={scope.room}
         >
-          <option value="">ทุกห้อง</option>
+          <option value="">{SCOPE_ALL_LABEL.room}</option>
           {scope.rooms.map((room) => (
             <option key={room} value={room}>
               {formatRoomLabel(room)}

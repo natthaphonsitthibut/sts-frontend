@@ -65,6 +65,8 @@ import type {
   RiskDashboardSortBy,
 } from "../types/risk-dashboard.types";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   risk: "risk",
@@ -725,7 +727,7 @@ function StudentRiskDashboardPage() {
               onChange={handleGradeChange}
               value={scope.grade}
             >
-              <option value="">ทั้งหมด</option>
+              <option value="">{SCOPE_ALL_LABEL.grade}</option>
               {scope.gradeLevels.map((grade) => (
                 <option key={grade.id} value={grade.label}>
                   {grade.label}
@@ -742,10 +744,10 @@ function StudentRiskDashboardPage() {
               onChange={handleRoomChange}
               value={scope.room}
             >
-              <option value="">ทั้งหมด</option>
+              <option value="">{SCOPE_ALL_LABEL.room}</option>
               {scope.rooms.map((room) => (
                 <option key={room} value={room}>
-                  {room}
+                  {formatRoomLabel(room)}
                 </option>
               ))}
             </FilterSelect>

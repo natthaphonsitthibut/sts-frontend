@@ -78,6 +78,7 @@ import {
   type QuarantinePageSize,
   type QuarantineStatus,
 } from "../types/import.types";
+import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
 
 function isStudentPreview(
   preview: AnyImportPreviewResult,
@@ -1142,14 +1143,14 @@ export function ImportDataPage() {
               ) : null}
               {requiresClassroomContext ? (
                 <Select
-                  aria-label="เลือกชั้น"
+                  aria-label={SCOPE_REQUIRED_LABEL.grade}
                   disabled={
                     !importSchoolTermId || importClassroomsQuery.isLoading
                   }
                   onChange={(event) => selectImportGrade(event.target.value)}
                   value={effectiveImportGrade}
                 >
-                  <option value="">เลือกชั้น</option>
+                  <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
                   {importGrades.map((grade) => (
                     <option key={grade} value={grade}>
                       {grade}
@@ -1159,7 +1160,7 @@ export function ImportDataPage() {
               ) : null}
               {requiresClassroomContext ? (
                 <Select
-                  aria-label="เลือกห้องเรียน"
+                  aria-label={SCOPE_REQUIRED_LABEL.room}
                   disabled={
                     !effectiveImportGrade || importClassroomsQuery.isLoading
                   }
@@ -1168,7 +1169,7 @@ export function ImportDataPage() {
                   }
                   value={importClassroomId}
                 >
-                  <option value="">เลือกห้องเรียน</option>
+                  <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
                   {importClassrooms.map((classroom) => (
                     <option key={classroom.id} value={classroom.id}>
                       {formatRoomLabel(classroom.roomCode)}

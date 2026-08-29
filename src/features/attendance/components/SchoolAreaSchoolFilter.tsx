@@ -1,4 +1,5 @@
 import { Combobox, type ComboboxOption } from "../../../components/base";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 
 interface SchoolAreaSchoolFilterProps {
@@ -8,7 +9,10 @@ interface SchoolAreaSchoolFilterProps {
   onProvinceChange?: (value: string) => void;
   onDistrictChange?: (value: string) => void;
   onSubDistrictChange?: (value: string) => void;
-  selectedSchoolFallback?: { id: number | string; name: string | null | undefined };
+  selectedSchoolFallback?: {
+    id: number | string;
+    name: string | null | undefined;
+  };
   schoolLocked?: boolean;
   disabled?: boolean;
   schoolPlaceholder?: string;
@@ -35,7 +39,7 @@ export function SchoolAreaSchoolFilter({
   onSchoolChange,
   onSubDistrictChange,
   selectedSchoolFallback,
-  schoolEmptyLabel = "ทุกโรงเรียน",
+  schoolEmptyLabel = SCOPE_ALL_LABEL.school,
   schoolEmptyText,
   schoolId,
   schoolLocked = false,
@@ -74,42 +78,48 @@ export function SchoolAreaSchoolFilter({
 
   return (
     <>
-      {!hideArea ? <Combobox
-        disabled={disabled || schoolLocked}
-        onChange={(next) => {
-          area.setProvince(next);
-          onProvinceChange?.(next);
-          onDistrictChange?.("");
-          onSubDistrictChange?.("");
-          clearSchool();
-        }}
-        options={toOptions(area.provinces, "ทุกจังหวัด")}
-        placeholder="ค้นหาจังหวัด"
-        value={area.province}
-      /> : null}
-      {!hideArea ? <Combobox
-        disabled={disabled || schoolLocked || !area.province}
-        onChange={(next) => {
-          area.setDistrict(next);
-          onDistrictChange?.(next);
-          onSubDistrictChange?.("");
-          clearSchool();
-        }}
-        options={toOptions(area.districts, "ทุกอำเภอ/เขต")}
-        placeholder="ค้นหาอำเภอ/เขต"
-        value={area.district}
-      /> : null}
-      {!hideArea ? <Combobox
-        disabled={disabled || schoolLocked || !area.district}
-        onChange={(next) => {
-          area.setSubDistrict(next);
-          onSubDistrictChange?.(next);
-          clearSchool();
-        }}
-        options={toOptions(area.subDistricts, "ทุกตำบล/แขวง")}
-        placeholder="ค้นหาตำบล/แขวง"
-        value={area.subDistrict}
-      /> : null}
+      {!hideArea ? (
+        <Combobox
+          disabled={disabled || schoolLocked}
+          onChange={(next) => {
+            area.setProvince(next);
+            onProvinceChange?.(next);
+            onDistrictChange?.("");
+            onSubDistrictChange?.("");
+            clearSchool();
+          }}
+          options={toOptions(area.provinces, SCOPE_ALL_LABEL.province)}
+          placeholder="ค้นหาจังหวัด"
+          value={area.province}
+        />
+      ) : null}
+      {!hideArea ? (
+        <Combobox
+          disabled={disabled || schoolLocked || !area.province}
+          onChange={(next) => {
+            area.setDistrict(next);
+            onDistrictChange?.(next);
+            onSubDistrictChange?.("");
+            clearSchool();
+          }}
+          options={toOptions(area.districts, SCOPE_ALL_LABEL.district)}
+          placeholder="ค้นหาอำเภอ/เขต"
+          value={area.district}
+        />
+      ) : null}
+      {!hideArea ? (
+        <Combobox
+          disabled={disabled || schoolLocked || !area.district}
+          onChange={(next) => {
+            area.setSubDistrict(next);
+            onSubDistrictChange?.(next);
+            clearSchool();
+          }}
+          options={toOptions(area.subDistricts, SCOPE_ALL_LABEL.subDistrict)}
+          placeholder="ค้นหาตำบล/แขวง"
+          value={area.subDistrict}
+        />
+      ) : null}
       {!hideSchool ? (
         <Combobox
           ariaLabel={schoolPlaceholder}

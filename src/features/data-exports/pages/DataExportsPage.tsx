@@ -49,6 +49,7 @@ import type {
   DataExportJob,
   DataExportSensitivityClass,
 } from "../types/data-export.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 
 interface DataExportFormValues {
   filters: Record<string, string>;
@@ -128,7 +129,7 @@ function ExportScopeFilters({
           update("room", "");
         }}
         onSubDistrictChange={(value) => update("subDistrict", value)}
-        schoolEmptyLabel="ทุกโรงเรียน"
+        schoolEmptyLabel={SCOPE_ALL_LABEL.school}
         schoolId={scope.schoolId}
         schoolInputId={`${idPrefix}-schoolId`}
       />
@@ -145,7 +146,7 @@ function ExportScopeFilters({
           }}
           value={scope.grade}
         >
-          <option value="">ทุกชั้น</option>
+          <option value="">{SCOPE_ALL_LABEL.grade}</option>
           {scope.gradeLevels.map((grade) => (
             <option key={grade.id} value={grade.label}>
               {grade.label}
@@ -165,7 +166,7 @@ function ExportScopeFilters({
           }}
           value={scope.room}
         >
-          <option value="">ทุกห้อง</option>
+          <option value="">{SCOPE_ALL_LABEL.room}</option>
           {scope.rooms.map((room) => (
             <option key={room} value={room}>
               {formatRoomLabel(room)}

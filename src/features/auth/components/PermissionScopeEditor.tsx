@@ -30,6 +30,10 @@ import {
   getScopeFieldStates,
   getScopeValidationError,
 } from "../lib/scope-validation";
+import {
+  SCOPE_ALL_LABEL,
+  SCOPE_REQUIRED_LABEL,
+} from "../../../lib/scope-presentation";
 
 export interface ScopeSelectionLabels {
   province: string;
@@ -348,8 +352,8 @@ export function PermissionScopeEditor({
                           value: "",
                           label:
                             fieldStates.provinces === "required"
-                              ? "เลือกจังหวัด"
-                              : "ทุกจังหวัด",
+                              ? SCOPE_REQUIRED_LABEL.province
+                              : SCOPE_ALL_LABEL.province,
                         },
                         ...provinces.map((province) => ({
                           value: province,
@@ -386,8 +390,8 @@ export function PermissionScopeEditor({
                           value: "",
                           label:
                             fieldStates.districts === "required"
-                              ? "เลือกอำเภอ/เขต"
-                              : "ทุกอำเภอ/เขต",
+                              ? SCOPE_REQUIRED_LABEL.district
+                              : SCOPE_ALL_LABEL.district,
                         },
                         ...districts.map((district) => ({
                           value: district,
@@ -424,8 +428,8 @@ export function PermissionScopeEditor({
                           value: "",
                           label:
                             fieldStates.sub_districts === "required"
-                              ? "เลือกตำบล/แขวง"
-                              : "ทุกตำบล/แขวง",
+                              ? SCOPE_REQUIRED_LABEL.subDistrict
+                              : SCOPE_ALL_LABEL.subDistrict,
                         },
                         ...subDistricts.map((subDistrict) => ({
                           value: subDistrict,
@@ -462,8 +466,8 @@ export function PermissionScopeEditor({
                           value: "",
                           label:
                             fieldStates.school_ids === "required"
-                              ? "เลือกโรงเรียน"
-                              : "ทุกโรงเรียน",
+                              ? SCOPE_REQUIRED_LABEL.school
+                              : SCOPE_ALL_LABEL.school,
                         },
                         ...schools.map((school) => ({
                           value: String(school.id),
@@ -494,7 +498,7 @@ export function PermissionScopeEditor({
                       }
                       value={selectedGradeId}
                     >
-                      <option value="">ทุกชั้น</option>
+                      <option value="">{SCOPE_ALL_LABEL.grade}</option>
                       {gradeLevels.map((grade) => (
                         <option key={grade.id} value={String(grade.id)}>
                           {grade.label}
@@ -521,7 +525,7 @@ export function PermissionScopeEditor({
                       }
                       value={selectedRoom}
                     >
-                      <option value="">ทุกห้อง</option>
+                      <option value="">{SCOPE_ALL_LABEL.room}</option>
                       {rooms.map((room) => (
                         <option key={room} value={room}>
                           {formatRoomLabel(room)}

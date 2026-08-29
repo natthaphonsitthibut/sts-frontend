@@ -16,6 +16,7 @@ import {
   useScopedSchools,
 } from "../../school-structure/hooks/useSchoolStructure";
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
+import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
 
 export function InternalCheckInPage() {
   const [searchParams] = useSearchParams();
@@ -109,7 +110,7 @@ export function InternalCheckInPage() {
             }}
             value={gradeInput}
           >
-            <option value="">เลือกชั้น</option>
+            <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
             {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
               <option key={gradeLevelId} value={String(gradeLevelId)}>
                 {gradeLabel}
@@ -125,7 +126,7 @@ export function InternalCheckInPage() {
             onChange={(event) => setClassroomInput(event.target.value)}
             value={classroomInput}
           >
-            <option value="">เลือกห้อง</option>
+            <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
             {roomOptions.map((classroom) => (
               <option key={classroom.id} value={String(classroom.id)}>
                 {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
