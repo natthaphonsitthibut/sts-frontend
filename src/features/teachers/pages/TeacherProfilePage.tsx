@@ -114,7 +114,7 @@ export function TeacherProfilePage() {
             ? "จัดการข้อมูลครู"
             : canOpenDirectory
               ? "รายชื่อครู"
-              : "จัดการลิงก์ห้องเรียน",
+              : "จัดการลิงก์ครู",
           to: fallbackBack,
         }}
         title="ข้อมูลคุณครู"

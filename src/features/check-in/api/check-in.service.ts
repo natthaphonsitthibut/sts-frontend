@@ -1,3 +1,5 @@
+import type { UpdateClassroomPresentationInput } from "../../school-structure/types/school-structure.types";
+import type { LinkAttendanceAssignmentPayload } from "../../classroom-links/types/classroom-links.types";
 import { apiClient } from "../../../lib/api-client";
 import type {
   ClassroomStudentCommentConcernLevelOption,
@@ -134,9 +136,7 @@ async function getOptions(input: {
     {
       params: {
         date: input.date,
-        ...(input.access === "INTERNAL"
-          ? { classroomId: input.classroomId }
-          : {}),
+        classroomId: input.classroomId,
       },
     },
   );
@@ -152,10 +152,7 @@ async function getRoster(input: {
       ? "/attendance/check-in/roster"
       : "/classroom/roster",
     {
-      params:
-        input.access === "INTERNAL"
-          ? { classroomId: input.classroomId }
-          : undefined,
+      params: { classroomId: input.classroomId },
     },
   );
   return response.data.data ?? [];
@@ -174,9 +171,7 @@ async function startSession(input: {
     {
       date: input.date,
       classroomSubjectId: input.classroomSubjectId,
-      ...(input.access === "INTERNAL"
-        ? { classroomId: input.classroomId }
-        : {}),
+      classroomId: input.classroomId,
     },
   );
   return response.data.data;
@@ -184,6 +179,7 @@ async function startSession(input: {
 
 async function submitSession(input: {
   access: "INTERNAL" | "PUBLIC_LINK";
+  classroomId?: number;
   sessionId: string;
   exceptions: Array<{
     studentId: string;
@@ -195,7 +191,14 @@ async function submitSession(input: {
     input.access === "INTERNAL"
       ? `/attendance/check-in/sessions/${input.sessionId}/submit`
       : `/classroom/sessions/${input.sessionId}/submit`,
-    { exceptions: input.exceptions },
+    {
+      exceptions: input.exceptions,
+      // The staff route takes the room from the signed-in scope; the link has
+      // to be told which of its rooms this register belongs to.
+      ...(input.access === "INTERNAL" || !input.classroomId
+        ? {}
+        : { classroomId: input.classroomId }),
+    },
   );
   return response.data.data;
 }
@@ -211,11 +214,12 @@ function getStudentPhotoUrl(input: {
       input.access === "INTERNAL"
         ? "/attendance/check-in/student-photo"
         : "/classroom/student-photo",
+    // The room goes on both paths. A standing link reaches every room its
+    // teacher's subjects touch, so the link cannot infer one from the session
+    // either — without it the photo request is refused.
     params: {
       studentId: input.studentId,
-      ...(input.access === "INTERNAL"
-        ? { classroomId: input.classroomId }
-        : {}),
+      ...(input.classroomId ? { classroomId: input.classroomId } : {}),
       ...(input.photoVersion ? { v: input.photoVersion } : {}),
     },
   });
@@ -265,7 +269,53 @@ async function listComments(
   return response.data;
 }
 
+/**
+ * Hands one of this teacher's own lessons on to whoever can cover it.
+ *
+ * The same act the admin page performs, through the link's namespace: a teacher
+ * standing in their link holds no account, and the responsibility for the room
+ * is theirs, so the school should not have to be asked to pass it along.
+ */
+async function createAssignment(
+  input: LinkAttendanceAssignmentPayload,
+): Promise<{ data: { accessUrl: string } }> {
+  const response = await apiClient.post<{ data: { accessUrl: string } }>(
+    "/classroom/assignments",
+    input,
+  );
+  return response.data;
+}
+
+/**
+ * Recolours or re-covers a room from inside a link.
+ *
+ * The very same record ห้องเรียนทั้งหมด writes — a card belongs to the room, so
+ * a change made here shows there and the other way round. The link namespace is
+ * only the door; what it opens onto is one classroom row, not a copy.
+ */
+async function updateClassroomPresentation({
+  classroomId,
+  cardCoverColor,
+  coverImagePositionX,
+  coverImagePositionY,
+  coverImageScale,
+  file,
+  removeCover,
+}: UpdateClassroomPresentationInput): Promise<void> {
+  const formData = new FormData();
+  formData.append("classroomId", classroomId);
+  formData.append("cardCoverColor", cardCoverColor);
+  formData.append("coverImagePositionX", String(coverImagePositionX));
+  formData.append("coverImagePositionY", String(coverImagePositionY));
+  formData.append("coverImageScale", String(coverImageScale));
+  if (file) formData.append("photo", file);
+  if (removeCover) formData.append("removeCover", "true");
+  await apiClient.patch("/classroom/classroom-presentation", formData);
+}
+
 export const checkInService = {
+  createAssignment,
+  updateClassroomPresentation,
   createComment,
   getCommentOptions,
   listComments,

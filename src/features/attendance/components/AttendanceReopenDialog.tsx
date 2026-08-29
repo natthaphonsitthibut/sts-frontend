@@ -19,7 +19,11 @@ import {
 } from "../../../components/base";
 
 const reopenSchema = z.object({
-  reason: z.string().trim().min(3, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร").max(500),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร")
+    .max(500),
 });
 
 type ReopenFormValues = z.infer<typeof reopenSchema>;

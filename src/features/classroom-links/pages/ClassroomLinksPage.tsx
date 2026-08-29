@@ -49,7 +49,6 @@ import {
 } from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
-import { formatClassLabel } from "../../../lib/room-presentation";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
@@ -118,10 +117,6 @@ export function ClassroomLinksPage() {
     const value = searchParams.get("linkStatus") ?? "";
     return ["ACTIVE", "INACTIVE", "NOT_CREATED"].includes(value) ? value : "";
   });
-  const [homeroomInput, setHomeroomInput] = useState(() => {
-    const value = searchParams.get("homeroom") ?? "";
-    return ["ASSIGNED", "UNASSIGNED"].includes(value) ? value : "";
-  });
   const [page, setPage] = useState(() =>
     readPositiveIntegerSearchParam(searchParams, "page", 1),
   );
@@ -184,10 +179,6 @@ export function ClassroomLinksPage() {
           linkStatus: (linkStatusInput || undefined) as
             | ClassroomLinkStatus
             | undefined,
-          homeroomStatus: (homeroomInput || undefined) as
-            | "ASSIGNED"
-            | "UNASSIGNED"
-            | undefined,
           page,
           limit: rowsPerPage,
         }
@@ -208,7 +199,6 @@ export function ClassroomLinksPage() {
     termId: termInput || undefined,
     gradeId: gradeInput || undefined,
     linkStatus: linkStatusInput || undefined,
-    homeroom: homeroomInput || undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
   });
@@ -219,18 +209,18 @@ export function ClassroomLinksPage() {
   }
 
   async function createLinks(
-    classroomIds?: number[],
-    allClassrooms = false,
+    teacherMembershipIds?: number[],
+    allTeachers = false,
   ): Promise<void> {
     if (!schoolId || !termId) return;
-    const actionId = classroomIds?.[0] ?? "all";
+    const actionId = teacherMembershipIds?.[0] ?? "all";
     setPending({ action: "create", id: actionId });
     try {
       const result = await bulkCreate.mutateAsync({
         schoolId,
         schoolTermId: termId,
-        classroomIds: allClassrooms ? undefined : classroomIds,
-        allClassrooms: allClassrooms || undefined,
+        teacherMembershipIds: allTeachers ? undefined : teacherMembershipIds,
+        allTeachers: allTeachers || undefined,
       });
       const createdCount = result.data.filter((item) => item.created).length;
       const sentCount = result.data.filter(
@@ -257,7 +247,7 @@ export function ClassroomLinksPage() {
 
   async function handleCreateAll(): Promise<void> {
     const accepted = await confirm({
-      title: "สร้างลิงก์ให้ทุกห้องในภาคเรียนนี้?",
+      title: "สร้างลิงก์ให้ครูทุกคนในภาคเรียนนี้?",
       description:
         "ลิงก์ที่ใช้งานอยู่จะไม่ถูกเปลี่ยน ส่วนห้องที่ยังไม่มีหรือถูกปิดจะได้รับลิงก์ใหม่และระบบจะลองส่งให้ครูประจำชั้นผ่าน LINE",
       confirmText: "สร้างทั้งหมด",
@@ -281,7 +271,7 @@ export function ClassroomLinksPage() {
   async function handleRotate(row: ClassroomLinkListItem): Promise<void> {
     if (!row.id) return;
     const accepted = await confirm({
-      title: `สร้างลิงก์ใหม่ให้ ${formatClassLabel(row.gradeLabel, row.roomNumber)}?`,
+      title: `สร้างลิงก์ใหม่ให้ ${row.teacherName}?`,
       description:
         "ลิงก์เดิมจะหยุดใช้งานทันที หลังสร้างแล้วต้องส่งหรือแชร์ลิงก์ใหม่",
       confirmText: "สร้างลิงก์ใหม่",
@@ -304,7 +294,7 @@ export function ClassroomLinksPage() {
   async function handleDeactivate(row: ClassroomLinkListItem): Promise<void> {
     if (!row.id) return;
     const accepted = await confirm({
-      title: `ปิดลิงก์ ${formatClassLabel(row.gradeLabel, row.roomNumber)}?`,
+      title: `ปิดลิงก์ของ ${row.teacherName}?`,
       description:
         "ผู้ที่มีลิงก์เดิมจะไม่สามารถเปิดห้องนี้ได้จนกว่าจะสร้างลิงก์ใหม่",
       confirmText: "ปิดลิงก์",
@@ -391,7 +381,7 @@ export function ClassroomLinksPage() {
     const accepted = await confirm({
       title: "ปิดลิงก์ยืนยัน LINE?",
       description:
-        "ครูจะใช้ลิงก์กลางนี้ยืนยันบัญชี LINE ไม่ได้ทันที ลิงก์ห้องเรียนที่สร้างไว้ไม่ถูกลบ",
+        "ครูจะใช้ลิงก์กลางนี้ยืนยันบัญชี LINE ไม่ได้ทันที ลิงก์ครูที่สร้างไว้ไม่ถูกลบ",
       confirmText: "ปิดลิงก์",
       variant: "destructive",
     });
@@ -508,7 +498,7 @@ export function ClassroomLinksPage() {
             </Select>
           </ScopeFilterField>
         }
-        title="จัดการลิงก์ห้องเรียน"
+        title="จัดการลิงก์ครู"
       >
         <ToolbarControls>
           <SearchInput
@@ -550,18 +540,6 @@ export function ClassroomLinksPage() {
             <option value="ACTIVE">ใช้งานอยู่</option>
             <option value="INACTIVE">ปิดใช้งาน</option>
             <option value="NOT_CREATED">ยังไม่ได้สร้าง</option>
-          </FilterSelect>
-          <FilterSelect
-            ariaLabel="กรองครูประจำชั้น"
-            onChange={(value) => {
-              setHomeroomInput(value);
-              resetListState();
-            }}
-            value={homeroomInput}
-          >
-            <option value="">ครูประจำชั้นทั้งหมด</option>
-            <option value="ASSIGNED">กำหนดแล้ว</option>
-            <option value="UNASSIGNED">ยังไม่ได้กำหนด</option>
           </FilterSelect>
         </ToolbarControls>
       </PageToolbar>
@@ -620,9 +598,12 @@ export function ClassroomLinksPage() {
         fallback="ดำเนินการกับลิงก์ไม่สำเร็จ"
       />
 
+      {/* One page, one question: which teacher holds a link. An assignment is
+          not a teacher's standing key and is managed where it is created — on
+          the check-in screen for the lesson it covers. */}
       {pageError ? (
         <ErrorState
-          description="ไม่สามารถโหลดข้อมูลลิงก์ห้องเรียนได้ กรุณาลองใหม่อีกครั้ง"
+          description="ไม่สามารถโหลดข้อมูลลิงก์ครูได้ กรุณาลองใหม่อีกครั้ง"
           onRetry={() => {
             void schoolsQuery.refetch();
             void termsQuery.refetch();
@@ -654,7 +635,7 @@ export function ClassroomLinksPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           description={
-            search || gradeInput || linkStatusInput || homeroomInput
+            search || gradeInput || linkStatusInput
               ? "ลองเปลี่ยนคำค้นหาหรือตัวกรอง"
               : "ยังไม่มีห้องเรียนในภาคเรียนนี้"
           }
@@ -665,7 +646,11 @@ export function ClassroomLinksPage() {
         <>
           <ClassroomLinksTable
             onCopy={(row) => void handleCopy(row)}
-            onCreate={(row) => void createLinks([row.classroomId])}
+            onCreate={(row) =>
+              row.teacherMembershipId === null
+                ? undefined
+                : void createLinks([row.teacherMembershipId])
+            }
             onDeactivate={(row) => void handleDeactivate(row)}
             onOpenTeacher={(teacherId) =>
               contextualNavigate(`/teachers/${teacherId}`)
@@ -713,7 +698,7 @@ export function ClassroomLinksPage() {
         title={
           sharedLineInvitation
             ? "แชร์ลิงก์ยืนยัน LINE"
-            : "คัดลอกหรือแชร์ลิงก์ห้องเรียน"
+            : "คัดลอกหรือแชร์ลิงก์ครู"
         }
       />
       <Dialog onOpenChange={setLineDialogOpen} open={lineDialogOpen}>

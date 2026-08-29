@@ -32,7 +32,10 @@ import type { StatusCatalogItem } from "../../status-catalog/types/status-catalo
 interface AttendanceStudentTableProps {
   students: AttendanceStudent[];
   selections: Record<string, AttendanceSelectionStatus>;
-  onStatusChange: (studentId: string, status: AttendanceSelectionStatus) => void;
+  onStatusChange: (
+    studentId: string,
+    status: AttendanceSelectionStatus,
+  ) => void;
   onBulkStatusChange?: (status: AttendanceSelectionStatus) => void;
   onUndo?: () => void;
   canUndo?: boolean;
@@ -112,7 +115,9 @@ function compareRosterItems(
   if (key === "roster") return left.rosterNumber - right.rosterNumber;
   if (key === "name") return compareText(left.student.name, right.student.name);
   if (key === "absence") {
-    return toCount(left.student.total_absent) - toCount(right.student.total_absent);
+    return (
+      toCount(left.student.total_absent) - toCount(right.student.total_absent)
+    );
   }
   if (key === "status") {
     return compareText(
@@ -191,7 +196,10 @@ export function AttendanceStudentTable({
     0,
   );
   const pendingStatusMeta = pendingAdvance
-    ? getAttendanceStatusPresentation(pendingAdvance.status, attendanceStatusCatalog)
+    ? getAttendanceStatusPresentation(
+        pendingAdvance.status,
+        attendanceStatusCatalog,
+      )
     : null;
   const PendingStatusIcon = pendingStatusMeta?.icon;
 
@@ -220,7 +228,10 @@ export function AttendanceStudentTable({
       setPendingAdvance({ studentId, status });
       advanceTimerRef.current = window.setTimeout(() => {
         setActiveRosterIndex(
-          Math.min(safeActiveRosterIndex + 1, Math.max(visibleStudents.length - 1, 0)),
+          Math.min(
+            safeActiveRosterIndex + 1,
+            Math.max(visibleStudents.length - 1, 0),
+          ),
         );
         setPendingAdvance(null);
         advanceTimerRef.current = null;
@@ -260,14 +271,15 @@ export function AttendanceStudentTable({
     setUndoSnapshot(null);
   }
 
-  function renderStudentIdentity(student: AttendanceStudent, trailing?: ReactNode) {
+  function renderStudentIdentity(
+    student: AttendanceStudent,
+    trailing?: ReactNode,
+  ) {
     return (
       <div className="flex min-w-0 items-center gap-3">
         <StudentAvatar name={student.name} photoUrl={student.photo_url} />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <div className="min-w-0 truncate text-slate-800">
-            {student.name}
-          </div>
+          <div className="min-w-0 truncate text-slate-800">{student.name}</div>
           {trailing}
         </div>
       </div>
@@ -289,10 +301,15 @@ export function AttendanceStudentTable({
     );
   }
 
-  function renderStatusControls(student: AttendanceStudent, showDefaultStatus = true) {
-    const current = selections[student.id] ?? (showDefaultStatus ? "P_PRESENT" : undefined);
+  function renderStatusControls(
+    student: AttendanceStudent,
+    showDefaultStatus = true,
+  ) {
+    const current =
+      selections[student.id] ?? (showDefaultStatus ? "P_PRESENT" : undefined);
     const controlsDisabled =
-      disabled || Boolean(pendingAdvance && pendingAdvance.studentId === student.id);
+      disabled ||
+      Boolean(pendingAdvance && pendingAdvance.studentId === student.id);
     return (
       <div className="flex flex-wrap gap-2 lg:justify-end">
         {ATTENDANCE_RECORD_STATUSES.map((status) => (
@@ -407,7 +424,10 @@ export function AttendanceStudentTable({
                 ไล่ทีละคน
               </Button>
               {ATTENDANCE_RECORD_STATUSES.map((status) => {
-                const meta = getAttendanceStatusPresentation(status, attendanceStatusCatalog);
+                const meta = getAttendanceStatusPresentation(
+                  status,
+                  attendanceStatusCatalog,
+                );
                 return (
                   <Button
                     key={status}
@@ -448,7 +468,9 @@ export function AttendanceStudentTable({
             </div>
             <div className="flex gap-2">
               <Button
-                disabled={Boolean(pendingAdvance) || safeActiveRosterIndex === 0}
+                disabled={
+                  Boolean(pendingAdvance) || safeActiveRosterIndex === 0
+                }
                 icon={ChevronLeft}
                 onClick={() =>
                   setActiveRosterIndex(Math.max(safeActiveRosterIndex - 1, 0))
@@ -466,7 +488,10 @@ export function AttendanceStudentTable({
                 icon={ChevronRight}
                 onClick={() =>
                   setActiveRosterIndex(
-                    Math.min(safeActiveRosterIndex + 1, visibleStudents.length - 1),
+                    Math.min(
+                      safeActiveRosterIndex + 1,
+                      visibleStudents.length - 1,
+                    ),
                   )
                 }
                 size="sm"
@@ -505,7 +530,8 @@ export function AttendanceStudentTable({
         <EmptyState title="ไม่พบนักเรียนที่ตรงกับคำค้นหา" />
       ) : null}
 
-      {(viewMode === "list" || !onBulkStatusChange) && visibleStudents.length > 0 ? (
+      {(viewMode === "list" || !onBulkStatusChange) &&
+      visibleStudents.length > 0 ? (
         <DataTable
           columnWidths={["w-[10%]", "w-[34%]", "w-[18%]", "w-[38%]"]}
           headings={[

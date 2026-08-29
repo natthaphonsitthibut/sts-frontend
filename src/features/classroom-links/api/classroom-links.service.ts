@@ -1,12 +1,17 @@
 import { apiClient } from "../../../lib/api-client";
 import type {
+  AttendanceAssignmentPayload,
   BulkCreateClassroomLinksResult,
   ClassroomLinkActionResult,
+  ClassroomLinkListItem,
   ClassroomLinkDelivery,
   ClassroomLinkListParams,
   ClassroomLinkListResponse,
   ClassroomLineGroupInvitation,
   ClassroomLineGroupInvitationInput,
+  ClassroomLinkUsage,
+  IssuedClassroomLink,
+  IssuedClassroomLinkParams,
 } from "../types/classroom-links.types";
 
 interface DataEnvelope<T> {
@@ -24,11 +29,40 @@ async function list(
   return response.data;
 }
 
+/** The register of links this school has issued this term — both kinds. */
+async function listIssued(params: IssuedClassroomLinkParams): Promise<{
+  data: IssuedClassroomLink[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}> {
+  const response = await apiClient.get<{
+    data: IssuedClassroomLink[];
+    meta: { page: number; limit: number; total: number; totalPages: number };
+  }>("/classroom-attendance-links/issued", { params });
+  return response.data;
+}
+
+/** Who opened one link, and every register taken through it. */
+async function getUsage(linkId: string): Promise<ClassroomLinkUsage> {
+  const response = await apiClient.get<{ data: ClassroomLinkUsage }>(
+    `/classroom-attendance-links/${encodeURIComponent(linkId)}/usage`,
+  );
+  return response.data.data;
+}
+
+async function createAssignment(
+  input: AttendanceAssignmentPayload,
+): Promise<{ data: ClassroomLinkListItem & { accessUrl: string } }> {
+  const response = await apiClient.post<{
+    data: ClassroomLinkListItem & { accessUrl: string };
+  }>("/classroom-attendance-links/assignments", input);
+  return response.data;
+}
+
 async function bulkCreate(input: {
   schoolId: number;
   schoolTermId: number;
-  classroomIds?: number[];
-  allClassrooms?: boolean;
+  teacherMembershipIds?: number[];
+  allTeachers?: boolean;
 }): Promise<BulkCreateClassroomLinksResult> {
   const response = await apiClient.post<BulkCreateClassroomLinksResult>(
     "/classroom-attendance-links/bulk",
@@ -114,6 +148,9 @@ async function revokeLineGroupInvitation(input: {
 }
 
 export const classroomLinksService = {
+  createAssignment,
+  getUsage,
+  listIssued,
   list,
   bulkCreate,
   redisplay,

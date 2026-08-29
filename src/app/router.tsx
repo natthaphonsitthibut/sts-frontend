@@ -528,7 +528,9 @@ export const router = createBrowserRouter([
     // profiles — so it lives at /classroom. Links already handed out point at
     // /check-in and keep working through the redirect below, which carries the
     // token in the hash across untouched.
-    path: "/classroom",
+    // The link surface is its own little app — a rooms page and a check-in
+    // page under it — so the route is a prefix and the page owns the nesting.
+    path: "/classroom/*",
     element: withSuspense(<PublicCheckInPage />),
   },
   {

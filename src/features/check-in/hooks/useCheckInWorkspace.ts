@@ -27,6 +27,12 @@ function readMode(): "TABLE" | "CARD" {
 interface UseCheckInWorkspaceInput {
   access: CheckInAccess;
   classroomId?: number;
+  /**
+   * Fixes the lesson instead of asking for it. A link opens onto one subject's
+   * roster — the card the teacher tapped already said which — so the picker
+   * would be a question whose answer was given a screen ago.
+   */
+  classroomSubjectId?: number;
   enabled?: boolean;
 }
 
@@ -93,11 +99,12 @@ function storeDraft(draft: DraftState): void {
 export function useCheckInWorkspace({
   access,
   classroomId,
+  classroomSubjectId: fixedSubjectId,
   enabled = true,
 }: UseCheckInWorkspaceInput) {
   const [date, setDate] = useState(bangkokToday);
   const [requestedSubjectId, setClassroomSubjectId] = useState<number | null>(
-    null,
+    fixedSubjectId ?? null,
   );
   const [mode, setModeState] = useState<"TABLE" | "CARD">(readMode);
   const [draftState, setDraftState] = useState<DraftState>(() =>
@@ -122,10 +129,14 @@ export function useCheckInWorkspace({
   });
 
   const subjects = optionsQuery.data?.subjects ?? [];
+  // A link opens onto one lesson, so the subject arrives with the room and the
+  // teacher never picks it. Nothing in the URL can widen that: the id still has
+  // to be one the options list came back with.
+  const requested = fixedSubjectId ?? requestedSubjectId;
   const classroomSubjectId = subjects.some(
-    (item) => item.classroomSubjectId === requestedSubjectId,
+    (item) => item.classroomSubjectId === requested,
   )
-    ? requestedSubjectId
+    ? requested
     : null;
   const selectionKey = `${access}:${classroomId ?? "public"}:${date}:${classroomSubjectId ?? ""}`;
   // Restoring is keyed by the same selection the draft was written under, so a
@@ -315,6 +326,7 @@ export function useCheckInWorkspace({
         }));
       return checkInService.submitSession({
         access,
+        classroomId,
         sessionId: activeSession.id,
         exceptions,
       });

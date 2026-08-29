@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { classroomLinksService } from "../api/classroom-links.service";
-import type { ClassroomLinkListParams } from "../types/classroom-links.types";
+import { checkInService } from "../../check-in/api/check-in.service";
+import type { CheckInAccess } from "../../check-in/types/check-in.types";
+import type {
+  AttendanceAssignmentPayload,
+  ClassroomLinkListParams,
+  IssuedClassroomLinkParams,
+} from "../types/classroom-links.types";
 
 const KEY = "classroom-links";
 
@@ -15,6 +21,50 @@ export function useClassroomLinks(params: ClassroomLinkListParams | null) {
 function useRefreshClassroomLinks() {
   const client = useQueryClient();
   return () => client.invalidateQueries({ queryKey: [KEY, "list"] });
+}
+
+/**
+ * Creates an assignment link from wherever the teacher is standing.
+ *
+ * The admin page posts as an authenticated user; a teacher inside their own
+ * link has no account and posts through the link's namespace, which proves the
+ * subject is theirs before handing it on. Same act, two doors.
+ */
+export function useCreateAttendanceAssignment(
+  access: CheckInAccess = "INTERNAL",
+) {
+  const refresh = useRefreshClassroomLinks();
+  return useMutation({
+    mutationFn: (input: AttendanceAssignmentPayload) =>
+      access === "INTERNAL"
+        ? classroomLinksService.createAssignment(input)
+        : checkInService.createAssignment({
+            classroomSubjectId: input.classroomSubjectId,
+            opensAt: input.opensAt,
+            expiresAt: input.expiresAt,
+          }),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+/** The register of issued links, and what became of one of them. */
+export function useIssuedClassroomLinks(
+  params: IssuedClassroomLinkParams | null,
+) {
+  return useQuery({
+    queryKey: [KEY, "issued", params],
+    queryFn: () => classroomLinksService.listIssued(params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useClassroomLinkUsage(linkId: string | null) {
+  return useQuery({
+    queryKey: [KEY, "usage", linkId],
+    queryFn: () => classroomLinksService.getUsage(linkId!),
+    enabled: Boolean(linkId),
+  });
 }
 
 export function useBulkCreateClassroomLinks() {
