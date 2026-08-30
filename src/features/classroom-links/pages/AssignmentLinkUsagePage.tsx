@@ -50,8 +50,18 @@ export function AssignmentLinkUsagePage({ access }: { access: CheckInAccess }) {
 
   const header = (
     <PageToolbar
-      hideBreadcrumb={!internal}
+      // The staff check-in page is deliberately left out of navigation trails
+      // (it is a tabbed page, not a step), so nothing upstream supplies a crumb
+      // and the row would collapse. Name the parent outright; on the link side
+      // the rooms page is the only thing above this.
+
+      breadcrumbTrail={
+        internal ? undefined : [{ label: "ห้องเรียนของฉัน", to: "/classroom" }]
+      }
       icon={ScrollText}
+      parentBreadcrumb={
+        internal ? { label: "เช็กชื่อ", to: backTo } : undefined
+      }
       navigation={
         <NavButton
           className="min-w-28"
