@@ -11,12 +11,14 @@ import { useContextualNavigate } from "../../../components/layout/navigation-con
 import {
   CalendarClock,
   Check,
+  ChevronDown,
   FileSpreadsheet,
   Grid2X2,
   ScanLine,
   Send,
   Table2,
   Undo2,
+  Wrench,
   X,
 } from "lucide-react";
 import {
@@ -26,6 +28,7 @@ import {
   Button,
   Combobox,
   DatePicker,
+  DropdownMenu,
   FormErrorAlert,
   Label,
   Tabs,
@@ -947,44 +950,54 @@ export function CheckInWorkspace({
               role="group"
               aria-label="รูปแบบการเช็กชื่อ"
             >
-              {/* Scanning marks students from the roster already on screen, so
-                  it belongs beside the table/card switch rather than in a
-                  separate flow. */}
-              <Button
-                disabled={readOnly || workspace.roster.length === 0}
-                icon={ScanLine}
-                onClick={() => setScannerOpen(true)}
-                variant="outline"
-              >
-                สแกน QR
-              </Button>
-              {/* Handing the lesson to someone else is a check-in tool, the
-                  same as scanning — it belongs where the person who cannot
-                  take it today already is, not on the link-management page.
-                  A teacher can do this from their own link too: the room is
-                  their responsibility, so passing it on should not require
-                  asking the office. Someone covering an assignment cannot pass
-                  it on again — it was not theirs to begin with. */}
-              {/* Import is a check-in tool like the scanner: it fills the
-                  roster on screen, and the teacher still reviews and saves. */}
-              <Button
-                disabled={readOnly || workspace.roster.length === 0}
-                icon={FileSpreadsheet}
-                onClick={() => setImportOpen(true)}
-                variant="outline"
-              >
-                นำเข้าไฟล์
-              </Button>
-              {!isAssignment && room ? (
-                <Button
-                  disabled={readOnly || !activeSubject}
-                  icon={CalendarClock}
-                  onClick={() => setAssignmentOpen(true)}
-                  variant="outline"
-                >
-                  มอบหมาย
-                </Button>
-              ) : null}
+              {/* Three ways of filling in the same register — scan the room,
+                  read a file, or hand the lesson on — so they sit behind one
+                  tools button. Table and card stay out here beside it: those
+                  switch how this screen looks, they do not do anything.
+
+                  Handing the lesson to someone else belongs among them rather
+                  than on the link-management page: it is done by the person
+                  who cannot take the register today, from where they already
+                  are. A teacher can do it from their own link too — the room
+                  is their responsibility. Someone covering an assignment
+                  cannot pass it on again; it was not theirs to begin with. */}
+              <DropdownMenu
+                align="start"
+                ariaLabel="เครื่องมือเช็กชื่อ"
+                items={[
+                  {
+                    id: "scan",
+                    label: "สแกน QR",
+                    icon: ScanLine,
+                    disabled: readOnly || workspace.roster.length === 0,
+                    onSelect: () => setScannerOpen(true),
+                  },
+                  {
+                    id: "import",
+                    label: "นำเข้าไฟล์",
+                    icon: FileSpreadsheet,
+                    disabled: readOnly || workspace.roster.length === 0,
+                    onSelect: () => setImportOpen(true),
+                  },
+                  ...(!isAssignment && room
+                    ? [
+                        {
+                          id: "assign",
+                          label: "มอบหมาย",
+                          icon: CalendarClock,
+                          disabled: readOnly || !activeSubject,
+                          onSelect: () => setAssignmentOpen(true),
+                        },
+                      ]
+                    : []),
+                ]}
+                trigger={(triggerProps) => (
+                  <Button {...triggerProps} icon={Wrench} variant="outline">
+                    เครื่องมือ
+                    <ChevronDown aria-hidden="true" className="size-4" />
+                  </Button>
+                )}
+              />
               <Button
                 icon={Table2}
                 onClick={() => workspace.setMode("TABLE")}

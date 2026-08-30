@@ -1,4 +1,10 @@
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { useDismissable } from "../../hooks/useDismissable";
@@ -54,9 +60,11 @@ export function DropdownMenu({
   const menuId = useId();
   // Portaled to <body> (see below) so a row menu inside a scroll-clipped
   // table isn't cut off — position is tracked in viewport coordinates.
-  const [coords, setCoords] = useState<{ top: number; left?: number; right?: number } | null>(
-    null,
-  );
+  const [coords, setCoords] = useState<{
+    top: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
 
   useDismissable(open, [rootRef, menuRef], (reason) => {
     setOpen(false);
@@ -87,7 +95,9 @@ export function DropdownMenu({
 
   function menuItems(): HTMLElement[] {
     return Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [],
+      menuRef.current?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([disabled])',
+      ) ?? [],
     );
   }
 
@@ -118,32 +128,50 @@ export function DropdownMenu({
         ? createPortal(
             <div
               aria-label={ariaLabel}
-              className="fixed z-50 w-max min-w-56 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
+              // `w-max` sizes the panel to its longest item; the floor is
+              // only there so a two-word menu still reads as a menu, not so
+              // every menu is wide enough for a sentence.
+              className="fixed z-50 w-max min-w-40 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 shadow-lg"
               id={menuId}
               onKeyDown={(event) => {
                 if (event.key === "Tab") {
                   setOpen(false);
                   return;
                 }
-                if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                if (
+                  !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+                )
+                  return;
                 event.preventDefault();
                 const elements = menuItems();
                 if (elements.length === 0) return;
                 if (event.key === "Home" || event.key === "End") {
-                  elements[event.key === "Home" ? 0 : elements.length - 1]?.focus();
+                  elements[
+                    event.key === "Home" ? 0 : elements.length - 1
+                  ]?.focus();
                   return;
                 }
-                const currentIndex = elements.indexOf(document.activeElement as HTMLElement);
+                const currentIndex = elements.indexOf(
+                  document.activeElement as HTMLElement,
+                );
                 const direction = event.key === "ArrowDown" ? 1 : -1;
-                elements[(currentIndex + direction + elements.length) % elements.length]?.focus();
+                elements[
+                  (currentIndex + direction + elements.length) % elements.length
+                ]?.focus();
               }}
               ref={menuRef}
               role="menu"
-              style={{ top: coords.top, left: coords.left, right: coords.right }}
+              style={{
+                top: coords.top,
+                left: coords.left,
+                right: coords.right,
+              }}
             >
               {header ? (
                 <>
-                  <div className="px-3 py-2 text-xs text-slate-500">{header}</div>
+                  <div className="px-3 py-2 text-xs text-slate-500">
+                    {header}
+                  </div>
                   <div className="my-1 border-t border-slate-100" />
                 </>
               ) : null}
