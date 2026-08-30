@@ -83,6 +83,14 @@ export const AttendanceCheckInPage = lazy(() =>
     default: module.InternalCheckInPage,
   })),
 );
+export const AssignmentLinkUsagePage = lazy(() =>
+  import("../features/classroom-links/pages/AssignmentLinkUsagePage").then(
+    (module) => ({
+      default: module.AssignmentLinkUsagePage,
+    }),
+  ),
+);
+
 export const ClassroomLinkStudentPage = lazy(() =>
   import("../features/check-in/pages/ClassroomLinkStudentPage").then(
     (module) => ({

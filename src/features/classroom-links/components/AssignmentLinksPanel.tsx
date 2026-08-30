@@ -2,11 +2,6 @@ import { useState } from "react";
 import { Copy, Link2Off, RefreshCw, ScrollText } from "lucide-react";
 import {
   Badge,
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   IconButton,
   Tabs,
   appToast,
@@ -25,13 +20,13 @@ import {
   SkeletonTable,
 } from "../../../components/layout/page-primitives";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import type { CheckInAccess } from "../../check-in/types/check-in.types";
 import {
   useDeactivateMyAssignment,
   useMyAssignmentLinks,
   useMyAssignmentUrl,
-  useMyAssignmentUsage,
   useRotateMyAssignment,
 } from "../hooks/useClassroomLinks";
 import type { MyAssignmentLink } from "../types/classroom-links.types";
@@ -44,120 +39,6 @@ const HEADINGS = [
   "สถานะ",
   "เครื่องมือ",
 ] as const;
-
-/**
- * What became of one assignment: everyone who opened it, and every register
- * taken through it, each as a moment in time — laid out the way a student's
- * profile lays out their attendance.
- */
-function AssignmentUsageDialog({
-  access,
-  link,
-  onClose,
-}: {
-  access: CheckInAccess;
-  link: MyAssignmentLink;
-  onClose: () => void;
-}) {
-  const usage = useMyAssignmentUsage(access, link.id);
-
-  return (
-    <Dialog open onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="max-w-3xl" onClose={onClose}>
-        <DialogHeader>
-          <DialogTitle icon={ScrollText}>การใช้งานลิงก์</DialogTitle>
-          <p className="mt-1 text-sm text-slate-500">
-            {link.classroomLabel} · {link.subjectName} · สร้างเมื่อ{" "}
-            {formatThaiDateTime(link.issuedAt)}
-          </p>
-        </DialogHeader>
-        <DialogBody className="space-y-6">
-          <section className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              ผู้เข้าใช้ลิงก์
-            </h3>
-            {usage.isLoading ? (
-              <SkeletonTable rows={2} />
-            ) : usage.error ? (
-              <ErrorState
-                description="ลองใหม่อีกครั้ง"
-                onRetry={() => void usage.refetch()}
-                title="โหลดการใช้งานไม่สำเร็จ"
-              />
-            ) : usage.data?.opens.length ? (
-              <ul className="space-y-2">
-                {usage.data.opens.map((open) => (
-                  <li
-                    className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
-                    key={`${open.openedAt}-${open.teacherName}`}
-                  >
-                    <span className="font-medium text-slate-800">
-                      {open.teacherName}
-                    </span>
-                    <span className="text-sm text-slate-500">
-                      {formatThaiDateTime(open.openedAt)}
-                      {open.authMethod ? ` · ${open.authMethod}` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">ยังไม่มีใครเปิดลิงก์นี้</p>
-            )}
-          </section>
-
-          <section className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              การเช็กชื่อผ่านลิงก์นี้
-            </h3>
-            {usage.isLoading ? (
-              <SkeletonTable rows={2} />
-            ) : usage.data?.sessions.length ? (
-              <ul className="space-y-2">
-                {usage.data.sessions.map((session) => (
-                  <li
-                    className="space-y-1 rounded-lg border border-slate-200 px-3 py-2"
-                    key={session.id}
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-medium text-slate-800">
-                        {session.classroomLabel} · {session.subjectName}
-                      </span>
-                      <Badge
-                        variant={session.submittedAt ? "success" : "warning"}
-                      >
-                        {session.submittedAt ? "ส่งผลแล้ว" : "ยังไม่ส่งผล"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-slate-500">
-                      เริ่ม {formatThaiDateTime(session.startedAt)}
-                      {session.startedByName
-                        ? ` โดย ${session.startedByName}`
-                        : ""}
-                    </p>
-                    {session.submittedAt ? (
-                      <p className="text-sm text-slate-500">
-                        ส่งผล {formatThaiDateTime(session.submittedAt)}
-                        {session.submittedByName
-                          ? ` โดย ${session.submittedByName}`
-                          : ""}
-                        {` · ข้อยกเว้น ${session.exceptionCount} คน จาก ${session.expectedRosterCount} คน`}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">
-                ยังไม่มีการเช็กชื่อผ่านลิงก์นี้
-              </p>
-            )}
-          </section>
-        </DialogBody>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function statusBadge(link: MyAssignmentLink) {
   if (link.linkStatus === "INACTIVE")
@@ -193,8 +74,10 @@ export function AssignmentLinksPanel({
   subjectName: string | null;
 }) {
   const [scope, setScope] = useState<"SUBJECT" | "ALL">("SUBJECT");
-  const [detail, setDetail] = useState<MyAssignmentLink | null>(null);
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  // Carries where to come back to, so the page's back button lands on this tab
+  // rather than on whatever the surface's default page happens to be.
+  const contextualNavigate = useContextualNavigate();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const readUrl = useMyAssignmentUrl(access);
   const rotate = useRotateMyAssignment(access);
@@ -246,13 +129,9 @@ export function AssignmentLinksPanel({
     const live = link.linkStatus === "ACTIVE";
     return (
       <div className="flex justify-end gap-1.5">
-        <IconButton
-          aria-label={`ดูการใช้งานลิงก์ ${link.classroomLabel} ${link.subjectName}`}
-          icon={ScrollText}
-          onClick={() => setDetail(link)}
-          title="ดูรายละเอียด"
-          variant="view"
-        />
+        {/* Copy leads, as it does on every other row of links in the app: it is
+            the action a row is opened for, and the order is what a reader has
+            already learnt elsewhere. */}
         <IconButton
           aria-label={`คัดลอกลิงก์ ${link.classroomLabel} ${link.subjectName}`}
           disabled={!live || readUrl.isPending}
@@ -260,6 +139,19 @@ export function AssignmentLinksPanel({
           onClick={() => void copy(link)}
           title="คัดลอกลิงก์"
           variant="share"
+        />
+        <IconButton
+          aria-label={`ดูการใช้งานลิงก์ ${link.classroomLabel} ${link.subjectName}`}
+          icon={ScrollText}
+          onClick={() =>
+            contextualNavigate(
+              access === "INTERNAL"
+                ? `/attendance/check-in/links/${link.id}`
+                : `/classroom/links/${link.id}`,
+            )
+          }
+          title="ดูรายละเอียด"
+          variant="view"
         />
         <IconButton
           aria-label={`สร้างลิงก์ใหม่ ${link.classroomLabel} ${link.subjectName}`}
@@ -373,13 +265,6 @@ export function AssignmentLinksPanel({
         </>
       )}
 
-      {detail ? (
-        <AssignmentUsageDialog
-          access={access}
-          link={detail}
-          onClose={() => setDetail(null)}
-        />
-      ) : null}
       <LinkShareDialog
         description="ผู้รับลิงก์ต้องเป็นครูที่ใช้งานอยู่ในโรงเรียนนี้ และยืนยันตัวตนก่อนเช็กชื่อ"
         link={sharedUrl ?? ""}

@@ -25,6 +25,7 @@ import {
   TeacherLineLinkResultPage,
   CompletedPage,
   CurriculumGradesPage,
+  AssignmentLinkUsagePage,
   CurriculumSubjectFormPage,
   CurriculumSubjectsPage,
   ClassroomsPage,
@@ -225,6 +226,15 @@ export const router = createBrowserRouter([
       {
         path: "attendance/check-in",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        // What one issued link did, as a page — the record runs long enough
+        // that a dialog would have to be scrolled and dismissed to read it.
+        path: "attendance/check-in/links/:linkId",
+        element: protectedElement(
+          <AssignmentLinkUsagePage access="INTERNAL" />,
+          "attendance",
+        ),
       },
       {
         path: "attendance/history",
@@ -539,6 +549,13 @@ export const router = createBrowserRouter([
     // tab it came from.
     path: "/classroom/students/:studentId",
     element: withSuspense(<ClassroomLinkStudentPage />),
+  },
+  {
+    // The same record through the link's own door. Sits beside the student
+    // profile route for the same reason: `/classroom/*` belongs to the rooms
+    // page, and these two are pages of their own under it.
+    path: "/classroom/links/:linkId",
+    element: withSuspense(<AssignmentLinkUsagePage access="PUBLIC_LINK" />),
   },
   {
     path: "/check-in",
