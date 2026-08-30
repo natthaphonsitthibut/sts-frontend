@@ -150,6 +150,35 @@ export interface IssuedClassroomLink {
   sessionCount: number;
 }
 
+/**
+ * One assignment the person looking issued, for the tab inside check-in.
+ *
+ * Both doors return this shape — the admin screen reading its account's links
+ * and a teacher reading their own — so the panel does not branch on which one
+ * it is showing.
+ */
+export interface MyAssignmentLink {
+  id: string;
+  linkStatus: "ACTIVE" | "INACTIVE";
+  issuedAt: string;
+  opensAt: string | null;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  classroomId: number;
+  classroomLabel: string;
+  classroomSubjectId: number;
+  subjectName: string;
+  subjectCode: string;
+  openCount: number;
+  sessionCount: number;
+}
+
+export interface MyAssignmentLinkParams {
+  schoolTermId: number;
+  /** Left off to ask for every lesson this term instead of just this one. */
+  classroomSubjectId?: number;
+}
+
 export interface IssuedClassroomLinkParams {
   schoolId: number;
   schoolTermId: number;

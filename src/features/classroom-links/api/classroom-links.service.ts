@@ -10,9 +10,10 @@ import type {
   ClassroomLineGroupInvitation,
   ClassroomLineGroupInvitationInput,
   ClassroomLinkUsage,
-  IssuedClassroomLink,
-  IssuedClassroomLinkParams,
+  MyAssignmentLink,
+  MyAssignmentLinkParams,
 } from "../types/classroom-links.types";
+import type { CheckInAccess } from "../../check-in/types/check-in.types";
 
 interface DataEnvelope<T> {
   success: true;
@@ -30,23 +31,70 @@ async function list(
 }
 
 /** The register of links this school has issued this term — both kinds. */
-async function listIssued(params: IssuedClassroomLinkParams): Promise<{
-  data: IssuedClassroomLink[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
-}> {
-  const response = await apiClient.get<{
-    data: IssuedClassroomLink[];
-    meta: { page: number; limit: number; total: number; totalPages: number };
-  }>("/classroom-attendance-links/issued", { params });
-  return response.data;
+/**
+ * The assignments the caller issued, and the four things they can do to one.
+ *
+ * Two doors, one shape: staff read through the app's own namespace, a teacher
+ * standing in their link reads through the link's. The path is the only
+ * difference — ownership is decided on the server from whichever identity the
+ * request already carries, never from anything sent here.
+ */
+function assignmentPath(access: CheckInAccess, suffix = ""): string {
+  const base =
+    access === "INTERNAL"
+      ? "/classroom-attendance-links/assignments/mine"
+      : "/classroom/assignments/mine";
+  return `${base}${suffix}`;
 }
 
-/** Who opened one link, and every register taken through it. */
-async function getUsage(linkId: string): Promise<ClassroomLinkUsage> {
+async function listMyAssignments(
+  access: CheckInAccess,
+  params: MyAssignmentLinkParams,
+): Promise<MyAssignmentLink[]> {
+  const response = await apiClient.get<{ data: MyAssignmentLink[] }>(
+    assignmentPath(access),
+    { params },
+  );
+  return response.data.data ?? [];
+}
+
+async function getMyAssignmentUsage(
+  access: CheckInAccess,
+  linkId: string,
+): Promise<ClassroomLinkUsage> {
   const response = await apiClient.get<{ data: ClassroomLinkUsage }>(
-    `/classroom-attendance-links/${encodeURIComponent(linkId)}/usage`,
+    assignmentPath(access, `/${encodeURIComponent(linkId)}/usage`),
   );
   return response.data.data;
+}
+
+async function getMyAssignmentUrl(
+  access: CheckInAccess,
+  linkId: string,
+): Promise<string> {
+  const response = await apiClient.get<{ data: { accessUrl: string } }>(
+    assignmentPath(access, `/${encodeURIComponent(linkId)}/link`),
+  );
+  return response.data.data.accessUrl;
+}
+
+async function rotateMyAssignment(
+  access: CheckInAccess,
+  linkId: string,
+): Promise<string> {
+  const response = await apiClient.post<{ data: { accessUrl: string } }>(
+    assignmentPath(access, `/${encodeURIComponent(linkId)}/rotate`),
+  );
+  return response.data.data.accessUrl;
+}
+
+async function deactivateMyAssignment(
+  access: CheckInAccess,
+  linkId: string,
+): Promise<void> {
+  await apiClient.post(
+    assignmentPath(access, `/${encodeURIComponent(linkId)}/deactivate`),
+  );
 }
 
 async function createAssignment(
@@ -149,8 +197,11 @@ async function revokeLineGroupInvitation(input: {
 
 export const classroomLinksService = {
   createAssignment,
-  getUsage,
-  listIssued,
+  listMyAssignments,
+  getMyAssignmentUsage,
+  getMyAssignmentUrl,
+  rotateMyAssignment,
+  deactivateMyAssignment,
   list,
   bulkCreate,
   redisplay,

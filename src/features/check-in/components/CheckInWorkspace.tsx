@@ -49,6 +49,7 @@ import { ClassroomStudentCommentDialog } from "../../school-structure/components
 import { AttendanceImportDialog } from "../../attendance/components/AttendanceImportDialog";
 import { AttendanceQrScannerDialog } from "../../attendance/components/AttendanceQrScannerDialog";
 import { attendanceService } from "../../attendance/api/attendance.service";
+import { AssignmentLinksPanel } from "../../classroom-links/components/AssignmentLinksPanel";
 import { AttendanceAssignmentDialog } from "../../classroom-links/components/AttendanceAssignmentDialog";
 import { useCreateAttendanceAssignment } from "../../classroom-links/hooks/useClassroomLinks";
 import { ClassroomAttendanceHistory } from "../../school-structure/components/ClassroomAttendanceHistory";
@@ -690,7 +691,9 @@ export function CheckInWorkspace({
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const tab =
-    requestedTab === "roster" || requestedTab === "history"
+    requestedTab === "roster" ||
+    requestedTab === "history" ||
+    requestedTab === "links"
       ? requestedTab
       : "attendance";
   const contextualNavigate = useContextualNavigate();
@@ -827,13 +830,22 @@ export function CheckInWorkspace({
           { value: "attendance", label: "เช็กชื่อ" },
           // An assignment covers one lesson on set days — there is no back
           // catalogue for the person covering it to read, and the room's
-          // history is not theirs to browse.
+          // history is not theirs to browse. The same line of reasoning keeps
+          // the links tab away from them: they issued nothing to manage.
           ...(showHistory ? [{ value: "history", label: "ประวัติ" }] : []),
+          ...(showHistory ? [{ value: "links", label: "จัดการลิงก์" }] : []),
         ]}
         value={tab}
       />
 
-      {tab === "history" && room ? (
+      {tab === "links" ? (
+        <AssignmentLinksPanel
+          access={access}
+          classroomSubjectId={workspace.classroomSubjectId ?? null}
+          schoolTermId={workspace.options?.classroom.schoolTermId ?? null}
+          subjectName={activeSubject?.nameTh ?? null}
+        />
+      ) : tab === "history" && room ? (
         <ClassroomAttendanceHistory
           classroomId={room.id}
           source={access === "INTERNAL" ? "INTERNAL" : "CLASSROOM_LINK"}

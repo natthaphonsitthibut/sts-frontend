@@ -5,7 +5,7 @@ import type { CheckInAccess } from "../../check-in/types/check-in.types";
 import type {
   AttendanceAssignmentPayload,
   ClassroomLinkListParams,
-  IssuedClassroomLinkParams,
+  MyAssignmentLinkParams,
 } from "../types/classroom-links.types";
 
 const KEY = "classroom-links";
@@ -48,22 +48,67 @@ export function useCreateAttendanceAssignment(
   });
 }
 
-/** The register of issued links, and what became of one of them. */
-export function useIssuedClassroomLinks(
-  params: IssuedClassroomLinkParams | null,
+/**
+ * The assignments the person looking issued, and the actions on one of them.
+ *
+ * Keyed by `access` as well as the filter: the staff screen and a teacher's own
+ * link are different registers of the same kind of link, and one must never be
+ * served from the other's cache.
+ */
+export function useMyAssignmentLinks(
+  access: CheckInAccess,
+  params: MyAssignmentLinkParams | null,
 ) {
   return useQuery({
-    queryKey: [KEY, "issued", params],
-    queryFn: () => classroomLinksService.listIssued(params!),
+    queryKey: [KEY, "mine", access, params],
+    queryFn: () => classroomLinksService.listMyAssignments(access, params!),
     enabled: Boolean(params),
   });
 }
 
-export function useClassroomLinkUsage(linkId: string | null) {
+export function useMyAssignmentUsage(
+  access: CheckInAccess,
+  linkId: string | null,
+) {
   return useQuery({
-    queryKey: [KEY, "usage", linkId],
-    queryFn: () => classroomLinksService.getUsage(linkId!),
+    queryKey: [KEY, "mine-usage", access, linkId],
+    queryFn: () => classroomLinksService.getMyAssignmentUsage(access, linkId!),
     enabled: Boolean(linkId),
+  });
+}
+
+function useRefreshMyAssignments() {
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: [KEY, "mine"] });
+}
+
+/** Reads the link back out to share again. Nothing changes; the token stands. */
+export function useMyAssignmentUrl(access: CheckInAccess) {
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.getMyAssignmentUrl(access, linkId),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+/** A new token: whoever holds the old link is locked out from this moment. */
+export function useRotateMyAssignment(access: CheckInAccess) {
+  const refresh = useRefreshMyAssignments();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.rotateMyAssignment(access, linkId),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useDeactivateMyAssignment(access: CheckInAccess) {
+  const refresh = useRefreshMyAssignments();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.deactivateMyAssignment(access, linkId),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
   });
 }
 
