@@ -50,7 +50,12 @@ export function MultiSelect({
   const chipsRef = useRef<HTMLDivElement>(null);
   // Drag-to-pan for the single-row field: a trackpad swipe is not available to
   // everyone, so the chips can also be pulled sideways with the pointer.
-  const dragRef = useRef({ active: false, moved: false, startX: 0, startScroll: 0 });
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    startScroll: 0,
+  });
   const generatedListId = useId();
   const listId = `${id ?? generatedListId}-listbox`;
   const [open, setOpen] = useState(false);
@@ -106,7 +111,8 @@ export function MultiSelect({
 
   function focusOption(edge: "first" | "last"): void {
     requestAnimationFrame(() => {
-      const optionButtons = listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
+      const optionButtons =
+        listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
       optionButtons?.[edge === "first" ? 0 : optionButtons.length - 1]?.focus();
     });
   }
@@ -123,9 +129,23 @@ export function MultiSelect({
           singleRow
             ? "h-10 flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             : "max-h-[4.75rem] flex-wrap overflow-y-auto",
-          singleRow && selected.length > 0 && "cursor-grab active:cursor-grabbing",
+          singleRow &&
+            selected.length > 0 &&
+            "cursor-grab active:cursor-grabbing",
           disabled && "cursor-not-allowed bg-slate-100 text-slate-500",
         )}
+        // The whole field opens the list, not just the sliver of text input
+        // between the chips: the chevron is decorative and the padding it sits
+        // in was dead space, so the control looked pressable in places that
+        // did nothing.
+        onClick={(event) => {
+          if (disabled) return;
+          // A chip's remove button owns its own click; opening the list on top
+          // of removing is a second action nobody asked for.
+          if ((event.target as HTMLElement).closest("button")) return;
+          setOpen(true);
+          triggerRef.current?.focus();
+        }}
         onClickCapture={(event) => {
           // A pan that ended on a chip must not also remove it.
           if (!dragRef.current.moved) return;
@@ -214,19 +234,29 @@ export function MultiSelect({
               triggerRef.current?.focus();
               return;
             }
-            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+              return;
             event.preventDefault();
             const optionButtons = Array.from(
-              listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [],
+              listRef.current?.querySelectorAll<HTMLButtonElement>(
+                '[role="option"]',
+              ) ?? [],
             );
             if (optionButtons.length === 0) return;
             if (event.key === "Home" || event.key === "End") {
-              optionButtons[event.key === "Home" ? 0 : optionButtons.length - 1]?.focus();
+              optionButtons[
+                event.key === "Home" ? 0 : optionButtons.length - 1
+              ]?.focus();
               return;
             }
-            const current = optionButtons.indexOf(document.activeElement as HTMLButtonElement);
+            const current = optionButtons.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
             const direction = event.key === "ArrowDown" ? 1 : -1;
-            optionButtons[(current + direction + optionButtons.length) % optionButtons.length]?.focus();
+            optionButtons[
+              (current + direction + optionButtons.length) %
+                optionButtons.length
+            ]?.focus();
           }}
           ref={listRef}
           role="listbox"
