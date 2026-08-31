@@ -58,15 +58,16 @@ export interface HomeDashboardSummaryData {
   attentionItems: HomeDashboardAttentionItem[];
   riskAreaRanking?: HomeDashboardRiskAreaRanking;
   casePipeline?: HomeDashboardCasePipeline | null;
-  causeCategoryDistribution?: { key: string; label: string; count: number }[];
-  monthlySuccessRates?: { month: string; opened: number; resolved: number }[];
+  monthlySuccessRates?: HomeDashboardMonthlySuccessRate[];
 }
 
 export type HomeDashboardRiskAreaDimension =
   | "PROVINCE"
   | "DISTRICT"
   | "SUB_DISTRICT"
-  | "SCHOOL";
+  | "SCHOOL"
+  | "GRADE"
+  | "ROOM";
 
 export interface HomeDashboardRiskAreaPoint {
   key: string;
@@ -78,6 +79,8 @@ export interface HomeDashboardRiskAreaPoint {
     district?: string;
     subDistrict?: string;
     schoolId?: number;
+    grade?: string;
+    room?: string;
   };
 }
 
@@ -130,6 +133,16 @@ export interface HomeDashboardTrendsData {
   } | null;
   casePipeline: HomeDashboardCasePipeline | null;
   caseMovement: HomeDashboardCaseMovementPoint[] | null;
+  gradeRiskDistribution: HomeDashboardGradeRiskPoint[] | null;
+}
+
+export interface HomeDashboardGradeRiskPoint {
+  key: string;
+  label: string;
+  HIGH: number;
+  WATCH: number;
+  NORMAL: number;
+  total: number;
 }
 
 export interface HomeDashboardOption {
@@ -148,6 +161,79 @@ export interface HomeDashboardFilterOptionsData {
     grades: HomeDashboardOption[];
     rooms: HomeDashboardOption[];
   };
+}
+
+export interface HomeDashboardMonthlySuccessRate {
+  month: string;
+  opened: number;
+  resolved: number;
+}
+
+export interface HomeDashboardLabelCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+/**
+ * `atRiskStudents` คือสถานะ ณ ตอนนี้ (HIGH/WATCH) เด็กที่ปิดเคสแล้วและระดับความเสี่ยง
+ * กลับมาปกติจะหลุดออกจากตัวเลขนี้ ส่วน `recordedStudents` คือประชากรที่กราฟด้านล่าง
+ * อธิบายจริง ๆ — ทุกคนที่มีผลการติดตามในขอบเขตนี้ ไม่ว่าตอนนี้จะยังเสี่ยงอยู่หรือไม่
+ */
+export interface HomeDashboardFollowUpCoverage {
+  atRiskStudents: number;
+  followedUpStudents: number;
+  pendingStudents: number;
+  recordedStudents: number;
+}
+
+export interface HomeDashboardProblemCategoryPoint {
+  key: string;
+  label: string;
+  followUp: number;
+  observation: number;
+  total: number;
+}
+
+export interface HomeDashboardProblemOutcomeRow {
+  key: string;
+  label: string;
+  total: number;
+  outcomes: HomeDashboardLabelCount[];
+}
+
+export interface HomeDashboardProblemAreaRow {
+  key: string;
+  label: string;
+  total: number;
+  counts: Record<string, number>;
+}
+
+export interface HomeDashboardProblemAreaMatrix {
+  dimension: HomeDashboardRiskAreaDimension;
+  dimensionLabel: string;
+  categories: Array<{ key: string; label: string }>;
+  rows: HomeDashboardProblemAreaRow[];
+}
+
+export interface HomeDashboardReferralFunnel {
+  referred: number;
+  accepted: number;
+  pending: number;
+}
+
+export interface HomeDashboardFollowUpInsightsData {
+  generatedAt: string;
+  scopeLabel: string;
+  coverage: HomeDashboardFollowUpCoverage;
+  problemCategories: HomeDashboardProblemCategoryPoint[];
+  otherProblemDetails: string[];
+  absenceReasonCategories: HomeDashboardLabelCount[];
+  concernLevels: HomeDashboardLabelCount[];
+  problemByOutcome: HomeDashboardProblemOutcomeRow[];
+  problemByArea: HomeDashboardProblemAreaMatrix | null;
+  unreachableReasons: HomeDashboardLabelCount[];
+  referralFunnel: HomeDashboardReferralFunnel;
 }
 
 export interface HomeDashboardResponse<T> {

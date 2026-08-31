@@ -29,10 +29,11 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { AttendanceTrendChart } from "../components/AttendanceTrendChart";
 import { CasePipelineChart } from "../components/CasePipelineChart";
-import { CauseCategoryChart } from "../components/CauseCategoryChart";
-import { MonthlySuccessRateChart } from "../components/MonthlySuccessRateChart";
+import { GradeRiskChart } from "../components/GradeRiskChart";
 import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
+import { RiskInsightsPanel } from "../components/RiskInsightsPanel";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
@@ -115,6 +116,12 @@ function getRiskAreaBackAction(
   label: string;
   next: Partial<HomeDashboardFilters>;
 } | null {
+  if (filters.room) {
+    return { label: "กลับไปดูทุกห้องในชั้นนี้", next: { room: undefined } };
+  }
+  if (filters.grade) {
+    return { label: "กลับไปดูทุกชั้นในโรงเรียน", next: { grade: undefined } };
+  }
   if (schoolLocked) return null;
   if (filters.schoolId) {
     return {
@@ -418,17 +425,39 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
 
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
+  const { canOpen } = usePermissions();
   const { filters, reset, schoolLocked, updateFilter } = useDashboardFilters();
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
   const {
     summary,
     filterOptions,
+    trends,
+    followUpInsights,
     isLoading,
     isError,
     isFilterOptionsError,
+    isFollowUpInsightsError,
     refetch,
     refetchFilterOptions,
+    refetchFollowUpInsights,
   } = useHomeDashboard(filters);
+  // One school on a national choropleth is an empty map; ชั้น/ห้อง is the unit a
+  // school actually works with, so the whole slot swaps rather than showing a
+  // greyed-out country.
+  const isSchoolScope = filters.schoolId !== undefined;
+  // Gated the same way the metric cards are: a card the account cannot open
+  // stays a plain card rather than a link into /forbidden.
+  const highRiskPath = !canOpen("/student-risk-report")
+    ? null
+    : destination("/student-risk-report", {
+        ...(filters.province ? { province: filters.province } : {}),
+        ...(filters.district ? { district: filters.district } : {}),
+        ...(filters.subDistrict ? { subDistrict: filters.subDistrict } : {}),
+        ...(filters.schoolId ? { schoolId: filters.schoolId } : {}),
+        ...(filters.grade ? { grade: filters.grade } : {}),
+        ...(filters.room ? { room: filters.room } : {}),
+        riskTier: "HIGH",
+      });
 
   return (
     <PageShell>
@@ -487,32 +516,37 @@ export function MainPage() {
             )}
           >
             <div className="flex flex-col gap-5">
-              <Suspense
-                fallback={
-                  <div
-                    aria-label="กำลังโหลดแผนที่ประเทศไทย"
-                    className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
-                    role="status"
-                  />
-                }
-              >
-                <GeoMapSVG
-                  backLabel={riskAreaBackAction?.label}
-                  disabled={schoolLocked}
-                  filters={filters}
-                  onBack={
-                    riskAreaBackAction
-                      ? () => updateFilter(riskAreaBackAction.next)
-                      : undefined
-                  }
-                  onSelect={schoolLocked ? undefined : updateFilter}
-                  ranking={summary.riskAreaRanking}
+              {isSchoolScope ? (
+                <GradeRiskChart
+                  onSelect={(grade) => updateFilter({ grade })}
+                  points={trends?.gradeRiskDistribution ?? []}
                 />
-              </Suspense>
+              ) : (
+                <Suspense
+                  fallback={
+                    <div
+                      aria-label="กำลังโหลดแผนที่ประเทศไทย"
+                      className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
+                      role="status"
+                    />
+                  }
+                >
+                  <GeoMapSVG
+                    backLabel={riskAreaBackAction?.label}
+                    disabled={schoolLocked}
+                    filters={filters}
+                    onBack={
+                      riskAreaBackAction
+                        ? () => updateFilter(riskAreaBackAction.next)
+                        : undefined
+                    }
+                    onSelect={schoolLocked ? undefined : updateFilter}
+                    ranking={summary.riskAreaRanking}
+                  />
+                </Suspense>
+              )}
 
-              {summary.monthlySuccessRates ? (
-                <MonthlySuccessRateChart data={summary.monthlySuccessRates} />
-              ) : null}
+              <AttendanceTrendChart points={trends?.attendanceTrend ?? []} />
             </div>
 
             <div className="flex flex-col gap-5">
@@ -524,15 +558,8 @@ export function MainPage() {
                       ? () => updateFilter(riskAreaBackAction.next)
                       : undefined
                   }
-                  onSelect={
-                    schoolLocked ? undefined : (filter) => updateFilter(filter)
-                  }
+                  onSelect={(filter) => updateFilter(filter)}
                   ranking={summary.riskAreaRanking}
-                />
-              ) : null}
-              {summary.causeCategoryDistribution ? (
-                <CauseCategoryChart
-                  distribution={summary.causeCategoryDistribution}
                 />
               ) : null}
               {summary.casePipeline ? (
@@ -543,6 +570,31 @@ export function MainPage() {
               ) : null}
             </div>
           </div>
+
+          {isFollowUpInsightsError ? (
+            <Alert variant="destructive">
+              <AlertTitle>โหลดภาพรวมความเสี่ยงไม่สำเร็จ</AlertTitle>
+              <AlertDescription>
+                ตัวเลขส่วนอื่นของหน้าหลักยังใช้งานได้ตามปกติ
+              </AlertDescription>
+              <Button
+                className="mt-3"
+                size="sm"
+                variant="outline"
+                onClick={() => void refetchFollowUpInsights()}
+              >
+                โหลดใหม่
+              </Button>
+            </Alert>
+          ) : !followUpInsights ? (
+            <SkeletonCards count={1} />
+          ) : (
+            <RiskInsightsPanel
+              insights={followUpInsights}
+              monthlySuccessRates={summary.monthlySuccessRates ?? null}
+              unclassifiedPath={highRiskPath}
+            />
+          )}
         </div>
       )}
     </PageShell>

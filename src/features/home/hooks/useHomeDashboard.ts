@@ -17,21 +17,51 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
     placeholderData: keepPreviousData,
   });
 
+  // Trends and follow-up insights are their own requests so the counts and the
+  // ranking still paint immediately; a slow aggregate delays its own card only.
+  const trendsQuery = useQuery({
+    queryKey: [...HOME_DASHBOARD_QUERY_KEY, "trends", filters],
+    queryFn: () => homeDashboardService.getTrends(filters),
+    placeholderData: keepPreviousData,
+  });
+
+  const followUpInsightsQuery = useQuery({
+    queryKey: [...HOME_DASHBOARD_QUERY_KEY, "follow-up-insights", filters],
+    queryFn: () => homeDashboardService.getFollowUpInsights(filters),
+    placeholderData: keepPreviousData,
+  });
+
   return {
     summary: summaryQuery.data,
     filterOptions: filterOptionsQuery.data,
+    trends: trendsQuery.data,
+    followUpInsights: followUpInsightsQuery.data,
     isLoading: summaryQuery.isLoading,
-    isFetching: summaryQuery.isFetching || filterOptionsQuery.isFetching,
+    isTrendsLoading: trendsQuery.isLoading,
+    isFollowUpInsightsLoading: followUpInsightsQuery.isLoading,
+    isFetching:
+      summaryQuery.isFetching ||
+      filterOptionsQuery.isFetching ||
+      trendsQuery.isFetching ||
+      followUpInsightsQuery.isFetching,
     isError: summaryQuery.isError,
+    isTrendsError: trendsQuery.isError,
+    isFollowUpInsightsError: followUpInsightsQuery.isError,
     isFilterOptionsError: filterOptionsQuery.isError,
     dataUpdatedAt: Math.max(
       summaryQuery.dataUpdatedAt,
       filterOptionsQuery.dataUpdatedAt,
+      trendsQuery.dataUpdatedAt,
+      followUpInsightsQuery.dataUpdatedAt,
     ),
     refetch: () => {
       void summaryQuery.refetch();
       void filterOptionsQuery.refetch();
+      void trendsQuery.refetch();
+      void followUpInsightsQuery.refetch();
     },
     refetchFilterOptions: () => filterOptionsQuery.refetch(),
+    refetchTrends: () => trendsQuery.refetch(),
+    refetchFollowUpInsights: () => followUpInsightsQuery.refetch(),
   };
 }
