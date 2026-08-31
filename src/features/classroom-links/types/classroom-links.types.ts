@@ -198,6 +198,10 @@ export interface ClassroomLinkOpen {
 /** One register taken through a link. */
 export interface ClassroomLinkSession {
   id: string;
+  schoolId: number;
+  gradeLevelId: number;
+  classroomId: number;
+  classroomSubjectId: number;
   attendanceDate: string;
   startedAt: string;
   submittedAt: string | null;
@@ -211,6 +215,12 @@ export interface ClassroomLinkSession {
 }
 
 export interface ClassroomLinkUsage {
+  assignment: {
+    classroomId: number;
+    classroomLabel: string;
+    classroomSubjectId: number;
+    subjectName: string;
+  };
   opens: ClassroomLinkOpen[];
   sessions: ClassroomLinkSession[];
 }

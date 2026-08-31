@@ -20,7 +20,11 @@ export function useClassroomLinks(params: ClassroomLinkListParams | null) {
 
 function useRefreshClassroomLinks() {
   const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: [KEY, "list"] });
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: [KEY, "list"] }),
+      client.invalidateQueries({ queryKey: [KEY, "mine"] }),
+    ]);
 }
 
 /**

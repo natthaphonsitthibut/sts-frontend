@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ScrollText } from "lucide-react";
+import { ArrowLeft, Eye, ScrollText } from "lucide-react";
 import { useLocation, useParams } from "react-router-dom";
 import { Badge, Card } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
@@ -12,10 +12,14 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { formatThaiDateTime } from "../../../lib/date-time";
+import {
+  formatThaiDateTime,
+  normalizeCalendarDateKey,
+} from "../../../lib/date-time";
 import { checkInService } from "../../check-in/api/check-in.service";
 import type { CheckInAccess } from "../../check-in/types/check-in.types";
 import { useMyAssignmentUsage } from "../hooks/useClassroomLinks";
+import type { ClassroomLinkSession } from "../types/classroom-links.types";
 
 /**
  * Everything one assignment link did, on a page of its own.
@@ -47,16 +51,34 @@ export function AssignmentLinkUsagePage({ access }: { access: CheckInAccess }) {
     retry: false,
   });
   const authentication = context.data?.authentication;
+  const assignmentLabel = usage.data
+    ? `${usage.data.assignment.classroomLabel} · ${usage.data.assignment.subjectName}`
+    : "กำลังโหลดข้อมูลรายวิชา";
+
+  function checkInTarget(session: ClassroomLinkSession): string {
+    const attendanceDate = normalizeCalendarDateKey(session.attendanceDate);
+    if (!internal) {
+      const params = new URLSearchParams({ date: attendanceDate });
+      return `/classroom/check-in/${session.classroomId}/${session.classroomSubjectId}?${params.toString()}`;
+    }
+    const params = new URLSearchParams({
+      schoolId: String(session.schoolId),
+      gradeId: String(session.gradeLevelId),
+      classroomId: String(session.classroomId),
+      classroomSubjectId: String(session.classroomSubjectId),
+      date: attendanceDate,
+    });
+    return `/attendance/check-in?${params.toString()}`;
+  }
 
   const header = (
     <PageToolbar
       // The staff check-in page is deliberately left out of navigation trails
       // (it is a tabbed page, not a step), so nothing upstream supplies a crumb
       // and the row would collapse. Name the parent outright; on the link side
-      // the rooms page is the only thing above this.
-
+      // use the exact classroom and subject returned for this assignment.
       breadcrumbTrail={
-        internal ? undefined : [{ label: "ห้องเรียนของฉัน", to: "/classroom" }]
+        internal ? undefined : [{ label: assignmentLabel, to: backTo }]
       }
       icon={ScrollText}
       parentBreadcrumb={
@@ -87,85 +109,112 @@ export function AssignmentLinkUsagePage({ access }: { access: CheckInAccess }) {
       title="โหลดการใช้งานลิงก์ไม่สำเร็จ"
     />
   ) : (
-    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-      <Card className="p-5">
+    <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
+      <Card className="flex h-[min(70dvh,42rem)] min-h-[28rem] flex-col p-5">
         <h2 className="mb-1 text-lg font-bold text-slate-800">
           ผู้เข้าใช้ลิงก์
         </h2>
         <p className="mb-4 text-sm text-slate-500">
           ทุกครั้งที่มีคนเปิดลิงก์นี้ เรียงจากครั้งล่าสุด
         </p>
-        {usage.data?.opens.length ? (
-          <ul className="space-y-2">
-            {usage.data.opens.map((open) => (
-              <li
-                className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
-                key={`${open.openedAt}-${open.teacherName}`}
-              >
-                <span className="font-medium text-slate-800">
-                  {open.teacherName}
-                </span>
-                <span className="text-sm text-slate-500">
-                  {formatThaiDateTime(open.openedAt)}
-                  {open.authMethod ? ` · ${open.authMethod}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState
-            description="ลิงก์ถูกสร้างแล้วแต่ยังไม่มีใครกดเข้ามา"
-            icon={ScrollText}
-            title="ยังไม่มีใครเปิดลิงก์นี้"
-          />
-        )}
+        <div
+          aria-label="รายการผู้เข้าใช้ลิงก์"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          role="region"
+          tabIndex={0}
+        >
+          {usage.data?.opens.length ? (
+            <ul className="space-y-2">
+              {usage.data.opens.map((open) => (
+                <li
+                  className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
+                  key={`${open.openedAt}-${open.teacherName}`}
+                >
+                  <span className="font-medium text-slate-800">
+                    {open.teacherName}
+                  </span>
+                  <span className="text-sm text-slate-500">
+                    {formatThaiDateTime(open.openedAt)}
+                    {open.authMethod ? ` · ${open.authMethod}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              description="ลิงก์ถูกสร้างแล้วแต่ยังไม่มีใครกดเข้ามา"
+              icon={ScrollText}
+              title="ยังไม่มีใครเปิดลิงก์นี้"
+            />
+          )}
+        </div>
       </Card>
 
-      <Card className="p-5">
+      <Card className="flex h-[min(70dvh,42rem)] min-h-[28rem] flex-col p-5">
         <h2 className="mb-1 text-lg font-bold text-slate-800">
           การเช็กชื่อผ่านลิงก์นี้
         </h2>
         <p className="mb-4 text-sm text-slate-500">
           แต่ละคาบที่เช็กผ่านลิงก์ ตั้งแต่เริ่มจนส่งผล
         </p>
-        {usage.data?.sessions.length ? (
-          <ul className="space-y-2">
-            {usage.data.sessions.map((session) => (
-              <li
-                className="space-y-1 rounded-lg border border-slate-200 px-3 py-2"
-                key={session.id}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium text-slate-800">
-                    {session.classroomLabel} · {session.subjectName}
-                  </span>
-                  <Badge variant={session.submittedAt ? "success" : "warning"}>
-                    {session.submittedAt ? "ส่งผลแล้ว" : "ยังไม่ส่งผล"}
-                  </Badge>
-                </div>
-                <p className="text-sm text-slate-500">
-                  เริ่ม {formatThaiDateTime(session.startedAt)}
-                  {session.startedByName ? ` โดย ${session.startedByName}` : ""}
-                </p>
-                {session.submittedAt ? (
+        <div
+          aria-label="รายการการเช็กชื่อผ่านลิงก์"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          role="region"
+          tabIndex={0}
+        >
+          {usage.data?.sessions.length ? (
+            <ul className="space-y-2">
+              {usage.data.sessions.map((session) => (
+                <li
+                  className="space-y-1 rounded-lg border border-slate-200 px-3 py-2"
+                  key={session.id}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium text-slate-800">
+                      {session.classroomLabel} · {session.subjectName}
+                    </span>
+                    <Badge
+                      variant={session.submittedAt ? "success" : "warning"}
+                    >
+                      {session.submittedAt ? "ส่งผลแล้ว" : "ยังไม่ส่งผล"}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-slate-500">
-                    ส่งผล {formatThaiDateTime(session.submittedAt)}
-                    {session.submittedByName
-                      ? ` โดย ${session.submittedByName}`
+                    เริ่ม {formatThaiDateTime(session.startedAt)}
+                    {session.startedByName
+                      ? ` โดย ${session.startedByName}`
                       : ""}
-                    {` · ข้อยกเว้น ${session.exceptionCount} คน จาก ${session.expectedRosterCount} คน`}
                   </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState
-            description="ยังไม่มีใครเช็กชื่อผ่านลิงก์นี้"
-            icon={ScrollText}
-            title="ยังไม่มีการเช็กชื่อ"
-          />
-        )}
+                  {session.submittedAt ? (
+                    <p className="text-sm text-slate-500">
+                      ส่งผล {formatThaiDateTime(session.submittedAt)}
+                      {session.submittedByName
+                        ? ` โดย ${session.submittedByName}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  <div className="flex justify-end pt-1">
+                    <NavButton
+                      icon={Eye}
+                      size="sm"
+                      to={checkInTarget(session)}
+                      variant="outline"
+                    >
+                      ดูการเช็กชื่อ
+                    </NavButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              description="ยังไม่มีใครเช็กชื่อผ่านลิงก์นี้"
+              icon={ScrollText}
+              title="ยังไม่มีการเช็กชื่อ"
+            />
+          )}
+        </div>
       </Card>
     </div>
   );
