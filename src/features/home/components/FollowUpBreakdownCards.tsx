@@ -119,19 +119,44 @@ export function ReferralFunnelSection({
       description="เคสที่ส่งต่อหน่วยงานภายนอก และส่วนที่ยังไม่มีหน่วยงานรับเรื่อง"
       title="การส่งต่อหน่วยงาน"
     >
-      <div className="grid gap-3 sm:grid-cols-3" data-referral-funnel="true">
-        {items.map((item) => (
-          <div
-            className="rounded-lg border border-slate-200 bg-white px-4 py-3"
-            data-referral-metric={item.key}
-            key={item.key}
-          >
-            <div className="text-sm text-content-secondary">{item.label}</div>
-            <div className="text-2xl font-bold tabular-nums text-slate-950">
-              {item.value.toLocaleString("th-TH")} เคส
+      <div data-referral-funnel="true">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {items.map((item) => (
+            <div
+              className="rounded-lg border border-slate-200 bg-white px-4 py-3"
+              data-referral-metric={item.key}
+              key={item.key}
+            >
+              <div className="text-sm text-content-secondary">{item.label}</div>
+              <div className="text-2xl font-bold tabular-nums text-slate-950">
+                {item.value.toLocaleString("th-TH")} เคส
+              </div>
             </div>
+          ))}
+        </div>
+
+        {funnel.byAgency.length > 0 ? (
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <h4 className="text-sm font-semibold text-slate-700">
+              ส่งไปหน่วยงานไหนบ้าง
+            </h4>
+            <ul className="mt-2 space-y-1.5" data-referral-agencies>
+              {funnel.byAgency.map((agency) => (
+                <li
+                  className="flex items-baseline justify-between gap-3 text-sm"
+                  key={agency.key}
+                >
+                  <span className="truncate text-slate-600">
+                    {agency.label}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-slate-900">
+                    {agency.count.toLocaleString("th-TH")} เคส
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-        ))}
+        ) : null}
       </div>
     </PanelSection>
   );

@@ -220,6 +220,7 @@ export interface HomeDashboardReferralFunnel {
   referred: number;
   accepted: number;
   pending: number;
+  byAgency: HomeDashboardLabelCount[];
 }
 
 export interface HomeDashboardFollowUpInsightsData {
