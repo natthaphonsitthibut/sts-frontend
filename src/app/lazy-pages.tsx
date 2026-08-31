@@ -279,14 +279,6 @@ export const TeacherLineAraIdChallengePage = lazy(() =>
   ),
 );
 
-export const TeacherLineInvitationPage = lazy(() =>
-  import("../features/teacher-line/pages/TeacherLineInvitationPage").then(
-    (module) => ({
-      default: module.TeacherLineInvitationPage,
-    }),
-  ),
-);
-
 export const TeacherLineLinkResultPage = lazy(() =>
   import("../features/teacher-line/pages/TeacherLineLinkResultPage").then(
     (module) => ({

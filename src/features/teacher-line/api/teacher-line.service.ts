@@ -5,12 +5,6 @@ interface DataEnvelope<T> {
   data: T;
 }
 
-export interface TeacherLineInvitationSummary {
-  teacherName: string;
-  maskedEmail: string;
-  expiresAt: string;
-}
-
 export interface TeacherLineGroupInvitationSummary {
   schoolId: number;
   schoolName: string;
@@ -59,28 +53,9 @@ async function invitationPost<T>(
   }
 }
 
-async function resolveInvitation(
-  token: string,
-): Promise<TeacherLineInvitationSummary> {
-  return invitationPost(
-    "/line/link/invitation/resolve",
-    { token },
-    "ลิงก์ยืนยัน LINE ไม่ถูกต้องหรือหมดอายุแล้ว",
-  );
-}
-
 async function startGroupGoogle(token: string): Promise<string> {
   const result = await invitationPost<{ authorizationUrl: string }>(
     "/line/link/google/start",
-    { token },
-    "เปิด Google Login ไม่สำเร็จ",
-  );
-  return result.authorizationUrl;
-}
-
-async function startInvitationGoogle(token: string): Promise<string> {
-  const result = await invitationPost<{ authorizationUrl: string }>(
-    "/line/link/invitation/google/start",
     { token },
     "เปิด Google Login ไม่สำเร็จ",
   );
@@ -93,18 +68,6 @@ async function startDevelopmentGroupGoogle(
 ): Promise<string> {
   const result = await invitationPost<{ authorizationUrl: string }>(
     "/line/link/google/development",
-    { token, email },
-    "ตรวจสอบอีเมลครูไม่สำเร็จ",
-  );
-  return result.authorizationUrl;
-}
-
-async function startDevelopmentInvitationGoogle(
-  token: string,
-  email: string,
-): Promise<string> {
-  const result = await invitationPost<{ authorizationUrl: string }>(
-    "/line/link/invitation/google/development",
     { token, email },
     "ตรวจสอบอีเมลครูไม่สำเร็จ",
   );
@@ -186,11 +149,8 @@ export const teacherLineService = {
   beginAraIdChallenge,
   approveAraIdChallenge,
   pollAraIdChallenge,
-  resolveInvitation,
   startGroupGoogle,
-  startInvitationGoogle,
   startDevelopmentGroupGoogle,
-  startDevelopmentInvitationGoogle,
   isEnabled,
   startAuthorization,
 };

@@ -18,7 +18,6 @@ import {
   AttendanceCheckInPage,
   ClassroomLinkStudentPage,
   PublicCheckInPage,
-  TeacherLineInvitationPage,
   TeacherLineLinkPage,
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
@@ -524,10 +523,6 @@ export const router = createBrowserRouter([
   {
     path: "/line-link/araid",
     element: withSuspense(<TeacherLineAraIdChallengePage />),
-  },
-  {
-    path: "/line-link/invite",
-    element: withSuspense(<TeacherLineInvitationPage />),
   },
   {
     path: "/line-link/result",
