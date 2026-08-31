@@ -19,6 +19,12 @@ import {
 } from "../../../hooks/useSyncedSearchParams";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import {
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
@@ -167,6 +173,13 @@ export function StudentListPage({
   );
   const effectiveGrade = scope.gradeLocked ? scope.grade : grade;
   const effectiveRoom = scope.roomLocked ? scope.room : room;
+  const scopeSummary = useScopeSummary(schoolArea, {
+    schoolId: scope.schoolId,
+    // "ALL" is this page's own sentinel for an open level; the summary reads
+    // an open level as an empty one.
+    grade: effectiveGrade === "ALL" ? "" : effectiveGrade,
+    room: effectiveRoom === "ALL" ? "" : effectiveRoom,
+  });
   const selectedSchoolId = scope.schoolId;
   const showSchoolSelector = !scope.schoolLocked;
 
@@ -213,8 +226,7 @@ export function StudentListPage({
     ],
   );
 
-  const { students, meta, isLoading, isError, refetch, dataUpdatedAt } =
-    useStudents(query);
+  const { students, meta, isLoading, isError, refetch } = useStudents(query);
   const { options } = useStudentFilterOptions(
     selectedSchoolId
       ? {
@@ -266,6 +278,24 @@ export function StudentListPage({
     setPage(1);
     clearSelectedStudents();
   }
+
+  // One school picker, both toolbars: the list tab and the export/history tab
+  // narrow by the same scope and must offer it the same way.
+  const schoolSelector = showSchoolSelector ? (
+    <Combobox
+      ariaLabel="กรองตามโรงเรียน"
+      emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
+      onChange={handleSchoolChange}
+      onSearchChange={schoolArea.setSchoolSearch}
+      options={schools.map((school) => ({
+        value: String(school.id),
+        label: school.name,
+        description: formatSchoolArea(school),
+      }))}
+      placeholder={SCOPE_REQUIRED_LABEL.school}
+      value={selectedSchoolId}
+    />
+  ) : null;
 
   function handleGradeChange(value: string): void {
     setGrade(value);
@@ -400,13 +430,15 @@ export function StudentListPage({
               </Button>
             ) : undefined
           }
+          scope={scopeSummary}
+          scopeEditable={
+            showSchoolSelector || !scope.gradeLocked || !scope.roomLocked
+          }
+          onClearScope={handleClearFilters}
           grade={effectiveGrade}
           gradeLocked={scope.gradeLocked || !selectedSchoolId}
           gradeOptions={options.grades}
           onGradeChange={handleGradeChange}
-          onRefresh={refetch}
-          refreshDisabled={!selectedSchoolId}
-          updatedAt={dataUpdatedAt}
           onClearFilters={handleClearFilters}
           onRoomChange={handleRoomChange}
           onSearchChange={handleSearchChange}
@@ -416,23 +448,7 @@ export function StudentListPage({
             scope.roomLocked || !selectedSchoolId || effectiveGrade === "ALL"
           }
           roomOptions={options.rooms}
-          schoolFilters={
-            showSchoolSelector ? (
-              <Combobox
-                ariaLabel="กรองตามโรงเรียน"
-                className="w-full"
-                emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
-                onChange={handleSchoolChange}
-                onSearchChange={schoolArea.setSchoolSearch}
-                options={schools.map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                }))}
-                placeholder="เลือกโรงเรียน"
-                value={selectedSchoolId}
-              />
-            ) : null
-          }
+          schoolFilters={schoolSelector}
           searchQuery={searchQuery}
           studentStatusCode={effectiveStudentStatusCode}
           studentStatusOptions={studentStatusFilterOptions}
@@ -455,23 +471,14 @@ export function StudentListPage({
               ? "ส่งคำขอ อนุมัติ และดาวน์โหลดข้อมูลส่วนบุคคลตามขอบเขตสิทธิ์"
               : "ดูประวัติการเพิ่ม แก้ไข และลบข้อมูลนักเรียนย้อนหลังตามขอบเขตสิทธิ์"
           }
-          onClearFilters={handleClearFilters}
-          filters={
-            showSchoolSelector ? (
-              <Combobox
-                ariaLabel="กรองตามโรงเรียน"
-                className="w-full"
-                emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
-                onChange={handleSchoolChange}
-                onSearchChange={schoolArea.setSchoolSearch}
-                options={schools.map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                }))}
-                placeholder="เลือกโรงเรียน"
-                value={selectedSchoolId}
-              />
-            ) : null
+          scope={
+            <ScopeFilterField
+              editable={showSchoolSelector}
+              onClear={handleClearFilters}
+              scope={scopeSummary}
+            >
+              {schoolSelector}
+            </ScopeFilterField>
           }
           icon={UserRound}
           title={

@@ -3,6 +3,11 @@ import {
   FilterSelect,
 } from "../../../components/layout/page-primitives";
 import { formatRoomLabel } from "../../../lib/room-presentation";
+import {
+  SCOPE_ALL_LABEL,
+  SCOPE_REQUIRED_LABEL,
+  formatSchoolArea,
+} from "../../../lib/scope-presentation";
 import { useSchoolAreaFilter } from "../hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../hooks/useScopeCascade";
 import { SchoolAreaSchoolFilter } from "./SchoolAreaSchoolFilter";
@@ -76,8 +81,9 @@ export function SchoolClassRoomFilter({
           options={area.filteredSchools.map((school) => ({
             value: String(school.id),
             label: school.name,
+            description: formatSchoolArea(school),
           }))}
-          placeholder={emptyOptionLabels?.school ?? "เลือกโรงเรียน"}
+          placeholder={emptyOptionLabels?.school ?? SCOPE_REQUIRED_LABEL.school}
           value={scope.schoolId}
         />
       ) : null}
@@ -88,7 +94,9 @@ export function SchoolClassRoomFilter({
           onChange={onGradeChange}
           value={scope.grade}
         >
-          <option value="">{emptyOptionLabels?.grade ?? "ทุกชั้น"}</option>
+          <option value="">
+            {emptyOptionLabels?.grade ?? SCOPE_ALL_LABEL.grade}
+          </option>
           {scope.gradeLevels.map((grade) => (
             <option key={grade.id} value={grade.label}>
               {grade.label}
@@ -103,7 +111,9 @@ export function SchoolClassRoomFilter({
           onChange={onRoomChange}
           value={scope.room}
         >
-          <option value="">{emptyOptionLabels?.room ?? "ทุกห้อง"}</option>
+          <option value="">
+            {emptyOptionLabels?.room ?? SCOPE_ALL_LABEL.room}
+          </option>
           {scope.rooms.map((room) => (
             <option key={room} value={room}>
               {formatRoomLabel(room)}

@@ -1,3 +1,4 @@
+import type { AttendanceImportSheet } from "../lib/attendance-import";
 import { apiClient } from "../../../lib/api-client";
 import { normalizeAttendanceSelectionStatus } from "../lib/attendance-presentation";
 import type {
@@ -14,6 +15,11 @@ interface DataEnvelope<T> {
 
 interface AttendanceService {
   getStudents: (query: AttendanceStudentQuery) => Promise<AttendanceStudent[]>;
+  /** Reads a teacher's spreadsheet server-side; marks still go through save. */
+  parseAttendanceImport: (input: {
+    file?: File;
+    url?: string;
+  }) => Promise<AttendanceImportSheet>;
   getHistory: (
     date: string,
     schoolId?: string,
@@ -104,8 +110,23 @@ async function deleteTerm(termId: string): Promise<string> {
   return response.data.data.id;
 }
 
+async function parseAttendanceImport(input: {
+  file?: File;
+  url?: string;
+}): Promise<AttendanceImportSheet> {
+  const formData = new FormData();
+  if (input.file) formData.append("file", input.file);
+  if (input.url) formData.append("url", input.url);
+  const response = await apiClient.post<DataEnvelope<AttendanceImportSheet>>(
+    "/attendance/import/parse",
+    formData,
+  );
+  return response.data.data;
+}
+
 export const attendanceService: AttendanceService = {
   getStudents,
+  parseAttendanceImport,
   getHistory,
   getTerms,
   upsertTerm,

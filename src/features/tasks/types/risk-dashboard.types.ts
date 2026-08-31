@@ -46,10 +46,14 @@ export interface RiskDashboardRow {
    * that has simply never been assigned yet. */
   latestCaseHadAssignment: boolean;
   problemCategoryLabel: string | null;
-  concernLevelCode: "NOTE" | "WATCH" | "CONCERN" | null;
+  concernLevelCode: ConcernLevelCode | null;
   concernLevelLabel: string | null;
+  /** Every observation recorded for this student, not just the one shown. */
+  commentCount: number;
   teacherComment: string | null;
 }
+
+export type ConcernLevelCode = "NOTE" | "WATCH" | "CONCERN";
 
 export interface RiskDashboardThresholds {
   /** วันขาดหลังปิดเคสล่าสุด (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
@@ -64,6 +68,7 @@ export interface RiskDashboardMeta extends PaginationMeta {
     "OPEN" | "IN_PROGRESS" | "PENDING_REVIEW" | "STUDENT_NOT_FOUND",
     number
   >;
+  concernLevelSummary: Record<ConcernLevelCode, number>;
   thresholds: RiskDashboardThresholds;
 }
 
@@ -74,6 +79,8 @@ export interface RiskDashboardResult {
 
 export interface RiskDashboardQuery {
   studentGroup?: "RISK" | "WATCHLIST";
+  /** Narrows the watchlist to one level; unset keeps the WATCH/CONCERN default. */
+  concernLevel?: ConcernLevelCode;
   riskTier?: RiskDashboardTierFilter;
   province?: string;
   district?: string;

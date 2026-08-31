@@ -8,7 +8,19 @@ import {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
-import { Check, Grid2X2, Send, Table2, Undo2, X } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  ChevronDown,
+  FileSpreadsheet,
+  Grid2X2,
+  ScanLine,
+  Send,
+  Table2,
+  Undo2,
+  Wrench,
+  X,
+} from "lucide-react";
 import {
   appToast,
   Avatar,
@@ -16,6 +28,7 @@ import {
   Button,
   Combobox,
   DatePicker,
+  DropdownMenu,
   FormErrorAlert,
   Label,
   Tabs,
@@ -33,11 +46,20 @@ import {
 import type { AttendanceSelectionStatus } from "../../attendance/types/attendance.types";
 import { checkInService } from "../api/check-in.service";
 import { ClassroomStudentCommentDialog } from "../../school-structure/components/ClassroomStudentCommentDialog";
+import { AttendanceImportDialog } from "../../attendance/components/AttendanceImportDialog";
+import { AttendanceQrScannerDialog } from "../../attendance/components/AttendanceQrScannerDialog";
+import { attendanceService } from "../../attendance/api/attendance.service";
+import { AssignmentLinksPanel } from "../../classroom-links/components/AssignmentLinksPanel";
+import { AttendanceAssignmentDialog } from "../../classroom-links/components/AttendanceAssignmentDialog";
+import { useCreateAttendanceAssignment } from "../../classroom-links/hooks/useClassroomLinks";
+import { ClassroomAttendanceHistory } from "../../school-structure/components/ClassroomAttendanceHistory";
 import { ClassroomRosterTab } from "./ClassroomRosterTab";
+import { AttendanceCorrectionSubmitDialog } from "./AttendanceCorrectionSubmitDialog";
 import { useClassroomLinkComments } from "../hooks/useClassroomLinkComments";
 import { useCheckInWorkspace } from "../hooks/useCheckInWorkspace";
 import type {
   CheckInAccess,
+  CheckInContext,
   CheckInMarkStatus,
   CheckInStudent,
   LocalCheckInMark,
@@ -55,6 +77,15 @@ const STATUS_CONFIG = ATTENDANCE_RECORD_STATUSES.map((status) => {
   };
 });
 const AUTO_ADVANCE_KEY = "sts_check_in_auto_advance";
+/**
+ * How long a freshly picked status stays put before the roster moves on.
+ * Marking is the only moment the choice is visible, and both surfaces would
+ * otherwise erase it on the same frame it appears — the table row jumps to
+ * the end of the list, the card flies off. One readable beat: long enough to
+ * see which of the four pills filled in, short enough that checking a class
+ * of forty still feels like tapping down a list.
+ */
+const SELECTION_HOLD_MS = 320;
 
 function readAutoAdvance(): boolean {
   if (typeof window === "undefined") return true;
@@ -130,6 +161,37 @@ function CheckInTable({
   onOpenProfile?: (student: CheckInStudent) => void;
   roster: CheckInStudent[];
 }) {
+  // Only auto-advance reorders the list, so only auto-advance needs the hold:
+  // a just-marked student keeps their place for `SELECTION_HOLD_MS` and then
+  // drops to the end. With the option off, rows never move and the filled
+  // pill is already visible where it was tapped.
+  const [heldIds, setHeldIds] = useState<readonly string[]>([]);
+  const holdTimers = useRef(new Map<string, number>());
+
+  useEffect(
+    () => () => {
+      for (const timer of holdTimers.current.values()) {
+        window.clearTimeout(timer);
+      }
+    },
+    [],
+  );
+
+  function holdRowInPlace(studentId: string): void {
+    const running = holdTimers.current.get(studentId);
+    if (running !== undefined) window.clearTimeout(running);
+    setHeldIds((current) =>
+      current.includes(studentId) ? current : [...current, studentId],
+    );
+    holdTimers.current.set(
+      studentId,
+      window.setTimeout(() => {
+        holdTimers.current.delete(studentId);
+        setHeldIds((current) => current.filter((id) => id !== studentId));
+      }, SELECTION_HOLD_MS),
+    );
+  }
+
   function markAndAdvance(studentId: string, status: CheckInMarkStatus): void {
     const current = marks.get(studentId)?.status;
     if (current === status) {
@@ -137,12 +199,17 @@ function CheckInTable({
       return;
     }
     onMark(studentId, status);
+    if (autoAdvance) holdRowInPlace(studentId);
   }
 
   const displayedRoster = autoAdvance
     ? [
-        ...roster.filter((student) => !marks.has(student.id)),
-        ...roster.filter((student) => marks.has(student.id)),
+        ...roster.filter(
+          (student) => !marks.has(student.id) || heldIds.includes(student.id),
+        ),
+        ...roster.filter(
+          (student) => marks.has(student.id) && !heldIds.includes(student.id),
+        ),
       ]
     : roster;
   const selections = Object.fromEntries(
@@ -239,12 +306,19 @@ function CheckInCards({
 }) {
   const [departingId, setDepartingId] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
+  // The status the buttons below the deck are showing as picked, while the
+  // card waits out `SELECTION_HOLD_MS` before leaving. Swiping never sets it:
+  // the drag, the tilt and the stamp already say what was chosen.
+  const [pendingStatus, setPendingStatus] = useState<CheckInMarkStatus | null>(
+    null,
+  );
   const cardRef = useRef<HTMLElement>(null);
   const nextCardRef = useRef<HTMLElement>(null);
   const presentOverlayRef = useRef<HTMLDivElement>(null);
   const absentOverlayRef = useRef<HTMLDivElement>(null);
   const animationFrame = useRef<number | null>(null);
   const transitionTimer = useRef<number | null>(null);
+  const holdTimer = useRef<number | null>(null);
   const transitionLock = useRef(false);
   const interacted = useRef(false);
   const drag = useRef<{
@@ -277,6 +351,7 @@ function CheckInCards({
         cancelAnimationFrame(animationFrame.current);
       if (transitionTimer.current !== null)
         window.clearTimeout(transitionTimer.current);
+      if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
     },
     [],
   );
@@ -372,6 +447,24 @@ function CheckInCards({
       setTransitioning(false);
       transitionLock.current = false;
     }, delay || 1);
+  }
+
+  /**
+   * The button path onto the same departure the swipe uses, one beat later.
+   * Tapping a status would otherwise destroy its own feedback — the card
+   * flies off on the frame the button fills in, so nothing is left to read.
+   * Holding the pressed button lit first makes the four-way choice visible;
+   * a second tap during the hold is ignored rather than queued, so a
+   * mis-tap resolves to exactly one status.
+   */
+  function markFromButton(status: CheckInMarkStatus): void {
+    if (!active || disabled || transitionLock.current || pendingStatus) return;
+    setPendingStatus(status);
+    holdTimer.current = window.setTimeout(() => {
+      holdTimer.current = null;
+      setPendingStatus(null);
+      markActive(status);
+    }, SELECTION_HOLD_MS);
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>): void {
@@ -477,7 +570,15 @@ function CheckInCards({
             <article
               aria-label={`นักเรียนคนที่ ${progressNumber} จาก ${roster.length}: ${student.firstName} ${student.lastName}`}
               className={cn(
-                "absolute inset-0 touch-pan-y select-none overflow-hidden rounded-3xl bg-white shadow-xl outline-none transition-[transform,opacity] duration-200 ease-[cubic-bezier(.22,1,.36,1)] will-change-transform motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-primary/40",
+                // `touch-pinch-zoom` (no pan at all) rather than `pan-y`: with
+                // vertical panning allowed the browser could claim a slightly
+                // diagonal swipe as a page scroll, cancel the pointer stream
+                // mid-drag, and leave the card snapping back while the page
+                // slid — the gesture read as unreliable on a phone. Now a
+                // finger that lands on the card only ever swipes the card;
+                // the page still scrolls from anywhere around it, and pinch
+                // to zoom the photo keeps working.
+                "absolute inset-0 touch-pinch-zoom select-none overflow-hidden rounded-3xl bg-white shadow-xl outline-none transition-[transform,opacity] duration-200 ease-[cubic-bezier(.22,1,.36,1)] will-change-transform motion-reduce:transition-none focus-visible:ring-4 focus-visible:ring-primary/40",
                 isActive && "cursor-grab active:cursor-grabbing",
                 !isActive && "pointer-events-none",
               )}
@@ -545,10 +646,13 @@ function CheckInCards({
         <AttendanceStatusButtons
           buttonClassName="flex-1"
           catalog={[]}
-          current="NONE"
+          current={pendingStatus ?? "NONE"}
+          // Not disabled during the hold on purpose — `disabled` dims the
+          // pills, which would mute the very confirmation the hold exists to
+          // show. `markFromButton` ignores the extra taps instead.
           disabled={disabled || transitioning}
-          isUnmarked
-          onStatusChange={(_studentId, status) => markActive(status)}
+          isUnmarked={pendingStatus === null}
+          onStatusChange={(_studentId, status) => markFromButton(status)}
           studentId={active.id}
           studentName={`${active.firstName} ${active.lastName}`.trim()}
         />
@@ -559,12 +663,34 @@ function CheckInCards({
 
 export function CheckInWorkspace({
   access,
+  assignment = null,
   classroomId,
+  classroomSubjectId,
+  initialClassroomSubjectId,
+  initialDate,
 }: {
   access: CheckInAccess;
+  /** Set when the link covers a single lesson handed on by its teacher. */
+  assignment?: CheckInContext["assignment"];
   classroomId?: number;
+  /**
+   * Fixes the lesson. A link arrives here from a card that already named the
+   * subject, so the picker is dropped rather than asked again.
+   */
+  classroomSubjectId?: number;
+  /** Preselects a lesson while keeping the staff subject picker available. */
+  initialClassroomSubjectId?: number;
+  /** Opens a specific historical register instead of defaulting to today. */
+  initialDate?: string;
 }) {
-  const workspace = useCheckInWorkspace({ access, classroomId });
+  const isAssignment = assignment !== null;
+  const workspace = useCheckInWorkspace({
+    access,
+    classroomId,
+    classroomSubjectId,
+    initialClassroomSubjectId,
+    initialDate,
+  });
   const [autoAdvance, setAutoAdvance] = useState(readAutoAdvance);
   const [commentStudent, setCommentStudent] = useState<CheckInStudent | null>(
     null,
@@ -572,7 +698,13 @@ export function CheckInWorkspace({
   // The tab lives in the URL so leaving for a student profile and coming back
   // lands on the tab that was open — the back target is the URL itself.
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") === "roster" ? "roster" : "attendance";
+  const requestedTab = searchParams.get("tab");
+  const tab =
+    requestedTab === "roster" ||
+    requestedTab === "history" ||
+    requestedTab === "links"
+      ? requestedTab
+      : "attendance";
   const contextualNavigate = useContextualNavigate();
 
   function setTab(next: string): void {
@@ -594,12 +726,32 @@ export function CheckInWorkspace({
     );
   }
   const [announcement, setAnnouncement] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
+  const [correctionSubmitOpen, setCorrectionSubmitOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const createAssignment = useCreateAttendanceAssignment(access);
   const submitAreaRef = useRef<HTMLDivElement>(null);
   const room = workspace.options?.classroom;
+  const activeSubject = workspace.options?.subjects.find(
+    (subject) => subject.classroomSubjectId === workspace.classroomSubjectId,
+  );
   const readOnly = Boolean(workspace.session?.readOnly);
+  const hasSubmittedResult = Boolean(workspace.session?.hasSubmittedResult);
+  // A teacher owns their rooms all term, so the past is theirs to read — in the
+  // app and in their link alike. An assignment covers one lesson on set days and
+  // gets no history: whoever picked it up was asked to take a register, not
+  // handed a term of someone else's room.
+  const showHistory = access === "INTERNAL" || !isAssignment;
+  // A subject is what the register is filed against, so without one there is
+  // nothing to submit. It used to be checked only once the request was on its
+  // way, where the refusal landed in the alert at the top of the page — out of
+  // sight from the submit bar the teacher was looking at.
+  const missingSubject = !workspace.classroomSubjectId;
   const readyToSubmit =
     workspace.counts.total > 0 &&
     workspace.counts.marked === workspace.counts.total &&
+    !missingSubject &&
     !readOnly;
 
   const summary = useMemo(
@@ -634,10 +786,11 @@ export function CheckInWorkspace({
     [workspace.counts],
   );
 
-  async function submit(): Promise<void> {
-    await workspace.submit();
+  async function submit(correctionReason?: string): Promise<void> {
+    await workspace.submit(correctionReason);
+    setCorrectionSubmitOpen(false);
     appToast.success(
-      "ส่งผลเช็กชื่อแล้ว ระบบบันทึกเฉพาะนักเรียนที่เป็นข้อยกเว้น",
+      correctionReason ? "แก้ไขและส่งผลเช็กชื่อใหม่แล้ว" : "ส่งผลเช็กชื่อแล้ว",
     );
   }
 
@@ -669,8 +822,10 @@ export function CheckInWorkspace({
                 {formatClassLabel(room.gradeLabel, room.roomNumber)}
               </h2>
             </div>
-            {readOnly ? (
-              <Badge variant="success">ส่งแล้ว · อ่านอย่างเดียว</Badge>
+            {hasSubmittedResult ? (
+              <Badge variant="success">
+                ส่งแล้ว · ครั้งที่ {workspace.session?.submissionNumber ?? 1}
+              </Badge>
             ) : workspace.session ? (
               <Badge variant="warning">กำลังเช็กชื่อ · ยังไม่ส่ง</Badge>
             ) : (
@@ -678,45 +833,6 @@ export function CheckInWorkspace({
             )}
           </div>
         ) : null}
-        <div
-          className="grid gap-3 sm:grid-cols-2"
-          hidden={tab !== "attendance"}
-        >
-          <div>
-            <Label htmlFor="check-in-date">วันที่</Label>
-            <DatePicker
-              ariaLabel="เลือกวันที่เช็กชื่อ"
-              id="check-in-date"
-              max={workspace.maxDate}
-              onChange={workspace.setDate}
-              value={workspace.date}
-            />
-          </div>
-          <div>
-            <Label htmlFor="check-in-subject" required>
-              วิชา
-            </Label>
-            <Combobox
-              ariaLabel="วิชา"
-              disabled={!workspace.options?.subjects.length}
-              emptyText="ไม่พบวิชา"
-              id="check-in-subject"
-              onChange={(value) =>
-                workspace.setClassroomSubjectId(value ? Number(value) : null)
-              }
-              options={(workspace.options?.subjects ?? []).map((subject) => ({
-                label: subject.nameTh,
-                value: String(subject.classroomSubjectId),
-              }))}
-              placeholder="เลือกวิชา"
-              value={
-                workspace.classroomSubjectId
-                  ? String(workspace.classroomSubjectId)
-                  : ""
-              }
-            />
-          </div>
-        </div>
       </div>
 
       <Tabs
@@ -726,15 +842,39 @@ export function CheckInWorkspace({
         options={[
           { value: "roster", label: "รายชื่อ" },
           { value: "attendance", label: "เช็กชื่อ" },
+          // An assignment covers one lesson on set days — there is no back
+          // catalogue for the person covering it to read, and the room's
+          // history is not theirs to browse. The same line of reasoning keeps
+          // the links tab away from them: they issued nothing to manage.
+          ...(showHistory ? [{ value: "history", label: "ประวัติ" }] : []),
+          ...(showHistory ? [{ value: "links", label: "จัดการลิงก์" }] : []),
         ]}
         value={tab}
       />
 
-      {tab === "roster" ? (
+      {tab === "links" ? (
+        <AssignmentLinksPanel
+          access={access}
+          classroomSubjectId={workspace.classroomSubjectId ?? null}
+          schoolTermId={workspace.options?.classroom.schoolTermId ?? null}
+          subjectName={activeSubject?.nameTh ?? null}
+        />
+      ) : tab === "history" && room ? (
+        <ClassroomAttendanceHistory
+          classroomId={room.id}
+          source={access === "INTERNAL" ? "INTERNAL" : "CLASSROOM_LINK"}
+          classroomLabel={formatClassLabel(room.gradeLabel, room.roomNumber)}
+          subjects={(workspace.options?.subjects ?? []).map((subject) => ({
+            id: subject.classroomSubjectId,
+            name: subject.nameTh,
+          }))}
+        />
+      ) : tab === "roster" ? (
         <ClassroomRosterTab
           isLoading={workspace.isLoading}
-          onComment={setCommentStudent}
-          onOpenStudent={openStudent}
+          limited={isAssignment}
+          onComment={isAssignment ? undefined : setCommentStudent}
+          onOpenStudent={isAssignment ? undefined : openStudent}
           renderAvatar={(student) => (
             <StudentPhoto
               access={access}
@@ -747,6 +887,62 @@ export function CheckInWorkspace({
         />
       ) : (
         <>
+          {/* The day and the lesson this register is filed against. They sit
+              inside the เช็กชื่อ tab because that is the only tab they act on —
+              above the tabs they stayed on screen while รายชื่อ and ประวัติ
+              ignored them, which read as a control that had stopped working. */}
+          <div
+            className={cn(
+              "grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm",
+              classroomSubjectId ? undefined : "sm:grid-cols-2",
+            )}
+          >
+            <div>
+              <Label htmlFor="check-in-date">วันที่</Label>
+              <DatePicker
+                ariaLabel="เลือกวันที่เช็กชื่อ"
+                id="check-in-date"
+                max={workspace.maxDate}
+                onChange={workspace.setDate}
+                value={workspace.date}
+              />
+            </div>
+            {/* A link arrives from a card that already named the lesson, so
+                there is nothing left to choose — the header above states it.
+                In the app the room is the entry point, and the lesson still
+                has to be picked. */}
+            {classroomSubjectId ? null : (
+              <div>
+                <Label htmlFor="check-in-subject" required>
+                  วิชา
+                </Label>
+                <Combobox
+                  ariaLabel="วิชา"
+                  disabled={!workspace.options?.subjects.length}
+                  emptyText="ไม่พบวิชา"
+                  id="check-in-subject"
+                  onChange={(value) =>
+                    workspace.setClassroomSubjectId(
+                      value ? Number(value) : null,
+                    )
+                  }
+                  options={(workspace.options?.subjects ?? []).map(
+                    (subject) => ({
+                      label: subject.nameTh,
+                      value: String(subject.classroomSubjectId),
+                    }),
+                  )}
+                  placeholder="เลือกวิชา"
+                  value={
+                    workspace.classroomSubjectId
+                      ? String(workspace.classroomSubjectId)
+                      : ""
+                  }
+                />
+              </div>
+            )}
+          </div>
+
           <FormErrorAlert
             error={workspace.loadError}
             fallback="โหลดข้อมูลเช็กชื่อไม่สำเร็จ"
@@ -777,10 +973,58 @@ export function CheckInWorkspace({
               ))}
             </div>
             <div
-              className="flex gap-2"
+              className="flex flex-wrap gap-2"
               role="group"
               aria-label="รูปแบบการเช็กชื่อ"
             >
+              {/* Three ways of filling in the same register — scan the room,
+                  read a file, or hand the lesson on — so they sit behind one
+                  tools button. Table and card stay out here beside it: those
+                  switch how this screen looks, they do not do anything.
+
+                  Handing the lesson to someone else belongs among them rather
+                  than on the link-management page: it is done by the person
+                  who cannot take the register today, from where they already
+                  are. A teacher can do it from their own link too — the room
+                  is their responsibility. Someone covering an assignment
+                  cannot pass it on again; it was not theirs to begin with. */}
+              <DropdownMenu
+                align="start"
+                ariaLabel="เครื่องมือเช็กชื่อ"
+                items={[
+                  {
+                    id: "scan",
+                    label: "สแกน QR",
+                    icon: ScanLine,
+                    disabled: readOnly || workspace.roster.length === 0,
+                    onSelect: () => setScannerOpen(true),
+                  },
+                  {
+                    id: "import",
+                    label: "นำเข้าไฟล์",
+                    icon: FileSpreadsheet,
+                    disabled: readOnly || workspace.roster.length === 0,
+                    onSelect: () => setImportOpen(true),
+                  },
+                  ...(!isAssignment && room
+                    ? [
+                        {
+                          id: "assign",
+                          label: "มอบหมาย",
+                          icon: CalendarClock,
+                          disabled: readOnly || !activeSubject,
+                          onSelect: () => setAssignmentOpen(true),
+                        },
+                      ]
+                    : []),
+                ]}
+                trigger={(triggerProps) => (
+                  <Button {...triggerProps} icon={Wrench} variant="outline">
+                    เครื่องมือ
+                    <ChevronDown aria-hidden="true" className="size-4" />
+                  </Button>
+                )}
+              />
               <Button
                 icon={Table2}
                 onClick={() => workspace.setMode("TABLE")}
@@ -858,7 +1102,7 @@ export function CheckInWorkspace({
               marks={workspace.marks}
               onClear={clearStudent}
               onMark={markStudent}
-              onOpenProfile={openStudent}
+              onOpenProfile={isAssignment ? undefined : openStudent}
               roster={workspace.roster}
             />
           ) : (
@@ -878,12 +1122,23 @@ export function CheckInWorkspace({
             className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between"
             ref={submitAreaRef}
           >
-            <p className="text-sm text-slate-600">
+            <p
+              className={cn(
+                "text-sm",
+                missingSubject && !readOnly
+                  ? "font-semibold text-danger"
+                  : "text-slate-600",
+              )}
+            >
               {readOnly
-                ? `ส่งผลแล้ว ${workspace.session?.submittedAt ? new Date(workspace.session.submittedAt).toLocaleString("th-TH") : ""}`
-                : workspace.counts.marked < workspace.counts.total
-                  ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
-                  : "ตรวจครบแล้ว พร้อมส่งผล"}
+                ? "รอบเช็กชื่อนี้เป็นข้อมูลแบบอ่านอย่างเดียว"
+                : hasSubmittedResult
+                  ? `ผลเช็กชื่อล่าสุดที่ส่งแล้ว · ครั้งที่ ${workspace.session?.submissionNumber ?? 1}${workspace.session?.submittedAt ? ` · ${new Date(workspace.session.submittedAt).toLocaleString("th-TH")}` : ""}`
+                  : missingSubject
+                    ? "กรุณาเลือกวิชาก่อนส่งผล"
+                    : workspace.counts.marked < workspace.counts.total
+                      ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
+                      : "ตรวจครบแล้ว พร้อมส่งผล"}
             </p>
             <div className="flex justify-end gap-2">
               <Button
@@ -898,11 +1153,13 @@ export function CheckInWorkspace({
                 disabled={!readyToSubmit}
                 icon={Send}
                 isLoading={workspace.submitting}
-                onClick={() => {
-                  void submit().catch(() => undefined);
-                }}
+                onClick={() =>
+                  hasSubmittedResult
+                    ? setCorrectionSubmitOpen(true)
+                    : void submit().catch(() => undefined)
+                }
               >
-                ส่งผลเช็กชื่อ
+                {hasSubmittedResult ? "แก้ไขและส่งผลใหม่" : "ส่งผลเช็กชื่อ"}
               </Button>
             </div>
           </div>
@@ -917,6 +1174,102 @@ export function CheckInWorkspace({
           </p>
         </>
       )}
+
+      {room && workspace.options && activeSubject ? (
+        <AttendanceAssignmentDialog
+          classroom={{
+            id: room.id,
+            label: formatClassLabel(room.gradeLabel, room.roomNumber),
+          }}
+          subject={activeSubject}
+          error={createAssignment.error}
+          isSaving={createAssignment.isPending}
+          onClose={() => setAssignmentOpen(false)}
+          onSubmit={(input) => {
+            createAssignment.mutate(
+              {
+                schoolId: workspace.options!.classroom.schoolId,
+                schoolTermId: workspace.options!.classroom.schoolTermId,
+                ...input,
+              },
+              {
+                onSuccess: (result) => {
+                  setAssignmentOpen(false);
+                  appToast.success(
+                    `สร้างลิงก์มอบหมายแล้ว: ${result.data.accessUrl}`,
+                  );
+                },
+              },
+            );
+          }}
+          open={assignmentOpen}
+        />
+      ) : null}
+
+      <AttendanceImportDialog
+        catalog={[]}
+        classLabel={
+          room ? formatClassLabel(room.gradeLabel, room.roomNumber) : "เช็กชื่อ"
+        }
+        contextLabel={workspace.date}
+        disabled={readOnly}
+        onMark={(studentId, status) =>
+          markStudent(studentId, status as CheckInMarkStatus)
+        }
+        onOpenChange={setImportOpen}
+        open={importOpen}
+        parseSheet={(input) => attendanceService.parseAttendanceImport(input)}
+        rows={workspace.roster.map((student) => ({
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          studentNumber: student.studentNumber,
+        }))}
+        selections={
+          Object.fromEntries(
+            workspace.roster.map((student) => [
+              student.id,
+              workspace.marks.get(student.id)?.status ?? "NONE",
+            ]),
+          ) as Record<string, AttendanceSelectionStatus>
+        }
+      />
+
+      <AttendanceQrScannerDialog
+        catalog={[]}
+        disabled={readOnly}
+        onMark={(studentId, status) => markStudent(studentId, status)}
+        onOpenChange={setScannerOpen}
+        open={scannerOpen}
+        rows={workspace.roster.map((student) => ({
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          studentNumber: student.studentNumber,
+          avatar: (
+            <StudentPhoto
+              access={access}
+              classroomId={classroomId}
+              display="AVATAR"
+              student={student}
+            />
+          ),
+        }))}
+        selections={
+          Object.fromEntries(
+            workspace.roster.map((student) => [
+              student.id,
+              workspace.marks.get(student.id)?.status ?? "NONE",
+            ]),
+          ) as Record<string, AttendanceSelectionStatus>
+        }
+      />
+
+      <AttendanceCorrectionSubmitDialog
+        error={workspace.actionError}
+        isPending={workspace.submitting}
+        onClose={() => setCorrectionSubmitOpen(false)}
+        onSubmit={submit}
+        open={correctionSubmitOpen}
+      />
 
       {/* The one comment dialog both surfaces use. A link has no account, so it
           hands the dialog its own catalogs and its own write; the staff page

@@ -40,7 +40,6 @@ import {
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -78,6 +77,9 @@ import {
   type QuarantinePageSize,
   type QuarantineStatus,
 } from "../types/import.types";
+import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
 
 function isStudentPreview(
   preview: AnyImportPreviewResult,
@@ -806,6 +808,11 @@ export function ImportDataPage() {
     quarantineSearch.trim(),
     350,
   );
+  const quarantineSummary = useScopeSummary(quarantineArea, {
+    schoolId: quarantineScope.schoolId,
+    grade: "",
+    room: "",
+  });
   const quarantineSchoolId = quarantineScope.schoolId
     ? Number(quarantineScope.schoolId)
     : undefined;
@@ -1015,7 +1022,6 @@ export function ImportDataPage() {
           />
         }
         icon={FileSpreadsheet}
-        onClearFilters={clearQuarantineFilters}
         title="นำเข้าข้อมูล"
         description={
           activeTab === "import"
@@ -1036,9 +1042,13 @@ export function ImportDataPage() {
               }
             : undefined
         }
-        filters={
+        scope={
           activeTab === "quarantine" ? (
-            <>
+            <ScopeFilterField
+              editable={!quarantineScope.schoolLocked}
+              onClear={clearQuarantineFilters}
+              scope={quarantineSummary}
+            >
               <SchoolAreaSchoolFilter
                 area={quarantineArea}
                 onSchoolChange={(nextSchoolId) => {
@@ -1048,6 +1058,12 @@ export function ImportDataPage() {
                 schoolId={quarantineScope.schoolId}
                 schoolLocked={quarantineScope.schoolLocked}
               />
+            </ScopeFilterField>
+          ) : undefined
+        }
+        filters={
+          activeTab === "quarantine" ? (
+            <>
               <FilterCombobox
                 ariaLabel="กรองตามสาเหตุ"
                 className="sm:w-[320px]"
@@ -1088,10 +1104,6 @@ export function ImportDataPage() {
         tableActions={
           activeTab === "quarantine" ? (
             <>
-              <RefreshButton
-                onRefresh={() => quarantineQuery.refetch()}
-                updatedAt={quarantineQuery.dataUpdatedAt}
-              />
               <Button
                 icon={Download}
                 isLoading={exportQuarantine.isPending}
@@ -1118,7 +1130,7 @@ export function ImportDataPage() {
                 <SchoolAreaSchoolFilter
                   area={importArea}
                   onSchoolChange={selectImportSchool}
-                  schoolEmptyLabel="เลือกโรงเรียน"
+                  schoolEmptyLabel={SCOPE_REQUIRED_LABEL.school}
                   schoolId={importSchoolId}
                   selectedSchoolFallback={selectedImportSchool}
                 />
@@ -1142,14 +1154,14 @@ export function ImportDataPage() {
               ) : null}
               {requiresClassroomContext ? (
                 <Select
-                  aria-label="เลือกชั้น"
+                  aria-label={SCOPE_REQUIRED_LABEL.grade}
                   disabled={
                     !importSchoolTermId || importClassroomsQuery.isLoading
                   }
                   onChange={(event) => selectImportGrade(event.target.value)}
                   value={effectiveImportGrade}
                 >
-                  <option value="">เลือกชั้น</option>
+                  <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
                   {importGrades.map((grade) => (
                     <option key={grade} value={grade}>
                       {grade}
@@ -1159,7 +1171,7 @@ export function ImportDataPage() {
               ) : null}
               {requiresClassroomContext ? (
                 <Select
-                  aria-label="เลือกห้องเรียน"
+                  aria-label={SCOPE_REQUIRED_LABEL.room}
                   disabled={
                     !effectiveImportGrade || importClassroomsQuery.isLoading
                   }
@@ -1168,7 +1180,7 @@ export function ImportDataPage() {
                   }
                   value={importClassroomId}
                 >
-                  <option value="">เลือกห้องเรียน</option>
+                  <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
                   {importClassrooms.map((classroom) => (
                     <option key={classroom.id} value={classroom.id}>
                       {formatRoomLabel(classroom.roomCode)}

@@ -28,9 +28,7 @@ import {
   Select,
 } from "../../../components/base";
 import { cn } from "../../../lib/utils";
-import {
-  getAttendanceStatusPresentation,
-} from "../lib/attendance-presentation";
+import { getAttendanceStatusPresentation } from "../lib/attendance-presentation";
 import {
   ATTENDANCE_QR_RECORD_STATUSES,
   ATTENDANCE_QR_SCAN_SOURCES,
@@ -91,9 +89,11 @@ function normalizeScanValue(value: string): string {
 
 function getBarcodeDetectorConstructor(): NativeBarcodeDetectorConstructor | null {
   return (
-    (globalThis as unknown as {
-      BarcodeDetector?: NativeBarcodeDetectorConstructor;
-    }).BarcodeDetector ?? null
+    (
+      globalThis as unknown as {
+        BarcodeDetector?: NativeBarcodeDetectorConstructor;
+      }
+    ).BarcodeDetector ?? null
   );
 }
 
@@ -130,7 +130,9 @@ export function AttendanceQrScannerDialog({
   const [scanError, setScanError] = useState<ScanError | null>(null);
   const [entries, setEntries] = useState<ScanEntry[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const lastValueRef = useRef<{ value: string; scannedAt: number } | null>(null);
+  const lastValueRef = useRef<{ value: string; scannedAt: number } | null>(
+    null,
+  );
   const scanAlertOpenRef = useRef(false);
 
   const sourceOption =
@@ -167,7 +169,8 @@ export function AttendanceQrScannerDialog({
       if (matchedRows.length === 0) {
         setScanError({
           value: rawValue.trim(),
-          message: "ข้อมูลใน QR Code ไม่ตรงกับข้อมูลนักเรียนที่เลือกไว้ หรือไม่พบในรายชื่อห้อง",
+          message:
+            "ข้อมูลใน QR Code ไม่ตรงกับข้อมูลนักเรียนที่เลือกไว้ หรือไม่พบในรายชื่อห้อง",
         });
         return;
       }
@@ -182,10 +185,12 @@ export function AttendanceQrScannerDialog({
       const row = matchedRows[0];
       const unchanged = selections[row.id] === status;
       if (!unchanged) onMark(row.id, status);
-      setEntries((current) => [
-        { row, status, scannedAt: new Date(), unchanged },
-        ...current,
-      ].slice(0, 12));
+      setEntries((current) =>
+        [{ row, status, scannedAt: new Date(), unchanged }, ...current].slice(
+          0,
+          12,
+        ),
+      );
       setNotice(
         unchanged
           ? `${row.name} มีสถานะนี้อยู่แล้ว`
@@ -285,14 +290,17 @@ export function AttendanceQrScannerDialog({
         const scanNextFrame = (): void => {
           if (cancelled) return;
           if (activeVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            void detector.detect(activeVideo).then((codes) => {
-              const value = codes[0]?.rawValue?.trim();
-              if (!value) return;
-              handleDecodedValue(value);
-            }).catch(() => {
-              // A single bad frame is normal while a camera focuses. Keep
-              // scanning; getUserMedia errors are handled separately below.
-            });
+            void detector
+              .detect(activeVideo)
+              .then((codes) => {
+                const value = codes[0]?.rawValue?.trim();
+                if (!value) return;
+                handleDecodedValue(value);
+              })
+              .catch(() => {
+                // A single bad frame is normal while a camera focuses. Keep
+                // scanning; getUserMedia errors are handled separately below.
+              });
           }
           frameId = window.requestAnimationFrame(scanNextFrame);
         };
@@ -345,12 +353,16 @@ export function AttendanceQrScannerDialog({
         <DialogBody className="space-y-4">
           {disabled ? (
             <Alert variant="warning">
-              <AlertDescription>รอบเช็กชื่อนี้ปิดแล้ว จึงไม่สามารถสแกนเพิ่มได้</AlertDescription>
+              <AlertDescription>
+                รอบเช็กชื่อนี้ปิดแล้ว จึงไม่สามารถสแกนเพิ่มได้
+              </AlertDescription>
             </Alert>
           ) : null}
 
           <div className="w-full max-w-sm space-y-1.5">
-            <Label htmlFor="attendance-qr-source">ข้อมูลที่บันทึกใน QR Code</Label>
+            <Label htmlFor="attendance-qr-source">
+              ข้อมูลที่บันทึกใน QR Code
+            </Label>
             <Select
               id="attendance-qr-source"
               onChange={(event) => {
@@ -417,12 +429,18 @@ export function AttendanceQrScannerDialog({
                 ) : (
                   <div className="flex h-[320px] max-h-[48svh] flex-col items-center justify-center gap-3 px-6 text-center text-white sm:h-[400px] sm:max-h-[52vh]">
                     <Camera aria-hidden="true" className="size-10" />
-                    <p className="font-medium">อุปกรณ์นี้ไม่สามารถขอใช้กล้องได้</p>
-                    <p className="text-sm text-slate-300">โปรดเปิดผ่าน HTTPS หรือใช้อุปกรณ์ที่มีกล้อง</p>
+                    <p className="font-medium">
+                      อุปกรณ์นี้ไม่สามารถขอใช้กล้องได้
+                    </p>
+                    <p className="text-sm text-slate-300">
+                      โปรดเปิดผ่าน HTTPS หรือใช้อุปกรณ์ที่มีกล้อง
+                    </p>
                   </div>
                 )}
               </section>
-              {notice ? <p className="text-sm text-slate-600">{notice}</p> : null}
+              {notice ? (
+                <p className="text-sm text-slate-600">{notice}</p>
+              ) : null}
             </div>
 
             <section
@@ -430,7 +448,10 @@ export function AttendanceQrScannerDialog({
               className="flex min-h-[300px] flex-col rounded-xl border border-slate-200 bg-slate-50 p-4 sm:min-h-[456px] lg:h-[456px]"
             >
               <div className="mb-3 flex items-center gap-2 font-semibold text-slate-800">
-                <UserRoundCheck aria-hidden="true" className="size-5 text-primary" />
+                <UserRoundCheck
+                  aria-hidden="true"
+                  className="size-5 text-primary"
+                />
                 รายการที่สแกน
               </div>
               {entries.length === 0 ? (
@@ -441,7 +462,10 @@ export function AttendanceQrScannerDialog({
               ) : (
                 <ul className="space-y-2 overflow-y-auto pr-1">
                   {entries.map((entry, index) => {
-                    const presentation = getAttendanceStatusPresentation(entry.status, catalog);
+                    const presentation = getAttendanceStatusPresentation(
+                      entry.status,
+                      catalog,
+                    );
                     return (
                       // The row itself carries the status colour — the same
                       // treatment a selected record button uses, so มา and สาย
@@ -455,7 +479,9 @@ export function AttendanceQrScannerDialog({
                       >
                         <div className="shrink-0">{entry.row.avatar}</div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-slate-900">{entry.row.name}</p>
+                          <p className="truncate font-bold text-slate-900">
+                            {entry.row.name}
+                          </p>
                           <p className="truncate text-xs text-slate-600">
                             รหัสประจำตัว: {entry.row.studentNumber || "-"}
                             {entry.unchanged ? " · สถานะเดิม" : ""}
@@ -467,7 +493,9 @@ export function AttendanceQrScannerDialog({
                         >
                           {formatScannedTime(entry.scannedAt)}
                         </time>
-                        <span className="sr-only">{presentation.shortLabel}</span>
+                        <span className="sr-only">
+                          {presentation.shortLabel}
+                        </span>
                       </li>
                     );
                   })}
@@ -477,8 +505,13 @@ export function AttendanceQrScannerDialog({
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-600">ค่าที่อ่านล่าสุดจาก QR ({sourceLabel})</p>
-            <p className="mt-1 truncate text-xl font-semibold tabular-nums text-slate-900 sm:text-2xl" data-attendance-qr-last-value>
+            <p className="text-sm font-medium text-slate-600">
+              ค่าที่อ่านล่าสุดจาก QR ({sourceLabel})
+            </p>
+            <p
+              className="mt-1 truncate text-xl font-semibold tabular-nums text-slate-900 sm:text-2xl"
+              data-attendance-qr-last-value
+            >
               {lastScannedValue ?? "กำลังรอการสแกน"}
             </p>
           </div>

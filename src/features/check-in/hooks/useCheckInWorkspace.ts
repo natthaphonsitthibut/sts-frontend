@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { normalizeCalendarDateKey } from "../../../lib/date-time";
 import { checkInService } from "../api/check-in.service";
 import type {
   CheckInAccess,
@@ -27,6 +28,14 @@ function readMode(): "TABLE" | "CARD" {
 interface UseCheckInWorkspaceInput {
   access: CheckInAccess;
   classroomId?: number;
+  initialDate?: string;
+  initialClassroomSubjectId?: number;
+  /**
+   * Fixes the lesson instead of asking for it. A link opens onto one subject's
+   * roster — the card the teacher tapped already said which — so the picker
+   * would be a question whose answer was given a screen ago.
+   */
+  classroomSubjectId?: number;
   enabled?: boolean;
 }
 
@@ -93,11 +102,20 @@ function storeDraft(draft: DraftState): void {
 export function useCheckInWorkspace({
   access,
   classroomId,
+  classroomSubjectId: fixedSubjectId,
+  initialClassroomSubjectId,
+  initialDate,
   enabled = true,
 }: UseCheckInWorkspaceInput) {
-  const [date, setDate] = useState(bangkokToday);
+  const queryClient = useQueryClient();
+  // A hand-edited or stale `?date=` normalizes to "", which every query would
+  // then send as a blank date and get a 400 for. Today is the same answer the
+  // page gives with no date at all, so an unreadable one lands there too.
+  const [date, setDate] = useState(
+    () => normalizeCalendarDateKey(initialDate) || bangkokToday(),
+  );
   const [requestedSubjectId, setClassroomSubjectId] = useState<number | null>(
-    null,
+    fixedSubjectId ?? initialClassroomSubjectId ?? null,
   );
   const [mode, setModeState] = useState<"TABLE" | "CARD">(readMode);
   const [draftState, setDraftState] = useState<DraftState>(() =>
@@ -115,18 +133,55 @@ export function useCheckInWorkspace({
     queryFn: () => checkInService.getOptions({ access, classroomId, date }),
     enabled: canQuery,
   });
+  const subjects = optionsQuery.data?.subjects ?? [];
+  // A link opens onto one lesson, so the subject arrives with the room and the
+  // teacher never picks it. Nothing in the URL can widen that: the id still has
+  // to be one the options list came back with.
+  const requested = fixedSubjectId ?? requestedSubjectId;
+  const classroomSubjectId = subjects.some(
+    (item) => item.classroomSubjectId === requested,
+  )
+    ? requested
+    : null;
   const rosterQuery = useQuery({
-    queryKey: ["check-in", access, classroomId ?? null, "roster"],
-    queryFn: () => checkInService.getRoster({ access, classroomId }),
+    queryKey: [
+      "check-in",
+      access,
+      classroomId ?? null,
+      "roster",
+      date,
+      classroomSubjectId,
+    ],
+    queryFn: () =>
+      checkInService.getRoster({
+        access,
+        classroomId,
+        date,
+        classroomSubjectId: classroomSubjectId ?? undefined,
+      }),
     enabled: canQuery,
   });
-
-  const subjects = optionsQuery.data?.subjects ?? [];
-  const classroomSubjectId = subjects.some(
-    (item) => item.classroomSubjectId === requestedSubjectId,
-  )
-    ? requestedSubjectId
-    : null;
+  // The register already open for this lesson, if there is one. Reading it is
+  // deliberately separate from `startSession`: opening a lesson to look at it
+  // must not freeze a roster and leave an unsubmitted session behind.
+  const openSessionQuery = useQuery({
+    queryKey: [
+      "check-in",
+      access,
+      classroomId ?? null,
+      "session",
+      date,
+      classroomSubjectId,
+    ],
+    queryFn: () =>
+      checkInService.getCurrentSession({
+        access,
+        classroomId,
+        date,
+        classroomSubjectId: classroomSubjectId as number,
+      }),
+    enabled: canQuery && Boolean(classroomSubjectId),
+  });
   const selectionKey = `${access}:${classroomId ?? "public"}:${date}:${classroomSubjectId ?? ""}`;
   // Restoring is keyed by the same selection the draft was written under, so a
   // different day or subject never picks up someone else's marks.
@@ -134,13 +189,54 @@ export function useCheckInWorkspace({
     () => readStoredDraft(selectionKey),
     [selectionKey],
   );
-  const draft = draftState.key === selectionKey ? draftState : restoredDraft;
+  const localDraft =
+    draftState.key === selectionKey ? draftState : restoredDraft;
+  // Selecting a lesson shows what is already recorded there — a day that was
+  // submitted comes back with its marks so the teacher can correct them. It is
+  // derived rather than copied into state by an effect: the moment the teacher
+  // touches anything the local draft takes over and this stops applying.
+  const draft = useMemo<DraftState>(() => {
+    const existing = openSessionQuery.data;
+    if (!existing || localDraft.session || !rosterQuery.data) return localDraft;
+    if (!existing.hasSubmittedResult) {
+      return { ...localDraft, session: existing };
+    }
+    const exceptions = new Map(
+      existing.exceptions.map((item) => [item.studentId, item]),
+    );
+    return {
+      key: selectionKey,
+      session: existing,
+      history: [],
+      marks: new Map(
+        rosterQuery.data.map((student) => [
+          student.id,
+          {
+            status: exceptions.get(student.id)?.status ?? "P_PRESENT",
+            markedAt: existing.submittedAt ?? existing.checkingStartedAt,
+          },
+        ]),
+      ),
+    };
+  }, [localDraft, openSessionQuery.data, rosterQuery.data, selectionKey]);
+  // Every edit builds on what is on screen: the live state when it belongs to
+  // this selection, otherwise the draft restored from this tab or seeded from
+  // the register already on the server. Starting from an empty draft instead
+  // would drop those marks the moment the teacher touched anything.
+  const baseDraft = useCallback(
+    (current: DraftState): DraftState =>
+      current.key === selectionKey ? current : draft,
+    [draft, selectionKey],
+  );
   useEffect(() => {
     if (draft.key !== selectionKey) return;
     storeDraft(draft);
   }, [draft, selectionKey]);
 
   const startMutation = useMutation({
+    // Freezing the roster is a side effect of the first mark, not something the
+    // teacher asked for, so it must not raise the global "บันทึกแล้ว" toast.
+    meta: { suppressSuccessToast: true },
     mutationFn: () => {
       if (!classroomSubjectId) {
         throw new Error("กรุณาเลือกวิชา");
@@ -157,9 +253,8 @@ export function useCheckInWorkspace({
   const storeStartedSession = useCallback(
     (result: CheckInSession) => {
       setDraftState((current) => {
-        const active =
-          current.key === selectionKey ? current : emptyDraft(selectionKey);
-        if (!result.readOnly || !rosterQuery.data) {
+        const active = baseDraft(current);
+        if (!result.hasSubmittedResult || !rosterQuery.data) {
           return { ...active, session: result };
         }
         const exceptions = new Map(
@@ -181,7 +276,7 @@ export function useCheckInWorkspace({
         };
       });
     },
-    [rosterQuery.data, selectionKey],
+    [baseDraft, rosterQuery.data, selectionKey],
   );
 
   const ensureStarted = useCallback(async (): Promise<CheckInSession> => {
@@ -208,8 +303,7 @@ export function useCheckInWorkspace({
       if (draft.session?.readOnly) return;
       const markedAt = new Date().toISOString();
       setDraftState((current) => {
-        const active =
-          current.key === selectionKey ? current : emptyDraft(selectionKey);
+        const active = baseDraft(current);
         const marks = new Map(active.marks);
         const previous = active.marks.get(studentId);
         marks.set(studentId, {
@@ -224,14 +318,13 @@ export function useCheckInWorkspace({
       });
       void ensureStarted().catch(() => undefined);
     },
-    [draft.session?.readOnly, ensureStarted, selectionKey],
+    [baseDraft, draft.session?.readOnly, ensureStarted],
   );
 
   const undo = useCallback(() => {
     if (draft.session?.readOnly) return;
     setDraftState((current) => {
-      const active =
-        current.key === selectionKey ? current : emptyDraft(selectionKey);
+      const active = baseDraft(current);
       const last = active.history.at(-1);
       if (!last) return active;
       const marks = new Map(active.marks);
@@ -241,14 +334,13 @@ export function useCheckInWorkspace({
       }
       return { ...active, marks, history: active.history.slice(0, -1) };
     });
-  }, [draft.session?.readOnly, selectionKey]);
+  }, [baseDraft, draft.session?.readOnly]);
 
   const clear = useCallback(
     (studentId: string) => {
       if (draft.session?.readOnly || !draft.marks.has(studentId)) return;
       setDraftState((current) => {
-        const active =
-          current.key === selectionKey ? current : emptyDraft(selectionKey);
+        const active = baseDraft(current);
         const previous = active.marks.get(studentId);
         if (!previous) return active;
         const marks = new Map(active.marks);
@@ -260,7 +352,7 @@ export function useCheckInWorkspace({
         };
       });
     },
-    [draft.marks, draft.session?.readOnly, selectionKey],
+    [baseDraft, draft.marks, draft.session?.readOnly],
   );
 
   const markRemainingPresent = useCallback(() => {
@@ -272,8 +364,7 @@ export function useCheckInWorkspace({
     if (unmarkedIds.length === 0) return;
     const markedAt = new Date().toISOString();
     setDraftState((current) => {
-      const active =
-        current.key === selectionKey ? current : emptyDraft(selectionKey);
+      const active = baseDraft(current);
       const marks = new Map(active.marks);
       const changes = unmarkedIds
         .filter((studentId) => !marks.has(studentId))
@@ -290,15 +381,18 @@ export function useCheckInWorkspace({
     });
     void ensureStarted().catch(() => undefined);
   }, [
+    baseDraft,
     draft.marks,
     draft.session?.readOnly,
     ensureStarted,
     rosterQuery.data,
-    selectionKey,
   ]);
 
   const submitMutation = useMutation({
-    mutationFn: async () => {
+    // CheckInWorkspace reports the precise first-submit/correction outcome.
+    // Suppress the generic mutation toast so it does not stack beside it.
+    meta: { suppressSuccessToast: true },
+    mutationFn: async (correctionReason?: string) => {
       if (!classroomSubjectId) throw new Error("กรุณาเลือกวิชา");
       const roster = rosterQuery.data ?? [];
       if (!roster.length) throw new Error("ห้องเรียนนี้ไม่มีนักเรียน");
@@ -315,15 +409,27 @@ export function useCheckInWorkspace({
         }));
       return checkInService.submitSession({
         access,
+        classroomId,
         sessionId: activeSession.id,
         exceptions,
+        ...(activeSession.hasSubmittedResult
+          ? {
+              correctionReason,
+              expectedLockVersion: activeSession.lockVersion,
+            }
+          : {}),
       });
     },
     onSuccess: (result) => {
       setDraftState((current) => {
-        const active =
-          current.key === selectionKey ? current : emptyDraft(selectionKey);
+        const active = baseDraft(current);
         return { ...active, session: result, history: [] };
+      });
+      // The cached lesson now carries a spent `lockVersion`. Leaving it would
+      // let a correction after a remount send the stale one and be rejected as
+      // somebody else's newer submit.
+      void queryClient.invalidateQueries({
+        queryKey: ["check-in", access, classroomId ?? null, "session"],
       });
     },
   });
@@ -380,7 +486,12 @@ export function useCheckInWorkspace({
     date,
     actionError: startMutation.error ?? submitMutation.error,
     history: draft.history,
-    isLoading: optionsQuery.isLoading || rosterQuery.isLoading,
+    // The open register counts as loading too: without it a submitted lesson
+    // renders empty for a frame before its marks arrive.
+    isLoading:
+      optionsQuery.isLoading ||
+      rosterQuery.isLoading ||
+      openSessionQuery.isLoading,
     loadError: optionsQuery.error ?? rosterQuery.error,
     mark,
     markRemainingPresent,

@@ -39,6 +39,20 @@ export function getThaiDateKey(value: Date = new Date()): string {
   return year && month && day ? `${year}-${month}-${day}` : "";
 }
 
+/**
+ * Normalizes a database calendar date for date controls and route state.
+ * PostgreSQL drivers may return a DATE as `YYYY-MM-DD` or an ISO timestamp;
+ * both represent the same school calendar key and must not fall back to today.
+ */
+export function normalizeCalendarDateKey(value?: string | Date | null): string {
+  if (!value) return "";
+  if (value instanceof Date) return getThaiDateKey(value);
+  const normalized = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+  const timestamp = new Date(normalized);
+  return Number.isNaN(timestamp.getTime()) ? "" : getThaiDateKey(timestamp);
+}
+
 export function formatThaiDateTime(value?: string | Date | null): string {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);

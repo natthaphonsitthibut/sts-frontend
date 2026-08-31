@@ -50,7 +50,6 @@ interface SchoolTermDialogProps {
   term: SchoolTerm | null;
 }
 
-
 function getDefaults(term: SchoolTerm | null): SchoolTermFormValues {
   return {
     academicYear: term?.academicYear ?? new Date().getFullYear() + 543,
@@ -95,65 +94,88 @@ export function SchoolTermDialog({
               fallback="ไม่สามารถบันทึกภาคเรียนได้"
             />
             <div className="grid gap-3 sm:grid-cols-2">
-            <FormItem>
-              <FormLabel htmlFor="term-academic-year" required>ปีการศึกษา</FormLabel>
-              <Input
-                id="term-academic-year"
-                inputMode="numeric"
-                {...form.register("academicYear", { valueAsNumber: true })}
-              />
-              <FormMessage<SchoolTermFormValues> name="academicYear" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="term-semester" required>ภาคเรียน</FormLabel>
-              <Select
-                id="term-semester"
-                {...form.register("semester", { valueAsNumber: true })}
-              >
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-              </Select>
-              <FormMessage<SchoolTermFormValues> name="semester" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="term-start" required>วันเริ่ม</FormLabel>
-              <DatePicker
-                ariaLabel="วันเริ่ม"
-                id="term-start"
-                max={endsOn || undefined}
-                onChange={(next) => form.setValue("startsOn", next, { shouldValidate: true })}
-                value={startsOn}
-              />
-              <FormMessage<SchoolTermFormValues> name="startsOn" />
-            </FormItem>
-            <FormItem>
-              <FormLabel htmlFor="term-end" required>วันสิ้นสุด</FormLabel>
-              <DatePicker
-                ariaLabel="วันสิ้นสุด"
-                id="term-end"
-                min={startsOn || undefined}
-                onChange={(next) => form.setValue("endsOn", next, { shouldValidate: true })}
-                value={endsOn}
-              />
-              <FormMessage<SchoolTermFormValues> name="endsOn" />
-            </FormItem>
-            <FormItem className="sm:col-span-2">
-              <FormLabel htmlFor="term-status" required>สถานะ</FormLabel>
-              <Select id="term-status" {...form.register("status")}>
-                {SCHOOL_TERM_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {getSchoolTermStatusLabel(status, termStatusCatalog.items)}
-                  </option>
-                ))}
-              </Select>
-              <FormMessage<SchoolTermFormValues> name="status" />
-            </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="term-academic-year" required>
+                  ปีการศึกษา
+                </FormLabel>
+                <Input
+                  id="term-academic-year"
+                  inputMode="numeric"
+                  {...form.register("academicYear", { valueAsNumber: true })}
+                />
+                <FormMessage<SchoolTermFormValues> name="academicYear" />
+              </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="term-semester" required>
+                  ภาคเรียน
+                </FormLabel>
+                <Select
+                  id="term-semester"
+                  {...form.register("semester", { valueAsNumber: true })}
+                >
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </Select>
+                <FormMessage<SchoolTermFormValues> name="semester" />
+              </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="term-start" required>
+                  วันเริ่ม
+                </FormLabel>
+                <DatePicker
+                  ariaLabel="วันเริ่ม"
+                  id="term-start"
+                  max={endsOn || undefined}
+                  onChange={(next) =>
+                    form.setValue("startsOn", next, { shouldValidate: true })
+                  }
+                  value={startsOn}
+                />
+                <FormMessage<SchoolTermFormValues> name="startsOn" />
+              </FormItem>
+              <FormItem>
+                <FormLabel htmlFor="term-end" required>
+                  วันสิ้นสุด
+                </FormLabel>
+                <DatePicker
+                  ariaLabel="วันสิ้นสุด"
+                  id="term-end"
+                  min={startsOn || undefined}
+                  onChange={(next) =>
+                    form.setValue("endsOn", next, { shouldValidate: true })
+                  }
+                  value={endsOn}
+                />
+                <FormMessage<SchoolTermFormValues> name="endsOn" />
+              </FormItem>
+              <FormItem className="sm:col-span-2">
+                <FormLabel htmlFor="term-status" required>
+                  สถานะ
+                </FormLabel>
+                <Select id="term-status" {...form.register("status")}>
+                  {SCHOOL_TERM_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {getSchoolTermStatusLabel(
+                        status,
+                        termStatusCatalog.items,
+                      )}
+                    </option>
+                  ))}
+                </Select>
+                <FormMessage<SchoolTermFormValues> name="status" />
+              </FormItem>
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>ยกเลิก</Button>
-            <Button isLoading={isPending} loadingText="กำลังบันทึก" type="submit">
+            <Button type="button" variant="outline" onClick={onClose}>
+              ยกเลิก
+            </Button>
+            <Button
+              isLoading={isPending}
+              loadingText="กำลังบันทึก"
+              type="submit"
+            >
               บันทึก
             </Button>
           </DialogFooter>

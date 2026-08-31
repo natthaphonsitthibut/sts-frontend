@@ -9,7 +9,6 @@ import {
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -90,12 +89,6 @@ export function TeacherCommentReportsPage() {
           },
           placeholder: "ค้นหาชื่อนักเรียนหรือข้อความ",
         }}
-        tableActions={
-          <RefreshButton
-            onRefresh={() => void comments.refetch()}
-            updatedAt={comments.dataUpdatedAt}
-          />
-        }
         title="ความคิดเห็นจากคุณครู"
       />
 

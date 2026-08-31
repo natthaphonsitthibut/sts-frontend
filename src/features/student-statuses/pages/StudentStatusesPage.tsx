@@ -18,7 +18,6 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -185,10 +184,6 @@ export function StudentStatusesPage() {
                 setIncludeInactive(event.target.checked);
                 setPage(1);
               }}
-            />
-            <RefreshButton
-              onRefresh={() => query.refetch()}
-              updatedAt={query.dataUpdatedAt}
             />
           </div>
         }

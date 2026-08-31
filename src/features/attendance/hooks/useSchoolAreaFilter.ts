@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import {
   attendanceLookupService,
   type SchoolOption,
@@ -40,6 +41,13 @@ export function useSchoolAreaFilter(
   const [subDistrict, setSubDistrict] = useState(initial.subDistrict ?? "");
   const [schoolSearch, setSchoolSearch] = useState(initial.schoolSearch ?? "");
 
+  // The area catalog is the public one — every onboarded school's province,
+  // district and sub-district, ungated because the guest home-visit form needs
+  // it before anyone signs in. An account only ever narrows within its own
+  // scope, so a director of one district was being offered all 77 provinces to
+  // pick from, none of which would have changed their results.
+  const actorScope = useAuthSessionStore((state) => state.user?.data_scope);
+
   const locationsQuery = useQuery({
     queryKey: ["attendance-locations"],
     queryFn: attendanceLookupService.getLocations,
@@ -47,28 +55,46 @@ export function useSchoolAreaFilter(
   });
   const catalog = locationsQuery.data;
 
+  // A scope that names areas also implies the levels above it: someone scoped
+  // to one district belongs to exactly one province, so that province is not a
+  // choice either. Levels the scope leaves open stay open.
+  const scopedRows = useMemo(() => {
+    const rows = catalog?.subDistricts ?? [];
+    const byProvince = actorScope?.provinces?.length
+      ? rows.filter((row) => actorScope.provinces?.includes(row.province))
+      : rows;
+    const byDistrict = actorScope?.districts?.length
+      ? byProvince.filter((row) => actorScope.districts?.includes(row.district))
+      : byProvince;
+    return actorScope?.sub_districts?.length
+      ? byDistrict.filter((row) =>
+          actorScope.sub_districts?.includes(row.sub_district),
+        )
+      : byDistrict;
+  }, [catalog, actorScope]);
+
   const provinces = useMemo(
-    () => [...(catalog?.provinces ?? [])].sort(),
-    [catalog],
+    () => unique(scopedRows.map((row) => row.province)),
+    [scopedRows],
   );
   const districts = useMemo(
     () =>
       unique(
-        (catalog?.districts ?? [])
+        scopedRows
           .filter((row) => !province || row.province === province)
           .map((row) => row.district),
       ),
-    [catalog, province],
+    [scopedRows, province],
   );
   const subDistricts = useMemo(
     () =>
       unique(
-        (catalog?.subDistricts ?? [])
+        scopedRows
           .filter((row) => !province || row.province === province)
           .filter((row) => !district || row.district === district)
           .map((row) => row.sub_district),
       ),
-    [catalog, province, district],
+    [scopedRows, province, district],
   );
 
   const trimmedSearch = schoolSearch.trim();

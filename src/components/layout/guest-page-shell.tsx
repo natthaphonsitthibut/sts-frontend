@@ -19,10 +19,17 @@ interface GuestPageShellProps extends ComponentProps<"div"> {
   profileRoleLabel?: string | null;
   showHeader?: boolean;
   showProfile?: boolean;
+  /**
+   * Where the brand leads. Null on surfaces with nowhere to go — a link that
+   * has not been opened yet lands on the sign-in screen — and set to the link's
+   * own home once there is one, so the logo behaves the way it does in the app.
+   */
+  brandTo?: string | null;
 }
 
 export function GuestPageShell({
   as: Root = "div",
+  brandTo = null,
   centered = false,
   children,
   className,
@@ -44,12 +51,13 @@ export function GuestPageShell({
       {showHeader ? (
         <header className="h-16 border-b border-slate-200 bg-white">
           <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6">
-            {/* Not a link: whoever holds a link has no account, so following
-                the brand only lands them on the sign-in screen. */}
+            {/* Inert until the link surface has a home of its own: whoever
+                holds an unopened link has no account, so following the brand
+                would only land them on the sign-in screen. */}
             <AppBrand
               className="max-w-xs sm:max-w-sm"
               label="ระบบติดตามผู้เรียน"
-              to={null}
+              to={brandTo}
             />
             {showProfile ? (
               // Same popover as the signed-in header, minus the two actions a

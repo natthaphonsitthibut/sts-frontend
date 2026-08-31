@@ -17,6 +17,7 @@ export interface TeacherDirectoryItem {
   photoUrl: string | null;
   teacherStatus: TeacherStatus;
   schoolId: number;
+  schoolName: string | null;
   membershipStatus: TeacherStatus;
 }
 

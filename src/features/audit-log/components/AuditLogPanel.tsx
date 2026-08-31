@@ -22,7 +22,6 @@ import {
   ErrorState,
 } from "../../../components/layout/page-primitives";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
@@ -473,10 +472,6 @@ export function AuditLogPanel({
                 ? "กำลังอัปเดต"
                 : `${totalCount.toLocaleString("en-US")} รายการ`}
             </span>
-            <RefreshButton
-              onRefresh={auditLog.refetch}
-              updatedAt={auditLog.dataUpdatedAt}
-            />
             <ClearFiltersButton onClear={clearFilters} />
           </div>
         </div>

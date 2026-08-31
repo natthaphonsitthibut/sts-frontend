@@ -18,13 +18,13 @@ import {
   AttendanceCheckInPage,
   ClassroomLinkStudentPage,
   PublicCheckInPage,
-  TeacherLineInvitationPage,
   TeacherLineLinkPage,
   TeacherLineAraIdChallengePage,
   TeacherLineAraIdAuthorizePage,
   TeacherLineLinkResultPage,
   CompletedPage,
   CurriculumGradesPage,
+  AssignmentLinkUsagePage,
   CurriculumSubjectFormPage,
   CurriculumSubjectsPage,
   ClassroomsPage,
@@ -120,6 +120,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "student-risk-report/watchlist",
+        element: protectedElement(<DashboardPage />, "dashboard"),
+      },
+      {
+        path: "student-risk-report/referrals",
         element: protectedElement(<DashboardPage />, "dashboard"),
       },
       {
@@ -221,6 +225,15 @@ export const router = createBrowserRouter([
       {
         path: "attendance/check-in",
         element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+      },
+      {
+        // What one issued link did, as a page — the record runs long enough
+        // that a dialog would have to be scrolled and dismissed to read it.
+        path: "attendance/check-in/links/:linkId",
+        element: protectedElement(
+          <AssignmentLinkUsagePage access="INTERNAL" />,
+          "attendance",
+        ),
       },
       {
         path: "attendance/history",
@@ -512,10 +525,6 @@ export const router = createBrowserRouter([
     element: withSuspense(<TeacherLineAraIdChallengePage />),
   },
   {
-    path: "/line-link/invite",
-    element: withSuspense(<TeacherLineInvitationPage />),
-  },
-  {
     path: "/line-link/result",
     element: withSuspense(<TeacherLineLinkResultPage />),
   },
@@ -524,7 +533,9 @@ export const router = createBrowserRouter([
     // profiles — so it lives at /classroom. Links already handed out point at
     // /check-in and keep working through the redirect below, which carries the
     // token in the hash across untouched.
-    path: "/classroom",
+    // The link surface is its own little app — a rooms page and a check-in
+    // page under it — so the route is a prefix and the page owns the nesting.
+    path: "/classroom/*",
     element: withSuspense(<PublicCheckInPage />),
   },
   {
@@ -533,6 +544,13 @@ export const router = createBrowserRouter([
     // tab it came from.
     path: "/classroom/students/:studentId",
     element: withSuspense(<ClassroomLinkStudentPage />),
+  },
+  {
+    // The same record through the link's own door. Sits beside the student
+    // profile route for the same reason: `/classroom/*` belongs to the rooms
+    // page, and these two are pages of their own under it.
+    path: "/classroom/links/:linkId",
+    element: withSuspense(<AssignmentLinkUsagePage access="PUBLIC_LINK" />),
   },
   {
     path: "/check-in",

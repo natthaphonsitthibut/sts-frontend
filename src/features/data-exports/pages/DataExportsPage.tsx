@@ -29,7 +29,6 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { cn } from "../../../lib/utils";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useRouteTab } from "../../../hooks/useRouteTab";
@@ -49,6 +48,8 @@ import type {
   DataExportJob,
   DataExportSensitivityClass,
 } from "../types/data-export.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 interface DataExportFormValues {
   filters: Record<string, string>;
@@ -114,9 +115,30 @@ function ExportScopeFilters({
     if (definition) onUpdateFilter(definition, value);
   };
   const has = (key: string) => definitionsByKey.has(key);
+  const selectedSchoolName = area.filteredSchools.find(
+    (school) => String(school.id) === scope.schoolId,
+  )?.name;
+
+  function clearScope(): void {
+    area.reset();
+    scope.reset();
+    for (const key of [...AREA_SCOPE_KEYS, ...CLASSROOM_SCOPE_KEYS]) {
+      update(key, "");
+    }
+  }
 
   return (
-    <>
+    <ScopeFilterField
+      onClear={clearScope}
+      scope={{
+        province: area.province,
+        district: area.district,
+        subDistrict: area.subDistrict,
+        schoolName: selectedSchoolName,
+        grade: scope.grade,
+        room: scope.room,
+      }}
+    >
       <SchoolAreaSchoolFilter
         area={area}
         onDistrictChange={(value) => update("district", value)}
@@ -128,7 +150,7 @@ function ExportScopeFilters({
           update("room", "");
         }}
         onSubDistrictChange={(value) => update("subDistrict", value)}
-        schoolEmptyLabel="ทุกโรงเรียน"
+        schoolEmptyLabel={SCOPE_ALL_LABEL.school}
         schoolId={scope.schoolId}
         schoolInputId={`${idPrefix}-schoolId`}
       />
@@ -145,7 +167,7 @@ function ExportScopeFilters({
           }}
           value={scope.grade}
         >
-          <option value="">ทุกชั้น</option>
+          <option value="">{SCOPE_ALL_LABEL.grade}</option>
           {scope.gradeLevels.map((grade) => (
             <option key={grade.id} value={grade.label}>
               {grade.label}
@@ -165,7 +187,7 @@ function ExportScopeFilters({
           }}
           value={scope.room}
         >
-          <option value="">ทุกห้อง</option>
+          <option value="">{SCOPE_ALL_LABEL.room}</option>
           {scope.rooms.map((room) => (
             <option key={room} value={room}>
               {formatRoomLabel(room)}
@@ -173,7 +195,7 @@ function ExportScopeFilters({
           ))}
         </Select>
       ) : null}
-    </>
+    </ScopeFilterField>
   );
 }
 
@@ -293,7 +315,11 @@ function DatasetCard({
         </dl>
 
         {!isExistingWorkflow && item.filterDefinitions.length > 0 ? (
-          <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+          <div className="border-t border-slate-100 pt-4">
+            {/* Scope sits on its own line above the dataset's own filters, the
+                same separation the page header gives it elsewhere: it says
+                which slice of the school system is being exported, which is a
+                different question from the dataset's date range or format. */}
             {usesAreaScope ? (
               <ExportScopeFilters
                 definitions={item.filterDefinitions}
@@ -302,62 +328,69 @@ function DatasetCard({
                 onUpdateFilter={updateFilter}
               />
             ) : null}
-            {inlineDefinitions.map((definition) => {
-              const inputId = `export-${item.code}-${definition.key}`;
-              const dependencyMissing = Boolean(
-                definition.dependsOn && !filters[definition.dependsOn],
-              );
-              return (
-                <div key={definition.key}>
-                  {definition.control === "SELECT" ? (
-                    <Combobox
-                      ariaLabel={definition.label}
-                      value={filters[definition.key] ?? ""}
-                      disabled={dependencyMissing}
-                      onChange={(value) => updateFilter(definition, value)}
-                      options={[
-                        { value: "", label: `ทุก${definition.label}` },
-                        ...(definition.options ?? []),
-                      ]}
-                      placeholder={`ทุก${definition.label}`}
-                    />
-                  ) : definition.control === "DATE" ? (
-                    <DatePicker
-                      ariaLabel={definition.label}
-                      disabled={dependencyMissing}
-                      id={inputId}
-                      onChange={(value) => updateFilter(definition, value)}
-                      placeholder={definition.label}
-                      value={filters[definition.key] ?? ""}
-                    />
-                  ) : (
-                    <Input
-                      aria-label={definition.label}
-                      id={inputId}
-                      type={
-                        definition.control === "INTEGER" ? "number" : "text"
-                      }
-                      min={definition.control === "INTEGER" ? 1 : undefined}
-                      max={
-                        definition.control === "INTEGER"
-                          ? 2_147_483_647
-                          : undefined
-                      }
-                      step={definition.control === "INTEGER" ? 1 : undefined}
-                      maxLength={
-                        definition.control === "TEXT" ? 100 : undefined
-                      }
-                      placeholder={definition.placeholder ?? definition.label}
-                      value={filters[definition.key] ?? ""}
-                      disabled={dependencyMissing}
-                      onChange={(event) =>
-                        updateFilter(definition, event.target.value)
-                      }
-                    />
-                  )}
-                </div>
-              );
-            })}
+            <div
+              className={cn(
+                "grid gap-3 sm:grid-cols-2",
+                usesAreaScope && "mt-3",
+              )}
+            >
+              {inlineDefinitions.map((definition) => {
+                const inputId = `export-${item.code}-${definition.key}`;
+                const dependencyMissing = Boolean(
+                  definition.dependsOn && !filters[definition.dependsOn],
+                );
+                return (
+                  <div key={definition.key}>
+                    {definition.control === "SELECT" ? (
+                      <Combobox
+                        ariaLabel={definition.label}
+                        value={filters[definition.key] ?? ""}
+                        disabled={dependencyMissing}
+                        onChange={(value) => updateFilter(definition, value)}
+                        options={[
+                          { value: "", label: `ทุก${definition.label}` },
+                          ...(definition.options ?? []),
+                        ]}
+                        placeholder={`ทุก${definition.label}`}
+                      />
+                    ) : definition.control === "DATE" ? (
+                      <DatePicker
+                        ariaLabel={definition.label}
+                        disabled={dependencyMissing}
+                        id={inputId}
+                        onChange={(value) => updateFilter(definition, value)}
+                        placeholder={definition.label}
+                        value={filters[definition.key] ?? ""}
+                      />
+                    ) : (
+                      <Input
+                        aria-label={definition.label}
+                        id={inputId}
+                        type={
+                          definition.control === "INTEGER" ? "number" : "text"
+                        }
+                        min={definition.control === "INTEGER" ? 1 : undefined}
+                        max={
+                          definition.control === "INTEGER"
+                            ? 2_147_483_647
+                            : undefined
+                        }
+                        step={definition.control === "INTEGER" ? 1 : undefined}
+                        maxLength={
+                          definition.control === "TEXT" ? 100 : undefined
+                        }
+                        placeholder={definition.placeholder ?? definition.label}
+                        value={filters[definition.key] ?? ""}
+                        disabled={dependencyMissing}
+                        onChange={(event) =>
+                          updateFilter(definition, event.target.value)
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
@@ -533,13 +566,11 @@ export function DataExportsPage() {
     isError,
     refetch,
     isFetching,
-    dataUpdatedAt: catalogUpdatedAt,
   } = useDataExportCatalog();
   const {
     data: jobs = [],
     isError: isJobsError,
     refetch: refetchJobs,
-    dataUpdatedAt: jobsUpdatedAt,
   } = useDataExportJobs();
   const createJob = useCreateDataExportJob();
   const downloadJob = useDownloadDataExportJob();
@@ -610,12 +641,6 @@ export function DataExportsPage() {
               { value: "history", label: "ประวัติ" },
             ]}
             value={activeTab}
-          />
-        }
-        footerActions={
-          <RefreshButton
-            onRefresh={() => Promise.all([refetch(), refetchJobs()])}
-            updatedAt={Math.max(catalogUpdatedAt, jobsUpdatedAt)}
           />
         }
         icon={Download}

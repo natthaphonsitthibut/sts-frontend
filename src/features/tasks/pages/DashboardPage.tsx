@@ -7,6 +7,7 @@ import {
   ContactRound,
   Eye,
   ListChecks,
+  NotebookPen,
   MapPin,
   RotateCcw,
   Search,
@@ -17,6 +18,7 @@ import {
   Button,
   Combobox,
   HoverTooltip,
+  Select,
   Tabs,
 } from "../../../components/base";
 import {
@@ -57,14 +59,22 @@ import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { FollowUpSummaryPanel } from "../components/FollowUpSummaryPanel";
+import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
+  ConcernLevelCode,
   RiskDashboardQuery,
   RiskDashboardRow,
   RiskDashboardSortBy,
 } from "../types/risk-dashboard.types";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { formatRoomLabel } from "../../../lib/room-presentation";
+import {
+  formatSchoolArea,
+  SCOPE_ALL_LABEL,
+} from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
 
 const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   risk: "risk",
@@ -96,6 +106,7 @@ const CASE_STATUS_VALUES = [
 const STUDENT_GROUP_ROUTES = {
   risk: "/student-risk-report/risk",
   watchlist: "/student-risk-report/watchlist",
+  referrals: "/student-risk-report/referrals",
 } as const;
 
 const RISK_SORT_OPTIONS: Array<{
@@ -165,6 +176,26 @@ const RISK_SORT_OPTIONS: Array<{
     sort: { key: "updatedAt", direction: "asc" },
   },
 ];
+
+const CONCERN_LEVELS: readonly ConcernLevelCode[] = [
+  "NOTE",
+  "WATCH",
+  "CONCERN",
+];
+const CONCERN_LEVEL_TONE = {
+  NOTE: "default",
+  WATCH: "warning",
+  CONCERN: "danger",
+} as const;
+const CONCERN_LEVEL_ICON = {
+  NOTE: NotebookPen,
+  WATCH: Eye,
+  CONCERN: TriangleAlert,
+} as const;
+
+function parseConcernLevel(value: string | null): ConcernLevelCode | undefined {
+  return CONCERN_LEVELS.find((level) => level === value);
+}
 
 function parseRiskSort(value: string | null): DataTableSortState {
   if (!value || value === "default") return DEFAULT_RISK_SORT;
@@ -308,6 +339,9 @@ function StudentRiskDashboardPage() {
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const isWatchlist = studentGroup === "watchlist";
+  // The third tab answers "how is the work going", not "which students" — it
+  // owns the referral register and none of the student table's controls.
+  const isReferrals = studentGroup === "referrals";
   // Free text may contain a student's name or identifier, so it intentionally
   // stays in memory instead of being written to the URL with categorical filters.
   const [search, setSearch] = useRememberedState(
@@ -332,6 +366,9 @@ function StudentRiskDashboardPage() {
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     parseRiskSort(searchParams.get("sort")),
   );
+  const [concernLevel, setConcernLevel] = useState<
+    ConcernLevelCode | undefined
+  >(() => parseConcernLevel(searchParams.get("concernLevel")));
   const [academicYearInput, setAcademicYearInput] = useState<
     number | undefined
   >(() => readOptionalPositiveIntegerSearchParam(searchParams, "academicYear"));
@@ -385,6 +422,7 @@ function StudentRiskDashboardPage() {
       academicYear,
       semester,
       caseStatus: isWatchlist ? undefined : caseStatus,
+      concernLevel: isWatchlist ? concernLevel : undefined,
       grade: scope.grade || undefined,
       room: scope.room || undefined,
       searchTerm: debouncedSearch || undefined,
@@ -399,6 +437,7 @@ function StudentRiskDashboardPage() {
       academicYear,
       semester,
       caseStatus,
+      concernLevel,
       scope.grade,
       scope.room,
       debouncedSearch,
@@ -423,6 +462,7 @@ function StudentRiskDashboardPage() {
     setValue("academicYear", academicYear ? String(academicYear) : undefined);
     setValue("semester", semester ? String(semester) : undefined);
     setValue("caseStatus", isWatchlist ? undefined : caseStatus);
+    setValue("concernLevel", isWatchlist ? concernLevel : undefined);
     // Legacy versions persisted free-text search in the URL. Remove it without
     // reading it back so names or identifiers do not remain in browser history.
     setValue("search", undefined);
@@ -440,6 +480,7 @@ function StudentRiskDashboardPage() {
   }, [
     academicYear,
     caseStatus,
+    concernLevel,
     isWatchlist,
     page,
     rowsPerPage,
@@ -461,26 +502,9 @@ function StudentRiskDashboardPage() {
     placeholderData: keepPreviousData,
   });
 
-  // The watchlist tab keeps showing the risk group's case counts, so it asks for
-  // the same summary with the smallest allowed page size — the API rejects any
-  // limit outside `PAGE_SIZE_OPTIONS`, which would leave every card on 0.
-  const riskStatusSummaryQuery = useQuery({
-    queryKey: ["risk-dashboard", "case-status-summary", query],
-    queryFn: () =>
-      riskDashboardService.getRiskDashboard({
-        ...query,
-        studentGroup: "RISK",
-        caseStatus: undefined,
-        page: 1,
-        limit: PAGE_SIZE_OPTIONS[0],
-      }),
-    enabled: isWatchlist,
-    placeholderData: keepPreviousData,
-  });
-
   const rows = riskQuery.data?.items ?? [];
   const meta = riskQuery.data?.meta;
-  const caseStatusMeta = isWatchlist ? riskStatusSummaryQuery.data?.meta : meta;
+  const caseStatusMeta = meta;
   const totalCount = meta?.totalCount ?? 0;
   const caseCount = (value: number) => (
     <>
@@ -542,6 +566,35 @@ function StudentRiskDashboardPage() {
     },
   ];
 
+  // Labels come from the rows themselves, which carry the catalog's own
+  // `label_th`, so a level renamed in the catalog renames here too. The
+  // fallback only covers the case where no student on the page has that level.
+  const concernLevelLabels = new Map(
+    rows
+      .filter((row) => row.concernLevelCode)
+      .map((row) => [
+        row.concernLevelCode as ConcernLevelCode,
+        row.concernLevelLabel ??
+          getConcernLevelPresentation(row.concernLevelCode as ConcernLevelCode)
+            .label,
+      ]),
+  );
+  const concernLabel = (level: ConcernLevelCode): string =>
+    concernLevelLabels.get(level) ?? getConcernLevelPresentation(level).label;
+  const concernItems = CONCERN_LEVELS.map((level) => ({
+    label: concernLabel(level),
+    value: caseCount(meta?.concernLevelSummary?.[level] ?? 0),
+    tone: CONCERN_LEVEL_TONE[level],
+    icon: CONCERN_LEVEL_ICON[level],
+    hideComparison: true,
+    labelClassName: "text-base text-content-secondary",
+    emphasis: true,
+    onSelect: () => handleConcernLevelSelect(level),
+    selected: concernLevel === level,
+    selectionLabel: `กรอง${concernLabel(level)}`,
+  }));
+
+  const scopeSummary = useScopeSummary(schoolArea, scope);
   const activeFilterLabels = [
     search.trim() ? `ค้นหา: ${search.trim()}` : "",
     !scope.schoolLocked && scope.schoolId ? "โรงเรียน" : "",
@@ -611,6 +664,16 @@ function StudentRiskDashboardPage() {
     resetPage();
   }
 
+  function handleConcernLevelChange(value: string): void {
+    setConcernLevel(parseConcernLevel(value));
+    resetPage();
+  }
+
+  function handleConcernLevelSelect(level: ConcernLevelCode): void {
+    setConcernLevel((current) => (current === level ? undefined : level));
+    resetPage();
+  }
+
   function handleRowsPerPageChange(value: number): void {
     setRowsPerPage(value);
     resetPage();
@@ -631,8 +694,22 @@ function StudentRiskDashboardPage() {
   }
 
   function handleStudentGroupChange(value: string): void {
-    const nextGroup = value === "watchlist" ? "watchlist" : "risk";
+    // Checked against the route map rather than an inline list: a tab added
+    // there but forgotten here used to fall through to "risk", so the new tab
+    // bounced straight back to the first one.
+    const nextGroup =
+      value in STUDENT_GROUP_ROUTES
+        ? (value as keyof typeof STUDENT_GROUP_ROUTES)
+        : "risk";
     setStudentGroup(nextGroup);
+    resetPage();
+  }
+
+  function handleClearScope(): void {
+    scope.reset();
+    schoolArea.reset();
+    setAcademicYearInput(undefined);
+    setSemesterInput(undefined);
     resetPage();
   }
 
@@ -651,148 +728,194 @@ function StudentRiskDashboardPage() {
       <PageToolbar
         breadcrumbTrail={[{ label: "หน้าหลัก", to: "/" }]}
         icon={ClipboardList}
-        title="รายงานสถานะนักเรียน"
-      >
-        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-          {!scope.schoolLocked ? (
+        scope={
+          <ScopeFilterField
+            editable={
+              !scope.schoolLocked || !scope.gradeLocked || !scope.roomLocked
+            }
+            onClear={handleClearScope}
+            scope={{
+              ...scopeSummary,
+              academicYear,
+              semester,
+            }}
+          >
+            {!scope.schoolLocked ? (
+              <label className="space-y-1 text-sm text-slate-800">
+                โรงเรียน
+                <Combobox
+                  ariaLabel="ค้นหาโรงเรียน"
+                  emptyText={
+                    schoolArea.schoolsEnabled
+                      ? "ไม่พบโรงเรียน"
+                      : "พิมพ์ชื่อโรงเรียนเพื่อค้นหา"
+                  }
+                  onChange={handleSchoolChange}
+                  onSearchChange={schoolArea.setSchoolSearch}
+                  options={[
+                    { value: "", label: SCOPE_ALL_LABEL.school },
+                    ...schoolArea.filteredSchools.map((school) => ({
+                      value: String(school.id),
+                      label: school.name,
+                      description: formatSchoolArea(school),
+                    })),
+                  ]}
+                  placeholder={SCOPE_ALL_LABEL.school}
+                  value={scope.schoolId}
+                />
+              </label>
+            ) : null}
+            {/* A level the actor's scope fixes is not offered at all, the same
+                as the school above it — the summary on the button already says
+                what it is. */}
+            {scope.gradeLocked ? null : (
+              <label className="space-y-1 text-sm text-slate-800">
+                ระดับชั้น
+                <Select
+                  aria-label="ระดับชั้น"
+                  disabled={!scope.schoolId}
+                  onChange={(event) => handleGradeChange(event.target.value)}
+                  value={scope.grade}
+                >
+                  <option value="">{SCOPE_ALL_LABEL.grade}</option>
+                  {scope.gradeLevels.map((grade) => (
+                    <option key={grade.id} value={grade.label}>
+                      {grade.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+            {scope.roomLocked ? null : (
+              <label className="space-y-1 text-sm text-slate-800">
+                ห้อง
+                <Select
+                  aria-label="ห้อง"
+                  disabled={!scope.grade}
+                  onChange={(event) => handleRoomChange(event.target.value)}
+                  value={scope.room}
+                >
+                  <option value="">{SCOPE_ALL_LABEL.room}</option>
+                  {scope.rooms.map((room) => (
+                    <option key={room} value={room}>
+                      {formatRoomLabel(room)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
             <label className="space-y-1 text-sm text-slate-800">
-              โรงเรียน
-              <Combobox
-                ariaLabel="ค้นหาโรงเรียน"
-                emptyText={
-                  schoolArea.schoolsEnabled
-                    ? "ไม่พบโรงเรียน"
-                    : "พิมพ์ชื่อโรงเรียนเพื่อค้นหา"
+              ปีการศึกษา
+              <Select
+                aria-label="ปีการศึกษา"
+                disabled={!scope.schoolId}
+                onChange={(event) =>
+                  handleAcademicYearChange(event.target.value)
                 }
-                onChange={handleSchoolChange}
-                onSearchChange={schoolArea.setSchoolSearch}
-                options={[
-                  { value: "", label: "โรงเรียนทั้งหมด" },
-                  ...schoolArea.filteredSchools.map((school) => ({
-                    value: String(school.id),
-                    label: school.name,
-                  })),
-                ]}
-                placeholder="โรงเรียนทั้งหมด"
-                value={scope.schoolId}
-              />
+                value={academicYear ? String(academicYear) : ""}
+              >
+                {academicYears.length === 0 ? (
+                  <option value="">ปีการศึกษา</option>
+                ) : null}
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </Select>
             </label>
-          ) : null}
-          <label className="space-y-1 text-sm text-slate-800">
-            ปีการศึกษา
-            <FilterSelect
-              ariaLabel="ปีการศึกษา"
-              className="w-full !w-full"
-              disabled={!scope.schoolId}
-              onChange={handleAcademicYearChange}
-              value={academicYear ? String(academicYear) : ""}
-            >
-              {academicYears.length === 0 ? (
-                <option value="">ปีการศึกษา</option>
-              ) : null}
-              {academicYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </FilterSelect>
-          </label>
-          <label className="space-y-1 text-sm text-slate-800">
-            ภาคเรียน
-            <FilterSelect
-              ariaLabel="ภาคเรียน"
-              className="w-full !w-full"
-              disabled={!academicYear}
-              onChange={handleSemesterChange}
-              value={semester ? String(semester) : ""}
-            >
-              {semesters.length === 0 ? (
-                <option value="">ภาคเรียน</option>
-              ) : null}
-              {semesters.map((item) => (
-                <option key={item} value={item}>
-                  ภาคเรียนที่ {item}
-                </option>
-              ))}
-            </FilterSelect>
-          </label>
-          <label className="space-y-1 text-sm text-slate-800">
-            ระดับชั้น
-            <FilterSelect
-              ariaLabel="ระดับชั้น"
-              className="w-full !w-full"
-              disabled={!scope.schoolId || scope.gradeLocked}
-              onChange={handleGradeChange}
-              value={scope.grade}
-            >
-              <option value="">ทั้งหมด</option>
-              {scope.gradeLevels.map((grade) => (
-                <option key={grade.id} value={grade.label}>
-                  {grade.label}
-                </option>
-              ))}
-            </FilterSelect>
-          </label>
-          <label className="space-y-1 text-sm text-slate-800">
-            ห้อง
-            <FilterSelect
-              ariaLabel="ห้อง"
-              className="w-full !w-full"
-              disabled={!scope.grade || scope.roomLocked}
-              onChange={handleRoomChange}
-              value={scope.room}
-            >
-              <option value="">ทั้งหมด</option>
-              {scope.rooms.map((room) => (
-                <option key={room} value={room}>
-                  {room}
-                </option>
-              ))}
-            </FilterSelect>
-          </label>
-        </div>
-      </PageToolbar>
+            <label className="space-y-1 text-sm text-slate-800">
+              ภาคเรียน
+              <Select
+                aria-label="ภาคเรียน"
+                disabled={!academicYear}
+                onChange={(event) => handleSemesterChange(event.target.value)}
+                value={semester ? String(semester) : ""}
+              >
+                {semesters.length === 0 ? (
+                  <option value="">ภาคเรียน</option>
+                ) : null}
+                {semesters.map((item) => (
+                  <option key={item} value={item}>
+                    ภาคเรียนที่ {item}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </ScopeFilterField>
+        }
+        title="รายงานสถานะนักเรียน"
+      />
 
       <div className="space-y-5">
-        <FollowUpSummaryPanel />
         <div className="space-y-4">
-          <SummaryMetrics columns={4} items={summaryItems} />
           <Tabs
-            aria-label="กลุ่มนักเรียน"
+            aria-label="มุมมองรายงาน"
             className="w-full"
             onChange={handleStudentGroupChange}
             options={[
               { value: "risk", label: "กลุ่มเสี่ยง" },
               { value: "watchlist", label: "กลุ่มเฝ้าระวัง" },
+              { value: "referrals", label: "งานส่งต่อ" },
             ]}
             value={studentGroup}
           />
-          <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
-            <SearchInput
-              className="w-full sm:max-w-[430px]"
-              onChange={handleSearchChange}
-              placeholder="ค้นหา"
-              value={search}
+          {/* Each tab carries its own summary cards, because each set filters
+              that tab's list and nothing else. Above the tabs they read as
+              page-wide totals and clicking one had to switch tab first. */}
+          {isReferrals ? null : (
+            <SummaryMetrics
+              columns={isWatchlist ? 3 : 4}
+              items={isWatchlist ? concernItems : summaryItems}
             />
-            {!isWatchlist ? (
-              <FilterSelect
-                ariaLabel="สถานะการติดตาม"
-                className="w-full sm:w-[306px]"
-                onChange={handleCaseStatusChange}
-                value={caseStatus ?? ""}
-              >
-                <option value="">สถานะทั้งหมด</option>
-                <option value="STUDENT_NOT_FOUND">ไม่พบนักเรียน</option>
-                <option value="OPEN">รอมอบหมาย</option>
-                <option value="IN_PROGRESS">รอติดตาม</option>
-                <option value="PENDING_REVIEW">รอพิจารณา</option>
-                <option value="RESOLVED">เสร็จสิ้น</option>
-              </FilterSelect>
-            ) : null}
-          </div>
+          )}
+          {isReferrals ? null : (
+            <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
+              <SearchInput
+                className="w-full sm:max-w-[430px]"
+                onChange={handleSearchChange}
+                placeholder="ค้นหา"
+                value={search}
+              />
+              {/* Both tabs carry the same pair — cards to see the split at a
+                  glance, a select to pick one without hunting for the card.
+                  Level labels come from the same resolver the cards use. */}
+              {isWatchlist ? (
+                <FilterSelect
+                  ariaLabel="ระดับความกังวล"
+                  className="w-full sm:w-[306px]"
+                  onChange={handleConcernLevelChange}
+                  value={concernLevel ?? ""}
+                >
+                  <option value="">ทุกระดับความกังวล</option>
+                  {CONCERN_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {concernLabel(level)}
+                    </option>
+                  ))}
+                </FilterSelect>
+              ) : (
+                <FilterSelect
+                  ariaLabel="สถานะการติดตาม"
+                  className="w-full sm:w-[306px]"
+                  onChange={handleCaseStatusChange}
+                  value={caseStatus ?? ""}
+                >
+                  <option value="">สถานะทั้งหมด</option>
+                  <option value="STUDENT_NOT_FOUND">ไม่พบนักเรียน</option>
+                  <option value="OPEN">รอมอบหมาย</option>
+                  <option value="IN_PROGRESS">รอติดตาม</option>
+                  <option value="PENDING_REVIEW">รอพิจารณา</option>
+                  <option value="RESOLVED">เสร็จสิ้น</option>
+                </FilterSelect>
+              )}
+            </div>
+          )}
         </div>
 
-        {activeFilterLabels.length > 0 ? (
+        {isReferrals ? <ReferralRegisterPanel /> : null}
+
+        {!isReferrals && activeFilterLabels.length > 0 ? (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2 md:hidden">
             <div className="min-w-0 text-xs font-semibold text-slate-700">
               <span className="block">
@@ -813,7 +936,7 @@ function StudentRiskDashboardPage() {
           </div>
         ) : null}
 
-        {riskQuery.isError ? (
+        {isReferrals ? null : riskQuery.isError ? (
           <ErrorState
             title="ไม่สามารถโหลดรายงานนักเรียนได้"
             description="กรุณาลองใหม่อีกครั้ง"
@@ -833,12 +956,14 @@ function StudentRiskDashboardPage() {
               columnWidths={
                 isWatchlist
                   ? [
-                      "w-[7%]",
-                      "w-[22%]",
-                      "w-[12%]",
-                      "w-[10%]",
-                      "w-[35%]",
-                      "w-[14%]",
+                      "w-[6%]",
+                      "w-[20%]",
+                      "w-[9%]",
+                      "w-[8%]",
+                      "w-[13%]",
+                      "w-[28%]",
+                      "w-[8%]",
+                      "w-[8%]",
                     ]
                   : [
                       "w-[6%]",
@@ -858,7 +983,15 @@ function StudentRiskDashboardPage() {
                       { label: "ชื่อนักเรียน", sortKey: "name" },
                       { label: "ชั้น", sortKey: "grade" },
                       { label: "ห้อง", sortKey: "room" },
-                      { label: "ข้อสังเกตล่าสุด", sortKey: "problemCategory" },
+                      // Not "ล่าสุด": the query picks the most severe comment
+                      // and only uses recency to break a tie, so the column
+                      // says what it actually shows.
+                      {
+                        label: "ระดับความกังวล",
+                        className: "text-center",
+                      },
+                      { label: "ข้อสังเกต", sortKey: "problemCategory" },
+                      { label: "จำนวนข้อสังเกต", className: "text-center" },
                       "เครื่องมือ",
                     ]
                   : [
@@ -877,7 +1010,7 @@ function StudentRiskDashboardPage() {
                     ]
               }
               minWidthClassName={
-                isWatchlist ? "min-w-[960px]" : "min-w-[1120px]"
+                isWatchlist ? "min-w-[1120px]" : "min-w-[1120px]"
               }
               onSortChange={handleSortChange}
               sort={sort}
@@ -890,9 +1023,7 @@ function StudentRiskDashboardPage() {
                   <DataTableCell className="text-slate-800">
                     {(page - 1) * rowsPerPage + index + 1}
                   </DataTableCell>
-                  <DataTableCell
-                    className={isWatchlist ? "text-center" : undefined}
-                  >
+                  <DataTableCell>
                     <StudentCell
                       canViewStudent={canViewStudent}
                       row={row}
@@ -905,9 +1036,13 @@ function StudentRiskDashboardPage() {
                   <DataTableCell className="text-slate-600">
                     {row.room || "-"}
                   </DataTableCell>
-                  <DataTableCell className="text-slate-600">
-                    {isWatchlist && row.concernLevelCode ? (
-                      <>
+                  {isWatchlist ? (
+                    // Badge in its own column, detail in the next — the same
+                    // split the risk tab uses for สถานะการติดตาม/หมายเหตุ, so a
+                    // reader scans one column of severity instead of hunting
+                    // for the badge inside a paragraph.
+                    <DataTableCell className="text-center">
+                      {row.concernLevelCode ? (
                         <Badge
                           variant={
                             getConcernLevelPresentation(row.concernLevelCode)
@@ -918,10 +1053,18 @@ function StudentRiskDashboardPage() {
                             getConcernLevelPresentation(row.concernLevelCode)
                               .label}
                         </Badge>
-                        <p className="mt-2 font-medium text-slate-800">
+                      ) : (
+                        "-"
+                      )}
+                    </DataTableCell>
+                  ) : null}
+                  <DataTableCell className="text-slate-600">
+                    {isWatchlist ? (
+                      <>
+                        <p className="text-slate-800">
                           {row.problemCategoryLabel || "-"}
                         </p>
-                        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-slate-600">
+                        <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">
                           {row.teacherComment || "-"}
                         </p>
                       </>
@@ -931,6 +1074,15 @@ function StudentRiskDashboardPage() {
                       </p>
                     )}
                   </DataTableCell>
+                  {isWatchlist ? (
+                    // How often this student has been written about. One row
+                    // per student keeps the count of rows equal to the count of
+                    // children; this column is what a single row would
+                    // otherwise hide.
+                    <DataTableCell className="text-center tabular-nums text-slate-700">
+                      {row.commentCount || "-"}
+                    </DataTableCell>
+                  ) : null}
                   {!isWatchlist ? (
                     <>
                       <DataTableCell className="text-center">
@@ -956,11 +1108,7 @@ function StudentRiskDashboardPage() {
                     </>
                   ) : null}
                   <DataTableCell>
-                    <div
-                      className={
-                        isWatchlist ? "flex justify-center" : undefined
-                      }
-                    >
+                    <div>
                       {isWatchlist ? (
                         <WatchlistRowAction
                           canViewStudent={canViewStudent}
@@ -1044,8 +1192,18 @@ function StudentRiskDashboardPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">
-                      {isWatchlist ? "ข้อสังเกตล่าสุด" : "หมายเหตุจากครู"}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs text-slate-500">
+                        {isWatchlist ? "ข้อสังเกต" : "หมายเหตุจากครู"}
+                      </div>
+                      {isWatchlist && row.commentCount ? (
+                        <div className="text-xs text-slate-500">
+                          จำนวนข้อสังเกต{" "}
+                          <span className="font-semibold tabular-nums text-slate-700">
+                            {row.commentCount}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                     {isWatchlist && row.concernLevelCode ? (
                       <div className="mt-1 space-y-1.5">
@@ -1059,10 +1217,10 @@ function StudentRiskDashboardPage() {
                             getConcernLevelPresentation(row.concernLevelCode)
                               .label}
                         </Badge>
-                        <p className="font-medium text-slate-800">
+                        <p className="text-slate-800">
                           {row.problemCategoryLabel || "-"}
                         </p>
-                        <p className="whitespace-pre-wrap text-sm text-slate-700">
+                        <p className="whitespace-pre-wrap text-xs text-slate-500">
                           {row.teacherComment || "-"}
                         </p>
                       </div>
@@ -1120,7 +1278,7 @@ export function DashboardPage() {
         icon={ClipboardList}
         title="รายงานสถานะนักเรียน"
       />
-      <FollowUpSummaryPanel aggregateOnly />
+      <ReferralRegisterPanel aggregateOnly />
     </PageShell>
   );
 }

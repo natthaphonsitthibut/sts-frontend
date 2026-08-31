@@ -10,6 +10,7 @@ import type {
   CurriculumSubject,
   CurriculumSubjectPayload,
   CurriculumSubjectQuery,
+  CurriculumSubjectTeachersPayload,
 } from "../types/curriculum.types";
 
 interface Envelope<T> {
@@ -42,9 +43,18 @@ async function getSubject(
   id: number,
   query: CurriculumSubjectQuery,
 ): Promise<CurriculumSubject> {
+  // Only the context the read needs. Sending the caller's page/limit along
+  // would be validated against the allowed page sizes and rejected, and the
+  // endpoint resolves one subject by id regardless.
   const response = await apiClient.get<Envelope<CurriculumSubject>>(
     `/subjects/school-catalog/grade-subjects/${id}`,
-    { params: query },
+    {
+      params: {
+        schoolId: query.schoolId,
+        termId: query.termId,
+        gradeLevelId: query.gradeLevelId,
+      },
+    },
   );
   if (!response.data.data) throw new Error("ไม่พบรายวิชาในระดับชั้นนี้");
   return response.data.data;
@@ -82,8 +92,18 @@ async function deleteSubject(
   });
 }
 
+async function saveSubjectTeachers(
+  payload: CurriculumSubjectTeachersPayload,
+): Promise<void> {
+  await apiClient.put(
+    "/subjects/school-catalog/classroom-subject-teachers",
+    payload,
+  );
+}
+
 export const curriculumService = {
   createSubject,
+  saveSubjectTeachers,
   deleteSubject,
   getGrades,
   getSubject,

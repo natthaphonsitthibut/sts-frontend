@@ -176,6 +176,9 @@ export function ClassroomLinkStudentPage() {
           student.photo_url
             ? checkInService.getStudentPhotoUrl({
                 access: "PUBLIC_LINK",
+                // The student's own room, so a link that reaches several has
+                // one named for the photo request to check against.
+                classroomId: Number(student.classroom_id) || undefined,
                 studentId,
               })
             : null

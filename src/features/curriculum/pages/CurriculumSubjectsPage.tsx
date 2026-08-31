@@ -22,16 +22,19 @@ import {
 } from "../../../hooks/useSyncedSearchParams";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
+import { useSchoolTeacherOptions } from "../../school-structure/hooks/useSchoolStructure";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { CurriculumSubjectCard } from "../components/CurriculumSubjectCard";
 import {
   useCurriculumSubjects,
+  useSaveCurriculumSubjectTeachers,
   useDeleteCurriculumSubject,
 } from "../hooks/useCurriculum";
 import type {
   CurriculumSubject,
   CurriculumSubjectQuery,
 } from "../types/curriculum.types";
+import { SubjectTeacherDialog } from "../components/SubjectTeacherDialog";
 
 const CURRICULUM_PATH = "/curriculum";
 
@@ -86,6 +89,24 @@ export function CurriculumSubjectsPage() {
     [gradeId, page, rowsPerPage, schoolId, selectedTermId],
   );
   const subjectsQuery = useCurriculumSubjects(query);
+  const [teacherTarget, setTeacherTarget] = useState<{
+    classroom: CurriculumSubject["classrooms"][number];
+    subject: CurriculumSubject;
+  } | null>(null);
+  const saveTeachers = useSaveCurriculumSubjectTeachers();
+  // Every teacher of the school, so a subject can be staffed by anyone there —
+  // not only by the classroom's homeroom teacher. The unpaginated options
+  // endpoint, the same one the homeroom picker reads: a page of the teacher
+  // list would cut the choices off at the page size.
+  const teachersQuery = useSchoolTeacherOptions(schoolId ?? undefined);
+  const teacherOptions = useMemo(
+    () =>
+      (teachersQuery.data ?? []).map((membership) => ({
+        value: membership.id,
+        label: membership.displayName,
+      })),
+    [teachersQuery.data],
+  );
   const deleteSubject = useDeleteCurriculumSubject(query);
   const gradeLabel = subjectsQuery.subjects[0]?.gradeLabel ?? "";
   useSyncedSearchParams({
@@ -152,29 +173,29 @@ export function CurriculumSubjectsPage() {
             ? `จัดการข้อมูลหลักสูตร (${gradeLabel})`
             : "จัดการข้อมูลหลักสูตร"
         }
-      />
-
-      <ToolbarControls className="mb-8">
-        <FilterSelect
-          ariaLabel="เลือกภาคเรียน"
-          className="sm:w-[260px]"
-          disabled={terms.length === 0}
-          onChange={(value) => {
-            setTermInput(value);
-            setPage(1);
-          }}
-          value={String(selectedTermId ?? "")}
-        >
-          {terms.length === 0 ? (
-            <option value="">ยังไม่มีภาคเรียน</option>
-          ) : null}
-          {terms.map((term) => (
-            <option key={term.id} value={term.id}>
-              {formatSchoolTermLabel(term, termStatusCatalog.items)}
-            </option>
-          ))}
-        </FilterSelect>
-      </ToolbarControls>
+      >
+        <ToolbarControls>
+          <FilterSelect
+            ariaLabel="เลือกภาคเรียน"
+            className="sm:w-[260px]"
+            disabled={terms.length === 0}
+            onChange={(value) => {
+              setTermInput(value);
+              setPage(1);
+            }}
+            value={String(selectedTermId ?? "")}
+          >
+            {terms.length === 0 ? (
+              <option value="">ยังไม่มีภาคเรียน</option>
+            ) : null}
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {formatSchoolTermLabel(term, termStatusCatalog.items)}
+              </option>
+            ))}
+          </FilterSelect>
+        </ToolbarControls>
+      </PageToolbar>
 
       <FormErrorAlert
         error={deleteSubject.error}
@@ -204,6 +225,9 @@ export function CurriculumSubjectsPage() {
         <div className="flex flex-col gap-4">
           {subjectsQuery.subjects.map((subject) => (
             <CurriculumSubjectCard
+              onAssignTeachers={(classroom) =>
+                setTeacherTarget({ classroom, subject })
+              }
               isDeleting={
                 deleteSubject.isPending &&
                 deleteSubject.variables === subject.id
@@ -213,6 +237,9 @@ export function CurriculumSubjectsPage() {
                 void handleDelete(item);
               }}
               onEdit={openEdit}
+              onOpenTeacher={(teacherId) =>
+                contextualNavigate(`/teachers/${teacherId}`)
+              }
               subject={subject}
             />
           ))}
@@ -230,6 +257,23 @@ export function CurriculumSubjectsPage() {
           />
         </div>
       )}
+      {teacherTarget ? (
+        <SubjectTeacherDialog
+          classroom={teacherTarget.classroom}
+          error={saveTeachers.error}
+          isSaving={saveTeachers.isPending}
+          onClose={() => setTeacherTarget(null)}
+          onSave={(input) => {
+            if (!schoolId) return;
+            saveTeachers.mutate(
+              { schoolId, ...input },
+              { onSuccess: () => setTeacherTarget(null) },
+            );
+          }}
+          subject={teacherTarget.subject}
+          teacherOptions={teacherOptions}
+        />
+      ) : null}
       {confirmDialog}
     </PageShell>
   );

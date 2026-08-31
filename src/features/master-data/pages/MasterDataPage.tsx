@@ -19,7 +19,6 @@ import {
 } from "../../../components/layout/data-table";
 import { MasterDataTabs } from "../../../components/layout/master-data-tabs";
 import { Pagination } from "../../../components/layout/pagination";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import {
   EmptyState,
   ErrorState,
@@ -229,10 +228,6 @@ export function MasterDataPage() {
                 setIncludeInactive(event.target.checked);
                 setPage(1);
               }}
-            />
-            <RefreshButton
-              onRefresh={() => activeQuery.refetch()}
-              updatedAt={activeQuery.dataUpdatedAt}
             />
           </div>
         }

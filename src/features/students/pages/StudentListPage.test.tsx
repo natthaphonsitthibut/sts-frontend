@@ -111,17 +111,19 @@ describe("student list school scope", () => {
   it("requires a school before querying a multi-school roster", async () => {
     const requests = renderStudentList(SCHOOL_FIXTURES.many);
 
-    expect(await screen.findByText("เลือกโรงเรียน")).toBeTruthy();
     expect(lastRequestTo(requests, "/students")).toBeUndefined();
-    expect(
-      (screen.getByRole("button", { name: "รีเฟรช" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+
+    // The scope lives behind the header field now, so the school picker is not
+    // on the page until it is opened.
+    expect(screen.queryByLabelText("กรองตามโรงเรียน")).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: /ขอบเขต/ }));
     expect(screen.queryByPlaceholderText("ค้นหาจังหวัด")).toBeNull();
     expect(screen.queryByPlaceholderText("ค้นหาอำเภอ/เขต")).toBeNull();
 
     fireEvent.click(screen.getByLabelText("กรองตามโรงเรียน"));
-    fireEvent.click(await screen.findByRole("button", { name: "โรงเรียนสอง" }));
+    // The option's accessible name now carries its area line as well, so the
+    // two schools that share a name are told apart.
+    fireEvent.click(await screen.findByRole("button", { name: /โรงเรียนสอง/ }));
 
     await waitFor(() =>
       expect(lastRequestTo(requests, "/students")?.params.schoolId).toBe("202"),

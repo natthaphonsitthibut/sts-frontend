@@ -13,20 +13,17 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Combobox,
+  Select,
+  type ComboboxOption,
 } from "../../../components/base";
 import {
   ErrorState,
-  FilterSelect,
   PageShell,
   PageToolbar,
   SkeletonCards,
-  ToolbarFilterGrid,
 } from "../../../components/layout/page-primitives";
-import { ClearFiltersButton } from "../../../components/layout/clear-filters-button";
-import { RefreshButton } from "../../../components/layout/refresh-button";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -43,6 +40,8 @@ import type {
   HomeDashboardMetric,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 
@@ -135,41 +134,6 @@ function getRiskAreaBackAction(
   return null;
 }
 
-function FilterCombobox({
-  allLabel,
-  ariaLabel,
-  options,
-  value,
-  onChange,
-  disabled,
-  formatOptionLabel,
-}: {
-  allLabel: string;
-  ariaLabel: string;
-  options: HomeDashboardOption[];
-  value?: string | number;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  formatOptionLabel?: (option: HomeDashboardOption) => string;
-}) {
-  return (
-    <Combobox
-      aria-label={ariaLabel}
-      disabled={disabled}
-      onChange={onChange}
-      options={[
-        { value: "", label: allLabel },
-        ...options.map((option) => ({
-          value: String(option.value),
-          label: formatOptionLabel?.(option) ?? option.label,
-        })),
-      ]}
-      placeholder={allLabel}
-      value={value === undefined ? "" : String(value)}
-    />
-  );
-}
-
 function getLockedSchoolId(
   schoolIds: number[] | undefined,
 ): number | undefined {
@@ -241,6 +205,7 @@ function useDashboardFilters() {
 function DashboardFilterBar({
   filters,
   options,
+  onReset,
   onUpdate,
   schoolLocked,
 }: {
@@ -253,6 +218,7 @@ function DashboardFilterBar({
     grades: HomeDashboardOption[];
     rooms: HomeDashboardOption[];
   };
+  onReset: () => void;
   onUpdate: (next: Partial<HomeDashboardFilters>) => void;
   schoolLocked: boolean;
 }) {
@@ -264,69 +230,104 @@ function DashboardFilterBar({
     grades: [],
     rooms: [],
   };
+  const allOption = (
+    label: string,
+    options: HomeDashboardOption[],
+  ): ComboboxOption[] => [
+    { value: "", label },
+    ...options.map((option) => ({
+      value: String(option.value),
+      label: option.label,
+    })),
+  ];
+  const labelOf = (
+    options: HomeDashboardOption[],
+    value: string | number | undefined,
+  ): string | undefined =>
+    value === undefined || value === ""
+      ? undefined
+      : options.find((option) => String(option.value) === String(value))?.label;
+
   return (
-    <ToolbarFilterGrid>
-      <FilterCombobox
-        allLabel="ทุกจังหวัด"
+    <ScopeFilterField
+      onClear={onReset}
+      scope={{
+        province: filters.province,
+        district: filters.district,
+        subDistrict: filters.subDistrict,
+        schoolName: labelOf(safeOptions.schools, filters.schoolId),
+        grade: labelOf(safeOptions.grades, filters.grade),
+        room: filters.room,
+      }}
+    >
+      <Combobox
         ariaLabel="จังหวัด"
-        options={safeOptions.provinces}
-        value={filters.province}
+        options={allOption(SCOPE_ALL_LABEL.province, safeOptions.provinces)}
+        placeholder={SCOPE_ALL_LABEL.province}
+        value={filters.province ?? ""}
         onChange={(value) => onUpdate({ province: value || undefined })}
         disabled={schoolLocked}
       />
-      <FilterCombobox
-        allLabel="ทุกอำเภอ/เขต"
+      <Combobox
         ariaLabel="อำเภอ/เขต"
-        options={safeOptions.districts}
-        value={filters.district}
+        options={allOption(SCOPE_ALL_LABEL.district, safeOptions.districts)}
+        placeholder={SCOPE_ALL_LABEL.district}
+        value={filters.district ?? ""}
         onChange={(value) => onUpdate({ district: value || undefined })}
         disabled={schoolLocked || !filters.province}
       />
-      <FilterCombobox
-        allLabel="ทุกตำบล/แขวง"
+      <Combobox
         ariaLabel="ตำบล/แขวง"
-        options={safeOptions.subDistricts}
-        value={filters.subDistrict}
+        options={allOption(
+          SCOPE_ALL_LABEL.subDistrict,
+          safeOptions.subDistricts,
+        )}
+        placeholder={SCOPE_ALL_LABEL.subDistrict}
+        value={filters.subDistrict ?? ""}
         onChange={(value) => onUpdate({ subDistrict: value || undefined })}
         disabled={schoolLocked || !filters.district}
       />
-      <FilterCombobox
-        allLabel="ทุกโรงเรียน"
+      <Combobox
         ariaLabel="โรงเรียน"
-        options={safeOptions.schools}
-        value={filters.schoolId}
+        options={allOption(SCOPE_ALL_LABEL.school, safeOptions.schools)}
+        placeholder={SCOPE_ALL_LABEL.school}
+        value={filters.schoolId === undefined ? "" : String(filters.schoolId)}
         onChange={(value) =>
           onUpdate({ schoolId: value ? Number(value) : undefined })
         }
         disabled={schoolLocked}
       />
-      <FilterSelect
-        ariaLabel="ชั้น"
-        onChange={(value) => onUpdate({ grade: value || undefined })}
+      <Select
+        aria-label="ชั้น"
+        onChange={(event) =>
+          onUpdate({ grade: event.target.value || undefined })
+        }
         disabled={!filters.schoolId}
         value={filters.grade ?? ""}
       >
-        <option value="">ทุกชั้น</option>
+        <option value="">{SCOPE_ALL_LABEL.grade}</option>
         {safeOptions.grades.map((option) => (
           <option key={option.value} value={String(option.value)}>
             {option.label}
           </option>
         ))}
-      </FilterSelect>
-      <FilterSelect
-        ariaLabel="ห้อง"
-        onChange={(value) => onUpdate({ room: value || undefined })}
+      </Select>
+      <Select
+        aria-label="ห้อง"
+        onChange={(event) =>
+          onUpdate({ room: event.target.value || undefined })
+        }
         disabled={!filters.grade}
         value={filters.room ?? ""}
       >
-        <option value="">ทุกห้อง</option>
+        <option value="">{SCOPE_ALL_LABEL.room}</option>
         {safeOptions.rooms.map((option) => (
           <option key={option.value} value={String(option.value)}>
             {formatRoomLabel(option.value)}
           </option>
         ))}
-      </FilterSelect>
-    </ToolbarFilterGrid>
+      </Select>
+    </ScopeFilterField>
   );
 }
 
@@ -420,7 +421,6 @@ export function MainPage() {
     isLoading,
     isError,
     isFilterOptionsError,
-    dataUpdatedAt,
     refetch,
     refetchFilterOptions,
   } = useHomeDashboard(filters);
@@ -431,20 +431,16 @@ export function MainPage() {
         icon={Activity}
         title="ศูนย์สั่งการวันนี้"
         description={`${displayName} · ${roleLabel} · ${affiliation}`}
-        footerActions={
-          <>
-            <RefreshButton onRefresh={refetch} updatedAt={dataUpdatedAt} />
-            <ClearFiltersButton onClear={reset} />
-          </>
+        scope={
+          <DashboardFilterBar
+            filters={filters}
+            options={filterOptions?.options}
+            onReset={reset}
+            onUpdate={updateFilter}
+            schoolLocked={schoolLocked}
+          />
         }
-      >
-        <DashboardFilterBar
-          filters={filters}
-          options={filterOptions?.options}
-          onUpdate={updateFilter}
-          schoolLocked={schoolLocked}
-        />
-      </PageToolbar>
+      />
 
       {isFilterOptionsError ? (
         <Alert variant="destructive" className="mb-4">
@@ -476,12 +472,6 @@ export function MainPage() {
         />
       ) : (
         <div className="space-y-5 ">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="default">{summary.scopeLabel}</Badge>
-            </div>
-          </div>
-
           <MetricGrid metrics={summary.metrics} />
 
           <div

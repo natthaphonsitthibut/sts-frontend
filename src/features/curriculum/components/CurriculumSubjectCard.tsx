@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ChevronDown, SquarePen, Trash2 } from "lucide-react";
-import { Button, IconButton } from "../../../components/base";
+import { ChevronDown, SquarePen, Trash2, Users } from "lucide-react";
+import { Avatar, Button, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -8,6 +8,7 @@ import {
   TableCard,
   TableCardList,
 } from "../../../components/layout/data-table";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { cn } from "../../../lib/utils";
 import type { CurriculumSubject } from "../types/curriculum.types";
 
@@ -16,6 +17,60 @@ interface CurriculumSubjectCardProps {
   isDeleting?: boolean;
   onEdit: (subject: CurriculumSubject) => void;
   onDelete: (subject: CurriculumSubject) => void;
+  onAssignTeachers: (
+    classroom: CurriculumSubject["classrooms"][number],
+  ) => void;
+  onOpenTeacher: (teacherId: string) => void;
+}
+
+/**
+ * Teachers as a face and a name each, with the gap called out rather than left
+ * blank: an unstaffed offering is the thing this screen exists to fix, and "-"
+ * reads like a value.
+ *
+ * A subject can be taught by several people, so they wrap as separate chips
+ * rather than running together as one comma list — at four or five names the
+ * faces are what a reader scans, not the text.
+ */
+function TeacherCell({
+  classroom,
+  onOpenTeacher,
+}: {
+  classroom: CurriculumSubject["classrooms"][number];
+  onOpenTeacher: (teacherId: string) => void;
+}) {
+  if (classroom.teachers.length === 0) {
+    return (
+      <span className="text-sm font-medium text-warning-700">
+        ยังไม่กำหนดครู
+      </span>
+    );
+  }
+  return (
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      {classroom.teachers.map((teacher) => (
+        <li className="flex items-center gap-2" key={teacher.membershipId}>
+          {/* The face opens the teacher's record, as it does on the teacher
+              directory and the link page — same ring on hover and focus, so a
+              reader learns the affordance once. */}
+          <button
+            aria-label={`เปิดข้อมูลคุณครู ${teacher.name}`}
+            className="shrink-0 rounded-full transition-shadow hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            onClick={() => onOpenTeacher(teacher.teacherId)}
+            type="button"
+          >
+            <Avatar
+              className="size-8 text-xs"
+              gradientName={teacher.name}
+              imageAlt={`รูปประจำตัวของ ${teacher.name}`}
+              imageUrl={resolveApiMediaUrl(teacher.photoUrl)}
+            />
+          </button>
+          <span className="text-slate-800">{teacher.name}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function CurriculumSubjectCard({
@@ -23,6 +78,8 @@ export function CurriculumSubjectCard({
   isDeleting,
   onEdit,
   onDelete,
+  onAssignTeachers,
+  onOpenTeacher,
 }: CurriculumSubjectCardProps) {
   const [open, setOpen] = useState(false);
   const detailId = `curriculum-subject-${subject.id}`;
@@ -61,11 +118,31 @@ export function CurriculumSubjectCard({
             </p>
           ) : (
             <>
-              <DataTable headings={["ชั้น/ห้อง"]} responsiveBreakpoint="md">
+              <DataTable
+                columnWidths={["w-[22%]", "w-[58%]", "w-[20%]"]}
+                headings={["ชั้น/ห้อง", "ครูผู้สอน", "เครื่องมือ"]}
+                responsiveBreakpoint="md"
+              >
                 {subject.classrooms.map((classroom) => (
                   <DataTableRow key={classroom.id}>
                     <DataTableCell className="font-medium text-slate-800">
                       {classroom.label}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <TeacherCell
+                        classroom={classroom}
+                        onOpenTeacher={onOpenTeacher}
+                      />
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Button
+                        icon={Users}
+                        onClick={() => onAssignTeachers(classroom)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        กำหนดครู
+                      </Button>
                     </DataTableCell>
                   </DataTableRow>
                 ))}
@@ -73,9 +150,25 @@ export function CurriculumSubjectCard({
               <TableCardList desktopBreakpoint="md">
                 {subject.classrooms.map((classroom) => (
                   <TableCard key={classroom.id}>
-                    <span className="font-semibold text-slate-800">
-                      {classroom.label}
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-slate-800">
+                        {classroom.label}
+                      </span>
+                      <Button
+                        icon={Users}
+                        onClick={() => onAssignTeachers(classroom)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        กำหนดครู
+                      </Button>
+                    </div>
+                    <div className="mt-1 text-sm">
+                      <TeacherCell
+                        classroom={classroom}
+                        onOpenTeacher={onOpenTeacher}
+                      />
+                    </div>
                   </TableCard>
                 ))}
               </TableCardList>

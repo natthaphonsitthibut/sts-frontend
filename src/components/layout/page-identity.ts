@@ -85,7 +85,7 @@ const createIdentity = (
 export const PAGE_IDENTITIES = {
   "/": createIdentity("หน้าหลัก", "home"),
   "/attendance": createIdentity("เช็กชื่อ", "edit"),
-  "/attendance/classroom-links": createIdentity("จัดการลิงก์ห้องเรียน", "link"),
+  "/attendance/classroom-links": createIdentity("จัดการลิงก์ครู", "link"),
   "/classrooms": createIdentity("ห้องเรียนทั้งหมด", "school-building"),
   "/curriculum": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
   "/subjects": createIdentity("จัดการข้อมูลหลักสูตร", "file-spreadsheet"),
@@ -116,6 +116,10 @@ export const PAGE_IDENTITIES = {
     "chart-line",
   ),
   "/student-risk-report/watchlist": createIdentity(
+    "รายงานสถานะนักเรียน",
+    "chart-line",
+  ),
+  "/student-risk-report/referrals": createIdentity(
     "รายงานสถานะนักเรียน",
     "chart-line",
   ),

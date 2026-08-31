@@ -7,9 +7,20 @@ export interface CurriculumGrade {
   subjectCount: number;
 }
 
+export interface CurriculumSubjectTeacher {
+  membershipId: number;
+  teacherId: string;
+  name: string;
+  /** App-served photo route, or null when the teacher has no photo set. */
+  photoUrl: string | null;
+}
+
 export interface CurriculumClassroom {
   id: number;
+  /** The offering row itself — what a teacher assignment hangs off. */
+  classroomSubjectId: number;
   label: string;
+  teachers: CurriculumSubjectTeacher[];
 }
 
 export interface CurriculumSubject {
@@ -43,4 +54,11 @@ export interface CurriculumSubjectPayload {
   code: string;
   nameTh: string;
   classroomIds: number[];
+}
+
+export interface CurriculumSubjectTeachersPayload {
+  schoolId: number;
+  /** One classroom, or every classroom of the subject when staffing a grade. */
+  classroomSubjectIds: number[];
+  teacherMembershipIds: number[];
 }

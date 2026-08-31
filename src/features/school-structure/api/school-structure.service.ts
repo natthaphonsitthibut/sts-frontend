@@ -66,6 +66,12 @@ export interface ClassroomRosterListParams {
 
 export interface ClassroomAttendanceHistoryParams {
   classroomId: number;
+  /**
+   * Which door the read comes through. A classroom link has no account, so the
+   * staff route would refuse it; its own namespace answers the same history for
+   * the one room its session is bound to.
+   */
+  source?: StudentReadSource;
   view: "DAILY" | "STUDENT";
   /** Narrows the history to one subject; omitted means the whole day. */
   subjectId?: number;
@@ -287,13 +293,32 @@ async function listStudentClassroomComments(
   return response.data;
 }
 
+/**
+ * The URL and query for one attendance-history read. The staff route names the
+ * classroom in the path; the link route takes it as a parameter, because its
+ * controller has to check the room against the session before reading it.
+ */
+function attendanceHistoryRequest({
+  classroomId,
+  source = "INTERNAL",
+  ...query
+}: ClassroomAttendanceHistoryParams & { studentUuid?: string }): [
+  string,
+  { params: Record<string, unknown> },
+] {
+  return source === "INTERNAL"
+    ? [
+        `/school-structure/classrooms/${classroomId}/attendance-history`,
+        { params: query },
+      ]
+    : ["/classroom/attendance-history", { params: { ...query, classroomId } }];
+}
+
 async function listClassroomDailyAttendance(
   params: ClassroomAttendanceHistoryParams,
 ): Promise<PaginatedClassroomDailyAttendance> {
-  const { classroomId, ...query } = params;
   const response = await apiClient.get<PaginatedClassroomDailyAttendance>(
-    `/school-structure/classrooms/${classroomId}/attendance-history`,
-    { params: query },
+    ...attendanceHistoryRequest(params),
   );
   return response.data;
 }
@@ -301,10 +326,8 @@ async function listClassroomDailyAttendance(
 async function listClassroomStudentAttendance(
   params: ClassroomAttendanceHistoryParams,
 ): Promise<PaginatedClassroomStudentAttendance> {
-  const { classroomId, ...query } = params;
   const response = await apiClient.get<PaginatedClassroomStudentAttendance>(
-    `/school-structure/classrooms/${classroomId}/attendance-history`,
-    { params: query },
+    ...attendanceHistoryRequest(params),
   );
   return response.data;
 }
@@ -312,10 +335,8 @@ async function listClassroomStudentAttendance(
 async function listStudentAttendanceDays(
   params: ClassroomAttendanceHistoryParams & { studentUuid: string },
 ): Promise<PaginatedClassroomStudentAttendanceDays> {
-  const { classroomId, ...query } = params;
   const response = await apiClient.get<PaginatedClassroomStudentAttendanceDays>(
-    `/school-structure/classrooms/${classroomId}/attendance-history`,
-    { params: query },
+    ...attendanceHistoryRequest(params),
   );
   return response.data;
 }

@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { classroomLinksService } from "../api/classroom-links.service";
-import type { ClassroomLinkListParams } from "../types/classroom-links.types";
+import { checkInService } from "../../check-in/api/check-in.service";
+import type { CheckInAccess } from "../../check-in/types/check-in.types";
+import type {
+  AttendanceAssignmentPayload,
+  ClassroomLinkListParams,
+  MyAssignmentLinkParams,
+} from "../types/classroom-links.types";
 
 const KEY = "classroom-links";
 
@@ -14,7 +20,100 @@ export function useClassroomLinks(params: ClassroomLinkListParams | null) {
 
 function useRefreshClassroomLinks() {
   const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: [KEY, "list"] });
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: [KEY, "list"] }),
+      client.invalidateQueries({ queryKey: [KEY, "mine"] }),
+    ]);
+}
+
+/**
+ * Creates an assignment link from wherever the teacher is standing.
+ *
+ * The admin page posts as an authenticated user; a teacher inside their own
+ * link has no account and posts through the link's namespace, which proves the
+ * subject is theirs before handing it on. Same act, two doors.
+ */
+export function useCreateAttendanceAssignment(
+  access: CheckInAccess = "INTERNAL",
+) {
+  const refresh = useRefreshClassroomLinks();
+  return useMutation({
+    mutationFn: (input: AttendanceAssignmentPayload) =>
+      access === "INTERNAL"
+        ? classroomLinksService.createAssignment(input)
+        : checkInService.createAssignment({
+            classroomSubjectId: input.classroomSubjectId,
+            opensAt: input.opensAt,
+            expiresAt: input.expiresAt,
+          }),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+/**
+ * The assignments the person looking issued, and the actions on one of them.
+ *
+ * Keyed by `access` as well as the filter: the staff screen and a teacher's own
+ * link are different registers of the same kind of link, and one must never be
+ * served from the other's cache.
+ */
+export function useMyAssignmentLinks(
+  access: CheckInAccess,
+  params: MyAssignmentLinkParams | null,
+) {
+  return useQuery({
+    queryKey: [KEY, "mine", access, params],
+    queryFn: () => classroomLinksService.listMyAssignments(access, params!),
+    enabled: Boolean(params),
+  });
+}
+
+export function useMyAssignmentUsage(
+  access: CheckInAccess,
+  linkId: string | null,
+) {
+  return useQuery({
+    queryKey: [KEY, "mine-usage", access, linkId],
+    queryFn: () => classroomLinksService.getMyAssignmentUsage(access, linkId!),
+    enabled: Boolean(linkId),
+  });
+}
+
+function useRefreshMyAssignments() {
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: [KEY, "mine"] });
+}
+
+/** Reads the link back out to share again. Nothing changes; the token stands. */
+export function useMyAssignmentUrl(access: CheckInAccess) {
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.getMyAssignmentUrl(access, linkId),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+/** A new token: whoever holds the old link is locked out from this moment. */
+export function useRotateMyAssignment(access: CheckInAccess) {
+  const refresh = useRefreshMyAssignments();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.rotateMyAssignment(access, linkId),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+export function useDeactivateMyAssignment(access: CheckInAccess) {
+  const refresh = useRefreshMyAssignments();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      classroomLinksService.deactivateMyAssignment(access, linkId),
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
 }
 
 export function useBulkCreateClassroomLinks() {

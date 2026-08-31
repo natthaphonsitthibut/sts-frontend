@@ -79,6 +79,14 @@ interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
    */
   breadcrumbTrail?: Array<{ label: string; to: string; icon?: LucideIcon }>;
   parentBreadcrumb?: { label: string; to: string; icon?: LucideIcon };
+  /**
+   * Which slice of the school system the page is showing — a `ScopeFilterField`
+   * in practice. It sits in the header rather than among the filters because it
+   * is page context, not one filter among peers: it states the answer even for
+   * an actor whose scope is fixed and who has nothing to choose. One slot, so
+   * it lands in the same place on every page.
+   */
+  scope?: ReactNode;
   title?: ReactNode;
   /**
    * Crumb text for the current page when the title carries more than the page's
@@ -122,6 +130,7 @@ export function PageToolbar({
   icon: Icon,
   navigation,
   parentBreadcrumb,
+  scope,
   title,
   tone = "default",
   ...props
@@ -231,9 +240,13 @@ export function PageToolbar({
             tone === "primary" ? "min-h-20 p-5" : "py-1",
           )}
         >
-          {!hideBreadcrumb || navigation ? (
+          {/* The home page is the one place the breadcrumb and the title say
+              the same single word — the trail has nowhere to go back to and the
+              heading repeats it. Both are dropped there and nowhere else, so
+              every other page still opens with "หน้าหลัก > …" as before. */}
+          {(!hideBreadcrumb && !isHomePage) || navigation ? (
             <div className="flex flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-between">
-              {!hideBreadcrumb ? (
+              {!hideBreadcrumb && !isHomePage ? (
                 <nav
                   aria-label="เส้นทางนำทาง"
                   data-page-breadcrumb
@@ -375,14 +388,16 @@ export function PageToolbar({
             )}
           >
             <div className="min-w-0 flex-1">
-              <h1
-                className={cn(
-                  "text-xl font-semibold leading-8",
-                  toneClasses.title,
-                )}
-              >
-                {toolbarTitle}
-              </h1>
+              {isHomePage ? null : (
+                <h1
+                  className={cn(
+                    "text-xl font-semibold leading-8",
+                    toneClasses.title,
+                  )}
+                >
+                  {toolbarTitle}
+                </h1>
+              )}
             </div>
             {actions ? (
               <div
@@ -393,6 +408,9 @@ export function PageToolbar({
               </div>
             ) : null}
           </div>
+          {scope ? (
+            <div className="mt-2 flex min-w-0 pb-1 sm:mt-3">{scope}</div>
+          ) : null}
         </div>
       </section>
       {hasAttachedSurface ? (
@@ -603,7 +621,12 @@ type ListPageToolbarControlProps =
   | {
       search?: undefined;
       filters?: undefined;
-      onClearFilters?: never;
+      /**
+       * Allowed with no search or filters because `scope` is a control too: a
+       * page whose only narrowing is the scope field still has something for a
+       * reset to clear.
+       */
+      onClearFilters?: () => void;
     }
   | {
       /** Optional search box — rendered first in the controls row. */
