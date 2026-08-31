@@ -353,6 +353,9 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
           openable &&
             "transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         );
+        const lockedHint = openable
+          ? undefined
+          : "บัญชีนี้ไม่มีสิทธิ์เปิดหน้ารายงานปลายทาง";
         const cardContent = (
           <>
             <div className="flex items-start justify-between gap-3">
@@ -402,6 +405,8 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
             key={metric.key}
             className={cardClassName}
             data-home-metric={metric.key}
+            data-home-metric-locked="true"
+            title={lockedHint}
           >
             {cardContent}
           </div>
