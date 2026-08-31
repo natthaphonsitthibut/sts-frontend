@@ -146,16 +146,48 @@ async function getOptions(input: {
 async function getRoster(input: {
   access: "INTERNAL" | "PUBLIC_LINK";
   classroomId?: number;
+  date?: string;
+  classroomSubjectId?: number;
 }): Promise<CheckInStudent[]> {
   const response = await apiClient.get<DataEnvelope<CheckInStudent[]>>(
     input.access === "INTERNAL"
       ? "/attendance/check-in/roster"
       : "/classroom/roster",
     {
-      params: { classroomId: input.classroomId },
+      params: {
+        classroomId: input.classroomId,
+        date: input.classroomSubjectId ? input.date : undefined,
+        classroomSubjectId: input.classroomSubjectId,
+      },
     },
   );
   return response.data.data ?? [];
+}
+
+/**
+ * The register already opened for this lesson, or null. Reading a lesson must
+ * not start one: starting freezes a roster snapshot and leaves an unsubmitted
+ * session that reads as "someone began checking this class".
+ */
+async function getCurrentSession(input: {
+  access: "INTERNAL" | "PUBLIC_LINK";
+  classroomId?: number;
+  date: string;
+  classroomSubjectId: number;
+}): Promise<CheckInSession | null> {
+  const response = await apiClient.get<DataEnvelope<CheckInSession | null>>(
+    input.access === "INTERNAL"
+      ? "/attendance/check-in/sessions/current"
+      : "/classroom/sessions/current",
+    {
+      params: {
+        classroomId: input.classroomId,
+        date: input.date,
+        classroomSubjectId: input.classroomSubjectId,
+      },
+    },
+  );
+  return response.data.data ?? null;
 }
 
 async function startSession(input: {
@@ -186,6 +218,8 @@ async function submitSession(input: {
     status: AttendanceExceptionStatus;
     markedAt: string;
   }>;
+  correctionReason?: string;
+  expectedLockVersion?: number;
 }): Promise<CheckInSession> {
   const response = await apiClient.post<DataEnvelope<CheckInSession>>(
     input.access === "INTERNAL"
@@ -193,6 +227,8 @@ async function submitSession(input: {
       : `/classroom/sessions/${input.sessionId}/submit`,
     {
       exceptions: input.exceptions,
+      correctionReason: input.correctionReason,
+      expectedLockVersion: input.expectedLockVersion,
       // The staff route takes the room from the signed-in scope; the link has
       // to be told which of its rooms this register belongs to.
       ...(input.access === "INTERNAL" || !input.classroomId
@@ -320,6 +356,7 @@ export const checkInService = {
   getCommentOptions,
   listComments,
   createAraIdChallenge,
+  getCurrentSession,
   getOptions,
   getPublicContext,
   getRoster,

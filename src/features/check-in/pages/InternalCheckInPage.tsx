@@ -171,7 +171,15 @@ export function InternalCheckInPage() {
           description="เปิดภาคเรียนก่อนเริ่มเช็กชื่อ"
         />
       ) : classroomId ? (
-        <CheckInWorkspace access="INTERNAL" classroomId={classroomId} />
+        <CheckInWorkspace
+          access="INTERNAL"
+          classroomId={classroomId}
+          initialClassroomSubjectId={
+            Number(searchParams.get("classroomSubjectId")) || undefined
+          }
+          initialDate={searchParams.get("date") ?? undefined}
+          key={`${classroomId}:${searchParams.get("classroomSubjectId") ?? ""}:${searchParams.get("date") ?? "today"}`}
+        />
       ) : (
         <EmptyState
           icon={School}

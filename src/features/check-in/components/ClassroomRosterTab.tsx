@@ -42,15 +42,18 @@ function RiskBadge({ tier }: { tier: string }) {
  */
 export function ClassroomRosterTab({
   isLoading,
+  limited = false,
   onComment,
   onOpenStudent,
   renderAvatar,
   roster,
 }: {
   isLoading: boolean;
+  /** Assignment links show roster identity only, without welfare/profile data. */
+  limited?: boolean;
   /** Left out where a surface cannot write comments. */
   onComment?: (student: CheckInStudent) => void;
-  onOpenStudent: (student: CheckInStudent) => void;
+  onOpenStudent?: (student: CheckInStudent) => void;
   /** The photo cell, rendered by the surface that knows how to fetch it. */
   renderAvatar: (student: CheckInStudent) => ReactNode;
   roster: CheckInStudent[];
@@ -68,6 +71,7 @@ export function ClassroomRosterTab({
   }, [roster, search]);
 
   function avatarButton(student: CheckInStudent) {
+    if (!onOpenStudent) return renderAvatar(student);
     return (
       <button
         aria-label={`เปิดข้อมูลนักเรียน ${fullNameOf(student)}`}
@@ -81,6 +85,7 @@ export function ClassroomRosterTab({
   }
 
   function actions(student: CheckInStudent) {
+    if (!onOpenStudent) return null;
     return (
       <div className="flex justify-center gap-2">
         <IconButton
@@ -133,9 +138,13 @@ export function ClassroomRosterTab({
               { label: "รูปประจำตัว", className: "text-center" },
               { label: "รหัสประจำตัว" },
               { label: "ชื่อ-นามสกุล" },
-              { label: "หมายเหตุ" },
-              { label: "สถานะความเสี่ยง", className: "text-center" },
-              { label: "เครื่องมือ", className: "text-center" },
+              ...(limited
+                ? []
+                : [
+                    { label: "หมายเหตุ" },
+                    { label: "สถานะความเสี่ยง", className: "text-center" },
+                    { label: "เครื่องมือ", className: "text-center" },
+                  ]),
             ]}
             minWidthClassName="min-w-[1040px]"
           >
@@ -155,15 +164,19 @@ export function ClassroomRosterTab({
                 <DataTableCell className="font-medium text-slate-900">
                   {fullNameOf(student)}
                 </DataTableCell>
-                <DataTableCell className="max-w-[360px] text-slate-700">
-                  {student.teacherComment?.trim() || "-"}
-                </DataTableCell>
-                <DataTableCell className="text-center">
-                  <div className="flex justify-center">
-                    <RiskBadge tier={student.riskTier} />
-                  </div>
-                </DataTableCell>
-                <DataTableCell>{actions(student)}</DataTableCell>
+                {limited ? null : (
+                  <>
+                    <DataTableCell className="max-w-[360px] text-slate-700">
+                      {student.teacherComment?.trim() || "-"}
+                    </DataTableCell>
+                    <DataTableCell className="text-center">
+                      <div className="flex justify-center">
+                        <RiskBadge tier={student.riskTier ?? "NORMAL"} />
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell>{actions(student)}</DataTableCell>
+                  </>
+                )}
               </DataTableRow>
             ))}
           </DataTable>
@@ -187,14 +200,18 @@ export function ClassroomRosterTab({
                       </span>
                     </p>
                   </div>
-                  <RiskBadge tier={student.riskTier} />
+                  {limited ? null : (
+                    <RiskBadge tier={student.riskTier ?? "NORMAL"} />
+                  )}
                 </div>
-                {student.teacherComment?.trim() ? (
+                {!limited && student.teacherComment?.trim() ? (
                   <p className="mt-2 line-clamp-2 text-sm text-slate-600">
                     {student.teacherComment}
                   </p>
                 ) : null}
-                <div className="mt-2.5">{actions(student)}</div>
+                {limited ? null : (
+                  <div className="mt-2.5">{actions(student)}</div>
+                )}
               </TableCard>
             ))}
           </TableCardList>

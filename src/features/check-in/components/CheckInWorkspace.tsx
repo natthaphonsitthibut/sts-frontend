@@ -54,6 +54,7 @@ import { AttendanceAssignmentDialog } from "../../classroom-links/components/Att
 import { useCreateAttendanceAssignment } from "../../classroom-links/hooks/useClassroomLinks";
 import { ClassroomAttendanceHistory } from "../../school-structure/components/ClassroomAttendanceHistory";
 import { ClassroomRosterTab } from "./ClassroomRosterTab";
+import { AttendanceCorrectionSubmitDialog } from "./AttendanceCorrectionSubmitDialog";
 import { useClassroomLinkComments } from "../hooks/useClassroomLinkComments";
 import { useCheckInWorkspace } from "../hooks/useCheckInWorkspace";
 import type {
@@ -665,6 +666,8 @@ export function CheckInWorkspace({
   assignment = null,
   classroomId,
   classroomSubjectId,
+  initialClassroomSubjectId,
+  initialDate,
 }: {
   access: CheckInAccess;
   /** Set when the link covers a single lesson handed on by its teacher. */
@@ -675,12 +678,18 @@ export function CheckInWorkspace({
    * subject, so the picker is dropped rather than asked again.
    */
   classroomSubjectId?: number;
+  /** Preselects a lesson while keeping the staff subject picker available. */
+  initialClassroomSubjectId?: number;
+  /** Opens a specific historical register instead of defaulting to today. */
+  initialDate?: string;
 }) {
   const isAssignment = assignment !== null;
   const workspace = useCheckInWorkspace({
     access,
     classroomId,
     classroomSubjectId,
+    initialClassroomSubjectId,
+    initialDate,
   });
   const [autoAdvance, setAutoAdvance] = useState(readAutoAdvance);
   const [commentStudent, setCommentStudent] = useState<CheckInStudent | null>(
@@ -719,6 +728,7 @@ export function CheckInWorkspace({
   const [announcement, setAnnouncement] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [assignmentOpen, setAssignmentOpen] = useState(false);
+  const [correctionSubmitOpen, setCorrectionSubmitOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const createAssignment = useCreateAttendanceAssignment(access);
   const submitAreaRef = useRef<HTMLDivElement>(null);
@@ -727,6 +737,7 @@ export function CheckInWorkspace({
     (subject) => subject.classroomSubjectId === workspace.classroomSubjectId,
   );
   const readOnly = Boolean(workspace.session?.readOnly);
+  const hasSubmittedResult = Boolean(workspace.session?.hasSubmittedResult);
   // A teacher owns their rooms all term, so the past is theirs to read — in the
   // app and in their link alike. An assignment covers one lesson on set days and
   // gets no history: whoever picked it up was asked to take a register, not
@@ -775,10 +786,11 @@ export function CheckInWorkspace({
     [workspace.counts],
   );
 
-  async function submit(): Promise<void> {
-    await workspace.submit();
+  async function submit(correctionReason?: string): Promise<void> {
+    await workspace.submit(correctionReason);
+    setCorrectionSubmitOpen(false);
     appToast.success(
-      "ส่งผลเช็กชื่อแล้ว ระบบบันทึกเฉพาะนักเรียนที่เป็นข้อยกเว้น",
+      correctionReason ? "แก้ไขและส่งผลเช็กชื่อใหม่แล้ว" : "ส่งผลเช็กชื่อแล้ว",
     );
   }
 
@@ -810,8 +822,10 @@ export function CheckInWorkspace({
                 {formatClassLabel(room.gradeLabel, room.roomNumber)}
               </h2>
             </div>
-            {readOnly ? (
-              <Badge variant="success">ส่งแล้ว · อ่านอย่างเดียว</Badge>
+            {hasSubmittedResult ? (
+              <Badge variant="success">
+                ส่งแล้ว · ครั้งที่ {workspace.session?.submissionNumber ?? 1}
+              </Badge>
             ) : workspace.session ? (
               <Badge variant="warning">กำลังเช็กชื่อ · ยังไม่ส่ง</Badge>
             ) : (
@@ -858,8 +872,9 @@ export function CheckInWorkspace({
       ) : tab === "roster" ? (
         <ClassroomRosterTab
           isLoading={workspace.isLoading}
-          onComment={setCommentStudent}
-          onOpenStudent={openStudent}
+          limited={isAssignment}
+          onComment={isAssignment ? undefined : setCommentStudent}
+          onOpenStudent={isAssignment ? undefined : openStudent}
           renderAvatar={(student) => (
             <StudentPhoto
               access={access}
@@ -1087,7 +1102,7 @@ export function CheckInWorkspace({
               marks={workspace.marks}
               onClear={clearStudent}
               onMark={markStudent}
-              onOpenProfile={openStudent}
+              onOpenProfile={isAssignment ? undefined : openStudent}
               roster={workspace.roster}
             />
           ) : (
@@ -1116,12 +1131,14 @@ export function CheckInWorkspace({
               )}
             >
               {readOnly
-                ? `ส่งผลแล้ว ${workspace.session?.submittedAt ? new Date(workspace.session.submittedAt).toLocaleString("th-TH") : ""}`
-                : missingSubject
-                  ? "กรุณาเลือกวิชาก่อนส่งผล"
-                  : workspace.counts.marked < workspace.counts.total
-                    ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
-                    : "ตรวจครบแล้ว พร้อมส่งผล"}
+                ? "รอบเช็กชื่อนี้เป็นข้อมูลแบบอ่านอย่างเดียว"
+                : hasSubmittedResult
+                  ? `ผลเช็กชื่อล่าสุดที่ส่งแล้ว · ครั้งที่ ${workspace.session?.submissionNumber ?? 1}${workspace.session?.submittedAt ? ` · ${new Date(workspace.session.submittedAt).toLocaleString("th-TH")}` : ""}`
+                  : missingSubject
+                    ? "กรุณาเลือกวิชาก่อนส่งผล"
+                    : workspace.counts.marked < workspace.counts.total
+                      ? `เหลือ ${workspace.counts.total - workspace.counts.marked} คน`
+                      : "ตรวจครบแล้ว พร้อมส่งผล"}
             </p>
             <div className="flex justify-end gap-2">
               <Button
@@ -1136,11 +1153,13 @@ export function CheckInWorkspace({
                 disabled={!readyToSubmit}
                 icon={Send}
                 isLoading={workspace.submitting}
-                onClick={() => {
-                  void submit().catch(() => undefined);
-                }}
+                onClick={() =>
+                  hasSubmittedResult
+                    ? setCorrectionSubmitOpen(true)
+                    : void submit().catch(() => undefined)
+                }
               >
-                ส่งผลเช็กชื่อ
+                {hasSubmittedResult ? "แก้ไขและส่งผลใหม่" : "ส่งผลเช็กชื่อ"}
               </Button>
             </div>
           </div>
@@ -1242,6 +1261,14 @@ export function CheckInWorkspace({
             ]),
           ) as Record<string, AttendanceSelectionStatus>
         }
+      />
+
+      <AttendanceCorrectionSubmitDialog
+        error={workspace.actionError}
+        isPending={workspace.submitting}
+        onClose={() => setCorrectionSubmitOpen(false)}
+        onSubmit={submit}
+        open={correctionSubmitOpen}
       />
 
       {/* The one comment dialog both surfaces use. A link has no account, so it

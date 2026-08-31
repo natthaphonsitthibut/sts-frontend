@@ -76,7 +76,7 @@ export interface CheckInStudent {
   hasPhoto: boolean;
   photoVersion: string | null;
   /** Shown on the roster tab, the same two columns the staff roster carries. */
-  riskTier: string;
+  riskTier: string | null;
   teacherComment: string | null;
 }
 
@@ -92,7 +92,10 @@ export interface CheckInSession {
   expectedRosterCount: number;
   recordedCount: number;
   exceptionCount: number;
-  revision: number;
+  submissionNumber: number;
+  lockVersion: number;
+  hasSubmittedResult: boolean;
+  correctionReason: string | null;
   readOnly: boolean;
   idempotent: boolean;
   exceptions: Array<{

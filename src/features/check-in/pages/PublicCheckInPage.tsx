@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { School } from "lucide-react";
 import { FormErrorAlert } from "../../../components/base";
@@ -180,6 +186,7 @@ function LinkCheckInPage({
     classroomId: string;
     classroomSubjectId: string;
   }>();
+  const [searchParams] = useSearchParams();
   // The pair identifies the card, not just the room: a teacher can hold two
   // lessons in the same room, and they are two different registers.
   const classroom = classrooms.find(
@@ -226,7 +233,8 @@ function LinkCheckInPage({
         assignment={assignment}
         classroomId={Number(classroom.id)}
         classroomSubjectId={classroom.classroomSubjectId}
-        key={`${classroom.id}:${classroom.classroomSubjectId}`}
+        initialDate={searchParams.get("date") ?? undefined}
+        key={`${classroom.id}:${classroom.classroomSubjectId}:${searchParams.get("date") ?? "today"}`}
       />
     </>
   );
