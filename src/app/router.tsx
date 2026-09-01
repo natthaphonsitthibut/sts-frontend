@@ -46,6 +46,7 @@ import {
   ManageUserFormPage,
   ManageUsersPage,
   MasterDataPage,
+  NlQueryPage,
   NotFoundPage,
   NotificationsPage,
   ProfilePage,
@@ -109,6 +110,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: protectedElement(<MainPage />, "home"),
+      },
+      {
+        path: "nl-query",
+        element: protectedElement(<NlQueryPage />, "nl_query:use"),
       },
       {
         path: "student-risk-report",
