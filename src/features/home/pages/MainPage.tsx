@@ -24,6 +24,7 @@ import {
   PageToolbar,
   SkeletonCards,
 } from "../../../components/layout/page-primitives";
+import { ErrorBoundary } from "../../../components/layout/error-boundary";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
@@ -38,13 +39,21 @@ import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation"
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
   HomeDashboardFilters,
+  HomeDashboardGradeRiskPoint,
   HomeDashboardMetric,
   HomeDashboardOption,
+  HomeDashboardTrendPoint,
 } from "../types/home-dashboard.types";
 import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
+
+// `?? []` builds a new array on every render, and recharts re-dispatches the
+// whole dataset into its internal store whenever that identity changes. Empty
+// is a constant, so treat it as one.
+const NO_TREND_POINTS: HomeDashboardTrendPoint[] = [];
+const NO_GRADE_RISK_POINTS: HomeDashboardGradeRiskPoint[] = [];
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -428,6 +437,9 @@ export function MainPage() {
   const { canOpen } = usePermissions();
   const { filters, reset, schoolLocked, updateFilter } = useDashboardFilters();
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
+  // Value-stable (a query string, not the filters object), so a caught
+  // boundary retries on a real scope change and not on every render.
+  const scopeKey = buildQuery(filters);
   const {
     summary,
     filterOptions,
@@ -519,7 +531,7 @@ export function MainPage() {
               {isSchoolScope ? (
                 <GradeRiskChart
                   onSelect={(grade) => updateFilter({ grade })}
-                  points={trends?.gradeRiskDistribution ?? []}
+                  points={trends?.gradeRiskDistribution ?? NO_GRADE_RISK_POINTS}
                 />
               ) : (
                 <Suspense
@@ -546,29 +558,42 @@ export function MainPage() {
                 </Suspense>
               )}
 
-              <AttendanceTrendChart points={trends?.attendanceTrend ?? []} />
+              <ErrorBoundary
+                resetKey={scopeKey}
+                title="แสดงกราฟแนวโน้มการมาเรียนไม่สำเร็จ"
+              >
+                <AttendanceTrendChart
+                  points={trends?.attendanceTrend ?? NO_TREND_POINTS}
+                />
+              </ErrorBoundary>
             </div>
 
-            <div className="flex flex-col gap-5">
-              {summary.riskAreaRanking ? (
-                <RiskAreaRankingChart
-                  backLabel={riskAreaBackAction?.label}
-                  onBack={
-                    riskAreaBackAction
-                      ? () => updateFilter(riskAreaBackAction.next)
-                      : undefined
-                  }
-                  onSelect={(filter) => updateFilter(filter)}
-                  ranking={summary.riskAreaRanking}
-                />
-              ) : null}
-              {summary.casePipeline ? (
-                <CasePipelineChart
-                  filters={filters}
-                  pipeline={summary.casePipeline}
-                />
-              ) : null}
-            </div>
+            <ErrorBoundary
+              className="self-start"
+              resetKey={scopeKey}
+              title="แสดงอันดับพื้นที่เสี่ยงไม่สำเร็จ"
+            >
+              <div className="flex flex-col gap-5">
+                {summary.riskAreaRanking ? (
+                  <RiskAreaRankingChart
+                    backLabel={riskAreaBackAction?.label}
+                    onBack={
+                      riskAreaBackAction
+                        ? () => updateFilter(riskAreaBackAction.next)
+                        : undefined
+                    }
+                    onSelect={(filter) => updateFilter(filter)}
+                    ranking={summary.riskAreaRanking}
+                  />
+                ) : null}
+                {summary.casePipeline ? (
+                  <CasePipelineChart
+                    filters={filters}
+                    pipeline={summary.casePipeline}
+                  />
+                ) : null}
+              </div>
+            </ErrorBoundary>
           </div>
 
           {isFollowUpInsightsError ? (
@@ -589,11 +614,16 @@ export function MainPage() {
           ) : !followUpInsights ? (
             <SkeletonCards count={1} />
           ) : (
-            <RiskInsightsPanel
-              insights={followUpInsights}
-              monthlySuccessRates={summary.monthlySuccessRates ?? null}
-              unclassifiedPath={highRiskPath}
-            />
+            <ErrorBoundary
+              resetKey={scopeKey}
+              title="แสดงภาพรวมความเสี่ยงไม่สำเร็จ"
+            >
+              <RiskInsightsPanel
+                insights={followUpInsights}
+                monthlySuccessRates={summary.monthlySuccessRates ?? null}
+                unclassifiedPath={highRiskPath}
+              />
+            </ErrorBoundary>
           )}
         </div>
       )}

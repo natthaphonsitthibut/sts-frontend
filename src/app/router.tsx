@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
+import { RouteErrorBoundary } from "./route-error-boundary";
 import { AraIdDocumentBrand } from "../features/araid/components/AraIdDocumentBrand";
 import {
   AboutPage,
@@ -100,531 +101,563 @@ function protectedElement(
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: (
-      <ProtectedRoute>
-        <AppLayout />
-      </ProtectedRoute>
-    ),
+    // Pathless layout route: renders an <Outlet /> and changes nothing about
+    // matching, but every route below it now bubbles a thrown render error here
+    // instead of to React Router's built-in developer screen.
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
-        index: true,
-        element: protectedElement(<MainPage />, "home"),
-      },
-      {
-        path: "nl-query",
-        element: protectedElement(<NlQueryPage />, "nl_query:use"),
-      },
-      {
-        path: "student-risk-report",
-        element: <LegacyRouteRedirect to="/student-risk-report/risk" />,
-      },
-      {
-        path: "student-risk-report/risk",
-        element: protectedElement(<DashboardPage />, "dashboard"),
-      },
-      {
-        path: "student-risk-report/watchlist",
-        element: protectedElement(<DashboardPage />, "dashboard"),
-      },
-      {
-        path: "student-risk-report/referrals",
-        element: protectedElement(<DashboardPage />, "dashboard"),
-      },
-      {
-        path: "student-risk-report/teacher-comments",
-        element: protectedElement(<TeacherCommentReportsPage />, "students"),
-      },
-      {
-        // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
-        path: "student-risk-report/teacher-reports",
+        path: "/",
         element: (
-          <LegacyRouteRedirect to="/student-risk-report/teacher-comments" />
-        ),
-      },
-      {
-        path: "student-risk-report/home-visit-requests",
-        element: <LegacyRouteRedirect to="/student-risk-report" />,
-      },
-      {
-        path: "dashboard",
-        element: <LegacyRouteRedirect to="/student-risk-report" />,
-      },
-      {
-        path: "change-password",
-        element: withSuspense(<ChangePasswordPage />),
-      },
-      {
-        path: "profile",
-        element: protectedElement(<ProfilePage />),
-      },
-      {
-        // Kept as a redirect: the permissions tab folded into /profile itself.
-        path: "profile/permissions",
-        element: <LegacyRouteRedirect to="/profile" />,
-      },
-      {
-        path: "notifications",
-        element: protectedElement(<NotificationsPage />),
-      },
-      {
-        path: "students",
-        element: protectedElement(<StudentListPage mode="view" />, "students"),
-      },
-      {
-        path: "manage-students",
-        element: protectedElement(
-          <StudentListPage mode="manage" />,
-          "manage-students",
-        ),
-      },
-      {
-        path: "manage-students/history",
-        element: protectedElement(
-          <StudentListPage mode="manage" />,
-          "manage-students",
-        ),
-      },
-      {
-        path: "manage-students/export",
-        element: protectedElement(
-          <StudentListPage mode="manage" />,
-          "manage-students",
-        ),
-      },
-      // The history and export tabs moved to the management page. Without these
-      // the retired paths fall into `students/:id` and ask the API for a student
-      // called "history".
-      {
-        path: "students/history",
-        element: <LegacyRouteRedirect to="/manage-students/history" />,
-      },
-      {
-        path: "students/export",
-        element: <LegacyRouteRedirect to="/manage-students/export" />,
-      },
-      {
-        path: "students/:id",
-        element: protectedElement(<StudentDetailPage />, [
-          "students",
-          "manage-students",
-          "classrooms",
-        ]),
-      },
-      {
-        path: "manage-students/new",
-        element: protectedElement(<StudentCreatePage />, "manage-students"),
-      },
-      {
-        path: "manage-students/:id/edit",
-        element: protectedElement(<StudentEditPage />, "manage-students"),
-      },
-      {
-        path: "attendance",
-        element: protectedElement(<AttendanceDefaultRedirect />, "attendance"),
-      },
-      {
-        path: "attendance/roster",
-        element: <LegacyRouteRedirect to="/attendance/check-in" />,
-      },
-      {
-        path: "attendance/check-in",
-        element: protectedElement(<AttendanceCheckInPage />, "attendance"),
-      },
-      {
-        // What one issued link did, as a page — the record runs long enough
-        // that a dialog would have to be scrolled and dismissed to read it.
-        path: "attendance/check-in/links/:linkId",
-        element: protectedElement(
-          <AssignmentLinkUsagePage access="INTERNAL" />,
-          "attendance",
-        ),
-      },
-      {
-        path: "attendance/history",
-        element: <LegacyRouteRedirect to="/attendance/check-in" />,
-      },
-      {
-        path: "attendance/history/attendance",
-        element: <LegacyRouteRedirect to="/attendance/check-in" />,
-      },
-      {
-        path: "attendance/history/imports",
-        element: <LegacyRouteRedirect to="/attendance/check-in" />,
-      },
-      {
-        path: "attendance/history/delegations",
-        element: <LegacyRouteRedirect to="/attendance/check-in" />,
-      },
-      {
-        path: "cases",
-        element: <LegacyCasesRedirect />,
-      },
-      {
-        path: "cases/risk",
-        element: <LegacyCasesRedirect />,
-      },
-      {
-        path: "cases/watchlist",
-        element: <LegacyCasesRedirect />,
-      },
-      {
-        path: "cases/history",
-        element: <LegacyCasesRedirect />,
-      },
-      {
-        path: "cases/:caseId",
-        element: protectedElement(<CaseDetailPage />, "dashboard"),
-      },
-      {
-        path: "cases/:caseId/reviews/:reviewId",
-        element: protectedElement(<CaseReviewDetailPage />, "dashboard"),
-      },
-      {
-        path: "attendance-links",
-        element: <LegacyRouteRedirect to="/attendance/classroom-links" />,
-      },
-      {
-        path: "attendance/classroom-links",
-        element: protectedElement(
-          <ClassroomLinksPage />,
-          "manage-classroom-links",
-        ),
-      },
-      {
-        path: "classrooms",
-        element: protectedElement(<ClassroomsPage />, "classrooms"),
-      },
-      {
-        path: "classrooms/:classroomId",
-        element: protectedElement(<ClassroomDefaultRedirect />, "classrooms"),
-      },
-      {
-        path: "classrooms/:classroomId/roster",
-        element: protectedElement(<ClassroomDetailPage />, "classrooms"),
-      },
-      {
-        path: "classrooms/:classroomId/history",
-        element: protectedElement(<ClassroomDetailPage />, "classrooms"),
-      },
-      {
-        path: "school-structure",
-        element: protectedElement(
-          <SchoolStructurePage />,
-          "manage-school-structure",
-        ),
-      },
-      {
-        path: "import-data",
-        element: protectedElement(<ImportDataPage />, "import-data"),
-      },
-      {
-        path: "data-exports",
-        element: protectedElement(<DataExportsPage />, "export-data"),
-      },
-      {
-        path: "data-exports/history",
-        element: protectedElement(<DataExportsPage />, "export-data"),
-      },
-      {
-        path: "import-data/quarantine",
-        element: protectedElement(<ImportDataPage />, "import-data"),
-      },
-      {
-        path: "import-data/history",
-        element: protectedElement(<ImportDataPage />, "import-data"),
-      },
-      {
-        path: "import-data/quarantine/:id",
-        element: protectedElement(
-          <ImportQuarantineDetailPage />,
-          "import-data",
-        ),
-      },
-      {
-        path: "manage-users",
-        element: protectedElement(<ManageUsersPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-users/:id",
-        element: protectedElement(<UserDetailPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-users/:id/permissions",
-        element: protectedElement(<UserDetailPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-users/new",
-        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-users/:id/edit",
-        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
-      },
-      {
-        path: "manage-users/:id/edit/permissions",
-        element: protectedElement(<ManageUserFormPage />, "manage-users-list"),
-      },
-      {
-        path: "curriculum",
-        element: protectedElement(<CurriculumGradesPage />, "manage-subjects"),
-      },
-      {
-        path: "curriculum/:gradeLevelId",
-        element: protectedElement(
-          <CurriculumSubjectsPage />,
-          "manage-subjects",
-        ),
-      },
-      {
-        path: "curriculum/:gradeLevelId/subjects/new",
-        element: protectedElement(
-          <CurriculumSubjectFormPage />,
-          "manage-subjects",
-        ),
-      },
-      {
-        path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
-        element: protectedElement(
-          <CurriculumSubjectFormPage />,
-          "manage-subjects",
-        ),
-      },
-      {
-        path: "subjects",
-        element: <LegacyRouteRedirect to="/curriculum" />,
-      },
-      {
-        path: "teachers",
-        element: protectedElement(<TeachersPage mode="view" />, "teachers"),
-      },
-      {
-        path: "manage-teachers",
-        element: protectedElement(
-          <TeachersPage mode="manage" />,
-          "manage-teachers",
-        ),
-      },
-      {
-        path: "manage-teachers/new",
-        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
-      },
-      {
-        path: "manage-teachers/:id/edit",
-        element: protectedElement(<TeacherFormPage />, "manage-teachers"),
-      },
-      {
-        path: "teachers/:id",
-        element: protectedElement(<TeacherProfilePage />, [
-          "teachers",
-          "manage-teachers",
-          "manage-classroom-links",
-        ]),
-      },
-      {
-        path: "manage-role-groups",
-        element: protectedElement(
-          <ManageRoleGroupsPage />,
-          "manage-role-groups",
-        ),
-      },
-      {
-        path: "manage-role-groups/new",
-        element: protectedElement(
-          <ManageRoleGroupFormPage />,
-          "manage-role-groups",
-        ),
-      },
-      {
-        path: "manage-role-groups/:name/edit",
-        element: protectedElement(
-          <ManageRoleGroupFormPage />,
-          "manage-role-groups",
-        ),
-      },
-      {
-        path: "audit-log/:id",
-        element: protectedElement(<AuditLogDetailPage />, "audit-log"),
-      },
-      {
-        // System settings are one shared set of values for every school, so the
-        // page follows the same boundary as its API: ADMIN with national scope.
-        path: "settings",
-        element: protectedElement(<SystemSettingsPage />, "settings", {
-          requireGlobalScope: true,
-          role: "ADMIN",
-        }),
-      },
-      {
-        path: "settings/student-statuses",
-        element: <LegacyRouteRedirect to="/master-data/student-statuses" />,
-      },
-      {
-        path: "master-data",
-        element: protectedElement(<MasterDataPage />, "master-data", {
-          requireGlobalScope: true,
-          role: "ADMIN",
-        }),
-      },
-      {
-        path: "master-data/student-statuses",
-        element: protectedElement(<StudentStatusesPage />, "master-data", {
-          requireGlobalScope: true,
-          role: "ADMIN",
-        }),
-      },
-      {
-        path: "tasks/:taskId",
-        // A task link belongs to a case and is opened from one, and the page
-        // embeds บันทึกการใช้งาน — `home`, which every account holds, would have
-        // made that panel world-readable.
-        element: protectedElement(<TaskDetailPage />, "dashboard"),
-      },
-      {
-        path: "task-detail/:taskId",
-        element: <LegacyTaskDetailRedirect />,
-      },
-    ],
-  },
-  {
-    path: "/task/:token",
-    element: withSuspense(<TaskGuestPage />),
-  },
-  {
-    path: "/task/:token/report",
-    element: withSuspense(<ReportPage />),
-  },
-  {
-    path: "/task/google-callback",
-    element: withSuspense(<TaskGoogleCallbackPage />),
-  },
-  {
-    path: "/task/:token/success",
-    element: withSuspense(<SuccessPage />),
-  },
-  {
-    path: "/task/:token/completed",
-    element: withSuspense(<CompletedPage />),
-  },
-  {
-    path: "/task/:token/expired",
-    element: withSuspense(<ExpiredPage />),
-  },
-  {
-    path: "/task/:token/locked",
-    element: withSuspense(<LockedPage />),
-  },
-  // Public: a teacher attaching their LINE account proves who they are with an
-  // emailed code, so the URL itself carries no secret and can live in the
-  // official account's rich menu.
-  {
-    path: "/line-link",
-    element: withSuspense(<TeacherLineLinkPage />),
-  },
-  {
-    path: "/line-link/araid-authorize",
-    element: withSuspense(<TeacherLineAraIdAuthorizePage />),
-  },
-  {
-    path: "/line-link/araid",
-    element: withSuspense(<TeacherLineAraIdChallengePage />),
-  },
-  {
-    path: "/line-link/result",
-    element: withSuspense(<TeacherLineLinkResultPage />),
-  },
-  {
-    // A classroom link opens the whole classroom — roster, attendance, student
-    // profiles — so it lives at /classroom. Links already handed out point at
-    // /check-in and keep working through the redirect below, which carries the
-    // token in the hash across untouched.
-    // The link surface is its own little app — a rooms page and a check-in
-    // page under it — so the route is a prefix and the page owns the nesting.
-    path: "/classroom/*",
-    element: withSuspense(<PublicCheckInPage />),
-  },
-  {
-    // The profile behind a student on the link's roster. A page, not a dialog:
-    // the roster it opens from is one, and the back button has to land on the
-    // tab it came from.
-    path: "/classroom/students/:studentId",
-    element: withSuspense(<ClassroomLinkStudentPage />),
-  },
-  {
-    // The same record through the link's own door. Sits beside the student
-    // profile route for the same reason: `/classroom/*` belongs to the rooms
-    // page, and these two are pages of their own under it.
-    path: "/classroom/links/:linkId",
-    element: withSuspense(<AssignmentLinkUsagePage access="PUBLIC_LINK" />),
-  },
-  {
-    path: "/check-in",
-    element: <LegacyRouteRedirect to="/classroom" />,
-  },
-  {
-    path: "/araid",
-    element: <AraIdDocumentBrand />,
-    children: [
-      {
-        index: true,
-        element: withSuspense(<AraIdSplashPage />),
-      },
-      {
-        path: "login",
-        element: withSuspense(<AraIdLoginPage />),
-      },
-      {
-        path: "pin",
-        element: withSuspense(<AraIdPinPage />),
-      },
-      {
-        path: "home",
-        element: withSuspense(<AraIdHomePage />),
-      },
-      {
-        path: "documents",
-        element: withSuspense(<AraIdDocumentsPage />),
-      },
-      {
-        path: "settings",
-        element: withSuspense(<AraIdSettingsPage />),
-      },
-      {
-        path: "manage",
-        element: (
-          <ProtectedRoute role="ADMIN">
-            {withSuspense(<AraIdManagePage />)}
+          <ProtectedRoute>
+            <AppLayout />
           </ProtectedRoute>
         ),
+        children: [
+          {
+            index: true,
+            element: protectedElement(<MainPage />, "home"),
+          },
+          {
+            path: "nl-query",
+            element: protectedElement(<NlQueryPage />, "nl_query:use"),
+          },
+          {
+            path: "student-risk-report",
+            element: <LegacyRouteRedirect to="/student-risk-report/risk" />,
+          },
+          {
+            path: "student-risk-report/risk",
+            element: protectedElement(<DashboardPage />, "dashboard"),
+          },
+          {
+            path: "student-risk-report/watchlist",
+            element: protectedElement(<DashboardPage />, "dashboard"),
+          },
+          {
+            path: "student-risk-report/referrals",
+            element: protectedElement(<DashboardPage />, "dashboard"),
+          },
+          {
+            path: "student-risk-report/teacher-comments",
+            element: protectedElement(
+              <TeacherCommentReportsPage />,
+              "students",
+            ),
+          },
+          {
+            // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
+            path: "student-risk-report/teacher-reports",
+            element: (
+              <LegacyRouteRedirect to="/student-risk-report/teacher-comments" />
+            ),
+          },
+          {
+            path: "student-risk-report/home-visit-requests",
+            element: <LegacyRouteRedirect to="/student-risk-report" />,
+          },
+          {
+            path: "dashboard",
+            element: <LegacyRouteRedirect to="/student-risk-report" />,
+          },
+          {
+            path: "change-password",
+            element: withSuspense(<ChangePasswordPage />),
+          },
+          {
+            path: "profile",
+            element: protectedElement(<ProfilePage />),
+          },
+          {
+            // Kept as a redirect: the permissions tab folded into /profile itself.
+            path: "profile/permissions",
+            element: <LegacyRouteRedirect to="/profile" />,
+          },
+          {
+            path: "notifications",
+            element: protectedElement(<NotificationsPage />),
+          },
+          {
+            path: "students",
+            element: protectedElement(
+              <StudentListPage mode="view" />,
+              "students",
+            ),
+          },
+          {
+            path: "manage-students",
+            element: protectedElement(
+              <StudentListPage mode="manage" />,
+              "manage-students",
+            ),
+          },
+          {
+            path: "manage-students/history",
+            element: protectedElement(
+              <StudentListPage mode="manage" />,
+              "manage-students",
+            ),
+          },
+          {
+            path: "manage-students/export",
+            element: protectedElement(
+              <StudentListPage mode="manage" />,
+              "manage-students",
+            ),
+          },
+          // The history and export tabs moved to the management page. Without these
+          // the retired paths fall into `students/:id` and ask the API for a student
+          // called "history".
+          {
+            path: "students/history",
+            element: <LegacyRouteRedirect to="/manage-students/history" />,
+          },
+          {
+            path: "students/export",
+            element: <LegacyRouteRedirect to="/manage-students/export" />,
+          },
+          {
+            path: "students/:id",
+            element: protectedElement(<StudentDetailPage />, [
+              "students",
+              "manage-students",
+              "classrooms",
+            ]),
+          },
+          {
+            path: "manage-students/new",
+            element: protectedElement(<StudentCreatePage />, "manage-students"),
+          },
+          {
+            path: "manage-students/:id/edit",
+            element: protectedElement(<StudentEditPage />, "manage-students"),
+          },
+          {
+            path: "attendance",
+            element: protectedElement(
+              <AttendanceDefaultRedirect />,
+              "attendance",
+            ),
+          },
+          {
+            path: "attendance/roster",
+            element: <LegacyRouteRedirect to="/attendance/check-in" />,
+          },
+          {
+            path: "attendance/check-in",
+            element: protectedElement(<AttendanceCheckInPage />, "attendance"),
+          },
+          {
+            // What one issued link did, as a page — the record runs long enough
+            // that a dialog would have to be scrolled and dismissed to read it.
+            path: "attendance/check-in/links/:linkId",
+            element: protectedElement(
+              <AssignmentLinkUsagePage access="INTERNAL" />,
+              "attendance",
+            ),
+          },
+          {
+            path: "attendance/history",
+            element: <LegacyRouteRedirect to="/attendance/check-in" />,
+          },
+          {
+            path: "attendance/history/attendance",
+            element: <LegacyRouteRedirect to="/attendance/check-in" />,
+          },
+          {
+            path: "attendance/history/imports",
+            element: <LegacyRouteRedirect to="/attendance/check-in" />,
+          },
+          {
+            path: "attendance/history/delegations",
+            element: <LegacyRouteRedirect to="/attendance/check-in" />,
+          },
+          {
+            path: "cases",
+            element: <LegacyCasesRedirect />,
+          },
+          {
+            path: "cases/risk",
+            element: <LegacyCasesRedirect />,
+          },
+          {
+            path: "cases/watchlist",
+            element: <LegacyCasesRedirect />,
+          },
+          {
+            path: "cases/history",
+            element: <LegacyCasesRedirect />,
+          },
+          {
+            path: "cases/:caseId",
+            element: protectedElement(<CaseDetailPage />, "dashboard"),
+          },
+          {
+            path: "cases/:caseId/reviews/:reviewId",
+            element: protectedElement(<CaseReviewDetailPage />, "dashboard"),
+          },
+          {
+            path: "attendance-links",
+            element: <LegacyRouteRedirect to="/attendance/classroom-links" />,
+          },
+          {
+            path: "attendance/classroom-links",
+            element: protectedElement(
+              <ClassroomLinksPage />,
+              "manage-classroom-links",
+            ),
+          },
+          {
+            path: "classrooms",
+            element: protectedElement(<ClassroomsPage />, "classrooms"),
+          },
+          {
+            path: "classrooms/:classroomId",
+            element: protectedElement(
+              <ClassroomDefaultRedirect />,
+              "classrooms",
+            ),
+          },
+          {
+            path: "classrooms/:classroomId/roster",
+            element: protectedElement(<ClassroomDetailPage />, "classrooms"),
+          },
+          {
+            path: "classrooms/:classroomId/history",
+            element: protectedElement(<ClassroomDetailPage />, "classrooms"),
+          },
+          {
+            path: "school-structure",
+            element: protectedElement(
+              <SchoolStructurePage />,
+              "manage-school-structure",
+            ),
+          },
+          {
+            path: "import-data",
+            element: protectedElement(<ImportDataPage />, "import-data"),
+          },
+          {
+            path: "data-exports",
+            element: protectedElement(<DataExportsPage />, "export-data"),
+          },
+          {
+            path: "data-exports/history",
+            element: protectedElement(<DataExportsPage />, "export-data"),
+          },
+          {
+            path: "import-data/quarantine",
+            element: protectedElement(<ImportDataPage />, "import-data"),
+          },
+          {
+            path: "import-data/history",
+            element: protectedElement(<ImportDataPage />, "import-data"),
+          },
+          {
+            path: "import-data/quarantine/:id",
+            element: protectedElement(
+              <ImportQuarantineDetailPage />,
+              "import-data",
+            ),
+          },
+          {
+            path: "manage-users",
+            element: protectedElement(<ManageUsersPage />, "manage-users-list"),
+          },
+          {
+            path: "manage-users/:id",
+            element: protectedElement(<UserDetailPage />, "manage-users-list"),
+          },
+          {
+            path: "manage-users/:id/permissions",
+            element: protectedElement(<UserDetailPage />, "manage-users-list"),
+          },
+          {
+            path: "manage-users/new",
+            element: protectedElement(
+              <ManageUserFormPage />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "manage-users/:id/edit",
+            element: protectedElement(
+              <ManageUserFormPage />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "manage-users/:id/edit/permissions",
+            element: protectedElement(
+              <ManageUserFormPage />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "curriculum",
+            element: protectedElement(
+              <CurriculumGradesPage />,
+              "manage-subjects",
+            ),
+          },
+          {
+            path: "curriculum/:gradeLevelId",
+            element: protectedElement(
+              <CurriculumSubjectsPage />,
+              "manage-subjects",
+            ),
+          },
+          {
+            path: "curriculum/:gradeLevelId/subjects/new",
+            element: protectedElement(
+              <CurriculumSubjectFormPage />,
+              "manage-subjects",
+            ),
+          },
+          {
+            path: "curriculum/:gradeLevelId/subjects/:subjectId/edit",
+            element: protectedElement(
+              <CurriculumSubjectFormPage />,
+              "manage-subjects",
+            ),
+          },
+          {
+            path: "subjects",
+            element: <LegacyRouteRedirect to="/curriculum" />,
+          },
+          {
+            path: "teachers",
+            element: protectedElement(<TeachersPage mode="view" />, "teachers"),
+          },
+          {
+            path: "manage-teachers",
+            element: protectedElement(
+              <TeachersPage mode="manage" />,
+              "manage-teachers",
+            ),
+          },
+          {
+            path: "manage-teachers/new",
+            element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+          },
+          {
+            path: "manage-teachers/:id/edit",
+            element: protectedElement(<TeacherFormPage />, "manage-teachers"),
+          },
+          {
+            path: "teachers/:id",
+            element: protectedElement(<TeacherProfilePage />, [
+              "teachers",
+              "manage-teachers",
+              "manage-classroom-links",
+            ]),
+          },
+          {
+            path: "manage-role-groups",
+            element: protectedElement(
+              <ManageRoleGroupsPage />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "manage-role-groups/new",
+            element: protectedElement(
+              <ManageRoleGroupFormPage />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "manage-role-groups/:name/edit",
+            element: protectedElement(
+              <ManageRoleGroupFormPage />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "audit-log/:id",
+            element: protectedElement(<AuditLogDetailPage />, "audit-log"),
+          },
+          {
+            // System settings are one shared set of values for every school, so the
+            // page follows the same boundary as its API: ADMIN with national scope.
+            path: "settings",
+            element: protectedElement(<SystemSettingsPage />, "settings", {
+              requireGlobalScope: true,
+              role: "ADMIN",
+            }),
+          },
+          {
+            path: "settings/student-statuses",
+            element: <LegacyRouteRedirect to="/master-data/student-statuses" />,
+          },
+          {
+            path: "master-data",
+            element: protectedElement(<MasterDataPage />, "master-data", {
+              requireGlobalScope: true,
+              role: "ADMIN",
+            }),
+          },
+          {
+            path: "master-data/student-statuses",
+            element: protectedElement(<StudentStatusesPage />, "master-data", {
+              requireGlobalScope: true,
+              role: "ADMIN",
+            }),
+          },
+          {
+            path: "tasks/:taskId",
+            // A task link belongs to a case and is opened from one, and the page
+            // embeds บันทึกการใช้งาน — `home`, which every account holds, would have
+            // made that panel world-readable.
+            element: protectedElement(<TaskDetailPage />, "dashboard"),
+          },
+          {
+            path: "task-detail/:taskId",
+            element: <LegacyTaskDetailRedirect />,
+          },
+        ],
       },
       {
-        path: "authorize",
-        element: withSuspense(<AraIdAuthorizePage />),
+        path: "/task/:token",
+        element: withSuspense(<TaskGuestPage />),
+      },
+      {
+        path: "/task/:token/report",
+        element: withSuspense(<ReportPage />),
+      },
+      {
+        path: "/task/google-callback",
+        element: withSuspense(<TaskGoogleCallbackPage />),
+      },
+      {
+        path: "/task/:token/success",
+        element: withSuspense(<SuccessPage />),
+      },
+      {
+        path: "/task/:token/completed",
+        element: withSuspense(<CompletedPage />),
+      },
+      {
+        path: "/task/:token/expired",
+        element: withSuspense(<ExpiredPage />),
+      },
+      {
+        path: "/task/:token/locked",
+        element: withSuspense(<LockedPage />),
+      },
+      // Public: a teacher attaching their LINE account proves who they are with an
+      // emailed code, so the URL itself carries no secret and can live in the
+      // official account's rich menu.
+      {
+        path: "/line-link",
+        element: withSuspense(<TeacherLineLinkPage />),
+      },
+      {
+        path: "/line-link/araid-authorize",
+        element: withSuspense(<TeacherLineAraIdAuthorizePage />),
+      },
+      {
+        path: "/line-link/araid",
+        element: withSuspense(<TeacherLineAraIdChallengePage />),
+      },
+      {
+        path: "/line-link/result",
+        element: withSuspense(<TeacherLineLinkResultPage />),
+      },
+      {
+        // A classroom link opens the whole classroom — roster, attendance, student
+        // profiles — so it lives at /classroom. Links already handed out point at
+        // /check-in and keep working through the redirect below, which carries the
+        // token in the hash across untouched.
+        // The link surface is its own little app — a rooms page and a check-in
+        // page under it — so the route is a prefix and the page owns the nesting.
+        path: "/classroom/*",
+        element: withSuspense(<PublicCheckInPage />),
+      },
+      {
+        // The profile behind a student on the link's roster. A page, not a dialog:
+        // the roster it opens from is one, and the back button has to land on the
+        // tab it came from.
+        path: "/classroom/students/:studentId",
+        element: withSuspense(<ClassroomLinkStudentPage />),
+      },
+      {
+        // The same record through the link's own door. Sits beside the student
+        // profile route for the same reason: `/classroom/*` belongs to the rooms
+        // page, and these two are pages of their own under it.
+        path: "/classroom/links/:linkId",
+        element: withSuspense(<AssignmentLinkUsagePage access="PUBLIC_LINK" />),
+      },
+      {
+        path: "/check-in",
+        element: <LegacyRouteRedirect to="/classroom" />,
+      },
+      {
+        path: "/araid",
+        element: <AraIdDocumentBrand />,
+        children: [
+          {
+            index: true,
+            element: withSuspense(<AraIdSplashPage />),
+          },
+          {
+            path: "login",
+            element: withSuspense(<AraIdLoginPage />),
+          },
+          {
+            path: "pin",
+            element: withSuspense(<AraIdPinPage />),
+          },
+          {
+            path: "home",
+            element: withSuspense(<AraIdHomePage />),
+          },
+          {
+            path: "documents",
+            element: withSuspense(<AraIdDocumentsPage />),
+          },
+          {
+            path: "settings",
+            element: withSuspense(<AraIdSettingsPage />),
+          },
+          {
+            path: "manage",
+            element: (
+              <ProtectedRoute role="ADMIN">
+                {withSuspense(<AraIdManagePage />)}
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "authorize",
+            element: withSuspense(<AraIdAuthorizePage />),
+          },
+        ],
+      },
+      {
+        path: "/about",
+        element: withSuspense(<AboutPage />),
+      },
+      {
+        path: "/privacy",
+        element: withSuspense(<PrivacyPolicyPage />),
+      },
+      {
+        path: "/login",
+        element: withSuspense(<AdminAccessPage />),
+      },
+      {
+        path: "/admin-access",
+        element: <LegacyRouteRedirect to="/login" />,
+      },
+      {
+        path: "/forbidden",
+        element: withSuspense(<ForbiddenPage />),
+      },
+      {
+        path: "*",
+        element: withSuspense(<NotFoundPage />),
       },
     ],
-  },
-  {
-    path: "/about",
-    element: withSuspense(<AboutPage />),
-  },
-  {
-    path: "/privacy",
-    element: withSuspense(<PrivacyPolicyPage />),
-  },
-  {
-    path: "/login",
-    element: withSuspense(<AdminAccessPage />),
-  },
-  {
-    path: "/admin-access",
-    element: <LegacyRouteRedirect to="/login" />,
-  },
-  {
-    path: "/forbidden",
-    element: withSuspense(<ForbiddenPage />),
-  },
-  {
-    path: "*",
-    element: withSuspense(<NotFoundPage />),
   },
 ]);
