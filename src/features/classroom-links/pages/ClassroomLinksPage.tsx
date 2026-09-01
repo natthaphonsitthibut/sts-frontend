@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarClock,
+  Copy,
   Link2,
   Link2Off,
   Pencil,
   Plus,
-  Share2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -31,6 +31,7 @@ import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { LinkHighlightSection } from "../../../components/layout/link-highlight-section";
 import {
   EmptyState,
   ErrorState,
@@ -545,39 +546,33 @@ export function ClassroomLinksPage() {
       </PageToolbar>
 
       {lineInvitation.data ? (
-        <section className="mb-4 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                ลิงก์ยืนยัน LINE กลาง
-                {lineInvitation.data.status === "PENDING"
-                  ? " (รอเวลาเริ่ม)"
-                  : " เปิดใช้งาน"}
-              </h2>
-              <p className="mt-0.5 text-sm text-slate-600">
-                ใช้ได้เฉพาะครูประจำชั้นของ {lineInvitation.data.schoolName} ·
-                เริ่ม {formatThaiDateTime(lineInvitation.data.startsAt)} ·
-                หมดอายุ {formatThaiDateTime(lineInvitation.data.expiresAt)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+        // No dismiss: this band is the invitation's status, not a notice about
+        // something that just happened, so it belongs on screen for as long as
+        // the invitation is open.
+        <LinkHighlightSection
+          actions={
+            <>
+              {/* Copy leads, on the `Copy` glyph in the share tone — the same
+                  first action, icon and colour the link rows and the assignment
+                  panel already use. This band had `Share2` in the middle, which
+                  read as a different action for the same job. */}
+              <IconButton
+                aria-label="คัดลอกลิงก์ยืนยัน LINE"
+                icon={Copy}
+                onClick={() => {
+                  if (!lineInvitation.data) return;
+                  setSharedLineInvitation(lineInvitation.data);
+                  setSharedUrl(lineInvitation.data.url);
+                }}
+                title="คัดลอกลิงก์"
+                variant="share"
+              />
               <IconButton
                 aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
                 icon={Pencil}
                 onClick={openEditLineInvitation}
                 title="แก้ไขวันเวลา"
                 variant="edit"
-              />
-              <IconButton
-                aria-label="แชร์ลิงก์ยืนยัน LINE"
-                icon={Share2}
-                onClick={() => {
-                  if (!lineInvitation.data) return;
-                  setSharedLineInvitation(lineInvitation.data);
-                  setSharedUrl(lineInvitation.data.url);
-                }}
-                title="แชร์ลิงก์"
-                variant="share"
               />
               <IconButton
                 aria-label="ปิดลิงก์ยืนยัน LINE"
@@ -587,9 +582,17 @@ export function ClassroomLinksPage() {
                 title="ปิดลิงก์"
                 variant="lock"
               />
-            </div>
-          </div>
-        </section>
+            </>
+          }
+          description={`ใช้ได้เฉพาะครูประจำชั้นของ ${lineInvitation.data.schoolName} · เริ่ม ${formatThaiDateTime(
+            lineInvitation.data.startsAt,
+          )} · หมดอายุ ${formatThaiDateTime(lineInvitation.data.expiresAt)}`}
+          title={`ลิงก์ยืนยัน LINE กลาง${
+            lineInvitation.data.status === "PENDING"
+              ? " (รอเวลาเริ่ม)"
+              : " เปิดใช้งาน"
+          }`}
+        />
       ) : null}
 
       <FormErrorAlert

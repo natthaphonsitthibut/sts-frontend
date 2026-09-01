@@ -177,6 +177,12 @@ export interface MyAssignmentLinkParams {
   schoolTermId: number;
   /** Left off to ask for every lesson this term instead of just this one. */
   classroomSubjectId?: number;
+  /**
+   * The three states the table badges: ใช้งานอยู่, หมดอายุ, ปิดแล้ว. Left off to
+   * ask for every state. Filtered server-side because the panel paginates —
+   * narrowing rows already fetched would silently hide matches.
+   */
+  status?: "ACTIVE" | "EXPIRED" | "INACTIVE";
 }
 
 export interface IssuedClassroomLinkParams {
