@@ -1,4 +1,4 @@
-import { BarChartIcon } from "lucide-react";
+import { memo, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -9,7 +9,7 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { Card } from "../../../components/base";
+import { PanelSection } from "./ChartCard";
 import type { HomeDashboardFilters } from "../types/home-dashboard.types";
 
 interface MonthlySuccessRateChartProps {
@@ -27,41 +27,34 @@ function formatMonth(monthStr: string) {
   }).format(date);
 }
 
-export function MonthlySuccessRateChart({
-  data,
-}: MonthlySuccessRateChartProps) {
-  const chartData = data.map((d) => ({
-    ...d,
-    label: formatMonth(d.month),
-  }));
+function MonthlySuccessRateChartImpl({ data }: MonthlySuccessRateChartProps) {
+  // Same reason as AttendanceTrendChart: a new array identity re-dispatches the
+  // whole dataset into the chart's internal store on every parent render.
+  const chartData = useMemo(
+    () =>
+      data.map((d) => ({
+        ...d,
+        label: formatMonth(d.month),
+      })),
+    [data],
+  );
 
   const totalOpened = data.reduce((sum, d) => sum + d.opened, 0);
   const totalResolved = data.reduce((sum, d) => sum + d.resolved, 0);
   const totalCases = totalOpened + totalResolved;
 
   return (
-    <Card className="p-5">
-      <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-          <BarChartIcon className="size-5" aria-hidden="true" />
-        </span>
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            อัตราการช่วยเหลือสำเร็จ (1 ปีย้อนหลัง)
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {totalCases > 0
-              ? `เคสเปิดใหม่ ${totalOpened.toLocaleString(
-                  "th-TH",
-                )} รายการ และสำเร็จ ${totalResolved.toLocaleString(
-                  "th-TH",
-                )} รายการ`
-              : "ไม่มีข้อมูลในขอบเขตปัจจุบัน"}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-6 h-[300px] w-full">
+    <PanelSection
+      description={
+        totalCases > 0
+          ? `เคสเปิดใหม่ ${totalOpened.toLocaleString(
+              "th-TH",
+            )} รายการ และสำเร็จ ${totalResolved.toLocaleString("th-TH")} รายการ`
+          : "ไม่มีข้อมูลในขอบเขตปัจจุบัน"
+      }
+      title="เคสเปิดใหม่เทียบที่ช่วยสำเร็จ (1 ปีย้อนหลัง)"
+    >
+      <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -126,6 +119,8 @@ export function MonthlySuccessRateChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+    </PanelSection>
   );
 }
+
+export const MonthlySuccessRateChart = memo(MonthlySuccessRateChartImpl);

@@ -202,6 +202,11 @@ export const MainPage = lazy(() =>
     default: module.MainPage,
   })),
 );
+export const NlQueryPage = lazy(() =>
+  import("../features/nl-query/pages/NlQueryPage").then((module) => ({
+    default: module.NlQueryPage,
+  })),
+);
 export const ImportDataPage = lazy(() =>
   import("../features/import-data/pages/ImportDataPage").then((module) => ({
     default: module.ImportDataPage,

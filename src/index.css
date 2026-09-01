@@ -151,6 +151,23 @@
   --color-brand-yellow-bg: #fef1db;
   --color-brand-purple: #7324ce;
   --color-brand-purple-bg: #e9dcf8;
+  /* Categorical chart series — one ordered set every dashboard chart draws from,
+     so a category keeps the same color across cards and no chart invents a hex.
+     Ordered for contrast when adjacent, and drawn from the reference palette. */
+  --color-chart-1: #0f49bd;
+  --color-chart-2: #f5740b;
+  --color-chart-3: #7324ce;
+  --color-chart-4: #0d9488;
+  --color-chart-5: #b7791f;
+  --color-chart-6: #ba1a1a;
+  --color-chart-7: #4652ad;
+  --color-chart-8: #525252;
+
+  /* Risk tiers — one mapping shared by every tier chart and legend. */
+  --color-tier-high: #ba1a1a;
+  --color-tier-watch: #f5740b;
+  --color-tier-normal: #15803d;
+
   /* An off-black "ink" tone for strong emphasis text/icons — distinct from
      true black, matches the Figma library's "Black (ไม่จริง)" swatch. */
   --color-ink: #0f172a;

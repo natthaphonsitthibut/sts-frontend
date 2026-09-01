@@ -98,6 +98,7 @@ export const MENU_ITEMS: MenuItem[] = [
   pageMenuItem("students", "/students"),
   pageMenuItem("teachers", "/teachers"),
   pageMenuItem("classrooms", "/classrooms"),
+  pageMenuItem("nl_query:use", "/nl-query"),
   {
     id: "data-management",
     label: "จัดการข้อมูล",

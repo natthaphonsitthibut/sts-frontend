@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { Bot, type LucideIcon } from "lucide-react";
 import {
   AccountCircleIcon,
   AddLinkIcon,
@@ -31,6 +31,7 @@ import {
 
 /* ชุด filled (Material) ทั้ง map — ให้เมนู/หัวเพจ style เดียวกับ brand icon */
 export const PAGE_ICONS = {
+  bot: Bot,
   calendar: CalendarTodayIcon,
   "calendar-check": EventAvailableIcon,
   "chart-line": EqualizerIcon,
@@ -105,6 +106,7 @@ export const PAGE_IDENTITIES = {
     "สถานะนักเรียน",
     "file-spreadsheet",
   ),
+  "/nl-query": createIdentity("ถามข้อมูลด้วยภาษาไทย", "bot"),
   "/school-structure": createIdentity(
     "จัดการภาคเรียนและห้องเรียน",
     "graduation",

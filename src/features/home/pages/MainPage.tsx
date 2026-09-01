@@ -24,26 +24,36 @@ import {
   PageToolbar,
   SkeletonCards,
 } from "../../../components/layout/page-primitives";
+import { ErrorBoundary } from "../../../components/layout/error-boundary";
 import { getPageIdentity } from "../../../components/layout/page-identity";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { AttendanceTrendChart } from "../components/AttendanceTrendChart";
 import { CasePipelineChart } from "../components/CasePipelineChart";
-import { CauseCategoryChart } from "../components/CauseCategoryChart";
-import { MonthlySuccessRateChart } from "../components/MonthlySuccessRateChart";
+import { GradeRiskChart } from "../components/GradeRiskChart";
 import { RiskAreaRankingChart } from "../components/RiskAreaRankingChart";
+import { RiskInsightsPanel } from "../components/RiskInsightsPanel";
 import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation";
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
   HomeDashboardFilters,
+  HomeDashboardGradeRiskPoint,
   HomeDashboardMetric,
   HomeDashboardOption,
+  HomeDashboardTrendPoint,
 } from "../types/home-dashboard.types";
 import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 
 const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
+
+// `?? []` builds a new array on every render, and recharts re-dispatches the
+// whole dataset into its internal store whenever that identity changes. Empty
+// is a constant, so treat it as one.
+const NO_TREND_POINTS: HomeDashboardTrendPoint[] = [];
+const NO_GRADE_RISK_POINTS: HomeDashboardGradeRiskPoint[] = [];
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -115,6 +125,12 @@ function getRiskAreaBackAction(
   label: string;
   next: Partial<HomeDashboardFilters>;
 } | null {
+  if (filters.room) {
+    return { label: "กลับไปดูทุกห้องในชั้นนี้", next: { room: undefined } };
+  }
+  if (filters.grade) {
+    return { label: "กลับไปดูทุกชั้นในโรงเรียน", next: { grade: undefined } };
+  }
   if (schoolLocked) return null;
   if (filters.schoolId) {
     return {
@@ -353,6 +369,9 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
           openable &&
             "transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         );
+        const lockedHint = openable
+          ? undefined
+          : "บัญชีนี้ไม่มีสิทธิ์เปิดหน้ารายงานปลายทาง";
         const cardContent = (
           <>
             <div className="flex items-start justify-between gap-3">
@@ -402,6 +421,8 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
             key={metric.key}
             className={cardClassName}
             data-home-metric={metric.key}
+            data-home-metric-locked="true"
+            title={lockedHint}
           >
             {cardContent}
           </div>
@@ -413,17 +434,42 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
 
 export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
+  const { canOpen } = usePermissions();
   const { filters, reset, schoolLocked, updateFilter } = useDashboardFilters();
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
+  // Value-stable (a query string, not the filters object), so a caught
+  // boundary retries on a real scope change and not on every render.
+  const scopeKey = buildQuery(filters);
   const {
     summary,
     filterOptions,
+    trends,
+    followUpInsights,
     isLoading,
     isError,
     isFilterOptionsError,
+    isFollowUpInsightsError,
     refetch,
     refetchFilterOptions,
+    refetchFollowUpInsights,
   } = useHomeDashboard(filters);
+  // One school on a national choropleth is an empty map; ชั้น/ห้อง is the unit a
+  // school actually works with, so the whole slot swaps rather than showing a
+  // greyed-out country.
+  const isSchoolScope = filters.schoolId !== undefined;
+  // Gated the same way the metric cards are: a card the account cannot open
+  // stays a plain card rather than a link into /forbidden.
+  const highRiskPath = !canOpen("/student-risk-report")
+    ? null
+    : destination("/student-risk-report", {
+        ...(filters.province ? { province: filters.province } : {}),
+        ...(filters.district ? { district: filters.district } : {}),
+        ...(filters.subDistrict ? { subDistrict: filters.subDistrict } : {}),
+        ...(filters.schoolId ? { schoolId: filters.schoolId } : {}),
+        ...(filters.grade ? { grade: filters.grade } : {}),
+        ...(filters.room ? { room: filters.room } : {}),
+        riskTier: "HIGH",
+      });
 
   return (
     <PageShell>
@@ -482,62 +528,103 @@ export function MainPage() {
             )}
           >
             <div className="flex flex-col gap-5">
-              <Suspense
-                fallback={
-                  <div
-                    aria-label="กำลังโหลดแผนที่ประเทศไทย"
-                    className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
-                    role="status"
+              {isSchoolScope ? (
+                <GradeRiskChart
+                  onSelect={(grade) => updateFilter({ grade })}
+                  points={trends?.gradeRiskDistribution ?? NO_GRADE_RISK_POINTS}
+                />
+              ) : (
+                <Suspense
+                  fallback={
+                    <div
+                      aria-label="กำลังโหลดแผนที่ประเทศไทย"
+                      className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
+                      role="status"
+                    />
+                  }
+                >
+                  <GeoMapSVG
+                    backLabel={riskAreaBackAction?.label}
+                    disabled={schoolLocked}
+                    filters={filters}
+                    onBack={
+                      riskAreaBackAction
+                        ? () => updateFilter(riskAreaBackAction.next)
+                        : undefined
+                    }
+                    onSelect={schoolLocked ? undefined : updateFilter}
+                    ranking={summary.riskAreaRanking}
                   />
-                }
+                </Suspense>
+              )}
+
+              <ErrorBoundary
+                resetKey={scopeKey}
+                title="แสดงกราฟแนวโน้มการมาเรียนไม่สำเร็จ"
               >
-                <GeoMapSVG
-                  backLabel={riskAreaBackAction?.label}
-                  disabled={schoolLocked}
-                  filters={filters}
-                  onBack={
-                    riskAreaBackAction
-                      ? () => updateFilter(riskAreaBackAction.next)
-                      : undefined
-                  }
-                  onSelect={schoolLocked ? undefined : updateFilter}
-                  ranking={summary.riskAreaRanking}
+                <AttendanceTrendChart
+                  points={trends?.attendanceTrend ?? NO_TREND_POINTS}
                 />
-              </Suspense>
-
-              {summary.monthlySuccessRates ? (
-                <MonthlySuccessRateChart data={summary.monthlySuccessRates} />
-              ) : null}
+              </ErrorBoundary>
             </div>
 
-            <div className="flex flex-col gap-5">
-              {summary.riskAreaRanking ? (
-                <RiskAreaRankingChart
-                  backLabel={riskAreaBackAction?.label}
-                  onBack={
-                    riskAreaBackAction
-                      ? () => updateFilter(riskAreaBackAction.next)
-                      : undefined
-                  }
-                  onSelect={
-                    schoolLocked ? undefined : (filter) => updateFilter(filter)
-                  }
-                  ranking={summary.riskAreaRanking}
-                />
-              ) : null}
-              {summary.causeCategoryDistribution ? (
-                <CauseCategoryChart
-                  distribution={summary.causeCategoryDistribution}
-                />
-              ) : null}
-              {summary.casePipeline ? (
-                <CasePipelineChart
-                  filters={filters}
-                  pipeline={summary.casePipeline}
-                />
-              ) : null}
-            </div>
+            <ErrorBoundary
+              className="self-start"
+              resetKey={scopeKey}
+              title="แสดงอันดับพื้นที่เสี่ยงไม่สำเร็จ"
+            >
+              <div className="flex flex-col gap-5">
+                {summary.riskAreaRanking ? (
+                  <RiskAreaRankingChart
+                    backLabel={riskAreaBackAction?.label}
+                    onBack={
+                      riskAreaBackAction
+                        ? () => updateFilter(riskAreaBackAction.next)
+                        : undefined
+                    }
+                    onSelect={(filter) => updateFilter(filter)}
+                    ranking={summary.riskAreaRanking}
+                  />
+                ) : null}
+                {summary.casePipeline ? (
+                  <CasePipelineChart
+                    filters={filters}
+                    pipeline={summary.casePipeline}
+                  />
+                ) : null}
+              </div>
+            </ErrorBoundary>
           </div>
+
+          {isFollowUpInsightsError ? (
+            <Alert variant="destructive">
+              <AlertTitle>โหลดภาพรวมความเสี่ยงไม่สำเร็จ</AlertTitle>
+              <AlertDescription>
+                ตัวเลขส่วนอื่นของหน้าหลักยังใช้งานได้ตามปกติ
+              </AlertDescription>
+              <Button
+                className="mt-3"
+                size="sm"
+                variant="outline"
+                onClick={() => void refetchFollowUpInsights()}
+              >
+                โหลดใหม่
+              </Button>
+            </Alert>
+          ) : !followUpInsights ? (
+            <SkeletonCards count={1} />
+          ) : (
+            <ErrorBoundary
+              resetKey={scopeKey}
+              title="แสดงภาพรวมความเสี่ยงไม่สำเร็จ"
+            >
+              <RiskInsightsPanel
+                insights={followUpInsights}
+                monthlySuccessRates={summary.monthlySuccessRates ?? null}
+                unclassifiedPath={highRiskPath}
+              />
+            </ErrorBoundary>
+          )}
         </div>
       )}
     </PageShell>

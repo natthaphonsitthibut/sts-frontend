@@ -2,12 +2,15 @@ import { apiClient } from "../../../lib/api-client";
 import type {
   HomeDashboardFilterOptionsData,
   HomeDashboardFilters,
+  HomeDashboardFollowUpInsightsData,
   HomeDashboardResponse,
   HomeDashboardSummaryData,
   HomeDashboardTrendsData,
 } from "../types/home-dashboard.types";
 
-function compactParams(filters: HomeDashboardFilters): Record<string, string | number> {
+function compactParams(
+  filters: HomeDashboardFilters,
+): Record<string, string | number> {
   const params: Record<string, string | number> = { period: filters.period };
   if (filters.province) params.province = filters.province;
   if (filters.district) params.district = filters.district;
@@ -18,7 +21,9 @@ function compactParams(filters: HomeDashboardFilters): Record<string, string | n
   return params;
 }
 
-async function unwrap<T>(promise: Promise<{ data: HomeDashboardResponse<T> }>): Promise<T> {
+async function unwrap<T>(
+  promise: Promise<{ data: HomeDashboardResponse<T> }>,
+): Promise<T> {
   const response = await promise;
   if (!response.data.data) {
     throw new Error("ไม่พบข้อมูลหน้าหลัก");
@@ -26,19 +31,42 @@ async function unwrap<T>(promise: Promise<{ data: HomeDashboardResponse<T> }>): 
   return response.data.data;
 }
 
-async function getSummary(filters: HomeDashboardFilters): Promise<HomeDashboardSummaryData> {
+async function getSummary(
+  filters: HomeDashboardFilters,
+): Promise<HomeDashboardSummaryData> {
   return await unwrap(
-    apiClient.get<HomeDashboardResponse<HomeDashboardSummaryData>>("/home-dashboard/summary", {
-      params: compactParams(filters),
-    }),
+    apiClient.get<HomeDashboardResponse<HomeDashboardSummaryData>>(
+      "/home-dashboard/summary",
+      {
+        params: compactParams(filters),
+      },
+    ),
   );
 }
 
-async function getTrends(filters: HomeDashboardFilters): Promise<HomeDashboardTrendsData> {
+async function getTrends(
+  filters: HomeDashboardFilters,
+): Promise<HomeDashboardTrendsData> {
   return await unwrap(
-    apiClient.get<HomeDashboardResponse<HomeDashboardTrendsData>>("/home-dashboard/trends", {
-      params: compactParams(filters),
-    }),
+    apiClient.get<HomeDashboardResponse<HomeDashboardTrendsData>>(
+      "/home-dashboard/trends",
+      {
+        params: compactParams(filters),
+      },
+    ),
+  );
+}
+
+async function getFollowUpInsights(
+  filters: HomeDashboardFilters,
+): Promise<HomeDashboardFollowUpInsightsData> {
+  return await unwrap(
+    apiClient.get<HomeDashboardResponse<HomeDashboardFollowUpInsightsData>>(
+      "/home-dashboard/follow-up-insights",
+      {
+        params: compactParams(filters),
+      },
+    ),
   );
 }
 
@@ -58,5 +86,6 @@ async function getFilterOptions(
 export const homeDashboardService = {
   getSummary,
   getTrends,
+  getFollowUpInsights,
   getFilterOptions,
 };
