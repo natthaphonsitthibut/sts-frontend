@@ -12,6 +12,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Copy,
   FileSpreadsheet,
   Grid2X2,
   ScanLine,
@@ -30,6 +31,7 @@ import {
   DatePicker,
   DropdownMenu,
   FormErrorAlert,
+  IconButton,
   Label,
   Tabs,
 } from "../../../components/base";
@@ -50,6 +52,8 @@ import { AttendanceImportDialog } from "../../attendance/components/AttendanceIm
 import { AttendanceQrScannerDialog } from "../../attendance/components/AttendanceQrScannerDialog";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { AssignmentLinksPanel } from "../../classroom-links/components/AssignmentLinksPanel";
+import { LinkHighlightSection } from "../../../components/layout/link-highlight-section";
+import { formatThaiDateTime } from "../../../lib/date-time";
 import { AttendanceAssignmentDialog } from "../../classroom-links/components/AttendanceAssignmentDialog";
 import { useCreateAttendanceAssignment } from "../../classroom-links/hooks/useClassroomLinks";
 import { ClassroomAttendanceHistory } from "../../school-structure/components/ClassroomAttendanceHistory";
@@ -728,6 +732,15 @@ export function CheckInWorkspace({
   const [announcement, setAnnouncement] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [assignmentOpen, setAssignmentOpen] = useState(false);
+  // Held only until it is put away: the link is issued, listed under จัดการลิงก์
+  // and re-readable there, so this band exists to save the walk to that tab
+  // right after creating one — not to report a standing state.
+  const [createdAssignment, setCreatedAssignment] = useState<{
+    accessUrl: string;
+    expiresAt: string;
+    /** Absent means the link works from the moment it was created. */
+    opensAt: string | null;
+  } | null>(null);
   const [correctionSubmitOpen, setCorrectionSubmitOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const createAssignment = useCreateAttendanceAssignment(access);
@@ -834,6 +847,36 @@ export function CheckInWorkspace({
           </div>
         ) : null}
       </div>
+
+      {createdAssignment ? (
+        <LinkHighlightSection
+          actions={
+            // The same first action, glyph and tone as every other copy in the
+            // product — the link rows, the assignment panel, the LINE band.
+            <IconButton
+              aria-label="คัดลอกลิงก์มอบหมายเช็กชื่อ"
+              icon={Copy}
+              onClick={() => {
+                void navigator.clipboard?.writeText(
+                  createdAssignment.accessUrl,
+                );
+                appToast.success("คัดลอกลิงก์แล้ว");
+              }}
+              title="คัดลอกลิงก์"
+              variant="share"
+            />
+          }
+          description={`${
+            room ? formatClassLabel(room.gradeLabel, room.roomNumber) : ""
+          }${activeSubject ? ` · ${activeSubject.nameTh}` : ""} · ${
+            createdAssignment.opensAt
+              ? `เริ่ม ${formatThaiDateTime(createdAssignment.opensAt)}`
+              : "ใช้ได้ทันที"
+          } · หมดอายุ ${formatThaiDateTime(createdAssignment.expiresAt)}`}
+          onDismiss={() => setCreatedAssignment(null)}
+          title="ลิงก์มอบหมายเช็กชื่อที่เพิ่งสร้าง"
+        />
+      ) : null}
 
       <Tabs
         aria-label="ข้อมูลห้องเรียน"
@@ -1195,9 +1238,15 @@ export function CheckInWorkspace({
               {
                 onSuccess: (result) => {
                   setAssignmentOpen(false);
-                  appToast.success(
-                    `สร้างลิงก์มอบหมายแล้ว: ${result.data.accessUrl}`,
-                  );
+                  // The URL used to ride in the toast, where it could not be
+                  // copied and left before it could be read.
+                  appToast.success("สร้างลิงก์มอบหมายเช็กชื่อแล้ว");
+                  if (!result.data.accessUrl) return;
+                  setCreatedAssignment({
+                    accessUrl: result.data.accessUrl,
+                    expiresAt: input.expiresAt,
+                    opensAt: input.opensAt ?? null,
+                  });
                 },
               },
             );
