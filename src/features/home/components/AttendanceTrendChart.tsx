@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { CalendarDays } from "lucide-react";
 import {
   Bar,
@@ -38,11 +39,20 @@ function formatDay(key: string): string {
  * left to the rate line — plotting them as bars would flatten ขาด/สาย, which are
  * the two numbers anyone acts on.
  */
-export function AttendanceTrendChart({ points }: AttendanceTrendChartProps) {
-  const data = points.map((point) => ({
-    ...point,
-    label: formatDay(point.key),
-  }));
+function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
+  // recharts stores `data` in its own redux store and re-dispatches it whenever
+  // the array identity changes — with no equality check, and clearing it to
+  // undefined on the way. A fresh array on every parent render therefore churns
+  // the chart's internal store twice per render, which is the loop that ends in
+  // React error #185. Hold the reference still.
+  const data = useMemo(
+    () =>
+      points.map((point) => ({
+        ...point,
+        label: formatDay(point.key),
+      })),
+    [points],
+  );
   const totalAbsent = points.reduce((sum, point) => sum + point.absent, 0);
   const totalLate = points.reduce((sum, point) => sum + point.late, 0);
 
@@ -147,3 +157,5 @@ export function AttendanceTrendChart({ points }: AttendanceTrendChartProps) {
     </ChartCard>
   );
 }
+
+export const AttendanceTrendChart = memo(AttendanceTrendChartImpl);

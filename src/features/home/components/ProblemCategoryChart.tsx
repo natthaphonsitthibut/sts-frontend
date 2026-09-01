@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   Bar,
   BarChart,
@@ -34,9 +35,7 @@ const SERIES = [
  * than summed: a follow-up visit and a homeroom note are different evidence, and
  * one student can appear in both.
  */
-export function ProblemCategoryChart({
-  categories,
-}: ProblemCategoryChartProps) {
+function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
   const totalStudents = categories.reduce(
     (sum, category) => sum + category.total,
     0,
@@ -147,3 +146,5 @@ export function ProblemCategoryChart({
     </PanelSection>
   );
 }
+
+export const ProblemCategoryChart = memo(ProblemCategoryChartImpl);

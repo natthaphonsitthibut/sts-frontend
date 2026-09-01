@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -26,13 +27,17 @@ function formatMonth(monthStr: string) {
   }).format(date);
 }
 
-export function MonthlySuccessRateChart({
-  data,
-}: MonthlySuccessRateChartProps) {
-  const chartData = data.map((d) => ({
-    ...d,
-    label: formatMonth(d.month),
-  }));
+function MonthlySuccessRateChartImpl({ data }: MonthlySuccessRateChartProps) {
+  // Same reason as AttendanceTrendChart: a new array identity re-dispatches the
+  // whole dataset into the chart's internal store on every parent render.
+  const chartData = useMemo(
+    () =>
+      data.map((d) => ({
+        ...d,
+        label: formatMonth(d.month),
+      })),
+    [data],
+  );
 
   const totalOpened = data.reduce((sum, d) => sum + d.opened, 0);
   const totalResolved = data.reduce((sum, d) => sum + d.resolved, 0);
@@ -117,3 +122,5 @@ export function MonthlySuccessRateChart({
     </PanelSection>
   );
 }
+
+export const MonthlySuccessRateChart = memo(MonthlySuccessRateChartImpl);
