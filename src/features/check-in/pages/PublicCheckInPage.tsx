@@ -30,6 +30,66 @@ import type { CheckInContext } from "../types/check-in.types";
 import { checkInService } from "../api/check-in.service";
 
 const LINK_HOME = "/classroom";
+
+/**
+ * Why the link page has no session, told from the outcome the callback reported
+ * rather than guessed. The old copy said the link had expired for every case,
+ * which is wrong and unhelpful for a teacher holding a link created minutes ago
+ * — the usual cause is a sign-in that did not complete, not a dead link.
+ */
+const AUTH_FAILURE_COPY: Record<
+  string,
+  { title: string; description: string }
+> = {
+  declined: {
+    title: "ยังไม่ได้เข้าสู่ระบบ",
+    description:
+      "การเข้าสู่ระบบด้วย Gmail ถูกยกเลิก กรุณาเปิดลิงก์เดิมจากโรงเรียนอีกครั้งแล้วลองใหม่",
+  },
+  expired: {
+    title: "คำขอเข้าสู่ระบบหมดอายุ",
+    description:
+      "คำขอนี้ถูกใช้ไปแล้วหรือหมดอายุ กรุณาเปิดลิงก์เดิมจากโรงเรียนอีกครั้งแล้วเข้าสู่ระบบใหม่",
+  },
+  "not-allowed": {
+    title: "บัญชีนี้เปิดลิงก์นี้ไม่ได้",
+    description:
+      "ลิงก์นี้อาจเป็นของครูอีกคน หรือบัญชีที่ใช้ไม่ใช่ครูที่เปิดใช้งานอยู่ในโรงเรียนเจ้าของลิงก์ กรุณาเข้าด้วยบัญชีของครูเจ้าของลิงก์",
+  },
+  failed: {
+    title: "เข้าสู่ระบบไม่สำเร็จ",
+    description:
+      "กรุณาเปิดลิงก์เดิมจากโรงเรียนอีกครั้งแล้วลองใหม่ ถ้ายังเข้าไม่ได้กรุณาแจ้งผู้ดูแลระบบ",
+  },
+};
+
+function unusableLinkCopy(searchParams: URLSearchParams): {
+  title: string;
+  description: string;
+} {
+  const auth = searchParams.get("auth");
+  if (auth === "failed") {
+    return (
+      AUTH_FAILURE_COPY[searchParams.get("reason") ?? "failed"] ??
+      AUTH_FAILURE_COPY.failed
+    );
+  }
+  // Sign-in succeeded and still no session: the link page cannot say why, but it
+  // must not blame the link — that sends the teacher to ask for a new one that
+  // will behave exactly the same.
+  if (auth === "google") {
+    return {
+      title: "เข้าสู่ระบบสำเร็จ แต่เปิดลิงก์ต่อไม่ได้",
+      description:
+        "กรุณาเปิดลิงก์เดิมจากโรงเรียนอีกครั้ง ถ้ายังเจอซ้ำกรุณาแจ้งผู้ดูแลระบบ",
+    };
+  }
+  return {
+    title: "ลิงก์นี้ใช้งานไม่ได้",
+    description:
+      "ลิงก์อาจหมดอายุ ถูกปิด หรือถูกสร้างใหม่แล้ว กรุณาขอลิงก์ใหม่จากโรงเรียน",
+  };
+}
 const CLASSROOM_ICON = PAGE_ICONS["school-building"];
 
 let publicContextRevision = 0;
@@ -241,6 +301,7 @@ function LinkCheckInPage({
 }
 
 export function PublicCheckInPage() {
+  const [pageSearchParams] = useSearchParams();
   const [token, setToken] = useState(initialToken);
   const [tokenRevision, setTokenRevision] = useState(
     () => ++publicContextRevision,
@@ -354,6 +415,7 @@ export function PublicCheckInPage() {
   }
 
   if (!context) {
+    const copy = unusableLinkCopy(pageSearchParams);
     return (
       <GuestPageShell
         as="main"
@@ -362,9 +424,9 @@ export function PublicCheckInPage() {
         showProfile={false}
       >
         <ErrorState
-          description="ลิงก์อาจหมดอายุ ถูกปิด หรือถูกสร้างใหม่แล้ว กรุณาขอลิงก์ใหม่จากโรงเรียน"
+          description={copy.description}
           onRetry={() => void contextQuery.refetch()}
-          title="ลิงก์นี้ใช้งานไม่ได้"
+          title={copy.title}
         />
       </GuestPageShell>
     );
