@@ -159,54 +159,30 @@ export function SidebarNavItem({
     setManualExpanded(!expanded);
   }
 
+  function toggleAfterPaint(): void {
+    // Two frames: the first is the one React renders the new route into, the
+    // second is after the browser has painted it.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setManualExpanded(!expanded)),
+    );
+  }
+
   const childrenVisible = expanded && !collapsed;
 
   if (item.children) {
-    return (
-      <div>
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-label={collapsed ? item.label : undefined}
-          onClick={handleGroupToggle}
-          title={
-            collapsed ? `${item.label} — กดเพื่อเปิดหรือปิดเมนูย่อย` : undefined
-          }
-          className={cn(
-            // justify-center is unconditional for the same glide reason as
-            // navLinkClassName — the flex-1 label makes it a no-op expanded.
-            "group relative flex min-h-10 w-full items-center justify-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-brand-soft hover:text-primary-dark",
-          )}
-        >
-          <LayoutIcon
-            className="size-5 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-            iconName={item.iconName}
-          />
-          {/* `mr-7` reserves the width the absolute chevron overlays (16px
-              icon + 12px gap) so truncated text never runs under it; it
-              animates away via the label's existing margin transition. */}
-          <span
-            className={cn(
-              "min-w-0 flex-1",
-              !collapsed && "mr-7",
-              navLabelClassName(collapsed),
-            )}
-          >
-            {item.label}
-          </span>
-          {/* One chevron for both states — swapping an in-flow element for an
-              absolute one snaps on the first frame, so it is always absolute
-              and glides between "row end, size-4" and "corner badge, size-3". */}
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              "absolute transition-[top,right,width,height,color,transform] duration-300 ease-out motion-reduce:transition-none",
-              collapsed ? "right-1 top-6 size-3" : "right-3 top-3 size-4",
-              expanded && "rotate-180",
-              collapsed && expanded ? "text-primary" : "text-slate-500",
-            )}
-          />
-        </button>
+    // Captured so the narrowing survives into the closure below.
+    const groupChildren = item.children;
+
+    function renderChildren() {
+      return (
+        // The slide stays, by the owner's call (2026-09-01): it is how the rest
+        // of the product's menu behaves and matching that matters more here than
+        // the frames it costs. `grid-template-rows: 0fr → 1fr` interpolates a
+        // layout property, so every row in the group is laid out again on every
+        // frame — fine for a menu of four, heavy for a teacher's forty rooms.
+        // A composited `opacity`/`transform` reveal was tried and rejected for
+        // looking different from the app's own groups; do not swap it back
+        // without asking.
         <div
           aria-hidden={!childrenVisible}
           className={cn(
@@ -216,9 +192,9 @@ export function SidebarNavItem({
         >
           <div className="overflow-hidden">
             {/* No `visibility` toggle here — it can't transition, so it would
-                blank the labels on the first frame of the collapse while the
-                rows are still animating shut. `overflow-hidden` on the parent
-                plus `aria-hidden`/`tabIndex` already cover paint and a11y. */}
+                  blank the labels on the first frame of the collapse while the
+                  rows are still animating shut. `overflow-hidden` on the parent
+                  plus `aria-hidden`/`tabIndex` already cover paint and a11y. */}
             <div
               className={cn(
                 "space-y-0.5 border-l py-1 transition-[padding] duration-300 ease-out motion-reduce:transition-none",
@@ -227,7 +203,7 @@ export function SidebarNavItem({
                   : "border-slate-200 pl-4",
               )}
             >
-              {item.children.map((child) => {
+              {groupChildren.map((child) => {
                 const childIsActive = isRouteActive(
                   child,
                   activePathname,
@@ -266,6 +242,129 @@ export function SidebarNavItem({
             </div>
           </div>
         </div>
+      );
+    }
+
+    // A group that is also a page — the classroom link's ห้องเรียนของฉัน — opens
+    // its page and folds its list from the same row. Reaching the rooms and
+    // reaching the page they are listed on is one intent, so it is one control,
+    // and the row keeps the shape the app's own groups have.
+    const groupIsActive = Boolean(
+      item.route && isRouteActive(item, activePathname, menuRoutes),
+    );
+    // The same builder every other row uses, so an active group wears the
+    // product's active treatment rather than a second one invented here.
+    // `relative` anchors the chevron; `text-left` is the button reset.
+    const groupRowClassName = cn(
+      navLinkClassName({ isActive: groupIsActive }, collapsed),
+      "relative text-left",
+    );
+    const groupIcon = (
+      <LayoutIcon
+        className="size-5 shrink-0 transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        iconName={item.iconName}
+      />
+    );
+    const groupLabel = (
+      <span
+        className={cn(
+          "min-w-0 flex-1",
+          !collapsed && "mr-7",
+          navLabelClassName(collapsed),
+        )}
+      >
+        {item.label}
+      </span>
+    );
+    // Byte-for-byte the chevron every other group uses. It has to be the same
+    // element with the same transition, not an equivalent one: two nested boxes
+    // animating their own size during the rail's 300ms squeeze is what made
+    // this row wobble while the app's own groups glided.
+    const groupChevron = (
+      <ChevronDown
+        aria-hidden="true"
+        className={cn(
+          "absolute transition-[top,right,width,height,color,transform] duration-300 ease-out motion-reduce:transition-none",
+          collapsed ? "right-1 top-6 size-3" : "right-3 top-3 size-4",
+          expanded && "rotate-180",
+          collapsed && expanded ? "text-primary" : "text-slate-500",
+        )}
+      />
+    );
+
+    if (item.route) {
+      return (
+        <div>
+          {/* One control, not two: the whole row opens the page and folds the
+              list at the same time, so the markup stays the single row the
+              app's own groups are — no wrapper for a second hit target to
+              animate against. */}
+          <div className="relative">
+            <Link
+              aria-current={groupIsActive ? "page" : undefined}
+              aria-label={collapsed ? item.label : undefined}
+              className={groupRowClassName}
+              onClick={() => {
+                onNavigate?.();
+                // The whole row folds and unfolds, not just the chevron — but
+                // not in the same frames as the page it opens. The destination's
+                // first layout is the expensive part, so the fold starts once
+                // that has painted.
+                toggleAfterPaint();
+              }}
+              title={collapsed ? item.label : undefined}
+              to={item.route}
+            >
+              {groupIcon}
+              {groupLabel}
+            </Link>
+            {groupChevron}
+            {/* An empty overlay over the chevron end of the row, not a box around
+                the chevron: the glyph keeps the exact absolute coordinates and
+                transition every other group uses, and nothing nested animates its
+                own size beside it. Wide enough to hit without aiming, and it sits
+                inside the space the label already reserves with `mr-7`.
+
+                Separate from the row on purpose. Folding the list and loading a
+                page are both cheap alone; together the page's first layout lands
+                in the middle of the accordion's 300ms and drops its frames. */}
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-label={`${item.label} — เปิดหรือปิดเมนูย่อย`}
+              className="absolute inset-y-0 right-0 w-9 rounded-lg"
+              onClick={handleGroupToggle}
+              title="เปิดหรือปิดเมนูย่อย"
+            />
+          </div>
+          {renderChildren()}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={collapsed ? item.label : undefined}
+          onClick={handleGroupToggle}
+          title={
+            collapsed ? `${item.label} — กดเพื่อเปิดหรือปิดเมนูย่อย` : undefined
+          }
+          className={groupRowClassName}
+        >
+          {groupIcon}
+          {/* `mr-7` on the label reserves the width the absolute chevron
+              overlays (16px icon + 12px gap) so truncated text never runs
+              under it; it animates away via the label's margin transition. */}
+          {groupLabel}
+          {/* One chevron for both states — swapping an in-flow element for an
+              absolute one snaps on the first frame, so it is always absolute
+              and glides between "row end, size-4" and "corner badge, size-3". */}
+          {groupChevron}
+        </button>
+        {renderChildren()}
       </div>
     );
   }

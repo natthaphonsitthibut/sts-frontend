@@ -26,6 +26,7 @@ import { IdentityMethodChoice } from "../../auth/components/IdentityMethodChoice
 import { DevelopmentGoogleEmailForm } from "../../auth/components/DevelopmentGoogleEmailForm";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
+import { ClassroomLinkShell } from "../components/ClassroomLinkShell";
 import type { CheckInContext } from "../types/check-in.types";
 import { checkInService } from "../api/check-in.service";
 
@@ -506,13 +507,14 @@ export function PublicCheckInPage() {
 
   return (
     // Who is signed in belongs in the header popover, the same place it sits on
-    // every other page — not in a banner pinned above the work.
-    <GuestPageShell
-      as="main"
-      profileAffiliation={context.school.name}
-      profileName={context.authentication.displayName}
-      profilePhotoUrl={context.authentication.photoUrl}
-      brandTo={LINK_HOME}
+    // every other page — not in a banner pinned above the work. An assignment
+    // link opens onto one lesson and has nothing to navigate between, so it
+    // keeps the bare frame; a teacher link gets the product's own rail.
+    <ClassroomLinkShell
+      classrooms={context.assignment ? [] : context.classrooms}
+      displayName={context.authentication.displayName}
+      photoUrl={context.authentication.photoUrl}
+      schoolName={context.school.name}
     >
       {/* A link can open onto several rooms now, so the room is chosen here
           rather than assumed. One room needs no choosing. */}
@@ -542,6 +544,6 @@ export function PublicCheckInPage() {
           path="check-in/:classroomId/:classroomSubjectId"
         />
       </Routes>
-    </GuestPageShell>
+    </ClassroomLinkShell>
   );
 }
