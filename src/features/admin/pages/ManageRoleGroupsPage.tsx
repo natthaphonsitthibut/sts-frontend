@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Combobox, useConfirm } from "../../../components/base";
+import { Button, useConfirm } from "../../../components/base";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -30,11 +30,7 @@ import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import { useRolesCatalog } from "../hooks/useUsers";
 import type { RoleDefinition, RoleGroupListQuery } from "../types/admin.types";
-import {
-  formatSchoolArea,
-  SCOPE_REQUIRED_LABEL,
-} from "../../../lib/scope-presentation";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
 
@@ -56,9 +52,7 @@ export function ManageRoleGroupsPage() {
     refetch: refetchPermissionCatalog,
   } = usePermissionCatalog();
 
-  const [schoolInput, setSchoolInput] = useState(
-    () => searchParams.get("schoolId") ?? "",
-  );
+  const globalFilter = useGlobalSchoolFilter();
   const [searchQuery, setSearchQuery] = useRememberedState(
     "manage-role-groups:search",
     "",
@@ -90,15 +84,34 @@ export function ManageRoleGroupsPage() {
   >(undefined);
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
+  // Falls back to the one school on offer even before it's explicitly
+  // picked in the header — same "not a real choice" collapse every other
+  // scope picker in the app already applies.
   const selectedSchoolValue =
-    schools.length === 1 ? String(schools[0].id) : schoolInput;
+    globalFilter.schoolId ||
+    (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(selectedSchoolValue) || null;
-  const selectedSchool = schools.find(
-    (school) => school.id === selectedSchoolId,
+  const selectedSchoolName =
+    globalFilter.schoolName ||
+    schools.find((school) => school.id === selectedSchoolId)?.name;
+  // A school switch (from the header, or anywhere else) closes whatever
+  // role-group dialog was open for the old school. `selectedSchoolId`
+  // depends on the async `schoolsQuery` single-school fallback, so this must
+  // not fire on the first value it observes (the school settling in on
+  // mount, not a switch) — that would wipe `?page=` restored from the URL on
+  // refresh.
+  const [lastSchoolId, setLastSchoolId] = useState<number | null | undefined>(
+    undefined,
   );
-  const multipleSchools = schools.length > 1;
+  if (schoolsQuery.isSuccess && selectedSchoolId !== lastSchoolId) {
+    const isFirstObservation = lastSchoolId === undefined;
+    setLastSchoolId(selectedSchoolId);
+    if (!isFirstObservation) {
+      if (page !== 1) setPage(1);
+      if (dialogRoleGroup !== undefined) setDialogRoleGroup(undefined);
+    }
+  }
   useSyncedSearchParams({
-    schoolId: multipleSchools ? schoolInput || undefined : undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
     sort: serializeSortSearchParam(sort, defaultSort),
@@ -125,12 +138,6 @@ export function ManageRoleGroupsPage() {
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
     setPage(1);
-  }
-
-  function handleSchoolChange(value: string): void {
-    setSchoolInput(value);
-    setPage(1);
-    setDialogRoleGroup(undefined);
   }
 
   function handleSortChange(nextSort: DataTableSortState | undefined): void {
@@ -165,25 +172,6 @@ export function ManageRoleGroupsPage() {
           </Button>
         }
         description="กรอกข้อมูลรายละเอียดผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ"
-        scope={
-          <ScopeFilterField
-            editable={multipleSchools}
-            scope={{ schoolName: selectedSchool?.name }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={handleSchoolChange}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={selectedSchoolValue}
-            />
-          </ScopeFilterField>
-        }
         title="จัดการกลุ่มเมนู"
       >
         <ToolbarControls>
@@ -214,9 +202,9 @@ export function ManageRoleGroupsPage() {
           icon={MENU_GROUPS_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
         />
-      ) : multipleSchools && !selectedSchoolId ? (
+      ) : !selectedSchoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงกลุ่มเมนู"
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงกลุ่มเมนู"
           icon={MENU_GROUPS_ICON}
           title="เลือกโรงเรียน"
         />
@@ -255,7 +243,9 @@ export function ManageRoleGroupsPage() {
         </>
       )}
 
-      {dialogRoleGroup !== undefined && selectedSchoolId && selectedSchool ? (
+      {dialogRoleGroup !== undefined &&
+      selectedSchoolId &&
+      selectedSchoolName ? (
         <RoleGroupDialog
           key={dialogRoleGroup?.name ?? `new-${selectedSchoolId}`}
           onOpenChange={(open) => {
@@ -263,7 +253,7 @@ export function ManageRoleGroupsPage() {
           }}
           roleGroup={dialogRoleGroup}
           schoolId={selectedSchoolId}
-          schoolName={selectedSchool.name}
+          schoolName={selectedSchoolName}
         />
       ) : null}
 

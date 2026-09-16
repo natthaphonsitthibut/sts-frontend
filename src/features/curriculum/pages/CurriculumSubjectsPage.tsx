@@ -22,9 +22,13 @@ import {
 } from "../../../hooks/useSyncedSearchParams";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { formatSchoolTermLabel } from "../../attendance/lib/attendance-presentation";
-import { useSchoolTeacherOptions } from "../../school-structure/hooks/useSchoolStructure";
+import {
+  useSchoolTeacherOptions,
+  useScopedSchools,
+} from "../../school-structure/hooks/useSchoolStructure";
 import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { CurriculumSubjectCard } from "../components/CurriculumSubjectCard";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import {
   useCurriculumSubjects,
   useSaveCurriculumSubjectTeachers,
@@ -45,7 +49,17 @@ export function CurriculumSubjectsPage() {
   const [searchParams] = useSearchParams();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
-  const schoolId = Number(searchParams.get("schoolId")) || null;
+  // The school itself is the header's own filter now — read straight from
+  // it, not from a URL param carried over from the grades list. Falls back
+  // to the one school on offer even before it's explicitly picked in the
+  // header, same as `CurriculumGradesPage` and every other migrated page.
+  const globalFilter = useGlobalSchoolFilter();
+  const schoolsQuery = useScopedSchools();
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const schoolId =
+    Number(
+      globalFilter.schoolId || (schools.length === 1 ? schools[0]?.id : ""),
+    ) || null;
   const gradeId = Number(gradeLevelId) || null;
   const [termInput, setTermInput] = useState(
     () => searchParams.get("termId") ?? "",
@@ -65,6 +79,23 @@ export function CurriculumSubjectsPage() {
       ? value
       : DEFAULT_PAGE_SIZE;
   });
+  // A school switch (from the header, or anywhere else) makes whatever term
+  // was picked for the old school stale, same as every other term-carrying
+  // migrated page. `schoolId` depends on the async `schoolsQuery`
+  // single-school fallback, so this must not fire on the first value it
+  // observes (the school settling in on mount, not a switch) — that would
+  // wipe `?termId=`/`?page=` restored from the URL on refresh.
+  const [lastSchoolId, setLastSchoolId] = useState<number | null | undefined>(
+    undefined,
+  );
+  if (schoolsQuery.isSuccess && schoolId !== lastSchoolId) {
+    const isFirstObservation = lastSchoolId === undefined;
+    setLastSchoolId(schoolId);
+    if (!isFirstObservation) {
+      if (termInput !== "") setTermInput("");
+      if (page !== 1) setPage(1);
+    }
+  }
 
   const termsQuery = useQuery({
     queryKey: ["curriculum", "terms", schoolId],

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Combobox, Skeleton } from "../../../components/base";
+import { Skeleton } from "../../../components/base";
 import { ContextLink } from "../../../components/layout/context-link";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import {
@@ -15,11 +15,7 @@ import {
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useCurriculumGrades } from "../hooks/useCurriculum";
 import { useSyncedSearchParams } from "../../../hooks/useSyncedSearchParams";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import {
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const PAGE_ICON = PAGE_IDENTITIES["/curriculum"].icon;
 
@@ -40,17 +36,20 @@ function GradeCardSkeleton() {
 export function CurriculumGradesPage() {
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const globalFilter = useGlobalSchoolFilter();
+  const [searchParams] = useSearchParams();
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("search") ?? "",
   );
   const [searchTerm, setSearchTerm] = useState(
     () => searchParams.get("search") ?? "",
   );
+  // Falls back to the one school on offer even before it's explicitly
+  // picked in the header — same "not a real choice" collapse every other
+  // scope picker in the app already applies.
   const selectedSchoolValue =
-    schools.length === 1
-      ? String(schools[0]?.id ?? "")
-      : (searchParams.get("schoolId") ?? "");
+    globalFilter.schoolId ||
+    (schools.length === 1 ? String(schools[0]?.id ?? "") : "");
   const schoolId = Number(selectedSchoolValue) || null;
 
   useEffect(() => {
@@ -69,38 +68,6 @@ export function CurriculumGradesPage() {
   return (
     <PageShell>
       <PageToolbar
-        scope={
-          <ScopeFilterField
-            editable={schools.length > 1}
-            scope={{
-              schoolName: schools.find(
-                (school) => String(school.id) === selectedSchoolValue,
-              )?.name,
-            }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={(value) => {
-                setSearchParams(
-                  (params) => {
-                    if (value) params.set("schoolId", value);
-                    else params.delete("schoolId");
-                    return params;
-                  },
-                  { replace: true },
-                );
-              }}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={selectedSchoolValue}
-            />
-          </ScopeFilterField>
-        }
         description="ดูและจัดการรายวิชาในหลักสูตรของแต่ละระดับชั้น"
         title="จัดการข้อมูลหลักสูตร"
       >
@@ -133,7 +100,7 @@ export function CurriculumGradesPage() {
         <EmptyState icon={PAGE_ICON} title="ไม่พบโรงเรียนในขอบเขต" />
       ) : !schoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบน"
+          description="เลือกโรงเรียนจากแถบด้านบน"
           icon={PAGE_ICON}
           title="เลือกโรงเรียน"
         />
@@ -157,7 +124,7 @@ export function CurriculumGradesPage() {
             <ContextLink
               className="flex cursor-pointer items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-150 ease-out hover:scale-[1.01] hover:shadow-md motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               key={grade.gradeLevelId}
-              to={`/curriculum/${grade.gradeLevelId}?schoolId=${schoolId}`}
+              to={`/curriculum/${grade.gradeLevelId}`}
             >
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-700">
                 <GraduationCap aria-hidden="true" className="size-7" />

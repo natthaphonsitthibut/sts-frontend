@@ -34,11 +34,15 @@ interface StudentSearchFilterProps {
   studentStatusOptions: StudentStatusFilterOption[];
   isStudentStatusError?: boolean;
   isStudentStatusLoading?: boolean;
-  schoolFilters?: ReactNode;
   /** The scope in force, for the header summary. */
   scope: ScopeSummaryInput;
-  /** False when the actor's own data scope fixes school, grade and room. */
+  /** False when the actor's own data scope fixes grade and room. */
   scopeEditable?: boolean;
+  /** Grade/room are disabled for lack of a school, not an actor-locked scope. */
+  noSchoolSelected?: boolean;
+  /** Defaults to "ขอบเขต" — override once school moves out of this field. */
+  scopeLabel?: string;
+  scopeEmptyLabel?: string;
   onClearScope?: () => void;
   navigation?: ReactNode;
   exportAction?: ReactNode;
@@ -63,9 +67,11 @@ export function StudentSearchFilter({
   studentStatusOptions,
   isStudentStatusError = false,
   isStudentStatusLoading = false,
-  schoolFilters,
   scope,
   scopeEditable = true,
+  scopeLabel,
+  scopeEmptyLabel,
+  noSchoolSelected = false,
   onClearScope,
   navigation,
   exportAction,
@@ -115,41 +121,45 @@ export function StudentSearchFilter({
         ),
       }}
       scope={
-        <ScopeFilterField
-          editable={scopeEditable}
-          onClear={onClearScope ?? onClearFilters}
-          scope={scope}
-        >
-          {schoolFilters}
-
-          <Select
-            aria-label="กรองตามระดับชั้น"
-            disabled={gradeLocked}
-            onChange={(event) => onGradeChange(event.target.value)}
-            value={grade}
+        // Grade/room only mean anything once a school is picked — this field
+        // doesn't exist until then either, rather than sitting there disabled.
+        noSchoolSelected ? null : (
+          <ScopeFilterField
+            editable={scopeEditable}
+            emptyLabel={scopeEmptyLabel}
+            label={scopeLabel}
+            onClear={onClearScope ?? onClearFilters}
+            scope={scope}
           >
-            <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
-            {gradeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </Select>
+            <Select
+              aria-label="กรองตามระดับชั้น"
+              disabled={gradeLocked}
+              onChange={(event) => onGradeChange(event.target.value)}
+              value={grade}
+            >
+              <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
+              {gradeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
 
-          <Select
-            aria-label="กรองตามห้อง"
-            disabled={roomLocked}
-            onChange={(event) => onRoomChange(event.target.value)}
-            value={room}
-          >
-            <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
-            {roomOptions.map((option) => (
-              <option key={option} value={option}>
-                {formatRoomLabel(option)}
-              </option>
-            ))}
-          </Select>
-        </ScopeFilterField>
+            <Select
+              aria-label="กรองตามห้อง"
+              disabled={roomLocked}
+              onChange={(event) => onRoomChange(event.target.value)}
+              value={room}
+            >
+              <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
+              {roomOptions.map((option) => (
+                <option key={option} value={option}>
+                  {formatRoomLabel(option)}
+                </option>
+              ))}
+            </Select>
+          </ScopeFilterField>
+        )
       }
     />
   );

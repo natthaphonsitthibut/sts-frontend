@@ -75,12 +75,8 @@ import {
   useUpdateSchoolClassroom,
 } from "../hooks/useSchoolStructure";
 import type { SchoolClassroom } from "../types/school-structure.types";
-import {
-  SCOPE_ALL_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 /**
  * Term, classroom and homeroom-teacher setup for a school.
@@ -95,9 +91,7 @@ export function SchoolStructurePage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const termStatusCatalog = useStatusCatalog("SCHOOL_TERM");
 
-  const [schoolInput, setSchoolInput] = useState(
-    () => searchParams.get("schoolId") ?? "",
-  );
+  const globalFilter = useGlobalSchoolFilter();
   const [termInput, setTermInput] = useState(
     () => searchParams.get("termId") ?? "",
   );
@@ -167,10 +161,31 @@ export function SchoolStructurePage() {
 
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  // Same rule as /classrooms: one school is implied, several must be chosen.
-  const schoolId = schools.length === 1 ? String(schools[0].id) : schoolInput;
+  // Falls back to the one school on offer even before it's explicitly picked
+  // in the header — same "not a real choice" collapse every other scope
+  // picker in the app already applies.
+  const schoolId =
+    globalFilter.schoolId ||
+    (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(schoolId) || null;
-  const multipleSchools = schools.length > 1;
+  // A school switch (from the header, or anywhere else) makes whatever term
+  // and grade filter were picked for the old school stale. `selectedSchoolId`
+  // depends on the async `schoolsQuery` single-school fallback, so this must
+  // not fire on the first value it observes (the school settling in on
+  // mount, not a switch) — that would wipe `?page=`/`?termId=`/`?gradeId=`
+  // restored from the URL on refresh.
+  const [lastSchoolId, setLastSchoolId] = useState<number | null | undefined>(
+    undefined,
+  );
+  if (schoolsQuery.isSuccess && selectedSchoolId !== lastSchoolId) {
+    const isFirstObservation = lastSchoolId === undefined;
+    setLastSchoolId(selectedSchoolId);
+    if (!isFirstObservation) {
+      if (termInput !== "") setTermInput("");
+      if (gradeFilter !== "") setGradeFilter("");
+      if (page !== 1) setPage(1);
+    }
+  }
   const termsQuery = useQuery({
     queryKey: ["school-structure", "terms", selectedSchoolId],
     queryFn: () => attendanceService.getTerms(selectedSchoolId!),
@@ -189,7 +204,6 @@ export function SchoolStructurePage() {
     : undefined;
 
   useSyncedSearchParams({
-    schoolId: multipleSchools ? schoolInput || undefined : undefined,
     termId: termInput
       ? terms.length > 0
         ? selectedTerm?.id
@@ -284,13 +298,6 @@ export function SchoolStructurePage() {
       variant: "destructive",
     });
     if (accepted) deleteTerm.mutate(selectedTerm.id);
-  }
-
-  function handleSchoolChange(value: string): void {
-    setSchoolInput(value);
-    setTermInput("");
-    setGradeFilter("");
-    setPage(1);
   }
 
   function openClassroomDialog(room: SchoolClassroom | null): void {
@@ -453,29 +460,6 @@ export function SchoolStructurePage() {
             </Button>
           </>
         }
-        scope={
-          <ScopeFilterField
-            editable={multipleSchools}
-            scope={{
-              schoolName: schools.find(
-                (school) => String(school.id) === schoolId,
-              )?.name,
-            }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={handleSchoolChange}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={schoolId}
-            />
-          </ScopeFilterField>
-        }
         description="ตั้งภาคเรียน เพิ่มหรือแก้ไขห้อง และกำหนดครูประจำชั้นของโรงเรียนที่คุณดูแล"
         title="จัดการภาคเรียนและห้องเรียน"
       >
@@ -549,7 +533,7 @@ export function SchoolStructurePage() {
         />
       ) : !selectedSchoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อจัดการภาคเรียนและห้องเรียน"
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อจัดการภาคเรียนและห้องเรียน"
           icon={School}
           title="เลือกโรงเรียน"
         />

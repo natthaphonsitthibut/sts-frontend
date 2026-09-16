@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
@@ -14,9 +14,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Combobox,
   Select,
-  type ComboboxOption,
 } from "../../../components/base";
 import {
   ErrorState,
@@ -46,6 +44,7 @@ import type {
 } from "../types/home-dashboard.types";
 import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 
@@ -79,18 +78,15 @@ const METRIC_ICON_TONE_CLASSES: Record<HomeDashboardMetric["tone"], string> = {
   info: "bg-primary text-white",
 };
 
+// Area/school no longer live in this page's URL (the header owns them) —
+// only period/grade/room are still parsed from it.
 function parseFilters(searchParams: URLSearchParams): HomeDashboardFilters {
   const period = searchParams.get("period");
-  const schoolId = Number(searchParams.get("schoolId"));
   return {
     period:
       period === "7_DAYS" || period === "CURRENT_TERM" || period === "30_DAYS"
         ? period
         : "30_DAYS",
-    province: searchParams.get("province") || undefined,
-    district: searchParams.get("district") || undefined,
-    subDistrict: searchParams.get("subDistrict") || undefined,
-    schoolId: Number.isInteger(schoolId) && schoolId > 0 ? schoolId : undefined,
     grade: searchParams.get("grade") || undefined,
     room: searchParams.get("room") || undefined,
   };
@@ -156,58 +152,117 @@ function getLockedSchoolId(
   return schoolIds?.length === 1 ? schoolIds[0] : undefined;
 }
 
+/**
+ * Area and school are the shared header filter, not this page's own URL
+ * params — narrowing to a province, a district or one school here (or on any
+ * other browse/dashboard page) carries over everywhere else. "ทุกโรงเรียน"
+ * on top of a chosen area means every school *in that area*, not a reset to
+ * nationwide — so picking a school only ever narrows the area already in
+ * force, and clearing the school leaves it in place. Grade/room stay this
+ * page's own, URL-persisted as before, since they only mean anything inside
+ * one specific school.
+ */
 function useDashboardFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const lockedSchoolId = useAuthSessionStore((state) =>
     getLockedSchoolId(state.user?.data_scope?.school_ids),
   );
+  const globalFilter = useGlobalSchoolFilter();
+  const globalSchoolId = globalFilter.schoolId
+    ? Number(globalFilter.schoolId)
+    : undefined;
   const parsedFilters = parseFilters(searchParams);
   const filters: HomeDashboardFilters = {
-    ...parsedFilters,
-    schoolId: lockedSchoolId ?? parsedFilters.schoolId,
+    period: parsedFilters.period,
+    province: lockedSchoolId ? undefined : globalFilter.province || undefined,
+    district: lockedSchoolId ? undefined : globalFilter.district || undefined,
+    subDistrict: lockedSchoolId
+      ? undefined
+      : globalFilter.subDistrict || undefined,
+    schoolId: lockedSchoolId ?? globalSchoolId,
+    grade: parsedFilters.grade,
+    room: parsedFilters.room,
   };
 
-  function updateFilter(next: Partial<HomeDashboardFilters>): void {
-    const merged: HomeDashboardFilters = { ...filters, ...next };
-    if ("province" in next) {
-      merged.district = undefined;
-      merged.subDistrict = undefined;
-      merged.schoolId = undefined;
-      merged.grade = undefined;
-      merged.room = undefined;
-    }
-    if ("district" in next) {
-      merged.subDistrict = undefined;
-      merged.schoolId = undefined;
-      merged.grade = undefined;
-      merged.room = undefined;
-    }
-    if ("subDistrict" in next) {
-      merged.schoolId = undefined;
-      merged.grade = undefined;
-      merged.room = undefined;
-    }
-    if ("schoolId" in next) {
-      merged.grade = undefined;
-      merged.room = undefined;
-    }
-    if ("grade" in next) {
-      merged.room = undefined;
-    }
-    if (lockedSchoolId) {
-      merged.schoolId = lockedSchoolId;
-    }
-    setSearchParams(buildQuery(merged).slice(1), { replace: true });
-  }
+  // A school change bypasses `updateFilter` entirely when it happens from
+  // the header (or the risk-area back-action) — clear grade/room whenever
+  // the effective school changes for any reason, so clearing the school
+  // there can never leave a hidden, unclearable grade/room filter applied.
+  const previousSchoolIdRef = useRef(filters.schoolId);
+  useEffect(() => {
+    if (previousSchoolIdRef.current === filters.schoolId) return;
+    previousSchoolIdRef.current = filters.schoolId;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("grade");
+        next.delete("room");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [filters.schoolId, setSearchParams]);
 
-  function reset(): void {
+  function updateFilter(next: Partial<HomeDashboardFilters>): void {
+    const touchesArea =
+      "province" in next ||
+      "district" in next ||
+      "subDistrict" in next ||
+      "schoolId" in next;
+
+    if (!lockedSchoolId && touchesArea) {
+      if ("schoolId" in next) {
+        if (next.schoolId) {
+          globalFilter.setSchool(String(next.schoolId), "");
+        } else {
+          globalFilter.clearSchool();
+        }
+      } else if ("subDistrict" in next) {
+        globalFilter.setArea({
+          province: filters.province ?? "",
+          district: filters.district ?? "",
+          subDistrict: next.subDistrict ?? "",
+        });
+      } else if ("district" in next) {
+        globalFilter.setArea({
+          province: filters.province ?? "",
+          district: next.district ?? "",
+          subDistrict: "",
+        });
+      } else if ("province" in next) {
+        globalFilter.setArea({
+          province: next.province ?? "",
+          district: "",
+          subDistrict: "",
+        });
+      }
+    }
+
+    const nextPeriod = "period" in next ? next.period : filters.period;
+    const nextGrade =
+      "grade" in next ? next.grade : touchesArea ? undefined : filters.grade;
+    const nextRoom =
+      "room" in next
+        ? next.room
+        : touchesArea || "grade" in next
+          ? undefined
+          : filters.room;
     setSearchParams(
       buildQuery({
-        period: "30_DAYS",
-        schoolId: lockedSchoolId,
+        period: nextPeriod,
+        grade: nextGrade,
+        room: nextRoom,
       }).slice(1),
       { replace: true },
     );
+  }
+
+  // Clears only what this page still owns (grade/room) — the area/school is
+  // the header's own filter now, with its own clear action.
+  function reset(): void {
+    setSearchParams(buildQuery({ period: "30_DAYS" }).slice(1), {
+      replace: true,
+    });
   }
 
   return {
@@ -223,7 +278,6 @@ function DashboardFilterBar({
   options,
   onReset,
   onUpdate,
-  schoolLocked,
 }: {
   filters: HomeDashboardFilters;
   options?: {
@@ -236,7 +290,6 @@ function DashboardFilterBar({
   };
   onReset: () => void;
   onUpdate: (next: Partial<HomeDashboardFilters>) => void;
-  schoolLocked: boolean;
 }) {
   const safeOptions = options ?? {
     provinces: [],
@@ -246,16 +299,6 @@ function DashboardFilterBar({
     grades: [],
     rooms: [],
   };
-  const allOption = (
-    label: string,
-    options: HomeDashboardOption[],
-  ): ComboboxOption[] => [
-    { value: "", label },
-    ...options.map((option) => ({
-      value: String(option.value),
-      label: option.label,
-    })),
-  ];
   const labelOf = (
     options: HomeDashboardOption[],
     value: string | number | undefined,
@@ -264,55 +307,22 @@ function DashboardFilterBar({
       ? undefined
       : options.find((option) => String(option.value) === String(value))?.label;
 
+  // Area and school are the header's own filter now (see
+  // `GlobalSchoolFilterControl`) — grade/room only mean anything once a
+  // school is picked, so this field doesn't exist until then either.
+  if (!filters.schoolId) return null;
+
   return (
     <ScopeFilterField
+      emptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
+      label="ชั้น/ห้อง"
       onClear={onReset}
       scope={{
-        province: filters.province,
-        district: filters.district,
-        subDistrict: filters.subDistrict,
-        schoolName: labelOf(safeOptions.schools, filters.schoolId),
+        omitPlace: true,
         grade: labelOf(safeOptions.grades, filters.grade),
         room: filters.room,
       }}
     >
-      <Combobox
-        ariaLabel="จังหวัด"
-        options={allOption(SCOPE_ALL_LABEL.province, safeOptions.provinces)}
-        placeholder={SCOPE_ALL_LABEL.province}
-        value={filters.province ?? ""}
-        onChange={(value) => onUpdate({ province: value || undefined })}
-        disabled={schoolLocked}
-      />
-      <Combobox
-        ariaLabel="อำเภอ/เขต"
-        options={allOption(SCOPE_ALL_LABEL.district, safeOptions.districts)}
-        placeholder={SCOPE_ALL_LABEL.district}
-        value={filters.district ?? ""}
-        onChange={(value) => onUpdate({ district: value || undefined })}
-        disabled={schoolLocked || !filters.province}
-      />
-      <Combobox
-        ariaLabel="ตำบล/แขวง"
-        options={allOption(
-          SCOPE_ALL_LABEL.subDistrict,
-          safeOptions.subDistricts,
-        )}
-        placeholder={SCOPE_ALL_LABEL.subDistrict}
-        value={filters.subDistrict ?? ""}
-        onChange={(value) => onUpdate({ subDistrict: value || undefined })}
-        disabled={schoolLocked || !filters.district}
-      />
-      <Combobox
-        ariaLabel="โรงเรียน"
-        options={allOption(SCOPE_ALL_LABEL.school, safeOptions.schools)}
-        placeholder={SCOPE_ALL_LABEL.school}
-        value={filters.schoolId === undefined ? "" : String(filters.schoolId)}
-        onChange={(value) =>
-          onUpdate({ schoolId: value ? Number(value) : undefined })
-        }
-        disabled={schoolLocked}
-      />
       <Select
         aria-label="ชั้น"
         onChange={(event) =>
@@ -436,6 +446,7 @@ export function MainPage() {
   const { displayName, roleLabel, affiliation } = useCurrentUserPresentation();
   const { canOpen } = usePermissions();
   const { filters, reset, schoolLocked, updateFilter } = useDashboardFilters();
+  const globalFilter = useGlobalSchoolFilter();
   const riskAreaBackAction = getRiskAreaBackAction(filters, schoolLocked);
   // Value-stable (a query string, not the filters object), so a caught
   // boundary retries on a real scope change and not on every render.
@@ -453,6 +464,17 @@ export function MainPage() {
     refetchFilterOptions,
     refetchFollowUpInsights,
   } = useHomeDashboard(filters);
+  // This page only ever hands the header filter a school id — its label
+  // catches up once the scoped options list resolves, so the pill never
+  // shows a stale name for a school picked from a chart or a back-action.
+  const resolvedSchoolName = filterOptions?.options?.schools.find(
+    (school) => String(school.value) === String(filters.schoolId ?? ""),
+  )?.label;
+  useEffect(() => {
+    if (schoolLocked || !filters.schoolId || !resolvedSchoolName) return;
+    if (resolvedSchoolName === globalFilter.schoolName) return;
+    globalFilter.setSchool(String(filters.schoolId), resolvedSchoolName);
+  }, [filters.schoolId, resolvedSchoolName, schoolLocked, globalFilter]);
   // One school on a national choropleth is an empty map; ชั้น/ห้อง is the unit a
   // school actually works with, so the whole slot swaps rather than showing a
   // greyed-out country.
@@ -483,7 +505,6 @@ export function MainPage() {
             options={filterOptions?.options}
             onReset={reset}
             onUpdate={updateFilter}
-            schoolLocked={schoolLocked}
           />
         }
       />

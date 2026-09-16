@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Combobox, Skeleton } from "../../../components/base";
+import { Skeleton } from "../../../components/base";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
 import {
@@ -31,11 +31,7 @@ import type {
   ClassroomCardCoverColor,
   SchoolClassroom,
 } from "../types/school-structure.types";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import {
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const CLASSROOMS_ICON = PAGE_IDENTITIES["/classrooms"].icon;
 
@@ -56,9 +52,7 @@ export function ClassroomsPage() {
   const [searchParams] = useSearchParams();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState(
-    () => searchParams.get("schoolId") ?? "",
-  );
+  const globalFilter = useGlobalSchoolFilter();
   const [searchInput, setSearchInput] = useRememberedState(
     "classrooms:search",
     "",
@@ -94,8 +88,26 @@ export function ClassroomsPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  const schoolId = schools.length === 1 ? String(schools[0].id) : schoolInput;
+  // Falls back to the one school on offer even before it's explicitly picked
+  // in the header — same "not a real choice" collapse every other scope
+  // picker in the app already applies.
+  const schoolId =
+    globalFilter.schoolId ||
+    (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(schoolId) || null;
+  // A school switch (from the header, or anywhere else) can leave the page
+  // number past the end of the new list. `selectedSchoolId` depends on the
+  // async `schoolsQuery` single-school fallback, so this must not fire on
+  // the first value it observes (the school settling in on mount, not a
+  // switch) — that would wipe `?page=` restored from the URL on refresh.
+  const [lastSchoolId, setLastSchoolId] = useState<number | null | undefined>(
+    undefined,
+  );
+  if (schoolsQuery.isSuccess && selectedSchoolId !== lastSchoolId) {
+    const isFirstObservation = lastSchoolId === undefined;
+    setLastSchoolId(selectedSchoolId);
+    if (!isFirstObservation && page !== 1) setPage(1);
+  }
   const termsQuery = useQuery({
     queryKey: ["classrooms", "terms", selectedSchoolId],
     queryFn: () => attendanceService.getTerms(selectedSchoolId!),
@@ -121,17 +133,10 @@ export function ClassroomsPage() {
   const favoriteMutation = useSetClassroomFavorite();
   const presentationMutation = useUpdateClassroomPresentation();
   const classrooms = classroomsQuery.data?.data ?? [];
-  const multipleSchools = schools.length > 1;
   useSyncedSearchParams({
-    schoolId: multipleSchools ? schoolInput || undefined : undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
   });
-
-  function handleSchoolChange(value: string): void {
-    setSchoolInput(value);
-    setPage(1);
-  }
 
   function handleFavoriteChange(
     classroom: SchoolClassroom,
@@ -160,32 +165,7 @@ export function ClassroomsPage() {
 
   return (
     <PageShell>
-      <PageToolbar
-        scope={
-          <ScopeFilterField
-            editable={multipleSchools}
-            scope={{
-              schoolName: schools.find(
-                (school) => String(school.id) === schoolId,
-              )?.name,
-            }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={handleSchoolChange}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={schoolId}
-            />
-          </ScopeFilterField>
-        }
-        title="ห้องเรียนทั้งหมด"
-      >
+      <PageToolbar title="ห้องเรียนทั้งหมด">
         <ToolbarControls>
           <SearchInput
             className="sm:max-w-[560px]"
@@ -217,9 +197,9 @@ export function ClassroomsPage() {
           icon={CLASSROOMS_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
         />
-      ) : multipleSchools && !selectedSchoolId ? (
+      ) : !selectedSchoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงห้องเรียน"
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงห้องเรียน"
           icon={CLASSROOMS_ICON}
           title="เลือกโรงเรียน"
         />

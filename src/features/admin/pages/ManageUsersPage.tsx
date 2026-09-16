@@ -1,13 +1,8 @@
 import { useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Combobox, FormErrorAlert } from "../../../components/base";
-import {
-  formatSchoolArea,
-  SCOPE_ALL_LABEL,
-} from "../../../lib/scope-presentation";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
+import { FormErrorAlert } from "../../../components/base";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import {
@@ -81,20 +76,18 @@ export function ManageUsersPage() {
   const [deactivationTarget, setDeactivationTarget] =
     useState<ManagedUser | null>(null);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
-  // Staff accounts are spread across every school an admin oversees, so this
-  // list narrows by the same scope as every other list in the app. The users
-  // API already accepts each level; only the page had never sent them.
-  const schoolsQuery = useScopedSchools();
-  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useRememberedState(
-    "manage-users:school",
-    "",
-  );
-  const selectedSchoolValue =
-    schools.length === 1 ? String(schools[0].id) : schoolInput;
-  const selectedSchool = schools.find(
-    (school) => String(school.id) === selectedSchoolValue,
-  );
+  // Staff accounts are spread across every school an admin oversees — this
+  // list narrows by the same header filter as every other list in the app.
+  // Leaving it unset browses every school in the admin's own scope.
+  const globalFilter = useGlobalSchoolFilter();
+  const selectedSchoolValue = globalFilter.schoolId;
+  // A school switch (from the header, or anywhere else) can leave the page
+  // number past the end of the new list.
+  const [lastSchoolValue, setLastSchoolValue] = useState(selectedSchoolValue);
+  if (selectedSchoolValue !== lastSchoolValue) {
+    setLastSchoolValue(selectedSchoolValue);
+    if (page !== 1) setPage(1);
+  }
 
   useSyncedSearchParams({
     page: page > 1 ? page : undefined,
@@ -154,32 +147,6 @@ export function ManageUsersPage() {
         }
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         icon={MANAGE_USERS_ICON}
-        scope={
-          <ScopeFilterField
-            editable={schools.length > 1}
-            onClear={() => {
-              setSchoolInput("");
-              setPage(1);
-            }}
-            scope={{ schoolName: selectedSchool?.name }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={(value) => {
-                setSchoolInput(value);
-                setPage(1);
-              }}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_ALL_LABEL.school}
-              value={selectedSchoolValue}
-            />
-          </ScopeFilterField>
-        }
         title="จัดการผู้ใช้งาน"
       >
         <ToolbarControls>

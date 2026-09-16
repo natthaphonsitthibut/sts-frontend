@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { Combobox, FormErrorAlert, useConfirm } from "../../../components/base";
+import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -36,11 +36,7 @@ import type {
   TeacherDirectoryItem,
   TeacherListQuery,
 } from "../types/teachers.types";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import {
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const TEACHERS_ICON = PAGE_IDENTITIES["/teachers"].icon;
 
@@ -52,11 +48,8 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
 
-  // Kept in the URL, not component state: returning from the add/edit form
-  // remounts this page, and a local value would drop the chosen school and send
-  // a multi-school user back to the picker.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const schoolInput = searchParams.get("schoolId") ?? "";
+  const [searchParams] = useSearchParams();
+  const globalFilter = useGlobalSchoolFilter();
   const [searchQuery, setSearchQuery] = useRememberedState(
     "teachers:search",
     "",
@@ -87,10 +80,26 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
 
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 350);
   // A single-school account never sees the filter — its one school is implied.
+  // Falls back to the one school on offer even before it's explicitly picked
+  // in the header — same "not a real choice" collapse every other scope
+  // picker in the app already applies.
   const selectedSchoolValue =
-    schools.length === 1 ? String(schools[0].id) : schoolInput;
+    globalFilter.schoolId ||
+    (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(selectedSchoolValue) || null;
-  const multipleSchools = schools.length > 1;
+  // A school switch (from the header, or anywhere else) can leave the page
+  // number past the end of the new list. `selectedSchoolId` depends on the
+  // async `schoolsQuery` single-school fallback, so this must not fire on
+  // the first value it observes (the school settling in on mount, not a
+  // switch) — that would wipe `?page=` restored from the URL on refresh.
+  const [lastSchoolId, setLastSchoolId] = useState<number | null | undefined>(
+    undefined,
+  );
+  if (schoolsQuery.isSuccess && selectedSchoolId !== lastSchoolId) {
+    const isFirstObservation = lastSchoolId === undefined;
+    setLastSchoolId(selectedSchoolId);
+    if (!isFirstObservation && page !== 1) setPage(1);
+  }
 
   useSyncedSearchParams({
     page: page > 1 ? page : undefined,
@@ -125,18 +134,6 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
     setPage(1);
   }
 
-  function handleSchoolChange(value: string): void {
-    setSearchParams(
-      (params) => {
-        if (value) params.set("schoolId", value);
-        else params.delete("schoolId");
-        return params;
-      },
-      { replace: true },
-    );
-    setPage(1);
-  }
-
   function openEdit(teacher: TeacherDirectoryItem): void {
     contextualNavigate(`/manage-teachers/${teacher.id}/edit`);
   }
@@ -160,29 +157,6 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
   return (
     <PageShell>
       <PageToolbar
-        scope={
-          <ScopeFilterField
-            editable={multipleSchools}
-            scope={{
-              schoolName: schools.find(
-                (school) => String(school.id) === selectedSchoolValue,
-              )?.name,
-            }}
-          >
-            <Combobox
-              ariaLabel="กรองตามโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={handleSchoolChange}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={selectedSchoolValue}
-            />
-          </ScopeFilterField>
-        }
         actions={
           management ? (
             <NavButton
@@ -234,9 +208,9 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
           icon={TEACHERS_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
         />
-      ) : multipleSchools && !selectedSchoolId ? (
+      ) : !selectedSchoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงรายชื่อคุณครู"
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงรายชื่อคุณครู"
           icon={TEACHERS_ICON}
           title="เลือกโรงเรียน"
         />
