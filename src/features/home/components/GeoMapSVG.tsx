@@ -361,6 +361,15 @@ export default function GeoMapSVG({
     return () => surface.removeEventListener("wheel", handleWheel, true);
   }, [mapKey]);
 
+  // The ranking (one shared request with the table on the right) moves past
+  // geography — to SCHOOL, then GRADE/ROOM — before this map's own dimension
+  // does, since the map only ever looks at province/district. Once that
+  // happens there is no area-level count left to paint on any polygon here;
+  // showing every polygon at zero would read as "broken" rather than "there
+  // is nothing more to compare geographically — see the table."
+  const rankingBeyondMap = Boolean(
+    ranking && loadedMap && ranking.dimension !== loadedMap.dimension,
+  );
   const countsByCode = useMemo(() => {
     if (!loadedMap || ranking?.dimension !== loadedMap.dimension)
       return new Map<string, number>();
@@ -414,6 +423,12 @@ export default function GeoMapSVG({
     dragStateRef.current = undefined;
     setIsDragging(false);
   }
+
+  // Once the ranking has moved past what this map can visualize
+  // geographically, there is nothing left to paint — showing every polygon
+  // at zero would read as broken. Drop the whole card rather than explain an
+  // empty map; the ranking table alongside it already has the real detail.
+  if (rankingBeyondMap) return null;
 
   return (
     <Card
