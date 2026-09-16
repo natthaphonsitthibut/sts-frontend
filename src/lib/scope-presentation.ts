@@ -60,6 +60,15 @@ export interface ScopeSummaryInput {
   /** Only pages that let the user pick a term carry these. */
   academicYear?: number | string | null;
   semester?: number | string | null;
+  /**
+   * This filter never had a geography/school level to begin with (e.g. a
+   * page-local ชั้น/ห้อง picker once the school itself moved to a shared
+   * header filter) — skip the "place" phrase entirely instead of falling
+   * back to a "ทุกจังหวัด" that would misstate an app-wide selection this
+   * filter doesn't own. `emptyLabel` on `ScopeFilterField` still covers the
+   * "nothing picked at all" case.
+   */
+  omitPlace?: boolean;
 }
 
 function clean(value: string | null | undefined): string {
@@ -90,13 +99,15 @@ export function formatScopeSummary(scope: ScopeSummaryInput): string[] {
   const grade = clean(scope.grade);
   const room = clean(scope.room);
 
-  const place = schoolName
-    ? schoolName
-    : area
-      ? province
-        ? `${province} › ${area}`
-        : area
-      : province || SCOPE_ALL_LABEL.province;
+  const place = scope.omitPlace
+    ? ""
+    : schoolName
+      ? schoolName
+      : area
+        ? province
+          ? `${province} › ${area}`
+          : area
+        : province || SCOPE_ALL_LABEL.province;
 
   const classroom = grade || room ? formatClassLabel(grade, room) : "";
 
@@ -109,7 +120,7 @@ export function formatScopeSummary(scope: ScopeSummaryInput): string[] {
   const semester = clean(scope.semester == null ? "" : String(scope.semester));
 
   return [
-    place,
+    ...(place ? [place] : []),
     ...(classroom && classroom !== "-" ? [classroom] : []),
     ...(academicYear ? [`ปีการศึกษา ${academicYear}`] : []),
     ...(semester ? [`ภาคเรียนที่ ${semester}`] : []),

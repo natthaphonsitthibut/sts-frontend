@@ -19,6 +19,14 @@ interface UseScopeCascadeOptions {
    * driven). Off by default so the check-in page keeps its behaviour.
    */
   lockToActorScope?: boolean;
+  /**
+   * Have the school level track an externally-owned value (the global school
+   * filter) instead of managing its own — grade/room still cascade locally
+   * and reset whenever this changes, exactly as they do after a local
+   * `setSchoolId` call. Ignored while `lockToActorScope` has already fixed
+   * the school.
+   */
+  controlledSchoolId?: string;
   initialSchoolId?: string;
   initialGrade?: string;
   initialRoom?: string;
@@ -48,22 +56,46 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
   });
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
 
-  const [schoolIdState, setSchoolIdState] = useState(options.initialSchoolId ?? "");
+  const [schoolIdState, setSchoolIdState] = useState(
+    options.initialSchoolId ?? "",
+  );
   const [gradeState, setGradeState] = useState(options.initialGrade ?? "");
   const [roomInput, setRoomInput] = useState(options.initialRoom ?? "");
 
   // The locked school comes straight from the actor's own scope.
   const lockedSchoolId = lock ? singleId(actorScope?.school_ids) : "";
   const schoolLocked = Boolean(lockedSchoolId);
-  const schoolId = schoolLocked ? lockedSchoolId : schoolIdState;
+  const isControlled =
+    !schoolLocked && options.controlledSchoolId !== undefined;
+  const schoolId = schoolLocked
+    ? lockedSchoolId
+    : isControlled
+      ? (options.controlledSchoolId as string)
+      : schoolIdState;
 
   // grade is keyed by label in this cascade, so map the actor's grade id → label.
   const lockedGradeLabel =
     lock && actorScope?.grade_levels?.length === 1
-      ? gradeLevels.find((grade) => String(grade.id) === String(actorScope.grade_levels?.[0]))
-          ?.label ?? ""
+      ? (gradeLevels.find(
+          (grade) => String(grade.id) === String(actorScope.grade_levels?.[0]),
+        )?.label ?? "")
       : "";
   const gradeLocked = Boolean(lockedGradeLabel);
+
+  // A controlled school swap is the same event as picking a new school
+  // locally: grade/room must cascade from it. Adjusting this mid-render (via
+  // state, not a ref — the documented pattern for resetting state on a prop
+  // change) means no stale room list for the old school ever paints before
+  // the reset lands.
+  const [lastControlledSchoolId, setLastControlledSchoolId] = useState(
+    options.controlledSchoolId,
+  );
+  if (isControlled && lastControlledSchoolId !== options.controlledSchoolId) {
+    setLastControlledSchoolId(options.controlledSchoolId);
+    if (!gradeLocked && gradeState !== "") setGradeState("");
+    if (roomInput !== "") setRoomInput("");
+  }
+
   const grade = gradeLocked ? lockedGradeLabel : gradeState;
 
   const roomsQuery = useQuery({
@@ -75,10 +107,14 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
 
   const lockedRoom = lock ? singleId(actorScope?.room_ids) : "";
   const roomLocked = Boolean(lockedRoom);
-  const room = roomLocked ? lockedRoom : rooms.includes(roomInput) ? roomInput : "";
+  const room = roomLocked
+    ? lockedRoom
+    : rooms.includes(roomInput)
+      ? roomInput
+      : "";
 
   function setSchoolId(value: string): void {
-    if (schoolLocked) return;
+    if (schoolLocked || isControlled) return;
     setSchoolIdState(value);
     if (!gradeLocked) {
       setGradeState("");
@@ -123,9 +159,10 @@ export function useScopeCascade(options: UseScopeCascadeOptions = {}) {
       gradeLevelsQuery.dataUpdatedAt,
       roomsQuery.dataUpdatedAt,
     ),
-    refetch: () => Promise.all([
-      gradeLevelsQuery.refetch(),
-      ...(grade ? [roomsQuery.refetch()] : []),
-    ]),
+    refetch: () =>
+      Promise.all([
+        gradeLevelsQuery.refetch(),
+        ...(grade ? [roomsQuery.refetch()] : []),
+      ]),
   };
 }

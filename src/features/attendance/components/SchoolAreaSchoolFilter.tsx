@@ -28,13 +28,13 @@ interface SchoolAreaSchoolFilterProps {
 }
 
 /**
- * A level with one value or none is not a choice — the single value is already
- * implied by the actor's own scope, and rendering it just adds a control that
- * can only be set to what is true anyway. Hidden levels stay unset, which the
- * school query reads as "no narrowing here", so results are unaffected.
+ * A level with no values at all has nothing to show. One real value still
+ * renders — alongside the filter's own "ทุก…" (all) option — so the level
+ * stays visible and pickable even when the data underneath currently offers
+ * only a single choice, rather than disappearing as if it did not exist.
  */
 function offersAChoice(values: string[]): boolean {
-  return values.length > 1;
+  return values.length >= 1;
 }
 
 function toOptions(values: string[], emptyLabel: string): ComboboxOption[] {
@@ -116,7 +116,11 @@ export function SchoolAreaSchoolFilter({
       {showArea && offersAChoice(area.districts) ? (
         <Combobox
           disabled={
-            disabled || (offersAChoice(area.provinces) && !area.province)
+            // Blocked on picking the level above only while that level is a
+            // real choice (more than one value) — a single-value level is
+            // shown (per `offersAChoice`) but never makes the actor confirm
+            // a foregone conclusion before the next level unlocks.
+            disabled || (area.provinces.length > 1 && !area.province)
           }
           onChange={(next) => {
             area.setDistrict(next);
@@ -131,9 +135,7 @@ export function SchoolAreaSchoolFilter({
       ) : null}
       {showArea && offersAChoice(area.subDistricts) ? (
         <Combobox
-          disabled={
-            disabled || (offersAChoice(area.districts) && !area.district)
-          }
+          disabled={disabled || (area.districts.length > 1 && !area.district)}
           onChange={(next) => {
             area.setSubDistrict(next);
             onSubDistrictChange?.(next);
