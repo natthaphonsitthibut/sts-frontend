@@ -490,16 +490,23 @@ export function FilterSelect({
   onChange,
   value,
 }: FilterSelectProps) {
+  // The width belongs on a wrapper, not on the trigger. `Select` hangs its
+  // chevron off its own `relative` box, so sizing only the trigger left the two
+  // apart: in a flex toolbar the box shrank to the trigger and it looked right,
+  // but anywhere else the box filled the row and the chevron drifted to the far
+  // edge, a screen away from the field it belongs to.
   return (
-    <Select
-      aria-label={ariaLabel}
-      className={cn("sm:w-[180px]", className)}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      value={value}
-    >
-      {children}
-    </Select>
+    <div className={cn("sm:w-[180px]", className)}>
+      <Select
+        aria-label={ariaLabel}
+        className="w-full"
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </Select>
+    </div>
   );
 }
 

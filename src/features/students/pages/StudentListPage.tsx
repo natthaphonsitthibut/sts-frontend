@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FileDown, Plus, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Combobox, Tabs } from "../../../components/base";
+import { Button, Tabs } from "../../../components/base";
 import {
   EmptyState,
   ErrorState,
@@ -17,14 +17,14 @@ import {
   readPositiveIntegerSearchParam,
   useSyncedSearchParams,
 } from "../../../hooks/useSyncedSearchParams";
-import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
-import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
+import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 import {
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
+  SCOPE_ALL_LABEL,
+  type ScopeSummaryInput,
 } from "../../../lib/scope-presentation";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { AuditLogPanel } from "../../audit-log/components/AuditLogPanel";
 import { buildDataExportContextUrl } from "../../data-exports/lib/data-export-context";
@@ -102,14 +102,33 @@ export function StudentListPage({
   const [selectedStudentsById, setSelectedStudentsById] = useState<
     Map<string, StudentListItem>
   >(() => new Map());
-  const schoolArea = useSchoolAreaFilter({ includeLocations: false });
-  const schools = schoolArea.filteredSchools;
+  const globalFilter = useGlobalSchoolFilter();
   const scope = useScopeCascade({
     lockToActorScope: true,
-    initialSchoolId: searchParams.get("schoolId") || undefined,
+    controlledSchoolId: globalFilter.schoolId,
     initialGrade: searchParams.get("grade") || undefined,
     initialRoom: searchParams.get("room") || undefined,
   });
+  // This page's own grade/room/page/selection are separate from
+  // `useScopeCascade`'s internal state (they use their own "ALL" sentinel,
+  // not `scope.grade`/`scope.room`) — a school switch from the header must
+  // reset them too, the same as the removed local school-change handler did.
+  const [lastSchoolIdForReset, setLastSchoolIdForReset] = useState(
+    scope.schoolId,
+  );
+  if (scope.schoolId !== lastSchoolIdForReset) {
+    setLastSchoolIdForReset(scope.schoolId);
+    if (grade !== "ALL") setGrade("ALL");
+    if (room !== "ALL") setRoom("ALL");
+    if (page !== 1) setPage(1);
+    if (selectedStudentsById.size > 0) setSelectedStudentsById(new Map());
+  }
+  // Only ever used to tell "no schools in this actor's scope at all" apart
+  // from "schools exist, just pick one from the header" — the picker itself
+  // lives in the header now. Shares the header's own default (no
+  // province/district/subDistrict narrowing) query cache entry, so this
+  // costs nothing extra beyond the header's own fetch in the common case.
+  const schoolArea = useSchoolAreaFilter({ includeLocations: false });
   const studentStatusesQuery = useStudentStatuses({
     page: 1,
     limit: 50,
@@ -173,21 +192,17 @@ export function StudentListPage({
   );
   const effectiveGrade = scope.gradeLocked ? scope.grade : grade;
   const effectiveRoom = scope.roomLocked ? scope.room : room;
-  const scopeSummary = useScopeSummary(schoolArea, {
-    schoolId: scope.schoolId,
-    // "ALL" is this page's own sentinel for an open level; the summary reads
-    // an open level as an empty one.
-    grade: effectiveGrade === "ALL" ? "" : effectiveGrade,
-    room: effectiveRoom === "ALL" ? "" : effectiveRoom,
-  });
+  // "ALL" is this page's own sentinel for an open level; the summary reads an
+  // open level as an empty one. The school/area itself is the global header
+  // filter's own display — omitted here so this chip never repeats it.
+  const scopeSummary: ScopeSummaryInput = {
+    omitPlace: true,
+    grade: effectiveGrade === "ALL" ? undefined : effectiveGrade,
+    room: effectiveRoom === "ALL" ? undefined : effectiveRoom,
+  };
   const selectedSchoolId = scope.schoolId;
-  const showSchoolSelector = !scope.schoolLocked;
 
   useSyncedSearchParams({
-    province: undefined,
-    district: undefined,
-    subDistrict: undefined,
-    schoolId: showSchoolSelector ? selectedSchoolId || undefined : undefined,
     grade:
       scope.gradeLocked || effectiveGrade === "ALL"
         ? undefined
@@ -271,32 +286,6 @@ export function StudentListPage({
     clearSelectedStudents();
   }
 
-  function handleSchoolChange(value: string): void {
-    scope.setSchoolId(value);
-    setGrade("ALL");
-    setRoom("ALL");
-    setPage(1);
-    clearSelectedStudents();
-  }
-
-  // One school picker, both toolbars: the list tab and the export/history tab
-  // narrow by the same scope and must offer it the same way.
-  const schoolSelector = showSchoolSelector ? (
-    <Combobox
-      ariaLabel="กรองตามโรงเรียน"
-      emptyText="ไม่พบโรงเรียนในขอบเขตสิทธิ์"
-      onChange={handleSchoolChange}
-      onSearchChange={schoolArea.setSchoolSearch}
-      options={schools.map((school) => ({
-        value: String(school.id),
-        label: school.name,
-        description: formatSchoolArea(school),
-      }))}
-      placeholder={SCOPE_REQUIRED_LABEL.school}
-      value={selectedSchoolId}
-    />
-  ) : null;
-
   function handleGradeChange(value: string): void {
     setGrade(value);
     setRoom("ALL");
@@ -329,7 +318,6 @@ export function StudentListPage({
     setGrade("ALL");
     setRoom("ALL");
     setStudentStatusCode(undefined);
-    schoolArea.setSchoolSearch("");
     scope.setGrade("");
     scope.setRoom("");
     setPage(1);
@@ -431,9 +419,10 @@ export function StudentListPage({
             ) : undefined
           }
           scope={scopeSummary}
-          scopeEditable={
-            showSchoolSelector || !scope.gradeLocked || !scope.roomLocked
-          }
+          scopeEditable={!scope.gradeLocked || !scope.roomLocked}
+          scopeLabel="ชั้น/ห้อง"
+          scopeEmptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
+          noSchoolSelected={!scope.gradeLocked && !selectedSchoolId}
           onClearScope={handleClearFilters}
           grade={effectiveGrade}
           gradeLocked={scope.gradeLocked || !selectedSchoolId}
@@ -448,7 +437,6 @@ export function StudentListPage({
             scope.roomLocked || !selectedSchoolId || effectiveGrade === "ALL"
           }
           roomOptions={options.rooms}
-          schoolFilters={schoolSelector}
           searchQuery={searchQuery}
           studentStatusCode={effectiveStudentStatusCode}
           studentStatusOptions={studentStatusFilterOptions}
@@ -473,12 +461,11 @@ export function StudentListPage({
           }
           scope={
             <ScopeFilterField
-              editable={showSchoolSelector}
+              emptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
+              label="ชั้น/ห้อง"
               onClear={handleClearFilters}
               scope={scopeSummary}
-            >
-              {schoolSelector}
-            </ScopeFilterField>
+            />
           }
           icon={UserRound}
           title={
@@ -498,9 +485,7 @@ export function StudentListPage({
           />
         ) : schoolArea.isLoading ? (
           <SkeletonTable />
-        ) : !scope.schoolLocked &&
-          !schoolArea.schoolSearch.trim() &&
-          schools.length === 0 ? (
+        ) : !scope.schoolLocked && schoolArea.filteredSchools.length === 0 ? (
           <EmptyState
             description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
             icon={UserRound}
@@ -508,7 +493,7 @@ export function StudentListPage({
           />
         ) : !selectedSchoolId ? (
           <EmptyState
-            description="เลือกโรงเรียนจากตัวกรองด้านบนเพื่อแสดงรายชื่อนักเรียน"
+            description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงรายชื่อนักเรียน"
             icon={UserRound}
             title="เลือกโรงเรียน"
           />

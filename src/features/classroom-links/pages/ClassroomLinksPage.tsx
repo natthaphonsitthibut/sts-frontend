@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarClock,
+  Copy,
   Link2,
   Link2Off,
   Pencil,
   Plus,
-  Share2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -17,7 +17,6 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
-  Combobox,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,6 +30,7 @@ import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
+import { LinkHighlightSection } from "../../../components/layout/link-highlight-section";
 import {
   EmptyState,
   ErrorState,
@@ -71,12 +71,9 @@ import type {
   ClassroomLinkStatus,
   ClassroomLineGroupInvitation,
 } from "../types/classroom-links.types";
-import {
-  SCOPE_ALL_LABEL,
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
+import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
 
@@ -99,9 +96,7 @@ export function ClassroomLinksPage() {
   const [searchParams] = useSearchParams();
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState(
-    () => searchParams.get("schoolId") ?? "",
-  );
+  const globalFilter = useGlobalSchoolFilter();
   const [termInput, setTermInput] = useState(
     () => searchParams.get("termId") ?? "",
   );
@@ -147,8 +142,32 @@ export function ClassroomLinksPage() {
   } | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
 
+  // Falls back to the one school on offer even before it's explicitly
+  // picked in the header — same "not a real choice" collapse every other
+  // scope picker in the app already applies.
   const schoolId =
-    Number(schools.length === 1 ? schools[0]?.id : schoolInput) || null;
+    Number(
+      globalFilter.schoolId || (schools.length === 1 ? schools[0]?.id : ""),
+    ) || null;
+  // A school switch (from the header, or anywhere else) makes whatever term
+  // was picked for the old school stale — same reset the school Combobox
+  // used to do inline. `schoolId` depends on the async `schoolsQuery` single-
+  // school fallback, so this must not fire on the very first value it
+  // observes (that's the school settling in, not a "switch") — that would
+  // wipe `?page=`/`?termId=` restored from the URL on every refresh for a
+  // district-scoped actor whose district has exactly one school.
+  const [lastTermSchoolId, setLastTermSchoolId] = useState<
+    number | null | undefined
+  >(undefined);
+  if (schoolsQuery.isSuccess && schoolId !== lastTermSchoolId) {
+    const isFirstObservation = lastTermSchoolId === undefined;
+    setLastTermSchoolId(schoolId);
+    if (!isFirstObservation) {
+      if (termInput !== "") setTermInput("");
+      if (page !== 1) setPage(1);
+      if (selected.size > 0) setSelected(new Set());
+    }
+  }
   const termsQuery = useQuery({
     queryKey: ["classroom-links", "terms", schoolId],
     queryFn: () => attendanceService.getTerms(schoolId!),
@@ -195,7 +214,6 @@ export function ClassroomLinksPage() {
   const revokeLineInvitation = useRevokeClassroomLineGroupInvitation();
   const rows = linksQuery.data?.data ?? [];
   useSyncedSearchParams({
-    schoolId: schools.length > 1 ? schoolInput || undefined : undefined,
     termId: termInput || undefined,
     gradeId: gradeInput || undefined,
     linkStatus: linkStatusInput || undefined,
@@ -454,49 +472,36 @@ export function ClassroomLinksPage() {
           </div>
         }
         scope={
-          <ScopeFilterField
-            editable={schools.length > 1}
-            scope={{
-              schoolName: schools.find(
-                (school) => String(school.id) === schoolInput,
-              )?.name,
-              grade: (gradeLevelsQuery.data ?? []).find(
-                (grade) => String(grade.id) === gradeInput,
-              )?.label,
-            }}
-          >
-            <Combobox
-              ariaLabel="เลือกโรงเรียน"
-              emptyText="ไม่พบโรงเรียน"
-              onChange={(value) => {
-                setSchoolInput(value);
-                setTermInput("");
-                resetListState();
+          // Grade only means anything once a school is picked (the header's
+          // own filter now) — this field doesn't exist until then either.
+          !schoolId ? null : (
+            <ScopeFilterField
+              emptyLabel={SCOPE_ALL_LABEL.grade}
+              label="ระดับชั้น"
+              scope={{
+                omitPlace: true,
+                grade: (gradeLevelsQuery.data ?? []).find(
+                  (grade) => String(grade.id) === gradeInput,
+                )?.label,
               }}
-              options={schools.map((school) => ({
-                value: String(school.id),
-                label: school.name,
-                description: formatSchoolArea(school),
-              }))}
-              placeholder={SCOPE_REQUIRED_LABEL.school}
-              value={schoolInput}
-            />
-            <Select
-              aria-label="กรองระดับชั้น"
-              onChange={(event) => {
-                setGradeInput(event.target.value);
-                resetListState();
-              }}
-              value={gradeInput}
             >
-              <option value="">{SCOPE_ALL_LABEL.grade}</option>
-              {(gradeLevelsQuery.data ?? []).map((grade) => (
-                <option key={grade.id} value={String(grade.id)}>
-                  {grade.label}
-                </option>
-              ))}
-            </Select>
-          </ScopeFilterField>
+              <Select
+                aria-label="กรองระดับชั้น"
+                onChange={(event) => {
+                  setGradeInput(event.target.value);
+                  resetListState();
+                }}
+                value={gradeInput}
+              >
+                <option value="">{SCOPE_ALL_LABEL.grade}</option>
+                {(gradeLevelsQuery.data ?? []).map((grade) => (
+                  <option key={grade.id} value={String(grade.id)}>
+                    {grade.label}
+                  </option>
+                ))}
+              </Select>
+            </ScopeFilterField>
+          )
         }
         title="จัดการลิงก์ครู"
       >
@@ -545,39 +550,33 @@ export function ClassroomLinksPage() {
       </PageToolbar>
 
       {lineInvitation.data ? (
-        <section className="mb-4 rounded-lg border border-success/25 bg-success-50 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                ลิงก์ยืนยัน LINE กลาง
-                {lineInvitation.data.status === "PENDING"
-                  ? " (รอเวลาเริ่ม)"
-                  : " เปิดใช้งาน"}
-              </h2>
-              <p className="mt-0.5 text-sm text-slate-600">
-                ใช้ได้เฉพาะครูประจำชั้นของ {lineInvitation.data.schoolName} ·
-                เริ่ม {formatThaiDateTime(lineInvitation.data.startsAt)} ·
-                หมดอายุ {formatThaiDateTime(lineInvitation.data.expiresAt)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+        // No dismiss: this band is the invitation's status, not a notice about
+        // something that just happened, so it belongs on screen for as long as
+        // the invitation is open.
+        <LinkHighlightSection
+          actions={
+            <>
+              {/* Copy leads, on the `Copy` glyph in the share tone — the same
+                  first action, icon and colour the link rows and the assignment
+                  panel already use. This band had `Share2` in the middle, which
+                  read as a different action for the same job. */}
+              <IconButton
+                aria-label="คัดลอกลิงก์ยืนยัน LINE"
+                icon={Copy}
+                onClick={() => {
+                  if (!lineInvitation.data) return;
+                  setSharedLineInvitation(lineInvitation.data);
+                  setSharedUrl(lineInvitation.data.url);
+                }}
+                title="คัดลอกลิงก์"
+                variant="share"
+              />
               <IconButton
                 aria-label="แก้ไขวันเวลาลิงก์ยืนยัน LINE"
                 icon={Pencil}
                 onClick={openEditLineInvitation}
                 title="แก้ไขวันเวลา"
                 variant="edit"
-              />
-              <IconButton
-                aria-label="แชร์ลิงก์ยืนยัน LINE"
-                icon={Share2}
-                onClick={() => {
-                  if (!lineInvitation.data) return;
-                  setSharedLineInvitation(lineInvitation.data);
-                  setSharedUrl(lineInvitation.data.url);
-                }}
-                title="แชร์ลิงก์"
-                variant="share"
               />
               <IconButton
                 aria-label="ปิดลิงก์ยืนยัน LINE"
@@ -587,9 +586,17 @@ export function ClassroomLinksPage() {
                 title="ปิดลิงก์"
                 variant="lock"
               />
-            </div>
-          </div>
-        </section>
+            </>
+          }
+          description={`ใช้ได้เฉพาะครูประจำชั้นของ ${lineInvitation.data.schoolName} · เริ่ม ${formatThaiDateTime(
+            lineInvitation.data.startsAt,
+          )} · หมดอายุ ${formatThaiDateTime(lineInvitation.data.expiresAt)}`}
+          title={`ลิงก์ยืนยัน LINE กลาง${
+            lineInvitation.data.status === "PENDING"
+              ? " (รอเวลาเริ่ม)"
+              : " เปิดใช้งาน"
+          }`}
+        />
       ) : null}
 
       <FormErrorAlert
@@ -620,9 +627,9 @@ export function ClassroomLinksPage() {
           icon={PAGE_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
         />
-      ) : schools.length > 1 && !schoolId ? (
+      ) : !schoolId ? (
         <EmptyState
-          description="เลือกโรงเรียนจากตัวกรองด้านบน"
+          description="เลือกโรงเรียนจากแถบด้านบน"
           icon={PAGE_ICON}
           title="เลือกโรงเรียน"
         />

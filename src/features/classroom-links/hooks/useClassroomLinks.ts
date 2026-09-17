@@ -181,6 +181,10 @@ export function useIssueClassroomLineGroupInvitation() {
   return useMutation({
     mutationFn: classroomLinksService.issueLineGroupInvitation,
     onSuccess: refresh,
+    // Without this the generic "บันทึกแล้ว" answered a request to create a
+    // link. Issuing a link reads the same way wherever it happens:
+    // "สร้างลิงก์<ชื่อลิงก์>แล้ว".
+    meta: { successMessage: "สร้างลิงก์ยืนยัน LINE แล้ว" },
   });
 }
 
@@ -189,6 +193,7 @@ export function useUpdateClassroomLineGroupInvitation() {
   return useMutation({
     mutationFn: classroomLinksService.updateLineGroupInvitation,
     onSuccess: refresh,
+    meta: { successMessage: "แก้ไขวันเวลาลิงก์ยืนยัน LINE แล้ว" },
   });
 }
 
@@ -197,5 +202,6 @@ export function useRevokeClassroomLineGroupInvitation() {
   return useMutation({
     mutationFn: classroomLinksService.revokeLineGroupInvitation,
     onSuccess: refresh,
+    meta: { successMessage: "ปิดลิงก์ยืนยัน LINE แล้ว" },
   });
 }

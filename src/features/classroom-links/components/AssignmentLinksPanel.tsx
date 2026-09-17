@@ -17,7 +17,9 @@ import {
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   SkeletonTable,
+  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
@@ -39,6 +41,12 @@ const HEADINGS = [
   "สถานะ",
   "เครื่องมือ",
 ] as const;
+
+const STATUS_LABELS = {
+  ACTIVE: "ใช้งานอยู่",
+  EXPIRED: "หมดอายุ",
+  INACTIVE: "ปิดแล้ว",
+} as const;
 
 function statusBadge(link: MyAssignmentLink) {
   if (link.linkStatus === "INACTIVE")
@@ -74,6 +82,12 @@ export function AssignmentLinksPanel({
   subjectName: string | null;
 }) {
   const [scope, setScope] = useState<"SUBJECT" | "ALL">("SUBJECT");
+  // Defaults to the one link that still works. A term's worth of finished
+  // assignments is history, and history should not be what the teacher has to
+  // scroll past to reach the link they just handed out.
+  const [status, setStatus] = useState<"" | "ACTIVE" | "EXPIRED" | "INACTIVE">(
+    "ACTIVE",
+  );
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
   // Carries where to come back to, so the page's back button lands on this tab
   // rather than on whatever the surface's default page happens to be.
@@ -90,6 +104,7 @@ export function AssignmentLinksPanel({
       ? {
           schoolTermId,
           ...(narrowed ? { classroomSubjectId } : {}),
+          ...(status ? { status } : {}),
         }
       : null,
   );
@@ -188,6 +203,27 @@ export function AssignmentLinksPanel({
         />
       ) : null}
 
+      {/* Same control, container and wording as every other filter in the app —
+          `ToolbarControls` with the field pushed right, the way the classroom
+          history panel places its own. The options mirror the table's badges. */}
+      <ToolbarControls>
+        <FilterSelect
+          ariaLabel="กรองสถานะลิงก์ที่มอบหมาย"
+          className="sm:ml-auto"
+          onChange={(value) =>
+            setStatus(value as "" | "ACTIVE" | "EXPIRED" | "INACTIVE")
+          }
+          value={status}
+        >
+          {(["ACTIVE", "EXPIRED", "INACTIVE"] as const).map((value) => (
+            <option key={value} value={value}>
+              {STATUS_LABELS[value]}
+            </option>
+          ))}
+          <option value="">ทุกสถานะลิงก์</option>
+        </FilterSelect>
+      </ToolbarControls>
+
       {query.isLoading ? (
         <SkeletonTable rows={4} />
       ) : query.isError ? (
@@ -197,14 +233,22 @@ export function AssignmentLinksPanel({
           title="โหลดลิงก์ที่มอบหมายไม่สำเร็จ"
         />
       ) : rows.length === 0 ? (
+        // "ยังไม่ได้มอบหมาย" is only true of the whole term. Filtered to ปิดแล้ว
+        // it would tell a teacher who has a live link that they have none.
         <EmptyState
           description={
-            narrowed
-              ? "ยังไม่ได้มอบหมายวิชานี้ให้ใคร กดปุ่มเครื่องมือแล้วเลือกมอบหมายเพื่อสร้างลิงก์"
-              : "ยังไม่ได้มอบหมายวิชาไหนในภาคเรียนนี้"
+            status && status !== "ACTIVE"
+              ? "ลองเปลี่ยนสถานะที่กรอง หรือดูทุกสถานะลิงก์"
+              : narrowed
+                ? "ยังไม่ได้มอบหมายวิชานี้ให้ใคร กดปุ่มเครื่องมือแล้วเลือกมอบหมายเพื่อสร้างลิงก์"
+                : "ยังไม่ได้มอบหมายวิชาไหนในภาคเรียนนี้"
           }
           icon={Link2Off}
-          title="ยังไม่มีลิงก์ที่มอบหมาย"
+          title={
+            status && status !== "ACTIVE"
+              ? `ไม่มีลิงก์ที่${STATUS_LABELS[status]}`
+              : "ยังไม่มีลิงก์ที่มอบหมาย"
+          }
         />
       ) : (
         <>

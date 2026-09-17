@@ -43,12 +43,16 @@ export function AdminLoginForm() {
         ) : null}
 
         <FormItem>
-          <FormLabel className="text-base leading-5 text-slate-800" htmlFor="username">
+          <FormLabel
+            className="text-base leading-5 text-slate-800"
+            htmlFor="username"
+          >
             ชื่อผู้ใช้งาน
           </FormLabel>
           <Input
             className="h-12 bg-white px-4 text-base leading-6"
             id="username"
+            maxLength={50}
             placeholder="กรอกชื่อผู้ใช้งาน"
             autoComplete="username"
             {...registerField(form, "username")}
@@ -57,12 +61,16 @@ export function AdminLoginForm() {
         </FormItem>
 
         <FormItem>
-          <FormLabel className="text-base leading-5 text-slate-800" htmlFor="password">
+          <FormLabel
+            className="text-base leading-5 text-slate-800"
+            htmlFor="password"
+          >
             รหัสผ่าน
           </FormLabel>
           <PasswordInput
             className="h-12 bg-white px-4 pr-14 text-base leading-6"
             id="password"
+            maxLength={50}
             placeholder="กรอกรหัสผ่าน"
             autoComplete="current-password"
             visibilityButtonClassName="right-1 size-10 rounded-lg"

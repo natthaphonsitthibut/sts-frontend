@@ -130,7 +130,11 @@ export function SidebarMenuContent({
     <div className="flex h-full flex-col bg-white">
       <nav
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-2 py-4",
+          // `scrollbar-gutter` reserves the scrollbar's width up front. Without
+          // it, a group with enough children to overflow makes the scrollbar
+          // appear mid-expand, which resizes the rail and relays out every row
+          // on the frames the accordion is already animating.
+          "min-h-0 flex-1 overflow-y-auto px-2 py-4 [scrollbar-gutter:stable]",
           "transition-[padding] duration-300 ease-out motion-reduce:transition-none",
         )}
       >

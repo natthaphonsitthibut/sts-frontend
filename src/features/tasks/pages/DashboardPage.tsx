@@ -16,7 +16,6 @@ import {
 import {
   Badge,
   Button,
-  Combobox,
   HoverTooltip,
   Select,
   Tabs,
@@ -53,7 +52,6 @@ import { useRouteTab } from "../../../hooks/useRouteTab";
 import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
-import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
@@ -70,11 +68,11 @@ import type {
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import {
-  formatSchoolArea,
   SCOPE_ALL_LABEL,
+  type ScopeSummaryInput,
 } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
-import { useScopeSummary } from "../../attendance/hooks/useScopeSummary";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   risk: "risk",
@@ -378,17 +376,23 @@ function StudentRiskDashboardPage() {
   const [caseStatus, setCaseStatus] = useState<
     RiskDashboardQuery["caseStatus"]
   >(() => parseCaseStatus(searchParams.get("caseStatus")));
-  const schoolArea = useSchoolAreaFilter({
-    province: searchParams.get("province") || undefined,
-    district: searchParams.get("district") || undefined,
-    subDistrict: searchParams.get("subDistrict") || undefined,
-  });
+  const globalFilter = useGlobalSchoolFilter();
   const scope = useScopeCascade({
     lockToActorScope: true,
-    initialSchoolId: searchParams.get("schoolId") || undefined,
+    controlledSchoolId: globalFilter.schoolId,
     initialGrade: searchParams.get("grade") || undefined,
     initialRoom: searchParams.get("room") || undefined,
   });
+  // A school switch (from the header, or anywhere else) makes any explicit
+  // year/semester override stale — the same reset `handleSchoolChange` used
+  // to do inline, now driven by the controlled value instead.
+  const [lastTermSchoolId, setLastTermSchoolId] = useState(scope.schoolId);
+  if (scope.schoolId !== lastTermSchoolId) {
+    setLastTermSchoolId(scope.schoolId);
+    if (academicYearInput !== undefined) setAcademicYearInput(undefined);
+    if (semesterInput !== undefined) setSemesterInput(undefined);
+    if (page !== 1) setPage(1);
+  }
   const termsQuery = useQuery({
     queryKey: ["student-risk-report", "terms", scope.schoolId],
     queryFn: () => attendanceService.getTerms(scope.schoolId),
@@ -453,10 +457,6 @@ function StudentRiskDashboardPage() {
       if (value) next.set(key, value);
       else next.delete(key);
     };
-    setValue(
-      "schoolId",
-      scope.schoolLocked ? undefined : scope.schoolId || undefined,
-    );
     setValue("grade", scope.gradeLocked ? undefined : scope.grade || undefined);
     setValue("room", scope.roomLocked ? undefined : scope.room || undefined);
     setValue("academicYear", academicYear ? String(academicYear) : undefined);
@@ -488,8 +488,6 @@ function StudentRiskDashboardPage() {
     scope.gradeLocked,
     scope.room,
     scope.roomLocked,
-    scope.schoolId,
-    scope.schoolLocked,
     searchParams,
     semester,
     setSearchParams,
@@ -594,10 +592,17 @@ function StudentRiskDashboardPage() {
     selectionLabel: `กรอง${concernLabel(level)}`,
   }));
 
-  const scopeSummary = useScopeSummary(schoolArea, scope);
+  // The school/area itself is the global header filter's own display — this
+  // page only ever shows grade/room/term of its own.
+  const scopeSummary: ScopeSummaryInput = {
+    omitPlace: true,
+    grade: scope.gradeLocked ? undefined : scope.grade || undefined,
+    room: scope.roomLocked ? undefined : scope.room || undefined,
+  };
   const activeFilterLabels = [
     search.trim() ? `ค้นหา: ${search.trim()}` : "",
-    !scope.schoolLocked && scope.schoolId ? "โรงเรียน" : "",
+    // School is the header's own filter now — this page's "ล้างตัวกรอง"
+    // can't clear it, so it doesn't count it as one of its active filters.
     academicYear ? `ปีการศึกษา ${academicYear}` : "",
     semester ? `ภาคเรียนที่ ${semester}` : "",
     caseStatus ? "สถานะการติดตาม" : "",
@@ -612,13 +617,6 @@ function StudentRiskDashboardPage() {
 
   function handleSearchChange(value: string): void {
     setSearch(value);
-    resetPage();
-  }
-
-  function handleSchoolChange(value: string): void {
-    scope.setSchoolId(value);
-    setAcademicYearInput(undefined);
-    setSemesterInput(undefined);
     resetPage();
   }
 
@@ -707,7 +705,6 @@ function StudentRiskDashboardPage() {
 
   function handleClearScope(): void {
     scope.reset();
-    schoolArea.reset();
     setAcademicYearInput(undefined);
     setSemesterInput(undefined);
     resetPage();
@@ -729,120 +726,98 @@ function StudentRiskDashboardPage() {
         breadcrumbTrail={[{ label: "หน้าหลัก", to: "/" }]}
         icon={ClipboardList}
         scope={
-          <ScopeFilterField
-            editable={
-              !scope.schoolLocked || !scope.gradeLocked || !scope.roomLocked
-            }
-            onClear={handleClearScope}
-            scope={{
-              ...scopeSummary,
-              academicYear,
-              semester,
-            }}
-          >
-            {!scope.schoolLocked ? (
+          // Grade/room/term only mean anything once a school is picked (the
+          // header's own filter now) — this field doesn't exist until then.
+          !scope.schoolId ? null : (
+            <ScopeFilterField
+              editable={!scope.gradeLocked || !scope.roomLocked}
+              emptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
+              label="ชั้น/ห้อง"
+              onClear={handleClearScope}
+              scope={{
+                ...scopeSummary,
+                academicYear,
+                semester,
+              }}
+            >
+              {/* A level the actor's scope fixes is not offered at all — the
+                summary on the button already says what it is. */}
+              {scope.gradeLocked ? null : (
+                <label className="space-y-1 text-sm text-slate-800">
+                  ระดับชั้น
+                  <Select
+                    aria-label="ระดับชั้น"
+                    disabled={!scope.schoolId}
+                    onChange={(event) => handleGradeChange(event.target.value)}
+                    value={scope.grade}
+                  >
+                    <option value="">{SCOPE_ALL_LABEL.grade}</option>
+                    {scope.gradeLevels.map((grade) => (
+                      <option key={grade.id} value={grade.label}>
+                        {grade.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              )}
+              {scope.roomLocked ? null : (
+                <label className="space-y-1 text-sm text-slate-800">
+                  ห้อง
+                  <Select
+                    aria-label="ห้อง"
+                    disabled={!scope.grade}
+                    onChange={(event) => handleRoomChange(event.target.value)}
+                    value={scope.room}
+                  >
+                    <option value="">{SCOPE_ALL_LABEL.room}</option>
+                    {scope.rooms.map((room) => (
+                      <option key={room} value={room}>
+                        {formatRoomLabel(room)}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              )}
               <label className="space-y-1 text-sm text-slate-800">
-                โรงเรียน
-                <Combobox
-                  ariaLabel="ค้นหาโรงเรียน"
-                  emptyText={
-                    schoolArea.schoolsEnabled
-                      ? "ไม่พบโรงเรียน"
-                      : "พิมพ์ชื่อโรงเรียนเพื่อค้นหา"
-                  }
-                  onChange={handleSchoolChange}
-                  onSearchChange={schoolArea.setSchoolSearch}
-                  options={[
-                    { value: "", label: SCOPE_ALL_LABEL.school },
-                    ...schoolArea.filteredSchools.map((school) => ({
-                      value: String(school.id),
-                      label: school.name,
-                      description: formatSchoolArea(school),
-                    })),
-                  ]}
-                  placeholder={SCOPE_ALL_LABEL.school}
-                  value={scope.schoolId}
-                />
-              </label>
-            ) : null}
-            {/* A level the actor's scope fixes is not offered at all, the same
-                as the school above it — the summary on the button already says
-                what it is. */}
-            {scope.gradeLocked ? null : (
-              <label className="space-y-1 text-sm text-slate-800">
-                ระดับชั้น
+                ปีการศึกษา
                 <Select
-                  aria-label="ระดับชั้น"
+                  aria-label="ปีการศึกษา"
                   disabled={!scope.schoolId}
-                  onChange={(event) => handleGradeChange(event.target.value)}
-                  value={scope.grade}
+                  onChange={(event) =>
+                    handleAcademicYearChange(event.target.value)
+                  }
+                  value={academicYear ? String(academicYear) : ""}
                 >
-                  <option value="">{SCOPE_ALL_LABEL.grade}</option>
-                  {scope.gradeLevels.map((grade) => (
-                    <option key={grade.id} value={grade.label}>
-                      {grade.label}
+                  {academicYears.length === 0 ? (
+                    <option value="">ปีการศึกษา</option>
+                  ) : null}
+                  {academicYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
                     </option>
                   ))}
                 </Select>
               </label>
-            )}
-            {scope.roomLocked ? null : (
               <label className="space-y-1 text-sm text-slate-800">
-                ห้อง
+                ภาคเรียน
                 <Select
-                  aria-label="ห้อง"
-                  disabled={!scope.grade}
-                  onChange={(event) => handleRoomChange(event.target.value)}
-                  value={scope.room}
+                  aria-label="ภาคเรียน"
+                  disabled={!academicYear}
+                  onChange={(event) => handleSemesterChange(event.target.value)}
+                  value={semester ? String(semester) : ""}
                 >
-                  <option value="">{SCOPE_ALL_LABEL.room}</option>
-                  {scope.rooms.map((room) => (
-                    <option key={room} value={room}>
-                      {formatRoomLabel(room)}
+                  {semesters.length === 0 ? (
+                    <option value="">ภาคเรียน</option>
+                  ) : null}
+                  {semesters.map((item) => (
+                    <option key={item} value={item}>
+                      ภาคเรียนที่ {item}
                     </option>
                   ))}
                 </Select>
               </label>
-            )}
-            <label className="space-y-1 text-sm text-slate-800">
-              ปีการศึกษา
-              <Select
-                aria-label="ปีการศึกษา"
-                disabled={!scope.schoolId}
-                onChange={(event) =>
-                  handleAcademicYearChange(event.target.value)
-                }
-                value={academicYear ? String(academicYear) : ""}
-              >
-                {academicYears.length === 0 ? (
-                  <option value="">ปีการศึกษา</option>
-                ) : null}
-                {academicYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="space-y-1 text-sm text-slate-800">
-              ภาคเรียน
-              <Select
-                aria-label="ภาคเรียน"
-                disabled={!academicYear}
-                onChange={(event) => handleSemesterChange(event.target.value)}
-                value={semester ? String(semester) : ""}
-              >
-                {semesters.length === 0 ? (
-                  <option value="">ภาคเรียน</option>
-                ) : null}
-                {semesters.map((item) => (
-                  <option key={item} value={item}>
-                    ภาคเรียนที่ {item}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          </ScopeFilterField>
+            </ScopeFilterField>
+          )
         }
         title="รายงานสถานะนักเรียน"
       />

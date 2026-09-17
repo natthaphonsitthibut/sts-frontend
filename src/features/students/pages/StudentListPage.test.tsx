@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -9,7 +9,10 @@ import {
   type RecordedRequest,
 } from "../../../test/api-stub";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
+import { useSchoolFilterStore } from "../../school-filter/store/school-filter.store";
 import { StudentListPage } from "./StudentListPage";
+
+const TEST_ACTOR_ID = 1;
 
 const SCHOOL_FIXTURES = {
   one: {
@@ -70,7 +73,7 @@ function renderStudentList(
   });
   useAuthSessionStore.setState({
     user: {
-      id: "student-list-test-actor",
+      id: TEST_ACTOR_ID,
       username: "student-list-test-actor",
       roles: [],
       permissions: [],
@@ -95,6 +98,7 @@ function renderStudentList(
 
 afterEach(() => {
   restoreApiStub();
+  useSchoolFilterStore.getState().clearAll();
 });
 
 describe("student list school scope", () => {
@@ -113,17 +117,17 @@ describe("student list school scope", () => {
 
     expect(lastRequestTo(requests, "/students")).toBeUndefined();
 
-    // The scope lives behind the header field now, so the school picker is not
-    // on the page until it is opened.
+    // The school picker lives in the app header now — this page only reads
+    // the global school filter, which is what a header selection sets.
     expect(screen.queryByLabelText("กรองตามโรงเรียน")).toBeNull();
-    fireEvent.click(await screen.findByRole("button", { name: /ขอบเขต/ }));
-    expect(screen.queryByPlaceholderText("ค้นหาจังหวัด")).toBeNull();
-    expect(screen.queryByPlaceholderText("ค้นหาอำเภอ/เขต")).toBeNull();
 
-    fireEvent.click(screen.getByLabelText("กรองตามโรงเรียน"));
-    // The option's accessible name now carries its area line as well, so the
-    // two schools that share a name are told apart.
-    fireEvent.click(await screen.findByRole("button", { name: /โรงเรียนสอง/ }));
+    act(() => {
+      useSchoolFilterStore.getState().setFilter({
+        schoolId: "202",
+        schoolName: "โรงเรียนสอง",
+        userId: TEST_ACTOR_ID,
+      });
+    });
 
     await waitFor(() =>
       expect(lastRequestTo(requests, "/students")?.params.schoolId).toBe("202"),

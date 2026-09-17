@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { authService } from "../api/auth.service";
+import { useSchoolFilterStore } from "../../school-filter/store/school-filter.store";
 import type {
   AuthSessionSnapshot,
   AuthStorageTarget,
@@ -202,6 +203,9 @@ export const useAuthSessionStore = create<AuthSessionState>((set, get) => ({
   ...initialSession,
   clearSession: () => {
     clearStoredAuthSession();
+    // The next sign-in on this browser must never inherit a departing
+    // account's school/area selection.
+    useSchoolFilterStore.getState().clearAll();
     set(syncAuthSessionState());
   },
   isLoggedIn: () => Boolean(get().user),

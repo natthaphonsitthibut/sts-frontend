@@ -1,5 +1,6 @@
 import axios from "axios";
 import { appConfig } from "../config/env";
+import { useSchoolFilterStore } from "../features/school-filter/store/school-filter.store";
 import type { AuthUser } from "../features/auth/types/auth.types";
 
 const AUTH_USER_STORAGE_KEY = "sts_user";
@@ -124,6 +125,9 @@ apiClient.interceptors.response.use(
         isHandlingExpiredSession = true;
         window.sessionStorage.removeItem(AUTH_USER_STORAGE_KEY);
         window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+        // The next sign-in on this browser must never inherit a departing
+        // session's school/area selection — same cleanup as a normal logout.
+        useSchoolFilterStore.getState().clearAll();
         const next = encodeURIComponent(
           `${window.location.pathname}${window.location.search}`,
         );

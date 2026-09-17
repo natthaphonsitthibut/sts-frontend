@@ -78,10 +78,10 @@ export function ScopeFilterField({
 }: ScopeFilterFieldProps) {
   const [open, setOpen] = useState(false);
   const parts = formatScopeSummary(scope);
-  const summary =
-    emptyLabel && parts.length === 1 && parts[0] === SCOPE_ALL_LABEL.province
-      ? emptyLabel
-      : parts.join(" · ");
+  const isUnnarrowed =
+    parts.length === 0 ||
+    (parts.length === 1 && parts[0] === SCOPE_ALL_LABEL.province);
+  const summary = emptyLabel && isUnnarrowed ? emptyLabel : parts.join(" · ");
 
   if (!children || !editable) {
     return (
