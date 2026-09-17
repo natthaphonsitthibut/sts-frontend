@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNlQuery } from "../hooks/useNlQuery";
@@ -30,6 +30,59 @@ function renderPage() {
 describe("NlQueryPage", () => {
   beforeEach(() => {
     mockedUseNlQuery.mockReturnValue(sessionState());
+  });
+
+  it("measures and sets a height on the chat card via its ref", () => {
+    const view = renderPage();
+    const chatLog = view.getByTestId("nlq-chat-log");
+    const card = chatLog.parentElement;
+    expect(card?.style.height).not.toBe("");
+  });
+
+  it("shows example-question chips when the conversation is empty", () => {
+    const view = renderPage();
+    expect(view.getByText("จำนวนนักเรียนปัจจุบันแยกตามโรงเรียน")).toBeTruthy();
+  });
+
+  it("shows the question immediately while waiting for the answer", async () => {
+    let resolveAsk!: (value: null) => void;
+    const ask = vi.fn(
+      () =>
+        new Promise<null>((resolve) => {
+          resolveAsk = resolve;
+        }),
+    );
+    mockedUseNlQuery.mockReturnValue(sessionState({ ask }));
+    const view = renderPage();
+
+    fireEvent.change(view.getByRole("textbox", { name: "คำถาม" }), {
+      target: { value: "นักเรียนทั้งหมดมีกี่คน" },
+    });
+    fireEvent.click(view.getByRole("button", { name: "ถามข้อมูล" }));
+
+    const chatLog = within(view.getByTestId("nlq-chat-log"));
+    await waitFor(() =>
+      expect(chatLog.getByText("นักเรียนทั้งหมดมีกี่คน")).toBeTruthy(),
+    );
+    expect(chatLog.getByText("กำลังค้นหา…")).toBeTruthy();
+
+    resolveAsk(null);
+    await waitFor(() => expect(chatLog.queryByText("กำลังค้นหา…")).toBeNull());
+  });
+
+  it("restores the typed question into the input when the request fails", async () => {
+    const ask = vi.fn().mockResolvedValue(null);
+    mockedUseNlQuery.mockReturnValue(sessionState({ ask }));
+    const view = renderPage();
+
+    const input = view.getByRole("textbox", { name: "คำถาม" });
+    fireEvent.change(input, { target: { value: "คำถามที่จะล้มเหลว" } });
+    fireEvent.click(view.getByRole("button", { name: "ถามข้อมูล" }));
+
+    await waitFor(() => expect(ask).toHaveBeenCalled());
+    await waitFor(() =>
+      expect((input as HTMLInputElement).value).toBe("คำถามที่จะล้มเหลว"),
+    );
   });
 
   it("trims and submits a Thai question", async () => {
