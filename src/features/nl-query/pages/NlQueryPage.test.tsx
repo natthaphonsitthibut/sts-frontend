@@ -8,25 +8,25 @@ vi.mock("../hooks/useNlQuery", () => ({ useNlQuery: vi.fn() }));
 
 const mockedUseNlQuery = vi.mocked(useNlQuery);
 
-function mutationState(overrides: Record<string, unknown> = {}) {
+function sessionState(overrides: Record<string, unknown> = {}) {
   return {
-    data: undefined,
+    ask: vi.fn(),
+    turnsLog: [],
+    loading: false,
     error: null,
-    isError: false,
-    isPending: false,
-    mutate: vi.fn(),
+    reset: vi.fn(),
     ...overrides,
   } as never;
 }
 
 describe("NlQueryPage", () => {
   beforeEach(() => {
-    mockedUseNlQuery.mockReturnValue(mutationState());
+    mockedUseNlQuery.mockReturnValue(sessionState());
   });
 
   it("trims and submits a Thai question", async () => {
-    const mutate = vi.fn();
-    mockedUseNlQuery.mockReturnValue(mutationState({ mutate }));
+    const ask = vi.fn();
+    mockedUseNlQuery.mockReturnValue(sessionState({ ask }));
     const view = render(
       <MemoryRouter initialEntries={["/nl-query"]}>
         <NlQueryPage />
@@ -39,19 +39,22 @@ describe("NlQueryPage", () => {
     fireEvent.click(view.getByRole("button", { name: "ถามข้อมูล" }));
 
     await waitFor(() =>
-      expect(mutate).toHaveBeenCalledWith({
-        question: "นักเรียนทั้งหมดมีกี่คน",
-      }),
+      expect(ask).toHaveBeenCalledWith("นักเรียนทั้งหมดมีกี่คน"),
     );
   });
 
   it("shows a business error from an HTTP 200 envelope", () => {
     mockedUseNlQuery.mockReturnValue(
-      mutationState({
-        data: {
-          status: "error",
-          error: { code: "EXEC_FAILED", message: "คำถามไม่ปลอดภัย" },
-        },
+      sessionState({
+        turnsLog: [
+          {
+            question: "คำถามไม่ปลอดภัย",
+            envelope: {
+              status: "error",
+              error: { code: "EXEC_FAILED", message: "คำถามไม่ปลอดภัย" },
+            },
+          },
+        ],
       }),
     );
     const view = render(
@@ -64,5 +67,57 @@ describe("NlQueryPage", () => {
     expect(
       view.queryByText("บริการไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง"),
     ).toBeNull();
+  });
+
+  it("shows the agent's clarifying question instead of an empty-result card", () => {
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({
+        turnsLog: [
+          {
+            question: "เด็กเสี่ยงมีเท่าไหร่",
+            envelope: {
+              status: "ok",
+              answer_type: "clarification",
+              message: "อยากทราบตามระดับความเสี่ยงใดครับ",
+              rows: null,
+            },
+          },
+        ],
+      }),
+    );
+    const view = render(
+      <MemoryRouter initialEntries={["/nl-query"]}>
+        <NlQueryPage />
+      </MemoryRouter>,
+    );
+
+    expect(view.getByText("อยากทราบตามระดับความเสี่ยงใดครับ")).toBeTruthy();
+    expect(view.queryByText("ไม่พบข้อมูล (ผลลัพธ์ว่าง)")).toBeNull();
+  });
+
+  it("shows the agent's refusal message instead of an empty-result card", () => {
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({
+        turnsLog: [
+          {
+            question: "ขอเบอร์ผู้ปกครอง",
+            envelope: {
+              status: "ok",
+              answer_type: "refusal",
+              message: "ข้อมูลส่วนบุคคลไม่สามารถให้ได้",
+              rows: null,
+            },
+          },
+        ],
+      }),
+    );
+    const view = render(
+      <MemoryRouter initialEntries={["/nl-query"]}>
+        <NlQueryPage />
+      </MemoryRouter>,
+    );
+
+    expect(view.getByText("ข้อมูลส่วนบุคคลไม่สามารถให้ได้")).toBeTruthy();
+    expect(view.queryByText("ไม่พบข้อมูล (ผลลัพธ์ว่าง)")).toBeNull();
   });
 });

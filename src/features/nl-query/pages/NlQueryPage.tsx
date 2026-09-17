@@ -37,13 +37,14 @@ function transportErrorMessage(error: unknown): string {
 
 export function NlQueryPage() {
   const [question, setQuestion] = useState("");
-  const query = useNlQuery();
+  const { ask, turnsLog, loading, error } = useNlQuery();
+  const latest = turnsLog[turnsLog.length - 1]?.envelope;
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const trimmed = question.trim();
-    if (!trimmed || query.isPending) return;
-    query.mutate({ question: trimmed });
+    if (!trimmed || loading) return;
+    void ask(trimmed);
   }
 
   return (
@@ -72,7 +73,7 @@ export function NlQueryPage() {
                   className="shrink-0"
                   disabled={!question.trim()}
                   icon={Search}
-                  isLoading={query.isPending}
+                  isLoading={loading}
                   loadingText="กำลังค้นหา…"
                   type="submit"
                 >
@@ -99,26 +100,40 @@ export function NlQueryPage() {
           </CardContent>
         </Card>
 
-        {query.isError ? (
+        {error ? (
           <Alert variant="destructive">
             <AlertTitle>ไม่สามารถเชื่อมต่อบริการได้</AlertTitle>
-            <AlertDescription>
-              {transportErrorMessage(query.error)}
-            </AlertDescription>
+            <AlertDescription>{transportErrorMessage(error)}</AlertDescription>
           </Alert>
         ) : null}
 
-        {query.data?.status === "error" ? (
+        {latest?.status === "error" ? (
           <Alert variant="warning">
             <AlertTitle>ไม่สามารถตอบคำถามนี้ได้</AlertTitle>
             <AlertDescription>
-              {query.data.error?.message ?? "กรุณาปรับคำถามแล้วลองใหม่อีกครั้ง"}
+              {latest.error?.message ?? "กรุณาปรับคำถามแล้วลองใหม่อีกครั้ง"}
             </AlertDescription>
           </Alert>
         ) : null}
 
-        {query.data?.status === "ok" ? (
-          <QueryResult envelope={query.data} />
+        {latest?.status === "ok" && latest.answer_type === "clarification" ? (
+          <Alert>
+            <AlertTitle>ต้องการข้อมูลเพิ่มเติม</AlertTitle>
+            <AlertDescription>{latest.message}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {latest?.status === "ok" && latest.answer_type === "refusal" ? (
+          <Alert variant="warning">
+            <AlertTitle>ไม่สามารถให้ข้อมูลนี้ได้</AlertTitle>
+            <AlertDescription>{latest.message}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {latest?.status === "ok" &&
+        (latest.answer_type === undefined ||
+          latest.answer_type === "result") ? (
+          <QueryResult envelope={latest} />
         ) : null}
       </div>
     </PageShell>
