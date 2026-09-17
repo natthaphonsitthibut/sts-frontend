@@ -221,7 +221,7 @@ export function NlQueryPage() {
           {turnsLog.map((turn, index) => (
             <div className="space-y-4" key={`${index}-${turn.question}`}>
               <ChatRow role="user">
-                <p className="font-medium text-content-primary">
+                <p className="text-base font-medium text-content-primary">
                   {turn.question}
                 </p>
               </ChatRow>
@@ -234,7 +234,7 @@ export function NlQueryPage() {
           {pendingQuestion ? (
             <div className="space-y-4">
               <ChatRow role="user">
-                <p className="font-medium text-content-primary">
+                <p className="text-base font-medium text-content-primary">
                   {pendingQuestion}
                 </p>
               </ChatRow>
