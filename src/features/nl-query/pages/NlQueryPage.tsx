@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AxiosError } from "axios";
 import { Search } from "lucide-react";
 import {
@@ -18,6 +18,7 @@ import {
 } from "../../../components/layout/page-primitives";
 import { useNlQuery } from "../hooks/useNlQuery";
 import { QueryResult } from "../components/QueryResult";
+import type { QueryEnvelope } from "../types/nl-query.types";
 
 const EXAMPLE_QUESTIONS = [
   "จำนวนนักเรียนปัจจุบันแยกตามโรงเรียน",
@@ -35,16 +36,58 @@ function transportErrorMessage(error: unknown): string {
   return "บริการไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง";
 }
 
+function TurnAnswer({ envelope }: { envelope: QueryEnvelope }) {
+  if (envelope.status === "error") {
+    return (
+      <Alert variant="warning">
+        <AlertTitle>ไม่สามารถตอบคำถามนี้ได้</AlertTitle>
+        <AlertDescription>
+          {envelope.error?.message ?? "กรุณาปรับคำถามแล้วลองใหม่อีกครั้ง"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (envelope.answer_type === "clarification") {
+    return (
+      <Alert>
+        <AlertTitle>ต้องการข้อมูลเพิ่มเติม</AlertTitle>
+        <AlertDescription>{envelope.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (envelope.answer_type === "refusal") {
+    return (
+      <Alert variant="warning">
+        <AlertTitle>ไม่สามารถให้ข้อมูลนี้ได้</AlertTitle>
+        <AlertDescription>{envelope.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  return <QueryResult envelope={envelope} />;
+}
+
 export function NlQueryPage() {
   const [question, setQuestion] = useState("");
-  const { ask, turnsLog, loading, error } = useNlQuery();
-  const latest = turnsLog[turnsLog.length - 1]?.envelope;
+  const { ask, turnsLog, loading, error, reset } = useNlQuery();
+  const errorAlertRef = useRef<HTMLDivElement>(null);
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
+  useEffect(() => {
+    if (error) {
+      errorAlertRef.current?.focus();
+    }
+  }, [error]);
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = question.trim();
     if (!trimmed || loading) return;
-    void ask(trimmed);
+    const envelope = await ask(trimmed);
+    if (envelope) {
+      setQuestion("");
+    }
   }
 
   return (
@@ -96,45 +139,42 @@ export function NlQueryPage() {
                   </Button>
                 ))}
               </div>
+              {loading ? (
+                <p aria-live="polite" className="sr-only">
+                  กำลังค้นหา…
+                </p>
+              ) : null}
             </form>
           </CardContent>
         </Card>
 
         {error ? (
-          <Alert variant="destructive">
-            <AlertTitle>ไม่สามารถเชื่อมต่อบริการได้</AlertTitle>
-            <AlertDescription>{transportErrorMessage(error)}</AlertDescription>
-          </Alert>
+          <div ref={errorAlertRef} tabIndex={-1}>
+            <Alert variant="destructive">
+              <AlertTitle>ไม่สามารถเชื่อมต่อบริการได้</AlertTitle>
+              <AlertDescription>
+                {transportErrorMessage(error)}
+              </AlertDescription>
+            </Alert>
+          </div>
         ) : null}
 
-        {latest?.status === "error" ? (
-          <Alert variant="warning">
-            <AlertTitle>ไม่สามารถตอบคำถามนี้ได้</AlertTitle>
-            <AlertDescription>
-              {latest.error?.message ?? "กรุณาปรับคำถามแล้วลองใหม่อีกครั้ง"}
-            </AlertDescription>
-          </Alert>
+        {turnsLog.length > 0 ? (
+          <Button onClick={reset} size="sm" type="button" variant="outline">
+            เริ่มบทสนทนาใหม่
+          </Button>
         ) : null}
 
-        {latest?.status === "ok" && latest.answer_type === "clarification" ? (
-          <Alert>
-            <AlertTitle>ต้องการข้อมูลเพิ่มเติม</AlertTitle>
-            <AlertDescription>{latest.message}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {latest?.status === "ok" && latest.answer_type === "refusal" ? (
-          <Alert variant="warning">
-            <AlertTitle>ไม่สามารถให้ข้อมูลนี้ได้</AlertTitle>
-            <AlertDescription>{latest.message}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {latest?.status === "ok" &&
-        (latest.answer_type === undefined ||
-          latest.answer_type === "result") ? (
-          <QueryResult envelope={latest} />
-        ) : null}
+        <div aria-live="polite" aria-relevant="additions" className="space-y-5">
+          {turnsLog.map((turn, index) => (
+            <div className="space-y-2" key={`${index}-${turn.question}`}>
+              <p className="text-sm font-medium text-content-secondary">
+                {turn.question}
+              </p>
+              <TurnAnswer envelope={turn.envelope} />
+            </div>
+          ))}
+        </div>
       </div>
     </PageShell>
   );

@@ -147,4 +147,33 @@ describe("useNlQuery", () => {
       expect(result.current.turnsLog).toHaveLength(0);
     });
   });
+
+  it("discards a stale in-flight response after reset() so it cannot resurrect the old turn", async () => {
+    let resolvePending!: (value: QueryEnvelope) => void;
+    mockedAskNlQuery.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePending = resolve;
+      }),
+    );
+
+    const { result } = renderHook(() => useNlQuery());
+
+    let pendingAsk!: Promise<QueryEnvelope | null>;
+    act(() => {
+      pendingAsk = result.current.ask("คำถามที่กำลังค้าง");
+    });
+
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.turnsLog).toHaveLength(0);
+
+    await act(async () => {
+      resolvePending(envelope());
+      await pendingAsk;
+    });
+
+    expect(result.current.turnsLog).toHaveLength(0);
+    expect(result.current.loading).toBe(false);
+  });
 });
