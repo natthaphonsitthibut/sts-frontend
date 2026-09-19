@@ -11,6 +11,7 @@ export type SemanticType =
 
 export type ChartType = "bar" | "line" | "pie" | "scatter";
 export type VisualizationType = ChartType | "table" | "none";
+export type AnswerType = "result" | "clarification" | "refusal";
 
 export interface QueryColumn {
   name: string;
@@ -36,6 +37,9 @@ export interface QueryEnvelope {
   status: "ok" | "error";
   request_id: string;
   question: string;
+  answer_type?: AnswerType;
+  message: string | null;
+  steps_used?: number;
   sql: string | null;
   columns: QueryColumn[];
   rows: Record<string, unknown>[] | null;
@@ -56,9 +60,24 @@ export interface QueryEnvelope {
   error: { code: string; message: string } | null;
 }
 
+export interface PriorTurnDto {
+  question: string;
+  answerType: AnswerType;
+  sql: string | null;
+  rowCount: number | null;
+}
+
+export type UiTurn = PriorTurnDto;
+
+export interface TurnLogEntry {
+  question: string;
+  envelope: QueryEnvelope;
+}
+
 export interface NlQueryPayload {
   question: string;
   preferredChartType?: ChartType;
+  history?: UiTurn[];
 }
 
 export interface NlQuerySchema {
