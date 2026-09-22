@@ -271,7 +271,7 @@ export function MasterDataPage() {
                     "ช่องทางติดต่อ",
                     "สถานะ",
                     "ใช้งานอยู่",
-                    "เครื่องมือ",
+                    { isAction: true, label: "เครื่องมือ" },
                   ]
                 : [
                     "รหัส",
@@ -279,7 +279,7 @@ export function MasterDataPage() {
                     "ข้อมูลอ้างอิง",
                     "สถานะ",
                     "ใช้งานอยู่",
-                    "เครื่องมือ",
+                    { isAction: true, label: "เครื่องมือ" },
                   ]
             }
             minWidthClassName="min-w-[920px]"

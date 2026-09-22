@@ -60,7 +60,7 @@ export function ResultTable({ columns, rows }: ResultTableProps) {
                 <th
                   aria-sort={active ? sort.direction : "none"}
                   className={cn(
-                    "whitespace-nowrap px-4 py-3 font-semibold text-slate-700",
+                    "whitespace-nowrap px-4 py-3 text-base font-bold text-slate-700",
                     isRightAligned(column) && "text-right",
                   )}
                   key={column.name}

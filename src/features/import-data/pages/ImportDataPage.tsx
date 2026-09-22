@@ -322,7 +322,7 @@ function ImportPreviewPanel({ preview }: { preview: ImportPreviewResult }) {
             </div>
           </div>
           <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <div className="grid min-w-[1120px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+            <div className="grid min-w-[1120px] grid-cols-[64px_minmax(180px,1.2fr)_minmax(210px,1.4fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_minmax(180px,1.2fr)] bg-slate-50 px-3 py-2 text-base font-bold text-slate-600">
               <div>แถว</div>
               <div>
                 ชื่อ
@@ -466,7 +466,7 @@ function CatalogImportPreviewPanel({
       {preview.sampleRows.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-primary text-sm font-bold text-white">
+            <thead className="bg-primary text-base font-bold text-white">
               <tr>
                 <th className="px-3 py-4">แถว</th>
                 {fields.map((field) => (
@@ -566,7 +566,7 @@ function ImportTemplateReference({ target }: { target: ImportCatalogTarget }) {
       {open ? (
         <div className="overflow-x-auto border-t border-slate-200">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+            <thead className="bg-slate-50 text-base font-bold uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2">คอลัมน์ (หัวตาราง)</th>
                 <th className="px-4 py-2">ชื่อฟิลด์</th>

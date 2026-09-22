@@ -18,6 +18,7 @@ export interface DataTableSortState {
 
 export interface DataTableHeading {
   label: ReactNode;
+  isAction?: boolean;
   sortKey?: string;
   ariaLabel?: string;
   colSpan?: number;
@@ -115,9 +116,14 @@ export function DataTable({
 }: DataTableProps) {
   const fixedLayout = Boolean(columnWidths);
   const rows = headingRows ?? [headings];
+  const lastHeading = rows.at(-1)?.at(-1);
+  const lastHeadingConfig =
+    lastHeading != null && isHeadingConfig(lastHeading) ? lastHeading : null;
+  const hasActionColumn = Boolean(lastHeadingConfig?.isAction);
   return (
     <div
       data-slot="data-table"
+      data-action-column={hasActionColumn ? "true" : undefined}
       className={cn(
         "overflow-hidden rounded-lg border border-slate-200 bg-white",
         responsive && RESPONSIVE_TABLE_CLASS[responsiveBreakpoint],
@@ -149,8 +155,9 @@ export function DataTable({
                   const config = isHeadingConfig(heading)
                     ? heading
                     : { label: heading };
-                  const isActionHeading =
-                    config.label === "" || config.label === "เครื่องมือ";
+                  const isActionHeading = isHeadingConfig(heading)
+                    ? heading.isAction === true
+                    : false;
                   const headingLabel = isActionHeading
                     ? "เครื่องมือ"
                     : config.label;
@@ -178,8 +185,8 @@ export function DataTable({
                           : undefined
                       }
                       className={cn(
-                        "px-4 py-4 text-sm font-normal text-white",
-                        isActionHeading && "text-center",
+                        "px-4 py-4 text-base font-bold text-white",
+                        isActionHeading && "!text-center",
                         !headingRows && columnWidths?.[index],
                         config.className,
                       )}

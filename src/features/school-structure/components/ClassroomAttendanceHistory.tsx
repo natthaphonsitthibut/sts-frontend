@@ -756,7 +756,7 @@ export function ClassroomAttendanceHistory({
             { label: "จำนวนที่สาย (คน)", sortKey: "late" },
             { label: "จำนวนที่ลา (คน)", sortKey: "leave" },
             { label: "จำนวนที่ขาด (คน)", sortKey: "absent" },
-            { label: "เครื่องมือ", className: "text-center" },
+            { isAction: true, label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[950px]"
           onSortChange={handleSortChange}
@@ -815,7 +815,7 @@ export function ClassroomAttendanceHistory({
             { label: "จำนวนที่สาย (ครั้ง)", sortKey: "late" },
             { label: "จำนวนที่ลา (ครั้ง)", sortKey: "leave" },
             { label: "จำนวนที่ขาด (ครั้ง)", sortKey: "absent" },
-            { label: "เครื่องมือ", className: "text-center" },
+            { isAction: true, label: "เครื่องมือ", className: "text-center" },
           ]}
           minWidthClassName="min-w-[1100px]"
           onSortChange={handleSortChange}

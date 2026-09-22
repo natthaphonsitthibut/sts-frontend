@@ -145,7 +145,7 @@ export function StudentTable({
           { label: "ห้อง", sortKey: "room" },
           { label: "สถานะ", sortKey: "status" },
           ...(management
-            ? [{ label: "เครื่องมือ", className: "w-[112px]" }]
+            ? [{ isAction: true, label: "เครื่องมือ", className: "w-[112px]" }]
             : []),
         ]}
         minWidthClassName="min-w-[960px]"

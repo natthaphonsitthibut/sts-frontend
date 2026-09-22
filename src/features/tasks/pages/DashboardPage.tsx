@@ -967,7 +967,7 @@ function StudentRiskDashboardPage() {
                       },
                       { label: "ข้อสังเกต", sortKey: "problemCategory" },
                       { label: "จำนวนข้อสังเกต", className: "text-center" },
-                      "เครื่องมือ",
+                      { isAction: true, label: "เครื่องมือ" },
                     ]
                   : [
                       "ลำดับ",
@@ -981,7 +981,7 @@ function StudentRiskDashboardPage() {
                         className: "text-center",
                       },
                       { label: "อัปเดตล่าสุด", sortKey: "updatedAt" },
-                      "เครื่องมือ",
+                      { isAction: true, label: "เครื่องมือ" },
                     ]
               }
               minWidthClassName={

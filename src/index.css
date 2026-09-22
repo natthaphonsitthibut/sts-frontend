@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+@layer base {
+  [data-slot="data-table"] thead th {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+}
+
+/* Keep the action column aligned across every shared STS data table. */
+[data-slot="data-table"][data-action-column="true"] tbody tr > td:last-child {
+  text-align: center;
+}
+
+[data-slot="data-table"][data-action-column="true"]
+  tbody
+  tr
+  > td:last-child
+  > .flex {
+  justify-content: center;
+}
+
 @font-face {
   font-family: "TH Sarabun PSK";
   font-style: normal;

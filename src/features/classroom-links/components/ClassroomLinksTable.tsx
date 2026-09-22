@@ -276,7 +276,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           "ครู / การมอบหมาย",
           "สถานะลิงก์",
           "สถานะ LINE",
-          "เครื่องมือ",
+          { isAction: true, label: "เครื่องมือ" },
         ]}
         columnWidths={["w-[4%]", "w-[42%]", "w-[16%]", "w-[20%]", "w-[18%]"]}
         // Sized to fit the content column rather than to a round number: the

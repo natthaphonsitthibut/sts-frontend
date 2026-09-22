@@ -41,19 +41,19 @@ export function ProblemAreaMatrixSection({
             <table className="w-full min-w-[36rem] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left text-base font-bold text-slate-700">
                     {matrix.dimensionLabel}
                   </th>
                   {matrix.categories.map((category) => (
                     <th
-                      className="px-3 py-2 text-center text-xs font-semibold text-slate-600"
+                      className="px-3 py-2 text-center text-base font-bold text-slate-600"
                       key={category.key}
                       scope="col"
                     >
                       {category.label}
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                  <th className="px-3 py-2 text-right text-base font-bold text-slate-600">
                     รวม
                   </th>
                 </tr>

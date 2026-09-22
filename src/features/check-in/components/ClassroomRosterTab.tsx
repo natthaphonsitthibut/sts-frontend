@@ -143,7 +143,11 @@ export function ClassroomRosterTab({
                 : [
                     { label: "หมายเหตุ" },
                     { label: "สถานะความเสี่ยง", className: "text-center" },
-                    { label: "เครื่องมือ", className: "text-center" },
+                    {
+                      isAction: true,
+                      label: "เครื่องมือ",
+                      className: "text-center",
+                    },
                   ]),
             ]}
             minWidthClassName="min-w-[1040px]"

@@ -120,7 +120,11 @@ export function CurriculumSubjectCard({
             <>
               <DataTable
                 columnWidths={["w-[22%]", "w-[58%]", "w-[20%]"]}
-                headings={["ชั้น/ห้อง", "ครูผู้สอน", "เครื่องมือ"]}
+                headings={[
+                  "ชั้น/ห้อง",
+                  "ครูผู้สอน",
+                  { isAction: true, label: "เครื่องมือ" },
+                ]}
                 responsiveBreakpoint="md"
               >
                 {subject.classrooms.map((classroom) => (
