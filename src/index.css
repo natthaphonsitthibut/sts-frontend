@@ -5,7 +5,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-regular.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-regular.woff2") format("woff2");
 }
 
 @font-face {
@@ -13,7 +13,7 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-bold.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-bold.woff2") format("woff2");
 }
 
 /* TH Sarabun PSK ships only regular and bold. Map the UI's medium and
@@ -24,7 +24,7 @@
   font-style: normal;
   font-weight: 500 600;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-bold.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-bold.woff2") format("woff2");
 }
 
 @font-face {
@@ -32,7 +32,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-italic.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-italic.woff2") format("woff2");
 }
 
 @font-face {
@@ -40,7 +40,7 @@
   font-style: italic;
   font-weight: 700;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-bold-italic.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-bold-italic.woff2") format("woff2");
 }
 
 @font-face {
@@ -48,7 +48,7 @@
   font-style: italic;
   font-weight: 500 600;
   font-display: swap;
-  src: url("/fonts/thsarabunpsk-bold-italic.ttf") format("truetype");
+  src: url("./assets/fonts/thsarabunpsk-bold-italic.woff2") format("woff2");
 }
 
 /*
