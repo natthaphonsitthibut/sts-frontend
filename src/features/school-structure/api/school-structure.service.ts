@@ -19,6 +19,11 @@ import type {
   SchoolClassroomOption,
   SchoolTeacherMembership,
   ScopedSchool,
+  AdministrativeAreaOption,
+  AdminSchoolListParams,
+  SaveSchoolInput,
+  SchoolAdminRecord,
+  PaginatedAdminSchools,
   StudentClassroomCommentsResponse,
   UpdateClassroomPresentationInput,
 } from "../types/school-structure.types";
@@ -101,6 +106,71 @@ async function listSchools(): Promise<ScopedSchool[]> {
     "/school-structure/schools",
   );
   return response.data.data ?? [];
+}
+
+async function listAdminSchools(
+  params: AdminSchoolListParams,
+): Promise<PaginatedAdminSchools> {
+  const response = await apiClient.get<PaginatedAdminSchools>("/schools", {
+    params,
+  });
+  return response.data;
+}
+
+async function listAdministrativeProvinces(): Promise<
+  AdministrativeAreaOption[]
+> {
+  const response = await apiClient.get<
+    DataEnvelope<AdministrativeAreaOption[]>
+  >("/administrative-areas/provinces");
+  return response.data.data ?? [];
+}
+
+async function listAdministrativeDistricts(
+  province: string,
+): Promise<AdministrativeAreaOption[]> {
+  const response = await apiClient.get<
+    DataEnvelope<AdministrativeAreaOption[]>
+  >("/administrative-areas/districts", { params: { province } });
+  return response.data.data ?? [];
+}
+
+async function listAdministrativeSubDistricts(
+  province: string,
+  district: string,
+): Promise<AdministrativeAreaOption[]> {
+  const response = await apiClient.get<
+    DataEnvelope<AdministrativeAreaOption[]>
+  >("/administrative-areas/sub-districts", { params: { province, district } });
+  return response.data.data ?? [];
+}
+
+async function createSchool(
+  input: SaveSchoolInput,
+): Promise<SchoolAdminRecord> {
+  const response = await apiClient.post<DataEnvelope<SchoolAdminRecord>>(
+    "/schools",
+    input,
+  );
+  return response.data.data;
+}
+
+async function updateSchool(
+  id: number,
+  input: SaveSchoolInput,
+): Promise<SchoolAdminRecord> {
+  const response = await apiClient.patch<DataEnvelope<SchoolAdminRecord>>(
+    `/schools/${id}`,
+    input,
+  );
+  return response.data.data;
+}
+
+async function deactivateSchool(id: number): Promise<SchoolAdminRecord> {
+  const response = await apiClient.delete<DataEnvelope<SchoolAdminRecord>>(
+    `/schools/${id}`,
+  );
+  return response.data.data;
 }
 
 async function listClassrooms(
@@ -363,6 +433,13 @@ async function authorizeClassroomExport(input: {
 
 export const schoolStructureService = {
   listSchools,
+  listAdminSchools,
+  listAdministrativeProvinces,
+  listAdministrativeDistricts,
+  listAdministrativeSubDistricts,
+  createSchool,
+  updateSchool,
+  deactivateSchool,
   listClassrooms,
   getClassroom,
   listClassroomOptions,

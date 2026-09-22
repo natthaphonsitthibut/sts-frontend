@@ -51,6 +51,40 @@ export interface ScopedSchool {
   subDistrict: string | null;
 }
 
+export interface SchoolAdminRecord extends ScopedSchool {
+  schoolStatus: StructureStatus;
+}
+
+export interface AdminSchoolListParams {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: StructureStatus;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  sortBy?: "name" | "province" | "district" | "subDistrict" | "status";
+  sortDirection?: "asc" | "desc";
+}
+
+export interface PaginatedAdminSchools {
+  data: SchoolAdminRecord[];
+  meta: PaginationMeta;
+}
+
+export interface AdministrativeAreaOption {
+  code: string;
+  name: string;
+}
+
+export interface SaveSchoolInput {
+  name: string;
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  schoolStatus?: StructureStatus;
+}
+
 export interface SchoolClassroom {
   id: string;
   schoolTermId: string;
