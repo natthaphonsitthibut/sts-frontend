@@ -5,10 +5,8 @@ import {
   EmptyState,
   ErrorState,
   PageShell,
-  PageToolbar,
-  SearchInput,
+  ListPageToolbar,
   SkeletonStack,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import { SystemSettingCard } from "../components/SystemSettingCard";
@@ -80,20 +78,17 @@ export function SystemSettingsPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         navigation={<SettingsTabs />}
         icon={Settings}
         title="ตั้งค่าระบบ"
         description="กำหนดพารามิเตอร์หลักที่ส่งผลต่อพฤติกรรมของระบบ"
-      >
-        <ToolbarControls>
-          <SearchInput
-            onChange={setSearchQuery}
-            placeholder="ค้นหาชื่อการตั้งค่าหรือค่า..."
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+        search={{
+          onChange: setSearchQuery,
+          placeholder: "ค้นหาชื่อการตั้งค่าหรือค่า...",
+          value: searchQuery,
+        }}
+      />
 
       {isError ? (
         <ErrorState

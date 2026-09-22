@@ -8,9 +8,7 @@ import {
   EmptyState,
   ErrorState,
   PageShell,
-  PageToolbar,
-  SearchInput,
-  ToolbarControls,
+  ListPageToolbar,
 } from "../../../components/layout/page-primitives";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { useCurriculumGrades } from "../hooks/useCurriculum";
@@ -67,19 +65,15 @@ export function CurriculumGradesPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         description="ดูและจัดการรายวิชาในหลักสูตรของแต่ละระดับชั้น"
+        search={{
+          onChange: setSearchInput,
+          placeholder: "ค้นหาระดับชั้น",
+          value: searchInput,
+        }}
         title="จัดการข้อมูลหลักสูตร"
-      >
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[560px]"
-            onChange={setSearchInput}
-            placeholder="ค้นหาระดับชั้น"
-            value={searchInput}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
       {schoolsQuery.isError || gradesQuery.isError ? (
         <ErrorState
