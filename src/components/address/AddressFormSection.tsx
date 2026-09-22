@@ -10,9 +10,6 @@ import {
 } from "react-hook-form";
 import {
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Combobox,
   FormItem,
   FormLabel,
@@ -79,7 +76,13 @@ const ADDRESS_TEXT_FIELDS = [
 ];
 
 function unique(values: Array<string | null | undefined>): string[] {
-  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 }
 
 /**
@@ -100,25 +103,38 @@ export function AddressFormSection<T extends FieldValues>({
   geocodeError,
 }: AddressFormSectionProps<T>) {
   const setText = (name: FieldPath<T>, value: string) =>
-    form.setValue(name, value as PathValue<T, FieldPath<T>>, { shouldDirty: true });
+    form.setValue(name, value as PathValue<T, FieldPath<T>>, {
+      shouldDirty: true,
+    });
 
-  const [houseNo, moo, street, soi, trok, province, district, subDistrict, postalCode, latitude, longitude] =
-    useWatch({
-      control: form.control,
-      name: [
-        names.houseNo,
-        names.moo,
-        names.street,
-        names.soi,
-        names.trok,
-        names.province,
-        names.district,
-        names.subDistrict,
-        names.postalCode,
-        names.latitude,
-        names.longitude,
-      ],
-    }) as Array<string | number | null | undefined>;
+  const [
+    houseNo,
+    moo,
+    street,
+    soi,
+    trok,
+    province,
+    district,
+    subDistrict,
+    postalCode,
+    latitude,
+    longitude,
+  ] = useWatch({
+    control: form.control,
+    name: [
+      names.houseNo,
+      names.moo,
+      names.street,
+      names.soi,
+      names.trok,
+      names.province,
+      names.district,
+      names.subDistrict,
+      names.postalCode,
+      names.latitude,
+      names.longitude,
+    ],
+  }) as Array<string | number | null | undefined>;
 
   const provinceValue = (province as string) ?? "";
   const districtValue = (district as string) ?? "";
@@ -162,25 +178,40 @@ export function AddressFormSection<T extends FieldValues>({
     typeof postalCode === "string" ? postalCode : "",
   ]);
 
-  const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined;
-  const [editingCoordinate, setEditingCoordinate] = useState<"latitude" | "longitude" | null>(null);
+  const hasCoordinates =
+    latitude !== null &&
+    latitude !== undefined &&
+    longitude !== null &&
+    longitude !== undefined;
+  const [editingCoordinate, setEditingCoordinate] = useState<
+    "latitude" | "longitude" | null
+  >(null);
   const [latitudeInput, setLatitudeInput] = useState("");
   const [longitudeInput, setLongitudeInput] = useState("");
   const [lastLatitude, setLastLatitude] = useState<number | null>(null);
   const [lastLongitude, setLastLongitude] = useState<number | null>(null);
 
   const validLatitude =
-    typeof latitude === "number" && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
+    typeof latitude === "number" &&
+    Number.isFinite(latitude) &&
+    latitude >= -90 &&
+    latitude <= 90
       ? latitude
       : null;
   const validLongitude =
-    typeof longitude === "number" && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
+    typeof longitude === "number" &&
+    Number.isFinite(longitude) &&
+    longitude >= -180 &&
+    longitude <= 180
       ? longitude
       : null;
   const latitudeValue = typeof latitude === "number" ? latitude : null;
   const longitudeValue = typeof longitude === "number" ? longitude : null;
 
-  if (editingCoordinate !== "latitude" && !Object.is(lastLatitude, latitudeValue)) {
+  if (
+    editingCoordinate !== "latitude" &&
+    !Object.is(lastLatitude, latitudeValue)
+  ) {
     setLastLatitude(latitudeValue);
     setLatitudeInput(
       validLatitude !== null
@@ -191,7 +222,10 @@ export function AddressFormSection<T extends FieldValues>({
     );
   }
 
-  if (editingCoordinate !== "longitude" && !Object.is(lastLongitude, longitudeValue)) {
+  if (
+    editingCoordinate !== "longitude" &&
+    !Object.is(lastLongitude, longitudeValue)
+  ) {
     setLastLongitude(longitudeValue);
     setLongitudeInput(
       validLongitude !== null
@@ -202,24 +236,27 @@ export function AddressFormSection<T extends FieldValues>({
     );
   }
 
-  function updateCoordinate(kind: "latitude" | "longitude", rawValue: string): void {
+  function updateCoordinate(
+    kind: "latitude" | "longitude",
+    rawValue: string,
+  ): void {
     const name = kind === "latitude" ? names.latitude : names.longitude;
     const setInput = kind === "latitude" ? setLatitudeInput : setLongitudeInput;
     setInput(rawValue);
 
     const trimmed = rawValue.trim();
     const nextValue = trimmed === "" ? null : Number(trimmed);
-    const storedValue = Number.isFinite(nextValue) || nextValue === null ? nextValue : Number.NaN;
+    const storedValue =
+      Number.isFinite(nextValue) || nextValue === null ? nextValue : Number.NaN;
     if (kind === "latitude") {
       setLastLatitude(storedValue);
     } else {
       setLastLongitude(storedValue);
     }
-    form.setValue(
-      name,
-      storedValue as PathValue<T, FieldPath<T>>,
-      { shouldDirty: true, shouldValidate: true },
-    );
+    form.setValue(name, storedValue as PathValue<T, FieldPath<T>>, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   }
 
   // Auto-pin: resolve the address to a point when the record has an address but
@@ -228,7 +265,8 @@ export function AddressFormSection<T extends FieldValues>({
   const autoGeocodeQuery = useQuery({
     queryKey: ["address-form-geocode", fullAddress],
     queryFn: () => geoService.geocodeProfileAddress(fullAddress),
-    enabled: autoGeocode && !disabled && Boolean(fullAddress) && !hasCoordinates,
+    enabled:
+      autoGeocode && !disabled && Boolean(fullAddress) && !hasCoordinates,
     retry: false,
     staleTime: 1000 * 60 * 10,
   });
@@ -241,19 +279,25 @@ export function AddressFormSection<T extends FieldValues>({
     if (!result || hasCoordinates) {
       return;
     }
-    setLatLng(latName, result.lat as PathValue<T, FieldPath<T>>, { shouldDirty: true });
-    setLatLng(lngName, result.lng as PathValue<T, FieldPath<T>>, { shouldDirty: true });
+    setLatLng(latName, result.lat as PathValue<T, FieldPath<T>>, {
+      shouldDirty: true,
+    });
+    setLatLng(lngName, result.lng as PathValue<T, FieldPath<T>>, {
+      shouldDirty: true,
+    });
   }, [autoGeocodeQuery.data, hasCoordinates, setLatLng, latName, lngName]);
 
   return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MapPin className="size-5 text-primary" aria-hidden="true" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="p-6">
+      <div className="mb-5 flex items-center gap-2">
+        <MapPin className="size-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+      </div>
+      {/* No space-y here: every row below ends in FormMessage, whose own
+          reserved blank line (space-y-2 + min-h-5 = 28px) already exceeds
+          the page's 20px row rhythm — space-y-5 on top of that would double
+          it. Each subsequent row instead gets -mt-2 to net out at 20px. */}
+      <div>
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {ADDRESS_TEXT_FIELDS.map(({ key, label, placeholder }) => (
             <FormItem key={key}>
@@ -269,7 +313,7 @@ export function AddressFormSection<T extends FieldValues>({
           ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="-mt-2 grid gap-4 md:grid-cols-3">
           <FormItem>
             <FormLabel htmlFor={names.province}>จังหวัด</FormLabel>
             <Combobox
@@ -284,7 +328,10 @@ export function AddressFormSection<T extends FieldValues>({
               }}
               options={[
                 { value: "", label: "เลือกจังหวัด" },
-                ...provinceOptions.map((name) => ({ value: name, label: name })),
+                ...provinceOptions.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
               placeholder="ค้นหาจังหวัด"
               value={provinceValue}
@@ -305,7 +352,10 @@ export function AddressFormSection<T extends FieldValues>({
               }}
               options={[
                 { value: "", label: "เลือกอำเภอ/เขต" },
-                ...districtOptions.map((name) => ({ value: name, label: name })),
+                ...districtOptions.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
               placeholder="ค้นหาอำเภอ/เขต"
               value={districtValue}
@@ -325,7 +375,10 @@ export function AddressFormSection<T extends FieldValues>({
               }}
               options={[
                 { value: "", label: "เลือกตำบล/แขวง" },
-                ...subDistrictOptions.map((name) => ({ value: name, label: name })),
+                ...subDistrictOptions.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
               placeholder="ค้นหาตำบล/แขวง"
               value={subDistrictValue}
@@ -334,7 +387,7 @@ export function AddressFormSection<T extends FieldValues>({
           </FormItem>
         </div>
 
-        <FormItem className="max-w-40">
+        <FormItem className="-mt-2 max-w-40">
           <FormLabel htmlFor={names.postalCode}>รหัสไปรษณีย์</FormLabel>
           <Input
             id={names.postalCode}
@@ -350,7 +403,9 @@ export function AddressFormSection<T extends FieldValues>({
         <div className="space-y-3 border-t border-slate-200 pt-4">
           <div>
             <div>
-              <div className="text-sm font-bold text-slate-700">พิกัดที่อยู่</div>
+              <div className="text-sm font-bold text-slate-700">
+                พิกัดที่อยู่
+              </div>
               <div className="text-xs text-slate-500">
                 ค้นหา ปักหมุด หรือลงพิกัดโดยตรง แล้วตรวจตำแหน่งจริงก่อนบันทึก
               </div>
@@ -365,12 +420,16 @@ export function AddressFormSection<T extends FieldValues>({
                   <FormItem>
                     <FormLabel htmlFor={names.latitude}>Latitude</FormLabel>
                     <Input
-                      aria-invalid={form.formState.errors[names.latitude] ? true : undefined}
+                      aria-invalid={
+                        form.formState.errors[names.latitude] ? true : undefined
+                      }
                       id={names.latitude}
                       inputMode="decimal"
                       name={names.latitude}
                       onBlur={() => setEditingCoordinate(null)}
-                      onChange={(event) => updateCoordinate("latitude", event.target.value)}
+                      onChange={(event) =>
+                        updateCoordinate("latitude", event.target.value)
+                      }
                       onFocus={() => setEditingCoordinate("latitude")}
                       placeholder="เช่น 13.756300"
                       value={latitudeInput}
@@ -380,12 +439,18 @@ export function AddressFormSection<T extends FieldValues>({
                   <FormItem>
                     <FormLabel htmlFor={names.longitude}>Longitude</FormLabel>
                     <Input
-                      aria-invalid={form.formState.errors[names.longitude] ? true : undefined}
+                      aria-invalid={
+                        form.formState.errors[names.longitude]
+                          ? true
+                          : undefined
+                      }
                       id={names.longitude}
                       inputMode="decimal"
                       name={names.longitude}
                       onBlur={() => setEditingCoordinate(null)}
-                      onChange={(event) => updateCoordinate("longitude", event.target.value)}
+                      onChange={(event) =>
+                        updateCoordinate("longitude", event.target.value)
+                      }
                       onFocus={() => setEditingCoordinate("longitude")}
                       placeholder="เช่น 100.501800"
                       value={longitudeInput}
@@ -404,14 +469,22 @@ export function AddressFormSection<T extends FieldValues>({
             lng={validLongitude}
             markerLabel="พิกัดที่อยู่"
             onCoordinateChange={(coordinates) => {
-              form.setValue(names.latitude, coordinates.lat as PathValue<T, FieldPath<T>>, { shouldDirty: true, shouldValidate: true });
-              form.setValue(names.longitude, coordinates.lng as PathValue<T, FieldPath<T>>, { shouldDirty: true, shouldValidate: true });
+              form.setValue(
+                names.latitude,
+                coordinates.lat as PathValue<T, FieldPath<T>>,
+                { shouldDirty: true, shouldValidate: true },
+              );
+              form.setValue(
+                names.longitude,
+                coordinates.lng as PathValue<T, FieldPath<T>>,
+                { shouldDirty: true, shouldValidate: true },
+              );
             }}
             onGeocode={onGeocode}
             title="ตำแหน่งที่อยู่บนแผนที่"
           />
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }
