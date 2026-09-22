@@ -23,9 +23,6 @@ import { z } from "zod";
 import {
   Button,
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Checkbox,
   Form,
   FormErrorAlert,
@@ -76,7 +73,7 @@ import { SensitiveValueToggleButton } from "../../../components/security/Sensiti
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
 import { PII_FIELD_LABELS } from "../pii.constants";
 import { StudentPiiRevealDialog } from "../components/StudentPiiRevealDialog";
-import { StudentNationalIdCorrectionDialog } from "../components/StudentNationalIdCorrectionDialog";
+import { StudentIdentifierCorrectionDialog } from "../components/StudentIdentifierCorrectionDialog";
 import type {
   StudentPiiField,
   StudentPiiRevealResponse,
@@ -249,46 +246,44 @@ function StudentContactSection({
   form: UseFormReturn<FormValues>;
 }) {
   return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Phone className="size-5 text-success-700" aria-hidden="true" />
+    <Card className="p-6">
+      <div className="mb-5 flex items-center gap-2">
+        <Phone className="size-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-bold text-slate-800">
           ช่องทางติดต่อนักเรียน
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <FormItem>
-            <FormLabel htmlFor="contact_phone">เบอร์โทร</FormLabel>
-            <Input
-              disabled={disabled}
-              id="contact_phone"
-              inputMode="numeric"
-              {...registerField(form, "contact_phone")}
-            />
-            <FormMessage<FormValues> name="contact_phone" />
-          </FormItem>
-          <FormItem>
-            <FormLabel htmlFor="contact_email">อีเมล</FormLabel>
-            <Input
-              disabled={disabled}
-              id="contact_email"
-              type="email"
-              {...registerField(form, "contact_email")}
-            />
-            <FormMessage<FormValues> name="contact_email" />
-          </FormItem>
-          <FormItem>
-            <FormLabel htmlFor="contact_line_id">LINE ID</FormLabel>
-            <Input
-              disabled={disabled}
-              id="contact_line_id"
-              {...registerField(form, "contact_line_id")}
-            />
-            <FormMessage<FormValues> name="contact_line_id" />
-          </FormItem>
-        </div>
-      </CardContent>
+        </h2>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <FormItem>
+          <FormLabel htmlFor="contact_phone">เบอร์โทร</FormLabel>
+          <Input
+            disabled={disabled}
+            id="contact_phone"
+            inputMode="numeric"
+            {...registerField(form, "contact_phone")}
+          />
+          <FormMessage<FormValues> name="contact_phone" />
+        </FormItem>
+        <FormItem>
+          <FormLabel htmlFor="contact_email">อีเมล</FormLabel>
+          <Input
+            disabled={disabled}
+            id="contact_email"
+            type="email"
+            {...registerField(form, "contact_email")}
+          />
+          <FormMessage<FormValues> name="contact_email" />
+        </FormItem>
+        <FormItem>
+          <FormLabel htmlFor="contact_line_id">LINE ID</FormLabel>
+          <Input
+            disabled={disabled}
+            id="contact_line_id"
+            {...registerField(form, "contact_line_id")}
+          />
+          <FormMessage<FormValues> name="contact_line_id" />
+        </FormItem>
+      </div>
     </Card>
   );
 }
@@ -310,6 +305,7 @@ export function StudentEditPage() {
   const [revealField, setRevealField] = useState<StudentPiiField | null>(null);
   const [nationalIdCorrectionOpen, setNationalIdCorrectionOpen] =
     useState(false);
+  const [passportCorrectionOpen, setPassportCorrectionOpen] = useState(false);
   const piiReveal = useTimedSensitiveReveal<StudentPiiField>(id);
   const [photo, setPhoto] = useState<PhotoPickerValue>(
     EMPTY_PHOTO_PICKER_VALUE,
@@ -520,145 +516,212 @@ export function StudentEditPage() {
               fallback="บันทึกข้อมูลไม่สำเร็จ"
             />
             <Card className="p-6">
-              <div className="mb-6 flex items-center gap-2">
+              <div className="mb-5 flex items-center gap-2">
                 <PersonIcon
-                  className="size-5 text-slate-700"
+                  className="size-5 text-primary"
                   aria-hidden="true"
                 />
                 <h2 className="text-lg font-bold text-slate-800">
                   ข้อมูลทั่วไป
                 </h2>
               </div>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
-                <PhotoPicker
-                  disabled={updateStudent.isPending || updatePhoto.isPending}
-                  label="รูปประจำตัวนักเรียน"
-                  onChange={setPhoto}
-                  storedUrl={resolveApiMediaUrl(student.photo_url ?? null)}
-                  value={photo}
-                />
-                <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                  {(
-                    [
-                      "FirstName_Onec",
-                      "LastName_Onec",
-                      "MiddleName_Onec",
-                    ] as const
-                  ).map((name) => (
-                    <FormItem key={name}>
-                      <FormLabel
-                        htmlFor={name}
-                        required={name !== "MiddleName_Onec"}
-                      >
-                        {
+              {/* Identity (national ID/passport) used to be its own card
+                  below — folded in here because the name row alone left the
+                  photo column towering over three short fields. Both are
+                  still real, distinct groups (name vs. PII), so the
+                  identity block keeps its own sub-heading and stays
+                  visually set apart from the name row rather than blending
+                  into one undifferentiated field list. */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
+                <div>
+                  {/* Invisible label the same markup as a real FormLabel, so
+                      it reserves exactly a label's height — no guessed pixel
+                      value — pushing the photo square down to start level
+                      with an input box instead of a field label. */}
+                  <FormLabel aria-hidden="true" className="invisible">
+                    .
+                  </FormLabel>
+                  <PhotoPicker
+                    disabled={updateStudent.isPending || updatePhoto.isPending}
+                    label="รูปประจำตัวนักเรียน"
+                    onChange={setPhoto}
+                    storedUrl={resolveApiMediaUrl(student.photo_url ?? null)}
+                    value={photo}
+                  />
+                </div>
+                {/* space-y-5 (20px) — the same row rhythm as every other gap
+                    on this page (ข้อมูลการเรียน's rows, the address section's
+                    rows, the gap between cards), rather than a photo-height-
+                    matched value that would only coincidentally agree with
+                    it. */}
+                <div className="self-start">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {(
+                      [
+                        "FirstName_Onec",
+                        "LastName_Onec",
+                        "MiddleName_Onec",
+                      ] as const
+                    ).map((name) => (
+                      <FormItem key={name}>
+                        <FormLabel
+                          htmlFor={name}
+                          required={name !== "MiddleName_Onec"}
+                        >
                           {
-                            FirstName_Onec: "ชื่อ",
-                            LastName_Onec: "นามสกุล",
-                            MiddleName_Onec: "ชื่อกลาง",
-                          }[name]
-                        }
-                      </FormLabel>
-                      <Input id={name} {...registerField(form, name)} />
-                      <FormMessage<FormValues> name={name} />
-                    </FormItem>
-                  ))}
+                            {
+                              FirstName_Onec: "ชื่อ",
+                              LastName_Onec: "นามสกุล",
+                              MiddleName_Onec: "ชื่อกลาง",
+                            }[name]
+                          }
+                        </FormLabel>
+                        <Input id={name} {...registerField(form, name)} />
+                        <FormMessage<FormValues> name={name} />
+                      </FormItem>
+                    ))}
+                  </div>
+                  {/* -mt-2 compensates for FormMessage's own reserved
+                      blank line (space-y-2 + min-h-5 = 28px) above, which
+                      already exceeds the page's 20px row rhythm on its own
+                      — without this, this gap reads roughly double every
+                      other one on the page. */}
+                  <div className="-mt-2">
+                    <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="flex items-center gap-2">
+                        <IdCard
+                          className="size-4 text-primary"
+                          aria-hidden="true"
+                        />
+                        <h3 className="text-sm font-semibold text-slate-700">
+                          ข้อมูลระบุตัวตน
+                        </h3>
+                      </span>
+                      <span className="text-sm text-slate-500">
+                        · เลขระบุตัวตนเป็นข้อมูลอ่อนไหว
+                        การเปิดดูจะถูกบันทึกพร้อมเหตุผล
+                      </span>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {(["PersonID_Onec", "PassportNumber_Onec"] as const).map(
+                        (field) => {
+                          const hasValue =
+                            (student.masked_fields ?? []).includes(field) ||
+                            Boolean(student[field]);
+                          return (
+                            <div
+                              className="rounded-lg border border-slate-200 px-4 py-3"
+                              key={field}
+                            >
+                              <div className="text-sm font-bold leading-none text-slate-600">
+                                {PII_FIELD_LABELS[field]}
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                                <span className="text-sm font-medium tabular-nums text-slate-800">
+                                  {piiValue(field)}
+                                </span>
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                  {hasValue ? (
+                                    <SensitiveValueToggleButton
+                                      isVisible={
+                                        piiReveal.visibleFields[field] === true
+                                      }
+                                      label={PII_FIELD_LABELS[field]}
+                                      onClick={() => togglePii(field)}
+                                    />
+                                  ) : null}
+                                  {field === "PersonID_Onec" ? (
+                                    <Button
+                                      onClick={() =>
+                                        setNationalIdCorrectionOpen(true)
+                                      }
+                                      size="sm"
+                                      type="button"
+                                      variant="outline"
+                                    >
+                                      แก้ไขเลขบัตร
+                                    </Button>
+                                  ) : null}
+                                  {field === "PassportNumber_Onec" ? (
+                                    <Button
+                                      onClick={() =>
+                                        setPassportCorrectionOpen(true)
+                                      }
+                                      size="sm"
+                                      type="button"
+                                      variant="outline"
+                                    >
+                                      แก้ไขหนังสือเดินทาง
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </Card>
             <Card className="p-6">
               <div className="mb-5 flex items-center gap-2">
-                <IdCard className="size-5 text-slate-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-slate-800">
-                  ข้อมูลระบุตัวตน
-                </h2>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(["PersonID_Onec", "PassportNumber_Onec"] as const).map(
-                  (field) => {
-                    const hasValue =
-                      (student.masked_fields ?? []).includes(field) ||
-                      Boolean(student[field]);
-                    return (
-                      <div
-                        className="rounded-lg border border-slate-200 px-4 py-3"
-                        key={field}
-                      >
-                        <div className="text-sm text-slate-500">
-                          {PII_FIELD_LABELS[field]}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                          <span className="font-medium tabular-nums text-slate-800">
-                            {piiValue(field)}
-                          </span>
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            {hasValue ? (
-                              <SensitiveValueToggleButton
-                                isVisible={
-                                  piiReveal.visibleFields[field] === true
-                                }
-                                label={PII_FIELD_LABELS[field]}
-                                onClick={() => togglePii(field)}
-                              />
-                            ) : null}
-                            {field === "PersonID_Onec" ? (
-                              <Button
-                                onClick={() =>
-                                  setNationalIdCorrectionOpen(true)
-                                }
-                                size="sm"
-                                type="button"
-                                variant="outline"
-                              >
-                                แก้ไขเลขบัตร
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-              <p className="mt-3 text-sm text-slate-500">
-                เลขระบุตัวตนเป็นข้อมูลอ่อนไหว การเปิดดูจะถูกบันทึกพร้อมเหตุผล
-              </p>
-            </Card>
-            <Card className="p-6">
-              <div className="mb-5 flex items-center gap-2">
                 <GraduationCap
-                  className="size-5 text-slate-700"
+                  className="size-5 text-primary"
                   aria-hidden="true"
                 />
                 <h2 className="text-lg font-bold text-slate-800">
                   ข้อมูลการเรียน
                 </h2>
               </div>
-              <div className="mb-5 grid gap-3 rounded-lg border border-slate-200 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <span className="text-slate-500">โรงเรียน</span>
-                  <div className="mt-1 font-medium text-slate-800">
-                    {String(student.school_name ?? "ไม่ระบุ")}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">ปี/ภาคเรียน</span>
-                  <div className="mt-1 font-medium text-slate-800">
-                    {student.AcademicYear_Onec ?? "ไม่ระบุ"}/
-                    {student.Semester_Onec ?? "ไม่ระบุ"}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">ระดับชั้น</span>
-                  <div className="mt-1 font-medium text-slate-800">
-                    {String(student.grade_label ?? student.grade ?? "ไม่ระบุ")}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">ห้อง</span>
-                  <div className="mt-1 font-medium text-slate-800">
-                    {String(student.room ?? "ไม่ระบุ")}
-                  </div>
-                </div>
+              {/* Same read-only-field pattern the app already uses (e.g.
+                  TeacherFormPage's school field): a disabled Input under a
+                  real FormLabel, so it reads like every other field on this
+                  page instead of its own one-off bordered-box style. */}
+              <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <FormItem>
+                  <FormLabel htmlFor="student-school-name">โรงเรียน</FormLabel>
+                  <Input
+                    className="cursor-default bg-slate-50 text-slate-800"
+                    disabled
+                    id="student-school-name"
+                    readOnly
+                    value={String(student.school_name ?? "ไม่ระบุ")}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="student-year-term">ปี/ภาคเรียน</FormLabel>
+                  <Input
+                    className="cursor-default bg-slate-50 text-slate-800"
+                    disabled
+                    id="student-year-term"
+                    readOnly
+                    value={`${student.AcademicYear_Onec ?? "ไม่ระบุ"}/${student.Semester_Onec ?? "ไม่ระบุ"}`}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="student-grade">ระดับชั้น</FormLabel>
+                  <Input
+                    className="cursor-default bg-slate-50 text-slate-800"
+                    disabled
+                    id="student-grade"
+                    readOnly
+                    value={String(
+                      student.grade_label ?? student.grade ?? "ไม่ระบุ",
+                    )}
+                  />
+                </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="student-room">ห้อง</FormLabel>
+                  <Input
+                    className="cursor-default bg-slate-50 text-slate-800"
+                    disabled
+                    id="student-room"
+                    readOnly
+                    value={String(student.room ?? "ไม่ระบุ")}
+                  />
+                </FormItem>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormItem>
@@ -724,28 +787,27 @@ export function StudentEditPage() {
               disabled={updateStudent.isPending}
               form={form}
             />
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-lg">
-                  <span className="flex items-center gap-2">
-                    <Users className="size-5 text-primary" aria-hidden="true" />
+            <Card className="p-6">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <Users className="size-5 text-primary" aria-hidden="true" />
+                  <h2 className="text-lg font-bold text-slate-800">
                     ข้อมูลผู้ปกครอง
-                  </span>
-                  <Button
-                    disabled={
-                      updateStudent.isPending ||
-                      guardianArray.fields.length >= 10
-                    }
-                    icon={Plus}
-                    onClick={addGuardian}
-                    type="button"
-                    variant="outline"
-                  >
-                    เพิ่มผู้ติดต่อ
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                  </h2>
+                </span>
+                <Button
+                  disabled={
+                    updateStudent.isPending || guardianArray.fields.length >= 10
+                  }
+                  icon={Plus}
+                  onClick={addGuardian}
+                  type="button"
+                  variant="outline"
+                >
+                  เพิ่มผู้ติดต่อ
+                </Button>
+              </div>
+              <div className="space-y-5">
                 {guardianArray.fields.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     ยังไม่มีข้อมูลผู้ปกครอง กด &quot;เพิ่มผู้ติดต่อ&quot;
@@ -926,7 +988,7 @@ export function StudentEditPage() {
                     </div>
                   );
                 })}
-              </CardContent>
+              </div>
             </Card>
             <FormActions>
               <Button
@@ -951,10 +1013,20 @@ export function StudentEditPage() {
         </Form>
       )}
       {student ? (
-        <StudentNationalIdCorrectionDialog
+        <StudentIdentifierCorrectionDialog
+          identifierType="NATIONAL_ID"
           onCorrected={() => piiReveal.clear("PersonID_Onec")}
           onOpenChange={setNationalIdCorrectionOpen}
           open={nationalIdCorrectionOpen}
+          studentId={id}
+        />
+      ) : null}
+      {student ? (
+        <StudentIdentifierCorrectionDialog
+          identifierType="PASSPORT"
+          onCorrected={() => piiReveal.clear("PassportNumber_Onec")}
+          onOpenChange={setPassportCorrectionOpen}
+          open={passportCorrectionOpen}
           studentId={id}
         />
       ) : null}

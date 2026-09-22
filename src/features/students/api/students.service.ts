@@ -17,6 +17,7 @@ import type {
   StudentCreatePayload,
   StudentManagementOptions,
   StudentNationalIdCorrectionPayload,
+  StudentPassportCorrectionPayload,
   CreatePiiExportRequestPayload,
   PiiExportDownloadResult,
   PiiExportRequestListQuery,
@@ -122,6 +123,10 @@ interface StudentsService {
   correctStudentNationalId: (
     studentId: string,
     payload: StudentNationalIdCorrectionPayload,
+  ) => Promise<StudentDetail>;
+  correctStudentPassport: (
+    studentId: string,
+    payload: StudentPassportCorrectionPayload,
   ) => Promise<StudentDetail>;
   createStudent: (payload: StudentCreatePayload) => Promise<StudentDetail>;
   getManagementOptions: () => Promise<StudentManagementOptions>;
@@ -428,6 +433,17 @@ async function correctStudentNationalId(
   return response.data;
 }
 
+async function correctStudentPassport(
+  studentId: string,
+  payload: StudentPassportCorrectionPayload,
+): Promise<StudentDetail> {
+  const response = await apiClient.patch<StudentDetail>(
+    `/students/${encodeURIComponent(studentId)}/passport`,
+    payload,
+  );
+  return response.data;
+}
+
 async function createStudent(
   payload: StudentCreatePayload,
 ): Promise<StudentDetail> {
@@ -552,6 +568,7 @@ export const studentsService: StudentsService = {
   downloadPiiExportCsv,
   updateStudent,
   correctStudentNationalId,
+  correctStudentPassport,
   createStudent,
   getManagementOptions,
   updateStudentPhoto,
