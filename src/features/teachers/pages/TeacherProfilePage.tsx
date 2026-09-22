@@ -134,7 +134,7 @@ export function TeacherProfilePage() {
       ) : (
         <>
           <Card className="p-6">
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+            <div className="mb-5 flex flex-wrap items-center gap-2">
               <PersonIcon
                 className="size-5 text-slate-700"
                 aria-hidden="true"
@@ -154,10 +154,12 @@ export function TeacherProfilePage() {
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
-              <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
+              <div>
+                <FormLabel aria-hidden="true" className="invisible">
+                  .
+                </FormLabel>
                 <AvatarPhotoEditor
-                  avatarClassName="size-36 text-4xl"
                   editable={canEdit}
                   isSubmitting={updatePhoto.isPending}
                   label="รูปประจำตัวคุณครู"
@@ -168,7 +170,7 @@ export function TeacherProfilePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 self-start sm:grid-cols-2">
                 {/* Which school this teacher belongs to is the first thing an
                     area administrator needs, and the profile never said it. */}
                 <ReadOnlyField

@@ -114,7 +114,7 @@ function TeacherForm({
   return (
     <Form form={form} onSubmit={handleSubmit}>
       <Card className="p-6">
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-5 flex items-center gap-2">
           <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
           <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
         </div>
@@ -125,109 +125,133 @@ function TeacherForm({
           fallback="บันทึกข้อมูลครูไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
         />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
-          <PhotoPicker
-            disabled={saveTeacher.isPending}
-            label="รูปประจำตัวคุณครู"
-            onChange={setPhoto}
-            storedUrl={resolveApiMediaUrl(teacher?.photoUrl ?? null)}
-            value={photo}
-          />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
+          <div>
+            <FormLabel aria-hidden="true" className="invisible">
+              .
+            </FormLabel>
+            <PhotoPicker
+              disabled={saveTeacher.isPending}
+              label="รูปประจำตัวคุณครู"
+              onChange={setPhoto}
+              storedUrl={resolveApiMediaUrl(teacher?.photoUrl ?? null)}
+              value={photo}
+            />
+          </div>
 
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <FormItem className="sm:col-span-2">
-              <FormLabel htmlFor="teacher-school">โรงเรียน</FormLabel>
-              <Input
-                className="cursor-default bg-slate-50 text-slate-800"
-                disabled
-                id="teacher-school"
-                readOnly
-                value={schoolName || "-"}
-              />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="firstName" required>
-                ชื่อ
-              </FormLabel>
-              <Input
-                id="firstName"
-                placeholder="ระบุชื่อคุณครู"
-                {...registerField(form, "firstName")}
-              />
-              <FormMessage<TeacherFormValues> name="firstName" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="lastName" required>
-                นามสกุล
-              </FormLabel>
-              <Input
-                id="lastName"
-                placeholder="ระบุนามสกุลคุณครู"
-                {...registerField(form, "lastName")}
-              />
-              <FormMessage<TeacherFormValues> name="lastName" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="email" required>
-                อีเมล
-              </FormLabel>
-              <Input
-                id="email"
-                placeholder="example@gmail.com"
-                type="email"
-                {...registerField(form, "email")}
-              />
-              <FormMessage<TeacherFormValues> name="email" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="lineId">ไอดีไลน์</FormLabel>
-              <Input
-                id="lineId"
-                placeholder="ระบุไอดีไลน์"
-                {...registerField(form, "lineId")}
-              />
-              <FormMessage<TeacherFormValues> name="lineId" />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel htmlFor="citizenId" required>
-                เลขบัตรประชาชน
-              </FormLabel>
-              <div className="flex gap-2">
-                <NumericInput
-                  disabled={Boolean(teacher) && !nationalIdUnlocked}
-                  id="citizenId"
-                  maxLength={13}
-                  placeholder={teacher?.citizenId ?? "XXXXXXXXXXXXX"}
-                  {...registerField(form, "citizenId")}
+          {/* One grid per row, not one grid for the whole field list — exact
+              technique as AddressFormSection.tsx: no space-y on this
+              container, every row ends in a 28px FormMessage tail
+              (space-y-2's 8px + min-h-5's 20px), and every row after the
+              first cancels that with -mt-2 to net a 20px gap instead of
+              stacking a second gap on top of it. */}
+          <div className="self-start">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormItem className="sm:col-span-2">
+                <FormLabel htmlFor="teacher-school">โรงเรียน</FormLabel>
+                <Input
+                  className="cursor-default bg-slate-50 text-slate-800"
+                  disabled
+                  id="teacher-school"
+                  readOnly
+                  value={schoolName || "-"}
                 />
-                {teacher && !nationalIdUnlocked && teacher.citizenId ? (
-                  <Button
-                    onClick={() => setRevealOpen(true)}
-                    type="button"
-                    variant="outline"
-                  >
-                    แสดง
-                  </Button>
-                ) : null}
-              </div>
-              <FormMessage<TeacherFormValues> name="citizenId" />
-            </FormItem>
+                {/* No real FormMessage on a read-only field, but the row
+                    after this one assumes every row ends in one (see the
+                    -mt-2 note below) — this spacer reserves the same height
+                    so that math still holds for this row too. */}
+                <p aria-hidden="true" className="min-h-5" />
+              </FormItem>
+            </div>
 
-            <FormItem>
-              <FormLabel htmlFor="phone">เบอร์โทรศัพท์</FormLabel>
-              <NumericInput
-                id="phone"
-                maxLength={10}
-                placeholder="XXXXXXXXXX"
-                {...registerField(form, "phone")}
-              />
-              <FormMessage<TeacherFormValues> name="phone" />
-            </FormItem>
+            <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormItem>
+                <FormLabel htmlFor="firstName" required>
+                  ชื่อ
+                </FormLabel>
+                <Input
+                  id="firstName"
+                  placeholder="ระบุชื่อคุณครู"
+                  {...registerField(form, "firstName")}
+                />
+                <FormMessage<TeacherFormValues> name="firstName" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="lastName" required>
+                  นามสกุล
+                </FormLabel>
+                <Input
+                  id="lastName"
+                  placeholder="ระบุนามสกุลคุณครู"
+                  {...registerField(form, "lastName")}
+                />
+                <FormMessage<TeacherFormValues> name="lastName" />
+              </FormItem>
+            </div>
+
+            <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormItem>
+                <FormLabel htmlFor="email" required>
+                  อีเมล
+                </FormLabel>
+                <Input
+                  id="email"
+                  placeholder="example@gmail.com"
+                  type="email"
+                  {...registerField(form, "email")}
+                />
+                <FormMessage<TeacherFormValues> name="email" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="lineId">ไอดีไลน์</FormLabel>
+                <Input
+                  id="lineId"
+                  placeholder="ระบุไอดีไลน์"
+                  {...registerField(form, "lineId")}
+                />
+                <FormMessage<TeacherFormValues> name="lineId" />
+              </FormItem>
+            </div>
+
+            <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormItem>
+                <FormLabel htmlFor="citizenId" required>
+                  เลขบัตรประชาชน
+                </FormLabel>
+                <div className="flex gap-2">
+                  <NumericInput
+                    disabled={Boolean(teacher) && !nationalIdUnlocked}
+                    id="citizenId"
+                    maxLength={13}
+                    placeholder={teacher?.citizenId ?? "XXXXXXXXXXXXX"}
+                    {...registerField(form, "citizenId")}
+                  />
+                  {teacher && !nationalIdUnlocked && teacher.citizenId ? (
+                    <Button
+                      onClick={() => setRevealOpen(true)}
+                      type="button"
+                      variant="outline"
+                    >
+                      แสดง
+                    </Button>
+                  ) : null}
+                </div>
+                <FormMessage<TeacherFormValues> name="citizenId" />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel htmlFor="phone">เบอร์โทรศัพท์</FormLabel>
+                <NumericInput
+                  id="phone"
+                  maxLength={10}
+                  placeholder="XXXXXXXXXX"
+                  {...registerField(form, "phone")}
+                />
+                <FormMessage<TeacherFormValues> name="phone" />
+              </FormItem>
+            </div>
           </div>
         </div>
       </Card>
