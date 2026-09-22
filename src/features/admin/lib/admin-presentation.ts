@@ -1,9 +1,29 @@
-import type {
-  ManagedUser,
-  AccountLifecycleStatus,
-} from "../types/admin.types";
+import type { ManagedUser, AccountLifecycleStatus } from "../types/admin.types";
+import type { DataScope } from "../../auth/lib/permissions";
 import { findStatusCatalogItem } from "../../status-catalog/hooks/useStatusCatalog";
 import type { StatusCatalogItem } from "../../status-catalog/types/status-catalog.types";
+
+export type UserRealm = "school" | "council";
+
+interface UserRealmSource {
+  data_scope?: DataScope | null;
+}
+
+export function getUserRealm(user: UserRealmSource): UserRealm {
+  return user.data_scope?.school_ids?.length ? "school" : "council";
+}
+
+export function getManageUsersPath(realm: UserRealm): string {
+  return realm === "council" ? "/council/manage-users" : "/manage-users";
+}
+
+export function getManageUserPath(
+  user: UserRealmSource & { id?: number | null },
+  suffix = "",
+): string {
+  const userPath = user.id == null ? "" : `/${user.id}`;
+  return `${getManageUsersPath(getUserRealm(user))}${userPath}${suffix}`;
+}
 
 export function getUserDisplayName(user: ManagedUser): string {
   const fullName = [user.FirstName, user.LastName]
@@ -42,7 +62,9 @@ export function getAccountLifecycleStatusMeta(
   };
 }
 
-export function getManagedUserLifecycleStatus(user: ManagedUser): AccountLifecycleStatus {
+export function getManagedUserLifecycleStatus(
+  user: ManagedUser,
+): AccountLifecycleStatus {
   if (user.status !== "ACTIVE") {
     return "DISABLED";
   }
@@ -50,12 +72,14 @@ export function getManagedUserLifecycleStatus(user: ManagedUser): AccountLifecyc
     const expiresAt = user.temporary_password_expires_at
       ? new Date(user.temporary_password_expires_at)
       : null;
-    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+    if (
+      expiresAt &&
+      !Number.isNaN(expiresAt.getTime()) &&
+      expiresAt.getTime() <= Date.now()
+    ) {
       return "TEMP_PASSWORD_EXPIRED";
     }
     return "PENDING_FIRST_LOGIN";
   }
   return "ACTIVE";
 }
-
-

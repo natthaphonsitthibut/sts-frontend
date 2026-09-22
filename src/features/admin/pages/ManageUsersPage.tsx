@@ -15,10 +15,8 @@ import {
   EmptyState,
   ErrorState,
   PageShell,
-  PageToolbar,
-  SearchInput,
+  ListPageToolbar,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { NavButton } from "../../../components/layout/nav-button";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
@@ -31,7 +29,10 @@ import { AccountDeactivationDialog } from "../components/AccountDeactivationDial
 import { UserTable } from "../components/UserTable";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 import { useDeactivateAccount, useUsers } from "../hooks/useUsers";
-import { getUserDisplayName } from "../lib/admin-presentation";
+import {
+  getManageUserPath,
+  getUserDisplayName,
+} from "../lib/admin-presentation";
 import type {
   AccountDeactivationPayload,
   ManagedUser,
@@ -45,7 +46,18 @@ const MANAGE_USERS_ICON = PAGE_IDENTITIES["/manage-users"].icon;
  */
 const NON_STAFF_ROLES = "TEACHER,STUDENT";
 
-export function ManageUsersPage() {
+export function ManageUsersPage({
+  scope = "school",
+}: {
+  /**
+   * "council" is the เมนูส่วนสภา entry point — an overview across every
+   * school the account can see, not one school's own staff list, so it
+   * ignores whatever the header's global school filter currently has picked
+   * (owner, 2026-09-22: "มันไม่ใช่กลุ่มผู้ใช้ของ รร สักหน่อย" — it shouldn't
+   * need a school picked at all).
+   */
+  scope?: "school" | "council";
+} = {}) {
   const contextualNavigate = useContextualNavigate();
   const [searchParams] = useSearchParams();
   const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
@@ -80,7 +92,7 @@ export function ManageUsersPage() {
   // list narrows by the same header filter as every other list in the app.
   // Leaving it unset browses every school in the admin's own scope.
   const globalFilter = useGlobalSchoolFilter();
-  const selectedSchoolValue = globalFilter.schoolId;
+  const selectedSchoolValue = scope === "council" ? "" : globalFilter.schoolId;
   // A school switch (from the header, or anywhere else) can leave the page
   // number past the end of the new list.
   const [lastSchoolValue, setLastSchoolValue] = useState(selectedSchoolValue);
@@ -98,6 +110,7 @@ export function ManageUsersPage() {
   const query = useMemo(
     () => ({
       searchTerm: debouncedSearch || undefined,
+      realm: scope,
       schoolId: selectedSchoolValue || undefined,
       excludeRole: NON_STAFF_ROLES,
       page,
@@ -105,7 +118,7 @@ export function ManageUsersPage() {
       sortBy: sort?.key as "name" | "role" | "affiliation" | undefined,
       sortOrder: sort?.direction,
     }),
-    [debouncedSearch, page, rowsPerPage, selectedSchoolValue, sort],
+    [debouncedSearch, page, rowsPerPage, scope, selectedSchoolValue, sort],
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
@@ -119,8 +132,8 @@ export function ManageUsersPage() {
     if (user.id == null) return;
     contextualNavigate(
       user.id === currentUserId
-        ? `/manage-users/${user.id}/edit?returnTo=%2Fprofile`
-        : `/manage-users/${user.id}/edit`,
+        ? getManageUserPath(user, "/edit?returnTo=%2Fprofile")
+        : getManageUserPath(user, "/edit"),
     );
   }
 
@@ -137,34 +150,53 @@ export function ManageUsersPage() {
     );
   }
 
+  // เหมือนหน้าอื่นๆ (TeachersPage, StudentListPage): เมนูฝั่งโรงเรียนแยกทีละ
+  // โรงเรียน ไม่ปนกันหลายโรงเรียน — ต้องเลือกก่อนถึงเห็น/เพิ่มได้ (owner,
+  // 2026-09-22). ฝั่งสภาไม่ใช้กติกานี้เลย ("ไม่ต้องเลือก รร จะเห็นผู้ใช้ของ
+  // สภา ไม่ใช่ของ รร").
+  const needsSchoolPick = scope === "school" && !selectedSchoolValue;
+  const addUserPath =
+    scope === "council"
+      ? "/council/manage-users/new"
+      : `/manage-users/new${
+          selectedSchoolValue ? `?schoolId=${selectedSchoolValue}` : ""
+        }`;
+
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         actions={
-          <NavButton contextual icon={UserPlus} to="/manage-users/new">
+          <NavButton
+            contextual
+            disabled={needsSchoolPick}
+            icon={UserPlus}
+            to={addUserPath}
+          >
             เพิ่มผู้ใช้งาน
           </NavButton>
         }
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         icon={MANAGE_USERS_ICON}
+        search={{
+          onChange: handleSearchChange,
+          placeholder: "ค้นหา",
+          value: searchQuery,
+        }}
         title="จัดการผู้ใช้งาน"
-      >
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[560px]"
-            onChange={handleSearchChange}
-            placeholder="ค้นหา"
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
       <FormErrorAlert
         error={deactivateAccount.error}
         fallback="ปิดใช้งานบัญชีไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
 
-      {isError ? (
+      {needsSchoolPick ? (
+        <EmptyState
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงรายชื่อผู้ใช้งาน"
+          icon={MANAGE_USERS_ICON}
+          title="เลือกโรงเรียน"
+        />
+      ) : isError ? (
         <ErrorState
           description="เกิดข้อผิดพลาดระหว่างโหลดรายชื่อผู้ใช้งาน"
           onRetry={refetch}

@@ -44,6 +44,7 @@ import {
   MainPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
+  ManageSchoolsPage,
   ManageUserFormPage,
   ManageUsersPage,
   MasterDataPage,
@@ -472,6 +473,68 @@ export const router = createBrowserRouter([
               <ManageRoleGroupFormPage />,
               "manage-role-groups",
             ),
+          },
+          // เมนูส่วนสภา's own "จัดการสิทธิ์ผู้ใช้งาน" — same pages and
+          // permissions as the school-side routes above (each page already
+          // scopes its data to the viewer's own data_scope), aliased under
+          // /council/... so the two sidebar entries are genuinely separate
+          // destinations instead of the same link lighting up in both
+          // sections at once.
+          {
+            path: "council/manage-users",
+            element: protectedElement(
+              <ManageUsersPage scope="council" />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "council/manage-users/:id",
+            element: protectedElement(
+              <UserDetailPage scope="council" />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "council/manage-users/new",
+            element: protectedElement(
+              <ManageUserFormPage />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "council/manage-users/:id/edit",
+            element: protectedElement(
+              <ManageUserFormPage />,
+              "manage-users-list",
+            ),
+          },
+          {
+            path: "council/manage-role-groups",
+            element: protectedElement(
+              <ManageRoleGroupsPage scope="council" />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "council/manage-role-groups/new",
+            element: protectedElement(
+              <ManageRoleGroupFormPage />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "council/manage-role-groups/:name/edit",
+            element: protectedElement(
+              <ManageRoleGroupFormPage />,
+              "manage-role-groups",
+            ),
+          },
+          {
+            path: "manage-schools",
+            element: protectedElement(<ManageSchoolsPage />, "manage-schools", {
+              requireGlobalScope: true,
+              role: "ADMIN",
+            }),
           },
           {
             path: "audit-log/:id",

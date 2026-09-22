@@ -27,8 +27,10 @@ import type {
 } from "../../admin/types/admin.types";
 import { type DataScope } from "../lib/permissions";
 import {
+  applyScopeRestrictions,
   getScopeFieldStates,
   getScopeValidationError,
+  type ScopeRestrictions,
 } from "../lib/scope-validation";
 import {
   SCOPE_ALL_LABEL,
@@ -57,6 +59,7 @@ interface PermissionScopeEditorProps {
   disabled?: boolean;
   /** Reveal scope validation errors — set true only after a submit attempt. */
   showErrors?: boolean;
+  restrictions?: ScopeRestrictions;
 }
 
 const EMPTY_SCOPE: DataScope = {};
@@ -103,14 +106,19 @@ export function PermissionScopeEditor({
   onScopeLabelsChange,
   disabled = false,
   showErrors = false,
+  restrictions = {},
 }: PermissionScopeEditorProps) {
   const hasRole = role.trim().length > 0;
-  const fieldStates = getScopeFieldStates(scopeMode);
+  const fieldStates = applyScopeRestrictions(
+    getScopeFieldStates(scopeMode),
+    restrictions,
+  );
   const scopeError = getScopeValidationError(
     scopeMode,
     dataScope,
     roleLabel,
     scopePolicy,
+    restrictions,
   );
   const isOwnOnlyScope = scopePolicy === "OWN_ONLY";
   // Only a role whose scope_mode is fixed "global" is shown as nationwide-only.
@@ -148,6 +156,7 @@ export function PermissionScopeEditor({
     enabled:
       !isGlobalScope &&
       !isOwnOnlyScope &&
+      fieldStates.school_ids !== "forbidden" &&
       Boolean(
         storedProvince ||
         storedDistrict ||
@@ -322,6 +331,18 @@ export function PermissionScopeEditor({
             </div>
           ) : (
             <>
+              {restrictions.requireSchoolScope ? (
+                <p className="text-sm text-slate-500">
+                  ผู้ใช้งานโรงเรียนต้องเลือกโรงเรียน 1 แห่ง
+                  ไม่รวมระดับชั้นและห้องเรียน
+                </p>
+              ) : restrictions.disallowClassroomScope &&
+                !restrictions.disallowSchoolScope ? (
+                <p className="text-sm text-slate-500">
+                  ผู้ใช้งานโรงเรียนเลือกขอบเขตได้ถึงโรงเรียน
+                  ไม่รวมระดับชั้นและห้องเรียน
+                </p>
+              ) : null}
               {usesAreaScope ? (
                 <p className="text-sm text-slate-500">
                   ตำแหน่งนี้ต้องระบุพื้นที่ตามระดับสิทธิ์ ไม่สามารถเลือก

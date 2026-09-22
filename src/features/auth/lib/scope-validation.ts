@@ -1,4 +1,7 @@
-import type { RoleScopeMode, RoleScopePolicy } from "../../admin/types/admin.types";
+import type {
+  RoleScopeMode,
+  RoleScopePolicy,
+} from "../../admin/types/admin.types";
 import type { DataScope } from "./permissions";
 
 /**
@@ -20,6 +23,26 @@ export interface ScopeFieldStates {
   room_ids: ScopeFieldState;
 }
 
+export interface ScopeRestrictions {
+  disallowSchoolScope?: boolean;
+  disallowClassroomScope?: boolean;
+  requireSchoolScope?: boolean;
+}
+
+export function applyScopeRestrictions(
+  states: ScopeFieldStates,
+  restrictions: ScopeRestrictions = {},
+): ScopeFieldStates {
+  return {
+    ...states,
+    ...(restrictions.disallowSchoolScope ? { school_ids: "forbidden" } : {}),
+    ...(restrictions.requireSchoolScope ? { school_ids: "required" } : {}),
+    ...(restrictions.disallowClassroomScope
+      ? { grade_levels: "forbidden", room_ids: "forbidden" }
+      : {}),
+  };
+}
+
 const ALL_OPTIONAL: ScopeFieldStates = {
   provinces: "optional",
   districts: "optional",
@@ -39,7 +62,9 @@ const ALL_FORBIDDEN: ScopeFieldStates = {
 };
 
 /** Which scope fields a role may/must/cannot set, derived from its scope_mode. */
-export function getScopeFieldStates(scopeMode: RoleScopeMode): ScopeFieldStates {
+export function getScopeFieldStates(
+  scopeMode: RoleScopeMode,
+): ScopeFieldStates {
   switch (scopeMode) {
     case "flexible":
       return ALL_OPTIONAL;
@@ -82,15 +107,34 @@ export function getScopeValidationError(
   scope: DataScope,
   roleLabel: string,
   scopePolicy: RoleScopePolicy = "ASSIGNABLE",
+  restrictions: ScopeRestrictions = {},
 ): string | null {
   const provinces = count(scope.provinces);
   const districts = count(scope.districts);
   const subDistricts = count(scope.sub_districts);
   const schools = count(scope.school_ids);
-  const hasExtraSchoolFiltering = count(scope.grade_levels) > 0 || count(scope.room_ids) > 0;
+  const hasExtraSchoolFiltering =
+    count(scope.grade_levels) > 0 || count(scope.room_ids) > 0;
+
+  if (restrictions.disallowSchoolScope && schools > 0) {
+    return `${roleLabel}ห้ามจำกัดโรงเรียนในบริบทนี้`;
+  }
+  if (restrictions.disallowClassroomScope && hasExtraSchoolFiltering) {
+    return `${roleLabel}ห้ามจำกัดระดับชั้นหรือห้องเรียนในบริบทนี้`;
+  }
+  if (restrictions.requireSchoolScope) {
+    if (scope.global) {
+      return `${roleLabel}ต้องเลือกโรงเรียน ไม่สามารถเลือกทั้งประเทศได้`;
+    }
+    if (schools !== 1) {
+      return `${roleLabel}ต้องเลือกโรงเรียน 1 แห่ง`;
+    }
+  }
 
   if (scopePolicy === "OWN_ONLY") {
-    return scope.own_only === true ? null : `${roleLabel}ต้องใช้ขอบเขตข้อมูลเฉพาะตนเอง`;
+    return scope.own_only === true
+      ? null
+      : `${roleLabel}ต้องใช้ขอบเขตข้อมูลเฉพาะตนเอง`;
   }
 
   if (scopeMode === "flexible") {
@@ -105,7 +149,9 @@ export function getScopeValidationError(
     if (scope.global === true && hasAreaScope) {
       return `${roleLabel}ห้ามเลือกทั้งระบบพร้อมกับพื้นที่`;
     }
-    return scope.own_only === true ? `${roleLabel}ไม่สามารถใช้ขอบเขตเฉพาะตนเองได้` : null;
+    return scope.own_only === true
+      ? `${roleLabel}ไม่สามารถใช้ขอบเขตเฉพาะตนเองได้`
+      : null;
   }
 
   if (scopeMode === "global") {
@@ -115,14 +161,21 @@ export function getScopeValidationError(
       subDistricts > 0 ||
       schools > 0 ||
       hasExtraSchoolFiltering;
-    return hasAnyScope ? `${roleLabel}ต้องใช้ขอบเขตข้อมูลระดับประเทศเท่านั้น` : null;
+    return hasAnyScope
+      ? `${roleLabel}ต้องใช้ขอบเขตข้อมูลระดับประเทศเท่านั้น`
+      : null;
   }
 
   if (scopeMode === "province") {
     if (provinces !== 1) {
       return `${roleLabel}ต้องเลือกจังหวัด 1 แห่ง`;
     }
-    if (districts > 0 || subDistricts > 0 || schools > 0 || hasExtraSchoolFiltering) {
+    if (
+      districts > 0 ||
+      subDistricts > 0 ||
+      schools > 0 ||
+      hasExtraSchoolFiltering
+    ) {
       return `${roleLabel}ห้ามจำกัดอำเภอ/เขต ตำบล/แขวง โรงเรียน ชั้น หรือห้อง`;
     }
   }
@@ -146,7 +199,12 @@ export function getScopeValidationError(
   }
 
   if (scopeMode === "school") {
-    if (provinces !== 1 || districts !== 1 || subDistricts !== 1 || schools !== 1) {
+    if (
+      provinces !== 1 ||
+      districts !== 1 ||
+      subDistricts !== 1 ||
+      schools !== 1
+    ) {
       return `${roleLabel}ต้องเลือกจังหวัด อำเภอ/เขต ตำบล/แขวง และโรงเรียนอย่างละ 1 รายการ`;
     }
     if (hasExtraSchoolFiltering) {

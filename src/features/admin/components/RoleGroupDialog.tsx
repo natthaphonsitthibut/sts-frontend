@@ -31,8 +31,9 @@ import type { RoleDefinition } from "../types/admin.types";
 interface RoleGroupDialogProps {
   onOpenChange: (open: boolean) => void;
   roleGroup: RoleDefinition | null;
-  schoolId: number;
+  schoolId: number | null;
   schoolName: string;
+  scope?: "school" | "council";
 }
 
 export function RoleGroupDialog({
@@ -40,6 +41,7 @@ export function RoleGroupDialog({
   roleGroup,
   schoolId,
   schoolName,
+  scope = "school",
 }: RoleGroupDialogProps) {
   const saveRoleGroup = useSaveRoleGroup();
   const form = useForm<RoleGroupFormValues>({
@@ -75,10 +77,11 @@ export function RoleGroupDialog({
       {
         originalName: roleGroup?.name ?? null,
         payload: {
-          schoolId,
+          ...(schoolId ? { schoolId } : {}),
           label: values.label.trim(),
           default_permissions: permissions,
         },
+        scope,
       },
       { onSuccess: () => handleOpenChange(false) },
     );
@@ -96,7 +99,9 @@ export function RoleGroupDialog({
               {isEdit ? "แก้ไขกลุ่มเมนู" : "เพิ่มกลุ่มเมนู"}
             </DialogTitle>
             <DialogDescription>
-              กำหนดชื่อและเมนูสำหรับ {schoolName} โดยกลุ่มนี้จะใช้ได้เฉพาะโรงเรียนนี้
+              {scope === "council"
+                ? "กำหนดชื่อและเมนูสำหรับผู้ใช้งานสภา โดยกลุ่มนี้ไม่ผูกกับโรงเรียน"
+                : `กำหนดชื่อและเมนูสำหรับ ${schoolName} โดยกลุ่มนี้จะใช้ได้เฉพาะโรงเรียนนี้`}
             </DialogDescription>
           </DialogHeader>
 
@@ -120,12 +125,13 @@ export function RoleGroupDialog({
               />
               <FormMessage<RoleGroupFormValues> name="label" />
             </FormItem>
-
           </div>
 
           <div className="mt-2">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-900">เมนูที่เข้าถึงได้</p>
+              <p className="text-sm font-semibold text-slate-900">
+                เมนูที่เข้าถึงได้
+              </p>
               <span className="text-xs font-medium tabular-nums text-slate-500">
                 เลือกแล้ว {permissions.length} รายการ
               </span>

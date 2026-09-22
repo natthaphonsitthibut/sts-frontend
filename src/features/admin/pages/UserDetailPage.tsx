@@ -12,6 +12,9 @@ import {
   AvatarPhotoEditor,
   Button,
   Card,
+  FormItem,
+  FormLabel,
+  Input,
   PersonIcon,
 } from "../../../components/base";
 import {
@@ -31,7 +34,13 @@ import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { describeDataScopeForDisplay } from "../../auth/lib/permissions";
 import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDialog";
 import { UserAddressRevealDialog } from "../components/UserAddressRevealDialog";
-import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
+import {
+  getManageUserPath,
+  getManageUsersPath,
+  getUserDisplayName,
+  getUserRealm,
+  getUserRoleText,
+} from "../lib/admin-presentation";
 import { useUserDetail } from "../hooks/useUsers";
 import type { ManagedUserDetail, RoleDefinition } from "../types/admin.types";
 
@@ -56,27 +65,35 @@ function describeScope(user: ManagedUserDetail): string {
   );
 }
 
-function DetailItem({
+/** Same disabled-input pattern as TeacherProfilePage's ReadOnlyField and
+ *  StudentEditPage's read-only fields (โรงเรียน, ปี/ภาคเรียน, ...) — one
+ *  read-only-field convention across all three "ดู" surfaces. */
+function ReadOnlyField({
   action,
+  className,
+  id,
   label,
   value,
 }: {
   action?: ReactNode;
+  className?: string;
+  id: string;
   label: string;
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-500">{label}</div>
-          <div className="mt-1 break-words text-sm font-semibold leading-5 text-slate-800">
-            {value}
-          </div>
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+    <FormItem className={className}>
+      <FormLabel htmlFor={id}>{label}</FormLabel>
+      <div className="flex gap-2">
+        <Input
+          className="cursor-default bg-slate-50 text-slate-800"
+          id={id}
+          readOnly
+          value={value}
+        />
+        {action}
       </div>
-    </div>
+    </FormItem>
   );
 }
 
@@ -102,46 +119,69 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
   }
   return (
     <Card className="p-6">
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-2">
         <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
         <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
       </div>
       <div className="space-y-3">
         {/* Same two-column shape as เพิ่ม/แก้ไขผู้ใช้งาน and โปรไฟล์ของฉัน: photo
             on the left, identity on the right. */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
           <AvatarPhotoEditor
             label="รูปประจำตัวผู้ใช้งาน"
             name={getUserDisplayName(user)}
             onSelect={() => undefined}
             photoUrl={resolveApiMediaUrl(user.photo_url ?? null)}
-            shape="square"
           />
 
-          <div className="grid h-fit gap-3 sm:grid-cols-2">
-            <DetailItem label="ชื่อ" value={text(user.FirstName)} />
-            <DetailItem label="นามสกุล" value={text(user.LastName)} />
-            <DetailItem label="อีเมล" value={text(user.email)} />
-            <DetailItem label="เบอร์โทรศัพท์" value={text(user.phone)} />
-            <DetailItem
+          <div className="grid grid-cols-1 gap-4 self-start sm:grid-cols-2">
+            <ReadOnlyField
+              id="user-detail-first-name"
+              label="ชื่อ"
+              value={text(user.FirstName)}
+            />
+            <ReadOnlyField
+              id="user-detail-last-name"
+              label="นามสกุล"
+              value={text(user.LastName)}
+            />
+            <ReadOnlyField
+              id="user-detail-email"
+              label="อีเมล"
+              value={text(user.email)}
+            />
+            <ReadOnlyField
+              id="user-detail-phone"
+              label="เบอร์โทรศัพท์"
+              value={text(user.phone)}
+            />
+            <ReadOnlyField
+              id="user-detail-line-id"
+              label="LINE ID"
+              value={text(user.line_id)}
+            />
+            <ReadOnlyField
+              id="user-detail-affiliation"
               label="หน่วยงาน/สังกัด"
               value={text(user.affiliation)}
             />
-            <DetailItem label="ชื่อผู้ใช้งาน" value={text(user.username)} />
-            <DetailItem label="LINE ID" value={text(user.line_id)} />
-            <div className="sm:col-span-2">
-              <DetailItem
-                action={
-                  <SensitiveValueToggleButton
-                    isVisible={isNationalIdVisible}
-                    label="เลขบัตร"
-                    onClick={toggleNationalId}
-                  />
-                }
-                label="เลขบัตรประชาชน"
-                value={text(displayedNationalId)}
-              />
-            </div>
+            <ReadOnlyField
+              id="user-detail-username"
+              label="ชื่อผู้ใช้งาน"
+              value={text(user.username)}
+            />
+            <ReadOnlyField
+              action={
+                <SensitiveValueToggleButton
+                  isVisible={isNationalIdVisible}
+                  label="เลขบัตร"
+                  onClick={toggleNationalId}
+                />
+              }
+              id="user-detail-national-id"
+              label="เลขบัตรประชาชน"
+              value={text(displayedNationalId)}
+            />
           </div>
         </div>
       </div>
@@ -220,7 +260,7 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
 
       {/* Same card as the form's กำหนดสิทธิ์การเข้าถึง, locked for viewing. */}
       <Card className="p-6">
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-5 flex items-center gap-2">
           <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
           <h2 className="text-lg font-bold text-slate-800">
             กำหนดสิทธิ์การเข้าถึง
@@ -239,12 +279,15 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
           ขอบเขตข้อมูล: {describeScope(user)}
         </p>
       </Card>
-
     </div>
   );
 }
 
-export function UserDetailPage() {
+export function UserDetailPage({
+  scope = "school",
+}: {
+  scope?: "school" | "council";
+}) {
   const { id: rawId } = useParams();
   const userId = parseUserId(rawId);
   const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
@@ -271,7 +314,11 @@ export function UserDetailPage() {
           <NavButton
             contextual
             icon={SquarePen}
-            to={`/manage-users/${userId}/edit`}
+            to={
+              query.data
+                ? getManageUserPath(query.data, "/edit")
+                : `${getManageUsersPath(scope)}/${userId}/edit`
+            }
           >
             แก้ไขผู้ใช้งาน
           </NavButton>
@@ -298,7 +345,14 @@ export function UserDetailPage() {
           }}
         />
       ) : query.data ? (
-        <UserDetailContent user={query.data} />
+        getUserRealm(query.data) !== scope ? (
+          <ErrorState
+            description="ผู้ใช้งานนี้ไม่อยู่ในขอบเขตของเส้นทางที่เลือก"
+            title="ขอบเขตบัญชีไม่ตรงกับเส้นทางนี้"
+          />
+        ) : (
+          <UserDetailContent user={query.data} />
+        )
       ) : (
         <ErrorState
           title="ไม่พบผู้ใช้งาน"

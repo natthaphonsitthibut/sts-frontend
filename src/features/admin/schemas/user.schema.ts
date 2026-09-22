@@ -25,7 +25,6 @@ export const userFormSchema = z
     email: optionalEmail.refine((value) => value.length > 0, {
       message: "กรุณากรอกอีเมล",
     }),
-    affiliation: z.string().trim().min(1, "กรุณากรอกสังกัด"),
     line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
     address_line: z.string().trim().max(255, "บ้านเลขที่ยาวเกินไป"),
     address_village_no: z.string().trim().max(100, "หมู่ยาวเกินไป"),
@@ -46,11 +45,18 @@ export const userFormSchema = z
     role: z.string().trim().min(1, "กรุณาเลือกบทบาท"),
   })
   .superRefine((values, context) => {
-    if ((values.address_latitude === null) !== (values.address_longitude === null)) {
+    if (
+      (values.address_latitude === null) !==
+      (values.address_longitude === null)
+    ) {
       context.addIssue({
         code: "custom",
         message: "กรุณาระบุ latitude และ longitude ให้ครบทั้งคู่",
-        path: [values.address_latitude === null ? "address_latitude" : "address_longitude"],
+        path: [
+          values.address_latitude === null
+            ? "address_latitude"
+            : "address_longitude",
+        ],
       });
     }
   });
@@ -65,7 +71,6 @@ export const EMPTY_USER_FORM: UserFormValues = {
   PersonID_Onec: "",
   phone: "",
   email: "",
-  affiliation: "",
   line_id: "",
   address_line: "",
   address_village_no: "",
