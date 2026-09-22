@@ -2,7 +2,10 @@ import { Menu } from "lucide-react";
 import type { MouseEventHandler, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { IconButton, StsLogo } from "../base";
-import type { MenuItem } from "../../features/auth/lib/permissions";
+import {
+  groupMenuItemsBySection,
+  type MenuItem,
+} from "../../features/auth/lib/permissions";
 import { cn } from "../../lib/utils";
 import { collectMenuRoutes } from "./menu-routes";
 import { SidebarNavItem } from "./SidebarNavItem";
@@ -116,16 +119,71 @@ export function AppBrand({
   );
 }
 
-export function SidebarMenuContent({
-  collapsed = false,
+/**
+ * "เมนูส่วนโรงเรียน" / "เมนูส่วนสภา" header — always expanded, by the owner's
+ * call (2026-09-22): unlike a `SidebarNavItem` group, this one never folds.
+ * It is a plain label over its items, not a control.
+ */
+function SidebarSectionGroup({
   items,
+  label,
+  menuRoutes,
   onNavigate,
 }: {
-  collapsed?: boolean;
   items: MenuItem[];
+  label: string;
+  menuRoutes: string[];
   onNavigate?: () => void;
 }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div className="flex min-h-8 items-center px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+      <div className="space-y-0.5 pt-0.5">
+        {items.map((item) => (
+          <SidebarNavItem
+            item={item}
+            key={item.id}
+            menuRoutes={menuRoutes}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SidebarMenuContent({
+  collapsed = false,
+  grouped = false,
+  items,
+  onNavigate,
+  userRoles = [],
+}: {
+  collapsed?: boolean;
+  /**
+   * Splits `items` into the "เมนูส่วนโรงเรียน" / "เมนูส่วนสภา" headed groups
+   * instead of one flat list. Only meaningful for the app's own
+   * permission-tagged catalog — a classroom link's own menu (passed as
+   * `items` from outside) carries no `section` tags, so it always renders
+   * flat regardless of this flag.
+   */
+  grouped?: boolean;
+  items: MenuItem[];
+  onNavigate?: () => void;
+  /** Which realm(s) to show at all — see `groupMenuItemsBySection`. */
+  userRoles?: string[];
+}) {
   const menuRoutes = collectMenuRoutes(items);
+  // Icon-only rail has no room for a text header, and there is nothing to
+  // collapse when every row is already just an icon — same flat list the
+  // sidebar always rendered.
+  const sectioned = grouped && !collapsed;
+  const { school, council } = sectioned
+    ? groupMenuItemsBySection(items, userRoles)
+    : { school: [], council: [] };
   return (
     <div className="flex h-full flex-col bg-white">
       <nav
@@ -138,17 +196,34 @@ export function SidebarMenuContent({
           "transition-[padding] duration-300 ease-out motion-reduce:transition-none",
         )}
       >
-        <div className="space-y-0.5">
-          {items.map((item) => (
-            <SidebarNavItem
-              collapsed={collapsed}
-              item={item}
-              key={item.id}
+        {sectioned ? (
+          <div className="space-y-3">
+            <SidebarSectionGroup
+              items={school}
+              label="เมนูส่วนโรงเรียน"
               menuRoutes={menuRoutes}
               onNavigate={onNavigate}
             />
-          ))}
-        </div>
+            <SidebarSectionGroup
+              items={council}
+              label="เมนูส่วนสภา"
+              menuRoutes={menuRoutes}
+              onNavigate={onNavigate}
+            />
+          </div>
+        ) : (
+          <div className="space-y-0.5">
+            {items.map((item) => (
+              <SidebarNavItem
+                collapsed={collapsed}
+                item={item}
+                key={item.id}
+                menuRoutes={menuRoutes}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        )}
       </nav>
     </div>
   );

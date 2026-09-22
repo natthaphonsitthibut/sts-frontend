@@ -20,44 +20,69 @@ import {
   Input,
   registerField,
 } from "../../../components/base";
-import type { StudentDetail } from "../types/students.types";
 import { studentsService } from "../api/students.service";
+import type { StudentDetail } from "../types/students.types";
 
-const schema = z.object({
-  newNationalId: z
-    .string()
-    .trim()
-    .regex(/^[0-9]{13}$/, "เลขบัตรประชาชนใหม่ต้องเป็นตัวเลข 13 หลัก"),
-});
+export type CorrectableStudentIdentifier = "NATIONAL_ID" | "PASSPORT";
 
-type FormValues = z.infer<typeof schema>;
-
-interface StudentNationalIdCorrectionDialogProps {
+interface StudentIdentifierCorrectionDialogProps {
+  identifierType: CorrectableStudentIdentifier;
   onCorrected: (student: StudentDetail) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   studentId: string;
 }
 
-const DEFAULT_VALUES: FormValues = { newNationalId: "" };
+const schema = z.object({ value: z.string().trim() });
+type FormValues = z.infer<typeof schema>;
+const DEFAULT_VALUES: FormValues = { value: "" };
 
-export function StudentNationalIdCorrectionDialog({
+export function StudentIdentifierCorrectionDialog({
+  identifierType,
   onCorrected,
   onOpenChange,
   open,
   studentId,
-}: StudentNationalIdCorrectionDialogProps) {
+}: StudentIdentifierCorrectionDialogProps) {
   const queryClient = useQueryClient();
+  const isNationalId = identifierType === "NATIONAL_ID";
+  const label = isNationalId ? "เลขบัตรประชาชน" : "เลขหนังสือเดินทาง";
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(
+      schema.superRefine((values, context) => {
+        if (isNationalId && !/^[0-9]{13}$/.test(values.value)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "เลขบัตรประชาชนใหม่ต้องเป็นตัวเลข 13 หลัก",
+            path: ["value"],
+          });
+        } else if (
+          !isNationalId &&
+          (values.value.length < 1 || values.value.length > 50)
+        ) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              values.value.length === 0
+                ? "กรุณาระบุเลขหนังสือเดินทางใหม่"
+                : "เลขหนังสือเดินทางยาวเกินไป",
+            path: ["value"],
+          });
+        }
+      }),
+    ),
     defaultValues: DEFAULT_VALUES,
   });
   const correction = useMutation({
-    meta: { successMessage: "แก้ไขเลขบัตรประชาชนแล้ว" },
+    meta: { successMessage: `แก้ไข${label}แล้ว` },
     mutationFn: (values: FormValues) =>
-      studentsService.correctStudentNationalId(studentId, {
-        newNationalId: values.newNationalId.trim(),
-      }),
+      isNationalId
+        ? studentsService.correctStudentNationalId(studentId, {
+            newNationalId: values.value.trim(),
+          })
+        : studentsService.correctStudentPassport(studentId, {
+            newPassportNumber: values.value.trim(),
+          }),
     onSuccess: async (student) => {
       queryClient.setQueryData(["student", studentId], student);
       await queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -81,12 +106,11 @@ export function StudentNationalIdCorrectionDialog({
     >
       <DialogContent className="w-[min(92vw,440px)]" onClose={closeDialog}>
         <DialogHeader>
-          <DialogTitle icon={IdCard}>แก้ไขเลขบัตรประชาชน</DialogTitle>
+          <DialogTitle icon={IdCard}>แก้ไข{label}</DialogTitle>
           <DialogDescription>
-            ระบบจะไม่แสดงหรือกรอกเลขบัตรเดิมให้ กรุณาระบุเลขบัตรใหม่เท่านั้น
+            ระบบจะไม่แสดงหรือกรอก{label}เดิมให้ กรุณาระบุ{label}ใหม่เท่านั้น
           </DialogDescription>
         </DialogHeader>
-
         <DialogBody>
           <Form
             form={form}
@@ -97,29 +121,28 @@ export function StudentNationalIdCorrectionDialog({
             <div className="space-y-4">
               <FormErrorAlert
                 error={correction.error}
-                fallback="ไม่สามารถแก้ไขเลขบัตรประชาชนได้ กรุณาลองอีกครั้ง"
+                fallback={`ไม่สามารถแก้ไข${label}ได้ กรุณาลองอีกครั้ง`}
               />
-
               <FormItem>
-                <FormLabel htmlFor="new-national-id" required>
-                  เลขบัตรประชาชนใหม่
+                <FormLabel htmlFor="student-identifier-value" required>
+                  {label}ใหม่
                 </FormLabel>
                 <Input
                   autoComplete="off"
-                  id="new-national-id"
-                  inputMode="numeric"
-                  maxLength={13}
-                  placeholder="กรอกตัวเลข 13 หลัก"
-                  {...registerField(form, "newNationalId")}
+                  id="student-identifier-value"
+                  inputMode={isNationalId ? "numeric" : "text"}
+                  maxLength={isNationalId ? 13 : 50}
+                  placeholder={
+                    isNationalId ? "กรอกตัวเลข 13 หลัก" : `กรอก${label}`
+                  }
+                  {...registerField(form, "value")}
                 />
-                <FormMessage<FormValues> name="newNationalId" />
+                <FormMessage<FormValues> name="value" />
               </FormItem>
-
               <p className="text-sm text-slate-500">
                 ผู้แก้ไข เวลา
                 และเหตุผลมาตรฐานของการแก้ไขจะถูกบันทึกในประวัติระบบโดยอัตโนมัติ
               </p>
-
               <DialogFooter>
                 <Button
                   disabled={correction.isPending}

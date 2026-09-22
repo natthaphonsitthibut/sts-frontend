@@ -238,7 +238,7 @@ export function StudentStatusesPage() {
               { label: "หมวด", sortKey: "category" },
               "นโยบาย",
               "ใช้งานอยู่",
-              "เครื่องมือ",
+              { isAction: true, label: "เครื่องมือ" },
             ]}
             minWidthClassName="min-w-[980px]"
             onSortChange={(next) => {

@@ -11,9 +11,8 @@ import {
   ErrorState,
   FilterSelect,
   PageShell,
-  PageToolbar,
+  ListPageToolbar,
   SkeletonStack,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import {
@@ -165,7 +164,7 @@ export function CurriculumSubjectsPage() {
   if (!schoolId || !gradeId) {
     return (
       <PageShell>
-        <PageToolbar title="จัดการข้อมูลหลักสูตร" />
+        <ListPageToolbar title="จัดการข้อมูลหลักสูตร" />
         <ErrorState
           description="กรุณากลับไปเลือกโรงเรียนและระดับชั้นจากหน้าหลักสูตร"
           onRetry={() => void navigate(CURRICULUM_PATH)}
@@ -178,8 +177,8 @@ export function CurriculumSubjectsPage() {
 
   return (
     <PageShell>
-      <PageToolbar
-        actions={
+      <ListPageToolbar
+        tableActions={
           <NavButton
             contextual
             disabled={!selectedTermId}
@@ -199,13 +198,7 @@ export function CurriculumSubjectsPage() {
           label: "จัดการข้อมูลหลักสูตร",
           to: CURRICULUM_PATH,
         }}
-        title={
-          gradeLabel
-            ? `จัดการข้อมูลหลักสูตร (${gradeLabel})`
-            : "จัดการข้อมูลหลักสูตร"
-        }
-      >
-        <ToolbarControls>
+        filters={
           <FilterSelect
             ariaLabel="เลือกภาคเรียน"
             className="sm:w-[260px]"
@@ -225,8 +218,13 @@ export function CurriculumSubjectsPage() {
               </option>
             ))}
           </FilterSelect>
-        </ToolbarControls>
-      </PageToolbar>
+        }
+        title={
+          gradeLabel
+            ? `จัดการข้อมูลหลักสูตร (${gradeLabel})`
+            : "จัดการข้อมูลหลักสูตร"
+        }
+      />
 
       <FormErrorAlert
         error={deleteSubject.error}

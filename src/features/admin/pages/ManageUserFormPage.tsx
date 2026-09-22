@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams, type To } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+  type To,
+} from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
@@ -7,6 +13,8 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   Card,
+  Alert,
+  AlertDescription,
   EMPTY_PHOTO_PICKER_VALUE,
   Form,
   FormErrorAlert,
@@ -42,8 +50,12 @@ import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
 import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { geoService } from "../../tasks/api/geo.service";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
-import { getScopeValidationError } from "../../auth/lib/scope-validation";
+import {
+  getScopeValidationError,
+  type ScopeRestrictions,
+} from "../../auth/lib/scope-validation";
 import type { DataScope } from "../../auth/lib/permissions";
+import { getManageUsersPath, getUserRealm } from "../lib/admin-presentation";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
@@ -83,7 +95,6 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
     PersonID_Onec: user.PersonID_Onec ?? "",
     phone: user.phone ?? "",
     email: user.email ?? "",
-    affiliation: user.affiliation ?? "",
     line_id: user.line_id ?? "",
     address_line: user.address_line ?? "",
     address_village_no: stripAddressPrefix("หมู่", user.address_village_no),
@@ -101,10 +112,21 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
 }
 
 function UserForm({
+  isCouncilRoute,
+  lockedSchoolId,
   user,
   rolesCatalog,
   returnPath,
 }: {
+  /**
+   * Carried from the school-scoped จัดการผู้ใช้งาน list's "เพิ่มผู้ใช้งาน"
+   * button (`?schoolId=`), same as TeacherFormPage's own `schoolId` — the
+   * school this account was created from, so the scope starts at that school
+   * and cannot drift from the selected school context.
+   */
+  lockedSchoolId?: number | null;
+  /** True on /council/manage-users/*, where school scope is not selectable. */
+  isCouncilRoute?: boolean;
   user: ManagedUser | null;
   rolesCatalog: RoleDefinition[];
   returnPath: To;
@@ -121,9 +143,32 @@ function UserForm({
   const [permissions, setPermissions] = useState<string[]>(
     user?.permissions ?? [],
   );
-  const [dataScope, setDataScope] = useState<DataScope>(user?.data_scope ?? {});
+  // School users are limited to one school and cannot retain grade/room scope
+  // under the owner decision. Legacy classroom scope is handled explicitly
+  // at submit time so it is never removed without confirmation.
+  const [dataScope, setDataScope] = useState<DataScope>(() => {
+    const initial =
+      user?.data_scope ??
+      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : {});
+    return {
+      ...initial,
+      ...(isCouncilRoute
+        ? {
+            school_ids: undefined,
+            grade_levels: undefined,
+            room_ids: undefined,
+          }
+        : { grade_levels: undefined, room_ids: undefined }),
+    };
+  });
   const [showScopeErrors, setShowScopeErrors] = useState(false);
+  const [pendingSubmitValues, setPendingSubmitValues] =
+    useState<UserFormValues | null>(null);
+  const [legacyScopeConfirmed, setLegacyScopeConfirmed] = useState(false);
   const { labelOf } = usePermissionCatalog();
+  const scopeRestrictions: ScopeRestrictions = isCouncilRoute
+    ? { disallowSchoolScope: true, disallowClassroomScope: true }
+    : { disallowClassroomScope: true, requireSchoolScope: true };
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
     resolver: zodResolver(userFormSchema),
@@ -160,6 +205,7 @@ function UserForm({
     dataScope,
     selectedRoleGroup?.label ?? selectedRole,
     selectedRoleGroup?.scope_policy,
+    scopeRestrictions,
   );
 
   function handleRoleChange(role: string): void {
@@ -176,11 +222,24 @@ function UserForm({
     void navigate(returnPath);
   }
 
+  const hasLegacyClassroomScope = Boolean(
+    user?.data_scope?.grade_levels?.length ||
+    user?.data_scope?.room_ids?.length,
+  );
+
   function handleSubmit(values: UserFormValues): void {
     if (scopeError) {
       setShowScopeErrors(true);
       return;
     }
+    if (isEdit && hasLegacyClassroomScope && !legacyScopeConfirmed) {
+      setPendingSubmitValues(values);
+      return;
+    }
+    persistUser(values);
+  }
+
+  function persistUser(values: UserFormValues): void {
     const role = values.role.trim();
     const password = values.password.trim();
     const payload: UserSavePayload = {
@@ -198,7 +257,6 @@ function UserForm({
       data_scope: dataScope,
       phone: values.phone.trim(),
       email: values.email.trim(),
-      affiliation: values.affiliation.trim(),
       line_id: values.line_id.trim(),
       address_line: values.address_line.trim(),
       address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
@@ -252,7 +310,7 @@ function UserForm({
     <>
       <Form form={form} onSubmit={handleSubmit}>
         <Card className="p-6">
-          <div className="mb-6 flex items-center gap-2">
+          <div className="mb-5 flex items-center gap-2">
             <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
             <h2 className="text-lg font-bold text-slate-800">ข้อมูลทั่วไป</h2>
           </div>
@@ -263,125 +321,134 @@ function UserForm({
             fallback="บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
           />
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
-            <PhotoPicker
-              disabled={saveUser.isPending}
-              label="รูปประจำตัวผู้ใช้งาน"
-              onChange={setPhoto}
-              storedUrl={resolveApiMediaUrl(user?.photo_url ?? null)}
-              value={photo}
-            />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
+            <div>
+              <FormLabel aria-hidden="true" className="invisible">
+                .
+              </FormLabel>
+              <PhotoPicker
+                disabled={saveUser.isPending}
+                label="รูปประจำตัวผู้ใช้งาน"
+                onChange={setPhoto}
+                storedUrl={resolveApiMediaUrl(user?.photo_url ?? null)}
+                value={photo}
+              />
+            </div>
 
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-              <FormItem>
-                <FormLabel htmlFor="FirstName" required>
-                  ชื่อ
-                </FormLabel>
-                <Input
-                  id="FirstName"
-                  placeholder="ระบุชื่อผู้ใช้งาน"
-                  {...registerField(form, "FirstName")}
-                />
-                <FormMessage<UserFormValues> name="FirstName" />
-              </FormItem>
+            {/* One grid per row, not one grid for the whole field list —
+                exact technique as AddressFormSection.tsx: no space-y on this
+                container, every row ends in a 28px FormMessage tail
+                (space-y-2's 8px + min-h-5's 20px), and every row after the
+                first cancels that with -mt-2 to net a 20px gap instead of
+                stacking a second gap on top of it. */}
+            <div className="self-start">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel htmlFor="FirstName" required>
+                    ชื่อ
+                  </FormLabel>
+                  <Input
+                    id="FirstName"
+                    placeholder="ระบุชื่อผู้ใช้งาน"
+                    {...registerField(form, "FirstName")}
+                  />
+                  <FormMessage<UserFormValues> name="FirstName" />
+                </FormItem>
 
-              <FormItem>
-                <FormLabel htmlFor="LastName" required>
-                  นามสกุล
-                </FormLabel>
-                <Input
-                  id="LastName"
-                  placeholder="ระบุนามสกุลผู้ใช้งาน"
-                  {...registerField(form, "LastName")}
-                />
-                <FormMessage<UserFormValues> name="LastName" />
-              </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="LastName" required>
+                    นามสกุล
+                  </FormLabel>
+                  <Input
+                    id="LastName"
+                    placeholder="ระบุนามสกุลผู้ใช้งาน"
+                    {...registerField(form, "LastName")}
+                  />
+                  <FormMessage<UserFormValues> name="LastName" />
+                </FormItem>
+              </div>
 
-              <FormItem>
-                <FormLabel htmlFor="email" required>
-                  อีเมล
-                </FormLabel>
-                <Input
-                  id="email"
-                  placeholder="example@gmail.com"
-                  type="email"
-                  {...registerField(form, "email")}
-                />
-                <FormMessage<UserFormValues> name="email" />
-              </FormItem>
+              <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel htmlFor="email" required>
+                    อีเมล
+                  </FormLabel>
+                  <Input
+                    id="email"
+                    placeholder="example@gmail.com"
+                    type="email"
+                    {...registerField(form, "email")}
+                  />
+                  <FormMessage<UserFormValues> name="email" />
+                </FormItem>
 
-              <FormItem>
-                <FormLabel htmlFor="phone" required>
-                  เบอร์โทรศัพท์
-                </FormLabel>
-                <NumericInput
-                  id="phone"
-                  maxLength={10}
-                  placeholder="XXXXXXXXXX"
-                  {...registerField(form, "phone")}
-                />
-                <FormMessage<UserFormValues> name="phone" />
-              </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="phone" required>
+                    เบอร์โทรศัพท์
+                  </FormLabel>
+                  <NumericInput
+                    id="phone"
+                    maxLength={10}
+                    placeholder="XXXXXXXXXX"
+                    {...registerField(form, "phone")}
+                  />
+                  <FormMessage<UserFormValues> name="phone" />
+                </FormItem>
+              </div>
 
-              <FormItem>
-                <FormLabel htmlFor="line_id">LINE ID</FormLabel>
-                <Input
-                  id="line_id"
-                  maxLength={64}
-                  placeholder="ระบุ LINE ID"
-                  {...registerField(form, "line_id")}
-                />
-                <FormMessage<UserFormValues> name="line_id" />
-              </FormItem>
+              <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel htmlFor="line_id">LINE ID</FormLabel>
+                  <Input
+                    id="line_id"
+                    maxLength={64}
+                    placeholder="ระบุ LINE ID"
+                    {...registerField(form, "line_id")}
+                  />
+                  <FormMessage<UserFormValues> name="line_id" />
+                </FormItem>
 
-              <FormItem>
-                <FormLabel htmlFor="PersonID_Onec" required>
-                  เลขบัตรประชาชน
-                </FormLabel>
-                <NumericInput
-                  id="PersonID_Onec"
-                  maxLength={13}
-                  placeholder="XXXXXXXXXXXXX"
-                  {...registerField(form, "PersonID_Onec")}
-                />
-                <FormMessage<UserFormValues> name="PersonID_Onec" />
-              </FormItem>
+                <FormItem>
+                  <FormLabel htmlFor="PersonID_Onec" required>
+                    เลขบัตรประชาชน
+                  </FormLabel>
+                  <NumericInput
+                    id="PersonID_Onec"
+                    maxLength={13}
+                    placeholder="XXXXXXXXXXXXX"
+                    {...registerField(form, "PersonID_Onec")}
+                  />
+                  <FormMessage<UserFormValues> name="PersonID_Onec" />
+                </FormItem>
+              </div>
 
-              <FormItem>
-                <FormLabel htmlFor="password" required={!isEdit}>
-                  {isEdit ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)" : "รหัสผ่าน"}
-                </FormLabel>
-                <PasswordInput
-                  id="password"
-                  placeholder="**********"
-                  {...registerField(form, "password")}
-                />
-                <FormMessage<UserFormValues> name="password" />
-              </FormItem>
+              <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel htmlFor="password" required={!isEdit}>
+                    {isEdit ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)" : "รหัสผ่าน"}
+                  </FormLabel>
+                  <PasswordInput
+                    id="password"
+                    placeholder="XXXXXXXXXX"
+                    {...registerField(form, "password")}
+                  />
+                  <FormMessage<UserFormValues> name="password" />
+                </FormItem>
+              </div>
 
-              <FormItem>
-                <FormLabel htmlFor="affiliation" required>
-                  สังกัด
-                </FormLabel>
-                <Input
-                  id="affiliation"
-                  placeholder="สังกัดหน่วยงาน"
-                  {...registerField(form, "affiliation")}
-                />
-                <FormMessage<UserFormValues> name="affiliation" />
-              </FormItem>
-
-              <FormItem>
-                <FormLabel htmlFor="username" required>
-                  ชื่อผู้ใช้งาน
-                </FormLabel>
-                <Input
-                  id="username"
-                  placeholder="ใช้สำหรับเข้าสู่ระบบ"
-                  {...registerField(form, "username")}
-                />
-                <FormMessage<UserFormValues> name="username" />
-              </FormItem>
+              <div className="-mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormItem>
+                  <FormLabel htmlFor="username" required>
+                    ชื่อผู้ใช้งาน
+                  </FormLabel>
+                  <Input
+                    id="username"
+                    placeholder="ใช้สำหรับเข้าสู่ระบบ"
+                    {...registerField(form, "username")}
+                  />
+                  <FormMessage<UserFormValues> name="username" />
+                </FormItem>
+              </div>
             </div>
           </div>
         </Card>
@@ -410,7 +477,7 @@ function UserForm({
         </div>
 
         <Card className="mt-6 p-6">
-          <div className="mb-6 flex items-center gap-2">
+          <div className="mb-5 flex items-center gap-2">
             <ShieldCheck className="size-5 text-slate-700" aria-hidden="true" />
             <h2 className="text-lg font-bold text-slate-800">
               กำหนดสิทธิ์การเข้าถึง
@@ -428,21 +495,58 @@ function UserForm({
           <FormMessage<UserFormValues> name="role" />
 
           {/* Pages are ticked inside the group above; this only sets which rows
-              the account may see. */}
-          {selectedRoleGroup ? (
-            <div className="mt-6">
-              <PermissionScopeEditor
-                dataScope={dataScope}
-                disabled={saveUser.isPending}
-                onDataScopeChange={setDataScope}
-                role={selectedRoleGroup.name}
-                roleLabel={selectedRoleGroup.label}
-                scopeMode={selectedRoleGroup.scope_mode}
-                scopePolicy={selectedRoleGroup.scope_policy}
-                showErrors={showScopeErrors}
-              />
-            </div>
-          ) : null}
+              the account may see. Shown before a role is picked too (owner,
+              2026-09-22: "ให้ scope มันขึ้นมาเลยไม่ต้องรอเลือก role ก่อน") —
+              the editor itself already has a "เลือกตำแหน่งก่อน" placeholder
+              for that state, it just needs an empty role rather than being
+              gated out here. */}
+          <div className="mt-6">
+            {pendingSubmitValues ? (
+              <Alert className="mb-4" variant="destructive">
+                <AlertDescription>
+                  บัญชีนี้มีขอบเขตระดับชั้นหรือห้องจากข้อมูลเดิม
+                  ซึ่งจะถูกนำออกตามกติกาผู้ใช้โรงเรียน
+                  กรุณายืนยันก่อนบันทึกการเปลี่ยนแปลง
+                  <span className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => {
+                        const values = pendingSubmitValues;
+                        setPendingSubmitValues(null);
+                        setLegacyScopeConfirmed(true);
+                        persistUser(values);
+                      }}
+                      size="sm"
+                      type="button"
+                    >
+                      ยืนยันการปรับขอบเขต
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setPendingSubmitValues(null);
+                        setLegacyScopeConfirmed(false);
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      ยกเลิก
+                    </Button>
+                  </span>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <PermissionScopeEditor
+              dataScope={dataScope}
+              disabled={saveUser.isPending}
+              onDataScopeChange={setDataScope}
+              role={selectedRoleGroup?.name ?? ""}
+              roleLabel={selectedRoleGroup?.label ?? ""}
+              scopeMode={selectedRoleGroup?.scope_mode ?? "global"}
+              scopePolicy={selectedRoleGroup?.scope_policy}
+              showErrors={showScopeErrors}
+              restrictions={scopeRestrictions}
+            />
+          </div>
         </Card>
 
         <FormActions>
@@ -475,25 +579,36 @@ function UserForm({
 export function ManageUserFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const safeBackTarget = useSafeBackTarget();
   const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const userId = id ? Number(id) : null;
   const returnPath =
-    searchParams.get("returnTo") === "/profile"
-      ? "/profile"
-      : safeBackTarget;
+    searchParams.get("returnTo") === "/profile" ? "/profile" : safeBackTarget;
+  const lockedSchoolId = Number(searchParams.get("schoolId")) || null;
+  const isCouncilRoute = location.pathname.startsWith("/council/");
   const {
     data: user = null,
     isLoading: isUserLoading,
     isError: isUserError,
   } = useUser(Number.isInteger(userId) ? userId : null);
+  const realmListPath = user
+    ? getManageUsersPath(getUserRealm(user))
+    : isCouncilRoute
+      ? "/council/manage-users"
+      : MANAGE_USERS_PATH;
   const {
     rolesCatalog,
     isLoading: isRolesLoading,
     isError: isRolesError,
     refetch: refetchRoles,
   } = useRolesCatalog();
+  const realmMismatch = Boolean(
+    isEdit &&
+    user &&
+    getUserRealm(user) !== (isCouncilRoute ? "council" : "school"),
+  );
 
   return (
     <PageShell>
@@ -520,12 +635,25 @@ export function ManageUserFormPage() {
       ) : isEdit && (isUserError || !user) ? (
         <ErrorState
           description="ไม่พบข้อมูลผู้ใช้งานที่ต้องการแก้ไข"
-          onRetry={() => void navigate(MANAGE_USERS_PATH)}
+          onRetry={() => void navigate(realmListPath)}
           retryLabel="กลับไปรายการผู้ใช้งาน"
           title="ไม่พบผู้ใช้งาน"
         />
+      ) : realmMismatch ? (
+        <ErrorState
+          description="ผู้ใช้งานนี้ไม่อยู่ในขอบเขตของเส้นทางที่เลือก จึงไม่สามารถแก้ไขจากหน้านี้ได้"
+          onRetry={() => void navigate(realmListPath)}
+          retryLabel="กลับไปรายการผู้ใช้งาน"
+          title="ขอบเขตบัญชีไม่ตรงกับเส้นทางนี้"
+        />
       ) : (
-        <UserForm returnPath={returnPath} rolesCatalog={rolesCatalog} user={user} />
+        <UserForm
+          isCouncilRoute={isCouncilRoute}
+          lockedSchoolId={isEdit ? null : lockedSchoolId}
+          returnPath={returnPath}
+          rolesCatalog={rolesCatalog}
+          user={user}
+        />
       )}
     </PageShell>
   );

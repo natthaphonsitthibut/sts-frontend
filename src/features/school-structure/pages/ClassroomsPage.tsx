@@ -7,10 +7,8 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
-  PageToolbar,
+  ListPageToolbar,
   PageShell,
-  SearchInput,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import {
@@ -165,16 +163,14 @@ export function ClassroomsPage() {
 
   return (
     <PageShell>
-      <PageToolbar title="ห้องเรียนทั้งหมด">
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[560px]"
-            onChange={setSearchInput}
-            placeholder="ค้นหา"
-            value={searchInput}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+      <ListPageToolbar
+        search={{
+          onChange: setSearchInput,
+          placeholder: "ค้นหา",
+          value: searchInput,
+        }}
+        title="ห้องเรียนทั้งหมด"
+      />
 
       {pageError ? (
         <ErrorState

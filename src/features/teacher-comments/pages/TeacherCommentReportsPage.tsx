@@ -112,7 +112,7 @@ export function TeacherCommentReportsPage() {
               "นักเรียน",
               "หัวข้อปัญหาและคำอธิบาย",
               "ผู้บันทึก",
-              { label: "เครื่องมือ", className: "text-center" },
+              { isAction: true, label: "เครื่องมือ", className: "text-center" },
             ]}
             minWidthClassName="min-w-[900px]"
             responsive={false}

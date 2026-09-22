@@ -58,13 +58,17 @@ import { usePermissionCatalog } from "../hooks/usePermissionCatalog";
 import { usePermissions } from "../hooks/usePermissions";
 import { nullableLatitude, nullableLongitude } from "../../../lib/validation";
 import { useTimedSensitiveReveal } from "../../../hooks/useTimedSensitiveReveal";
+import { getManageUserPath } from "../../admin/lib/admin-presentation";
 
 const PROFILE_QUERY_KEY = ["auth", "profile", "me"] as const;
 
 function withFreshPhotoUrl(user: AuthUser): AuthUser {
   if (!user.photo_url) return user;
   const separator = user.photo_url.includes("?") ? "&" : "?";
-  return { ...user, photo_url: `${user.photo_url}${separator}updated=${Date.now()}` };
+  return {
+    ...user,
+    photo_url: `${user.photo_url}${separator}updated=${Date.now()}`,
+  };
 }
 
 const profileSchema = z.object({
@@ -440,7 +444,10 @@ export function ProfilePage() {
 
           <Card className="p-6">
             <h2 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
-              <PersonIcon className="size-5 text-slate-700" aria-hidden="true" />
+              <PersonIcon
+                className="size-5 text-slate-700"
+                aria-hidden="true"
+              />
               ข้อมูลทั่วไป
             </h2>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
@@ -502,7 +509,10 @@ export function ProfilePage() {
                         แก้ไขได้ที่{" "}
                         <ContextLink
                           className="font-semibold text-primary underline-offset-4 hover:underline"
-                          to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
+                          to={getManageUserPath(
+                            profileUser,
+                            "/edit?returnTo=%2Fprofile",
+                          )}
                         >
                           หน้าแก้ไขผู้ใช้งาน
                         </ContextLink>
@@ -716,7 +726,10 @@ export function ProfilePage() {
                           แก้ไขได้ที่{" "}
                           <ContextLink
                             className="font-semibold text-primary underline-offset-4 hover:underline"
-                            to={`/manage-users/${profileUser.id}/edit?returnTo=%2Fprofile`}
+                            to={getManageUserPath(
+                              profileUser,
+                              "/edit?returnTo=%2Fprofile",
+                            )}
                           >
                             หน้าแก้ไขผู้ใช้งาน
                           </ContextLink>

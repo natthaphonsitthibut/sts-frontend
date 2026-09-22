@@ -8,11 +8,9 @@ import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
   ErrorState,
-  PageToolbar,
+  ListPageToolbar,
   PageShell,
-  SearchInput,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
@@ -34,7 +32,12 @@ import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchool
 
 const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
 
-export function ManageRoleGroupsPage() {
+export function ManageRoleGroupsPage({
+  scope = "school",
+}: {
+  scope?: "school" | "council";
+}) {
+  const isCouncil = scope === "council";
   const [searchParams] = useSearchParams();
   const deleteRoleGroup = useDeleteRoleGroup();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -87,13 +90,15 @@ export function ManageRoleGroupsPage() {
   // Falls back to the one school on offer even before it's explicitly
   // picked in the header — same "not a real choice" collapse every other
   // scope picker in the app already applies.
-  const selectedSchoolValue =
-    globalFilter.schoolId ||
-    (schools.length === 1 ? String(schools[0].id) : "");
+  const selectedSchoolValue = isCouncil
+    ? ""
+    : globalFilter.schoolId ||
+      (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(selectedSchoolValue) || null;
-  const selectedSchoolName =
-    globalFilter.schoolName ||
-    schools.find((school) => school.id === selectedSchoolId)?.name;
+  const selectedSchoolName = isCouncil
+    ? "สภา"
+    : globalFilter.schoolName ||
+      schools.find((school) => school.id === selectedSchoolId)?.name;
   // A school switch (from the header, or anywhere else) closes whatever
   // role-group dialog was open for the old school. `selectedSchoolId`
   // depends on the async `schoolsQuery` single-school fallback, so this must
@@ -118,18 +123,27 @@ export function ManageRoleGroupsPage() {
   });
   const query = useMemo<RoleGroupListQuery | null>(
     () =>
-      selectedSchoolId
+      isCouncil || selectedSchoolId
         ? {
             searchTerm: debouncedSearch || undefined,
             page,
             limit: rowsPerPage,
-            schoolId: selectedSchoolId,
+            ...(selectedSchoolId ? { schoolId: selectedSchoolId } : {}),
+            scope,
             sortBy:
               sort?.key === "menus" ? "menus" : sort ? "group" : undefined,
             sortDirection: sort?.direction,
           }
         : null,
-    [debouncedSearch, page, rowsPerPage, selectedSchoolId, sort],
+    [
+      debouncedSearch,
+      isCouncil,
+      page,
+      rowsPerPage,
+      scope,
+      selectedSchoolId,
+      sort,
+    ],
   );
 
   const { roleGroups, meta, isLoading, isError, refetch } =
@@ -152,16 +166,16 @@ export function ManageRoleGroupsPage() {
       confirmText: "ลบ",
       variant: "destructive",
     });
-    if (confirmed) deleteRoleGroup.mutate(roleGroup.name);
+    if (confirmed) deleteRoleGroup.mutate({ roleName: roleGroup.name, scope });
   }
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         actions={
           <Button
             disabled={
-              !selectedSchoolId ||
+              (!isCouncil && !selectedSchoolId) ||
               rolesCatalogLoading ||
               permissionCatalogLoading
             }
@@ -171,38 +185,44 @@ export function ManageRoleGroupsPage() {
             เพิ่มกลุ่มเมนู
           </Button>
         }
-        description="กรอกข้อมูลรายละเอียดผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ"
+        description={
+          isCouncil
+            ? "กำหนดกลุ่มเมนูสำหรับผู้ใช้งานสภา โดยไม่ผูกกับโรงเรียน"
+            : "กรอกข้อมูลรายละเอียดผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ"
+        }
+        search={{
+          onChange: handleSearchChange,
+          placeholder: "ค้นหา",
+          value: searchQuery,
+        }}
         title="จัดการกลุ่มเมนู"
-      >
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[560px]"
-            onChange={handleSearchChange}
-            placeholder="ค้นหา"
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
-      {schoolsQuery.isError || rolesCatalogError || permissionCatalogError ? (
+      {(!isCouncil && schoolsQuery.isError) ||
+      rolesCatalogError ||
+      permissionCatalogError ? (
         <ErrorState
-          description="ไม่สามารถโหลดข้อมูลโรงเรียนหรือสิทธิ์ที่จำเป็นสำหรับหน้านี้ได้"
+          description={
+            isCouncil
+              ? "ไม่สามารถโหลดสิทธิ์ที่จำเป็นสำหรับหน้านี้ได้"
+              : "ไม่สามารถโหลดข้อมูลโรงเรียนหรือสิทธิ์ที่จำเป็นสำหรับหน้านี้ได้"
+          }
           onRetry={() => {
-            void schoolsQuery.refetch();
+            if (!isCouncil) void schoolsQuery.refetch();
             refetchRolesCatalog();
             refetchPermissionCatalog();
           }}
           title="โหลดข้อมูลไม่สำเร็จ"
         />
-      ) : schoolsQuery.isLoading || permissionCatalogLoading ? (
+      ) : (!isCouncil && schoolsQuery.isLoading) || permissionCatalogLoading ? (
         <SkeletonTable />
-      ) : schools.length === 0 ? (
+      ) : !isCouncil && schools.length === 0 ? (
         <EmptyState
           description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
           icon={MENU_GROUPS_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
         />
-      ) : !selectedSchoolId ? (
+      ) : !isCouncil && !selectedSchoolId ? (
         <EmptyState
           description="เลือกโรงเรียนจากแถบด้านบนเพื่อแสดงกลุ่มเมนู"
           icon={MENU_GROUPS_ICON}
@@ -244,16 +264,20 @@ export function ManageRoleGroupsPage() {
       )}
 
       {dialogRoleGroup !== undefined &&
-      selectedSchoolId &&
+      (isCouncil || selectedSchoolId) &&
       selectedSchoolName ? (
         <RoleGroupDialog
-          key={dialogRoleGroup?.name ?? `new-${selectedSchoolId}`}
+          key={
+            dialogRoleGroup?.name ??
+            `new-${scope}-${selectedSchoolId ?? "global"}`
+          }
           onOpenChange={(open) => {
             if (!open) setDialogRoleGroup(undefined);
           }}
           roleGroup={dialogRoleGroup}
           schoolId={selectedSchoolId}
           schoolName={selectedSchoolName}
+          scope={scope}
         />
       ) : null}
 

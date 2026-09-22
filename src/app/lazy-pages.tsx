@@ -109,6 +109,11 @@ export const ManageRoleGroupsPage = lazy(() =>
     default: module.ManageRoleGroupsPage,
   })),
 );
+export const ManageSchoolsPage = lazy(() =>
+  import("../features/admin/pages/ManageSchoolsPage").then((module) => ({
+    default: module.ManageSchoolsPage,
+  })),
+);
 export const ManageRoleGroupFormPage = lazy(() =>
   import("../features/admin/pages/ManageRoleGroupFormPage").then((module) => ({
     default: module.ManageRoleGroupFormPage,

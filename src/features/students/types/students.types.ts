@@ -219,6 +219,10 @@ export interface StudentNationalIdCorrectionPayload {
   newNationalId: string;
 }
 
+export interface StudentPassportCorrectionPayload {
+  newPassportNumber: string;
+}
+
 export type StudentPiiField = "PersonID_Onec" | "PassportNumber_Onec";
 
 export type StudentPiiFieldGroup = "NATIONAL_ID" | "PASSPORT";

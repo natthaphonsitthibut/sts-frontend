@@ -10,7 +10,11 @@ import {
 } from "../../../components/layout/data-table";
 import { resolveApiMediaUrl } from "../../../lib/media-url";
 import { ContextLink } from "../../../components/layout/context-link";
-import { getUserDisplayName, getUserRoleText } from "../lib/admin-presentation";
+import {
+  getManageUserPath,
+  getUserDisplayName,
+  getUserRoleText,
+} from "../lib/admin-presentation";
 import type { ManagedUser } from "../types/admin.types";
 
 interface UserTableProps {
@@ -51,7 +55,7 @@ function UserIdentity({
     return (
       <ContextLink
         className="group flex min-w-0 items-center gap-3 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40"
-        to={user.id === currentUserId ? "/profile" : `/manage-users/${user.id}`}
+        to={user.id === currentUserId ? "/profile" : getManageUserPath(user)}
       >
         {content}
       </ContextLink>
@@ -74,7 +78,7 @@ function RowActions({
   const isDeactivating = deactivatingUserId === (user.id ?? -1);
   const displayName = getUserDisplayName(user);
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex items-center justify-center gap-1">
       <IconButton
         aria-label={`แก้ไขผู้ใช้งาน ${displayName}`}
         disabled={isDeactivating}
@@ -112,7 +116,7 @@ export function UserTable({
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
           { label: "สถานะ", sortKey: "role" },
           { label: "สังกัด", sortKey: "affiliation" },
-          "เครื่องมือ",
+          { isAction: true, label: "เครื่องมือ" },
         ]}
         columnWidths={["w-[8%]", "w-[30%]", "w-[18%]", "w-[30%]", "w-[14%]"]}
         minWidthClassName="min-w-[900px]"

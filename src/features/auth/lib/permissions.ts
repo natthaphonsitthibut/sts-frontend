@@ -31,6 +31,8 @@ export interface MenuItem {
   children?: MenuItem[];
   scopePolicy?: "global-only";
   rolePolicy?: "ADMIN";
+  /** Which sidebar realm a top-level item belongs under. */
+  section?: "school" | "council";
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -93,16 +95,23 @@ const pageMenuItem = (
 });
 
 export const MENU_ITEMS: MenuItem[] = [
-  pageMenuItem("home", "/"),
-  pageMenuItem("dashboard", "/student-risk-report"),
-  pageMenuItem("students", "/students"),
-  pageMenuItem("teachers", "/teachers"),
-  pageMenuItem("classrooms", "/classrooms"),
-  pageMenuItem("nl_query:use", "/nl-query"),
+  // Owner override (2026-09-22): "หน้าหลักให้เป็นเมนูส่วน รร นะ" — a plain
+  // school-section item. A pure EXECUTIVE
+  // account (COUNCIL_SECTION_ROLES only) loses the sidebar link for it, but
+  // keeps ถามข้อมูลด้วยภาษาไทย under เมนูส่วนสภา and still lands on a working
+  // route on sign-in either way (routing doesn't depend on the sidebar) — a
+  // cosmetic gap, not a dead end.
+  { ...pageMenuItem("home", "/"), section: "school" },
+  { ...pageMenuItem("dashboard", "/student-risk-report"), section: "school" },
+  { ...pageMenuItem("students", "/students"), section: "school" },
+  { ...pageMenuItem("teachers", "/teachers"), section: "school" },
+  { ...pageMenuItem("classrooms", "/classrooms"), section: "school" },
+  { ...pageMenuItem("nl_query:use", "/nl-query"), section: "council" },
   {
     id: "data-management",
     label: "จัดการข้อมูล",
     iconName: "file-spreadsheet",
+    section: "school",
     children: [
       {
         ...pageMenuItem("manage-school-structure", "/school-structure"),
@@ -132,6 +141,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "attendance-system",
     label: "ระบบเช็กชื่อ",
     iconName: "calendar-check",
+    section: "school",
     children: [
       {
         ...pageMenuItem("attendance", "/attendance"),
@@ -148,6 +158,9 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "manage-users",
     label: "จัดการสิทธิ์ผู้ใช้งาน",
     iconName: "users-cog",
+    // นักเรียน/ครู เป็นของโรงเรียนอย่างเดียว (owner, 2026-09-22) — this group
+    // stays school-only; the council side gets its own group below.
+    section: "school",
     children: [
       {
         ...pageMenuItem("manage-students", "/manage-students"),
@@ -163,8 +176,89 @@ export const MENU_ITEMS: MenuItem[] = [
       },
     ],
   },
-  pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
+  {
+    id: "manage-users-council",
+    label: "จัดการสิทธิ์ผู้ใช้งาน",
+    iconName: "users-cog",
+    // Council's own "จัดการผู้ใช้งาน"/"จัดการกลุ่มเมนู" (owner, 2026-09-22:
+    // "สภา น่าจะมีแค่ ผู้ใช้งาน กับ กลุ่มเมนู") — aliased under /council/... so
+    // this is a genuinely separate destination from the school group above,
+    // not the same link lit up active in both sections at once. Same pages,
+    // same permissions; each already scopes its data to the viewer's own
+    // data_scope, so a council-scoped account sees its wider scope here and a
+    // school-scoped account sees the school one above.
+    section: "council",
+    children: [
+      {
+        id: "manage-users-list-council",
+        label: "จัดการผู้ใช้งาน",
+        iconName: "users",
+        permissionId: "manage-users-list",
+        route: "/council/manage-users",
+      },
+      {
+        id: "manage-role-groups-council",
+        label: "จัดการกลุ่มเมนู",
+        iconName: "users-cog",
+        permissionId: "manage-role-groups",
+        route: "/council/manage-role-groups",
+      },
+    ],
+  },
+  {
+    ...pageMenuItem(
+      "manage-schools",
+      "/manage-schools",
+      undefined,
+      "global-only",
+      "ADMIN",
+    ),
+    section: "council",
+  },
+  {
+    ...pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
+    section: "council",
+  },
 ];
+
+// Which roles get which sidebar realm at all — the owner's spec (2026-09-22):
+// "สภา (ผู้ดูแลระบบ, ผู้บริหาร) โรงเรียน (ผู้ดูแลระบบ, ผอ.) default ไว้เท่านี้"
+// This is coarser than, and on top of, the existing per-item permission
+// filtering below: a DIRECTOR holds `manage-users-list` (their own school
+// needs it) which happens to be the same permission id the council group's
+// "จัดการผู้ใช้งาน" child checks, so permission filtering alone would leak
+// "เมนูส่วนสภา" into a DIRECTOR's sidebar. This role gate is what keeps a
+// realm hidden for a role that was never meant to see it, regardless of which
+// individual permissions that account happens to carry.
+const SCHOOL_SECTION_ROLES = ["ADMIN", "DIRECTOR"];
+const COUNCIL_SECTION_ROLES = ["ADMIN", "EXECUTIVE"];
+
+/**
+ * Splits the already permission-filtered menu into the two sidebar realms.
+ * `home` is a plain school-section item (owner, 2026-09-22) — it does not get
+ * special-cased here.
+ */
+export function groupMenuItemsBySection(
+  filteredItems: MenuItem[],
+  userRoles: string[] = [],
+): {
+  school: MenuItem[];
+  council: MenuItem[];
+} {
+  const showSchool = userRoles.some((role) =>
+    SCHOOL_SECTION_ROLES.includes(role),
+  );
+  const showCouncil = userRoles.some((role) =>
+    COUNCIL_SECTION_ROLES.includes(role),
+  );
+  const school: MenuItem[] = [];
+  const council: MenuItem[] = [];
+  for (const item of filteredItems) {
+    if (showSchool && item.section === "school") school.push(item);
+    if (showCouncil && item.section === "council") council.push(item);
+  }
+  return { school, council };
+}
 
 /**
  * What the account may open, as the server granted it.

@@ -50,16 +50,17 @@ export function useRoleGroups(
 interface SaveRoleGroupVariables {
   originalName: string | null;
   payload: RoleGroupForm;
+  scope?: "school" | "council";
 }
 
 export function useSaveRoleGroup() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, SaveRoleGroupVariables>({
-    mutationFn: ({ originalName, payload }) =>
+    mutationFn: ({ originalName, payload, scope }) =>
       originalName
-        ? adminService.updateRoleGroup(originalName, payload)
-        : adminService.createRoleGroup(payload),
+        ? adminService.updateRoleGroup(originalName, payload, scope)
+        : adminService.createRoleGroup(payload, scope),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [ROLE_GROUPS_QUERY_KEY] });
     },
@@ -69,8 +70,13 @@ export function useSaveRoleGroup() {
 export function useDeleteRoleGroup() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string>({
-    mutationFn: (roleName) => adminService.deleteRoleGroup(roleName),
+  return useMutation<
+    void,
+    Error,
+    { roleName: string; scope?: "school" | "council" }
+  >({
+    mutationFn: ({ roleName, scope }) =>
+      adminService.deleteRoleGroup(roleName, scope),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [ROLE_GROUPS_QUERY_KEY] });
     },

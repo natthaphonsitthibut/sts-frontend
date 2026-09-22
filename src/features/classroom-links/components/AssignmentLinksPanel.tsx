@@ -39,7 +39,7 @@ const HEADINGS = [
   "วันเริ่ม",
   "วันหมดอายุ",
   "สถานะ",
-  "เครื่องมือ",
+  { isAction: true, label: "เครื่องมือ" },
 ] as const;
 
 const STATUS_LABELS = {

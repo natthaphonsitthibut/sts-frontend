@@ -48,8 +48,10 @@ function SidebarContent({
   return (
     <SidebarMenuContent
       collapsed={collapsed}
+      grouped={items === undefined}
       items={items ?? filteredMenuItems}
       onNavigate={onNavigate}
+      userRoles={user?.roles ?? []}
     />
   );
 }

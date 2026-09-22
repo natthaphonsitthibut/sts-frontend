@@ -107,7 +107,7 @@ export function TeacherTable({
           { label: "เบอร์โทรศัพท์", sortKey: "phone" },
           { label: "ไอดีไลน์", sortKey: "lineId" },
           { label: "อีเมล", sortKey: "email" },
-          ...(management ? ["เครื่องมือ"] : []),
+          ...(management ? [{ isAction: true, label: "เครื่องมือ" }] : []),
         ]}
         // Widths total 100% per variant: a shorter total leaves the fixed-layout
         // table narrower than its shell, which cuts the header bar and row rules

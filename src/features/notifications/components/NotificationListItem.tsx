@@ -179,28 +179,39 @@ export function NotificationListItem({
           )}
         </span>
       </button>
-      {expandable && expanded ? (
+      {expandable ? (
         <div
+          aria-hidden={!expanded}
           className={cn(
-            "border-t border-slate-200 px-4 pb-4 pt-3",
-            centerPresentation && "px-6 pb-5 pt-4",
-            "bg-white",
+            "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
+          inert={!expanded}
         >
-          {body ? (
-            <p className="text-sm text-content-secondary">{body}</p>
-          ) : null}
-          {onOpenRelated ? (
-            <Button
-              className="mt-3"
-              icon={ExternalLink}
-              onClick={() => onOpenRelated(notification)}
-              size="sm"
-              variant="outline"
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                "border-t border-slate-200 px-4 pb-4 pt-3",
+                centerPresentation && "px-6 pb-5 pt-4",
+                "bg-white",
+              )}
             >
-              ไปยังหน้าที่เกี่ยวข้อง
-            </Button>
-          ) : null}
+              {body ? (
+                <p className="text-sm text-content-secondary">{body}</p>
+              ) : null}
+              {onOpenRelated ? (
+                <Button
+                  className="mt-3"
+                  icon={ExternalLink}
+                  onClick={() => onOpenRelated(notification)}
+                  size="sm"
+                  variant="outline"
+                >
+                  ไปยังหน้าที่เกี่ยวข้อง
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </li>

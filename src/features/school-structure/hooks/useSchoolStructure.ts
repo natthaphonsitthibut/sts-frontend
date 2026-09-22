@@ -10,6 +10,10 @@ import type {
   UpdateClassroomPresentationInput,
 } from "../types/school-structure.types";
 import type {
+  AdminSchoolListParams,
+  SaveSchoolInput,
+} from "../types/school-structure.types";
+import type {
   ClassroomRosterListParams,
   ClassroomAttendanceHistoryParams,
   SchoolClassroomListParams,
@@ -22,6 +26,81 @@ export function useScopedSchools() {
   return useQuery({
     queryKey: [KEY, "schools"],
     queryFn: schoolStructureService.listSchools,
+  });
+}
+
+export function useAdminSchools(params: AdminSchoolListParams) {
+  return useQuery({
+    queryKey: [KEY, "admin-schools", params],
+    queryFn: () => schoolStructureService.listAdminSchools(params),
+  });
+}
+
+export function useAdministrativeProvinces() {
+  return useQuery({
+    queryKey: [KEY, "administrative-provinces"],
+    queryFn: schoolStructureService.listAdministrativeProvinces,
+  });
+}
+
+export function useAdministrativeDistricts(province: string) {
+  return useQuery({
+    queryKey: [KEY, "administrative-districts", province],
+    queryFn: () => schoolStructureService.listAdministrativeDistricts(province),
+    enabled: Boolean(province),
+  });
+}
+
+export function useAdministrativeSubDistricts(
+  province: string,
+  district: string,
+) {
+  return useQuery({
+    queryKey: [KEY, "administrative-sub-districts", province, district],
+    queryFn: () =>
+      schoolStructureService.listAdministrativeSubDistricts(province, district),
+    enabled: Boolean(province && district),
+  });
+}
+
+export function useCreateSchool() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveSchoolInput) =>
+      schoolStructureService.createSchool(input),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "admin-schools"] }),
+        client.invalidateQueries({ queryKey: [KEY, "schools"] }),
+      ]);
+    },
+  });
+}
+
+export function useUpdateSchool() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: SaveSchoolInput }) =>
+      schoolStructureService.updateSchool(id, input),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "admin-schools"] }),
+        client.invalidateQueries({ queryKey: [KEY, "schools"] }),
+      ]);
+    },
+  });
+}
+
+export function useDeactivateSchool() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => schoolStructureService.deactivateSchool(id),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [KEY, "admin-schools"] }),
+        client.invalidateQueries({ queryKey: [KEY, "schools"] }),
+      ]);
+    },
   });
 }
 

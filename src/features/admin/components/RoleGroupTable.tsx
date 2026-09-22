@@ -1,5 +1,5 @@
 import { SquarePen, Trash2 } from "lucide-react";
-import { IconButton } from "../../../components/base";
+import { Badge, IconButton } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -35,7 +35,7 @@ export function RoleGroupTable({
       headings={[
         { label: "กลุ่มเมนู", sortKey: "group" },
         { label: "เมนู", sortKey: "menus" },
-        { label: "เครื่องมือ", className: "text-right" },
+        { isAction: true, label: "เครื่องมือ" },
       ]}
       minWidthClassName="min-w-[640px]"
       onSortChange={onSortChange}
@@ -62,21 +62,25 @@ export function RoleGroupTable({
             <DataTableCell className="whitespace-normal leading-6 text-slate-700">
               {menuLabels.length > 0 ? menuLabels.join(", ") : "-"}
             </DataTableCell>
-            <DataTableCell>
-              <div className="flex items-center justify-end gap-1">
-                <IconButton
-                  aria-label={`แก้ไขกลุ่มเมนู ${role.label || role.name}`}
-                  icon={SquarePen}
-                  onClick={() => onEdit(role)}
-                  variant="edit"
-                />
-                <IconButton
-                  aria-label={`ลบกลุ่มเมนู ${role.label || role.name}`}
-                  icon={Trash2}
-                  onClick={() => onDelete(role)}
-                  variant="delete"
-                />
-              </div>
+            <DataTableCell className="text-center">
+              {role.is_system ? (
+                <Badge variant="secondary">ค่าเริ่มต้น</Badge>
+              ) : (
+                <div className="flex items-center justify-center gap-1">
+                  <IconButton
+                    aria-label={`แก้ไขกลุ่มเมนู ${role.label || role.name}`}
+                    icon={SquarePen}
+                    onClick={() => onEdit(role)}
+                    variant="edit"
+                  />
+                  <IconButton
+                    aria-label={`ลบกลุ่มเมนู ${role.label || role.name}`}
+                    icon={Trash2}
+                    onClick={() => onDelete(role)}
+                    variant="delete"
+                  />
+                </div>
+              )}
             </DataTableCell>
           </DataTableRow>
         );

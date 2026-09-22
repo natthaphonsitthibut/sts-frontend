@@ -385,7 +385,7 @@ export interface RoleDefinition {
 }
 
 export interface RoleGroupForm {
-  schoolId: number;
+  schoolId?: number;
   name?: string;
   label: string;
   scope_mode?: RoleScopeMode;
@@ -396,7 +396,8 @@ export interface RoleGroupListQuery {
   searchTerm?: string;
   page: number;
   limit: number;
-  schoolId: number;
+  schoolId?: number;
+  scope?: "school" | "council";
   sortBy?: "group" | "menus";
   sortDirection?: "asc" | "desc";
 }

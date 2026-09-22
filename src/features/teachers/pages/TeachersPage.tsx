@@ -10,10 +10,8 @@ import {
   EmptyState,
   ErrorState,
   PageShell,
-  PageToolbar,
-  SearchInput,
+  ListPageToolbar,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
@@ -156,7 +154,7 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         actions={
           management ? (
             <NavButton
@@ -177,17 +175,13 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
             : "ดูข้อมูลและช่องทางติดต่อคุณครูของโรงเรียน"
         }
         icon={TEACHERS_ICON}
+        search={{
+          onChange: handleSearchChange,
+          placeholder: "ค้นหา",
+          value: searchQuery,
+        }}
         title={management ? "จัดการข้อมูลครู" : "รายชื่อครู"}
-      >
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[560px]"
-            onChange={handleSearchChange}
-            placeholder="ค้นหา"
-            value={searchQuery}
-          />
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
       <FormErrorAlert
         error={deactivateTeacher.error}

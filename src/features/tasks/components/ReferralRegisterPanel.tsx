@@ -195,7 +195,7 @@ export function ReferralRegisterPanel({
                   "หน่วยงานที่ส่งต่อ",
                   { label: "สถานะการส่งต่อ", className: "text-center" },
                   "วันที่ส่งต่อ",
-                  "เครื่องมือ",
+                  { isAction: true, label: "เครื่องมือ" },
                 ]}
                 minWidthClassName="min-w-[960px]"
               >

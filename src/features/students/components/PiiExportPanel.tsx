@@ -616,7 +616,7 @@ export function PiiExportPanel(props: PiiExportPanelProps) {
             "เหตุผล",
             "จำนวน",
             "หมดอายุ/ดาวน์โหลด",
-            "เครื่องมือ",
+            { isAction: true, label: "เครื่องมือ" },
           ]}
           minWidthClassName="min-w-[1040px]"
           responsive={false}

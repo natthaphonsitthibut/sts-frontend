@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { School } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { Combobox, FormErrorAlert, Select } from "../../../components/base";
+import { FormErrorAlert, Select } from "../../../components/base";
 import {
   EmptyState,
   PageShell,
@@ -16,27 +16,69 @@ import {
   useSchoolClassroomOptions,
   useScopedSchools,
 } from "../../school-structure/hooks/useSchoolStructure";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { CheckInWorkspace } from "../components/CheckInWorkspace";
-import {
-  SCOPE_REQUIRED_LABEL,
-  formatSchoolArea,
-} from "../../../lib/scope-presentation";
+import { SCOPE_REQUIRED_LABEL } from "../../../lib/scope-presentation";
 
 export function InternalCheckInPage() {
   const [searchParams] = useSearchParams();
-  const schoolsQuery = useScopedSchools();
-  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
-  const [schoolInput, setSchoolInput] = useState(
-    () => searchParams.get("schoolId") ?? "",
-  );
+  const globalFilter = useGlobalSchoolFilter();
   const [gradeInput, setGradeInput] = useState(
     () => searchParams.get("gradeId") ?? "",
   );
   const [classroomInput, setClassroomInput] = useState(
     () => searchParams.get("classroomId") ?? "",
   );
-  const schoolId =
-    Number(schools.length === 1 ? schools[0]?.id : schoolInput) || null;
+  const schoolId = Number(globalFilter.schoolId) || null;
+  const urlSchoolId = searchParams.get("schoolId") ?? "";
+  const urlSchoolConsumed = useRef(false);
+  const [urlSchoolPending, setUrlSchoolPending] = useState(
+    () => Boolean(urlSchoolId) && !globalFilter.locked,
+  );
+  const schoolsQuery = useScopedSchools();
+  const urlSchool = schoolsQuery.data?.find(
+    (school) => String(school.id) === urlSchoolId,
+  );
+  useEffect(() => {
+    if (
+      urlSchoolConsumed.current ||
+      !urlSchoolId ||
+      globalFilter.locked ||
+      (schoolsQuery.isLoading && !globalFilter.schoolName)
+    ) {
+      return;
+    }
+    urlSchoolConsumed.current = true;
+    globalFilter.setSchool(
+      urlSchoolId,
+      urlSchool?.name ?? globalFilter.schoolName,
+      {
+        province: urlSchool?.province ?? globalFilter.province,
+        district: urlSchool?.district ?? globalFilter.district,
+        subDistrict: urlSchool?.subDistrict ?? globalFilter.subDistrict,
+      },
+    );
+  }, [globalFilter, schoolsQuery.isLoading, urlSchool, urlSchoolId]);
+  // A school switch from the header makes any grade/room already picked
+  // here stale — the same reset the removed local school-change handler
+  // used to do inline.
+  const [lastSchoolIdForReset, setLastSchoolIdForReset] = useState(
+    Number(urlSchoolId) || schoolId,
+  );
+  const urlSchoolMatched =
+    Boolean(urlSchoolId) && String(schoolId ?? "") === urlSchoolId;
+  if (urlSchoolPending && urlSchoolMatched) {
+    setUrlSchoolPending(false);
+    setLastSchoolIdForReset(schoolId);
+  }
+  const preservingUrlSchool = Boolean(
+    urlSchoolId && urlSchoolPending && !urlSchoolMatched,
+  );
+  if (schoolId !== lastSchoolIdForReset && !preservingUrlSchool) {
+    setLastSchoolIdForReset(schoolId);
+    if (gradeInput) setGradeInput("");
+    if (classroomInput) setClassroomInput("");
+  }
   const termsQuery = useQuery({
     queryKey: ["internal-check-in", "terms", schoolId],
     queryFn: () => attendanceService.getTerms(schoolId!),
@@ -73,7 +115,6 @@ export function InternalCheckInPage() {
     (classroom) => String(classroom.id) === classroomInput,
   );
   useSyncedSearchParams({
-    schoolId: schools.length > 1 ? schoolInput || undefined : undefined,
     gradeId: gradeInput || undefined,
     classroomId: classroomInput || undefined,
   });
@@ -83,88 +124,71 @@ export function InternalCheckInPage() {
       <PageToolbar title="เช็กชื่อ" />
       <FormErrorAlert
         className="mb-4"
-        error={schoolsQuery.error ?? termsQuery.error ?? classroomsQuery.error}
+        error={termsQuery.error ?? classroomsQuery.error}
         fallback="โหลดตัวเลือกห้องเรียนไม่สำเร็จ"
       />
-      <div className="mb-5">
-        <ScopeFilterField
-          editable={schools.length > 1 || Boolean(activeTerm)}
-          emptyLabel="ยังไม่เลือกห้องเรียน"
-          scope={{
-            schoolName: schools.find(
-              (school) => String(school.id) === String(schoolId ?? ""),
-            )?.name,
-            grade: gradeOptions.find(
-              ([gradeLevelId]) => String(gradeLevelId) === gradeInput,
-            )?.[1],
-            room: selectedClassroom
-              ? (selectedClassroom.roomName ??
-                formatRoomLabel(selectedClassroom.roomCode))
-              : "",
-          }}
-        >
-          {/* One school is not a choice — the scope field's summary already
-              names it, so the picker is offered only when there is something to
-              pick between. */}
-          {schools.length > 1 ? (
+      {schoolId ? (
+        <div className="mb-5">
+          <ScopeFilterField
+            editable={Boolean(activeTerm)}
+            emptyLabel="ยังไม่เลือกห้องเรียน"
+            label="ชั้น/ห้อง"
+            scope={{
+              grade: gradeOptions.find(
+                ([gradeLevelId]) => String(gradeLevelId) === gradeInput,
+              )?.[1],
+              room: selectedClassroom
+                ? (selectedClassroom.roomName ??
+                  formatRoomLabel(selectedClassroom.roomCode))
+                : "",
+            }}
+          >
             <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              โรงเรียน
-              <Combobox
-                ariaLabel="โรงเรียน"
-                onChange={(value) => {
-                  setSchoolInput(value);
-                  setGradeInput("");
+              ชั้น
+              <Select
+                aria-label="ชั้น"
+                disabled={!activeTerm}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setGradeInput(value);
                   setClassroomInput("");
                 }}
-                options={schools.map((school) => ({
-                  value: String(school.id),
-                  label: school.name,
-                  description: formatSchoolArea(school),
-                }))}
-                placeholder="ค้นหาโรงเรียน"
-                value={schoolId ? String(schoolId) : ""}
-              />
+                value={gradeInput}
+              >
+                <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
+                {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
+                  <option key={gradeLevelId} value={String(gradeLevelId)}>
+                    {gradeLabel}
+                  </option>
+                ))}
+              </Select>
             </label>
-          ) : null}
-          <label className="grid gap-1 text-sm font-semibold text-slate-700">
-            ชั้น
-            <Select
-              aria-label="ชั้น"
-              disabled={!activeTerm}
-              onChange={(event) => {
-                const value = event.target.value;
-                setGradeInput(value);
-                setClassroomInput("");
-              }}
-              value={gradeInput}
-            >
-              <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
-              {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
-                <option key={gradeLevelId} value={String(gradeLevelId)}>
-                  {gradeLabel}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-slate-700">
-            ห้อง
-            <Select
-              aria-label="ห้อง"
-              disabled={!gradeInput}
-              onChange={(event) => setClassroomInput(event.target.value)}
-              value={classroomInput}
-            >
-              <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
-              {roomOptions.map((classroom) => (
-                <option key={classroom.id} value={String(classroom.id)}>
-                  {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
-                </option>
-              ))}
-            </Select>
-          </label>
-        </ScopeFilterField>
-      </div>
-      {!activeTerm && schoolId ? (
+            <label className="grid gap-1 text-sm font-semibold text-slate-700">
+              ห้อง
+              <Select
+                aria-label="ห้อง"
+                disabled={!gradeInput}
+                onChange={(event) => setClassroomInput(event.target.value)}
+                value={classroomInput}
+              >
+                <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
+                {roomOptions.map((classroom) => (
+                  <option key={classroom.id} value={String(classroom.id)}>
+                    {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </ScopeFilterField>
+        </div>
+      ) : null}
+      {!schoolId ? (
+        <EmptyState
+          icon={School}
+          title="เลือกโรงเรียน"
+          description="เลือกโรงเรียนจากแถบด้านบนเพื่อเริ่มเช็กชื่อ"
+        />
+      ) : !activeTerm ? (
         <EmptyState
           icon={School}
           title="ยังไม่มีภาคเรียนที่เปิดใช้งาน"

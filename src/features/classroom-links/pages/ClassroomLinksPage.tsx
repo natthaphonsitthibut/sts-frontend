@@ -35,11 +35,9 @@ import {
   EmptyState,
   ErrorState,
   FilterSelect,
+  ListPageToolbar,
   PageShell,
-  PageToolbar,
-  SearchInput,
   SkeletonTable,
-  ToolbarControls,
 } from "../../../components/layout/page-primitives";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
@@ -435,7 +433,7 @@ export function ClassroomLinksPage() {
 
   return (
     <PageShell>
-      <PageToolbar
+      <ListPageToolbar
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             {lineEnabledQuery.data === true ? (
@@ -503,51 +501,51 @@ export function ClassroomLinksPage() {
             </ScopeFilterField>
           )
         }
+        search={{
+          after: (
+            <>
+              <FilterSelect
+                ariaLabel="กรองสถานะลิงก์"
+                onChange={(value) => {
+                  setLinkStatusInput(value);
+                  resetListState();
+                }}
+                value={linkStatusInput}
+              >
+                <option value="">ทุกสถานะลิงก์</option>
+                <option value="ACTIVE">ใช้งานอยู่</option>
+                <option value="INACTIVE">ปิดใช้งาน</option>
+                <option value="NOT_CREATED">ยังไม่ได้สร้าง</option>
+              </FilterSelect>
+              <FilterSelect
+                ariaLabel="เลือกภาคเรียน"
+                disabled={!schoolId || terms.length === 0}
+                onChange={(value) => {
+                  setTermInput(value);
+                  resetListState();
+                }}
+                value={selectedTerm?.id ?? ""}
+              >
+                {terms.length === 0 ? (
+                  <option value="">ยังไม่มีภาคเรียน</option>
+                ) : null}
+                {terms.map((term) => (
+                  <option key={term.id} value={term.id}>
+                    ปีการศึกษา {term.academicYear}/{term.semester}
+                  </option>
+                ))}
+              </FilterSelect>
+            </>
+          ),
+          onChange: (value) => {
+            setSearchInput(value);
+            resetListState();
+          },
+          placeholder: "ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น",
+          value: searchInput,
+        }}
         title="จัดการลิงก์ครู"
-      >
-        <ToolbarControls>
-          <SearchInput
-            className="sm:max-w-[420px]"
-            onChange={(value) => {
-              setSearchInput(value);
-              resetListState();
-            }}
-            placeholder="ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น"
-            value={searchInput}
-          />
-          <FilterSelect
-            ariaLabel="เลือกภาคเรียน"
-            disabled={!schoolId || terms.length === 0}
-            onChange={(value) => {
-              setTermInput(value);
-              resetListState();
-            }}
-            value={selectedTerm?.id ?? ""}
-          >
-            {terms.length === 0 ? (
-              <option value="">ยังไม่มีภาคเรียน</option>
-            ) : null}
-            {terms.map((term) => (
-              <option key={term.id} value={term.id}>
-                ปีการศึกษา {term.academicYear}/{term.semester}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect
-            ariaLabel="กรองสถานะลิงก์"
-            onChange={(value) => {
-              setLinkStatusInput(value);
-              resetListState();
-            }}
-            value={linkStatusInput}
-          >
-            <option value="">ทุกสถานะลิงก์</option>
-            <option value="ACTIVE">ใช้งานอยู่</option>
-            <option value="INACTIVE">ปิดใช้งาน</option>
-            <option value="NOT_CREATED">ยังไม่ได้สร้าง</option>
-          </FilterSelect>
-        </ToolbarControls>
-      </PageToolbar>
+      />
 
       {lineInvitation.data ? (
         // No dismiss: this band is the invitation's status, not a notice about
