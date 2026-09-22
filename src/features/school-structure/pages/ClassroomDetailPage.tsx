@@ -199,14 +199,14 @@ export function ClassroomDetailPage() {
               value={search}
             />
             <FilterSelect
-              ariaLabel="กรองสถานะนักเรียน"
+              ariaLabel="กรองตามระดับความเสี่ยง"
               onChange={(value) => {
                 setStatus(value);
                 setPage(1);
               }}
               value={status}
             >
-              <option value="">สถานะทั้งหมด</option>
+              <option value="">ระดับความเสี่ยงทั้งหมด</option>
               {RISK_TIER_ORDER.map((value) => (
                 <option key={value} value={value}>
                   {RISK_TIER_PRESENTATION[value].label}
@@ -250,7 +250,11 @@ export function ClassroomDetailPage() {
                   sortKey: "status",
                   className: "text-center",
                 },
-                { label: "เครื่องมือ", className: "text-center" },
+                {
+                  isAction: true,
+                  label: "เครื่องมือ",
+                  className: "text-center",
+                },
               ]}
               minWidthClassName="min-w-[1200px]"
               onSortChange={(nextSort) => {
