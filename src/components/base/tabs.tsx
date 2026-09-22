@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
+import { useSlideIndicator } from "./use-slide-indicator";
 
 export interface TabOption {
   value: string;
@@ -22,12 +23,15 @@ export function Tabs({
   value,
   "aria-label": ariaLabel,
 }: TabsProps) {
+  const { containerRef, rect, setButtonRef } = useSlideIndicator(value);
+
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
+      ref={containerRef}
       className={cn(
-        "inline-flex max-w-full overflow-x-auto overflow-y-hidden border-b border-slate-200",
+        "relative inline-flex max-w-full overflow-x-auto overflow-y-hidden border-b border-slate-200",
         className,
       )}
     >
@@ -36,21 +40,31 @@ export function Tabs({
         return (
           <button
             key={option.value}
+            ref={(node) => setButtonRef(option.value, node)}
             type="button"
             role="tab"
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "-mb-px min-h-11 shrink-0 border-b-2 border-transparent px-3 py-2 text-base font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+              "min-h-11 shrink-0 px-3 py-2 text-base font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
               active
-                ? "border-primary text-primary"
-                : "text-content-primary hover:border-slate-300 hover:text-primary-dark",
+                ? "text-primary"
+                : "text-content-primary hover:text-primary-dark",
             )}
           >
             {option.label}
           </button>
         );
       })}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 h-0.5 bg-primary transition-[transform,width] duration-200 ease-out motion-reduce:transition-none"
+        style={
+          rect
+            ? { transform: `translateX(${rect.left}px)`, width: rect.width }
+            : { width: 0 }
+        }
+      />
     </div>
   );
 }

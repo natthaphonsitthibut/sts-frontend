@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck, Trash2, X } from "lucide-react";
 import { Button, Skeleton, useConfirm } from "../../../components/base";
+import { useSlideIndicator } from "../../../components/base/use-slide-indicator";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { cn } from "../../../lib/utils";
 import {
@@ -58,6 +59,11 @@ export function NotificationCenterPanel({
   const markAllRead = useMarkAllRead();
   const deleteAllRead = useDeleteAllRead();
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const {
+    containerRef: statusTablistRef,
+    rect: statusIndicatorRect,
+    setButtonRef: setStatusButtonRef,
+  } = useSlideIndicator(status);
   const notifications = data?.rows ?? [];
   const displayedNotifications = notifications.map((notification) =>
     locallyReadIds.has(notification.id) && !notification.read_at
@@ -154,7 +160,7 @@ export function NotificationCenterPanel({
       aria-label="การแจ้งเตือน"
       // A fixed height, not a max: filtering to อ่านแล้ว returns fewer rows, and a
       // content-sized tray would shrink under the cursor on every tab press.
-      className="absolute right-0 top-full z-50 mt-2 flex h-[min(38rem,calc(100dvh-5rem))] w-[min(32rem,calc(100vw-5rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-700 shadow-lg"
+      className="animate-dialog-in absolute right-0 top-full z-50 mt-2 flex h-[min(38rem,calc(100dvh-5rem))] w-[min(32rem,calc(100vw-5rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-700 shadow-lg"
       id="notification-center"
       role="region"
     >
@@ -184,9 +190,22 @@ export function NotificationCenterPanel({
       <div className="px-4 pt-3">
         <div
           aria-label="ตัวกรองการแจ้งเตือน"
-          className="flex w-full rounded-full border border-slate-200 bg-white p-1"
+          className="relative flex w-full rounded-full border border-slate-200 bg-white p-1"
+          ref={statusTablistRef}
           role="tablist"
         >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-1 left-0 rounded-full bg-primary transition-[transform,width] duration-200 ease-out motion-reduce:transition-none"
+            style={
+              statusIndicatorRect
+                ? {
+                    transform: `translateX(${statusIndicatorRect.left}px)`,
+                    width: statusIndicatorRect.width,
+                  }
+                : { width: 0 }
+            }
+          />
           {STATUS_OPTIONS.map((option) => {
             const active = status === option.value;
             return (
@@ -194,10 +213,12 @@ export function NotificationCenterPanel({
                 aria-controls="notification-center-panel"
                 aria-selected={active}
                 className={cn(
-                  "min-h-10 flex-1 rounded-full px-3 text-sm font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  "relative min-h-10 flex-1 rounded-full px-3 text-sm font-semibold transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   active
-                    ? "bg-primary text-white"
-                    : "text-content-secondary hover:bg-primary-soft hover:text-primary-dark",
+                    ? statusIndicatorRect
+                      ? "text-white"
+                      : "bg-primary text-white"
+                    : "text-content-secondary hover:text-primary-dark",
                 )}
                 key={option.value}
                 id={`notification-center-tab-${option.value}`}
@@ -205,6 +226,7 @@ export function NotificationCenterPanel({
                   setExpandedId(null);
                   setStatus(option.value);
                 }}
+                ref={(node) => setStatusButtonRef(option.value, node)}
                 role="tab"
                 type="button"
               >
