@@ -835,6 +835,11 @@ interface SummaryMetricsProps {
   /** Center incomplete rows while keeping the same 2/3-column card width. */
   centerRows?: boolean;
   className?: string;
+  /**
+   * The numbers are being refetched for a changed filter: show a skeleton in
+   * their place rather than the previous filter's values.
+   */
+  loading?: boolean;
 }
 
 export function SummaryMetrics({
@@ -842,6 +847,7 @@ export function SummaryMetrics({
   className,
   columns,
   items,
+  loading = false,
 }: SummaryMetricsProps) {
   // Default: cards auto-fit and stretch to fill the available width, so a row
   // with few cards never leaves an empty gap on the right and never gets cramped.
@@ -907,7 +913,11 @@ export function SummaryMetrics({
                       data-summary-value
                       key={String(item.value)}
                     >
-                      {item.value}
+                      {loading ? (
+                        <Skeleton className="my-1 h-7 w-20" />
+                      ) : (
+                        item.value
+                      )}
                     </div>
                   </div>
                 )}
@@ -934,7 +944,11 @@ export function SummaryMetrics({
                   data-summary-value
                   key={String(item.value)}
                 >
-                  {item.value}
+                  {loading ? (
+                    <Skeleton className="my-1 h-7 w-20" />
+                  ) : (
+                    item.value
+                  )}
                 </div>
               ) : null}
               {!item.hideComparison ? (

@@ -1,4 +1,9 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { adminService, type UserListQuery } from "../api/admin.service";
 import type {
   AccountDeactivationPayload,
@@ -45,10 +50,14 @@ export function useUsers(query: UserListQuery = {}): UseUsersResult {
   return {
     users: result.data?.items ?? EMPTY_USERS,
     meta: result.data?.meta,
-    isLoading: result.isLoading,
+    // A changed filter keeps the previous rows on screen (keepPreviousData)
+    // until the new ones arrive; show the skeleton instead of stale rows.
+    isLoading: result.isLoading || result.isPlaceholderData,
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,
-    refetch: () => { void result.refetch(); },
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }
 
@@ -78,7 +87,9 @@ export function useRolesCatalog(): UseRolesCatalogResult {
     isLoading: result.isLoading,
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,
-    refetch: () => { void result.refetch(); },
+    refetch: () => {
+      void result.refetch();
+    },
   };
 }
 
@@ -98,7 +109,10 @@ export function useSaveUser() {
         : await adminService.createUser(payload);
       const savedId = id ?? result?.userId ?? null;
       if (savedId && (photo || removePhoto)) {
-        await adminService.updateUserPhoto(savedId, { photo: photo ?? undefined, remove: removePhoto });
+        await adminService.updateUserPhoto(savedId, {
+          photo: photo ?? undefined,
+          remove: removePhoto,
+        });
       }
       return result;
     },
@@ -111,8 +125,13 @@ export function useSaveUser() {
 
 export function useDeactivateAccount() {
   const queryClient = useQueryClient();
-  return useMutation<DeactivateStudentAccountResponse, Error, { id: number; payload: AccountDeactivationPayload }>({
-    mutationFn: ({ id, payload }) => adminService.deactivateAccount(id, payload),
+  return useMutation<
+    DeactivateStudentAccountResponse,
+    Error,
+    { id: number; payload: AccountDeactivationPayload }
+  >({
+    mutationFn: ({ id, payload }) =>
+      adminService.deactivateAccount(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY] });

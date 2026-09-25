@@ -32,7 +32,9 @@ export function useAuditLog(query: AuditLogQuery): UseAuditLogResult {
   return {
     entries: result.data?.items ?? EMPTY_AUDIT_LOG,
     meta: result.data?.meta,
-    isLoading: result.isLoading,
+    // A changed filter keeps the previous rows on screen (keepPreviousData)
+    // until the new ones arrive; show the skeleton instead of stale rows.
+    isLoading: result.isLoading || result.isPlaceholderData,
     isFetching: result.isFetching,
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,

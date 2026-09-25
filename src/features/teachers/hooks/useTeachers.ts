@@ -39,7 +39,9 @@ export function useTeachers(query: TeacherListQuery | null): UseTeachersResult {
   return {
     teachers: result.data?.items ?? EMPTY_TEACHERS,
     meta: result.data?.meta,
-    isLoading: result.isLoading,
+    // A changed filter keeps the previous rows on screen (keepPreviousData)
+    // until the new ones arrive; show the skeleton instead of stale rows.
+    isLoading: result.isLoading || result.isPlaceholderData,
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => {
@@ -58,7 +60,9 @@ export function useTeacherProfiles(query: TeacherListQuery | null) {
   return {
     teachers: result.data?.items ?? ([] as TeacherProfile[]),
     meta: result.data?.meta,
-    isLoading: result.isLoading,
+    // A changed filter keeps the previous rows on screen (keepPreviousData)
+    // until the new ones arrive; show the skeleton instead of stale rows.
+    isLoading: result.isLoading || result.isPlaceholderData,
     isError: result.isError,
     dataUpdatedAt: result.dataUpdatedAt,
     refetch: () => void result.refetch(),

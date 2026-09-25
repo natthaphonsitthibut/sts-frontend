@@ -841,6 +841,7 @@ function StudentRiskDashboardPage() {
           {isReferrals ? null : (
             <SummaryMetrics
               columns={isWatchlist ? 3 : 4}
+              loading={riskQuery.isLoading || riskQuery.isPlaceholderData}
               items={isWatchlist ? concernItems : summaryItems}
             />
           )}
@@ -917,7 +918,9 @@ function StudentRiskDashboardPage() {
             description="กรุณาลองใหม่อีกครั้ง"
             onRetry={() => void riskQuery.refetch()}
           />
-        ) : riskQuery.isLoading ? (
+        ) : riskQuery.isLoading || riskQuery.isPlaceholderData ? (
+          // A changed filter keeps the old rows until the new ones arrive;
+          // show the skeleton instead of stale rows.
           <SkeletonTable />
         ) : rows.length === 0 ? (
           <EmptyState

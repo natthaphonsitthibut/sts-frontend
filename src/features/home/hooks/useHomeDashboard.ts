@@ -49,9 +49,11 @@ export function useHomeDashboard(filters: HomeDashboardFilters) {
     filterOptions: filterOptionsQuery.data,
     trends: trendsQuery.data,
     followUpInsights: followUpInsightsQuery.data,
-    isLoading: summaryQuery.isLoading,
-    isTrendsLoading: trendsQuery.isLoading,
-    isFollowUpInsightsLoading: followUpInsightsQuery.isLoading,
+    isLoading: summaryQuery.isLoading || summaryQuery.isPlaceholderData,
+    isTrendsLoading: trendsQuery.isLoading || trendsQuery.isPlaceholderData,
+    isFollowUpInsightsLoading:
+      followUpInsightsQuery.isLoading ||
+      followUpInsightsQuery.isPlaceholderData,
     isFetching:
       summaryQuery.isFetching ||
       filterOptionsQuery.isFetching ||
