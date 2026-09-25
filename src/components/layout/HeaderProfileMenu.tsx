@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
 import { LogOut, UserRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar } from "../base";
+import { adminService } from "../../features/admin/api/admin.service";
+import { ROLES_CATALOG_QUERY_KEY } from "../../features/admin/hooks/useUsers";
 import { authService } from "../../features/auth/api/auth.service";
 import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
@@ -38,8 +41,24 @@ export function HeaderProfileMenu({
   const user = useAuthSessionStore((state) => state.user);
   const clearSession = useAuthSessionStore((state) => state.clearSession);
   const primaryRole = user?.roles?.[0];
+  // A school's or an area's own group has a code for a name (S10010004_BASE_
+  // ADMIN), so show its label: the session's `labels`, or — for a session
+  // saved without them — the groups catalog, which always lists the account's
+  // own group. Signed-in accounts only; a guest link passes its own label.
+  const sessionLabel = user?.labels?.[0];
+  const rolesCatalogQuery = useQuery({
+    queryKey: [ROLES_CATALOG_QUERY_KEY],
+    queryFn: () => adminService.getRolesCatalog(),
+    enabled: Boolean(user && primaryRole && !roleLabel && !sessionLabel),
+    staleTime: 5 * 60 * 1000,
+  });
+  const catalogLabel = rolesCatalogQuery.data?.find(
+    (role) => role.name === primaryRole,
+  )?.label;
   const resolvedRoleLabel =
-    roleLabel ?? (primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-");
+    roleLabel ??
+    sessionLabel ??
+    (primaryRole ? catalogLabel || ROLE_LABELS[primaryRole] || "-" : "-");
   const resolvedAffiliation = affiliation ?? user?.affiliation ?? null;
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
