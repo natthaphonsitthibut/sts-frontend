@@ -377,7 +377,7 @@ function MetricGrid({ metrics }: { metrics: HomeDashboardMetric[] }) {
         const cardClassName = cn(
           "flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-left shadow-card",
           openable &&
-            "transition-colors hover:border-primary/50 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            "transition-colors hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         );
         const lockedHint = openable
           ? undefined
@@ -499,13 +499,17 @@ export function MainPage() {
         icon={Activity}
         title="ศูนย์สั่งการวันนี้"
         description={`${displayName} · ${roleLabel} · ${affiliation}`}
+        // ชั้น/ห้อง only exists once a school is picked; before that there is
+        // nothing to show, so no row is reserved for it.
         scope={
-          <DashboardFilterBar
-            filters={filters}
-            options={filterOptions?.options}
-            onReset={reset}
-            onUpdate={updateFilter}
-          />
+          filters.schoolId ? (
+            <DashboardFilterBar
+              filters={filters}
+              options={filterOptions?.options}
+              onReset={reset}
+              onUpdate={updateFilter}
+            />
+          ) : undefined
         }
       />
 
