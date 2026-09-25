@@ -23,6 +23,7 @@ import {
   useConfirm,
 } from "../../../components/base";
 import { AssignmentSummary } from "../../../components/layout/assignment-summary";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import {
   TrackingStep,
   TrackingStepsCard,
@@ -1057,16 +1058,28 @@ export function CaseTrackingTimeline({
                   </label>
                 </div>
               ) : null}
-              {isLive && cancellable ? (
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    className="border-danger text-danger hover:border-danger hover:bg-danger-100 hover:text-danger"
-                    onClick={() => setCancelOpen(true)}
-                    type="button"
-                    variant="outline"
-                  >
-                    ยกเลิกการมอบหมาย
-                  </Button>
+              {/* Every round whose link still opens can be shared again, with
+                  the same แชร์ button the rest of the app uses (owner,
+                  2026-09-25: "มอบหมายกี่รอบก็ต้องมี"). */}
+              {(canAssign && round.magic_link) || (isLive && cancellable) ? (
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  {canAssign && round.magic_link ? (
+                    <LinkShareButton
+                      className="size-10"
+                      compact
+                      link={round.magic_link}
+                    />
+                  ) : null}
+                  {isLive && cancellable ? (
+                    <Button
+                      className="border-danger text-danger hover:border-danger hover:bg-danger-100 hover:text-danger"
+                      onClick={() => setCancelOpen(true)}
+                      type="button"
+                      variant="outline"
+                    >
+                      ยกเลิกการมอบหมาย
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </TrackingStep>

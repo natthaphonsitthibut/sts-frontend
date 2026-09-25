@@ -113,6 +113,8 @@ export interface CaseFollowUpRound {
   assignment_ends_at?: string | null;
   /** Link state of the round: ACTIVE, SCHEDULED, CANCELLED, EXPIRED, COMPLETED. */
   link_status?: string | null;
+  /** The round's link while it still opens (ACTIVE/SCHEDULED), for its แชร์ button. */
+  magic_link?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   cancelled_by_label?: string | null;
