@@ -205,6 +205,11 @@ export const MENU_ITEMS: MenuItem[] = [
         iconName: "apps",
         permissionId: "manage-role-groups",
         route: "/council/manage-role-groups",
+        // Council groups are one national set, shared by every จ./อ./ต.: only
+        // a national council admin edits them (the server refuses anyone
+        // else), so an area admin is not shown the entry (owner, 2026-09-25).
+        scopePolicy: "global-only",
+        rolePolicy: "ADMIN",
       },
     ],
   },

@@ -214,3 +214,24 @@ describe("MENU_ITEMS — school/council manage-users split", () => {
     expect(council.some((item) => item.id === "home")).toBe(false);
   });
 });
+
+describe("council จัดการกลุ่มเมนู", () => {
+  const councilRoutes = (dataScope: DataScope) =>
+    collectMenuRoutes(
+      filterMenuItems(MENU_ITEMS, ALL_PAGES, dataScope, ["ADMIN"]),
+    );
+
+  it("is shown to a national council admin only", () => {
+    expect(councilRoutes({ global: true })).toContain(
+      "/council/manage-role-groups",
+    );
+    // An area admin keeps its user list but not the shared national groups.
+    const area = councilRoutes({
+      provinces: ["เชียงใหม่"],
+      districts: ["เมืองเชียงใหม่"],
+      sub_districts: ["สุเทพ"],
+    });
+    expect(area).toContain("/council/manage-users");
+    expect(area).not.toContain("/council/manage-role-groups");
+  });
+});

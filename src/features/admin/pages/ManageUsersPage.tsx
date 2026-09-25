@@ -25,6 +25,7 @@ import { Pagination } from "../../../components/layout/pagination";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatScopeSummary } from "../../../lib/scope-presentation";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
 import { UserTable } from "../components/UserTable";
@@ -259,6 +260,22 @@ export function ManageUsersPage({
         }}
         title="จัดการผู้ใช้งาน"
       />
+
+      {/* Council accounts belong to an area, never a school: a school picked
+          in the header narrows this list to its จ./อ./ต. only (owner,
+          2026-09-25: "ไม่ filter ถึง รร"). Say so, so the list does not look
+          like it ignored the pick. */}
+      {scope === "council" && globalFilter.schoolId && councilProvince ? (
+        <p className="text-sm text-slate-500">
+          ผู้ใช้งานสภากรองได้ถึงระดับตำบล — แสดงผู้ใช้งานของ{" "}
+          {formatScopeSummary({
+            province: councilProvince,
+            district: councilDistrict,
+            subDistrict: councilSubDistrict,
+          })[0] ?? councilProvince}{" "}
+          ไม่กรองตามโรงเรียน
+        </p>
+      ) : null}
 
       <FormErrorAlert
         error={deactivateAccount.error}
