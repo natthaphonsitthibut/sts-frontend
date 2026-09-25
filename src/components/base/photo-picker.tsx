@@ -45,7 +45,9 @@ export function PhotoPicker({
     };
   }, [localPreviewUrl]);
 
-  const previewUrl = value.removed ? null : (localPreviewUrl ?? storedUrl ?? null);
+  const previewUrl = value.removed
+    ? null
+    : (localPreviewUrl ?? storedUrl ?? null);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
     const selected = event.target.files?.[0] ?? null;
@@ -80,7 +82,9 @@ export function PhotoPicker({
       <button
         aria-label={previewUrl ? `เปลี่ยน${label}` : `เลือก${label}`}
         className={cn(
-          "flex aspect-square w-full max-w-[280px] items-center justify-center overflow-hidden rounded-2xl bg-slate-200 transition-colors",
+          // Same circle, same size as AvatarPhotoEditor, so a photo looks
+          // the same on the form that sets it and the page that shows it.
+          "flex size-28 items-center justify-center overflow-hidden rounded-full bg-slate-200 transition-colors sm:size-32",
           disabled
             ? "cursor-not-allowed opacity-50"
             : "cursor-pointer hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -90,9 +94,13 @@ export function PhotoPicker({
         type="button"
       >
         {previewUrl ? (
-          <img alt={label} className="size-full object-cover" src={previewUrl} />
+          <img
+            alt={label}
+            className="size-full object-cover"
+            src={previewUrl}
+          />
         ) : (
-          <ImagePlus className="size-20 text-slate-700" aria-hidden="true" />
+          <ImagePlus className="size-12 text-slate-700" aria-hidden="true" />
         )}
       </button>
 

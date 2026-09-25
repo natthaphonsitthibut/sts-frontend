@@ -450,13 +450,12 @@ export function ProfilePage() {
               />
               ข้อมูลทั่วไป
             </h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
               <AvatarPhotoEditor
                 label="รูปประจำตัว"
                 name={displayNameOf(profileUser)}
                 onSelect={() => undefined}
                 photoUrl={resolveApiMediaUrl(profileUser.photo_url ?? null)}
-                shape="square"
               />
               <div className="grid h-fit gap-3 sm:grid-cols-2">
                 <ProfileDetailItem
@@ -608,7 +607,7 @@ export function ProfilePage() {
                 />
               ) : null}
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-[187px_minmax(0,1fr)]">
                 <AvatarPhotoEditor
                   editable
                   isSubmitting={updatePhoto.isPending}
@@ -617,7 +616,6 @@ export function ProfilePage() {
                   onRemove={() => updatePhoto.mutate({ remove: true })}
                   onSelect={(photo) => updatePhoto.mutate({ photo })}
                   photoUrl={resolveApiMediaUrl(profileUser?.photo_url ?? null)}
-                  shape="square"
                 />
 
                 <div className="grid h-fit grid-cols-1 gap-x-4 sm:grid-cols-2">
