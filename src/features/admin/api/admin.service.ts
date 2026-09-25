@@ -36,6 +36,8 @@ export interface UserListQuery extends PaginatedSearchQuery {
   gradeLevelId?: number | null;
   room?: string;
   excludeRole?: string;
+  /** Narrow to one บทบาท by the label the list shows. */
+  roleLabel?: string;
   accountStatus?:
     | "PENDING_FIRST_LOGIN"
     | "ACTIVE"
@@ -97,6 +99,7 @@ async function getUsers(
     ["schoolId", "schoolId"],
     ["room", "room"],
     ["excludeRole", "excludeRole"],
+    ["roleLabel", "roleLabel"],
   ];
   for (const [source, target] of fields) {
     const value = query[source];

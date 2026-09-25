@@ -14,6 +14,7 @@ import {
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   PageShell,
   ListPageToolbar,
   SkeletonTable,
@@ -28,7 +29,11 @@ import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
 import { UserTable } from "../components/UserTable";
 import type { DataTableSortState } from "../../../components/layout/data-table";
-import { useDeactivateAccount, useUsers } from "../hooks/useUsers";
+import {
+  useDeactivateAccount,
+  useRolesCatalog,
+  useUsers,
+} from "../hooks/useUsers";
 import {
   getManageUserPath,
   getUserDisplayName,
@@ -82,6 +87,10 @@ export function ManageUsersPage({
       ? value
       : DEFAULT_PAGE_SIZE;
   });
+  const [roleLabel, setRoleLabel] = useState(
+    () => searchParams.get("role") ?? "",
+  );
+  const { rolesCatalog } = useRolesCatalog();
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     readSortSearchParam(searchParams, "sort", ["name", "role", "affiliation"]),
   );
@@ -101,7 +110,24 @@ export function ManageUsersPage({
     if (page !== 1) setPage(1);
   }
 
+  // บทบาท choices are the menu groups of the realm being listed — the
+  // selected school's own groups, or the council's — deduplicated by the label
+  // the table shows, never a hardcoded list.
+  const roleLabelOptions = useMemo(() => {
+    const schoolId = Number(selectedSchoolValue) || null;
+    const labels = rolesCatalog
+      .filter((role) => !NON_STAFF_ROLES.split(",").includes(role.name))
+      .filter((role) =>
+        scope === "council"
+          ? role.school_id == null
+          : schoolId !== null && role.school_id === schoolId,
+      )
+      .map((role) => role.label);
+    return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b, "th"));
+  }, [rolesCatalog, scope, selectedSchoolValue]);
+
   useSyncedSearchParams({
+    role: roleLabel || undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
     sort: serializeSortSearchParam(sort),
@@ -113,12 +139,21 @@ export function ManageUsersPage({
       realm: scope,
       schoolId: selectedSchoolValue || undefined,
       excludeRole: NON_STAFF_ROLES,
+      roleLabel: roleLabel || undefined,
       page,
       limit: rowsPerPage,
       sortBy: sort?.key as "name" | "role" | "affiliation" | undefined,
       sortOrder: sort?.direction,
     }),
-    [debouncedSearch, page, rowsPerPage, scope, selectedSchoolValue, sort],
+    [
+      debouncedSearch,
+      page,
+      roleLabel,
+      rowsPerPage,
+      scope,
+      selectedSchoolValue,
+      sort,
+    ],
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
@@ -178,6 +213,24 @@ export function ManageUsersPage({
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         icon={MANAGE_USERS_ICON}
         search={{
+          after: (
+            <FilterSelect
+              ariaLabel="กรองตามบทบาท"
+              disabled={needsSchoolPick}
+              onChange={(value) => {
+                setRoleLabel(value);
+                setPage(1);
+              }}
+              value={roleLabel}
+            >
+              <option value="">ทุกบทบาท</option>
+              {roleLabelOptions.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </FilterSelect>
+          ),
           onChange: handleSearchChange,
           placeholder: "ค้นหา",
           value: searchQuery,
@@ -207,12 +260,16 @@ export function ManageUsersPage({
       ) : users.length === 0 ? (
         <EmptyState
           description={
-            debouncedSearch
-              ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
+            debouncedSearch || roleLabel
+              ? "ลองเปลี่ยนคำค้นหาหรือบทบาท เพื่อดูรายการทั้งหมด"
               : "เพิ่มผู้ใช้งานแรกเพื่อเริ่มต้น"
           }
           icon={MANAGE_USERS_ICON}
-          title={debouncedSearch ? "ไม่พบผู้ใช้งานที่ค้นหา" : "ไม่พบผู้ใช้งาน"}
+          title={
+            debouncedSearch || roleLabel
+              ? "ไม่พบผู้ใช้งานที่ค้นหา"
+              : "ไม่พบผู้ใช้งาน"
+          }
         />
       ) : (
         <>
