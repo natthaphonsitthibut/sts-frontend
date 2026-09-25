@@ -18,6 +18,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  registerDigitsField,
   registerField,
 } from "../../../components/base";
 import { studentsService } from "../api/students.service";
@@ -135,7 +136,9 @@ export function StudentIdentifierCorrectionDialog({
                   placeholder={
                     isNationalId ? "กรอกตัวเลข 13 หลัก" : `กรอก${label}`
                   }
-                  {...registerField(form, "value")}
+                  {...(isNationalId
+                    ? registerDigitsField(form, "value")
+                    : registerField(form, "value"))}
                 />
                 <FormMessage<FormValues> name="value" />
               </FormItem>

@@ -14,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  registerDigitsField,
   registerField,
 } from "../../../components/base";
 import {
@@ -180,7 +181,7 @@ export function StudentCreatePage() {
                   id="student-national-id"
                   inputMode="numeric"
                   maxLength={13}
-                  {...registerField(form, "PersonID_Onec")}
+                  {...registerDigitsField(form, "PersonID_Onec")}
                 />
                 <FormMessage<FormValues> name="PersonID_Onec" />
               </FormItem>

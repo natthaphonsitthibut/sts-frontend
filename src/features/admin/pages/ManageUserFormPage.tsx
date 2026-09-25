@@ -26,6 +26,7 @@ import {
   PasswordInput,
   PersonIcon,
   PhotoPicker,
+  registerDigitsField,
   registerField,
   type PhotoPickerValue,
 } from "../../../components/base";
@@ -394,7 +395,7 @@ function UserForm({
                     id="phone"
                     maxLength={10}
                     placeholder="XXXXXXXXXX"
-                    {...registerField(form, "phone")}
+                    {...registerDigitsField(form, "phone")}
                   />
                   <FormMessage<UserFormValues> name="phone" />
                 </FormItem>
@@ -420,7 +421,7 @@ function UserForm({
                     id="PersonID_Onec"
                     maxLength={13}
                     placeholder="XXXXXXXXXXXXX"
-                    {...registerField(form, "PersonID_Onec")}
+                    {...registerDigitsField(form, "PersonID_Onec")}
                   />
                   <FormMessage<UserFormValues> name="PersonID_Onec" />
                 </FormItem>

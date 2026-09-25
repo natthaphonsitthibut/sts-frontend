@@ -28,6 +28,7 @@ import {
   FormMessage,
   Input,
   PersonIcon,
+  registerDigitsField,
   registerField,
 } from "../../../components/base";
 import {
@@ -660,7 +661,7 @@ export function ProfilePage() {
                       autoComplete="tel"
                       id="phone"
                       inputMode="tel"
-                      {...registerField(form, "phone")}
+                      {...registerDigitsField(form, "phone")}
                     />
                     <FormMessage<ProfileFormValues> name="phone" />
                   </FormItem>
