@@ -431,7 +431,11 @@ function UserForm({
                   <FormLabel htmlFor="password" required={!isEdit}>
                     {isEdit ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)" : "รหัสผ่าน"}
                   </FormLabel>
+                  {/* Setting someone else's password, not signing in: without
+                      this the browser pours the operator's own saved login
+                      into these two fields. */}
                   <PasswordInput
+                    autoComplete="new-password"
                     id="password"
                     placeholder="XXXXXXXXXX"
                     {...registerField(form, "password")}
@@ -446,6 +450,7 @@ function UserForm({
                     ชื่อผู้ใช้งาน
                   </FormLabel>
                   <Input
+                    autoComplete="off"
                     id="username"
                     placeholder="ใช้สำหรับเข้าสู่ระบบ"
                     {...registerField(form, "username")}
@@ -652,7 +657,10 @@ export function ManageUserFormPage() {
         />
       ) : (
         <UserForm
+          // Add and edit share this page; a fresh form per account keeps an
+          // edited account's values from carrying over into a new one.
           isCouncilRoute={isCouncilRoute}
+          key={user ? `edit-${user.id}` : "new"}
           lockedSchoolId={isEdit ? null : lockedSchoolId}
           returnPath={returnPath}
           rolesCatalog={rolesCatalog}
