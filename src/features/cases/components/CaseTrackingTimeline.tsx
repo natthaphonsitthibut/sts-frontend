@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
+  appToast,
   Button,
   Combobox,
   DatePicker,
@@ -39,7 +40,9 @@ import {
   getCaseTrackingStatusPresentation,
   isFollowUpLinkExpired,
 } from "../lib/case-presentation";
+import { teacherLineService } from "../../teacher-line/api/teacher-line.service";
 import { useCancelCaseAssignment } from "../hooks/useCancelCaseAssignment";
+import { useSendRoundLine } from "../hooks/useSendRoundLine";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
 import type {
   CaseFollowUpRound,
@@ -47,6 +50,21 @@ import type {
   CaseReviewAction,
   CaseTrackingOption,
 } from "../types/cases.types";
+
+/** Why ส่งลิงก์ผ่าน LINE cannot send for this round, or null when it can. */
+function roundLineUnavailableReason(
+  round: CaseFollowUpRound,
+  lineEnabled: boolean,
+): string | null {
+  const delivery = round.line_delivery;
+  if (!lineEnabled) return "ระบบยังไม่ได้เปิดส่ง LINE";
+  if (!delivery || delivery.account_state === "NOT_VERIFIED")
+    return "ครูยังไม่ได้ยืนยัน LINE จึงส่งตรงไม่ได้ ใช้คัดลอกหรือแชร์ลิงก์แทน";
+  if (delivery.account_state !== "FRIEND")
+    return "ครูยังไม่ได้เพิ่มเพื่อน LINE ของระบบ จึงส่งตรงไม่ได้";
+  if (delivery.status === "SENDING") return "กำลังส่งอยู่";
+  return delivery.can_send ? null : "ส่งตรงไม่ได้ในตอนนี้";
+}
 
 interface CaseTrackingTimelineProps {
   caseRecord: CaseRecord;
@@ -795,6 +813,34 @@ export function CaseTrackingTimeline({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
   const cancelAssignment = useCancelCaseAssignment();
+  const sendRoundLine = useSendRoundLine();
+  // Same switch the teacher-link page reads: is LINE on for this deployment.
+  const lineEnabledQuery = useQuery({
+    queryKey: ["line-link", "status"],
+    queryFn: teacherLineService.isEnabled,
+  });
+  const lineEnabled = lineEnabledQuery.data === true;
+
+  function handleSendRoundLine(taskId: string): void {
+    sendRoundLine.mutate(
+      { caseId: caseRecord.id, taskId },
+      {
+        onSuccess: (result) => {
+          if (result.data.status === "SENT")
+            appToast.success("ส่งลิงก์ผ่าน LINE สำเร็จ");
+          else if (result.data.status === "SENDING")
+            appToast.info("กำลังส่งลิงก์ผ่าน LINE อยู่แล้ว");
+          else
+            appToast.error(
+              "ส่ง LINE ไม่สำเร็จ สามารถคัดลอกลิงก์เพื่อแชร์เองได้",
+            );
+          onAssigned();
+        },
+        onError: () =>
+          appToast.error("ส่ง LINE ไม่สำเร็จ สามารถคัดลอกลิงก์เพื่อแชร์เองได้"),
+      },
+    );
+  }
   const { can } = usePermissions();
   const canAssign = can("dashboard");
   const trackingOptions = useCaseTrackingOptions();
@@ -1067,9 +1113,27 @@ export function CaseTrackingTimeline({
                     <LinkShareButton
                       className="size-10"
                       compact
+                      // ส่งลิงก์ผ่าน LINE sits inside the แชร์ dialog, above the
+                      // share-to-anyone choices (owner, 2026-09-25).
+                      directSend={{
+                        recipient:
+                          round.initial_assignee || "ครูที่ได้รับมอบหมาย",
+                        unavailableReason: roundLineUnavailableReason(
+                          round,
+                          lineEnabled,
+                        ),
+                        busy:
+                          sendRoundLine.isPending &&
+                          sendRoundLine.variables?.taskId === round.task_id,
+                        sentAtLabel: round.line_delivery?.delivered_at
+                          ? formatThaiDateTime(round.line_delivery.delivered_at)
+                          : null,
+                        onSend: () => handleSendRoundLine(round.task_id),
+                      }}
                       link={round.magic_link}
                     />
                   ) : null}
+
                   {isLive && cancellable ? (
                     <Button
                       className="border-danger text-danger hover:border-danger hover:bg-danger-100 hover:text-danger"
