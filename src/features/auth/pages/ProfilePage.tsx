@@ -98,7 +98,6 @@ const profileSchema = z.object({
         message: "รูปแบบอีเมลไม่ถูกต้อง",
       },
     ),
-  affiliation: z.string().trim().max(255, "หน่วยงานยาวเกินไป"),
   line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
   address_line: z.string().trim().max(255, "ที่อยู่ยาวเกินไป"),
   address_village_no: z.string().trim().max(100, "หมู่/บ้านเลขที่ยาวเกินไป"),
@@ -140,7 +139,6 @@ function toFormValues(user: AuthUser | null | undefined): ProfileFormValues {
     LastName: user?.LastName ?? "",
     phone: user?.phone ?? "",
     email: user?.email ?? "",
-    affiliation: user?.affiliation ?? "",
     line_id: user?.line_id ?? "",
     address_line: user?.address_line ?? "",
     address_village_no: stripAddressPrefix("หมู่", user?.address_village_no),
@@ -161,6 +159,37 @@ function describeProfileScope(user: AuthUser | null | undefined): string {
     user?.data_scope,
     user?.data_scope_labels?.schools,
     user?.data_scope_labels?.gradeLevels,
+  );
+}
+
+/**
+ * สังกัด as the account's scope names it: the stored value, or — for accounts
+ * saved before it was derived — the school, the deepest area, or ประเทศ.
+ */
+function affiliationOf(
+  user:
+    | {
+        affiliation?: string | null;
+        data_scope?: {
+          global?: boolean;
+          provinces?: string[];
+          districts?: string[];
+          sub_districts?: string[];
+        } | null;
+        data_scope_labels?: { schools?: Array<{ name: string | null }> } | null;
+      }
+    | null
+    | undefined,
+): string {
+  if (user?.affiliation?.trim()) return user.affiliation.trim();
+  const scope = user?.data_scope;
+  if (scope?.global) return "ประเทศ";
+  return (
+    (user?.data_scope_labels?.schools?.[0]?.name ||
+      scope?.sub_districts?.[0]) ??
+    scope?.districts?.[0] ??
+    scope?.provinces?.[0] ??
+    ""
   );
 }
 
@@ -345,7 +374,6 @@ export function ProfilePage() {
       LastName: values.LastName.trim(),
       phone: values.phone.trim(),
       email: values.email.trim(),
-      affiliation: values.affiliation.trim(),
       line_id: values.line_id.trim(),
       address_line: values.address_line.trim(),
       address_village_no: stripAddressPrefix("หมู่", values.address_village_no),
@@ -477,7 +505,7 @@ export function ProfilePage() {
                 />
                 <ProfileDetailItem
                   label="หน่วยงาน/สังกัด"
-                  value={profileUser.affiliation ?? ""}
+                  value={affiliationOf(profileUser)}
                 />
                 <ProfileDetailItem
                   label="ชื่อผู้ใช้งาน"
@@ -668,20 +696,21 @@ export function ProfilePage() {
 
                   <FormItem>
                     <FormLabel htmlFor="affiliation">หน่วยงาน/สังกัด</FormLabel>
+                    {/* สังกัด follows the account's scope, set with it on the
+                        user form — not typed here. */}
                     <Input
-                      autoComplete="organization"
+                      disabled
                       id="affiliation"
-                      {...registerField(form, "affiliation")}
+                      value={affiliationOf(profileUser)}
                     />
-                    <FormMessage<ProfileFormValues> name="affiliation" />
                   </FormItem>
 
                   <FormItem>
                     <FormLabel htmlFor="username">ชื่อผู้ใช้งาน</FormLabel>
                     <Input
                       autoComplete="off"
+                      disabled
                       id="username"
-                      readOnly
                       value={profileUser?.username ?? ""}
                     />
                   </FormItem>
@@ -705,8 +734,8 @@ export function ProfilePage() {
                         autoComplete="off"
                         className="min-w-0 flex-1"
                         id="PersonID_Onec"
+                        disabled
                         placeholder="ยังไม่ระบุ"
-                        readOnly
                         value={
                           isNationalIdVisible
                             ? (profileUser?.PersonID_Onec ?? "")
