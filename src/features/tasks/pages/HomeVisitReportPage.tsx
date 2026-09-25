@@ -26,18 +26,28 @@ import {
   TimePicker,
   registerField,
 } from "../../../components/base";
+import { AssignmentSummary } from "../../../components/layout/assignment-summary";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
-import { formatThaiDateTime } from "../../../lib/date-time";
+import {
+  TrackingStep,
+  TrackingStepsCard,
+} from "../../../components/layout/tracking-step";
+import {
+  formatThaiDate,
+  formatThaiDateTime,
+  formatThaiTime,
+} from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
+import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import type { CaseTrackingOptions } from "../../cases/types/cases.types";
 import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
-import { ConversationalReportFlow } from "../components/ConversationalReportFlow";
+import { ReportFormSections } from "../components/ReportFormSections";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 import {
@@ -628,7 +638,7 @@ export function HomeVisitReportPage({
               return (
                 <label
                   className={cn(
-                    "flex min-h-24 cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors duration-200 motion-reduce:transition-none",
+                    "flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors duration-200 motion-reduce:transition-none",
                     selected
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-slate-200 hover:border-primary/50",
@@ -647,7 +657,7 @@ export function HomeVisitReportPage({
                     type="radio"
                     value={option.code || "FOUND"}
                   />
-                  <span className="text-lg font-bold">{option.label}</span>
+                  <span className="text-sm font-semibold">{option.label}</span>
                   {selected ? (
                     <Check className="ml-auto size-5" aria-hidden="true" />
                   ) : null}
@@ -1250,17 +1260,19 @@ export function HomeVisitReportPage({
       ),
     },
   ];
-  const steps = studentNotFound
-    ? allSteps.filter((step) =>
-        [
-          "visited-at",
-          "visit-outcome",
-          "context",
-          "evidence",
-          "review",
-        ].includes(step.id),
-      )
-    : allSteps;
+  // One form, every section at once (owner, 2026-09-25: the pre-step layout);
+  // a separate review page has nothing to add when everything is on screen.
+  const sections = (
+    studentNotFound
+      ? allSteps.filter((step) =>
+          ["visited-at", "visit-outcome", "context", "evidence"].includes(
+            step.id,
+          ),
+        )
+      : allSteps
+  ).filter((step) => step.id !== "review");
+  const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
+  const assignmentStartsAt = task.opens_at || task.created_at;
 
   return (
     <GuestPageShell
@@ -1293,54 +1305,62 @@ export function HomeVisitReportPage({
         onOpenLocation={() => setMapOpen(true)}
         schoolLine={`${task.student_school || "-"}${task.student_grade || task.student_room ? ` · ${[task.student_grade, task.student_room ? formatRoomLabel(task.student_room) : null].filter(Boolean).join(" ")}` : ""}`}
       />
-      <Form form={form} onSubmit={(report) => submitReport.mutate(report)}>
-        <FormErrorAlert
-          className="mb-3"
-          error={
-            trackingOptionsQuery.error ??
-            submitReport.error ??
-            (draftError ? new Error(draftError) : null)
-          }
-          fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
-        />
-        <ConversationalReportFlow
-          isSubmitting={submitReport.isPending}
-          onAdvance={async (_stepIndex, step) => {
-            if (step.id === "visited-at")
-              return await form.trigger(["visitedDate", "visitedTime"]);
-            if (step.id === "guardian")
-              return await form.trigger([
-                "guardianTypeCode",
-                "guardianTypeDetail",
-              ]);
-            if (step.id === "context" && studentNotFound)
-              return await form.trigger("causeDetail");
-            if (step.id === "residence")
-              return await form.trigger([
-                "residenceEnvironmentCodes",
-                "residenceEnvironmentDetail",
-              ]);
-            if (step.id === "evidence")
-              return await form.trigger([
-                "homeVisitExceptionCode",
-                "updatedAddressLine",
-                "updatedAddressProvince",
-                "updatedAddressDistrict",
-                "updatedAddressSubDistrict",
-                "updatedPostalCode",
-              ]);
-            return true;
-          }}
-          steps={steps}
-          submitLabel="ส่งรายงานการติดตาม"
-        />
-      </Form>
-      <p className="text-xs text-slate-500">
-        ฉบับร่างอยู่เฉพาะ browser/device นี้และลบอัตโนมัติภายใน 24 ชั่วโมง
-        {draftSavedAt
-          ? ` · บันทึกล่าสุด ${formatThaiDateTime(draftSavedAt)}`
-          : ""}
-      </p>
+      <TrackingStepsCard
+        statusClassName={trackingStatus.textClassName}
+        statusLabel={task.case_display_status_label || trackingStatus.label}
+      >
+        <TrackingStep connectNext number={1} title="มอบหมายการติดตาม">
+          <AssignmentSummary
+            assigneeLabel={task.assigned_to_name || "-"}
+            endsAtLabel={
+              task.expires_at ? formatThaiTime(task.expires_at) : "-"
+            }
+            endsOnLabel={
+              task.expires_at ? formatThaiDate(task.expires_at) : "-"
+            }
+            note={task.assignment_note || ""}
+            startsAtLabel={
+              assignmentStartsAt ? formatThaiTime(assignmentStartsAt) : "-"
+            }
+            startsOnLabel={
+              assignmentStartsAt ? formatThaiDate(assignmentStartsAt) : "-"
+            }
+          />
+        </TrackingStep>
+
+        <TrackingStep active connectPrev number={2} title="ติดตาม">
+          <Form form={form} onSubmit={(report) => submitReport.mutate(report)}>
+            <FormErrorAlert
+              className="mb-3"
+              error={
+                trackingOptionsQuery.error ??
+                submitReport.error ??
+                (draftError ? new Error(draftError) : null)
+              }
+              fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
+            />
+            <ReportFormSections
+              footerNote={
+                <>
+                  <p>
+                    ฉบับร่างอยู่เฉพาะ browser/device นี้ และลบอัตโนมัติภายใน 24
+                    ชั่วโมง
+                  </p>
+                  {draftSavedAt ? (
+                    <p className="mt-1">
+                      บันทึกล่าสุด {formatThaiDateTime(draftSavedAt)}
+                    </p>
+                  ) : null}
+                </>
+              }
+              isSubmitting={submitReport.isPending}
+              sections={sections}
+              submitDisabled={trackingOptionsQuery.isLoading}
+              submitLabel="บันทึกข้อมูล"
+            />
+          </Form>
+        </TrackingStep>
+      </TrackingStepsCard>
 
       <Dialog onOpenChange={setContactsOpen} open={contactsOpen}>
         <DialogContent
