@@ -56,6 +56,7 @@ import {
   type ScopeRestrictions,
 } from "../../auth/lib/scope-validation";
 import type { DataScope } from "../../auth/lib/permissions";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { getManageUsersPath, getUserRealm } from "../lib/admin-presentation";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
@@ -115,6 +116,7 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
 function UserForm({
   isCouncilRoute,
   lockedSchoolId,
+  initialArea,
   user,
   rolesCatalog,
   returnPath,
@@ -126,6 +128,12 @@ function UserForm({
    * and cannot drift from the selected school context.
    */
   lockedSchoolId?: number | null;
+  /**
+   * A new council account starts at the จ./อ./ต. picked in the header, the
+   * way a new school account starts at the header's school (owner,
+   * 2026-09-25: "ตอนสร้าง user scope ... auto ตาม filter กลาง").
+   */
+  initialArea?: DataScope | null;
   /** True on /council/manage-users/*, where school scope is not selectable. */
   isCouncilRoute?: boolean;
   user: ManagedUser | null;
@@ -150,7 +158,7 @@ function UserForm({
   const [dataScope, setDataScope] = useState<DataScope>(() => {
     const initial =
       user?.data_scope ??
-      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : {});
+      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : (initialArea ?? {}));
     return {
       ...initial,
       ...(isCouncilRoute
@@ -196,13 +204,20 @@ function UserForm({
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
   const assignableRoleGroups = rolesCatalog.filter(
-    (role) => role.is_assignable,
+    (role) =>
+      role.is_assignable &&
+      // Council accounts get only the council's groups (owner, 2026-09-25:
+      // "สภามีแค่ผู้ดูแลระบบกับผู้บริหาร") — never a retired national one.
+      (!isCouncilRoute ||
+        role.realm === "council" ||
+        role.name === selectedRole),
   );
   const selectedRoleGroup = rolesCatalog.find(
     (role) => role.name === selectedRole,
   );
   const scopeError = getScopeValidationError(
-    selectedRoleGroup?.scope_mode ?? "global",
+    // No group yet: the realm's own rules (school or จ./อ./ต.) still apply.
+    selectedRoleGroup?.scope_mode ?? "flexible",
     dataScope,
     selectedRoleGroup?.label ?? selectedRole,
     selectedRoleGroup?.scope_policy,
@@ -549,9 +564,8 @@ function UserForm({
               dataScope={dataScope}
               disabled={saveUser.isPending}
               onDataScopeChange={setDataScope}
-              role={selectedRoleGroup?.name ?? ""}
               roleLabel={selectedRoleGroup?.label ?? ""}
-              scopeMode={selectedRoleGroup?.scope_mode ?? "global"}
+              scopeMode={selectedRoleGroup?.scope_mode ?? "flexible"}
               scopePolicy={selectedRoleGroup?.scope_policy}
               showErrors={showScopeErrors}
               restrictions={scopeRestrictions}
@@ -598,6 +612,19 @@ export function ManageUserFormPage() {
     searchParams.get("returnTo") === "/profile" ? "/profile" : safeBackTarget;
   const lockedSchoolId = Number(searchParams.get("schoolId")) || null;
   const isCouncilRoute = location.pathname.startsWith("/council/");
+  const globalFilter = useGlobalSchoolFilter();
+  const initialArea: DataScope | null =
+    isCouncilRoute && globalFilter.province
+      ? {
+          provinces: [globalFilter.province],
+          ...(globalFilter.district
+            ? { districts: [globalFilter.district] }
+            : {}),
+          ...(globalFilter.district && globalFilter.subDistrict
+            ? { sub_districts: [globalFilter.subDistrict] }
+            : {}),
+        }
+      : null;
   const {
     data: user = null,
     isLoading: isUserLoading,
@@ -662,6 +689,7 @@ export function ManageUserFormPage() {
           // edited account's values from carrying over into a new one.
           isCouncilRoute={isCouncilRoute}
           key={user ? `edit-${user.id}` : "new"}
+          initialArea={isEdit ? null : initialArea}
           lockedSchoolId={isEdit ? null : lockedSchoolId}
           returnPath={returnPath}
           rolesCatalog={rolesCatalog}

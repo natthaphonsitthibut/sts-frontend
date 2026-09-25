@@ -27,6 +27,27 @@ interface UserTableProps {
   deactivatingUserId?: number | null;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
+  /**
+   * Council accounts belong to an area, not a school: show จังหวัด / อำเภอ-เขต /
+   * ตำบล-แขวง in place of สังกัด (owner, 2026-09-25).
+   */
+  showArea?: boolean;
+}
+
+const AREA_COLUMNS = [
+  { label: "จังหวัด", key: "provinces" },
+  { label: "อำเภอ/เขต", key: "districts" },
+  { label: "ตำบล/แขวง", key: "sub_districts" },
+] as const;
+
+/** One level of an account's area, as stored in its data_scope. */
+function areaValue(
+  user: ManagedUser,
+  key: (typeof AREA_COLUMNS)[number]["key"],
+): string {
+  if (user.data_scope?.global) return key === "provinces" ? "ทั้งประเทศ" : "-";
+  const values = user.data_scope?.[key] ?? [];
+  return values.length > 0 ? values.join(", ") : "-";
 }
 
 function UserIdentity({
@@ -107,6 +128,7 @@ export function UserTable({
   currentUserId,
   sort,
   onSortChange,
+  showArea = false,
 }: UserTableProps) {
   return (
     <div className="flex flex-col gap-2">
@@ -115,10 +137,24 @@ export function UserTable({
           "ลำดับ",
           { label: "ชื่อ-นามสกุล", sortKey: "name" },
           { label: "สถานะ", sortKey: "role" },
-          { label: "สังกัด", sortKey: "affiliation" },
+          ...(showArea
+            ? AREA_COLUMNS.map((column) => column.label)
+            : [{ label: "สังกัด", sortKey: "affiliation" }]),
           { isAction: true, label: "เครื่องมือ" },
         ]}
-        columnWidths={["w-[8%]", "w-[30%]", "w-[18%]", "w-[30%]", "w-[14%]"]}
+        columnWidths={
+          showArea
+            ? [
+                "w-[7%]",
+                "w-[26%]",
+                "w-[15%]",
+                "w-[13%]",
+                "w-[13%]",
+                "w-[13%]",
+                "w-[13%]",
+              ]
+            : ["w-[8%]", "w-[30%]", "w-[18%]", "w-[30%]", "w-[14%]"]
+        }
         minWidthClassName="min-w-[900px]"
         onSortChange={onSortChange}
         sort={sort}
@@ -132,9 +168,20 @@ export function UserTable({
             <DataTableCell className="text-sm font-medium text-slate-600">
               {getUserRoleText(user)}
             </DataTableCell>
-            <DataTableCell className="text-sm text-slate-500">
-              {user.affiliation || "-"}
-            </DataTableCell>
+            {showArea ? (
+              AREA_COLUMNS.map((column) => (
+                <DataTableCell
+                  className="text-sm text-slate-500"
+                  key={column.key}
+                >
+                  {areaValue(user, column.key)}
+                </DataTableCell>
+              ))
+            ) : (
+              <DataTableCell className="text-sm text-slate-500">
+                {user.affiliation || "-"}
+              </DataTableCell>
+            )}
             <DataTableCell>
               <RowActions
                 deactivatingUserId={deactivatingUserId}
@@ -164,12 +211,23 @@ export function UserTable({
                 <dt className="text-slate-500">สถานะ</dt>
                 <dd className="text-slate-700">{getUserRoleText(user)}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">สังกัด</dt>
-                <dd className="truncate text-slate-700">
-                  {user.affiliation || "-"}
-                </dd>
-              </div>
+              {showArea ? (
+                AREA_COLUMNS.map((column) => (
+                  <div className="flex justify-between gap-3" key={column.key}>
+                    <dt className="text-slate-500">{column.label}</dt>
+                    <dd className="truncate text-slate-700">
+                      {areaValue(user, column.key)}
+                    </dd>
+                  </div>
+                ))
+              ) : (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500">สังกัด</dt>
+                  <dd className="truncate text-slate-700">
+                    {user.affiliation || "-"}
+                  </dd>
+                </div>
+              )}
             </dl>
           </TableCard>
         ))}

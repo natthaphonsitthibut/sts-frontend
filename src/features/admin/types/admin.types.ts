@@ -380,6 +380,12 @@ export interface RoleDefinition {
   is_assignable: boolean;
   is_system: boolean;
   school_id: number | null;
+  /**
+   * Which user list offers this group (server-decided): a school's own, the
+   * council's (ผู้ดูแลระบบ, ผู้บริหาร and its own groups), or a retired
+   * national group no list hands out any more.
+   */
+  realm?: "school" | "council" | "retired";
   user_count?: number;
   login_link_count?: number;
 }

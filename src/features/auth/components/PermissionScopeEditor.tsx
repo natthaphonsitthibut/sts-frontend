@@ -48,7 +48,6 @@ export interface ScopeSelectionLabels {
 }
 
 interface PermissionScopeEditorProps {
-  role: string;
   roleLabel: string;
   scopeMode: RoleScopeMode;
   scopePolicy?: RoleScopePolicy;
@@ -97,7 +96,6 @@ function withSingleValue<T extends string | number>(
 }
 
 export function PermissionScopeEditor({
-  role,
   roleLabel,
   scopeMode,
   scopePolicy = "ASSIGNABLE",
@@ -108,7 +106,6 @@ export function PermissionScopeEditor({
   showErrors = false,
   restrictions = {},
 }: PermissionScopeEditorProps) {
-  const hasRole = role.trim().length > 0;
   const fieldStates = applyScopeRestrictions(
     getScopeFieldStates(scopeMode),
     restrictions,
@@ -305,11 +302,11 @@ export function PermissionScopeEditor({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!hasRole ? (
-            <p className="text-sm text-slate-500">
-              เลือกตำแหน่งก่อน เพื่อกำหนดขอบเขตข้อมูล
-            </p>
-          ) : isOwnOnlyScope ? (
+          {/* No "pick a group first": the realm alone decides which levels
+              are open — council accounts pick จ./อ./ต., school accounts a
+              school — so the scope is set before or after the group (owner,
+              2026-09-25). */}
+          {isOwnOnlyScope ? (
             <p className="text-sm text-slate-500">
               ตำแหน่งนี้เข้าถึงได้เฉพาะข้อมูลของผู้ใช้งานเอง
             </p>

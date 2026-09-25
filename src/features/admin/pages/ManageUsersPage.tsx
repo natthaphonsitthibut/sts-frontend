@@ -102,6 +102,22 @@ export function ManageUsersPage({
   // Leaving it unset browses every school in the admin's own scope.
   const globalFilter = useGlobalSchoolFilter();
   const selectedSchoolValue = scope === "council" ? "" : globalFilter.schoolId;
+  // Council accounts belong to an area: the list follows the header's จ./อ./ต.
+  // the way the school list follows its school (owner, 2026-09-25).
+  const councilProvince = scope === "council" ? globalFilter.province : "";
+  const councilDistrict = scope === "council" ? globalFilter.district : "";
+  const councilSubDistrict =
+    scope === "council" ? globalFilter.subDistrict : "";
+  const councilAreaKey = [
+    councilProvince,
+    councilDistrict,
+    councilSubDistrict,
+  ].join("|");
+  const [lastCouncilAreaKey, setLastCouncilAreaKey] = useState(councilAreaKey);
+  if (councilAreaKey !== lastCouncilAreaKey) {
+    setLastCouncilAreaKey(councilAreaKey);
+    if (page !== 1) setPage(1);
+  }
   // A school switch (from the header, or anywhere else) can leave the page
   // number past the end of the new list.
   const [lastSchoolValue, setLastSchoolValue] = useState(selectedSchoolValue);
@@ -119,7 +135,7 @@ export function ManageUsersPage({
       .filter((role) => !NON_STAFF_ROLES.split(",").includes(role.name))
       .filter((role) =>
         scope === "council"
-          ? role.school_id == null
+          ? role.realm === "council"
           : schoolId !== null && role.school_id === schoolId,
       )
       .map((role) => role.label);
@@ -138,6 +154,9 @@ export function ManageUsersPage({
       searchTerm: debouncedSearch || undefined,
       realm: scope,
       schoolId: selectedSchoolValue || undefined,
+      province: councilProvince || undefined,
+      district: councilDistrict || undefined,
+      subDistrict: councilSubDistrict || undefined,
       excludeRole: NON_STAFF_ROLES,
       roleLabel: roleLabel || undefined,
       page,
@@ -146,6 +165,9 @@ export function ManageUsersPage({
       sortOrder: sort?.direction,
     }),
     [
+      councilDistrict,
+      councilProvince,
+      councilSubDistrict,
       debouncedSearch,
       page,
       roleLabel,
@@ -275,6 +297,7 @@ export function ManageUsersPage({
         <>
           <UserTable
             currentUserId={currentUserId}
+            showArea={scope === "council"}
             deactivatingUserId={
               deactivateAccount.isPending
                 ? deactivateAccount.variables?.id
