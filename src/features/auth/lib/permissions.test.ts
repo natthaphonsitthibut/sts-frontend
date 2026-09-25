@@ -92,6 +92,7 @@ describe("default menu groups match the sidebar mockups", () => {
       "classrooms",
       "teachers",
       "students",
+      "export-data",
       "audit-log",
     ];
     expect(
@@ -105,6 +106,7 @@ describe("default menu groups match the sidebar mockups", () => {
           "ห้องเรียนทั้งหมด",
           "รายชื่อคุณครู",
           "รายชื่อนักเรียน",
+          "ส่งออกข้อมูล",
         ],
       ],
     ]);
