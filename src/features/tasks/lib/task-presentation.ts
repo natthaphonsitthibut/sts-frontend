@@ -25,7 +25,10 @@ export function formatDateTimeRangeAge(
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return "-";
   }
-  const totalHours = Math.max(0, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+  const totalHours = Math.max(
+    0,
+    Math.round((end.getTime() - start.getTime()) / 3_600_000),
+  );
   const days = Math.floor(totalHours / 24);
   const hours = totalHours % 24;
   if (days > 0 && hours > 0) return `${days} วัน ${hours} ชม.`;
@@ -57,7 +60,9 @@ export function getTaskLinkDisplayStatus(
   displayCatalog: readonly StatusCatalogItem[],
   persistedCatalog: readonly StatusCatalogItem[] = [],
 ): TaskLinkDisplayStatus {
-  const hasSubmission = Boolean(link.submission?.submitted_at || link.submission);
+  const hasSubmission = Boolean(
+    link.submission?.submitted_at || link.submission,
+  );
   if (link.status === "COMPLETED" || hasSubmission) {
     const item = findStatusCatalogItem(displayCatalog, "COMPLETED");
     return {
@@ -67,7 +72,11 @@ export function getTaskLinkDisplayStatus(
     };
   }
   const expiresAt = link.expires_at ? new Date(link.expires_at) : null;
-  if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+  if (
+    expiresAt &&
+    !Number.isNaN(expiresAt.getTime()) &&
+    expiresAt.getTime() <= Date.now()
+  ) {
     const item = findStatusCatalogItem(displayCatalog, "EXPIRED");
     return {
       label: item?.label ?? "EXPIRED",
@@ -127,16 +136,6 @@ export function normalizeTaskPublicLink(rawLink: string): string {
   }
 }
 
-/**
- * Public link to hand out for a created link. LOGIN links open the magic-login
- * page (so the holder is signed in with the assigned role); other types open the
- * guest task page.
- */
-export function buildTaskResultLink(rawLink: string, isLoginLink: boolean): string {
-  const normalized = normalizeTaskPublicLink(rawLink);
-  return isLoginLink ? normalized.replace("/task/", "/login/magic/") : normalized;
-}
-
 /** Turn a stored (often relative) link into a full shareable URL. */
 export function toAbsoluteUrl(value: string): string {
   if (!value) {
@@ -174,7 +173,9 @@ export function buildVisitReportFormTitle(task: {
   ]
     .filter(Boolean)
     .join(" ");
-  const studentClass = [task.student_grade, task.student_room].filter(Boolean).join("/");
+  const studentClass = [task.student_grade, task.student_room]
+    .filter(Boolean)
+    .join("/");
 
   return [
     "แบบฟอร์มการติดตามนักเรียน",

@@ -43,7 +43,7 @@ export function isSafeAppPath(value: unknown): value is string {
 }
 
 function isBearerCredentialPath(pathname: string): boolean {
-  return pathname.startsWith("/task/") || pathname.startsWith("/login/magic/");
+  return pathname.startsWith("/task/");
 }
 
 function routeMatchesPathname(route: string, pathname: string): boolean {
