@@ -60,7 +60,7 @@ import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
   EMPTY_USER_FORM,
-  userFormSchema,
+  createUserFormSchema,
   type UserFormValues,
 } from "../schemas/user.schema";
 import type {
@@ -171,7 +171,7 @@ function UserForm({
     : { disallowClassroomScope: true, requireSchoolScope: true };
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(createUserFormSchema(user?.username)),
   });
   const locationQuery = useQuery({
     queryKey: ["attendance-locations"],
@@ -298,8 +298,12 @@ function UserForm({
             error,
             "บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล",
           );
-          if (message.startsWith("ชื่อผู้ใช้งานนี้ถูกใช้แล้ว")) {
+          // The server's own username/password rules land under the field
+          // they are about, red, like every other field error.
+          if (message.startsWith("ชื่อผู้ใช้งาน")) {
             form.setError("username", { type: "server", message });
+          } else if (message.startsWith("รหัสผ่าน")) {
+            form.setError("password", { type: "server", message });
           }
         },
       },

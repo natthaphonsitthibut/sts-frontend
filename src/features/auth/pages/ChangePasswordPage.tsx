@@ -31,12 +31,13 @@ import {
   getFirstAccessibleRoute,
 } from "../lib/permissions";
 import { useAuthSessionStore } from "../store/auth-session.store";
+import { newPassword } from "../../../lib/validation";
 import type { ChangePasswordPayload } from "../types/auth.types";
 
 const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "กรุณากรอกรหัสผ่านเดิม"),
-    newPassword: z.string().min(8, "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร"),
+    newPassword,
     confirmPassword: z.string().min(1, "กรุณายืนยันรหัสผ่านใหม่"),
   })
   .refine((values) => values.newPassword === values.confirmPassword, {

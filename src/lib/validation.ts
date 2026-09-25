@@ -35,9 +35,13 @@ export const requiredThaiPhone = z
 export const optionalEmail = z
   .string()
   .trim()
-  .refine((value) => value.length === 0 || z.string().email().safeParse(value).success, {
-    message: "รูปแบบอีเมลไม่ถูกต้อง",
-  });
+  .refine(
+    (value) =>
+      value.length === 0 || z.string().email().safeParse(value).success,
+    {
+      message: "รูปแบบอีเมลไม่ถูกต้อง",
+    },
+  );
 
 /** Optional map latitude with Thai messages for direct coordinate entry. */
 export const nullableLatitude = z
@@ -52,6 +56,37 @@ export const nullableLongitude = z
   .min(-180, "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180")
   .max(180, "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180")
   .nullable();
+
+/**
+ * Usernames and passwords: 8–50 characters of English letters, digits and
+ * printable symbols — no Thai, no spaces (owner, 2026-09-25). Mirrors
+ * `CREDENTIAL_PATTERN` in the backend's users DTO.
+ */
+export const CREDENTIAL_MIN_LENGTH = 8;
+export const CREDENTIAL_MAX_LENGTH = 50;
+const CREDENTIAL_PATTERN = /^[\x21-\x7E]+$/;
+const CREDENTIAL_CHARACTERS_HINT =
+  "ใช้ได้เฉพาะภาษาอังกฤษ ตัวเลข และอักขระพิเศษ ห้ามเว้นวรรค";
+
+function credential(label: string) {
+  return z
+    .string()
+    .min(
+      CREDENTIAL_MIN_LENGTH,
+      `${label}ต้องมีอย่างน้อย ${CREDENTIAL_MIN_LENGTH} ตัวอักษร`,
+    )
+    .max(
+      CREDENTIAL_MAX_LENGTH,
+      `${label}ต้องไม่เกิน ${CREDENTIAL_MAX_LENGTH} ตัวอักษร`,
+    )
+    .regex(CREDENTIAL_PATTERN, `${label}${CREDENTIAL_CHARACTERS_HINT}`);
+}
+
+/** A username being set or changed. */
+export const newUsername = credential("ชื่อผู้ใช้งาน");
+
+/** A password being set or changed. */
+export const newPassword = credential("รหัสผ่าน");
 
 /** Strip anything that is not a digit — used to guard numeric inputs. */
 export function keepDigits(value: string): string {
