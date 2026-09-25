@@ -155,7 +155,8 @@ export const MENU_ITEMS: MenuItem[] = [
           "manage-classroom-links",
           "/attendance/classroom-links",
         ),
-        iconName: "users",
+        // A link glyph rather than the mockup's people icon (owner, 2026-09-25).
+        iconName: "link",
       },
       {
         ...pageMenuItem("manage-students", "/manage-students"),
