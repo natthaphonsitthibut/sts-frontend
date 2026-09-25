@@ -80,7 +80,12 @@ export function LinkShareDialog({
 }: LinkShareDialogProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-md" onClose={() => onOpenChange(false)}>
+      {/* text-left: the dialog renders inside whatever holds the button — a
+          centred table action cell included — and must not inherit it. */}
+      <DialogContent
+        className="max-w-md text-left"
+        onClose={() => onOpenChange(false)}
+      >
         <DialogHeader>
           <DialogTitle icon={Share2}>{title}</DialogTitle>
           {description ? (
@@ -95,7 +100,10 @@ export function LinkShareDialog({
 }
 
 /** Shared inline content so QR pages and dialogs present the same share UI. */
-export function LinkSharePanel({ disabled = false, link }: LinkSharePanelProps) {
+export function LinkSharePanel({
+  disabled = false,
+  link,
+}: LinkSharePanelProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy(): Promise<void> {
@@ -134,96 +142,92 @@ export function LinkSharePanel({ disabled = false, link }: LinkSharePanelProps) 
   }
 
   return (
-        <div className={disabled ? "pointer-events-none space-y-5 opacity-40" : "space-y-5"}>
-          <div className="space-y-2">
-            <div className="text-xs font-semibold text-slate-700">คัดลอกลิงก์</div>
-            <div className="flex items-center gap-2">
-              <Input
-                aria-label="ลิงก์ที่จะแชร์"
-                className="min-w-0 flex-1 text-sm"
-                disabled={disabled}
-                readOnly
-                value={link}
-              />
-              <Button
-                aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
-                className="w-[88px] shrink-0"
-                disabled={disabled}
-                icon={copied ? Check : undefined}
-                iconClassName={copied ? "text-white" : undefined}
-                onClick={() => void handleCopy()}
-                size="md"
-              >
-                {copied ? null : "คัดลอก"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-xs font-semibold text-slate-700">แชร์ผ่าน</div>
-            <div className="grid grid-cols-5 gap-3">
-              <ShareChoice
-                disabled={disabled}
-                label="LINE"
-                onClick={() =>
-                  openShareTarget(
-                    `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`,
-                  )
-                }
-              >
-                <span className="flex size-12 items-center justify-center rounded-xl bg-line shadow-sm">
-                  <img
-                    alt=""
-                    className="size-8"
-                    src="/brand-icons/line.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice
-                disabled={disabled}
-                label="Messenger"
-                onClick={() => void handleMessenger()}
-              >
-                <img
-                  alt=""
-                  className="size-12"
-                  src="/brand-icons/messenger.svg"
-                />
-              </ShareChoice>
-              <ShareChoice
-                disabled={disabled}
-                label="Gmail"
-                onClick={() =>
-                  openShareTarget(
-                    `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(link)}`,
-                  )
-                }
-              >
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <img
-                    alt=""
-                    className="h-7 w-9"
-                    src="/brand-icons/gmail.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice disabled={disabled} label="Discord" onClick={() => void handleDiscord()}>
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <img
-                    alt=""
-                    className="h-7 w-9"
-                    src="/brand-icons/discord.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice disabled={disabled} label="เพิ่มเติม" onClick={() => void handleMore()}>
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm">
-                  <Ellipsis className="size-5" aria-hidden="true" />
-                </span>
-              </ShareChoice>
-            </div>
-          </div>
+    <div
+      className={
+        disabled ? "pointer-events-none space-y-5 opacity-40" : "space-y-5"
+      }
+    >
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-700">คัดลอกลิงก์</div>
+        <div className="flex items-center gap-2">
+          <Input
+            aria-label="ลิงก์ที่จะแชร์"
+            className="min-w-0 flex-1 text-sm"
+            disabled={disabled}
+            readOnly
+            value={link}
+          />
+          <Button
+            aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
+            className="w-[88px] shrink-0"
+            disabled={disabled}
+            icon={copied ? Check : undefined}
+            iconClassName={copied ? "text-white" : undefined}
+            onClick={() => void handleCopy()}
+            size="md"
+          >
+            {copied ? null : "คัดลอก"}
+          </Button>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-700">แชร์ผ่าน</div>
+        <div className="grid grid-cols-5 gap-3">
+          <ShareChoice
+            disabled={disabled}
+            label="LINE"
+            onClick={() =>
+              openShareTarget(
+                `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`,
+              )
+            }
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl bg-line shadow-sm">
+              <img alt="" className="size-8" src="/brand-icons/line.svg" />
+            </span>
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="Messenger"
+            onClick={() => void handleMessenger()}
+          >
+            <img alt="" className="size-12" src="/brand-icons/messenger.svg" />
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="Gmail"
+            onClick={() =>
+              openShareTarget(
+                `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(link)}`,
+              )
+            }
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <img alt="" className="h-7 w-9" src="/brand-icons/gmail.svg" />
+            </span>
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="Discord"
+            onClick={() => void handleDiscord()}
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <img alt="" className="h-7 w-9" src="/brand-icons/discord.svg" />
+            </span>
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="เพิ่มเติม"
+            onClick={() => void handleMore()}
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm">
+              <Ellipsis className="size-5" aria-hidden="true" />
+            </span>
+          </ShareChoice>
+        </div>
+      </div>
+    </div>
   );
 }
 
