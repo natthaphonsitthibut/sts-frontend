@@ -30,7 +30,8 @@ export interface MenuItem {
   activeRoutes?: string[];
   children?: MenuItem[];
   scopePolicy?: "global-only";
-  rolePolicy?: "ADMIN";
+  /** ADMIN: the national group; COUNCIL_ADMIN: it or an area's own ผู้ดูแลระบบ. */
+  rolePolicy?: "ADMIN" | "COUNCIL_ADMIN";
   /** Which sidebar realm a top-level item belongs under. */
   section?: "school" | "council";
   /** A school item a council-only account must not see (it has its own copy). */
@@ -233,6 +234,17 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   // แชตบอท is ผู้บริหาร's (owner, 2026-09-25).
   { ...pageMenuItem("nl_query:use", "/nl-query"), section: "council" },
+  // บันทึกการใช้งาน, one page for the council's ผู้ดูแลระบบ — national or an
+  // area's own — within its scope (owner, 2026-09-25).
+  {
+    id: "audit-log-council",
+    label: "บันทึกการใช้งาน",
+    iconName: "fact-check",
+    permissionId: "audit-log",
+    rolePolicy: "COUNCIL_ADMIN",
+    route: "/council/audit-log",
+    section: "council",
+  },
   {
     ...pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
     section: "council",
@@ -379,7 +391,16 @@ export function filterMenuItems(
   const canAccessItem = (item: MenuItem): boolean => {
     if (item.scopePolicy === "global-only" && dataScope?.global !== true)
       return false;
-    if (item.rolePolicy && !userRoles.includes(item.rolePolicy)) return false;
+    if (item.rolePolicy === "ADMIN" && !userRoles.includes("ADMIN"))
+      return false;
+    if (
+      item.rolePolicy === "COUNCIL_ADMIN" &&
+      !userRoles.some(
+        (role) =>
+          role === "ADMIN" || AREA_ROLE_NAME.exec(role)?.[1] === "ADMIN",
+      )
+    )
+      return false;
     const requiredPermissions = item.permissionId ?? item.id;
     return Array.isArray(requiredPermissions)
       ? requiredPermissions.some((permissionId) =>

@@ -7,7 +7,9 @@ export type AuditLogDomain =
   | "cases"
   | "tasks"
   | "attendance"
-  | "timetable";
+  | "timetable"
+  /** Every domain — the council's บันทึกการใช้งาน page. */
+  | "all";
 
 export type AuditLogTaskType = "ATTENDANCE" | "VISIT" | "LOGIN";
 

@@ -141,6 +141,7 @@ describe("default menu groups match the sidebar mockups", () => {
       "จัดการสิทธิ์ผู้ใช้งาน: จัดการผู้ใช้งาน, จัดการกลุ่มเมนู",
       "จัดการข้อมูลพื้นฐาน",
       "แชตบอท",
+      "บันทึกการใช้งาน",
       "ตั้งค่าระบบ",
     ]);
   });
@@ -250,5 +251,24 @@ describe("isAggregateOnlyExecutive", () => {
     expect(isAggregateOnlyExecutive(["A500108_BASE_EXECUTIVE"])).toBe(true);
     expect(isAggregateOnlyExecutive(["A500108_BASE_ADMIN"])).toBe(false);
     expect(isAggregateOnlyExecutive(["S10010004_BASE_DIRECTOR"])).toBe(false);
+  });
+});
+
+describe("council บันทึกการใช้งาน", () => {
+  const routes = (roles: string[], scope: DataScope) =>
+    collectMenuRoutes(filterMenuItems(MENU_ITEMS, ALL_PAGES, scope, roles));
+
+  it("is for the council's ผู้ดูแลระบบ only, national or an area's own", () => {
+    expect(routes(["ADMIN"], { global: true })).toContain("/council/audit-log");
+    expect(
+      routes(["A500108_BASE_ADMIN"], {
+        provinces: ["เชียงใหม่"],
+        districts: ["เมืองเชียงใหม่"],
+        sub_districts: ["สุเทพ"],
+      }),
+    ).toContain("/council/audit-log");
+    expect(
+      routes(["A500108_BASE_EXECUTIVE"], { provinces: ["เชียงใหม่"] }),
+    ).not.toContain("/council/audit-log");
   });
 });

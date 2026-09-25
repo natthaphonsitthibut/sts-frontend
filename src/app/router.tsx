@@ -44,6 +44,7 @@ import {
   MainPage,
   ManageRoleGroupFormPage,
   ManageRoleGroupsPage,
+  CouncilAuditLogPage,
   ManageSchoolsPage,
   ManageUserFormPage,
   ManageUsersPage,
@@ -539,6 +540,10 @@ export const router = createBrowserRouter([
           {
             path: "audit-log/:id",
             element: protectedElement(<AuditLogDetailPage />, "audit-log"),
+          },
+          {
+            path: "council/audit-log",
+            element: protectedElement(<CouncilAuditLogPage />, "audit-log"),
           },
           {
             // System settings are one shared set of values for every school, so the
