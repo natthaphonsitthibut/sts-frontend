@@ -67,6 +67,7 @@ import {
 } from "../schemas/user.schema";
 import type {
   ManagedUser,
+  CouncilArea,
   RoleDefinition,
   UserSavePayload,
 } from "../types/admin.types";
@@ -111,6 +112,32 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
     address_longitude: user.address_longitude ?? null,
     role: user.role || user.roles?.[0] || "",
   };
+}
+
+/** The one จ./อ./ต. a council scope names, or undefined (national/none). */
+function councilAreaOf(scope: DataScope): CouncilArea | undefined {
+  if (scope.global || (scope.provinces?.length ?? 0) !== 1) return undefined;
+  const district =
+    scope.districts?.length === 1 ? scope.districts[0] : undefined;
+  return {
+    province: scope.provinces![0],
+    district,
+    subDistrict:
+      district && scope.sub_districts?.length === 1
+        ? scope.sub_districts[0]
+        : undefined,
+  };
+}
+
+/** The group belongs to exactly this area. */
+function isOwnedByArea(role: RoleDefinition, area: CouncilArea): boolean {
+  const owner = role.owner_area;
+  return Boolean(
+    owner &&
+    owner.province === area.province &&
+    (owner.district ?? undefined) === area.district &&
+    (owner.sub_district ?? undefined) === area.subDistrict,
+  );
 }
 
 function UserForm({
@@ -203,18 +230,25 @@ function UserForm({
     throwOnError: false,
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
-  const assignableRoleGroups = rolesCatalog.filter(
+  // A council account takes exactly its own จ./อ./ต.'s groups (owner with BA,
+  // 2026-09-25), so its list comes from that area and follows the scope as it
+  // is picked; a nationwide account takes the national ones.
+  const councilArea = isCouncilRoute ? councilAreaOf(dataScope) : undefined;
+  const { rolesCatalog: areaRolesCatalog } = useRolesCatalog(councilArea);
+  const catalog = isCouncilRoute ? areaRolesCatalog : rolesCatalog;
+  const assignableRoleGroups = catalog.filter(
     (role) =>
       role.is_assignable &&
+      (!isCouncilRoute ||
+        role.name === selectedRole ||
+        (councilArea ? isOwnedByArea(role, councilArea) : !role.owner_area)) &&
       // Council accounts get only the council's groups (owner, 2026-09-25:
       // "สภามีแค่ผู้ดูแลระบบกับผู้บริหาร") — never a retired national one.
       (!isCouncilRoute ||
         role.realm === "council" ||
         role.name === selectedRole),
   );
-  const selectedRoleGroup = rolesCatalog.find(
-    (role) => role.name === selectedRole,
-  );
+  const selectedRoleGroup = catalog.find((role) => role.name === selectedRole);
   const scopeError = getScopeValidationError(
     // No group yet: the realm's own rules (school or จ./อ./ต.) still apply.
     selectedRoleGroup?.scope_mode ?? "flexible",
@@ -229,8 +263,7 @@ function UserForm({
     // Switching roles restarts from that role's standard set — keeping the old
     // role's custom additions would grant permissions nobody chose.
     const nextBaseline =
-      rolesCatalog.find((entry) => entry.name === role)?.default_permissions ??
-      [];
+      catalog.find((entry) => entry.name === role)?.default_permissions ?? [];
     setPermissions(nextBaseline);
   }
 

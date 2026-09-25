@@ -55,6 +55,7 @@ import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
+import { isAggregateOnlyExecutive } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
@@ -1243,9 +1244,7 @@ function StudentRiskDashboardPage() {
 
 export function DashboardPage() {
   const roles = useAuthSessionStore((state) => state.user?.roles ?? []);
-  const aggregateOnly =
-    roles.includes("EXECUTIVE") &&
-    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
+  const aggregateOnly = isAggregateOnlyExecutive(roles);
 
   if (!aggregateOnly) return <StudentRiskDashboardPage />;
 

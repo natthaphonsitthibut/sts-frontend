@@ -205,11 +205,8 @@ export const MENU_ITEMS: MenuItem[] = [
         iconName: "apps",
         permissionId: "manage-role-groups",
         route: "/council/manage-role-groups",
-        // Council groups are one national set, shared by every จ./อ./ต.: only
-        // a national council admin edits them (the server refuses anyone
-        // else), so an area admin is not shown the entry (owner, 2026-09-25).
-        scopePolicy: "global-only",
-        rolePolicy: "ADMIN",
+        // Each จ./อ./ต. has its own groups (owner with BA, 2026-09-25), so an
+        // area admin manages its area's here like a school admin its school's.
       },
     ],
   },
@@ -353,6 +350,24 @@ export function hasPermission(
     userPermissions.includes("ALL") ||
     userPermissions.includes(permissionId)
   );
+}
+
+/** An area's own copy of a council default: `A<area code>_BASE_<kind>`. */
+const AREA_ROLE_NAME = /^A[0-9]+_BASE_(ADMIN|EXECUTIVE)$/;
+
+/**
+ * ผู้บริหาร — the national group or an area's own copy — sees aggregates only
+ * (the server enforces the same rule; this only picks the page to render).
+ */
+export function isAggregateOnlyExecutive(roles: string[]): boolean {
+  const kind = (role: string) => AREA_ROLE_NAME.exec(role)?.[1] ?? null;
+  const executive = roles.some(
+    (role) => role === "EXECUTIVE" || kind(role) === "EXECUTIVE",
+  );
+  const exempt = roles.some(
+    (role) => role === "ADMIN" || role === "DIRECTOR" || kind(role) === "ADMIN",
+  );
+  return executive && !exempt;
 }
 
 export function filterMenuItems(

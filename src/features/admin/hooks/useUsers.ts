@@ -8,6 +8,7 @@ import { adminService, type UserListQuery } from "../api/admin.service";
 import type {
   AccountDeactivationPayload,
   AccountReactivateResponse,
+  CouncilArea,
   CreateUserResponse,
   DeactivateStudentAccountResponse,
   ManagedUser,
@@ -77,10 +78,14 @@ export function useUserDetail(id: number | null) {
   });
 }
 
-export function useRolesCatalog(): UseRolesCatalogResult {
+/** With `area`, also the council groups of exactly that จ./อ./ต. */
+export function useRolesCatalog(area?: CouncilArea): UseRolesCatalogResult {
+  const areaKey = area?.province
+    ? [area.province, area.district ?? "", area.subDistrict ?? ""]
+    : [];
   const result = useQuery({
-    queryKey: [ROLES_CATALOG_QUERY_KEY],
-    queryFn: adminService.getRolesCatalog,
+    queryKey: [ROLES_CATALOG_QUERY_KEY, ...areaKey],
+    queryFn: () => adminService.getRolesCatalog(area),
   });
   return {
     rolesCatalog: result.data ?? EMPTY_ROLES,

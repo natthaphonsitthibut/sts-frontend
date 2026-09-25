@@ -3,6 +3,7 @@ import {
   buildMenuSections,
   filterMenuItems,
   getMenuRealms,
+  isAggregateOnlyExecutive,
   MENU_ITEMS,
   type DataScope,
 } from "./permissions";
@@ -221,17 +222,33 @@ describe("council จัดการกลุ่มเมนู", () => {
       filterMenuItems(MENU_ITEMS, ALL_PAGES, dataScope, ["ADMIN"]),
     );
 
-  it("is shown to a national council admin only", () => {
+  it("is shown to every council admin, national or of an area", () => {
     expect(councilRoutes({ global: true })).toContain(
       "/council/manage-role-groups",
     );
-    // An area admin keeps its user list but not the shared national groups.
-    const area = councilRoutes({
-      provinces: ["เชียงใหม่"],
-      districts: ["เมืองเชียงใหม่"],
-      sub_districts: ["สุเทพ"],
-    });
+    // An area admin manages its own area's groups, like a school admin.
+    const area = collectMenuRoutes(
+      filterMenuItems(
+        MENU_ITEMS,
+        ALL_PAGES,
+        {
+          provinces: ["เชียงใหม่"],
+          districts: ["เมืองเชียงใหม่"],
+          sub_districts: ["สุเทพ"],
+        },
+        ["A500108_BASE_ADMIN"],
+      ),
+    );
     expect(area).toContain("/council/manage-users");
-    expect(area).not.toContain("/council/manage-role-groups");
+    expect(area).toContain("/council/manage-role-groups");
+  });
+});
+
+describe("isAggregateOnlyExecutive", () => {
+  it("treats an area's own ผู้บริหาร like the national one", () => {
+    expect(isAggregateOnlyExecutive(["EXECUTIVE"])).toBe(true);
+    expect(isAggregateOnlyExecutive(["A500108_BASE_EXECUTIVE"])).toBe(true);
+    expect(isAggregateOnlyExecutive(["A500108_BASE_ADMIN"])).toBe(false);
+    expect(isAggregateOnlyExecutive(["S10010004_BASE_DIRECTOR"])).toBe(false);
   });
 });

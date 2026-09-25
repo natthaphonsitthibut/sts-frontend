@@ -386,11 +386,27 @@ export interface RoleDefinition {
    * national group no list hands out any more.
    */
   realm?: "school" | "council" | "retired";
+  /** The จ./อ./ต. this council group belongs to; `null` for national and school groups. */
+  owner_area?: RoleOwnerArea | null;
   user_count?: number;
   login_link_count?: number;
 }
 
-export interface RoleGroupForm {
+/** Names match data_scope and the header filter. */
+export interface RoleOwnerArea {
+  province: string;
+  district: string | null;
+  sub_district: string | null;
+}
+
+/** A จ./อ./ต. by name, as the header filter and data_scope carry it. */
+export interface CouncilArea {
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+}
+
+export interface RoleGroupForm extends CouncilArea {
   schoolId?: number;
   name?: string;
   label: string;
@@ -404,6 +420,8 @@ export interface RoleGroupListQuery {
   limit: number;
   schoolId?: number;
   scope?: "school" | "council";
+  /** Council only: the area whose groups to list (required unless the account has one). */
+  area?: CouncilArea;
   sortBy?: "group" | "menus";
   sortDirection?: "asc" | "desc";
 }
