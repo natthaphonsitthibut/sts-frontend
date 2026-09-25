@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Check, Ellipsis, Share2 } from "lucide-react";
+import {
+  Check,
+  Ellipsis,
+  LoaderCircle,
+  MessageCircle,
+  Share2,
+} from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   appToast,
   Button,
@@ -11,8 +18,25 @@ import {
   Input,
 } from "../base";
 
+/**
+ * Send the link straight to its one recipient through the system's LINE —
+ * "ส่งลิงก์ผ่าน LINE" — as opposed to แชร์ผ่าน LINE, which opens the viewer's
+ * own LINE to pick someone. Shown only where the link has a known recipient.
+ */
+export interface LinkDirectSend {
+  /** Who it goes to, e.g. the assigned teacher's name. */
+  recipient: string;
+  /** Why it cannot send right now; null when it can. */
+  unavailableReason: string | null;
+  busy?: boolean;
+  /** When the last send reached the recipient, already formatted. */
+  sentAtLabel?: string | null;
+  onSend: () => void;
+}
+
 interface LinkShareDialogProps {
   description?: ReactNode;
+  directSend?: LinkDirectSend;
   link: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -21,12 +45,14 @@ interface LinkShareDialogProps {
 
 interface LinkShareButtonProps {
   className?: string;
+  directSend?: LinkDirectSend;
   compact?: boolean;
   disabled?: boolean;
   link?: string | null;
 }
 
 interface LinkSharePanelProps {
+  directSend?: LinkDirectSend;
   disabled?: boolean;
   link: string;
 }
@@ -73,6 +99,7 @@ function ShareChoice({
 
 export function LinkShareDialog({
   description,
+  directSend,
   link,
   onOpenChange,
   open,
@@ -80,7 +107,12 @@ export function LinkShareDialog({
 }: LinkShareDialogProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-md" onClose={() => onOpenChange(false)}>
+      {/* text-left: the dialog renders inside whatever holds the button — a
+          centred table action cell included — and must not inherit it. */}
+      <DialogContent
+        className="max-w-md text-left"
+        onClose={() => onOpenChange(false)}
+      >
         <DialogHeader>
           <DialogTitle icon={Share2}>{title}</DialogTitle>
           {description ? (
@@ -88,14 +120,18 @@ export function LinkShareDialog({
           ) : null}
         </DialogHeader>
 
-        <LinkSharePanel link={link} />
+        <LinkSharePanel directSend={directSend} link={link} />
       </DialogContent>
     </Dialog>
   );
 }
 
 /** Shared inline content so QR pages and dialogs present the same share UI. */
-export function LinkSharePanel({ disabled = false, link }: LinkSharePanelProps) {
+export function LinkSharePanel({
+  directSend,
+  disabled = false,
+  link,
+}: LinkSharePanelProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy(): Promise<void> {
@@ -134,102 +170,147 @@ export function LinkSharePanel({ disabled = false, link }: LinkSharePanelProps) 
   }
 
   return (
-        <div className={disabled ? "pointer-events-none space-y-5 opacity-40" : "space-y-5"}>
-          <div className="space-y-2">
-            <div className="text-xs font-semibold text-slate-700">คัดลอกลิงก์</div>
-            <div className="flex items-center gap-2">
-              <Input
-                aria-label="ลิงก์ที่จะแชร์"
-                className="min-w-0 flex-1 text-sm"
-                disabled={disabled}
-                readOnly
-                value={link}
-              />
-              <Button
-                aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
-                className="w-[88px] shrink-0"
-                disabled={disabled}
-                icon={copied ? Check : undefined}
-                iconClassName={copied ? "text-white" : undefined}
-                onClick={() => void handleCopy()}
-                size="md"
-              >
-                {copied ? null : "คัดลอก"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-xs font-semibold text-slate-700">แชร์ผ่าน</div>
-            <div className="grid grid-cols-5 gap-3">
-              <ShareChoice
-                disabled={disabled}
-                label="LINE"
-                onClick={() =>
-                  openShareTarget(
-                    `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`,
-                  )
-                }
-              >
-                <span className="flex size-12 items-center justify-center rounded-xl bg-line shadow-sm">
-                  <img
-                    alt=""
-                    className="size-8"
-                    src="/brand-icons/line.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice
-                disabled={disabled}
-                label="Messenger"
-                onClick={() => void handleMessenger()}
-              >
-                <img
-                  alt=""
-                  className="size-12"
-                  src="/brand-icons/messenger.svg"
-                />
-              </ShareChoice>
-              <ShareChoice
-                disabled={disabled}
-                label="Gmail"
-                onClick={() =>
-                  openShareTarget(
-                    `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(link)}`,
-                  )
-                }
-              >
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <img
-                    alt=""
-                    className="h-7 w-9"
-                    src="/brand-icons/gmail.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice disabled={disabled} label="Discord" onClick={() => void handleDiscord()}>
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <img
-                    alt=""
-                    className="h-7 w-9"
-                    src="/brand-icons/discord.svg"
-                  />
-                </span>
-              </ShareChoice>
-              <ShareChoice disabled={disabled} label="เพิ่มเติม" onClick={() => void handleMore()}>
-                <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm">
-                  <Ellipsis className="size-5" aria-hidden="true" />
-                </span>
-              </ShareChoice>
-            </div>
-          </div>
+    <div
+      className={
+        disabled ? "pointer-events-none space-y-5 opacity-40" : "space-y-5"
+      }
+    >
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-700">คัดลอกลิงก์</div>
+        <div className="flex items-center gap-2">
+          <Input
+            aria-label="ลิงก์ที่จะแชร์"
+            className="min-w-0 flex-1 text-sm"
+            disabled={disabled}
+            readOnly
+            value={link}
+          />
+          <Button
+            aria-label={copied ? "คัดลอกแล้ว" : "คัดลอก"}
+            className="w-[88px] shrink-0"
+            disabled={disabled}
+            icon={copied ? Check : undefined}
+            iconClassName={copied ? "text-white" : undefined}
+            onClick={() => void handleCopy()}
+            size="md"
+          >
+            {copied ? null : "คัดลอก"}
+          </Button>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-700">แชร์ผ่าน</div>
+        <div
+          className={
+            directSend ? "grid grid-cols-6 gap-2" : "grid grid-cols-5 gap-3"
+          }
+        >
+          <ShareChoice
+            disabled={disabled}
+            label="LINE"
+            onClick={() =>
+              openShareTarget(
+                `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`,
+              )
+            }
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl bg-line shadow-sm">
+              <img alt="" className="size-8" src="/brand-icons/line.svg" />
+            </span>
+          </ShareChoice>
+          {/* ส่งถึงครู, beside LINE: straight to the one recipient through the
+              system's LINE, in the teacher-link page's green (owner,
+              2026-09-25) — unlike LINE, which opens the viewer's own app. */}
+          {directSend ? (
+            <ShareChoice
+              disabled={
+                disabled ||
+                directSend.unavailableReason !== null ||
+                Boolean(directSend.busy)
+              }
+              label="ส่งถึงครู"
+              onClick={directSend.onSend}
+            >
+              <span
+                className={cn(
+                  "flex size-12 items-center justify-center rounded-xl bg-success text-white shadow-sm",
+                  (directSend.unavailableReason !== null || directSend.busy) &&
+                    "opacity-50",
+                )}
+                title={
+                  directSend.unavailableReason ??
+                  `ส่งลิงก์ถึง ${directSend.recipient} ผ่าน LINE`
+                }
+              >
+                {directSend.busy ? (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="size-6 animate-spin"
+                  />
+                ) : (
+                  <MessageCircle aria-hidden="true" className="size-6" />
+                )}
+              </span>
+            </ShareChoice>
+          ) : null}
+          <ShareChoice
+            disabled={disabled}
+            label="Messenger"
+            onClick={() => void handleMessenger()}
+          >
+            <img alt="" className="size-12" src="/brand-icons/messenger.svg" />
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="Gmail"
+            onClick={() =>
+              openShareTarget(
+                `https://mail.google.com/mail/?view=cm&fs=1&body=${encodeURIComponent(link)}`,
+              )
+            }
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <img alt="" className="h-7 w-9" src="/brand-icons/gmail.svg" />
+            </span>
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="Discord"
+            onClick={() => void handleDiscord()}
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <img alt="" className="h-7 w-9" src="/brand-icons/discord.svg" />
+            </span>
+          </ShareChoice>
+          <ShareChoice
+            disabled={disabled}
+            label="เพิ่มเติม"
+            onClick={() => void handleMore()}
+          >
+            <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm">
+              <Ellipsis className="size-5" aria-hidden="true" />
+            </span>
+          </ShareChoice>
+        </div>
+        {directSend ? (
+          <p className="text-xs text-slate-500">
+            {directSend.unavailableReason
+              ? `ส่งถึงครู: ${directSend.unavailableReason}`
+              : directSend.sentAtLabel
+                ? `ส่งถึง ${directSend.recipient} ทาง LINE แล้วเมื่อ ${directSend.sentAtLabel}`
+                : `ส่งถึงครู: ส่งลิงก์ไปที่ LINE ของ ${directSend.recipient} ทันที`}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 export function LinkShareButton({
   className,
   compact = false,
+  directSend,
   disabled = false,
   link,
 }: LinkShareButtonProps) {
@@ -260,7 +341,12 @@ export function LinkShareButton({
         </Button>
       )}
       {link ? (
-        <LinkShareDialog link={link} onOpenChange={setOpen} open={open} />
+        <LinkShareDialog
+          directSend={directSend}
+          link={link}
+          onOpenChange={setOpen}
+          open={open}
+        />
       ) : null}
     </>
   );

@@ -544,7 +544,7 @@ export function ClassroomLinksPage() {
           placeholder: "ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น",
           value: searchInput,
         }}
-        title="จัดการลิงก์ครู"
+        title="จัดการลิงก์คุณครู"
       />
 
       {lineInvitation.data ? (

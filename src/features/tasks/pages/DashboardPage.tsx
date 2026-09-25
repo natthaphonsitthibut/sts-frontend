@@ -55,6 +55,7 @@ import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
+import { isAggregateOnlyExecutive } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
@@ -841,6 +842,7 @@ function StudentRiskDashboardPage() {
           {isReferrals ? null : (
             <SummaryMetrics
               columns={isWatchlist ? 3 : 4}
+              loading={riskQuery.isLoading || riskQuery.isPlaceholderData}
               items={isWatchlist ? concernItems : summaryItems}
             />
           )}
@@ -917,7 +919,9 @@ function StudentRiskDashboardPage() {
             description="กรุณาลองใหม่อีกครั้ง"
             onRetry={() => void riskQuery.refetch()}
           />
-        ) : riskQuery.isLoading ? (
+        ) : riskQuery.isLoading || riskQuery.isPlaceholderData ? (
+          // A changed filter keeps the old rows until the new ones arrive;
+          // show the skeleton instead of stale rows.
           <SkeletonTable />
         ) : rows.length === 0 ? (
           <EmptyState
@@ -1240,9 +1244,7 @@ function StudentRiskDashboardPage() {
 
 export function DashboardPage() {
   const roles = useAuthSessionStore((state) => state.user?.roles ?? []);
-  const aggregateOnly =
-    roles.includes("EXECUTIVE") &&
-    !roles.some((role) => role === "ADMIN" || role === "DIRECTOR");
+  const aggregateOnly = isAggregateOnlyExecutive(roles);
 
   if (!aggregateOnly) return <StudentRiskDashboardPage />;
 

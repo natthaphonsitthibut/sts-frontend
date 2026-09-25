@@ -33,7 +33,8 @@ function deriveRoleLabel(user: AuthUser): string {
 
   const roles = user.roles ?? [];
   if (roles.length > 0) {
-    return roles.map((role) => ROLE_LABELS[role] || role).join(", ");
+    // Never a group's internal code (S10010004_BASE_ADMIN) on screen.
+    return roles.map((role) => ROLE_LABELS[role] || "-").join(", ");
   }
 
   return DEFAULT_DISPLAY_NAME;

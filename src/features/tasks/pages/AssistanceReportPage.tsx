@@ -17,14 +17,21 @@ import {
   TimePicker,
   registerField,
 } from "../../../components/base";
+import { AssignmentSummary } from "../../../components/layout/assignment-summary";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { PAGE_MAX_WIDTH_CLASS } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import {
+  TrackingStep,
+  TrackingStepsCard,
+} from "../../../components/layout/tracking-step";
+import { formatThaiDate, formatThaiTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { cn } from "../../../lib/utils";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
+import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { taskService } from "../api/task.service";
-import { ConversationalReportFlow } from "../components/ConversationalReportFlow";
+import { ReportFormSections } from "../components/ReportFormSections";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 import {
   deleteVisitReportDraft,
@@ -232,7 +239,7 @@ export function AssistanceReportPage({
       optional: true,
       content: (
         <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="font-semibold text-slate-900">{measureLabel}</p>
+          <p className="text-sm font-semibold text-slate-900">{measureLabel}</p>
           {task.assistance_measure_detail ? (
             <p className="text-sm leading-6 text-slate-600">
               {task.assistance_measure_detail}
@@ -261,7 +268,7 @@ export function AssistanceReportPage({
                 return (
                   <label
                     className={cn(
-                      "flex min-h-24 cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors duration-200 motion-reduce:transition-none",
+                      "flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors duration-200 motion-reduce:transition-none",
                       selected
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-slate-200 bg-white text-slate-800 hover:border-primary/50",
@@ -281,7 +288,9 @@ export function AssistanceReportPage({
                       type="radio"
                       value={option.code}
                     />
-                    <span className="text-lg font-bold">{option.label}</span>
+                    <span className="text-sm font-semibold">
+                      {option.label}
+                    </span>
                     {selected ? (
                       <Check className="ml-auto size-5" aria-hidden="true" />
                     ) : null}
@@ -294,35 +303,33 @@ export function AssistanceReportPage({
         </FormItem>
       ),
     },
-    {
-      id: "outcome-detail",
-      title: "ถ้ายังไม่สำเร็จ เกิดจากอะไร",
-      description:
-        values.executionOutcomeCode === "NOT_SUCCEEDED"
-          ? "บันทึกเหตุผลสั้น ๆ เพื่อให้ผู้พิจารณาเห็นบริบท"
-          : "ผลที่เลือกเป็นสำเร็จ จึงไม่ต้องระบุเหตุผลในข้อนี้",
-      optional: true,
-      content:
-        values.executionOutcomeCode === "NOT_SUCCEEDED" ? (
-          <FormItem>
-            <FormLabel htmlFor="execution-outcome-detail">
-              เหตุผลที่ยังไม่สำเร็จ
-            </FormLabel>
-            <Textarea
-              id="execution-outcome-detail"
-              maxLength={2000}
-              placeholder="เช่น ผู้ปกครองยังไม่พร้อมเข้าร่วมมาตรการ"
-              rows={5}
-              {...registerField(form, "executionOutcomeDetail")}
-            />
-            <FormMessage<AssistanceReportValues> name="executionOutcomeDetail" />
-          </FormItem>
-        ) : (
-          <p className="rounded-xl border border-success-200 bg-success-50 p-4 text-sm text-success-800">
-            ไปข้อต่อไปได้เลย
-          </p>
-        ),
-    },
+    // Asked only when the round did not succeed — a one-page form has no
+    // "go on to the next question" to say otherwise.
+    ...(values.executionOutcomeCode === "NOT_SUCCEEDED"
+      ? [
+          {
+            id: "outcome-detail",
+            title: "ยังไม่สำเร็จเพราะอะไร",
+            description: "บันทึกเหตุผลสั้น ๆ เพื่อให้ผู้พิจารณาเห็นบริบท",
+            optional: true,
+            content: (
+              <FormItem>
+                <FormLabel htmlFor="execution-outcome-detail">
+                  เหตุผลที่ยังไม่สำเร็จ
+                </FormLabel>
+                <Textarea
+                  id="execution-outcome-detail"
+                  maxLength={2000}
+                  placeholder="เช่น ผู้ปกครองยังไม่พร้อมเข้าร่วมมาตรการ"
+                  rows={5}
+                  {...registerField(form, "executionOutcomeDetail")}
+                />
+                <FormMessage<AssistanceReportValues> name="executionOutcomeDetail" />
+              </FormItem>
+            ),
+          },
+        ]
+      : []),
     {
       id: "evidence",
       title: "มีรายละเอียดหรือหลักฐานเพิ่มเติมไหม",
@@ -334,11 +341,12 @@ export function AssistanceReportPage({
             <FormLabel htmlFor="assistance-detail">
               รายละเอียดการช่วยเหลือ
             </FormLabel>
+            {/* The same height as the upload box beside it (min-h-52). */}
             <Textarea
+              className="h-52 min-h-52 resize-none"
               id="assistance-detail"
               maxLength={2000}
               placeholder="อธิบายสิ่งที่ดำเนินการและผลที่สังเกตได้"
-              rows={8}
               {...registerField(form, "assistanceDetail")}
             />
             <FormMessage<AssistanceReportValues> name="assistanceDetail" />
@@ -389,6 +397,12 @@ export function AssistanceReportPage({
     },
   ];
 
+  // One form, every section at once — the same layout as the follow-up report
+  // (owner, 2026-09-25); a review page has nothing to add when all is on screen.
+  const sections = steps.filter((step) => step.id !== "review");
+  const trackingStatus = getCaseTrackingStatusPresentation(task.case_status);
+  const assignmentStartsAt = task.opens_at || task.created_at;
+
   return (
     <GuestPageShell
       contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
@@ -421,37 +435,55 @@ export function AssistanceReportPage({
             : ""
         }`}
       />
-      <Form form={form} onSubmit={(report) => submitReport.mutate(report)}>
-        <FormErrorAlert
-          className="mb-3"
-          error={
-            trackingOptionsQuery.error ??
-            submitReport.error ??
-            (draftError ? new Error(draftError) : null)
-          }
-          fallback="ไม่สามารถบันทึกการให้ความช่วยเหลือได้ กรุณาลองอีกครั้ง"
-        />
-        <ConversationalReportFlow
-          isSubmitting={submitReport.isPending}
-          onAdvance={async (stepIndex) => {
-            if (stepIndex === 0) {
-              return await form.trigger(["assistedDate", "assistedTime"]);
+      <TrackingStepsCard
+        statusClassName={trackingStatus.textClassName}
+        statusLabel={task.case_display_status_label || trackingStatus.label}
+      >
+        <TrackingStep connectNext number={1} title="มอบหมายการช่วยเหลือ">
+          <AssignmentSummary
+            assigneeLabel={task.assigned_to_name || "-"}
+            endsAtLabel={
+              task.expires_at ? formatThaiTime(task.expires_at) : "-"
             }
-            if (stepIndex === 2) {
-              return await form.trigger("executionOutcomeCode");
+            endsOnLabel={
+              task.expires_at ? formatThaiDate(task.expires_at) : "-"
             }
-            if (stepIndex === 3) {
-              return await form.trigger("executionOutcomeDetail");
+            note={task.assignment_note || ""}
+            startsAtLabel={
+              assignmentStartsAt ? formatThaiTime(assignmentStartsAt) : "-"
             }
-            if (stepIndex === 4) {
-              return await form.trigger("assistanceDetail");
+            startsOnLabel={
+              assignmentStartsAt ? formatThaiDate(assignmentStartsAt) : "-"
             }
-            return true;
-          }}
-          steps={steps}
-          submitLabel="ส่งรายงานการช่วยเหลือ"
-        />
-      </Form>
+          />
+        </TrackingStep>
+
+        <TrackingStep active connectPrev number={2} title="ให้ความช่วยเหลือ">
+          <Form form={form} onSubmit={(report) => submitReport.mutate(report)}>
+            <FormErrorAlert
+              className="mb-3"
+              error={
+                trackingOptionsQuery.error ??
+                submitReport.error ??
+                (draftError ? new Error(draftError) : null)
+              }
+              fallback="ไม่สามารถบันทึกการให้ความช่วยเหลือได้ กรุณาลองอีกครั้ง"
+            />
+            <ReportFormSections
+              footerNote={
+                <p>
+                  ฉบับร่างอยู่เฉพาะ browser/device นี้ และลบอัตโนมัติภายใน 24
+                  ชั่วโมง
+                </p>
+              }
+              isSubmitting={submitReport.isPending}
+              sections={sections}
+              submitDisabled={trackingOptionsQuery.isLoading}
+              submitLabel="บันทึกข้อมูล"
+            />
+          </Form>
+        </TrackingStep>
+      </TrackingStepsCard>
     </GuestPageShell>
   );
 }

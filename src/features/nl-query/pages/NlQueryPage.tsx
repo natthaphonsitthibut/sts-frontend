@@ -193,7 +193,7 @@ export function NlQueryPage() {
   return (
     <PageShell contentClassName="max-w-4xl">
       <PageToolbar
-        title="ถามข้อมูลด้วยภาษาไทย"
+        title="แชตบอท"
         actions={
           hasTurns ? (
             <Button onClick={reset} size="sm" type="button" variant="outline">

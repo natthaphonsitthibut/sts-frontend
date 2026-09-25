@@ -3,7 +3,8 @@ import type { MouseEventHandler, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { IconButton, StsLogo } from "../base";
 import {
-  groupMenuItemsBySection,
+  buildMenuSections,
+  type DataScope,
   type MenuItem,
 } from "../../features/auth/lib/permissions";
 import { cn } from "../../lib/utils";
@@ -120,30 +121,51 @@ export function AppBrand({
 }
 
 /**
- * "เมนูส่วนโรงเรียน" / "เมนูส่วนสภา" header — always expanded, by the owner's
- * call (2026-09-22): unlike a `SidebarNavItem` group, this one never folds.
- * It is a plain label over its items, not a control.
+ * One sidebar section. "เมนูส่วนโรงเรียน" / "เมนูส่วนสภา" headers are always
+ * expanded, by the owner's call (2026-09-22): unlike a `SidebarNavItem` group,
+ * a section never folds. The icon rail has no room for the header text, so it
+ * keeps the section's place with a rule instead — same entries, same order.
  */
-function SidebarSectionGroup({
+function SidebarSection({
+  collapsed,
   items,
   label,
   menuRoutes,
   onNavigate,
 }: {
+  collapsed: boolean;
   items: MenuItem[];
-  label: string;
+  label: string | null;
   menuRoutes: string[];
   onNavigate?: () => void;
 }) {
-  if (items.length === 0) return null;
   return (
     <div>
-      <div className="flex min-h-8 items-center px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
-      <div className="space-y-0.5 pt-0.5">
+      {label !== null ? (
+        // The header keeps its height in the rail, where a rule stands in for
+        // text that has no room, so no row moves when the sidebar folds.
+        <div className="relative flex min-h-8 items-center px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span
+            className={cn(
+              "truncate transition-opacity duration-300 ease-out motion-reduce:transition-none",
+              collapsed && "opacity-0",
+            )}
+          >
+            {label}
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute inset-x-3 top-1/2 h-px bg-slate-200 transition-opacity duration-300 ease-out motion-reduce:transition-none",
+              collapsed ? "opacity-100" : "opacity-0",
+            )}
+          />
+        </div>
+      ) : null}
+      <div className={cn("space-y-0.5", label !== null && "pt-0.5")}>
         {items.map((item) => (
           <SidebarNavItem
+            collapsed={collapsed}
             item={item}
             key={item.id}
             menuRoutes={menuRoutes}
@@ -157,33 +179,33 @@ function SidebarSectionGroup({
 
 export function SidebarMenuContent({
   collapsed = false,
+  dataScope,
   grouped = false,
   items,
   onNavigate,
   userRoles = [],
 }: {
   collapsed?: boolean;
+  /** The account's scope; decides which section(s) it works in. */
+  dataScope?: DataScope;
   /**
-   * Splits `items` into the "เมนูส่วนโรงเรียน" / "เมนูส่วนสภา" headed groups
-   * instead of one flat list. Only meaningful for the app's own
-   * permission-tagged catalog — a classroom link's own menu (passed as
-   * `items` from outside) carries no `section` tags, so it always renders
-   * flat regardless of this flag.
+   * Lays `items` out in the app's own sections (see `buildMenuSections`)
+   * instead of one flat list. A classroom link's own menu (passed as `items`
+   * from outside) carries no sections, so it always renders flat.
    */
   grouped?: boolean;
   items: MenuItem[];
   onNavigate?: () => void;
-  /** Which realm(s) to show at all — see `groupMenuItemsBySection`. */
   userRoles?: string[];
 }) {
-  const menuRoutes = collectMenuRoutes(items);
-  // Icon-only rail has no room for a text header, and there is nothing to
-  // collapse when every row is already just an icon — same flat list the
-  // sidebar always rendered.
-  const sectioned = grouped && !collapsed;
-  const { school, council } = sectioned
-    ? groupMenuItemsBySection(items, userRoles)
-    : { school: [], council: [] };
+  // Both the expanded sidebar and the icon rail come from this one list, so
+  // folding the rail never adds, drops or reorders an entry.
+  const sections = grouped
+    ? buildMenuSections(items, userRoles, dataScope)
+    : [{ key: "flat", label: null, items }];
+  const menuRoutes = collectMenuRoutes(
+    sections.flatMap((section) => section.items),
+  );
   return (
     <div className="flex h-full flex-col bg-white">
       <nav
@@ -196,34 +218,18 @@ export function SidebarMenuContent({
           "transition-[padding] duration-300 ease-out motion-reduce:transition-none",
         )}
       >
-        {sectioned ? (
-          <div className="space-y-3">
-            <SidebarSectionGroup
-              items={school}
-              label="เมนูส่วนโรงเรียน"
+        <div className="space-y-3">
+          {sections.map((section) => (
+            <SidebarSection
+              collapsed={collapsed}
+              items={section.items}
+              key={section.key}
+              label={section.label}
               menuRoutes={menuRoutes}
               onNavigate={onNavigate}
             />
-            <SidebarSectionGroup
-              items={council}
-              label="เมนูส่วนสภา"
-              menuRoutes={menuRoutes}
-              onNavigate={onNavigate}
-            />
-          </div>
-        ) : (
-          <div className="space-y-0.5">
-            {items.map((item) => (
-              <SidebarNavItem
-                collapsed={collapsed}
-                item={item}
-                key={item.id}
-                menuRoutes={menuRoutes}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
       </nav>
     </div>
   );

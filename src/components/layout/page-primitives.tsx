@@ -223,6 +223,19 @@ export function PageToolbar({
   const isHomePage = pathname === homeCrumb.to;
   const toneClasses = toolbarToneClasses[tone];
   const hasAttachedSurface = Boolean(children || footerActions);
+  // The home page shows no breadcrumb and no title (see below). With nothing
+  // else to hold, the toolbar would still reserve their rows, leaving a band of
+  // blank space above the page's first card.
+  const showTitleRow = !isHomePage || Boolean(actions);
+  if (
+    isHomePage &&
+    !showTitleRow &&
+    !navigation &&
+    !scope &&
+    !hasAttachedSurface
+  ) {
+    return null;
+  }
   return (
     <div className={cn("relative z-20", hasAttachedSurface ? "mb-6" : "mb-4")}>
       <section
@@ -378,38 +391,47 @@ export function PageToolbar({
           {/* Fixed row height so the page title sits at the same y whether or not
               the page has action buttons — otherwise the tallest child (an lg
               button) shifts the heading down on some pages only. */}
-          <div
-            className={cn(
-              // Spacing belongs to the row above, not to the breadcrumb: a page
-              // that hides its breadcrumb but keeps a back button still has a
-              // row up there, and without this the two sit on top of each other.
-              (!hideBreadcrumb || navigation) && "mt-2",
-              "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
-            )}
-          >
-            <div className="min-w-0 flex-1">
-              {isHomePage ? null : (
-                <h1
-                  className={cn(
-                    "text-xl font-semibold leading-8",
-                    toneClasses.title,
-                  )}
-                >
-                  {toolbarTitle}
-                </h1>
+          {showTitleRow ? (
+            <div
+              className={cn(
+                // Spacing belongs to the row above, not to the breadcrumb: a page
+                // that hides its breadcrumb but keeps a back button still has a
+                // row up there, and without this the two sit on top of each other.
+                (!hideBreadcrumb || navigation) && "mt-2",
+                "flex flex-col gap-4 sm:min-h-10 sm:flex-row sm:items-center sm:justify-between",
               )}
-            </div>
-            {actions ? (
-              <div
-                className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end"
-                ref={actionsRef}
-              >
-                {actions}
+            >
+              <div className="min-w-0 flex-1">
+                {isHomePage ? null : (
+                  <h1
+                    className={cn(
+                      "text-xl font-semibold leading-8",
+                      toneClasses.title,
+                    )}
+                  >
+                    {toolbarTitle}
+                  </h1>
+                )}
               </div>
-            ) : null}
-          </div>
+              {actions ? (
+                <div
+                  className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end"
+                  ref={actionsRef}
+                >
+                  {actions}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {scope ? (
-            <div className="mt-2 flex min-w-0 pb-1 sm:mt-3">{scope}</div>
+            <div
+              className={cn(
+                "flex min-w-0 pb-1",
+                showTitleRow && "mt-2 sm:mt-3",
+              )}
+            >
+              {scope}
+            </div>
           ) : null}
         </div>
       </section>
@@ -813,6 +835,11 @@ interface SummaryMetricsProps {
   /** Center incomplete rows while keeping the same 2/3-column card width. */
   centerRows?: boolean;
   className?: string;
+  /**
+   * The numbers are being refetched for a changed filter: show a skeleton in
+   * their place rather than the previous filter's values.
+   */
+  loading?: boolean;
 }
 
 export function SummaryMetrics({
@@ -820,6 +847,7 @@ export function SummaryMetrics({
   className,
   columns,
   items,
+  loading = false,
 }: SummaryMetricsProps) {
   // Default: cards auto-fit and stretch to fill the available width, so a row
   // with few cards never leaves an empty gap on the right and never gets cramped.
@@ -851,7 +879,7 @@ export function SummaryMetrics({
             centerRows && centeredCardClass,
             tone.surface,
             item.onSelect &&
-              "transition-colors hover:border-primary/50 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "transition-colors hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             item.selected &&
               "border-primary bg-brand-active ring-1 ring-primary/20",
           );
@@ -885,7 +913,11 @@ export function SummaryMetrics({
                       data-summary-value
                       key={String(item.value)}
                     >
-                      {item.value}
+                      {loading ? (
+                        <Skeleton className="my-1 h-7 w-20" />
+                      ) : (
+                        item.value
+                      )}
                     </div>
                   </div>
                 )}
@@ -912,7 +944,11 @@ export function SummaryMetrics({
                   data-summary-value
                   key={String(item.value)}
                 >
-                  {item.value}
+                  {loading ? (
+                    <Skeleton className="my-1 h-7 w-20" />
+                  ) : (
+                    item.value
+                  )}
                 </div>
               ) : null}
               {!item.hideComparison ? (

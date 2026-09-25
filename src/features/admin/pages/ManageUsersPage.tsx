@@ -14,6 +14,7 @@ import {
 import {
   EmptyState,
   ErrorState,
+  FilterSelect,
   PageShell,
   ListPageToolbar,
   SkeletonTable,
@@ -24,11 +25,16 @@ import { Pagination } from "../../../components/layout/pagination";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { getApiErrorMessage } from "../../../lib/api-error";
+import { formatScopeSummary } from "../../../lib/scope-presentation";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { AccountDeactivationDialog } from "../components/AccountDeactivationDialog";
 import { UserTable } from "../components/UserTable";
 import type { DataTableSortState } from "../../../components/layout/data-table";
-import { useDeactivateAccount, useUsers } from "../hooks/useUsers";
+import {
+  useDeactivateAccount,
+  useRolesCatalog,
+  useUsers,
+} from "../hooks/useUsers";
 import {
   getManageUserPath,
   getUserDisplayName,
@@ -82,6 +88,10 @@ export function ManageUsersPage({
       ? value
       : DEFAULT_PAGE_SIZE;
   });
+  const [roleLabel, setRoleLabel] = useState(
+    () => searchParams.get("role") ?? "",
+  );
+  const { rolesCatalog } = useRolesCatalog();
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     readSortSearchParam(searchParams, "sort", ["name", "role", "affiliation"]),
   );
@@ -93,6 +103,22 @@ export function ManageUsersPage({
   // Leaving it unset browses every school in the admin's own scope.
   const globalFilter = useGlobalSchoolFilter();
   const selectedSchoolValue = scope === "council" ? "" : globalFilter.schoolId;
+  // Council accounts belong to an area: the list follows the header's จ./อ./ต.
+  // the way the school list follows its school (owner, 2026-09-25).
+  const councilProvince = scope === "council" ? globalFilter.province : "";
+  const councilDistrict = scope === "council" ? globalFilter.district : "";
+  const councilSubDistrict =
+    scope === "council" ? globalFilter.subDistrict : "";
+  const councilAreaKey = [
+    councilProvince,
+    councilDistrict,
+    councilSubDistrict,
+  ].join("|");
+  const [lastCouncilAreaKey, setLastCouncilAreaKey] = useState(councilAreaKey);
+  if (councilAreaKey !== lastCouncilAreaKey) {
+    setLastCouncilAreaKey(councilAreaKey);
+    if (page !== 1) setPage(1);
+  }
   // A school switch (from the header, or anywhere else) can leave the page
   // number past the end of the new list.
   const [lastSchoolValue, setLastSchoolValue] = useState(selectedSchoolValue);
@@ -101,7 +127,24 @@ export function ManageUsersPage({
     if (page !== 1) setPage(1);
   }
 
+  // บทบาท choices are the menu groups of the realm being listed — the
+  // selected school's own groups, or the council's — deduplicated by the label
+  // the table shows, never a hardcoded list.
+  const roleLabelOptions = useMemo(() => {
+    const schoolId = Number(selectedSchoolValue) || null;
+    const labels = rolesCatalog
+      .filter((role) => !NON_STAFF_ROLES.split(",").includes(role.name))
+      .filter((role) =>
+        scope === "council"
+          ? role.realm === "council"
+          : schoolId !== null && role.school_id === schoolId,
+      )
+      .map((role) => role.label);
+    return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b, "th"));
+  }, [rolesCatalog, scope, selectedSchoolValue]);
+
   useSyncedSearchParams({
+    role: roleLabel || undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
     sort: serializeSortSearchParam(sort),
@@ -112,13 +155,28 @@ export function ManageUsersPage({
       searchTerm: debouncedSearch || undefined,
       realm: scope,
       schoolId: selectedSchoolValue || undefined,
+      province: councilProvince || undefined,
+      district: councilDistrict || undefined,
+      subDistrict: councilSubDistrict || undefined,
       excludeRole: NON_STAFF_ROLES,
+      roleLabel: roleLabel || undefined,
       page,
       limit: rowsPerPage,
       sortBy: sort?.key as "name" | "role" | "affiliation" | undefined,
       sortOrder: sort?.direction,
     }),
-    [debouncedSearch, page, rowsPerPage, scope, selectedSchoolValue, sort],
+    [
+      councilDistrict,
+      councilProvince,
+      councilSubDistrict,
+      debouncedSearch,
+      page,
+      roleLabel,
+      rowsPerPage,
+      scope,
+      selectedSchoolValue,
+      sort,
+    ],
   );
 
   const { users, meta, isLoading, isError, refetch } = useUsers(query);
@@ -178,12 +236,46 @@ export function ManageUsersPage({
         description="เพิ่ม แก้ไข และกำหนดสิทธิ์ผู้ใช้งานในระบบ"
         icon={MANAGE_USERS_ICON}
         search={{
+          after: (
+            <FilterSelect
+              ariaLabel="กรองตามบทบาท"
+              disabled={needsSchoolPick}
+              onChange={(value) => {
+                setRoleLabel(value);
+                setPage(1);
+              }}
+              value={roleLabel}
+            >
+              <option value="">ทุกบทบาท</option>
+              {roleLabelOptions.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </FilterSelect>
+          ),
           onChange: handleSearchChange,
           placeholder: "ค้นหา",
           value: searchQuery,
         }}
         title="จัดการผู้ใช้งาน"
       />
+
+      {/* Council accounts belong to an area, never a school: a school picked
+          in the header narrows this list to its จ./อ./ต. only (owner,
+          2026-09-25: "ไม่ filter ถึง รร"). Say so, so the list does not look
+          like it ignored the pick. */}
+      {scope === "council" && globalFilter.schoolId && councilProvince ? (
+        <p className="text-sm text-slate-500">
+          ผู้ใช้งานสภากรองได้ถึงระดับตำบล — แสดงผู้ใช้งานของ{" "}
+          {formatScopeSummary({
+            province: councilProvince,
+            district: councilDistrict,
+            subDistrict: councilSubDistrict,
+          })[0] ?? councilProvince}{" "}
+          ไม่กรองตามโรงเรียน
+        </p>
+      ) : null}
 
       <FormErrorAlert
         error={deactivateAccount.error}
@@ -207,17 +299,22 @@ export function ManageUsersPage({
       ) : users.length === 0 ? (
         <EmptyState
           description={
-            debouncedSearch
-              ? "ลองเปลี่ยนคำค้นหา หรือเคลียร์ช่องค้นหาเพื่อดูรายการทั้งหมด"
+            debouncedSearch || roleLabel
+              ? "ลองเปลี่ยนคำค้นหาหรือบทบาท เพื่อดูรายการทั้งหมด"
               : "เพิ่มผู้ใช้งานแรกเพื่อเริ่มต้น"
           }
           icon={MANAGE_USERS_ICON}
-          title={debouncedSearch ? "ไม่พบผู้ใช้งานที่ค้นหา" : "ไม่พบผู้ใช้งาน"}
+          title={
+            debouncedSearch || roleLabel
+              ? "ไม่พบผู้ใช้งานที่ค้นหา"
+              : "ไม่พบผู้ใช้งาน"
+          }
         />
       ) : (
         <>
           <UserTable
             currentUserId={currentUserId}
+            showArea={scope === "council"}
             deactivatingUserId={
               deactivateAccount.isPending
                 ? deactivateAccount.variables?.id

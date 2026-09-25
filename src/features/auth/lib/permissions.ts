@@ -30,9 +30,12 @@ export interface MenuItem {
   activeRoutes?: string[];
   children?: MenuItem[];
   scopePolicy?: "global-only";
-  rolePolicy?: "ADMIN";
+  /** ADMIN: the national group; COUNCIL_ADMIN: it or an area's own ผู้ดูแลระบบ. */
+  rolePolicy?: "ADMIN" | "COUNCIL_ADMIN";
   /** Which sidebar realm a top-level item belongs under. */
   section?: "school" | "council";
+  /** A school item a council-only account must not see (it has its own copy). */
+  schoolRealmOnly?: boolean;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -94,19 +97,45 @@ const pageMenuItem = (
   ...(rolePolicy ? { rolePolicy } : {}),
 });
 
+/**
+ * The sidebar, in the order of the owner's mockups (2026-09-25): one per
+ * default group — ผู้ดูแลระบบโรงเรียน, ผู้อำนวยการโรงเรียน, ผู้ดูแลระบบสภา and
+ * ผู้บริหารสภา. Each account sees the entries its permissions reach; which
+ * section an entry sits under only matters to an account that has both.
+ *
+ * `iconName` on a child overrides its page's icon in this menu only — the
+ * mockups give sub-items their own glyphs while the page header keeps the
+ * page's. A group left with one visible child collapses into that child, which
+ * then wears its page icon (ผู้บริหาร's lone ส่งออกข้อมูล is a download arrow).
+ */
 export const MENU_ITEMS: MenuItem[] = [
-  // Owner override (2026-09-22): "หน้าหลักให้เป็นเมนูส่วน รร นะ" — a plain
-  // school-section item. A pure EXECUTIVE
-  // account (COUNCIL_SECTION_ROLES only) loses the sidebar link for it, but
-  // keeps ถามข้อมูลด้วยภาษาไทย under เมนูส่วนสภา and still lands on a working
-  // route on sign-in either way (routing doesn't depend on the sidebar) — a
-  // cosmetic gap, not a dead end.
   { ...pageMenuItem("home", "/"), section: "school" },
   { ...pageMenuItem("dashboard", "/student-risk-report"), section: "school" },
-  { ...pageMenuItem("students", "/students"), section: "school" },
-  { ...pageMenuItem("teachers", "/teachers"), section: "school" },
   { ...pageMenuItem("classrooms", "/classrooms"), section: "school" },
-  { ...pageMenuItem("nl_query:use", "/nl-query"), section: "council" },
+  { ...pageMenuItem("teachers", "/teachers"), section: "school" },
+  { ...pageMenuItem("students", "/students"), section: "school" },
+  // No default group carries เช็กชื่อ; it stays for a school that builds its
+  // own ครู group (owner, 2026-09-25).
+  { ...pageMenuItem("attendance", "/attendance"), section: "school" },
+  {
+    id: "manage-users",
+    label: "จัดการสิทธิ์ผู้ใช้งาน",
+    iconName: "security",
+    // School-only: the council has its own group with its own routes below,
+    // so the two never light up together (owner, 2026-09-22).
+    section: "school",
+    schoolRealmOnly: true,
+    children: [
+      {
+        ...pageMenuItem("manage-users-list", "/manage-users"),
+        iconName: "users",
+      },
+      {
+        ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
+        iconName: "apps",
+      },
+    ],
+  },
   {
     id: "data-management",
     label: "จัดการข้อมูล",
@@ -115,94 +144,35 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         ...pageMenuItem("manage-school-structure", "/school-structure"),
+        iconName: "users",
       },
+      { ...pageMenuItem("manage-subjects", "/curriculum"), iconName: "users" },
       {
-        ...pageMenuItem("manage-subjects", "/curriculum"),
-      },
-      {
-        ...pageMenuItem("import-data", "/import-data"),
-      },
-      {
-        ...pageMenuItem("export-data", "/data-exports"),
-      },
-      {
-        ...pageMenuItem(
-          "master-data",
-          "/master-data",
-          "master-data",
-          "global-only",
-          "ADMIN",
-        ),
-        activeRoutes: ["/master-data/student-statuses"],
-      },
-    ],
-  },
-  {
-    id: "attendance-system",
-    label: "ระบบเช็กชื่อ",
-    iconName: "calendar-check",
-    section: "school",
-    children: [
-      {
-        ...pageMenuItem("attendance", "/attendance"),
+        ...pageMenuItem("manage-teachers", "/manage-teachers"),
+        iconName: "users",
       },
       {
         ...pageMenuItem(
           "manage-classroom-links",
           "/attendance/classroom-links",
         ),
+        // A link glyph rather than the mockup's people icon (owner, 2026-09-25).
+        iconName: "link",
       },
-    ],
-  },
-  {
-    id: "manage-users",
-    label: "จัดการสิทธิ์ผู้ใช้งาน",
-    iconName: "users-cog",
-    // นักเรียน/ครู เป็นของโรงเรียนอย่างเดียว (owner, 2026-09-22) — this group
-    // stays school-only; the council side gets its own group below.
-    section: "school",
-    children: [
       {
         ...pageMenuItem("manage-students", "/manage-students"),
-      },
-      {
-        ...pageMenuItem("manage-teachers", "/manage-teachers"),
-      },
-      {
-        ...pageMenuItem("manage-users-list", "/manage-users"),
-      },
-      {
-        ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
+        iconName: "apps",
       },
     ],
   },
   {
-    id: "manage-users-council",
-    label: "จัดการสิทธิ์ผู้ใช้งาน",
-    iconName: "users-cog",
-    // Council's own "จัดการผู้ใช้งาน"/"จัดการกลุ่มเมนู" (owner, 2026-09-22:
-    // "สภา น่าจะมีแค่ ผู้ใช้งาน กับ กลุ่มเมนู") — aliased under /council/... so
-    // this is a genuinely separate destination from the school group above,
-    // not the same link lit up active in both sections at once. Same pages,
-    // same permissions; each already scopes its data to the viewer's own
-    // data_scope, so a council-scoped account sees its wider scope here and a
-    // school-scoped account sees the school one above.
-    section: "council",
+    id: "import-export",
+    label: "นำเข้าและส่งออกข้อมูล",
+    iconName: "import-export",
+    section: "school",
     children: [
-      {
-        id: "manage-users-list-council",
-        label: "จัดการผู้ใช้งาน",
-        iconName: "users",
-        permissionId: "manage-users-list",
-        route: "/council/manage-users",
-      },
-      {
-        id: "manage-role-groups-council",
-        label: "จัดการกลุ่มเมนู",
-        iconName: "users-cog",
-        permissionId: "manage-role-groups",
-        route: "/council/manage-role-groups",
-      },
+      { ...pageMenuItem("import-data", "/import-data"), iconName: "users" },
+      { ...pageMenuItem("export-data", "/data-exports"), iconName: "apps" },
     ],
   },
   {
@@ -216,48 +186,152 @@ export const MENU_ITEMS: MenuItem[] = [
     section: "council",
   },
   {
+    id: "manage-users-council",
+    label: "จัดการสิทธิ์ผู้ใช้งาน",
+    iconName: "security",
+    // Same pages and permissions as the school group, aliased under
+    // /council/... so each realm has its own destination (owner, 2026-09-22).
+    section: "council",
+    children: [
+      {
+        id: "manage-users-list-council",
+        label: "จัดการผู้ใช้งาน",
+        iconName: "users",
+        permissionId: "manage-users-list",
+        route: "/council/manage-users",
+      },
+      {
+        id: "manage-role-groups-council",
+        label: "จัดการกลุ่มเมนู",
+        iconName: "apps",
+        permissionId: "manage-role-groups",
+        route: "/council/manage-role-groups",
+        // Each จ./อ./ต. has its own groups (owner with BA, 2026-09-25), so an
+        // area admin manages its area's here like a school admin its school's.
+      },
+    ],
+  },
+  {
+    id: "data-management-council",
+    label: "จัดการข้อมูล",
+    iconName: "file-spreadsheet",
+    section: "council",
+    children: [
+      {
+        // National data shared by every school, so it is the council's
+        // (owner, 2026-09-25), not the school admin's as the mockup drew it.
+        ...pageMenuItem(
+          "master-data",
+          "/master-data",
+          "master-data",
+          "global-only",
+          "ADMIN",
+        ),
+        iconName: "users",
+        activeRoutes: ["/master-data/student-statuses"],
+      },
+    ],
+  },
+  // แชตบอท is ผู้บริหาร's (owner, 2026-09-25).
+  { ...pageMenuItem("nl_query:use", "/nl-query"), section: "council" },
+  // บันทึกการใช้งาน, one page for the council's ผู้ดูแลระบบ — national or an
+  // area's own — within its scope (owner, 2026-09-25).
+  {
+    id: "audit-log-council",
+    label: "บันทึกการใช้งาน",
+    iconName: "fact-check",
+    permissionId: "audit-log",
+    rolePolicy: "COUNCIL_ADMIN",
+    route: "/council/audit-log",
+    section: "council",
+  },
+  {
     ...pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
     section: "council",
   },
 ];
 
-// Which roles get which sidebar realm at all — the owner's spec (2026-09-22):
-// "สภา (ผู้ดูแลระบบ, ผู้บริหาร) โรงเรียน (ผู้ดูแลระบบ, ผอ.) default ไว้เท่านี้"
-// This is coarser than, and on top of, the existing per-item permission
-// filtering below: a DIRECTOR holds `manage-users-list` (their own school
-// needs it) which happens to be the same permission id the council group's
-// "จัดการผู้ใช้งาน" child checks, so permission filtering alone would leak
-// "เมนูส่วนสภา" into a DIRECTOR's sidebar. This role gate is what keeps a
-// realm hidden for a role that was never meant to see it, regardless of which
-// individual permissions that account happens to carry.
-const SCHOOL_SECTION_ROLES = ["ADMIN", "DIRECTOR"];
-const COUNCIL_SECTION_ROLES = ["ADMIN", "EXECUTIVE"];
+export type MenuSectionKey = "school" | "council";
+
+export interface MenuSection {
+  key: MenuSectionKey;
+  /** Shown only when the account sees both sections. */
+  label: string | null;
+  items: MenuItem[];
+}
+
+const SECTION_LABELS: Record<MenuSectionKey, string> = {
+  school: "เมนูส่วนโรงเรียน",
+  council: "เมนูส่วนสภา",
+};
 
 /**
- * Splits the already permission-filtered menu into the two sidebar realms.
- * `home` is a plain school-section item (owner, 2026-09-22) — it does not get
- * special-cased here.
+ * Which sections an account works in. A school-scoped account is the
+ * school's; everyone else is the council's, and the council's ผู้ดูแลระบบ also
+ * looks after every school, so it gets both. Read from the account's scope,
+ * not its group name: a school's own groups are named `S<id>_BASE_ADMIN`.
  */
-export function groupMenuItemsBySection(
+export function getMenuRealms(
+  userRoles: string[] = [],
+  dataScope?: DataScope,
+): MenuSectionKey[] {
+  if (dataScope?.school_ids?.length) return ["school"];
+  return userRoles.includes("ADMIN") ? ["school", "council"] : ["council"];
+}
+
+/** A group reduced to one entry reads as that entry, with its page icon. */
+function collapseSingleChildGroup(item: MenuItem): MenuItem {
+  if (item.route || item.children?.length !== 1) return item;
+  const [child] = item.children;
+  const identity = child.route
+    ? PAGE_IDENTITIES[child.route as keyof typeof PAGE_IDENTITIES]
+    : undefined;
+  return {
+    ...child,
+    iconName: identity?.iconName ?? child.iconName,
+    section: item.section,
+    schoolRealmOnly: item.schoolRealmOnly,
+  };
+}
+
+/**
+ * The already permission-filtered menu, laid out the way both the expanded
+ * sidebar and the icon rail show it. One function for both so the two states
+ * can never list different entries or a different order.
+ */
+export function buildMenuSections(
   filteredItems: MenuItem[],
   userRoles: string[] = [],
-): {
-  school: MenuItem[];
-  council: MenuItem[];
-} {
-  const showSchool = userRoles.some((role) =>
-    SCHOOL_SECTION_ROLES.includes(role),
-  );
-  const showCouncil = userRoles.some((role) =>
-    COUNCIL_SECTION_ROLES.includes(role),
-  );
-  const school: MenuItem[] = [];
-  const council: MenuItem[] = [];
-  for (const item of filteredItems) {
-    if (showSchool && item.section === "school") school.push(item);
-    if (showCouncil && item.section === "council") council.push(item);
+  dataScope?: DataScope,
+): MenuSection[] {
+  const realms = getMenuRealms(userRoles, dataScope);
+  const items = filteredItems.map(collapseSingleChildGroup);
+
+  if (realms.length === 1) {
+    // One section: no header, and every entry the account holds is listed,
+    // except the school's own copy of a council destination.
+    const [realm] = realms;
+    return [
+      {
+        key: realm,
+        label: null,
+        items: items.filter(
+          (item) =>
+            !item.section ||
+            item.section === realm ||
+            (item.section === "school" && !item.schoolRealmOnly),
+        ),
+      },
+    ];
   }
-  return { school, council };
+
+  return realms
+    .map((realm) => ({
+      key: realm,
+      label: SECTION_LABELS[realm],
+      items: items.filter((item) => (item.section ?? "school") === realm),
+    }))
+    .filter((section) => section.items.length > 0);
 }
 
 /**
@@ -290,6 +364,24 @@ export function hasPermission(
   );
 }
 
+/** An area's own copy of a council default: `A<area code>_BASE_<kind>`. */
+const AREA_ROLE_NAME = /^A[0-9]+_BASE_(ADMIN|EXECUTIVE)$/;
+
+/**
+ * ผู้บริหาร — the national group or an area's own copy — sees aggregates only
+ * (the server enforces the same rule; this only picks the page to render).
+ */
+export function isAggregateOnlyExecutive(roles: string[]): boolean {
+  const kind = (role: string) => AREA_ROLE_NAME.exec(role)?.[1] ?? null;
+  const executive = roles.some(
+    (role) => role === "EXECUTIVE" || kind(role) === "EXECUTIVE",
+  );
+  const exempt = roles.some(
+    (role) => role === "ADMIN" || role === "DIRECTOR" || kind(role) === "ADMIN",
+  );
+  return executive && !exempt;
+}
+
 export function filterMenuItems(
   menuItems: MenuItem[],
   userPermissions: string[],
@@ -299,7 +391,16 @@ export function filterMenuItems(
   const canAccessItem = (item: MenuItem): boolean => {
     if (item.scopePolicy === "global-only" && dataScope?.global !== true)
       return false;
-    if (item.rolePolicy && !userRoles.includes(item.rolePolicy)) return false;
+    if (item.rolePolicy === "ADMIN" && !userRoles.includes("ADMIN"))
+      return false;
+    if (
+      item.rolePolicy === "COUNCIL_ADMIN" &&
+      !userRoles.some(
+        (role) =>
+          role === "ADMIN" || AREA_ROLE_NAME.exec(role)?.[1] === "ADMIN",
+      )
+    )
+      return false;
     const requiredPermissions = item.permissionId ?? item.id;
     return Array.isArray(requiredPermissions)
       ? requiredPermissions.some((permissionId) =>

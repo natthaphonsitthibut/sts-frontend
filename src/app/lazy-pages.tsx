@@ -373,3 +373,8 @@ export function RouteSuspense({ children }: { children: ReactNode }) {
     </Suspense>
   );
 }
+export const CouncilAuditLogPage = lazy(() =>
+  import("../features/audit-log/pages/CouncilAuditLogPage").then((module) => ({
+    default: module.CouncilAuditLogPage,
+  })),
+);

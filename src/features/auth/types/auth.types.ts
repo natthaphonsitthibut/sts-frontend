@@ -61,7 +61,6 @@ export interface UpdateProfilePayload {
   LastName: string;
   phone: string;
   email: string;
-  affiliation: string;
   line_id: string;
   address_line: string;
   address_village_no: string;

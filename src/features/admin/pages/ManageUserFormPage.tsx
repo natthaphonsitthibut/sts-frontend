@@ -26,6 +26,7 @@ import {
   PasswordInput,
   PersonIcon,
   PhotoPicker,
+  registerDigitsField,
   registerField,
   type PhotoPickerValue,
 } from "../../../components/base";
@@ -55,16 +56,18 @@ import {
   type ScopeRestrictions,
 } from "../../auth/lib/scope-validation";
 import type { DataScope } from "../../auth/lib/permissions";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { getManageUsersPath, getUserRealm } from "../lib/admin-presentation";
 import { RoleGroupSelector } from "../components/RoleGroupSelector";
 import { useRolesCatalog, useSaveUser, useUser } from "../hooks/useUsers";
 import {
   EMPTY_USER_FORM,
-  userFormSchema,
+  createUserFormSchema,
   type UserFormValues,
 } from "../schemas/user.schema";
 import type {
   ManagedUser,
+  CouncilArea,
   RoleDefinition,
   UserSavePayload,
 } from "../types/admin.types";
@@ -111,9 +114,36 @@ function toDefaults(user: ManagedUser | null): UserFormValues {
   };
 }
 
+/** The one จ./อ./ต. a council scope names, or undefined (national/none). */
+function councilAreaOf(scope: DataScope): CouncilArea | undefined {
+  if (scope.global || (scope.provinces?.length ?? 0) !== 1) return undefined;
+  const district =
+    scope.districts?.length === 1 ? scope.districts[0] : undefined;
+  return {
+    province: scope.provinces![0],
+    district,
+    subDistrict:
+      district && scope.sub_districts?.length === 1
+        ? scope.sub_districts[0]
+        : undefined,
+  };
+}
+
+/** The group belongs to exactly this area. */
+function isOwnedByArea(role: RoleDefinition, area: CouncilArea): boolean {
+  const owner = role.owner_area;
+  return Boolean(
+    owner &&
+    owner.province === area.province &&
+    (owner.district ?? undefined) === area.district &&
+    (owner.sub_district ?? undefined) === area.subDistrict,
+  );
+}
+
 function UserForm({
   isCouncilRoute,
   lockedSchoolId,
+  initialArea,
   user,
   rolesCatalog,
   returnPath,
@@ -125,6 +155,12 @@ function UserForm({
    * and cannot drift from the selected school context.
    */
   lockedSchoolId?: number | null;
+  /**
+   * A new council account starts at the จ./อ./ต. picked in the header, the
+   * way a new school account starts at the header's school (owner,
+   * 2026-09-25: "ตอนสร้าง user scope ... auto ตาม filter กลาง").
+   */
+  initialArea?: DataScope | null;
   /** True on /council/manage-users/*, where school scope is not selectable. */
   isCouncilRoute?: boolean;
   user: ManagedUser | null;
@@ -149,7 +185,7 @@ function UserForm({
   const [dataScope, setDataScope] = useState<DataScope>(() => {
     const initial =
       user?.data_scope ??
-      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : {});
+      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : (initialArea ?? {}));
     return {
       ...initial,
       ...(isCouncilRoute
@@ -171,7 +207,7 @@ function UserForm({
     : { disallowClassroomScope: true, requireSchoolScope: true };
   const form = useForm<UserFormValues>({
     defaultValues: toDefaults(user),
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(createUserFormSchema(user?.username)),
   });
   const locationQuery = useQuery({
     queryKey: ["attendance-locations"],
@@ -194,14 +230,28 @@ function UserForm({
     throwOnError: false,
   });
   const selectedRole = useWatch({ control: form.control, name: "role" });
-  const assignableRoleGroups = rolesCatalog.filter(
-    (role) => role.is_assignable,
+  // A council account takes exactly its own จ./อ./ต.'s groups (owner with BA,
+  // 2026-09-25), so its list comes from that area and follows the scope as it
+  // is picked; a nationwide account takes the national ones.
+  const councilArea = isCouncilRoute ? councilAreaOf(dataScope) : undefined;
+  const { rolesCatalog: areaRolesCatalog } = useRolesCatalog(councilArea);
+  const catalog = isCouncilRoute ? areaRolesCatalog : rolesCatalog;
+  const assignableRoleGroups = catalog.filter(
+    (role) =>
+      role.is_assignable &&
+      (!isCouncilRoute ||
+        role.name === selectedRole ||
+        (councilArea ? isOwnedByArea(role, councilArea) : !role.owner_area)) &&
+      // Council accounts get only the council's groups (owner, 2026-09-25:
+      // "สภามีแค่ผู้ดูแลระบบกับผู้บริหาร") — never a retired national one.
+      (!isCouncilRoute ||
+        role.realm === "council" ||
+        role.name === selectedRole),
   );
-  const selectedRoleGroup = rolesCatalog.find(
-    (role) => role.name === selectedRole,
-  );
+  const selectedRoleGroup = catalog.find((role) => role.name === selectedRole);
   const scopeError = getScopeValidationError(
-    selectedRoleGroup?.scope_mode ?? "global",
+    // No group yet: the realm's own rules (school or จ./อ./ต.) still apply.
+    selectedRoleGroup?.scope_mode ?? "flexible",
     dataScope,
     selectedRoleGroup?.label ?? selectedRole,
     selectedRoleGroup?.scope_policy,
@@ -213,8 +263,7 @@ function UserForm({
     // Switching roles restarts from that role's standard set — keeping the old
     // role's custom additions would grant permissions nobody chose.
     const nextBaseline =
-      rolesCatalog.find((entry) => entry.name === role)?.default_permissions ??
-      [];
+      catalog.find((entry) => entry.name === role)?.default_permissions ?? [];
     setPermissions(nextBaseline);
   }
 
@@ -298,8 +347,12 @@ function UserForm({
             error,
             "บันทึกผู้ใช้งานไม่สำเร็จ กรุณาตรวจสอบข้อมูล",
           );
-          if (message.startsWith("ชื่อผู้ใช้งานนี้ถูกใช้แล้ว")) {
+          // The server's own username/password rules land under the field
+          // they are about, red, like every other field error.
+          if (message.startsWith("ชื่อผู้ใช้งาน")) {
             form.setError("username", { type: "server", message });
+          } else if (message.startsWith("รหัสผ่าน")) {
+            form.setError("password", { type: "server", message });
           }
         },
       },
@@ -390,7 +443,7 @@ function UserForm({
                     id="phone"
                     maxLength={10}
                     placeholder="XXXXXXXXXX"
-                    {...registerField(form, "phone")}
+                    {...registerDigitsField(form, "phone")}
                   />
                   <FormMessage<UserFormValues> name="phone" />
                 </FormItem>
@@ -416,7 +469,7 @@ function UserForm({
                     id="PersonID_Onec"
                     maxLength={13}
                     placeholder="XXXXXXXXXXXXX"
-                    {...registerField(form, "PersonID_Onec")}
+                    {...registerDigitsField(form, "PersonID_Onec")}
                   />
                   <FormMessage<UserFormValues> name="PersonID_Onec" />
                 </FormItem>
@@ -427,7 +480,11 @@ function UserForm({
                   <FormLabel htmlFor="password" required={!isEdit}>
                     {isEdit ? "รหัสผ่าน (เว้นว่างเพื่อคงเดิม)" : "รหัสผ่าน"}
                   </FormLabel>
+                  {/* Setting someone else's password, not signing in: without
+                      this the browser pours the operator's own saved login
+                      into these two fields. */}
                   <PasswordInput
+                    autoComplete="new-password"
                     id="password"
                     placeholder="XXXXXXXXXX"
                     {...registerField(form, "password")}
@@ -442,6 +499,7 @@ function UserForm({
                     ชื่อผู้ใช้งาน
                   </FormLabel>
                   <Input
+                    autoComplete="off"
                     id="username"
                     placeholder="ใช้สำหรับเข้าสู่ระบบ"
                     {...registerField(form, "username")}
@@ -539,9 +597,8 @@ function UserForm({
               dataScope={dataScope}
               disabled={saveUser.isPending}
               onDataScopeChange={setDataScope}
-              role={selectedRoleGroup?.name ?? ""}
               roleLabel={selectedRoleGroup?.label ?? ""}
-              scopeMode={selectedRoleGroup?.scope_mode ?? "global"}
+              scopeMode={selectedRoleGroup?.scope_mode ?? "flexible"}
               scopePolicy={selectedRoleGroup?.scope_policy}
               showErrors={showScopeErrors}
               restrictions={scopeRestrictions}
@@ -588,6 +645,19 @@ export function ManageUserFormPage() {
     searchParams.get("returnTo") === "/profile" ? "/profile" : safeBackTarget;
   const lockedSchoolId = Number(searchParams.get("schoolId")) || null;
   const isCouncilRoute = location.pathname.startsWith("/council/");
+  const globalFilter = useGlobalSchoolFilter();
+  const initialArea: DataScope | null =
+    isCouncilRoute && globalFilter.province
+      ? {
+          provinces: [globalFilter.province],
+          ...(globalFilter.district
+            ? { districts: [globalFilter.district] }
+            : {}),
+          ...(globalFilter.district && globalFilter.subDistrict
+            ? { sub_districts: [globalFilter.subDistrict] }
+            : {}),
+        }
+      : null;
   const {
     data: user = null,
     isLoading: isUserLoading,
@@ -648,7 +718,11 @@ export function ManageUserFormPage() {
         />
       ) : (
         <UserForm
+          // Add and edit share this page; a fresh form per account keeps an
+          // edited account's values from carrying over into a new one.
           isCouncilRoute={isCouncilRoute}
+          key={user ? `edit-${user.id}` : "new"}
+          initialArea={isEdit ? null : initialArea}
           lockedSchoolId={isEdit ? null : lockedSchoolId}
           returnPath={returnPath}
           rolesCatalog={rolesCatalog}

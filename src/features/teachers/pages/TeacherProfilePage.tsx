@@ -111,10 +111,10 @@ export function TeacherProfilePage() {
         }
         parentBreadcrumb={{
           label: canEdit
-            ? "จัดการข้อมูลครู"
+            ? "จัดการข้อมูลคุณครู"
             : canOpenDirectory
-              ? "รายชื่อครู"
-              : "จัดการลิงก์ครู",
+              ? "รายชื่อคุณครู"
+              : "จัดการลิงก์คุณครู",
           to: fallbackBack,
         }}
         title="ข้อมูลคุณครู"

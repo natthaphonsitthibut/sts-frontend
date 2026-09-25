@@ -1,87 +1,187 @@
 import { describe, expect, it } from "vitest";
 import {
-  groupMenuItemsBySection,
+  buildMenuSections,
+  filterMenuItems,
+  getMenuRealms,
+  isAggregateOnlyExecutive,
   MENU_ITEMS,
-  type MenuItem,
+  type DataScope,
 } from "./permissions";
 import { collectMenuRoutes } from "../../../components/layout/menu-routes";
 
-function item(id: string, section?: MenuItem["section"]): MenuItem {
-  return { id, label: id, section };
+const ALL_PAGES = [
+  "home",
+  "dashboard",
+  "students",
+  "teachers",
+  "classrooms",
+  "nl_query:use",
+  "manage-students",
+  "manage-teachers",
+  "manage-school-structure",
+  "manage-subjects",
+  "import-data",
+  "export-data",
+  "master-data",
+  "attendance",
+  "manage-classroom-links",
+  "manage-users-list",
+  "manage-role-groups",
+  "settings",
+  "manage-schools",
+  "audit-log",
+];
+const SCHOOL_SCOPE = { school_ids: [10010002] };
+
+/** What the sidebar lists for one account: [section header, entry labels]. */
+function sidebarOf(
+  permissions: string[],
+  roles: string[],
+  dataScope: DataScope,
+): Array<[string | null, string[]]> {
+  const filtered = filterMenuItems(MENU_ITEMS, permissions, dataScope, roles);
+  return buildMenuSections(filtered, roles, dataScope).map((section) => [
+    section.label,
+    section.items.map((entry) =>
+      entry.children
+        ? `${entry.label}: ${entry.children.map((c) => c.label).join(", ")}`
+        : entry.label,
+    ),
+  ]);
 }
 
-describe("groupMenuItemsBySection", () => {
-  it("treats home as a plain school-section item (owner, 2026-09-22)", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("home", "school"), item("students", "school")],
-      ["ADMIN"],
-    );
-    expect(school.map((i) => i.id)).toEqual(["home", "students"]);
-    expect(council.map((i) => i.id)).toEqual([]);
+// The owner's four mockups (2026-09-25), with their later changes: master data
+// is the council's, แชตบอท is ผู้บริหาร's alone, ผู้ดูแลระบบสภา holds everything.
+describe("default menu groups match the sidebar mockups", () => {
+  it("ผู้ดูแลระบบโรงเรียน", () => {
+    const permissions = [
+      "home",
+      "dashboard",
+      "classrooms",
+      "manage-users-list",
+      "manage-role-groups",
+      "manage-school-structure",
+      "manage-subjects",
+      "manage-teachers",
+      "manage-classroom-links",
+      "manage-students",
+      "import-data",
+      "export-data",
+      "audit-log",
+    ];
+    expect(
+      sidebarOf(permissions, ["S10010002_BASE_ADMIN"], SCHOOL_SCOPE),
+    ).toEqual([
+      [
+        null,
+        [
+          "หน้าหลัก",
+          "รายงานสถานะนักเรียน",
+          "ห้องเรียนทั้งหมด",
+          "จัดการสิทธิ์ผู้ใช้งาน: จัดการผู้ใช้งาน, จัดการกลุ่มเมนู",
+          "จัดการข้อมูล: จัดการภาคเรียนและห้องเรียน, จัดการข้อมูลหลักสูตร, จัดการข้อมูลคุณครู, จัดการลิงก์คุณครู, จัดการข้อมูลนักเรียน",
+          "นำเข้าและส่งออกข้อมูล: นำเข้าข้อมูล, ส่งออกข้อมูล",
+        ],
+      ],
+    ]);
   });
 
-  it("puts a school-tagged item only under school, for a role that can see the school section", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("students", "school")],
-      ["DIRECTOR"],
-    );
-    expect(school.map((i) => i.id)).toEqual(["students"]);
-    expect(council).toEqual([]);
+  it("ผู้อำนวยการโรงเรียน", () => {
+    const permissions = [
+      "home",
+      "dashboard",
+      "classrooms",
+      "teachers",
+      "students",
+      "export-data",
+      "audit-log",
+    ];
+    expect(
+      sidebarOf(permissions, ["S10010002_BASE_DIRECTOR"], SCHOOL_SCOPE),
+    ).toEqual([
+      [
+        null,
+        [
+          "หน้าหลัก",
+          "รายงานสถานะนักเรียน",
+          "ห้องเรียนทั้งหมด",
+          "รายชื่อคุณครู",
+          "รายชื่อนักเรียน",
+          "ส่งออกข้อมูล",
+        ],
+      ],
+    ]);
   });
 
-  it("puts a council-tagged item only under council, for a role that can see the council section", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("settings", "council")],
+  it("ผู้บริหารสภา — its lone export entry stands on its own with the download icon", () => {
+    const permissions = ["home", "dashboard", "export-data", "nl_query:use"];
+    expect(sidebarOf(permissions, ["EXECUTIVE"], { global: true })).toEqual([
+      [null, ["หน้าหลัก", "รายงานสถานะนักเรียน", "ส่งออกข้อมูล", "แชตบอท"]],
+    ]);
+    const filtered = filterMenuItems(
+      MENU_ITEMS,
+      permissions,
+      { global: true },
       ["EXECUTIVE"],
     );
-    expect(council.map((i) => i.id)).toEqual(["settings"]);
-    expect(school).toEqual([]);
+    const exportEntry = buildMenuSections(filtered, ["EXECUTIVE"], {
+      global: true,
+    })[0].items.find((entry) => entry.route === "/data-exports");
+    expect(exportEntry?.iconName).toBe("download");
   });
 
-  it("returns empty buckets for an untagged item even for ADMIN (e.g. a custom rail with no section metadata)", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("teacher-link")],
-      ["ADMIN"],
-    );
-    expect(school).toEqual([]);
-    expect(council).toEqual([]);
+  it("ผู้ดูแลระบบสภา sees both sections, headed", () => {
+    const sections = sidebarOf(ALL_PAGES, ["ADMIN"], { global: true });
+    expect(sections.map(([label]) => label)).toEqual([
+      "เมนูส่วนโรงเรียน",
+      "เมนูส่วนสภา",
+    ]);
+    expect(sections[1][1]).toEqual([
+      "จัดการข้อมูลโรงเรียน",
+      "จัดการสิทธิ์ผู้ใช้งาน: จัดการผู้ใช้งาน, จัดการกลุ่มเมนู",
+      "จัดการข้อมูลพื้นฐาน",
+      "แชตบอท",
+      "บันทึกการใช้งาน",
+      "ตั้งค่าระบบ",
+    ]);
   });
 
-  // Owner's spec (2026-09-22): "สภา (ผู้ดูแลระบบ, ผู้บริหาร) โรงเรียน
-  // (ผู้ดูแลระบบ, ผอ.) default ไว้เท่านี้" — a role gate on top of whatever
-  // permissions an account happens to hold.
-  it("hides the council section entirely for a DIRECTOR, even for a council-tagged item they'd otherwise have permission to reach", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("dashboard", "school"), item("settings", "council")],
-      ["DIRECTOR"],
+  it("never shows the school's user-management copy to a council-only account", () => {
+    const sections = sidebarOf(
+      ["home", "manage-users-list"],
+      ["COUNCIL_CUSTOM"],
+      {
+        provinces: ["เชียงใหม่"],
+      },
     );
-    expect(school.map((i) => i.id)).toEqual(["dashboard"]);
-    expect(council).toEqual([]);
+    expect(sections).toEqual([[null, ["หน้าหลัก", "จัดการผู้ใช้งาน"]]]);
+    const filtered = filterMenuItems(MENU_ITEMS, ["manage-users-list"], {}, [
+      "COUNCIL_CUSTOM",
+    ]);
+    const [entry] = buildMenuSections(filtered, ["COUNCIL_CUSTOM"], {})[0]
+      .items;
+    expect(entry.route).toBe("/council/manage-users");
   });
+});
 
-  it("hides the school section entirely for an EXECUTIVE", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("dashboard", "school"), item("settings", "council")],
-      ["EXECUTIVE"],
-    );
-    expect(school).toEqual([]);
-    expect(council.map((i) => i.id)).toEqual(["settings"]);
-  });
-
-  it("shows neither section for a role with no section access (e.g. TEACHER, STUDENT)", () => {
-    const { school, council } = groupMenuItemsBySection(
-      [item("dashboard", "school"), item("settings", "council")],
-      ["TEACHER"],
-    );
-    expect(school).toEqual([]);
-    expect(council).toEqual([]);
+describe("getMenuRealms", () => {
+  it("reads the realm from scope, not the group name", () => {
+    expect(getMenuRealms(["S1_BASE_ADMIN"], SCHOOL_SCOPE)).toEqual(["school"]);
+    expect(getMenuRealms(["ADMIN"], SCHOOL_SCOPE)).toEqual(["school"]);
+    expect(getMenuRealms(["ADMIN"], { global: true })).toEqual([
+      "school",
+      "council",
+    ]);
+    expect(getMenuRealms(["EXECUTIVE"], { global: true })).toEqual(["council"]);
   });
 });
 
 describe("MENU_ITEMS — school/council manage-users split", () => {
   // ADMIN sees both sections, so this exercises the worst case for the
   // dual-active regression this guards against.
-  const { school, council } = groupMenuItemsBySection(MENU_ITEMS, ["ADMIN"]);
+  const sections = buildMenuSections(MENU_ITEMS, ["ADMIN"], { global: true });
+  const school = sections.find((section) => section.key === "school")!.items;
+  const council = sections.find((section) => section.key === "council")!.items;
 
   it("gives the school and council manage-users groups disjoint routes", () => {
     // Regression guard: these two groups used to be one "both"-tagged group
@@ -114,5 +214,61 @@ describe("MENU_ITEMS — school/council manage-users split", () => {
   it("puts home first under เมนูส่วนโรงเรียน, never under เมนูส่วนสภา", () => {
     expect(school[0]?.id).toBe("home");
     expect(council.some((item) => item.id === "home")).toBe(false);
+  });
+});
+
+describe("council จัดการกลุ่มเมนู", () => {
+  const councilRoutes = (dataScope: DataScope) =>
+    collectMenuRoutes(
+      filterMenuItems(MENU_ITEMS, ALL_PAGES, dataScope, ["ADMIN"]),
+    );
+
+  it("is shown to every council admin, national or of an area", () => {
+    expect(councilRoutes({ global: true })).toContain(
+      "/council/manage-role-groups",
+    );
+    // An area admin manages its own area's groups, like a school admin.
+    const area = collectMenuRoutes(
+      filterMenuItems(
+        MENU_ITEMS,
+        ALL_PAGES,
+        {
+          provinces: ["เชียงใหม่"],
+          districts: ["เมืองเชียงใหม่"],
+          sub_districts: ["สุเทพ"],
+        },
+        ["A500108_BASE_ADMIN"],
+      ),
+    );
+    expect(area).toContain("/council/manage-users");
+    expect(area).toContain("/council/manage-role-groups");
+  });
+});
+
+describe("isAggregateOnlyExecutive", () => {
+  it("treats an area's own ผู้บริหาร like the national one", () => {
+    expect(isAggregateOnlyExecutive(["EXECUTIVE"])).toBe(true);
+    expect(isAggregateOnlyExecutive(["A500108_BASE_EXECUTIVE"])).toBe(true);
+    expect(isAggregateOnlyExecutive(["A500108_BASE_ADMIN"])).toBe(false);
+    expect(isAggregateOnlyExecutive(["S10010004_BASE_DIRECTOR"])).toBe(false);
+  });
+});
+
+describe("council บันทึกการใช้งาน", () => {
+  const routes = (roles: string[], scope: DataScope) =>
+    collectMenuRoutes(filterMenuItems(MENU_ITEMS, ALL_PAGES, scope, roles));
+
+  it("is for the council's ผู้ดูแลระบบ only, national or an area's own", () => {
+    expect(routes(["ADMIN"], { global: true })).toContain("/council/audit-log");
+    expect(
+      routes(["A500108_BASE_ADMIN"], {
+        provinces: ["เชียงใหม่"],
+        districts: ["เมืองเชียงใหม่"],
+        sub_districts: ["สุเทพ"],
+      }),
+    ).toContain("/council/audit-log");
+    expect(
+      routes(["A500108_BASE_EXECUTIVE"], { provinces: ["เชียงใหม่"] }),
+    ).not.toContain("/council/audit-log");
   });
 });

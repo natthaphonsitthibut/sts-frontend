@@ -21,13 +21,19 @@ import {
   useSyncedSearchParams,
 } from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
+import { formatScopeSummary } from "../../../lib/scope-presentation";
 import { usePermissionCatalog } from "../../auth/hooks/usePermissionCatalog";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 import { RoleGroupDialog } from "../components/RoleGroupDialog";
 import { RoleGroupTable } from "../components/RoleGroupTable";
 import { useDeleteRoleGroup, useRoleGroups } from "../hooks/useRoleGroups";
 import { useRolesCatalog } from "../hooks/useUsers";
-import type { RoleDefinition, RoleGroupListQuery } from "../types/admin.types";
+import type {
+  CouncilArea,
+  RoleDefinition,
+  RoleGroupListQuery,
+} from "../types/admin.types";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const MENU_GROUPS_ICON = PAGE_IDENTITIES["/manage-role-groups"].icon;
@@ -95,8 +101,55 @@ export function ManageRoleGroupsPage({
     : globalFilter.schoolId ||
       (schools.length === 1 ? String(schools[0].id) : "");
   const selectedSchoolId = Number(selectedSchoolValue) || null;
+  // Council groups belong to a จ./อ./ต. like a school's belong to the school
+  // (owner with BA, 2026-09-25): the header's area — a picked school stands for
+  // its sub-district, the narrowest level — or else an area account's own.
+  const actorScope = useAuthSessionStore((state) => state.user?.data_scope);
+  const councilArea = useMemo<CouncilArea | null>(() => {
+    if (!isCouncil) return null;
+    if (globalFilter.province) {
+      return {
+        province: globalFilter.province,
+        district: globalFilter.district || undefined,
+        subDistrict: globalFilter.district
+          ? globalFilter.subDistrict || undefined
+          : undefined,
+      };
+    }
+    if (!actorScope?.global && actorScope?.provinces?.length === 1) {
+      return {
+        province: actorScope.provinces[0],
+        district: actorScope.districts?.[0],
+        subDistrict: actorScope.districts?.[0]
+          ? actorScope.sub_districts?.[0]
+          : undefined,
+      };
+    }
+    return null;
+  }, [
+    actorScope,
+    globalFilter.district,
+    globalFilter.province,
+    globalFilter.subDistrict,
+    isCouncil,
+  ]);
+  const councilAreaKey = councilArea
+    ? [
+        councilArea.province,
+        councilArea.district,
+        councilArea.subDistrict,
+      ].join("|")
+    : "";
+  const [lastCouncilAreaKey, setLastCouncilAreaKey] = useState(councilAreaKey);
+  if (councilAreaKey !== lastCouncilAreaKey) {
+    setLastCouncilAreaKey(councilAreaKey);
+    if (page !== 1) setPage(1);
+    if (dialogRoleGroup !== undefined) setDialogRoleGroup(undefined);
+  }
   const selectedSchoolName = isCouncil
-    ? "สภา"
+    ? councilArea
+      ? formatScopeSummary(councilArea)[0]
+      : undefined
     : globalFilter.schoolName ||
       schools.find((school) => school.id === selectedSchoolId)?.name;
   // A school switch (from the header, or anywhere else) closes whatever
@@ -123,12 +176,13 @@ export function ManageRoleGroupsPage({
   });
   const query = useMemo<RoleGroupListQuery | null>(
     () =>
-      isCouncil || selectedSchoolId
+      (isCouncil && councilArea) || selectedSchoolId
         ? {
             searchTerm: debouncedSearch || undefined,
             page,
             limit: rowsPerPage,
             ...(selectedSchoolId ? { schoolId: selectedSchoolId } : {}),
+            ...(councilArea ? { area: councilArea } : {}),
             scope,
             sortBy:
               sort?.key === "menus" ? "menus" : sort ? "group" : undefined,
@@ -136,6 +190,7 @@ export function ManageRoleGroupsPage({
           }
         : null,
     [
+      councilArea,
       debouncedSearch,
       isCouncil,
       page,
@@ -176,6 +231,7 @@ export function ManageRoleGroupsPage({
           <Button
             disabled={
               (!isCouncil && !selectedSchoolId) ||
+              (isCouncil && !councilArea) ||
               rolesCatalogLoading ||
               permissionCatalogLoading
             }
@@ -187,7 +243,7 @@ export function ManageRoleGroupsPage({
         }
         description={
           isCouncil
-            ? "กำหนดกลุ่มเมนูสำหรับผู้ใช้งานสภา โดยไม่ผูกกับโรงเรียน"
+            ? `กำหนดกลุ่มเมนูสำหรับผู้ใช้งานสภา${selectedSchoolName ? `ของ${selectedSchoolName}` : ""} โดยแต่ละพื้นที่มีกลุ่มของตัวเอง`
             : "กรอกข้อมูลรายละเอียดผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ"
         }
         search={{
@@ -221,6 +277,12 @@ export function ManageRoleGroupsPage({
           description="บัญชีนี้ยังไม่มีโรงเรียนที่อยู่ในขอบเขตการดูแล"
           icon={MENU_GROUPS_ICON}
           title="ไม่พบโรงเรียนในขอบเขต"
+        />
+      ) : isCouncil && !councilArea ? (
+        <EmptyState
+          description="เลือกจังหวัด อำเภอ หรือตำบลจากแถบด้านบนเพื่อแสดงกลุ่มเมนูของพื้นที่นั้น"
+          icon={MENU_GROUPS_ICON}
+          title="เลือกพื้นที่"
         />
       ) : !isCouncil && !selectedSchoolId ? (
         <EmptyState
@@ -264,12 +326,13 @@ export function ManageRoleGroupsPage({
       )}
 
       {dialogRoleGroup !== undefined &&
-      (isCouncil || selectedSchoolId) &&
+      ((isCouncil && councilArea) || selectedSchoolId) &&
       selectedSchoolName ? (
         <RoleGroupDialog
+          area={councilArea ?? undefined}
           key={
             dialogRoleGroup?.name ??
-            `new-${scope}-${selectedSchoolId ?? "global"}`
+            `new-${scope}-${selectedSchoolId ?? councilAreaKey}`
           }
           onOpenChange={(open) => {
             if (!open) setDialogRoleGroup(undefined);

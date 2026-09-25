@@ -14,6 +14,7 @@ import type {
   ManagedUserDetail,
   RoleDefinition,
   RoleGroupForm,
+  CouncilArea,
   RoleGroupListQuery,
   SettingsUpdatePayload,
   SettingsUpdateResponse,
@@ -36,6 +37,8 @@ export interface UserListQuery extends PaginatedSearchQuery {
   gradeLevelId?: number | null;
   room?: string;
   excludeRole?: string;
+  /** Narrow to one บทบาท by the label the list shows. */
+  roleLabel?: string;
   accountStatus?:
     | "PENDING_FIRST_LOGIN"
     | "ACTIVE"
@@ -97,6 +100,7 @@ async function getUsers(
     ["schoolId", "schoolId"],
     ["room", "room"],
     ["excludeRole", "excludeRole"],
+    ["roleLabel", "roleLabel"],
   ];
   for (const [source, target] of fields) {
     const value = query[source];
@@ -162,10 +166,18 @@ async function revealUserNationalId(
   ).data;
 }
 
-async function getRolesCatalog(): Promise<RoleDefinition[]> {
+/**
+ * Groups the signed-in account may hand out. With `area`, the council's groups
+ * of exactly that จ./อ./ต. are included (and created on first use).
+ */
+async function getRolesCatalog(area?: CouncilArea): Promise<RoleDefinition[]> {
+  const params: Record<string, string> = {};
+  if (area?.province) params.province = area.province;
+  if (area?.district) params.district = area.district;
+  if (area?.subDistrict) params.subDistrict = area.subDistrict;
   const response = await apiClient.get<
     RoleDefinition[] | DataEnvelope<RoleDefinition[]>
-  >("/users/roles");
+  >("/users/roles", { params });
   return normalizeArrayResponse(response.data);
 }
 
@@ -213,6 +225,9 @@ async function getRoleGroups(
 ): Promise<PaginatedResult<RoleDefinition>> {
   const params: Record<string, string> = toPaginationParams(query);
   if (query.schoolId) params.schoolId = String(query.schoolId);
+  if (query.area?.province) params.province = query.area.province;
+  if (query.area?.district) params.district = query.area.district;
+  if (query.area?.subDistrict) params.subDistrict = query.area.subDistrict;
   if (query.sortBy) params.sortBy = query.sortBy;
   if (query.sortDirection) params.sortDirection = query.sortDirection;
   if (query.searchTerm?.trim()) params.searchTerm = query.searchTerm.trim();

@@ -231,7 +231,7 @@ export function MasterDataPage() {
             />
           </div>
         }
-        title="ข้อมูลพื้นฐาน"
+        title="จัดการข้อมูลพื้นฐาน"
       />
 
       <FormErrorAlert

@@ -68,7 +68,7 @@ export {
   type FormProps,
 } from "./form";
 export { FormErrorAlert } from "./form-error-alert";
-export { registerField } from "./register-field";
+export { registerDigitsField, registerField } from "./register-field";
 export { IconButton, type IconButtonProps } from "./icon-button";
 export { iconButtonVariants } from "./icon-button-variants";
 export { HoverTooltip, type HoverTooltipProps } from "./hover-tooltip";
@@ -86,9 +86,13 @@ export { LinkButton, type LinkButtonProps } from "./link-button";
 export {
   AccountCircleIcon,
   AddLinkIcon,
+  ApartmentIcon,
+  AppsIcon,
   AssignmentTurnedInIcon,
   BarChartIcon,
   CalendarTodayIcon,
+  ChatBubbleIcon,
+  ChildCareIcon,
   EditIcon,
   EqualizerIcon,
   EventAvailableIcon,
@@ -99,6 +103,7 @@ export {
   GroupsIcon,
   HomeIcon,
   HowToRegIcon,
+  ImportExportIcon,
   LinkIcon,
   ManageAccountsIcon,
   NotificationsIcon,
@@ -107,6 +112,7 @@ export {
   PlaceIcon,
   SchoolBuildingIcon,
   SchoolIcon,
+  SecurityIcon,
   SendIcon,
   SettingsIcon,
   TableChartIcon,

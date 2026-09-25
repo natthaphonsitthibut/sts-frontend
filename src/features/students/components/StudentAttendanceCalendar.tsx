@@ -148,9 +148,18 @@ export function StudentAttendanceCalendar({
       ),
     [summary.attendance.days],
   );
-  const initialDate = normalizeIsoDate(
-    summary.attendance.days.at(-1)?.date ?? summary.term.startsOn,
-  );
+  // Open on today when today is inside the term, so the calendar rings the
+  // current date; otherwise (a past term) fall back to the last recorded day.
+  const todayIso = toLocalIsoDate(new Date());
+  const initialDate =
+    termStartsOn &&
+    termEndsOn &&
+    todayIso >= termStartsOn &&
+    todayIso <= termEndsOn
+      ? todayIso
+      : normalizeIsoDate(
+          summary.attendance.days.at(-1)?.date ?? summary.term.startsOn,
+        );
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const date = fromIsoDate(initialDate);

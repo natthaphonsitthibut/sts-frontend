@@ -167,7 +167,11 @@ export function SidebarNavItem({
     );
   }
 
-  const childrenVisible = expanded && !collapsed;
+  // Folding the rail keeps an open group open, as icons: hiding the children
+  // there moved every row below them, so the menu jumped up and down on each
+  // toggle (owner, 2026-09-25: "ทำให้มันตรงกัน"). The rail's own accordion
+  // still opens and closes a group without widening the sidebar.
+  const childrenVisible = expanded;
 
   if (item.children) {
     // Captured so the narrowing survives into the closure below.

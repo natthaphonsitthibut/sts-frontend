@@ -3,6 +3,7 @@ import type { StudentReadSource } from "../../students/api/students.service";
 import type {
   CancelCaseAssignmentPayload,
   CancelCaseAssignmentResponse,
+  SendRoundLineResponse,
   CaseDetailResponse,
   CaseTrackingOptions,
   CaseReviewPayload,
@@ -34,6 +35,11 @@ interface CasesService {
     caseId: number,
     payload: CancelCaseAssignmentPayload,
   ) => Promise<CancelCaseAssignmentResponse>;
+  /** ส่งลิงก์ผ่าน LINE: one round's link, straight to its assigned teacher. */
+  sendRoundLine: (
+    caseId: number,
+    taskId: string,
+  ) => Promise<SendRoundLineResponse>;
 }
 
 async function getCase(caseId: number): Promise<CaseDetailResponse> {
@@ -80,6 +86,18 @@ async function cancelAssignment(
   return response.data;
 }
 
+async function sendRoundLine(
+  caseId: number,
+  taskId: string,
+): Promise<SendRoundLineResponse> {
+  const response = await apiClient.post<SendRoundLineResponse>(
+    `/cases/${caseId}/rounds/${encodeURIComponent(taskId)}/send-line`,
+    // One id per press: the server sends a press at most once.
+    { deliveryRequestId: crypto.randomUUID() },
+  );
+  return response.data;
+}
+
 async function getTrackingOptions(): Promise<CaseTrackingOptions> {
   const response = await apiClient.get<CaseTrackingOptions>(
     "/public/case-tracking-options",
@@ -102,4 +120,5 @@ export const casesService: CasesService = {
   reviewCase,
   getTrackingOptions,
   cancelAssignment,
+  sendRoundLine,
 };

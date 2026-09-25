@@ -442,7 +442,7 @@ export function StudentListPage({
           studentStatusOptions={studentStatusFilterOptions}
           isStudentStatusError={studentStatusesQuery.isError}
           isStudentStatusLoading={studentStatusesQuery.isLoading}
-          title={management ? "จัดการนักเรียน" : "รายชื่อนักเรียน"}
+          title={management ? "จัดการข้อมูลนักเรียน" : "รายชื่อนักเรียน"}
         />
       ) : (
         <ListPageToolbar

@@ -113,6 +113,10 @@ export interface CaseFollowUpRound {
   assignment_ends_at?: string | null;
   /** Link state of the round: ACTIVE, SCHEDULED, CANCELLED, EXPIRED, COMPLETED. */
   link_status?: string | null;
+  /** The round's link while it still opens (ACTIVE/SCHEDULED), for its แชร์ button. */
+  magic_link?: string | null;
+  /** ส่งลิงก์ผ่าน LINE state for this round's link (server-decided). */
+  line_delivery?: CaseRoundLineDelivery | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   cancelled_by_label?: string | null;
@@ -269,4 +273,26 @@ export interface CaseReviewResponse {
   message?: string;
   case?: Record<string, unknown> | null;
   review?: CaseReviewRecord | null;
+}
+
+export type CaseRoundLineStatus =
+  | "NOT_READY"
+  | "SENDING"
+  | "SENT"
+  | "FAILED"
+  | "NEEDS_RESEND";
+
+export interface CaseRoundLineDelivery {
+  status: CaseRoundLineStatus;
+  failure_code: string | null;
+  /** NOT_VERIFIED, or the LINE friend state of the assigned teacher. */
+  account_state: string;
+  delivered_at: string | null;
+  /** Everything but "is LINE switched on", which the page reads once. */
+  can_send: boolean;
+}
+
+export interface SendRoundLineResponse {
+  success: true;
+  data: { status: CaseRoundLineStatus; failure_code: string | null };
 }

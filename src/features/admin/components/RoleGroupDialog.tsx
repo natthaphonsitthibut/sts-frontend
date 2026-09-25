@@ -26,9 +26,11 @@ import {
   roleGroupFormSchema,
   type RoleGroupFormValues,
 } from "../schemas/role-group.schema";
-import type { RoleDefinition } from "../types/admin.types";
+import type { CouncilArea, RoleDefinition } from "../types/admin.types";
 
 interface RoleGroupDialogProps {
+  /** Council only: the จ./อ./ต. a new group belongs to. */
+  area?: CouncilArea;
   onOpenChange: (open: boolean) => void;
   roleGroup: RoleDefinition | null;
   schoolId: number | null;
@@ -37,6 +39,7 @@ interface RoleGroupDialogProps {
 }
 
 export function RoleGroupDialog({
+  area,
   onOpenChange,
   roleGroup,
   schoolId,
@@ -78,6 +81,8 @@ export function RoleGroupDialog({
         originalName: roleGroup?.name ?? null,
         payload: {
           ...(schoolId ? { schoolId } : {}),
+          // A group's area is fixed when it is created, like a school's.
+          ...(scope === "council" && !isEdit && area ? area : {}),
           label: values.label.trim(),
           default_permissions: permissions,
         },
@@ -100,7 +105,7 @@ export function RoleGroupDialog({
             </DialogTitle>
             <DialogDescription>
               {scope === "council"
-                ? "กำหนดชื่อและเมนูสำหรับผู้ใช้งานสภา โดยกลุ่มนี้ไม่ผูกกับโรงเรียน"
+                ? `กำหนดชื่อและเมนูสำหรับ${schoolName} โดยกลุ่มนี้จะใช้ได้เฉพาะผู้ใช้งานของพื้นที่นี้`
                 : `กำหนดชื่อและเมนูสำหรับ ${schoolName} โดยกลุ่มนี้จะใช้ได้เฉพาะโรงเรียนนี้`}
             </DialogDescription>
           </DialogHeader>

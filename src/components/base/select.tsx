@@ -1,6 +1,7 @@
 import {
   Children,
   isValidElement,
+  useLayoutEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -9,6 +10,7 @@ import {
   type ReactElement,
   type Ref,
 } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
@@ -73,7 +75,17 @@ export function Select({
   const innerRef = useRef<HTMLSelectElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
   const [open, setOpen] = useState(false);
+  // The list is portaled to <body> and placed in viewport coordinates, the way
+  // DropdownMenu is: inside a scrolling dialog (overflow-y-auto) an in-flow
+  // absolute list was clipped by the dialog's edge and "sank" out of sight.
+  const [listPosition, setListPosition] = useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
   const [internalValue, setInternalValue] = useState(
     defaultValue === undefined ? "" : String(defaultValue),
   );
@@ -87,7 +99,11 @@ export function Select({
 
   function emitBlur(event: FocusEvent<HTMLElement>): void {
     window.setTimeout(() => {
-      if (!containerRef.current?.contains(document.activeElement))
+      const active = document.activeElement;
+      if (
+        !containerRef.current?.contains(active) &&
+        !listRef.current?.contains(active)
+      )
         setOpen(false);
     }, 0);
     onBlur?.(event as unknown as FocusEvent<HTMLSelectElement>);
@@ -109,7 +125,7 @@ export function Select({
   function focusOption(position: "first" | "last" | "selected"): void {
     window.requestAnimationFrame(() => {
       const optionButtons = Array.from(
-        containerRef.current?.querySelectorAll<HTMLButtonElement>(
+        listRef.current?.querySelectorAll<HTMLButtonElement>(
           '[role="option"]:not(:disabled)',
         ) ?? [],
       );
@@ -132,7 +148,36 @@ export function Select({
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
-  useDismissable(open, containerRef, () => setOpen(false));
+  useDismissable(open, [containerRef, listRef], () => setOpen(false));
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const LIST_MAX_HEIGHT = 224; // max-h-56
+    function updatePosition(): void {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const roomBelow = window.innerHeight - rect.bottom;
+      // Open upward only when the list would run off the bottom and there is
+      // more room above.
+      const openUp = roomBelow < LIST_MAX_HEIGHT + 8 && rect.top > roomBelow;
+      setListPosition(
+        openUp
+          ? {
+              left: rect.left,
+              width: rect.width,
+              bottom: window.innerHeight - rect.top + 4,
+            }
+          : { left: rect.left, width: rect.width, top: rect.bottom + 4 },
+      );
+    }
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
 
   return (
     <div
@@ -217,63 +262,77 @@ export function Select({
         )}
         aria-hidden="true"
       />
-      {open && !disabled ? (
-        <ul
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-          id={id ? `${id}-listbox` : undefined}
-          role="listbox"
-        >
-          {options.map((option) => (
-            <li key={option.value} role="presentation">
-              <button
-                className={cn(
-                  "block min-h-10 w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500",
-                  option.value === selectedValue &&
-                    "bg-slate-50 font-medium text-primary",
-                )}
-                disabled={option.disabled}
-                aria-selected={option.value === selectedValue}
-                onClick={() => selectOption(option.value)}
-                onKeyDown={(event) => {
-                  const enabledOptions = Array.from(
-                    containerRef.current?.querySelectorAll<HTMLButtonElement>(
-                      '[role="option"]:not(:disabled)',
-                    ) ?? [],
-                  );
-                  const currentIndex = enabledOptions.indexOf(
-                    event.currentTarget,
-                  );
-                  const nextIndex =
-                    event.key === "Home"
-                      ? 0
-                      : event.key === "End"
-                        ? enabledOptions.length - 1
-                        : event.key === "ArrowDown"
-                          ? Math.min(
-                              enabledOptions.length - 1,
-                              currentIndex + 1,
-                            )
-                          : event.key === "ArrowUp"
-                            ? Math.max(0, currentIndex - 1)
-                            : -1;
-                  if (nextIndex >= 0) {
-                    event.preventDefault();
-                    enabledOptions[nextIndex]?.focus();
-                  }
-                }}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  selectOption(option.value);
-                }}
-                role="option"
-                type="button"
-              >
-                {option.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {open && !disabled && listPosition
+        ? createPortal(
+            <ul
+              // Above a Dialog (z-50), which is where a clipped list hurt most.
+              className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+              id={id ? `${id}-listbox` : undefined}
+              ref={listRef}
+              role="listbox"
+              style={listPosition}
+            >
+              {options.map((option) => (
+                <li key={option.value} role="presentation">
+                  <button
+                    className={cn(
+                      "block min-h-10 w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500",
+                      option.value === selectedValue &&
+                        "bg-slate-50 font-medium text-primary",
+                    )}
+                    disabled={option.disabled}
+                    aria-selected={option.value === selectedValue}
+                    onClick={() => selectOption(option.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Tab") {
+                        // The list is portaled to the end of <body>: let Tab
+                        // continue from the trigger, or it would leave a
+                        // Dialog's focus trap for the page behind it.
+                        setOpen(false);
+                        triggerRef.current?.focus();
+                        return;
+                      }
+                      const enabledOptions = Array.from(
+                        listRef.current?.querySelectorAll<HTMLButtonElement>(
+                          '[role="option"]:not(:disabled)',
+                        ) ?? [],
+                      );
+                      const currentIndex = enabledOptions.indexOf(
+                        event.currentTarget,
+                      );
+                      const nextIndex =
+                        event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? enabledOptions.length - 1
+                            : event.key === "ArrowDown"
+                              ? Math.min(
+                                  enabledOptions.length - 1,
+                                  currentIndex + 1,
+                                )
+                              : event.key === "ArrowUp"
+                                ? Math.max(0, currentIndex - 1)
+                                : -1;
+                      if (nextIndex >= 0) {
+                        event.preventDefault();
+                        enabledOptions[nextIndex]?.focus();
+                      }
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectOption(option.value);
+                    }}
+                    role="option"
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

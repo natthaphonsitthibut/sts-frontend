@@ -1,20 +1,49 @@
 import { z } from "zod";
 import {
+  newPassword,
+  newUsername,
   nullableLatitude,
   nullableLongitude,
   optionalEmail,
   requiredThaiPhone,
 } from "../../../lib/validation";
 
+/**
+ * `originalUsername` is the account's current username when editing. The
+ * username rules apply to a new value only, so an older account whose name is
+ * shorter than today's minimum can still be saved without renaming it.
+ */
+export function createUserFormSchema(originalUsername?: string) {
+  return userFormSchema.superRefine((values, context) => {
+    const username = values.username.trim();
+    if (username.length === 0) return;
+    if (originalUsername !== undefined && username === originalUsername) return;
+    const result = newUsername.safeParse(username);
+    if (!result.success) {
+      context.addIssue({
+        code: "custom",
+        message: result.error.issues[0]?.message ?? "ชื่อผู้ใช้งานไม่ถูกต้อง",
+        path: ["username"],
+      });
+    }
+  });
+}
+
 export const userFormSchema = z
   .object({
     username: z.string().trim().min(1, "กรุณากรอกชื่อผู้ใช้งาน"),
-    password: z
-      .string()
-      .trim()
-      .refine((value) => value.length === 0 || value.length >= 8, {
-        message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
-      }),
+    // Empty keeps the current password (edit) or has the server issue a
+    // temporary one (create).
+    password: z.string().superRefine((value, context) => {
+      if (value.length === 0) return;
+      const result = newPassword.safeParse(value);
+      if (!result.success) {
+        context.addIssue({
+          code: "custom",
+          message: result.error.issues[0]?.message ?? "รหัสผ่านไม่ถูกต้อง",
+        });
+      }
+    }),
     FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
     LastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
     PersonID_Onec: z

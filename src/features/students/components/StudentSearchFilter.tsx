@@ -85,11 +85,15 @@ export function StudentSearchFilter({
       title={title}
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
       navigation={navigation}
+      // Only when there is a button to show: an account without export or
+      // create rights got an empty gray action band under the search row.
       tableActions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {exportAction}
-          {createAction}
-        </div>
+        exportAction || createAction ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {exportAction}
+            {createAction}
+          </div>
+        ) : undefined
       }
       search={{
         value: searchQuery,

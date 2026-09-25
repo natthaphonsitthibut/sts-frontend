@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
-import { LogOut, Pencil } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar } from "../base";
+import { adminService } from "../../features/admin/api/admin.service";
+import { ROLES_CATALOG_QUERY_KEY } from "../../features/admin/hooks/useUsers";
 import { authService } from "../../features/auth/api/auth.service";
 import { ROLE_LABELS } from "../../features/auth/lib/permissions";
 import { useAuthSessionStore } from "../../features/auth/store/auth-session.store";
@@ -38,8 +41,24 @@ export function HeaderProfileMenu({
   const user = useAuthSessionStore((state) => state.user);
   const clearSession = useAuthSessionStore((state) => state.clearSession);
   const primaryRole = user?.roles?.[0];
+  // A school's or an area's own group has a code for a name (S10010004_BASE_
+  // ADMIN), so show its label: the session's `labels`, or — for a session
+  // saved without them — the groups catalog, which always lists the account's
+  // own group. Signed-in accounts only; a guest link passes its own label.
+  const sessionLabel = user?.labels?.[0];
+  const rolesCatalogQuery = useQuery({
+    queryKey: [ROLES_CATALOG_QUERY_KEY],
+    queryFn: () => adminService.getRolesCatalog(),
+    enabled: Boolean(user && primaryRole && !roleLabel && !sessionLabel),
+    staleTime: 5 * 60 * 1000,
+  });
+  const catalogLabel = rolesCatalogQuery.data?.find(
+    (role) => role.name === primaryRole,
+  )?.label;
   const resolvedRoleLabel =
-    roleLabel ?? (primaryRole ? ROLE_LABELS[primaryRole] || primaryRole : "-");
+    roleLabel ??
+    sessionLabel ??
+    (primaryRole ? catalogLabel || ROLE_LABELS[primaryRole] || "-" : "-");
   const resolvedAffiliation = affiliation ?? user?.affiliation ?? null;
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -49,7 +68,9 @@ export function HeaderProfileMenu({
 
   function getMenuItems(): HTMLElement[] {
     return Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [],
+      menuRef.current?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([disabled])',
+      ) ?? [],
     );
   }
 
@@ -104,7 +125,9 @@ export function HeaderProfileMenu({
         <Avatar
           className={cn(
             "size-10 transition-shadow",
-            open ? "ring-2 ring-primary" : "group-hover:ring-2 group-hover:ring-primary/30",
+            open
+              ? "ring-2 ring-primary"
+              : "group-hover:ring-2 group-hover:ring-primary/30",
           )}
           gradientName={displayName}
           imageAlt={displayName}
@@ -124,7 +147,8 @@ export function HeaderProfileMenu({
               setOpen(false);
               return;
             }
-            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+              return;
 
             event.preventDefault();
             const items = getMenuItems();
@@ -134,9 +158,12 @@ export function HeaderProfileMenu({
               return;
             }
 
-            const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+            const currentIndex = items.indexOf(
+              document.activeElement as HTMLElement,
+            );
             const direction = event.key === "ArrowDown" ? 1 : -1;
-            const nextIndex = (currentIndex + direction + items.length) % items.length;
+            const nextIndex =
+              (currentIndex + direction + items.length) % items.length;
             items[nextIndex]?.focus();
           }}
         >
@@ -150,7 +177,9 @@ export function HeaderProfileMenu({
               imageUrl={photoUrl ?? null}
             />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+              <div className="truncate text-sm font-semibold text-slate-900">
+                {displayName}
+              </div>
               {resolvedAffiliation ? (
                 <div className="truncate text-xs text-slate-500">
                   สังกัด: {resolvedAffiliation}
@@ -172,9 +201,10 @@ export function HeaderProfileMenu({
               to="/profile"
             >
               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                <Pencil className="size-3.5" aria-hidden="true" />
+                <UserRound className="size-3.5" aria-hidden="true" />
               </span>
-              แก้ไขข้อมูลส่วนตัว
+              {/* It opens the profile to read; editing is a button on that page. */}
+              ดูข้อมูลส่วนตัว
             </Link>
           ) : null}
           {canSignOut ? (

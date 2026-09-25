@@ -16,6 +16,7 @@ import {
   NumericInput,
   PersonIcon,
   PhotoPicker,
+  registerDigitsField,
   registerField,
   type PhotoPickerValue,
 } from "../../../components/base";
@@ -226,7 +227,7 @@ function TeacherForm({
                     id="citizenId"
                     maxLength={13}
                     placeholder={teacher?.citizenId ?? "XXXXXXXXXXXXX"}
-                    {...registerField(form, "citizenId")}
+                    {...registerDigitsField(form, "citizenId")}
                   />
                   {teacher && !nationalIdUnlocked && teacher.citizenId ? (
                     <Button
@@ -247,7 +248,7 @@ function TeacherForm({
                   id="phone"
                   maxLength={10}
                   placeholder="XXXXXXXXXX"
-                  {...registerField(form, "phone")}
+                  {...registerDigitsField(form, "phone")}
                 />
                 <FormMessage<TeacherFormValues> name="phone" />
               </FormItem>

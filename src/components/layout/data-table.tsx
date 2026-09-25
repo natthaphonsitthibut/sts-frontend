@@ -242,11 +242,13 @@ export function DataTableRow({ className, ...props }: ComponentProps<"tr">) {
 /** A body cell with the shared padding. */
 export function DataTableCell({ className, ...props }: ComponentProps<"td">) {
   // Fixed row height (content vertically centered) so every row in every table
-  // is the same height regardless of 1-line vs 2-line cell content.
+  // is the same height regardless of 1-line vs 2-line cell content. `py-2`
+  // fits inside that height for up to two lines, and keeps a cell that wraps
+  // further (a menu group's page list) from touching the row dividers.
   return (
     <td
       className={cn(
-        "h-[60px] px-4 align-middle text-sm text-slate-600",
+        "h-[60px] px-4 py-2 align-middle text-sm text-slate-600",
         className,
       )}
       {...props}
