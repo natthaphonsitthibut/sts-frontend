@@ -1,11 +1,18 @@
 import type { ReactNode } from "react";
 import { Save } from "lucide-react";
 import { Button, Divider } from "../../../components/base";
-import type { ConversationalReportStep } from "./ConversationalReportFlow";
+
+/** One section of a report form: a heading and its fields. */
+export interface ReportFormSection {
+  id: string;
+  title: string;
+  description?: string;
+  optional?: boolean;
+  content: ReactNode;
+}
 
 interface ReportFormSectionsProps {
-  /** The same sections the step-by-step flow uses, shown all at once. */
-  sections: ConversationalReportStep[];
+  sections: ReportFormSection[];
   isSubmitting?: boolean;
   submitDisabled?: boolean;
   submitLabel: string;
