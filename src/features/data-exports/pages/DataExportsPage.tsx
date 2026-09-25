@@ -32,8 +32,10 @@ import {
 import { cn } from "../../../lib/utils";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useRouteTab } from "../../../hooks/useRouteTab";
-import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
-import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
+import {
+  useGlobalSchoolFilter,
+  type GlobalSchoolFilter,
+} from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import {
   useCreateDataExportJob,
@@ -83,14 +85,21 @@ const AREA_SCOPE_KEYS = [
 ] as const;
 const CLASSROOM_SCOPE_KEYS = ["grade", "room"] as const;
 
+/**
+ * The export's area and school come from the header's school filter — the
+ * same one every other page follows (owner, 2026-09-25: "ทำให้ auto ตาม filter
+ * กลาง"). Only ชั้น/ห้อง is picked here, and only once a school is chosen.
+ */
 function ExportScopeFilters({
   definitions,
   filters,
+  globalFilter,
   idPrefix,
   onUpdateFilter,
 }: {
   definitions: DataExportFilterDefinition[];
   filters: Record<string, string>;
+  globalFilter: GlobalSchoolFilter;
   idPrefix: string;
   onUpdateFilter: (
     definition: DataExportFilterDefinition,
@@ -100,13 +109,10 @@ function ExportScopeFilters({
   const definitionsByKey = new Map(
     definitions.map((definition) => [definition.key, definition]),
   );
-  const area = useSchoolAreaFilter({
-    province: filters.province,
-    district: filters.district,
-    subDistrict: filters.subDistrict,
-  });
+  // Controlled, not initial: the header school can change while this card
+  // stays mounted, and the room list must follow it.
   const scope = useScopeCascade({
-    initialSchoolId: filters.schoolId,
+    controlledSchoolId: globalFilter.schoolId,
     initialGrade: filters.grade,
     initialRoom: filters.room,
   });
@@ -115,85 +121,71 @@ function ExportScopeFilters({
     if (definition) onUpdateFilter(definition, value);
   };
   const has = (key: string) => definitionsByKey.has(key);
-  const selectedSchoolName = area.filteredSchools.find(
-    (school) => String(school.id) === scope.schoolId,
-  )?.name;
+  const hasClassroomPicker =
+    Boolean(globalFilter.schoolId) && (has("grade") || has("room"));
 
-  function clearScope(): void {
-    area.reset();
-    scope.reset();
-    for (const key of [...AREA_SCOPE_KEYS, ...CLASSROOM_SCOPE_KEYS]) {
-      update(key, "");
-    }
+  function clearClassroom(): void {
+    scope.setGrade("");
+    scope.setRoom("");
+    update("grade", "");
+    update("room", "");
   }
 
   return (
     <ScopeFilterField
-      onClear={clearScope}
+      onClear={hasClassroomPicker ? clearClassroom : undefined}
       scope={{
-        province: area.province,
-        district: area.district,
-        subDistrict: area.subDistrict,
-        schoolName: selectedSchoolName,
-        grade: scope.grade,
-        room: scope.room,
+        province: globalFilter.province,
+        district: globalFilter.district,
+        subDistrict: globalFilter.subDistrict,
+        schoolName: globalFilter.schoolName || undefined,
+        grade: filters.grade,
+        room: filters.room,
       }}
     >
-      <SchoolAreaSchoolFilter
-        area={area}
-        onDistrictChange={(value) => update("district", value)}
-        onProvinceChange={(value) => update("province", value)}
-        onSchoolChange={(value) => {
-          scope.setSchoolId(value);
-          update("schoolId", value);
-          update("grade", "");
-          update("room", "");
-        }}
-        onSubDistrictChange={(value) => update("subDistrict", value)}
-        schoolEmptyLabel={SCOPE_ALL_LABEL.school}
-        schoolId={scope.schoolId}
-        schoolInputId={`${idPrefix}-schoolId`}
-      />
-      {has("grade") ? (
-        <Select
-          aria-label="ระดับชั้น"
-          disabled={!scope.schoolId}
-          id={`${idPrefix}-grade`}
-          onChange={(event) => {
-            const value = event.target.value;
-            scope.setGrade(value);
-            update("grade", value);
-            update("room", "");
-          }}
-          value={scope.grade}
-        >
-          <option value="">{SCOPE_ALL_LABEL.grade}</option>
-          {scope.gradeLevels.map((grade) => (
-            <option key={grade.id} value={grade.label}>
-              {grade.label}
-            </option>
-          ))}
-        </Select>
-      ) : null}
-      {has("room") ? (
-        <Select
-          aria-label="ห้อง"
-          disabled={!scope.grade}
-          id={`${idPrefix}-room`}
-          onChange={(event) => {
-            const value = event.target.value;
-            scope.setRoom(value);
-            update("room", value);
-          }}
-          value={scope.room}
-        >
-          <option value="">{SCOPE_ALL_LABEL.room}</option>
-          {scope.rooms.map((room) => (
-            <option key={room} value={room}>
-              {formatRoomLabel(room)}
-            </option>
-          ))}
-        </Select>
+      {hasClassroomPicker ? (
+        <>
+          {has("grade") ? (
+            <Select
+              aria-label="ระดับชั้น"
+              id={`${idPrefix}-grade`}
+              onChange={(event) => {
+                const value = event.target.value;
+                scope.setGrade(value);
+                update("grade", value);
+                update("room", "");
+              }}
+              value={filters.grade ?? ""}
+            >
+              <option value="">{SCOPE_ALL_LABEL.grade}</option>
+              {scope.gradeLevels.map((grade) => (
+                <option key={grade.id} value={grade.label}>
+                  {grade.label}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+          {has("room") ? (
+            <Select
+              aria-label="ห้อง"
+              disabled={!filters.grade}
+              id={`${idPrefix}-room`}
+              onChange={(event) => {
+                const value = event.target.value;
+                scope.setRoom(value);
+                update("room", value);
+              }}
+              value={filters.room ?? ""}
+            >
+              <option value="">{SCOPE_ALL_LABEL.room}</option>
+              {scope.rooms.map((room) => (
+                <option key={room} value={room}>
+                  {formatRoomLabel(room)}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+        </>
       ) : null}
     </ScopeFilterField>
   );
@@ -218,6 +210,18 @@ function DatasetCard({
   const [filters, setFilters] = useState<Record<string, string>>(
     () => initialFilters,
   );
+  const globalFilter = useGlobalSchoolFilter();
+  // A different header school makes the picked ชั้น/ห้อง meaningless.
+  const [lastSchoolId, setLastSchoolId] = useState(globalFilter.schoolId);
+  if (globalFilter.schoolId !== lastSchoolId) {
+    setLastSchoolId(globalFilter.schoolId);
+    setFilters((current) => {
+      const next = { ...current };
+      delete next.grade;
+      delete next.room;
+      return next;
+    });
+  }
   const [purposeCode, setPurposeCode] = useState("");
   const [purposeNote, setPurposeNote] = useState("");
   const purposeComplete =
@@ -324,6 +328,7 @@ function DatasetCard({
               <ExportScopeFilters
                 definitions={item.filterDefinitions}
                 filters={filters}
+                globalFilter={globalFilter}
                 idPrefix={`export-${item.code}`}
                 onUpdateFilter={updateFilter}
               />
@@ -448,7 +453,20 @@ function DatasetCard({
               isLoading={creatingCode === item.code}
               loadingText="กำลังสร้างงาน"
               onClick={() =>
-                onCreateJob(item, { filters, purposeCode, purposeNote })
+                onCreateJob(item, {
+                  // Area and school are the header filter's, not the card's.
+                  filters: usesAreaScope
+                    ? {
+                        ...filters,
+                        province: globalFilter.province,
+                        district: globalFilter.district,
+                        subDistrict: globalFilter.subDistrict,
+                        schoolId: globalFilter.schoolId,
+                      }
+                    : filters,
+                  purposeCode,
+                  purposeNote,
+                })
               }
             >
               สร้างงานส่งออก
