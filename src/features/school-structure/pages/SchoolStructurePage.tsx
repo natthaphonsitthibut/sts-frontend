@@ -462,12 +462,16 @@ export function SchoolStructurePage() {
         description="ตั้งภาคเรียน เพิ่มหรือแก้ไขห้อง และกำหนดครูประจำชั้นของโรงเรียนที่คุณดูแล"
         scope={
           <ScopeFilterField
+            // A grade-only filter: unpicked reads "ทุกระดับชั้น", not the
+            // area fallback "ทุกจังหวัด".
+            emptyLabel={SCOPE_ALL_LABEL.grade}
             label="ระดับชั้น"
             onClear={() => {
               setGradeFilter("");
               setPage(1);
             }}
             scope={{
+              omitPlace: true,
               grade:
                 gradeLevelsQuery.data?.find(
                   (grade) => String(grade.id) === gradeFilter,
