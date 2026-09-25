@@ -180,7 +180,7 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
           placeholder: "ค้นหา",
           value: searchQuery,
         }}
-        title={management ? "จัดการข้อมูลครู" : "รายชื่อครู"}
+        title={management ? "จัดการข้อมูลคุณครู" : "รายชื่อคุณครู"}
       />
 
       <FormErrorAlert

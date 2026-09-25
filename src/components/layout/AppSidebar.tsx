@@ -48,6 +48,7 @@ function SidebarContent({
   return (
     <SidebarMenuContent
       collapsed={collapsed}
+      dataScope={user?.data_scope}
       grouped={items === undefined}
       items={items ?? filteredMenuItems}
       onNavigate={onNavigate}
