@@ -109,12 +109,11 @@ apiClient.interceptors.response.use(
       const onLoginPage =
         window.location.pathname === "/login" ||
         window.location.pathname === "/admin-access";
-      // Public magic-link / task-link pages return 401 when the *link* is
+      // Public task-link pages return 401 when the *link* is
       // invalid / closed / expired — not because the admin's session lapsed.
       // Those pages show their own "ลิงก์ไม่ถูกต้องหรือหมดอายุ" card, so never
       // hijack them into the admin login (which also wiped a real admin session).
       const onPublicLinkPage =
-        window.location.pathname.startsWith("/login/magic/") ||
         window.location.pathname.startsWith("/task/") ||
         window.location.pathname.startsWith("/araid") ||
         window.location.pathname.startsWith("/classroom") ||

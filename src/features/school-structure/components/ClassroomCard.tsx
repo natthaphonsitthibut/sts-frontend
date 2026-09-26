@@ -34,6 +34,8 @@ interface ClassroomCardProps {
    */
   showFavorite?: boolean;
   showCoverImageOption?: boolean;
+  /** Colour and cover editing; off for view-only accounts such as directors. */
+  showCustomize?: boolean;
 }
 
 export function ClassroomCard({
@@ -44,6 +46,7 @@ export function ClassroomCard({
   onCustomize,
   onFavoriteChange,
   showCoverImageOption = true,
+  showCustomize = true,
   showFavorite = true,
   subtitle,
   to,
@@ -133,79 +136,83 @@ export function ClassroomCard({
           {subtitle ??
             `ครูประจำชั้น: ${classroom.homeroomTeacherName || "ยังไม่ได้กำหนด"}`}
         </p>
-        <div
-          className="pointer-events-auto absolute bottom-2 right-2 z-10"
-          ref={paletteRef}
-        >
-          <IconButton
-            aria-controls={paletteId}
-            aria-expanded={paletteOpen}
-            aria-label={`ปรับแต่งการ์ดห้อง ${classroomLabel}`}
-            className="size-8 border-transparent bg-transparent p-0 text-slate-900 shadow-none hover:border-transparent hover:bg-slate-100"
-            icon={MoreVertical}
-            onClick={(event) => {
-              if (!paletteOpen) {
-                const rect = event.currentTarget.getBoundingClientRect();
-                setAlignPaletteRight(rect.left + 304 > window.innerWidth - 16);
-              }
-              setPaletteOpen((current) => !current);
-            }}
-            size="sm"
-          />
-          {paletteOpen ? (
-            <div
-              className={cn(
-                "absolute top-9 z-50 w-[304px] rounded-lg border border-slate-200 bg-white p-4 shadow-xl",
-                alignPaletteRight ? "right-0" : "left-0",
-              )}
-              id={paletteId}
-            >
-              <p className="mb-2 text-sm font-semibold text-slate-900">
-                เลือกสี
-              </p>
-              <div className="grid grid-cols-8 gap-2">
-                {CLASSROOM_COVER_COLORS.map((color) => {
-                  const selected = color.value === classroom.cardCoverColor;
-                  return (
+        {showCustomize ? (
+          <div
+            className="pointer-events-auto absolute bottom-2 right-2 z-10"
+            ref={paletteRef}
+          >
+            <IconButton
+              aria-controls={paletteId}
+              aria-expanded={paletteOpen}
+              aria-label={`ปรับแต่งการ์ดห้อง ${classroomLabel}`}
+              className="size-8 border-transparent bg-transparent p-0 text-slate-900 shadow-none hover:border-transparent hover:bg-slate-100"
+              icon={MoreVertical}
+              onClick={(event) => {
+                if (!paletteOpen) {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setAlignPaletteRight(
+                    rect.left + 304 > window.innerWidth - 16,
+                  );
+                }
+                setPaletteOpen((current) => !current);
+              }}
+              size="sm"
+            />
+            {paletteOpen ? (
+              <div
+                className={cn(
+                  "absolute top-9 z-50 w-[304px] rounded-lg border border-slate-200 bg-white p-4 shadow-xl",
+                  alignPaletteRight ? "right-0" : "left-0",
+                )}
+                id={paletteId}
+              >
+                <p className="mb-2 text-sm font-semibold text-slate-900">
+                  เลือกสี
+                </p>
+                <div className="grid grid-cols-8 gap-2">
+                  {CLASSROOM_COVER_COLORS.map((color) => {
+                    const selected = color.value === classroom.cardCoverColor;
+                    return (
+                      <button
+                        aria-label={`เลือกสี${color.label}`}
+                        aria-pressed={selected}
+                        className="relative size-7 rounded-full ring-offset-2 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                        disabled={colorPending}
+                        key={color.value}
+                        onClick={() => {
+                          if (!selected) onColorChange(classroom, color.value);
+                          setPaletteOpen(false);
+                        }}
+                        style={{ backgroundColor: color.value }}
+                        type="button"
+                      >
+                        {selected ? (
+                          <Check
+                            className="absolute inset-1 size-5 text-white"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                  {showCoverImageOption ? (
                     <button
-                      aria-label={`เลือกสี${color.label}`}
-                      aria-pressed={selected}
-                      className="relative size-7 rounded-full ring-offset-2 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
-                      disabled={colorPending}
-                      key={color.value}
+                      aria-label={`เลือกรูปสำหรับห้อง ${classroomLabel}`}
+                      className="inline-flex size-7 items-center justify-center rounded-full bg-slate-200 text-slate-800 hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       onClick={() => {
-                        if (!selected) onColorChange(classroom, color.value);
                         setPaletteOpen(false);
+                        onCustomize(classroom);
                       }}
-                      style={{ backgroundColor: color.value }}
                       type="button"
                     >
-                      {selected ? (
-                        <Check
-                          className="absolute inset-1 size-5 text-white"
-                          aria-hidden="true"
-                        />
-                      ) : null}
+                      <ImagePlus className="size-4" aria-hidden="true" />
                     </button>
-                  );
-                })}
-                {showCoverImageOption ? (
-                  <button
-                    aria-label={`เลือกรูปสำหรับห้อง ${classroomLabel}`}
-                    className="inline-flex size-7 items-center justify-center rounded-full bg-slate-200 text-slate-800 hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    onClick={() => {
-                      setPaletteOpen(false);
-                      onCustomize(classroom);
-                    }}
-                    type="button"
-                  >
-                    <ImagePlus className="size-4" aria-hidden="true" />
-                  </button>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </article>
   );
