@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
+  Combobox,
+  type ComboboxOption,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -53,6 +55,7 @@ import {
   useUpdateSchool,
 } from "../../school-structure/hooks/useSchoolStructure";
 import type {
+  AdministrativeAreaOption,
   SchoolAdminRecord,
   SaveSchoolInput,
   StructureStatus,
@@ -91,6 +94,16 @@ function draftFromSchool(school: SchoolAdminRecord): SchoolDraft {
     subDistrict: school.subDistrict ?? "",
     schoolStatus: school.schoolStatus,
   };
+}
+
+/** จ./อ./ต. choices for a searchable Combobox, led by "ไม่ระบุ" (none). */
+function toAreaOptions(
+  items: AdministrativeAreaOption[] | undefined,
+): ComboboxOption[] {
+  return [
+    { value: "", label: "ไม่ระบุ" },
+    ...(items ?? []).map((item) => ({ value: item.name, label: item.name })),
+  ];
 }
 
 export function ManageSchoolsPage() {
@@ -241,9 +254,11 @@ export function ManageSchoolsPage() {
       province: draft.province || undefined,
       district: draft.district || undefined,
       subDistrict: draft.subDistrict || undefined,
-      schoolStatus: draft.schoolStatus,
     };
     if (draft.id) {
+      // Status is edited only on an existing school; a new school always
+      // starts active, and POST /schools rejects the field.
+      input.schoolStatus = draft.schoolStatus;
       updateSchool.mutate(
         { id: draft.id, input },
         { onSuccess: () => setDialogOpen(false) },
@@ -566,75 +581,56 @@ export function ManageSchoolsPage() {
             <div className="space-y-2">
               <Label htmlFor="school-name">ชื่อโรงเรียน</Label>
               <Input
+                aria-describedby="school-name-hint"
                 id="school-name"
                 onChange={(event) =>
                   setDraft({ ...draft, name: event.target.value })
                 }
                 value={draft.name}
               />
+              <p className="text-xs text-slate-500" id="school-name-hint">
+                กรอกชื่อเต็มตามทะเบียน รวมคำนำหน้า เช่น โรงเรียนบูรพา
+              </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="school-province">จังหวัด</Label>
-                <Select
+                <Combobox
+                  disabled={provincesQuery.isLoading}
                   id="school-province"
-                  onChange={(event) =>
+                  onChange={(next) =>
                     setDraft({
                       ...draft,
-                      province: event.target.value,
+                      province: next,
                       district: "",
                       subDistrict: "",
                     })
                   }
-                  value={draft.province}
-                >
-                  <option value="">ไม่ระบุ</option>
-                  {(provincesQuery.data ?? []).map((item) => (
-                    <option key={item.code} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
+                  options={toAreaOptions(provincesQuery.data)}
+                  value={draft.province ?? ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="school-district">อำเภอ/เขต</Label>
-                <Select
+                <Combobox
                   disabled={!draft.province || districtsQuery.isLoading}
                   id="school-district"
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      district: event.target.value,
-                      subDistrict: "",
-                    })
+                  onChange={(next) =>
+                    setDraft({ ...draft, district: next, subDistrict: "" })
                   }
-                  value={draft.district}
-                >
-                  <option value="">ไม่ระบุ</option>
-                  {(districtsQuery.data ?? []).map((item) => (
-                    <option key={item.code} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
+                  options={toAreaOptions(districtsQuery.data)}
+                  value={draft.district ?? ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="school-sub-district">ตำบล/แขวง</Label>
-                <Select
+                <Combobox
                   disabled={!draft.district || subDistrictsQuery.isLoading}
                   id="school-sub-district"
-                  onChange={(event) =>
-                    setDraft({ ...draft, subDistrict: event.target.value })
-                  }
-                  value={draft.subDistrict}
-                >
-                  <option value="">ไม่ระบุ</option>
-                  {(subDistrictsQuery.data ?? []).map((item) => (
-                    <option key={item.code} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(next) => setDraft({ ...draft, subDistrict: next })}
+                  options={toAreaOptions(subDistrictsQuery.data)}
+                  value={draft.subDistrict ?? ""}
+                />
               </div>
             </div>
             {draft.id ? (
