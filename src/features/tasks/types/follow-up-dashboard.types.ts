@@ -36,6 +36,8 @@ export interface ReferralDrilldownRow {
   studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
+  grade: string | null;
+  room: string | null;
   statusCode: string;
   referredAt: string;
   agencyName: string;

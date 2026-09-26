@@ -71,9 +71,29 @@ async function getRiskDashboard(
   ) as RiskDashboardResult;
 }
 
-async function getFollowUpSummary(): Promise<FollowUpSummary> {
+/** The global school/area filter, narrowing the actor's own scope. */
+export interface FollowUpAreaFilter {
+  province?: string;
+  district?: string;
+  subDistrict?: string;
+  schoolId?: string;
+}
+
+function toAreaParams(area: FollowUpAreaFilter): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (area.province?.trim()) params.province = area.province.trim();
+  if (area.district?.trim()) params.district = area.district.trim();
+  if (area.subDistrict?.trim()) params.subDistrict = area.subDistrict.trim();
+  if (area.schoolId?.trim()) params.schoolId = area.schoolId.trim();
+  return params;
+}
+
+async function getFollowUpSummary(
+  area: FollowUpAreaFilter = {},
+): Promise<FollowUpSummary> {
   const response = await apiClient.get<{ data: FollowUpSummary }>(
     "/dashboard/follow-up-summary",
+    { params: toAreaParams(area) },
   );
   return response.data.data;
 }
@@ -81,10 +101,14 @@ async function getFollowUpSummary(): Promise<FollowUpSummary> {
 async function getReferralDrilldown(
   page = 1,
   limit = 20,
-  filters: { statusCode?: string; searchTerm?: string } = {},
+  filters: FollowUpAreaFilter & {
+    statusCode?: string;
+    searchTerm?: string;
+  } = {},
 ): Promise<ReferralDrilldownResult> {
   const response = await apiClient.get("/dashboard/referrals", {
     params: {
+      ...toAreaParams(filters),
       page,
       limit,
       statusCode: filters.statusCode || undefined,
