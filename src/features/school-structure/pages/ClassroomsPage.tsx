@@ -29,6 +29,7 @@ import type {
   ClassroomCardCoverColor,
   SchoolClassroom,
 } from "../types/school-structure.types";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const CLASSROOMS_ICON = PAGE_IDENTITIES["/classrooms"].icon;
@@ -48,6 +49,9 @@ function ClassroomCardSkeleton() {
 
 export function ClassroomsPage() {
   const [searchParams] = useSearchParams();
+  const { can } = usePermissions();
+  // Directors reach this page view-only: the card's colour/cover menu edits the classroom.
+  const canCustomize = can("manage-school-structure");
   const schoolsQuery = useScopedSchools();
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const globalFilter = useGlobalSchoolFilter();
@@ -233,6 +237,7 @@ export function ClassroomsPage() {
                 onColorChange={handleColorChange}
                 onCustomize={setCustomizingClassroom}
                 onFavoriteChange={handleFavoriteChange}
+                showCustomize={canCustomize}
               />
             ))}
           </div>
