@@ -201,7 +201,7 @@ function UserForm({
   const [pendingSubmitValues, setPendingSubmitValues] =
     useState<UserFormValues | null>(null);
   const [legacyScopeConfirmed, setLegacyScopeConfirmed] = useState(false);
-  const { labelOf } = usePermissionCatalog();
+  const { labelOf, catalog: permissionCatalog } = usePermissionCatalog();
   const scopeRestrictions: ScopeRestrictions = isCouncilRoute
     ? { disallowSchoolScope: true, disallowClassroomScope: true }
     : { disallowClassroomScope: true, requireSchoolScope: true };
@@ -236,9 +236,18 @@ function UserForm({
   const councilArea = isCouncilRoute ? councilAreaOf(dataScope) : undefined;
   const { rolesCatalog: areaRolesCatalog } = useRolesCatalog(councilArea);
   const catalog = isCouncilRoute ? areaRolesCatalog : rolesCatalog;
+  const formSchoolId = isCouncilRoute
+    ? null
+    : Number(dataScope.school_ids?.[0]) || null;
   const assignableRoleGroups = catalog.filter(
     (role) =>
       role.is_assignable &&
+      // A school account takes its own school's groups; national groups are no
+      // school's to hand out (owner, 2026-09-25) — an account already on one
+      // still shows it.
+      (isCouncilRoute ||
+        role.name === selectedRole ||
+        (formSchoolId !== null && role.school_id === formSchoolId)) &&
       (!isCouncilRoute ||
         role.name === selectedRole ||
         (councilArea ? isOwnedByArea(role, councilArea) : !role.owner_area)) &&
@@ -300,8 +309,15 @@ function UserForm({
       role,
       roles: [role],
       // Sent as chosen: the editor starts from the role's standard set, so an
-      // untouched form still posts exactly that set.
-      permissions,
+      // untouched form still posts exactly that set. Ids the catalog no longer
+      // has (retired pages an older account still carries) are dropped — the
+      // API refuses them, which left such accounts impossible to save.
+      permissions:
+        permissionCatalog.length > 0
+          ? permissions.filter((permission) =>
+              permissionCatalog.some((item) => item.id === permission),
+            )
+          : permissions,
       status: user?.status || "ACTIVE",
       data_scope: dataScope,
       phone: values.phone.trim(),
@@ -668,12 +684,20 @@ export function ManageUserFormPage() {
     : isCouncilRoute
       ? "/council/manage-users"
       : MANAGE_USERS_PATH;
+  // A school account takes its school's own groups (S<id>_BASE_…): the
+  // account's school when editing, else the one this form was opened for.
+  const rolesSchoolId = isCouncilRoute
+    ? null
+    : Number(user?.data_scope?.school_ids?.[0]) ||
+      lockedSchoolId ||
+      Number(globalFilter.schoolId) ||
+      null;
   const {
     rolesCatalog,
     isLoading: isRolesLoading,
     isError: isRolesError,
     refetch: refetchRoles,
-  } = useRolesCatalog();
+  } = useRolesCatalog(undefined, rolesSchoolId);
   const realmMismatch = Boolean(
     isEdit &&
     user &&

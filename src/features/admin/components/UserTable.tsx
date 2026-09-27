@@ -1,4 +1,4 @@
-import { SquarePen, Trash2 } from "lucide-react";
+import { SquarePen, Trash2, UserCheck } from "lucide-react";
 import { Avatar, IconButton } from "../../../components/base";
 import {
   DataTable,
@@ -25,6 +25,9 @@ interface UserTableProps {
   onEdit: (user: ManagedUser) => void;
   onDeactivate: (user: ManagedUser) => void;
   deactivatingUserId?: number | null;
+  /** A disabled row offers เปิดใช้งานอีกครั้ง in place of ปิดใช้งาน. */
+  onReactivate: (user: ManagedUser) => void;
+  reactivatingUserId?: number | null;
   sort?: DataTableSortState;
   onSortChange: (sort: DataTableSortState | undefined) => void;
   /**
@@ -90,6 +93,8 @@ function RowActions({
   onEdit,
   onDeactivate,
   deactivatingUserId,
+  onReactivate,
+  reactivatingUserId,
 }: Omit<
   UserTableProps,
   "users" | "startIndex" | "sort" | "onSortChange" | "currentUserId"
@@ -97,24 +102,37 @@ function RowActions({
   user: ManagedUser;
 }) {
   const isDeactivating = deactivatingUserId === (user.id ?? -1);
+  const isReactivating = reactivatingUserId === (user.id ?? -1);
+  const isDisabled = user.status !== "ACTIVE";
   const displayName = getUserDisplayName(user);
   return (
     <div className="flex items-center justify-center gap-1">
       <IconButton
         aria-label={`แก้ไขผู้ใช้งาน ${displayName}`}
-        disabled={isDeactivating}
+        disabled={isDeactivating || isReactivating}
         icon={SquarePen}
         onClick={() => onEdit(user)}
         variant="edit"
       />
-      <IconButton
-        aria-busy={isDeactivating}
-        aria-label={`ปิดใช้งานผู้ใช้งาน ${displayName}`}
-        disabled={isDeactivating}
-        icon={Trash2}
-        onClick={() => onDeactivate(user)}
-        variant="delete"
-      />
+      {isDisabled ? (
+        <IconButton
+          aria-busy={isReactivating}
+          aria-label={`เปิดใช้งานผู้ใช้งาน ${displayName}`}
+          disabled={isReactivating}
+          icon={UserCheck}
+          onClick={() => onReactivate(user)}
+          variant="unlock"
+        />
+      ) : (
+        <IconButton
+          aria-busy={isDeactivating}
+          aria-label={`ปิดใช้งานผู้ใช้งาน ${displayName}`}
+          disabled={isDeactivating}
+          icon={Trash2}
+          onClick={() => onDeactivate(user)}
+          variant="delete"
+        />
+      )}
     </div>
   );
 }
@@ -125,6 +143,8 @@ export function UserTable({
   onEdit,
   onDeactivate,
   deactivatingUserId,
+  onReactivate,
+  reactivatingUserId,
   currentUserId,
   sort,
   onSortChange,
@@ -186,6 +206,8 @@ export function UserTable({
               <RowActions
                 deactivatingUserId={deactivatingUserId}
                 onDeactivate={onDeactivate}
+                onReactivate={onReactivate}
+                reactivatingUserId={reactivatingUserId}
                 onEdit={onEdit}
                 user={user}
               />
@@ -202,6 +224,8 @@ export function UserTable({
               <RowActions
                 deactivatingUserId={deactivatingUserId}
                 onDeactivate={onDeactivate}
+                onReactivate={onReactivate}
+                reactivatingUserId={reactivatingUserId}
                 onEdit={onEdit}
                 user={user}
               />

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { FormErrorAlert } from "../../../components/base";
+import { FormErrorAlert, useConfirm } from "../../../components/base";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
@@ -32,6 +32,7 @@ import { UserTable } from "../components/UserTable";
 import type { DataTableSortState } from "../../../components/layout/data-table";
 import {
   useDeactivateAccount,
+  useReactivateAccount,
   useRolesCatalog,
   useUsers,
 } from "../hooks/useUsers";
@@ -68,6 +69,8 @@ export function ManageUsersPage({
   const [searchParams] = useSearchParams();
   const currentUserId = useAuthSessionStore((state) => state.user?.id ?? null);
   const deactivateAccount = useDeactivateAccount();
+  const reactivateAccount = useReactivateAccount();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useRememberedState(
     "manage-users:search",
@@ -91,7 +94,6 @@ export function ManageUsersPage({
   const [roleLabel, setRoleLabel] = useState(
     () => searchParams.get("role") ?? "",
   );
-  const { rolesCatalog } = useRolesCatalog();
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     readSortSearchParam(searchParams, "sort", ["name", "role", "affiliation"]),
   );
@@ -103,6 +105,11 @@ export function ManageUsersPage({
   // Leaving it unset browses every school in the admin's own scope.
   const globalFilter = useGlobalSchoolFilter();
   const selectedSchoolValue = scope === "council" ? "" : globalFilter.schoolId;
+  // The บทบาท filter lists the picked school's own groups, so ask for them.
+  const { rolesCatalog } = useRolesCatalog(
+    undefined,
+    Number(selectedSchoolValue) || null,
+  );
   // Council accounts belong to an area: the list follows the header's จ./อ./ต.
   // the way the school list follows its school (owner, 2026-09-25).
   const councilProvince = scope === "council" ? globalFilter.province : "";
@@ -200,6 +207,16 @@ export function ManageUsersPage({
     setDeactivationTarget(user);
   }
 
+  async function handleReactivate(user: ManagedUser): Promise<void> {
+    if (user.id == null) return;
+    const accepted = await confirm({
+      title: "เปิดใช้งานผู้ใช้งาน",
+      description: `ต้องการเปิดใช้งาน "${getUserDisplayName(user)}" อีกครั้งใช่หรือไม่?`,
+      confirmText: "เปิดใช้งาน",
+    });
+    if (accepted) reactivateAccount.mutate(user.id);
+  }
+
   function submitDeactivate(payload: AccountDeactivationPayload): void {
     if (deactivationTarget?.id == null) return;
     deactivateAccount.mutate(
@@ -281,6 +298,10 @@ export function ManageUsersPage({
         error={deactivateAccount.error}
         fallback="ปิดใช้งานบัญชีไม่สำเร็จ กรุณาลองอีกครั้ง"
       />
+      <FormErrorAlert
+        error={reactivateAccount.error}
+        fallback="เปิดใช้งานบัญชีไม่สำเร็จ กรุณาลองอีกครั้ง"
+      />
 
       {needsSchoolPick ? (
         <EmptyState
@@ -321,6 +342,10 @@ export function ManageUsersPage({
                 : null
             }
             onDeactivate={handleDeactivate}
+            onReactivate={(user) => void handleReactivate(user)}
+            reactivatingUserId={
+              reactivateAccount.isPending ? reactivateAccount.variables : null
+            }
             onEdit={openEdit}
             onSortChange={(nextSort) => {
               setSort(nextSort);
@@ -345,6 +370,7 @@ export function ManageUsersPage({
         </>
       )}
 
+      {confirmDialog}
       <AccountDeactivationDialog
         key={deactivationTarget?.id ?? "none"}
         error={
