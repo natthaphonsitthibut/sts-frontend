@@ -204,7 +204,7 @@ export function HeaderProfileMenu({
                 <UserRound className="size-3.5" aria-hidden="true" />
               </span>
               {/* It opens the profile to read; editing is a button on that page. */}
-              ดูข้อมูลส่วนตัว
+              โปรไฟล์ของฉัน
             </Link>
           ) : null}
           {canSignOut ? (
