@@ -11,7 +11,7 @@ import { Badge } from "../../../components/base";
 import { Button } from "../../../components/base";
 import type { NotificationItem } from "../types/notifications.types";
 import { formatNotificationBody } from "../lib/notification-body";
-import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
+import { getNotificationIconPresentation } from "../lib/notification-presentation";
 
 interface NotificationListItemProps {
   className?: string;
@@ -39,9 +39,7 @@ export function NotificationListItem({
   const isUnread = !notification.read_at;
   const body = formatNotificationBody(notification);
   const centerPresentation = presentation === "center";
-  const statusPresentation = getCaseTrackingStatusPresentation(
-    notification.case_status_code,
-  );
+  const statusPresentation = getNotificationIconPresentation(notification);
   const StatusIcon = statusPresentation.icon;
 
   return (
