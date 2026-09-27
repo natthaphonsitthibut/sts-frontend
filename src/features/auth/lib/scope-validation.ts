@@ -214,3 +214,56 @@ export function getScopeValidationError(
 
   return null;
 }
+
+/**
+ * The area levels an account manager may hand out: a level their own scope
+ * names can only take one of those values, never "ทั้งหมด". A nationwide
+ * actor (or one with no area at all) has no ceiling. Mirrors the backend
+ * `isScopeSubsetOfActor`, which remains the boundary on save.
+ */
+export interface ScopeCeiling {
+  provinces: string[];
+  districts: string[];
+  sub_districts: string[];
+  school_ids: string[];
+}
+
+export function getScopeCeiling(
+  actorScope: DataScope | null | undefined,
+): ScopeCeiling | null {
+  if (!actorScope || actorScope.global === true) return null;
+  const ceiling: ScopeCeiling = {
+    provinces: (actorScope.provinces ?? []).map(String),
+    districts: (actorScope.districts ?? []).map(String),
+    sub_districts: (actorScope.sub_districts ?? []).map(String),
+    school_ids: (actorScope.school_ids ?? []).map(String),
+  };
+  const hasAny = Object.values(ceiling).some((values) => values.length > 0);
+  return hasAny ? ceiling : null;
+}
+
+/**
+ * Fills each level the ceiling pins to a single value, so a new account starts
+ * inside the actor's own area instead of at "ทั้งหมด".
+ */
+export function fillScopeFromCeiling(
+  scope: DataScope,
+  ceiling: ScopeCeiling | null,
+  levels: { schools: boolean },
+): DataScope {
+  if (!ceiling) return scope;
+  const pick = (current: string[] | undefined, allowed: string[]) =>
+    current?.length ? current : allowed.length === 1 ? [allowed[0]] : current;
+  const schoolIds = scope.school_ids?.length
+    ? scope.school_ids
+    : levels.schools && ceiling.school_ids.length === 1
+      ? [Number(ceiling.school_ids[0])]
+      : scope.school_ids;
+  return {
+    ...scope,
+    provinces: pick(scope.provinces, ceiling.provinces),
+    districts: pick(scope.districts, ceiling.districts),
+    sub_districts: pick(scope.sub_districts, ceiling.sub_districts),
+    school_ids: schoolIds,
+  };
+}

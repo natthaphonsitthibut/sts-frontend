@@ -30,7 +30,6 @@ import {
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkShareButton } from "../../../components/layout/link-share-dialog";
-import { ContextLink } from "../../../components/layout/context-link";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
@@ -54,11 +53,12 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { isAggregateOnlyExecutive } from "../../auth/lib/permissions";
 import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
+import { StudentIdentityCell } from "../components/StudentIdentityCell";
+import { useStatusCatalog } from "../../status-catalog/hooks/useStatusCatalog";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import type {
   ConcernLevelCode,
@@ -231,41 +231,18 @@ function sortToValue(
 function StudentCell({
   canViewStudent,
   row,
-  showSchoolName,
 }: {
   canViewStudent: boolean;
   row: RiskDashboardRow;
-  showSchoolName: boolean;
 }) {
-  const avatar = (
-    <StudentAvatar
-      className="transition-shadow group-hover:ring-2 group-hover:ring-primary/30"
-      name={row.studentName}
-      photoUrl={row.studentPhotoUrl}
-    />
-  );
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      {canViewStudent ? (
-        <ContextLink
-          aria-label={`ดูโปรไฟล์ ${row.studentName}`}
-          className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          to={`/students/${row.studentId}`}
-        >
-          {avatar}
-        </ContextLink>
-      ) : (
-        <span className="shrink-0">{avatar}</span>
-      )}
-      <div className="min-w-0">
-        <div className="truncate text-slate-800">{row.studentName}</div>
-        {showSchoolName && row.schoolName ? (
-          <div className="truncate text-xs text-slate-500">
-            {row.schoolName}
-          </div>
-        ) : null}
-      </div>
-    </div>
+    <StudentIdentityCell
+      canViewStudent={canViewStudent}
+      schoolName={row.schoolName}
+      studentId={row.studentId}
+      studentName={row.studentName}
+      studentPhotoUrl={row.studentPhotoUrl}
+    />
   );
 }
 
@@ -374,6 +351,9 @@ function StudentRiskDashboardPage() {
   const [semesterInput, setSemesterInput] = useState<number | undefined>(() =>
     readOptionalPositiveIntegerSearchParam(searchParams, "semester"),
   );
+  // Case statuses and their labels come from the status catalog, the same
+  // source the referral tab reads its statuses from.
+  const caseWorkflowStatuses = useStatusCatalog("CASE_WORKFLOW").items;
   const [caseStatus, setCaseStatus] = useState<
     RiskDashboardQuery["caseStatus"]
   >(() => parseCaseStatus(searchParams.get("caseStatus")));
@@ -851,7 +831,7 @@ function StudentRiskDashboardPage() {
               <SearchInput
                 className="w-full sm:max-w-[430px]"
                 onChange={handleSearchChange}
-                placeholder="ค้นหา"
+                placeholder="ค้นหาชื่อนักเรียนหรือเลขประจำตัว"
                 value={search}
               />
               {/* Both tabs carry the same pair — cards to see the split at a
@@ -878,19 +858,25 @@ function StudentRiskDashboardPage() {
                   onChange={handleCaseStatusChange}
                   value={caseStatus ?? ""}
                 >
-                  <option value="">สถานะทั้งหมด</option>
-                  <option value="STUDENT_NOT_FOUND">ไม่พบนักเรียน</option>
-                  <option value="OPEN">รอมอบหมาย</option>
-                  <option value="IN_PROGRESS">รอติดตาม</option>
-                  <option value="PENDING_REVIEW">รอพิจารณา</option>
-                  <option value="RESOLVED">เสร็จสิ้น</option>
+                  <option value="">ทุกสถานะการติดตาม</option>
+                  {caseWorkflowStatuses.map((status) => (
+                    <option key={status.code} value={status.code}>
+                      {status.label}
+                    </option>
+                  ))}
                 </FilterSelect>
               )}
             </div>
           )}
         </div>
 
-        {isReferrals ? <ReferralRegisterPanel /> : null}
+        {isReferrals ? (
+          <ReferralRegisterPanel
+            canViewStudent={canViewStudent}
+            grade={scope.grade || undefined}
+            room={scope.room || undefined}
+          />
+        ) : null}
 
         {!isReferrals && activeFilterLabels.length > 0 ? (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-100 px-3 py-2 md:hidden">
@@ -1003,11 +989,7 @@ function StudentRiskDashboardPage() {
                     {(page - 1) * rowsPerPage + index + 1}
                   </DataTableCell>
                   <DataTableCell>
-                    <StudentCell
-                      canViewStudent={canViewStudent}
-                      row={row}
-                      showSchoolName={!scope.schoolId}
-                    />
+                    <StudentCell canViewStudent={canViewStudent} row={row} />
                   </DataTableCell>
                   <DataTableCell className="text-slate-600">
                     {row.grade || "-"}
@@ -1131,11 +1113,7 @@ function StudentRiskDashboardPage() {
                       <span className="text-sm text-slate-600">
                         {(page - 1) * rowsPerPage + index + 1}
                       </span>
-                      <StudentCell
-                        canViewStudent={canViewStudent}
-                        row={row}
-                        showSchoolName={!scope.schoolId}
-                      />
+                      <StudentCell canViewStudent={canViewStudent} row={row} />
                     </div>
                     {row.latestCaseStatus ? (
                       <span className="inline-flex items-center gap-1">

@@ -5,10 +5,16 @@ function normalizeText(value: string | null | undefined): string | null {
   return normalized ? normalized : null;
 }
 
+/** Types that name a student and carry a one-line reason after the name. */
+const STUDENT_NOTIFICATION_TYPES = new Set([
+  "CASE_STATUS_CHANGED",
+  "STUDENT_WATCHLIST_ALERT",
+]);
+
 export function formatNotificationBody(
   notification: NotificationItem,
 ): string | null {
-  if (notification.type_code !== "CASE_STATUS_CHANGED") {
+  if (!STUDENT_NOTIFICATION_TYPES.has(notification.type_code)) {
     return normalizeText(notification.body);
   }
 

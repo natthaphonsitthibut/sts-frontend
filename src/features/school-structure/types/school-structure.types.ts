@@ -77,11 +77,15 @@ export interface AdministrativeAreaOption {
   name: string;
 }
 
-export interface SaveSchoolInput {
+/** POST /schools — a new school always starts active, so no status field. */
+export interface CreateSchoolInput {
   name: string;
   province?: string;
   district?: string;
   subDistrict?: string;
+}
+
+export interface SaveSchoolInput extends CreateSchoolInput {
   schoolStatus?: StructureStatus;
 }
 

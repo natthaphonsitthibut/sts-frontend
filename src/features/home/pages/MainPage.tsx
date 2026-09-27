@@ -37,7 +37,6 @@ import { useCurrentUserPresentation } from "../hooks/useCurrentUserPresentation"
 import { useHomeDashboard } from "../hooks/useHomeDashboard";
 import type {
   HomeDashboardFilters,
-  HomeDashboardGradeRiskPoint,
   HomeDashboardMetric,
   HomeDashboardOption,
   HomeDashboardTrendPoint,
@@ -52,7 +51,6 @@ const GeoMapSVG = lazy(() => import("../components/GeoMapSVG"));
 // whole dataset into its internal store whenever that identity changes. Empty
 // is a constant, so treat it as one.
 const NO_TREND_POINTS: HomeDashboardTrendPoint[] = [];
-const NO_GRADE_RISK_POINTS: HomeDashboardGradeRiskPoint[] = [];
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   totalStudents: Users,
@@ -555,8 +553,13 @@ export function MainPage() {
             <div className="flex flex-col gap-5">
               {isSchoolScope ? (
                 <GradeRiskChart
-                  onSelect={(grade) => updateFilter({ grade })}
-                  points={trends?.gradeRiskDistribution ?? NO_GRADE_RISK_POINTS}
+                  distribution={trends?.gradeRiskDistribution ?? null}
+                  grade={filters.grade}
+                  gradeOptions={filterOptions?.options?.grades ?? []}
+                  onGradeChange={(grade) => updateFilter({ grade })}
+                  onRoomChange={(room) => updateFilter({ room })}
+                  room={filters.room}
+                  roomOptions={filterOptions?.options?.rooms ?? []}
                 />
               ) : (
                 <Suspense

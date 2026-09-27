@@ -10,5 +10,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,
+    // jsdom page tests take ~0.2s alone but can pass 5s (vitest's default) on
+    // a loaded or cold CI machine; the headroom stops those runs from flaking.
+    testTimeout: 15_000,
   },
 })

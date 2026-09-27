@@ -21,8 +21,10 @@ import {
   SummaryMetrics,
 } from "../../../components/layout/page-primitives";
 import { formatThaiDateTime } from "../../../lib/date-time";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
-import { StudentAvatar } from "../../students/components/StudentAvatar";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
+import { StudentIdentityCell } from "./StudentIdentityCell";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import {
   findStatusCatalogItem,
@@ -47,13 +49,18 @@ const REFERRAL_STATUS_ICON: Record<string, typeof Send> = {
   CANCELLED: Ban,
 };
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
-const DEFAULT_PAGE_SIZE = 20;
-
 export function ReferralRegisterPanel({
   aggregateOnly = false,
+  canViewStudent = false,
+  grade,
+  room,
 }: {
   aggregateOnly?: boolean;
+  /** Whether the student avatar links to the profile, as on the other tabs. */
+  canViewStudent?: boolean;
+  /** The page's ชั้น/ห้อง picker, applied here as on the other tabs. */
+  grade?: string;
+  room?: string;
 }) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -65,13 +72,37 @@ export function ReferralRegisterPanel({
     findStatusCatalogItem(referralStatuses.items, code);
   const referralStatusLabel = (code: string): string =>
     referralStatus(code)?.label ?? code;
+  // The header's school/area filter narrows the register like every other tab.
+  const globalFilter = useGlobalSchoolFilter();
+  const area = {
+    province: globalFilter.province,
+    district: globalFilter.district,
+    subDistrict: globalFilter.subDistrict,
+    schoolId: globalFilter.schoolId,
+    grade: grade ?? "",
+    room: room ?? "",
+  };
+  const areaKey = [
+    area.province,
+    area.district,
+    area.subDistrict,
+    area.schoolId,
+    area.grade,
+    area.room,
+  ].join("|");
+  const [lastAreaKey, setLastAreaKey] = useState(areaKey);
+  if (areaKey !== lastAreaKey) {
+    setLastAreaKey(areaKey);
+    setPage(1);
+  }
   const summaryQuery = useQuery({
-    queryKey: ["follow-up-summary"],
-    queryFn: riskDashboardService.getFollowUpSummary,
+    queryKey: ["follow-up-summary", area],
+    queryFn: () => riskDashboardService.getFollowUpSummary(area),
   });
   const drilldownQuery = useQuery({
     queryKey: [
       "referral-drilldown",
+      area,
       page,
       rowsPerPage,
       statusCode,
@@ -79,6 +110,7 @@ export function ReferralRegisterPanel({
     ],
     queryFn: () =>
       riskDashboardService.getReferralDrilldown(page, rowsPerPage, {
+        ...area,
         statusCode: statusCode || undefined,
         searchTerm: debouncedSearch || undefined,
       }),
@@ -110,12 +142,19 @@ export function ReferralRegisterPanel({
     hideComparison: true,
     labelClassName: "text-base text-content-secondary",
     emphasis: true,
-    onSelect: () => {
-      setStatusCode((current) => (current === status.code ? "" : status.code));
-      setPage(1);
-    },
-    selected: statusCode === status.code,
-    selectionLabel: `กรอง${status.label}`,
+    // Aggregate-only viewers have no list for a card to filter.
+    ...(aggregateOnly
+      ? {}
+      : {
+          onSelect: () => {
+            setStatusCode((current) =>
+              current === status.code ? "" : status.code,
+            );
+            setPage(1);
+          },
+          selected: statusCode === status.code,
+          selectionLabel: `กรอง${status.label}`,
+        }),
   }));
 
   return (
@@ -129,33 +168,35 @@ export function ReferralRegisterPanel({
           items={statusItems}
         />
 
-        <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
-          <SearchInput
-            className="w-full sm:max-w-[430px]"
-            onChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
-            value={search}
-          />
-          <FilterSelect
-            ariaLabel="สถานะการส่งต่อ"
-            className="w-full sm:w-[306px]"
-            onChange={(value) => {
-              setStatusCode(value);
-              setPage(1);
-            }}
-            value={statusCode}
-          >
-            <option value="">ทุกสถานะการส่งต่อ</option>
-            {referralStatuses.items.map((status) => (
-              <option key={status.code} value={status.code}>
-                {status.label}
-              </option>
-            ))}
-          </FilterSelect>
-        </div>
+        {aggregateOnly ? null : (
+          <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
+            <SearchInput
+              className="w-full sm:max-w-[430px]"
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
+              value={search}
+            />
+            <FilterSelect
+              ariaLabel="สถานะการส่งต่อ"
+              className="w-full sm:w-[306px]"
+              onChange={(value) => {
+                setStatusCode(value);
+                setPage(1);
+              }}
+              value={statusCode}
+            >
+              <option value="">ทุกสถานะการส่งต่อ</option>
+              {referralStatuses.items.map((status) => (
+                <option key={status.code} value={status.code}>
+                  {status.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </div>
+        )}
       </div>
 
       {!aggregateOnly ? (
@@ -183,21 +224,25 @@ export function ReferralRegisterPanel({
               <DataTable
                 columnWidths={[
                   "w-[6%]",
-                  "w-[26%]",
-                  "w-[22%]",
-                  "w-[16%]",
-                  "w-[18%]",
-                  "w-[12%]",
+                  "w-[20%]",
+                  "w-[9%]",
+                  "w-[8%]",
+                  "w-[21%]",
+                  "w-[14%]",
+                  "w-[13%]",
+                  "w-[9%]",
                 ]}
                 headings={[
                   "ลำดับ",
                   "ชื่อนักเรียน",
+                  "ชั้น",
+                  "ห้อง",
                   "หน่วยงานที่ส่งต่อ",
                   { label: "สถานะการส่งต่อ", className: "text-center" },
                   "วันที่ส่งต่อ",
                   { isAction: true, label: "เครื่องมือ" },
                 ]}
-                minWidthClassName="min-w-[960px]"
+                minWidthClassName="min-w-[1120px]"
               >
                 {referrals.map((referral, index) => (
                   <DataTableRow key={referral.id}>
@@ -205,21 +250,19 @@ export function ReferralRegisterPanel({
                       {(page - 1) * rowsPerPage + index + 1}
                     </DataTableCell>
                     <DataTableCell>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <StudentAvatar
-                          className="shrink-0"
-                          name={referral.studentName}
-                          photoUrl={referral.studentPhotoUrl}
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate text-slate-800">
-                            {referral.studentName}
-                          </div>
-                          <div className="truncate text-xs text-slate-500">
-                            {referral.schoolName || "ไม่ระบุโรงเรียน"}
-                          </div>
-                        </div>
-                      </div>
+                      <StudentIdentityCell
+                        canViewStudent={canViewStudent}
+                        schoolName={referral.schoolName}
+                        studentId={referral.studentId}
+                        studentName={referral.studentName}
+                        studentPhotoUrl={referral.studentPhotoUrl}
+                      />
+                    </DataTableCell>
+                    <DataTableCell className="text-slate-600">
+                      {referral.grade || "-"}
+                    </DataTableCell>
+                    <DataTableCell className="text-slate-600">
+                      {referral.room || "-"}
                     </DataTableCell>
                     <DataTableCell>
                       <div className="min-w-0">
@@ -258,21 +301,13 @@ export function ReferralRegisterPanel({
                 {referrals.map((referral) => (
                   <TableCard key={referral.id}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <StudentAvatar
-                          className="shrink-0"
-                          name={referral.studentName}
-                          photoUrl={referral.studentPhotoUrl}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-slate-900">
-                            {referral.studentName}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">
-                            {referral.schoolName || "ไม่ระบุโรงเรียน"}
-                          </p>
-                        </div>
-                      </div>
+                      <StudentIdentityCell
+                        canViewStudent={canViewStudent}
+                        schoolName={referral.schoolName}
+                        studentId={referral.studentId}
+                        studentName={referral.studentName}
+                        studentPhotoUrl={referral.studentPhotoUrl}
+                      />
                       <Badge
                         variant={
                           referralStatus(referral.statusCode)?.badgeVariant
@@ -281,13 +316,29 @@ export function ReferralRegisterPanel({
                         {referralStatusLabel(referral.statusCode)}
                       </Badge>
                     </div>
+                    <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-xs text-slate-500">ระดับชั้น</div>
+                        <div className="text-slate-800">
+                          {referral.grade || "-"}
+                          {referral.room ? `/${referral.room}` : ""}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500">
+                          วันที่ส่งต่อ
+                        </div>
+                        <div className="text-slate-800">
+                          {formatThaiDateTime(referral.referredAt)}
+                        </div>
+                      </div>
+                    </div>
                     <div className="mt-2">
                       <div className="text-slate-800">
                         {referral.agencyName}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {referral.agencyKindLabel} ·{" "}
-                        {formatThaiDateTime(referral.referredAt)}
+                        {referral.agencyKindLabel}
                       </div>
                     </div>
                     <div className="mt-2 flex justify-end">
@@ -303,7 +354,10 @@ export function ReferralRegisterPanel({
 
               <Pagination
                 onPageChange={setPage}
-                onRowsPerPageChange={setRowsPerPage}
+                onRowsPerPageChange={(value) => {
+                  setRowsPerPage(value);
+                  setPage(1);
+                }}
                 page={page}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={PAGE_SIZE_OPTIONS}

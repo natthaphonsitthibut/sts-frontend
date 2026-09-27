@@ -11,5 +11,13 @@ export function getNotificationRoute(
       : null;
   }
 
+  if (notification.ref_entity === "classroom_student_comments") {
+    // A watchlist alert opens the student it is about, like the กลุ่มเฝ้าระวัง
+    // tab does.
+    return notification.student_uuid
+      ? `/students/${encodeURIComponent(notification.student_uuid)}`
+      : null;
+  }
+
   return null;
 }

@@ -106,7 +106,10 @@ export function DialogContent({
       role="dialog"
       tabIndex={-1}
       className={cn(
-        "relative z-10 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] animate-dialog-in",
+        // Capped to the viewport and scrolled inside: a tall form (e.g. the
+        // teacher-comment dialog on a laptop screen) otherwise ran off both
+        // edges with its save button out of reach.
+        "relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)] animate-dialog-in",
         className,
       )}
       {...props}
@@ -157,7 +160,10 @@ export function DialogTitle({
       {...props}
     >
       {Icon ? (
-        <Icon className={cn("size-4 shrink-0", iconClassName)} aria-hidden="true" />
+        <Icon
+          className={cn("size-4 shrink-0", iconClassName)}
+          aria-hidden="true"
+        />
       ) : null}
       <span>{children}</span>
     </h2>

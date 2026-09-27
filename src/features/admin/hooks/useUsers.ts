@@ -78,14 +78,20 @@ export function useUserDetail(id: number | null) {
   });
 }
 
-/** With `area`, also the council groups of exactly that จ./อ./ต. */
-export function useRolesCatalog(area?: CouncilArea): UseRolesCatalogResult {
+/**
+ * With `area`, also the council groups of exactly that จ./อ./ต.; with
+ * `schoolId`, also that school's own groups (for accounts of that school).
+ */
+export function useRolesCatalog(
+  area?: CouncilArea,
+  schoolId?: number | null,
+): UseRolesCatalogResult {
   const areaKey = area?.province
     ? [area.province, area.district ?? "", area.subDistrict ?? ""]
     : [];
   const result = useQuery({
-    queryKey: [ROLES_CATALOG_QUERY_KEY, ...areaKey],
-    queryFn: () => adminService.getRolesCatalog(area),
+    queryKey: [ROLES_CATALOG_QUERY_KEY, ...areaKey, schoolId ?? null],
+    queryFn: () => adminService.getRolesCatalog(area, schoolId),
   });
   return {
     rolesCatalog: result.data ?? EMPTY_ROLES,

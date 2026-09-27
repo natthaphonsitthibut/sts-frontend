@@ -277,7 +277,7 @@ export function DatePicker({
         aria-haspopup="dialog"
         aria-label={ariaLabel}
         aria-invalid={ariaInvalid}
-        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20 [&>span]:w-full [&>span>span]:w-full"
+        className="h-10 w-full justify-start rounded-lg border-slate-300 px-3 font-medium shadow-none hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-none focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-offset-0 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:border-red-400 aria-[invalid=true]:focus:ring-red-400/20 [&>span]:w-full [&>span]:min-w-0 [&>span]:grid-cols-[minmax(0,1fr)] [&>span>span]:w-full [&>span>span]:min-w-0"
         disabled={disabled}
         icon={CalendarDays}
         id={id}
@@ -300,7 +300,7 @@ export function DatePicker({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "size-4 text-primary transition-transform",
+            "size-4 shrink-0 text-primary transition-transform",
             open && "rotate-180",
           )}
         />

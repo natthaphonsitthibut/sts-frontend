@@ -67,6 +67,12 @@ function buildAuditLogParams(query: AuditLogQuery): Record<string, string> {
   if (targetId) {
     params.targetId = targetId;
   }
+  if (query.sortBy) {
+    params.sortBy = query.sortBy;
+  }
+  if (query.sortOrder) {
+    params.sortOrder = query.sortOrder;
+  }
 
   return params;
 }
@@ -75,7 +81,10 @@ async function getAuditLog(query: AuditLogQuery): Promise<AuditLogResult> {
   const response = await apiClient.get("/audit-log", {
     params: buildAuditLogParams(query),
   });
-  const result = normalizePaginatedResponse<AuditLogEntry>(response.data, query);
+  const result = normalizePaginatedResponse<AuditLogEntry>(
+    response.data,
+    query,
+  );
   return {
     items: result.items,
     meta: result.meta,
@@ -83,9 +92,9 @@ async function getAuditLog(query: AuditLogQuery): Promise<AuditLogResult> {
 }
 
 async function getAuditLogEntry(id: string): Promise<AuditLogEntry> {
-  const response = await apiClient.get<AuditLogEntry | DataEnvelope<AuditLogEntry>>(
-    `/audit-log/${id}`,
-  );
+  const response = await apiClient.get<
+    AuditLogEntry | DataEnvelope<AuditLogEntry>
+  >(`/audit-log/${id}`);
   return unwrapData(response.data);
 }
 

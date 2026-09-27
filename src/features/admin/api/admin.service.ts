@@ -170,8 +170,13 @@ async function revealUserNationalId(
  * Groups the signed-in account may hand out. With `area`, the council's groups
  * of exactly that จ./อ./ต. are included (and created on first use).
  */
-async function getRolesCatalog(area?: CouncilArea): Promise<RoleDefinition[]> {
+async function getRolesCatalog(
+  area?: CouncilArea,
+  schoolId?: number | null,
+): Promise<RoleDefinition[]> {
   const params: Record<string, string> = {};
+  // A school's own groups (S<id>_BASE_…) are listed only when asked for.
+  if (schoolId) params.schoolId = String(schoolId);
   if (area?.province) params.province = area.province;
   if (area?.district) params.district = area.district;
   if (area?.subDistrict) params.subDistrict = area.subDistrict;

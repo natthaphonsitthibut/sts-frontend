@@ -10,6 +10,7 @@ import {
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { AuditLogDetailBlock } from "../components/AuditLogDetailBlock";
+import { getAuditLogTargetLabel } from "../lib/audit-log-presentation";
 import { useAuditLogEntry } from "../hooks/useAuditLog";
 
 export function AuditLogDetailPage() {
@@ -42,7 +43,7 @@ export function AuditLogDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        description={`audit-log-${entry.id}`}
+        description={`บันทึกการใช้งาน #${entry.id}`}
         icon={ClipboardList}
         navigation={
           <NavButton icon={ArrowLeft} to={-1} variant="outline">
@@ -60,7 +61,9 @@ export function AuditLogDetailPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="text-sm text-slate-500">เวลา</div>
-              <div className="font-bold tabular-nums">{formatThaiDateTime(entry.createdAt)}</div>
+              <div className="font-bold tabular-nums">
+                {formatThaiDateTime(entry.createdAt)}
+              </div>
             </div>
             <div>
               <div className="text-sm text-slate-500">ผู้ทำรายการ</div>
@@ -69,6 +72,12 @@ export function AuditLogDetailPage() {
             <div>
               <div className="text-sm text-slate-500">ประเภท</div>
               <div className="font-bold">{entry.actionLabel}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">เป้าหมาย</div>
+              <div className="break-words font-bold">
+                {getAuditLogTargetLabel(entry)}
+              </div>
             </div>
           </div>
         </Card>

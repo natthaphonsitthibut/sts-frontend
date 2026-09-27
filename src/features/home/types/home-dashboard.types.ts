@@ -133,7 +133,7 @@ export interface HomeDashboardTrendsData {
   } | null;
   casePipeline: HomeDashboardCasePipeline | null;
   caseMovement: HomeDashboardCaseMovementPoint[] | null;
-  gradeRiskDistribution: HomeDashboardGradeRiskPoint[] | null;
+  gradeRiskDistribution: HomeDashboardGradeRiskDistribution | null;
 }
 
 export interface HomeDashboardGradeRiskPoint {
@@ -143,6 +143,14 @@ export interface HomeDashboardGradeRiskPoint {
   WATCH: number;
   NORMAL: number;
   total: number;
+}
+
+/** What each bar is: a ชั้น, or a ห้อง of the picked ชั้น. */
+export type HomeDashboardGradeRiskDimension = "GRADE" | "ROOM";
+
+export interface HomeDashboardGradeRiskDistribution {
+  dimension: HomeDashboardGradeRiskDimension;
+  points: HomeDashboardGradeRiskPoint[];
 }
 
 export interface HomeDashboardOption {

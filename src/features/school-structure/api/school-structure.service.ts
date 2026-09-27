@@ -21,6 +21,7 @@ import type {
   ScopedSchool,
   AdministrativeAreaOption,
   AdminSchoolListParams,
+  CreateSchoolInput,
   SaveSchoolInput,
   SchoolAdminRecord,
   PaginatedAdminSchools,
@@ -146,7 +147,7 @@ async function listAdministrativeSubDistricts(
 }
 
 async function createSchool(
-  input: SaveSchoolInput,
+  input: CreateSchoolInput,
 ): Promise<SchoolAdminRecord> {
   const response = await apiClient.post<DataEnvelope<SchoolAdminRecord>>(
     "/schools",
