@@ -103,6 +103,8 @@ export function ScopeFilterField({
           "max-w-full justify-start",
           className,
         )}
+        aria-haspopup="dialog"
+        data-scope-filter-trigger={label}
         disabled={disabled}
         onClick={() => setOpen(true)}
         type="button"
