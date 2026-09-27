@@ -81,11 +81,10 @@ export function ClassroomsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const nextSearch = searchInput.trim();
-      setSearch((current) => {
-        if (current === nextSearch) return current;
-        setPage(1);
-        return nextSearch;
-      });
+      // Only follow the text here: a remembered search that arrives after the
+      // page mounts is not a new search, and resetting the page for it wiped a
+      // ?page= restored from the URL. Typing resets the page (onChange below).
+      setSearch(nextSearch);
     }, 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
@@ -169,7 +168,10 @@ export function ClassroomsPage() {
     <PageShell>
       <ListPageToolbar
         search={{
-          onChange: setSearchInput,
+          onChange: (value: string) => {
+            setSearchInput(value);
+            setPage(1);
+          },
           placeholder: "ค้นหา",
           value: searchInput,
         }}
