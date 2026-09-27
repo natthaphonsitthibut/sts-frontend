@@ -30,6 +30,7 @@ import {
   applyScopeRestrictions,
   getScopeFieldStates,
   getScopeValidationError,
+  type ScopeCeiling,
   type ScopeRestrictions,
 } from "../lib/scope-validation";
 import {
@@ -59,6 +60,11 @@ interface PermissionScopeEditorProps {
   /** Reveal scope validation errors — set true only after a submit attempt. */
   showErrors?: boolean;
   restrictions?: ScopeRestrictions;
+  /**
+   * The editing admin's own area: options outside it are hidden, and a level
+   * it names loses "ทั้งหมด" (an admin cannot grant wider than they hold).
+   */
+  ceiling?: ScopeCeiling | null;
 }
 
 const EMPTY_SCOPE: DataScope = {};
@@ -74,6 +80,19 @@ const EMPTY_CATALOG: LocationCatalog = {
 function singleString(values: Array<string | number> | undefined): string {
   const value = values?.[0];
   return value == null ? "" : String(value);
+}
+
+/** True when the ceiling leaves this level open or lists the value. */
+function withinCeiling(allowed: string[] | undefined, value: string): boolean {
+  return !allowed?.length || allowed.includes(value);
+}
+
+/** A level the ceiling names cannot fall back to "ทั้งหมด". */
+function allOption(
+  allowed: string[] | undefined,
+  label: string,
+): Array<{ value: string; label: string }> {
+  return allowed?.length ? [] : [{ value: "", label }];
 }
 
 function numberValue(value: string): number | undefined {
@@ -105,6 +124,7 @@ export function PermissionScopeEditor({
   disabled = false,
   showErrors = false,
   restrictions = {},
+  ceiling = null,
 }: PermissionScopeEditorProps) {
   const fieldStates = applyScopeRestrictions(
     getScopeFieldStates(scopeMode),
@@ -168,7 +188,14 @@ export function PermissionScopeEditor({
   });
 
   const catalog = locationsQuery.data ?? EMPTY_CATALOG;
-  const schools = schoolsQuery.data ?? EMPTY_SCHOOLS;
+  const allSchools = schoolsQuery.data ?? EMPTY_SCHOOLS;
+  const schools = useMemo(
+    () =>
+      allSchools.filter((school) =>
+        withinCeiling(ceiling?.school_ids, String(school.id)),
+      ),
+    [allSchools, ceiling],
+  );
   const gradeLevels = gradeLevelsQuery.data ?? EMPTY_GRADE_LEVELS;
   const selectedGradeLabel =
     gradeLevels.find((grade) => String(grade.id) === selectedGradeId)?.label ??
@@ -216,8 +243,11 @@ export function PermissionScopeEditor({
   ]);
 
   const provinces = useMemo(
-    () => Array.from(new Set(catalog.provinces.filter(Boolean))).sort(),
-    [catalog.provinces],
+    () =>
+      Array.from(new Set(catalog.provinces.filter(Boolean)))
+        .filter((value) => withinCeiling(ceiling?.provinces, value))
+        .sort(),
+    [catalog.provinces, ceiling],
   );
   const districts = useMemo(
     () =>
@@ -226,10 +256,11 @@ export function PermissionScopeEditor({
           catalog.districts
             .filter((d) => !selectedProvince || d.province === selectedProvince)
             .map((d) => d.district)
-            .filter((value): value is string => Boolean(value)),
+            .filter((value): value is string => Boolean(value))
+            .filter((value) => withinCeiling(ceiling?.districts, value)),
         ),
       ).sort(),
-    [catalog.districts, selectedProvince],
+    [catalog.districts, selectedProvince, ceiling],
   );
   const subDistricts = useMemo(
     () =>
@@ -239,10 +270,11 @@ export function PermissionScopeEditor({
             .filter((d) => !selectedProvince || d.province === selectedProvince)
             .filter((d) => !selectedDistrict || d.district === selectedDistrict)
             .map((d) => d.sub_district)
-            .filter((value): value is string => Boolean(value)),
+            .filter((value): value is string => Boolean(value))
+            .filter((value) => withinCeiling(ceiling?.sub_districts, value)),
         ),
       ).sort(),
-    [catalog.subDistricts, selectedProvince, selectedDistrict],
+    [catalog.subDistricts, selectedProvince, selectedDistrict, ceiling],
   );
 
   const isLookupLoading =
@@ -363,17 +395,16 @@ export function PermissionScopeEditor({
                           ? true
                           : undefined
                       }
-                      disabled={disabled}
+                      disabled={disabled || ceiling?.provinces.length === 1}
                       id="scope-province"
                       onChange={(next) => setProvince(next)}
                       options={[
-                        {
-                          value: "",
-                          label:
-                            fieldStates.provinces === "required"
-                              ? SCOPE_REQUIRED_LABEL.province
-                              : SCOPE_ALL_LABEL.province,
-                        },
+                        ...allOption(
+                          ceiling?.provinces,
+                          fieldStates.provinces === "required"
+                            ? SCOPE_REQUIRED_LABEL.province
+                            : SCOPE_ALL_LABEL.province,
+                        ),
                         ...provinces.map((province) => ({
                           value: province,
                           label: province,
@@ -401,17 +432,16 @@ export function PermissionScopeEditor({
                           ? true
                           : undefined
                       }
-                      disabled={disabled}
+                      disabled={disabled || ceiling?.districts.length === 1}
                       id="scope-district"
                       onChange={(next) => setDistrict(next)}
                       options={[
-                        {
-                          value: "",
-                          label:
-                            fieldStates.districts === "required"
-                              ? SCOPE_REQUIRED_LABEL.district
-                              : SCOPE_ALL_LABEL.district,
-                        },
+                        ...allOption(
+                          ceiling?.districts,
+                          fieldStates.districts === "required"
+                            ? SCOPE_REQUIRED_LABEL.district
+                            : SCOPE_ALL_LABEL.district,
+                        ),
                         ...districts.map((district) => ({
                           value: district,
                           label: district,
@@ -439,17 +469,16 @@ export function PermissionScopeEditor({
                           ? true
                           : undefined
                       }
-                      disabled={disabled}
+                      disabled={disabled || ceiling?.sub_districts.length === 1}
                       id="scope-sub-district"
                       onChange={(next) => setSubDistrict(next)}
                       options={[
-                        {
-                          value: "",
-                          label:
-                            fieldStates.sub_districts === "required"
-                              ? SCOPE_REQUIRED_LABEL.subDistrict
-                              : SCOPE_ALL_LABEL.subDistrict,
-                        },
+                        ...allOption(
+                          ceiling?.sub_districts,
+                          fieldStates.sub_districts === "required"
+                            ? SCOPE_REQUIRED_LABEL.subDistrict
+                            : SCOPE_ALL_LABEL.subDistrict,
+                        ),
                         ...subDistricts.map((subDistrict) => ({
                           value: subDistrict,
                           label: subDistrict,
@@ -477,17 +506,16 @@ export function PermissionScopeEditor({
                           ? true
                           : undefined
                       }
-                      disabled={disabled}
+                      disabled={disabled || ceiling?.school_ids.length === 1}
                       id="scope-school"
                       onChange={(next) => setSchool(next)}
                       options={[
-                        {
-                          value: "",
-                          label:
-                            fieldStates.school_ids === "required"
-                              ? SCOPE_REQUIRED_LABEL.school
-                              : SCOPE_ALL_LABEL.school,
-                        },
+                        ...allOption(
+                          ceiling?.school_ids,
+                          fieldStates.school_ids === "required"
+                            ? SCOPE_REQUIRED_LABEL.school
+                            : SCOPE_ALL_LABEL.school,
+                        ),
                         ...schools.map((school) => ({
                           value: String(school.id),
                           label: school.name,

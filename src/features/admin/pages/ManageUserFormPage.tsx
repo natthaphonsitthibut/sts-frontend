@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useLocation,
   useNavigate,
@@ -52,9 +52,12 @@ import { attendanceLookupService } from "../../tasks/api/attendance-lookup.servi
 import { geoService } from "../../tasks/api/geo.service";
 import { PermissionScopeEditor } from "../../auth/components/PermissionScopeEditor";
 import {
+  fillScopeFromCeiling,
+  getScopeCeiling,
   getScopeValidationError,
   type ScopeRestrictions,
 } from "../../auth/lib/scope-validation";
+import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import type { DataScope } from "../../auth/lib/permissions";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { getManageUsersPath, getUserRealm } from "../lib/admin-presentation";
@@ -182,10 +185,17 @@ function UserForm({
   // School users are limited to one school and cannot retain grade/room scope
   // under the owner decision. Legacy classroom scope is handled explicitly
   // at submit time so it is never removed without confirmation.
+  // The signed-in admin's own area caps what this account can be given.
+  const actorScope = useAuthSessionStore((state) => state.user?.data_scope);
+  const scopeCeiling = useMemo(() => getScopeCeiling(actorScope), [actorScope]);
   const [dataScope, setDataScope] = useState<DataScope>(() => {
     const initial =
       user?.data_scope ??
-      (lockedSchoolId ? { school_ids: [lockedSchoolId] } : (initialArea ?? {}));
+      fillScopeFromCeiling(
+        lockedSchoolId ? { school_ids: [lockedSchoolId] } : (initialArea ?? {}),
+        scopeCeiling,
+        { schools: !isCouncilRoute },
+      );
     return {
       ...initial,
       ...(isCouncilRoute
@@ -618,6 +628,7 @@ function UserForm({
               scopePolicy={selectedRoleGroup?.scope_policy}
               showErrors={showScopeErrors}
               restrictions={scopeRestrictions}
+              ceiling={scopeCeiling}
             />
           </div>
         </Card>
