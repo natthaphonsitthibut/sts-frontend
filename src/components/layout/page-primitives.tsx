@@ -379,8 +379,12 @@ export function PageToolbar({
                     "flex shrink-0 flex-wrap items-center sm:justify-end",
                     navigationWidth && "[&>*]:w-full",
                   )}
+                  // A floor, not a fixed width: a back button still lines up
+                  // with the action below it, but wider navigation (e.g. the
+                  // notification page's ทั้งหมด / ยังไม่อ่าน tabs) grows
+                  // instead of being clipped to the action's width.
                   style={
-                    navigationWidth ? { width: navigationWidth } : undefined
+                    navigationWidth ? { minWidth: navigationWidth } : undefined
                   }
                 >
                   {navigation}
