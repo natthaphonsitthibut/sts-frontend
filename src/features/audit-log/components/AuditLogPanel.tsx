@@ -44,8 +44,15 @@ import type {
   AuditLogActionOption,
   AuditLogDomain,
   AuditLogEntry,
+  AuditLogSortKey,
   AuditLogTaskType,
 } from "../types/audit-log.types";
+
+const AUDIT_LOG_SORT_KEYS: readonly AuditLogSortKey[] = [
+  "time",
+  "action",
+  "actor",
+];
 
 interface AuditLogPanelProps {
   domain: AuditLogDomain;
@@ -65,15 +72,6 @@ interface AuditLogPanelProps {
   showReferenceColumn?: boolean;
   className?: string;
   detailTo?: (entry: AuditLogEntry) => string;
-}
-
-function getAuditLogSortValue(entry: AuditLogEntry, key: string): string {
-  if (key === "time") return entry.createdAt;
-  if (key === "action") return entry.actionLabel;
-  if (key === "actor") return entry.actorLabel;
-  if (key === "reference") return getAuditLogTargetLabel(entry);
-  if (key === "details") return formatAuditLogDetails(entry.details);
-  return "";
 }
 
 function AuditLogFilters({
@@ -102,8 +100,8 @@ function AuditLogFilters({
       className={cn(
         "grid gap-3 md:items-end",
         actionOptions.length > 0
-          ? "md:grid-cols-[minmax(220px,1fr)_170px_150px_150px]"
-          : "md:grid-cols-[minmax(220px,1fr)_150px_150px]",
+          ? "md:grid-cols-[minmax(220px,1fr)_170px_190px_190px]"
+          : "md:grid-cols-[minmax(220px,1fr)_190px_190px]",
       )}
     >
       <div className="space-y-1.5">
@@ -163,36 +161,19 @@ function AuditLogFilters({
 function AuditLogTable({
   detailTo,
   entries,
+  onSortChange,
   showActionColumn,
   showReferenceColumn,
+  sort,
 }: {
   detailTo: (entry: AuditLogEntry) => string;
   entries: AuditLogEntry[];
+  onSortChange: (sort: DataTableSortState | undefined) => void;
   showActionColumn: boolean;
   showReferenceColumn: boolean;
+  sort: DataTableSortState | undefined;
 }) {
-  const [searchParams] = useSearchParams();
-  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
-    readSortSearchParam(searchParams, "auditSort", [
-      "time",
-      "action",
-      "actor",
-      "reference",
-      "details",
-    ]),
-  );
-  useSyncedSearchParams({ auditSort: serializeSortSearchParam(sort) });
   const hasExtraColumns = showActionColumn || showReferenceColumn;
-  const sortedEntries = useMemo(() => {
-    if (!sort) return entries;
-    return [...entries].sort((left, right) => {
-      const result = getAuditLogSortValue(left, sort.key).localeCompare(
-        getAuditLogSortValue(right, sort.key),
-        "th",
-      );
-      return sort.direction === "asc" ? result : -result;
-    });
-  }, [entries, sort]);
 
   return (
     <>
@@ -201,10 +182,8 @@ function AuditLogTable({
           { label: "เวลา", sortKey: "time" },
           ...(showActionColumn ? [{ label: "ประเภท", sortKey: "action" }] : []),
           { label: "ผู้ทำรายการ", sortKey: "actor" },
-          ...(showReferenceColumn
-            ? [{ label: "เป้าหมาย", sortKey: "reference" }]
-            : []),
-          { label: "รายละเอียด", sortKey: "details" },
+          ...(showReferenceColumn ? [{ label: "เป้าหมาย" }] : []),
+          { label: "รายละเอียด" },
           { isAction: true, label: "เครื่องมือ" },
         ]}
         columnWidths={[
@@ -226,11 +205,11 @@ function AuditLogTable({
           "w-[15%]",
         ]}
         minWidthClassName="min-w-full"
-        onSortChange={setSort}
+        onSortChange={onSortChange}
         responsiveBreakpoint="lg"
         sort={sort}
       >
-        {sortedEntries.map((entry) => (
+        {entries.map((entry) => (
           <DataTableRow key={entry.id}>
             <DataTableCell className="whitespace-nowrap text-sm font-medium tabular-nums text-slate-600">
               {formatThaiDateTime(entry.createdAt)}
@@ -281,7 +260,7 @@ function AuditLogTable({
         ))}
       </DataTable>
       <TableCardList desktopBreakpoint="lg">
-        {sortedEntries.map((entry) => {
+        {entries.map((entry) => {
           return (
             <TableCard key={entry.id} className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -354,6 +333,11 @@ export function AuditLogPanel({
       ? value
       : DEFAULT_PAGE_SIZE;
   });
+  // Sorted by the API over every matching row — sorting only the rows on
+  // screen reordered one page and left the rest of the log out.
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "auditSort", [...AUDIT_LOG_SORT_KEYS]),
+  );
   const [searchTerm, setSearchTerm] = useRememberedState(
     `audit-log:${scopeKey}:search`,
     "",
@@ -397,6 +381,7 @@ export function AuditLogPanel({
     auditTo: normalizedDateTo || undefined,
     auditPage: page > 1 ? page : undefined,
     auditLimit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
+    auditSort: serializeSortSearchParam(sort),
   });
 
   const query = useMemo(
@@ -418,6 +403,8 @@ export function AuditLogPanel({
       dateTo: normalizedDateTo || undefined,
       page,
       limit: rowsPerPage,
+      sortBy: sort?.key as AuditLogSortKey | undefined,
+      sortOrder: sort?.direction,
     }),
     [
       actionCatalog.isSuccess,
@@ -432,6 +419,7 @@ export function AuditLogPanel({
       province,
       rowsPerPage,
       schoolId,
+      sort,
       subDistrict,
       taskType,
       targetId,
@@ -523,8 +511,13 @@ export function AuditLogPanel({
         <AuditLogTable
           detailTo={detailTo}
           entries={auditLog.entries}
+          onSortChange={(next) => {
+            setSort(next);
+            setPageState({ page: 1, scopeKey });
+          }}
           showActionColumn={showActionColumn}
           showReferenceColumn={showReferenceColumn}
+          sort={sort}
         />
       )}
 

@@ -32,6 +32,9 @@ export interface AuditLogEntry {
   details: AuditLogDetail[];
 }
 
+/** Columns the API sorts over the whole result (not just one page). */
+export type AuditLogSortKey = "time" | "action" | "actor";
+
 export interface AuditLogQuery {
   domain: AuditLogDomain;
   action?: string;
@@ -48,6 +51,8 @@ export interface AuditLogQuery {
   caseId?: number;
   page?: number;
   limit?: number;
+  sortBy?: AuditLogSortKey;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface AuditLogResult {
