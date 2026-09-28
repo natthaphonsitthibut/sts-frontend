@@ -109,6 +109,7 @@ export function StudentDetailPage() {
             {can("dashboard") && !casesLoading ? (
               <StudentCaseAction
                 activeCaseCount={activeCases.length}
+                canOpenCase={can("case:assign")}
                 activeCaseId={
                   activeCases.length > 0 ? Number(activeCases[0].id) : null
                 }
@@ -218,7 +219,7 @@ export function StudentDetailPage() {
             </div>
           </Card>
           <StudentActivityPanel
-            canManageComments={can("manage-students")}
+            canManageComments={can("students") || can("manage-students")}
             canViewCaseDetail={can("dashboard")}
             cases={cases}
             casesError={casesError}
