@@ -543,7 +543,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "council/audit-log",
-            element: protectedElement(<CouncilAuditLogPage />, "audit-log"),
+            element: protectedElement(<CouncilAuditLogPage />, "audit-log:all"),
           },
           {
             // System settings are one shared set of values for every school, so the

@@ -22,6 +22,7 @@ const ALL_PAGES = [
   "manage-subjects",
   "import-data",
   "export-data",
+  "audit-log:all",
   "master-data",
   "attendance",
   "manage-classroom-links",
@@ -254,11 +255,11 @@ describe("isAggregateOnlyExecutive", () => {
   });
 });
 
-describe("council บันทึกการใช้งาน", () => {
-  const routes = (roles: string[], scope: DataScope) =>
-    collectMenuRoutes(filterMenuItems(MENU_ITEMS, ALL_PAGES, scope, roles));
+describe("บันทึกการใช้งาน", () => {
+  const routes = (roles: string[], scope: DataScope, permissions = ALL_PAGES) =>
+    collectMenuRoutes(filterMenuItems(MENU_ITEMS, permissions, scope, roles));
 
-  it("is for the council's ผู้ดูแลระบบ only, national or an area's own", () => {
+  it("follows บันทึกการใช้งานทั้งหมด, for council and school admins alike", () => {
     expect(routes(["ADMIN"], { global: true })).toContain("/council/audit-log");
     expect(
       routes(["A500108_BASE_ADMIN"], {
@@ -267,8 +268,25 @@ describe("council บันทึกการใช้งาน", () => {
         sub_districts: ["สุเทพ"],
       }),
     ).toContain("/council/audit-log");
+    expect(routes(["S1_BASE_ADMIN"], SCHOOL_SCOPE)).toContain(
+      "/council/audit-log",
+    );
+    // `audit-log` alone is the ผอ.'s history panels, not the whole log.
     expect(
-      routes(["A500108_BASE_EXECUTIVE"], { provinces: ["เชียงใหม่"] }),
+      routes(
+        ["S1_BASE_DIRECTOR"],
+        SCHOOL_SCOPE,
+        ALL_PAGES.filter((id) => id !== "audit-log:all").concat("audit-log"),
+      ),
     ).not.toContain("/council/audit-log");
+  });
+
+  it("is listed in a school admin's one-section sidebar", () => {
+    const sections = sidebarOf(
+      ["home", "audit-log:all"],
+      ["S1_BASE_ADMIN"],
+      SCHOOL_SCOPE,
+    );
+    expect(sections).toEqual([[null, ["หน้าหลัก", "บันทึกการใช้งาน"]]]);
   });
 });

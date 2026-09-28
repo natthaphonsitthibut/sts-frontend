@@ -71,8 +71,7 @@ export function CaseStatusUpdateDialog({
       : selectedAction?.label;
   const hasPermission =
     Boolean(selectedAction) &&
-    can("dashboard") &&
-    can(selectedAction?.requiredPermission || "");
+    can(selectedAction?.requiredPermission || "case:review");
   const assistanceMeasures = optionsQuery.data?.assistanceMeasures ?? [];
   const assistanceMeasureRequiresDetail = assistanceMeasures.some(
     (measure) =>

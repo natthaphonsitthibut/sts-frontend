@@ -333,8 +333,6 @@ export function AuditLogPanel({
       ? value
       : DEFAULT_PAGE_SIZE;
   });
-  // Sorted by the API over every matching row — sorting only the rows on
-  // screen reordered one page and left the rest of the log out.
   const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
     readSortSearchParam(searchParams, "auditSort", [...AUDIT_LOG_SORT_KEYS]),
   );
@@ -403,8 +401,6 @@ export function AuditLogPanel({
       dateTo: normalizedDateTo || undefined,
       page,
       limit: rowsPerPage,
-      sortBy: sort?.key as AuditLogSortKey | undefined,
-      sortOrder: sort?.direction,
     }),
     [
       actionCatalog.isSuccess,
@@ -419,7 +415,6 @@ export function AuditLogPanel({
       province,
       rowsPerPage,
       schoolId,
-      sort,
       subDistrict,
       taskType,
       targetId,
@@ -429,6 +424,18 @@ export function AuditLogPanel({
   );
 
   const auditLog = useAuditLog(query);
+  const sortedEntries = useMemo(() => {
+    if (!sort) return auditLog.entries;
+    return [...auditLog.entries].sort((left, right) => {
+      const result =
+        sort.key === "time"
+          ? Date.parse(left.createdAt) - Date.parse(right.createdAt)
+          : sort.key === "action"
+            ? left.actionLabel.localeCompare(right.actionLabel, "th")
+            : left.actorLabel.localeCompare(right.actorLabel, "th");
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [auditLog.entries, sort]);
   const totalCount = auditLog.meta?.totalCount ?? auditLog.entries.length;
 
   function resetPageAnd(run: () => void): void {
@@ -510,11 +517,8 @@ export function AuditLogPanel({
       ) : (
         <AuditLogTable
           detailTo={detailTo}
-          entries={auditLog.entries}
-          onSortChange={(next) => {
-            setSort(next);
-            setPageState({ page: 1, scopeKey });
-          }}
+          entries={sortedEntries}
+          onSortChange={setSort}
           showActionColumn={showActionColumn}
           showReferenceColumn={showReferenceColumn}
           sort={sort}

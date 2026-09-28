@@ -30,12 +30,18 @@ export interface MenuItem {
   activeRoutes?: string[];
   children?: MenuItem[];
   scopePolicy?: "global-only";
-  /** ADMIN: the national group; COUNCIL_ADMIN: it or an area's own ผู้ดูแลระบบ. */
-  rolePolicy?: "ADMIN" | "COUNCIL_ADMIN";
+  /** ADMIN: the national group only. */
+  rolePolicy?: "ADMIN";
   /** Which sidebar realm a top-level item belongs under. */
   section?: "school" | "council";
   /** A school item a council-only account must not see (it has its own copy). */
   schoolRealmOnly?: boolean;
+  /**
+   * Listed in a one-section sidebar whatever its section: บันทึกการใช้งาน sits
+   * under the council header for a council admin, and still shows for a school
+   * ผู้ดูแลระบบ whose sidebar is the school section alone.
+   */
+  everyRealm?: boolean;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -234,16 +240,16 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   // แชตบอท is ผู้บริหาร's (owner, 2026-09-25).
   { ...pageMenuItem("nl_query:use", "/nl-query"), section: "council" },
-  // บันทึกการใช้งาน, one page for the council's ผู้ดูแลระบบ — national or an
-  // area's own — within its scope (owner, 2026-09-25).
+  // บันทึกการใช้งาน, the whole log for whoever holds บันทึกการใช้งานทั้งหมด — a
+  // council or a school ผู้ดูแลระบบ — within its own scope (owner, 2026-09-28).
   {
     id: "audit-log-council",
     label: "บันทึกการใช้งาน",
     iconName: "fact-check",
-    permissionId: "audit-log",
-    rolePolicy: "COUNCIL_ADMIN",
+    permissionId: "audit-log:all",
     route: "/council/audit-log",
     section: "council",
+    everyRealm: true,
   },
   {
     ...pageMenuItem("settings", "/settings", undefined, "global-only", "ADMIN"),
@@ -319,6 +325,7 @@ export function buildMenuSections(
           (item) =>
             !item.section ||
             item.section === realm ||
+            item.everyRealm === true ||
             (item.section === "school" && !item.schoolRealmOnly),
         ),
       },
@@ -392,14 +399,6 @@ export function filterMenuItems(
     if (item.scopePolicy === "global-only" && dataScope?.global !== true)
       return false;
     if (item.rolePolicy === "ADMIN" && !userRoles.includes("ADMIN"))
-      return false;
-    if (
-      item.rolePolicy === "COUNCIL_ADMIN" &&
-      !userRoles.some(
-        (role) =>
-          role === "ADMIN" || AREA_ROLE_NAME.exec(role)?.[1] === "ADMIN",
-      )
-    )
       return false;
     const requiredPermissions = item.permissionId ?? item.id;
     return Array.isArray(requiredPermissions)

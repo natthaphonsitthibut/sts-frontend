@@ -468,7 +468,7 @@ function ReviewActions({
   onReview: (action: CaseReviewAction) => void;
 }) {
   const allowed = actions.filter((action) =>
-    can(action.requiredPermission || "dashboard"),
+    can(action.requiredPermission || "case:review"),
   );
   if (allowed.length === 0) return null;
   return (
@@ -842,7 +842,8 @@ export function CaseTrackingTimeline({
     );
   }
   const { can } = usePermissions();
-  const canAssign = can("dashboard");
+  // รายงานสถานะนักเรียน opens the case; handing out a round is `case:assign`.
+  const canAssign = can("case:assign");
   const trackingOptions = useCaseTrackingOptions();
   const rounds = useMemo(
     () => caseRecord.follow_up_rounds ?? [],

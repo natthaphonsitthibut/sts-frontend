@@ -23,6 +23,11 @@ import { OpenCaseDialog } from "./OpenCaseDialog";
 interface StudentCaseActionProps {
   activeCaseCount: number;
   activeCaseId: number | null;
+  /**
+   * Whether this account may open a case (`case:assign`). Without it the
+   * action still lists the student's active cases but offers no เปิดเคส.
+   */
+  canOpenCase?: boolean;
   className?: string;
   initialReason?: string;
   disabled?: boolean;
@@ -36,6 +41,7 @@ interface StudentCaseActionProps {
 export function StudentCaseAction({
   activeCaseCount,
   activeCaseId,
+  canOpenCase = true,
   className,
   initialReason,
   disabled = false,
@@ -170,6 +176,8 @@ export function StudentCaseAction({
       </>
     );
   }
+
+  if (!canOpenCase) return null;
 
   return (
     <>
