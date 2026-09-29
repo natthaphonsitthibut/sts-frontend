@@ -141,11 +141,13 @@ export const router = createBrowserRouter([
             element: protectedElement(<DashboardPage />, "dashboard"),
           },
           {
+            // A tab of รายงานสถานะนักเรียน, so `dashboard` opens it too — on
+            // top of `students`, which already did (owner, 2026-09-29).
             path: "student-risk-report/teacher-comments",
-            element: protectedElement(
-              <TeacherCommentReportsPage />,
+            element: protectedElement(<TeacherCommentReportsPage />, [
+              "dashboard",
               "students",
-            ),
+            ]),
           },
           {
             // The ข้อสังเกต/คำขอเยี่ยมบ้าน screens were retired; keep old links working.
