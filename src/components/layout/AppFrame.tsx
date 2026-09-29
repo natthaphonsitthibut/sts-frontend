@@ -94,7 +94,9 @@ export function AppBrand({
   const content = (
     <>
       <StsLogo aria-hidden="true" className="size-9 shrink-0" />
-      <span className="truncate text-xl font-bold text-primary">{label}</span>
+      {label ? (
+        <span className="truncate text-xl font-bold text-primary">{label}</span>
+      ) : null}
     </>
   );
   // `select-none` so the brand behaves the same everywhere: dragging across it
@@ -102,7 +104,15 @@ export function AppBrand({
   // inside the app.
   const shared = "flex min-w-0 select-none items-center gap-3 rounded-lg";
   if (to === null) {
-    return <span className={cn(shared, className)}>{content}</span>;
+    return (
+      <span
+        aria-label={label || "ระบบติดตามผู้เรียน"}
+        className={cn(shared, className)}
+        role="img"
+      >
+        {content}
+      </span>
+    );
   }
   return (
     <Link

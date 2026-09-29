@@ -5,8 +5,7 @@ import { taskService } from "../api/task.service";
 /**
  * A photo behind a follow-up link — the student's or the assigned teacher's.
  * The link's session rides in a header an <img> cannot send, so the photo is
- * fetched once as a blob and kept in the query cache; the endpoint answers
- * with the same signed-URL redirect as every other photo in the app.
+ * fetched once as a blob and kept in the query cache.
  *
  * `cachedOnly` reads the cache without asking the server: the receipt shown
  * after a report is sent sits on a link that is already closed, so the photo
