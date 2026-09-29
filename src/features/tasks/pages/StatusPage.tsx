@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Lock, SearchX } from "lucide-react";
 import { buttonVariants, Card, CardContent } from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { GuestReceiptCard } from "../../../components/layout/guest-receipt-card";
+import { useTaskLinkPhoto } from "../hooks/useTaskLinkPhoto";
 
 type StatusTone = "success" | "warning" | "danger" | "neutral";
 
@@ -45,7 +46,11 @@ export function StatusPage({
   const Icon = toneIcon[tone];
 
   return (
-    <GuestPageShell centered contentClassName="max-w-[520px]" showProfile={showProfile}>
+    <GuestPageShell
+      centered
+      contentClassName="max-w-[520px]"
+      showProfile={showProfile}
+    >
       <Card className="rounded-lg">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <div className={`mb-4 rounded-full p-4 ${toneClass[tone]}`}>
@@ -78,14 +83,30 @@ export function SuccessPage() {
   const isReportReceipt = reportType === "visit" || reportType === "assist";
   // The submitting page hands over the form heading it already rendered; the
   // link is COMPLETED by now, so re-reading the task would no longer return it.
-  const state = location.state as { formTitle?: unknown; assignedToName?: unknown } | null;
+  const state = location.state as {
+    formTitle?: unknown;
+    assignedToName?: unknown;
+    assigneePhotoUrl?: unknown;
+  } | null;
   const formTitle = typeof state?.formTitle === "string" ? state.formTitle : "";
-  const assignedToName = typeof state?.assignedToName === "string" ? state.assignedToName : "";
+  const assignedToName =
+    typeof state?.assignedToName === "string" ? state.assignedToName : "";
+  // The link is closed once the report is in, so the header reuses the photo
+  // the form already loaded instead of asking a link that no longer answers.
+  const assigneePhotoUrl = useTaskLinkPhoto(
+    typeof state?.assigneePhotoUrl === "string" ? state.assigneePhotoUrl : null,
+    null,
+    { cachedOnly: true },
+  );
 
   if (isReportReceipt) {
     const isAssistance = reportType === "assist";
     return (
-      <GuestPageShell contentClassName="max-w-[656px]" profileName={assignedToName}>
+      <GuestPageShell
+        contentClassName="max-w-[656px]"
+        profileName={assignedToName}
+        profilePhotoUrl={assigneePhotoUrl}
+      >
         <GuestReceiptCard
           message={
             isAssistance
@@ -94,7 +115,9 @@ export function SuccessPage() {
           }
           title={
             formTitle ||
-            (isAssistance ? "แบบฟอร์มบันทึกการให้ความช่วยเหลือ" : "แบบฟอร์มการติดตามนักเรียน")
+            (isAssistance
+              ? "แบบฟอร์มบันทึกการให้ความช่วยเหลือ"
+              : "แบบฟอร์มการติดตามนักเรียน")
           }
         />
       </GuestPageShell>

@@ -44,6 +44,7 @@ import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
 import { TaskStudentAvatar } from "../components/TaskStudentAvatar";
+import { useTaskLinkPhoto } from "../hooks/useTaskLinkPhoto";
 import {
   TaskStudentContactsDialog,
   TaskStudentHomeDialog,
@@ -305,6 +306,10 @@ export function HomeVisitReportPage({
   >("idle");
   const [contactsOpen, setContactsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const assigneePhotoUrl = useTaskLinkPhoto(
+    task.assignee_photo_url,
+    sessionToken,
+  );
 
   const addressChanged = values.homeVisitExceptionCode === "ADDRESS_CHANGED";
   const locationCatalogQuery = useQuery({
@@ -486,6 +491,7 @@ export function HomeVisitReportPage({
         state: {
           formTitle: buildVisitReportFormTitle(task),
           assignedToName: task.assigned_to_name,
+          assigneePhotoUrl: task.assignee_photo_url ?? null,
         },
       });
     },
@@ -1280,6 +1286,7 @@ export function HomeVisitReportPage({
     <GuestPageShell
       contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
       profileName={task.assigned_to_name}
+      profilePhotoUrl={assigneePhotoUrl}
     >
       <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">
         {buildVisitReportFormTitle(task)}

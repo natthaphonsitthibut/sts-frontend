@@ -32,6 +32,7 @@ import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presenta
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
 import { TaskStudentAvatar } from "../components/TaskStudentAvatar";
+import { useTaskLinkPhoto } from "../hooks/useTaskLinkPhoto";
 import { toTrackingHistoryItems } from "../lib/task-presentation";
 import {
   TaskStudentContactsDialog,
@@ -115,6 +116,10 @@ export function AssistanceReportPage({
   const [draftError, setDraftError] = useState("");
   const [contactsOpen, setContactsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const assigneePhotoUrl = useTaskLinkPhoto(
+    task.assignee_photo_url,
+    sessionToken,
+  );
 
   useEffect(() => {
     if (draftHydrated) return;
@@ -191,6 +196,7 @@ export function AssistanceReportPage({
         state: {
           formTitle: "แบบฟอร์มบันทึกการให้ความช่วยเหลือ",
           assignedToName: task.assigned_to_name,
+          assigneePhotoUrl: task.assignee_photo_url ?? null,
         },
       });
     },
@@ -414,6 +420,7 @@ export function AssistanceReportPage({
     <GuestPageShell
       contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
       profileName={task.assigned_to_name}
+      profilePhotoUrl={assigneePhotoUrl}
     >
       <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">
         แบบฟอร์มบันทึกการให้ความช่วยเหลือ
