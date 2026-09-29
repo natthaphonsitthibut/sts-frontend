@@ -181,6 +181,14 @@ export interface CaseRecord {
   student_phone?: string | null;
   student_lat?: number | null;
   student_lng?: number | null;
+  /** The student's current address, as the student profile shows it. */
+  home_address?: string | null;
+  home_province?: string | null;
+  home_district?: string | null;
+  home_sub_district?: string | null;
+  home_postal_code?: string | null;
+  /** The pin was geocoded from the address, not confirmed on a visit. */
+  is_approximate_home_location?: boolean;
   teacher_comment?: string | null;
   reason?: string | null;
   reason_flagged?: string | null;

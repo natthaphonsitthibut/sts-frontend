@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, FileText, MapPin, PhoneCall } from "lucide-react";
+import { ArrowLeft, FileText, PhoneCall } from "lucide-react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -29,7 +29,7 @@ import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import type { CaseReviewAction } from "../types/cases.types";
-import { VisitMapPreview } from "../../tasks/components/VisitMapPreview";
+import { HomeLocationDialog } from "../../students/components/HomeLocationDialog";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 
 export function CaseDetailPage() {
@@ -228,22 +228,21 @@ export function CaseDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog onOpenChange={setMapOpen} open={mapOpen}>
-        <DialogContent className="max-w-5xl" onClose={() => setMapOpen(false)}>
-          <DialogHeader>
-            <DialogTitle icon={MapPin}>พิกัดบ้านนักเรียน</DialogTitle>
-          </DialogHeader>
-          <VisitMapPreview
-            address={caseRecord.student_address}
-            className="border-0 p-0"
-            lat={caseRecord.student_lat}
-            lng={caseRecord.student_lng}
-            mapClassName="min-h-[60vh]"
-            markerLabel={caseRecord.student_name}
-            title={caseRecord.student_name}
-          />
-        </DialogContent>
-      </Dialog>
+      <HomeLocationDialog
+        location={{
+          address: caseRecord.home_address ?? caseRecord.student_address,
+          province: caseRecord.home_province,
+          district: caseRecord.home_district,
+          subDistrict: caseRecord.home_sub_district,
+          postalCode: caseRecord.home_postal_code,
+          lat: caseRecord.student_lat,
+          lng: caseRecord.student_lng,
+          isApproximate: caseRecord.is_approximate_home_location,
+        }}
+        name={caseRecord.student_name}
+        onOpenChange={setMapOpen}
+        open={mapOpen}
+      />
 
       <CaseStatusUpdateDialog
         caseRecord={caseRecord}
