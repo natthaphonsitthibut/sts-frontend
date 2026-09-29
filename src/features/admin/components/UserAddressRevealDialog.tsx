@@ -15,7 +15,7 @@ import {
   FormLabel,
   Input,
 } from "../../../components/base";
-import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
+import { AddressLocationView } from "../../../components/maps/AddressLocationView";
 import { joinAddressParts } from "../../../components/address/address-format";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { usePiiRevealOptions } from "../../privacy/hooks/usePiiRevealOptions";
@@ -169,10 +169,6 @@ export function UserAddressRevealDialog({
   );
 }
 
-function display(value: string | null): string {
-  return value?.trim() || "-";
-}
-
 function UserAddressMap({
   address,
   onClose,
@@ -191,41 +187,27 @@ function UserAddressMap({
     address.address_province,
     address.address_postal_code,
   ]);
-  const details = (
-    <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-      {[
-        ["บ้านเลขที่", address.address_line],
-        ["หมู่", address.address_village_no],
-        ["ถนน", address.address_street],
-        ["ซอย", address.address_soi],
-        ["ตรอก", address.address_trok],
-        ["ตำบล/แขวง", address.address_sub_district],
-        ["อำเภอ/เขต", address.address_district],
-        ["จังหวัด", address.address_province],
-        ["รหัสไปรษณีย์", address.address_postal_code],
-      ].map(([label, value]) => (
-        <div key={label}>
-          <dt className="text-xs font-medium text-slate-500">{label}</dt>
-          <dd className="mt-1 font-semibold text-slate-800">
-            {display(value)}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
 
   return (
     <DialogBody className="space-y-4">
-      <LocationMapPicker
-        address={fullAddress || undefined}
-        className="border-0 p-0"
-        details={details}
+      <AddressLocationView
+        address={fullAddress}
         emptyDescription="ยังไม่มีพิกัดที่บันทึกไว้ สามารถเพิ่มได้จากหน้าแก้ไขผู้ใช้งาน"
+        fallbackTitle="ที่อยู่ผู้ใช้งาน"
         lat={address.address_latitude}
         lng={address.address_longitude}
-        mapClassName="min-h-[50vh] sm:min-h-[60vh]"
         markerLabel="พิกัดที่อยู่ผู้ใช้งาน"
-        title={fullAddress || "ที่อยู่ผู้ใช้งาน"}
+        parts={[
+          ["บ้านเลขที่", address.address_line],
+          ["หมู่", address.address_village_no],
+          ["ถนน", address.address_street],
+          ["ซอย", address.address_soi],
+          ["ตรอก", address.address_trok],
+          ["ตำบล/แขวง", address.address_sub_district],
+          ["อำเภอ/เขต", address.address_district],
+          ["จังหวัด", address.address_province],
+          ["รหัสไปรษณีย์", address.address_postal_code],
+        ]}
       />
       <DialogFooter>
         <Button onClick={onClose}>ปิด</Button>

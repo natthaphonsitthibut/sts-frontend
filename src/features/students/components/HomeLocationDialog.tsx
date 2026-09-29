@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/base";
-import { LocationMapPicker } from "../../../components/maps/LocationMapPicker";
+import { AddressLocationView } from "../../../components/maps/AddressLocationView";
 
 export interface HomeLocation {
   address: string | null | undefined;
@@ -26,12 +26,6 @@ interface HomeLocationDialogProps {
   open: boolean;
 }
 
-function toDisplay(value: unknown): string {
-  return value === null || value === undefined || value === ""
-    ? "-"
-    : String(value);
-}
-
 /**
  * A student's home address and pin — one dialog for the student profile and the
  * case page, so both show the same address, the same pin and the same
@@ -43,28 +37,6 @@ export function HomeLocationDialog({
   onOpenChange,
   open,
 }: HomeLocationDialogProps) {
-  const address = location.address?.trim() || "";
-  const lat = location.lat ?? null;
-  const lng = location.lng ?? null;
-  const hasMapCoordinates = lat !== null && lng !== null;
-  const addressDetails = (
-    <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-      {[
-        ["จังหวัด", location.province],
-        ["อำเภอ/เขต", location.district],
-        ["ตำบล/แขวง", location.subDistrict],
-        ["รหัสไปรษณีย์", location.postalCode],
-      ].map(([label, value]) => (
-        <div key={String(label)}>
-          <dt className="text-xs font-medium text-slate-500">{label}</dt>
-          <dd className="mt-1 font-semibold text-slate-800">
-            {toDisplay(value)}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
@@ -74,15 +46,12 @@ export function HomeLocationDialog({
         <DialogHeader>
           <DialogTitle icon={MapPin}>ที่อยู่และแผนที่</DialogTitle>
         </DialogHeader>
-        <LocationMapPicker
-          address={address || undefined}
-          className="border-0 p-0"
-          details={addressDetails}
+        <AddressLocationView
+          address={location.address}
           emptyDescription="ยังไม่มีพิกัดบ้านจากข้อมูลนักเรียน ระบบจะแสดงหมุดเมื่อมีการบันทึกตำแหน่ง"
-          emptyTitle={hasMapCoordinates ? "มีพิกัด" : "ยังไม่มีพิกัด"}
-          lat={lat}
-          lng={lng}
-          mapClassName="min-h-[50vh] sm:min-h-[60vh]"
+          fallbackTitle={name}
+          lat={location.lat ?? null}
+          lng={location.lng ?? null}
           markerLabel={
             // Unknown is not the same as confirmed: a follow-up form carries the
             // pin without saying how it was captured, so it gets a plain label.
@@ -92,7 +61,12 @@ export function HomeLocationDialog({
                 ? "พิกัดโดยประมาณ (ยังไม่ยืนยัน)"
                 : "พิกัดที่ยืนยันแล้ว"
           }
-          title={address || name}
+          parts={[
+            ["จังหวัด", location.province],
+            ["อำเภอ/เขต", location.district],
+            ["ตำบล/แขวง", location.subDistrict],
+            ["รหัสไปรษณีย์", location.postalCode],
+          ]}
         />
       </DialogContent>
     </Dialog>
