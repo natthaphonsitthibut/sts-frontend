@@ -24,6 +24,7 @@ export function CouncilAuditLogPage() {
         district={globalFilter.district || undefined}
         domain="all"
         province={globalFilter.province || undefined}
+        schoolId={Number(globalFilter.schoolId) || undefined}
         showActionColumn
         showReferenceColumn
         subDistrict={globalFilter.subDistrict || undefined}
