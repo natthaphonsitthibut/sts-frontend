@@ -111,8 +111,12 @@ export interface TaskAccessTask {
   semester?: number | string | null;
   student_grade?: string | null;
   student_room?: string | null;
+  /** True when the pin is the address's approximate spot, not a saved one. */
+  is_approximate_home_location?: boolean;
   /** Versioned API path to the student's photo, or null when there is none. */
   student_photo_url?: string | null;
+  /** Versioned API path to the assigned teacher's photo, or null. */
+  assignee_photo_url?: string | null;
   follow_up_history?: Array<{
     assigned_to_name?: string | null;
     visited_at?: string | null;

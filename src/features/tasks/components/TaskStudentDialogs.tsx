@@ -68,7 +68,7 @@ export function TaskStudentHomeDialog({
         postalCode: task.postal_code,
         lat: task.student_lat,
         lng: task.student_lng,
-        isApproximate: undefined,
+        isApproximate: task.is_approximate_home_location,
       }}
       name={task.student_name || "นักเรียน"}
       onOpenChange={onOpenChange}
