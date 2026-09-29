@@ -414,22 +414,33 @@ async function listStudentAttendanceDays(
 
 async function authorizeClassroomExport(input: {
   classroomId: number;
+  source?: StudentReadSource;
   exportScope: "ROSTER" | "ATTENDANCE";
   format: "pdf" | "xlsx" | "csv";
   columns: string[];
   dateFrom?: string;
   dateTo?: string;
 }): Promise<void> {
-  await apiClient.post(
-    `/school-structure/classrooms/${input.classroomId}/export-events`,
-    {
-      exportScope: input.exportScope,
-      format: input.format,
-      columns: input.columns,
-      dateFrom: input.dateFrom,
-      dateTo: input.dateTo,
-    },
-  );
+  const body = {
+    exportScope: input.exportScope,
+    format: input.format,
+    columns: input.columns,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
+  // Same split as the history read: a classroom link records its export in its
+  // own namespace, where the room is checked against the link's session.
+  if ((input.source ?? "INTERNAL") === "INTERNAL") {
+    await apiClient.post(
+      `/school-structure/classrooms/${input.classroomId}/export-events`,
+      body,
+    );
+    return;
+  }
+  await apiClient.post("/classroom/export-events", {
+    ...body,
+    classroomId: input.classroomId,
+  });
 }
 
 export const schoolStructureService = {

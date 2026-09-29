@@ -29,6 +29,7 @@ import {
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
+import { formatThaiDateTimeWithSeconds } from "../../../lib/date-time";
 import { cn } from "../../../lib/utils";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { useRouteTab } from "../../../hooks/useRouteTab";
@@ -537,8 +538,10 @@ function JobHistory({
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* When it was asked for, not the tail of its id: two
+                      exports of the same dataset are told apart by time. */}
                   <p className="text-xs text-slate-500">
-                    ...{job.id.slice(-8)}
+                    ขอเมื่อ {formatThaiDateTimeWithSeconds(job.createdAt)}
                   </p>
                   <Badge
                     className="shrink-0 whitespace-nowrap"

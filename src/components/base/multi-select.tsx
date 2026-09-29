@@ -1,11 +1,13 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
+import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import type { ComboboxOption } from "./combobox";
 
 /** Same cap as `Combobox`: a long list stays scrollable, not endless. */
 const MAX_VISIBLE = 50;
+const LIST_MAX_HEIGHT = 224; // max-h-56
 
 export interface MultiSelectProps {
   value: string[];
@@ -64,6 +66,15 @@ export function MultiSelect({
     setOpen(false);
     setQuery("");
   });
+
+  // Fixed, not absolute: inside a Dialog the absolute list was clipped by the
+  // dialog's own scroll box and "sank" below its bottom edge.
+  const listStyle = useAnchoredPanelPosition(
+    open && !disabled,
+    containerRef,
+    LIST_MAX_HEIGHT,
+    [value.length],
+  );
 
   const selected = options.filter((option) => value.includes(option.value));
   const term = query.trim().toLowerCase();
@@ -221,10 +232,10 @@ export function MultiSelect({
         )}
       />
 
-      {open && !disabled ? (
+      {open && !disabled && listStyle ? (
         <ul
           aria-multiselectable="true"
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+          className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
           id={listId}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
@@ -260,6 +271,7 @@ export function MultiSelect({
           }}
           ref={listRef}
           role="listbox"
+          style={listStyle}
         >
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-500">

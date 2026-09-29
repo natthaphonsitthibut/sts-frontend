@@ -541,7 +541,7 @@ export function ClassroomLinksPage() {
             setSearchInput(value);
             resetListState();
           },
-          placeholder: "ค้นหาห้อง ระดับชั้น หรือครูประจำชั้น",
+          placeholder: "ค้นหาชื่อครู",
           value: searchInput,
         }}
         title="จัดการลิงก์คุณครู"

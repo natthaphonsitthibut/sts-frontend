@@ -32,6 +32,10 @@ import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions
 import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
+import {
+  TaskStudentContactsDialog,
+  TaskStudentHomeDialog,
+} from "../components/TaskStudentDialogs";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 import {
   deleteVisitReportDraft,
@@ -108,6 +112,8 @@ export function AssistanceReportPage({
   const values = useWatch({ control: form.control });
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftError, setDraftError] = useState("");
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     if (draftHydrated) return;
@@ -422,8 +428,8 @@ export function AssistanceReportPage({
         name={task.student_name || "-"}
         noteLabel="สาเหตุที่ต้องติดตาม"
         noteValue={task.reason_flagged || "ยังไม่มีรายละเอียดสาเหตุ"}
-        onOpenContacts={() => undefined}
-        onOpenLocation={() => undefined}
+        onOpenContacts={() => setContactsOpen(true)}
+        onOpenLocation={() => setMapOpen(true)}
         schoolLine={`${task.student_school || "-"}${
           task.student_grade || task.student_room
             ? ` · ${[
@@ -484,6 +490,16 @@ export function AssistanceReportPage({
           </Form>
         </TrackingStep>
       </TrackingStepsCard>
+      <TaskStudentContactsDialog
+        onOpenChange={setContactsOpen}
+        open={contactsOpen}
+        task={task}
+      />
+      <TaskStudentHomeDialog
+        onOpenChange={setMapOpen}
+        open={mapOpen}
+        task={task}
+      />
     </GuestPageShell>
   );
 }
