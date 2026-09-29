@@ -6,7 +6,6 @@ import { useForm, useWatch } from "react-hook-form";
 import { Check } from "lucide-react";
 import { z } from "zod";
 import {
-  Avatar,
   Form,
   FormErrorAlert,
   FormItem,
@@ -32,6 +31,8 @@ import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions
 import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
+import { TaskStudentAvatar } from "../components/TaskStudentAvatar";
+import { toTrackingHistoryItems } from "../lib/task-presentation";
 import {
   TaskStudentContactsDialog,
   TaskStudentHomeDialog,
@@ -419,12 +420,16 @@ export function AssistanceReportPage({
       </h1>
       <StudentTrackingCard
         avatar={
-          <Avatar
+          <TaskStudentAvatar
             className="size-28 shrink-0 text-3xl"
-            gradientName={task.student_name || undefined}
+            sessionToken={sessionToken}
+            task={task}
           />
         }
-        historyItems={[]}
+        historyItems={toTrackingHistoryItems(
+          task.follow_up_history,
+          task.reason_flagged || "-",
+        )}
         name={task.student_name || "-"}
         noteLabel="สาเหตุที่ต้องติดตาม"
         noteValue={task.reason_flagged || "ยังไม่มีรายละเอียดสาเหตุ"}

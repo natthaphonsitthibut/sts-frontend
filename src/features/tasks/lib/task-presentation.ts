@@ -1,4 +1,5 @@
 import type { BadgeProps } from "../../../components/base";
+import type { TrackingHistoryItem } from "../../../components/layout/student-tracking-card";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { isLinkLocked as isTaskLinkLocked } from "../../../lib/link-lock";
 import type { TaskChainLink } from "../types/task.types";
@@ -183,4 +184,32 @@ export function buildVisitReportFormTitle(task: {
     task.student_name ? `: ${task.student_name}` : "",
     studentClass ? ` ${studentClass}` : "",
   ].join("");
+}
+
+/** One past visit as the API sends it for a student card's history. */
+export interface FollowUpHistoryEntry {
+  assigned_to_name?: string | null;
+  visited_at?: string | null;
+  submitted_at?: string | null;
+  cause_detail?: string | null;
+  exception_label?: string | null;
+}
+
+/**
+ * The student card's "ประวัติการติดตาม" rows. One mapping for the case page and
+ * both follow-up forms, so the same visit reads the same everywhere.
+ */
+export function toTrackingHistoryItems(
+  history: FollowUpHistoryEntry[] | null | undefined,
+  reason: string,
+): TrackingHistoryItem[] {
+  return (history ?? [])
+    .map((item, index) => ({
+      id: `${item.submitted_at ?? index}`,
+      assignee: item.assigned_to_name || "-",
+      note: item.cause_detail || item.exception_label || "-",
+      at: item.submitted_at || item.visited_at || "",
+      reason,
+    }))
+    .filter((item) => item.at);
 }

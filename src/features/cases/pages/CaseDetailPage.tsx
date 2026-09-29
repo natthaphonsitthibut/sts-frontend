@@ -30,6 +30,7 @@ import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
 import { useCaseDetail } from "../hooks/useCaseDetail";
 import type { CaseReviewAction } from "../types/cases.types";
 import { HomeLocationDialog } from "../../students/components/HomeLocationDialog";
+import { toTrackingHistoryItems } from "../../tasks/lib/task-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 
 export function CaseDetailPage() {
@@ -91,18 +92,12 @@ export function CaseDetailPage() {
     );
   }
 
-  const historyItems = (caseRecord.follow_up_rounds ?? [])
-    .filter((round) => round.submitted_at)
-    .map((round) => ({
-      id: round.task_id,
-      assignee: round.initial_assignee || "-",
-      note: round.assignment_note || "-",
-      at: round.submitted_at!,
-    }))
-    .sort(
-      (left, right) =>
-        new Date(right.at).getTime() - new Date(left.at).getTime(),
-    );
+  // The student's visits across all of their cases, the same list the
+  // follow-up link shows — a fresh case must not look like nobody ever went.
+  const historyItems = toTrackingHistoryItems(
+    caseRecord.student_follow_up_history,
+    caseRecord.reason_flagged || "-",
+  );
 
   return (
     <PageShell>
@@ -145,10 +140,7 @@ export function CaseDetailPage() {
             photoUrl={caseRecord.student_photo_url}
           />
         }
-        historyItems={historyItems.map((item) => ({
-          ...item,
-          reason: caseRecord.reason_flagged || "-",
-        }))}
+        historyItems={historyItems}
         name={caseRecord.student_name}
         noteLabel="เหตุผลที่เปิดเคส"
         noteValue={caseRecord.reason_flagged || ""}

@@ -1,4 +1,5 @@
 import { apiClient } from "../../../lib/api-client";
+import { resolveApiMediaUrl } from "../../../lib/media-url";
 import type {
   TaskAccessTask,
   TaskAraIdChallenge,
@@ -51,6 +52,22 @@ async function getTask(
   const response = await apiClient.get<TaskAccessTask>(
     `/tasks/${encodeURIComponent(token)}`,
     createMagicSessionConfig(magicSessionToken),
+  );
+  return response.data;
+}
+
+/**
+ * The student's photo behind a follow-up link. The link's session travels in a
+ * header an <img> cannot send, so the photo is fetched as a blob; the endpoint
+ * itself answers with the same signed-URL redirect as every other photo.
+ */
+async function getStudentPhoto(
+  photoUrl: string,
+  magicSessionToken?: string,
+): Promise<Blob> {
+  const response = await apiClient.get<Blob>(
+    resolveApiMediaUrl(photoUrl) ?? photoUrl,
+    { ...createMagicSessionConfig(magicSessionToken), responseType: "blob" },
   );
   return response.data;
 }
@@ -141,6 +158,7 @@ export const taskService = {
   pollTaskAraIdChallenge,
   getVisitAssignees,
   getTask,
+  getStudentPhoto,
   getTaskChain,
   setTaskLinkAdminLock,
   submitTaskReport,

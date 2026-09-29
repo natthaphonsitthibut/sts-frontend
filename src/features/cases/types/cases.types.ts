@@ -1,3 +1,4 @@
+import type { FollowUpHistoryEntry } from "../../tasks/lib/task-presentation";
 export type KnownCaseStatus =
   | "OPEN"
   | "PENDING_REVIEW"
@@ -189,6 +190,8 @@ export interface CaseRecord {
   home_postal_code?: string | null;
   /** The pin was geocoded from the address, not confirmed on a visit. */
   is_approximate_home_location?: boolean;
+  /** The student's last visits across all of their cases (newest first). */
+  student_follow_up_history?: FollowUpHistoryEntry[];
   teacher_comment?: string | null;
   reason?: string | null;
   reason_flagged?: string | null;
