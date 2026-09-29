@@ -84,9 +84,13 @@ export function HomeLocationDialog({
           lng={lng}
           mapClassName="min-h-[50vh] sm:min-h-[60vh]"
           markerLabel={
-            location.isApproximate
-              ? "พิกัดโดยประมาณ (ยังไม่ยืนยัน)"
-              : "พิกัดที่ยืนยันแล้ว"
+            // Unknown is not the same as confirmed: a follow-up form carries the
+            // pin without saying how it was captured, so it gets a plain label.
+            location.isApproximate === undefined
+              ? "บ้านนักเรียน"
+              : location.isApproximate
+                ? "พิกัดโดยประมาณ (ยังไม่ยืนยัน)"
+                : "พิกัดที่ยืนยันแล้ว"
           }
           title={address || name}
         />

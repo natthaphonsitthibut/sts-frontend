@@ -3,17 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Check, LocateFixed, MapPin, PhoneCall } from "lucide-react";
+import { Check, LocateFixed } from "lucide-react";
 import { z } from "zod";
 import {
   Avatar,
   Button,
   Combobox,
   DatePicker,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   Form,
   FormErrorAlert,
   FormItem,
@@ -48,6 +44,10 @@ import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-p
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
+import {
+  TaskStudentContactsDialog,
+  TaskStudentHomeDialog,
+} from "../components/TaskStudentDialogs";
 import { VisitMapPreview } from "../components/VisitMapPreview";
 import { VisitPhotoUpload } from "../components/VisitPhotoUpload";
 import {
@@ -542,7 +542,6 @@ export function HomeVisitReportPage({
   const guardianRequiresDetail =
     guardianTypes.find((option) => option.code === values.guardianTypeCode)
       ?.requiresDetail ?? false;
-  const contacts = task.contact_channels ?? [];
   const studentNotFound = values.homeVisitExceptionCode === "STUDENT_NOT_FOUND";
   // The two answers below are the follow-up outcome, so both the choice and the
   // review read the catalog's follow-up wording instead of a second vocabulary.
@@ -1362,52 +1361,16 @@ export function HomeVisitReportPage({
         </TrackingStep>
       </TrackingStepsCard>
 
-      <Dialog onOpenChange={setContactsOpen} open={contactsOpen}>
-        <DialogContent
-          className="max-w-lg"
-          onClose={() => setContactsOpen(false)}
-        >
-          <DialogHeader>
-            <DialogTitle icon={PhoneCall}>ช่องทางติดต่อ</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            {contacts.length > 0 ? (
-              contacts.map((contact, index) => (
-                <div
-                  className="rounded-lg border border-slate-200 p-3 text-sm"
-                  key={`${contact.phone}-${index}`}
-                >
-                  <p className="font-semibold">
-                    {contact.full_name ||
-                      (contact.contact_kind === "STUDENT"
-                        ? "นักเรียน"
-                        : "ผู้ปกครอง")}
-                  </p>
-                  <p className="mt-1 text-slate-600">
-                    {contact.phone || "ไม่มีเบอร์โทร"}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-500">ยังไม่มีข้อมูลติดต่อ</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog onOpenChange={setMapOpen} open={mapOpen}>
-        <DialogContent className="max-w-5xl" onClose={() => setMapOpen(false)}>
-          <DialogHeader>
-            <DialogTitle icon={MapPin}>พิกัดบ้านนักเรียน</DialogTitle>
-          </DialogHeader>
-          <VisitMapPreview
-            address={task.student_address}
-            lat={task.student_lat}
-            lng={task.student_lng}
-            markerLabel={task.student_name || "นักเรียน"}
-            title={task.student_name || "บ้านนักเรียน"}
-          />
-        </DialogContent>
-      </Dialog>
+      <TaskStudentContactsDialog
+        onOpenChange={setContactsOpen}
+        open={contactsOpen}
+        task={task}
+      />
+      <TaskStudentHomeDialog
+        onOpenChange={setMapOpen}
+        open={mapOpen}
+        task={task}
+      />
     </GuestPageShell>
   );
 }

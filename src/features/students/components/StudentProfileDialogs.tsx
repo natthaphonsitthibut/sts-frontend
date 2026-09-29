@@ -58,6 +58,38 @@ export function StudentContactDialog({
   ];
 
   return (
+    <ContactChannelsDialog
+      contacts={contacts}
+      onOpenChange={onOpenChange}
+      open={open}
+    />
+  );
+}
+
+export interface ContactChannel {
+  key: string;
+  fullName: string;
+  phone: string;
+  relationLabel: string;
+}
+
+interface ContactChannelsDialogProps {
+  contacts: ContactChannel[];
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}
+
+/**
+ * The student-and-guardian phone list with a call button per row — one dialog
+ * for the student profile and the follow-up forms, so a phone button looks and
+ * behaves the same wherever it appears.
+ */
+export function ContactChannelsDialog({
+  contacts,
+  onOpenChange,
+  open,
+}: ContactChannelsDialogProps) {
+  return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-w-lg" onClose={() => onOpenChange(false)}>
         <DialogHeader>
