@@ -189,6 +189,10 @@ export function ClassroomAttendanceHistory({
       : `/classroom/students/${studentUuid}`;
   const [searchParams] = useSearchParams();
   const { can } = usePermissions();
+  // A link reaches this history only for a room its session owns, and the
+  // server checks that room again when the export is recorded — so the link is
+  // the permission here, not whatever staff account the browser also holds.
+  const canExport = source === "INTERNAL" ? can("export-data") : true;
   const initialView: HistoryView =
     searchParams.get("historyView") === "STUDENT" ? "STUDENT" : "DAILY";
   const [view, setView] = useState<HistoryView>(initialView);
@@ -609,7 +613,7 @@ export function ClassroomAttendanceHistory({
             <option value="STUDENT">รูปแบบรายคน</option>
           </FilterSelect>
         ) : null}
-        {can("export-data") ? (
+        {canExport ? (
           <Button
             className="sm:ml-auto"
             disabled={rows.length === 0}
@@ -886,6 +890,7 @@ export function ClassroomAttendanceHistory({
         authorizeExport={(format, columns, dateRange) =>
           schoolStructureService.authorizeClassroomExport({
             classroomId,
+            source,
             exportScope: "ATTENDANCE",
             format,
             columns,
