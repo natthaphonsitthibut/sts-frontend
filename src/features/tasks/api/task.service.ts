@@ -65,10 +65,16 @@ async function getLinkPhoto(
   photoUrl: string,
   magicSessionToken?: string,
 ): Promise<Blob> {
-  const response = await apiClient.get<Blob>(
+  // Axios prepends apiClient's /api base to root-relative paths too. The task
+  // payload already includes /api, so make it absolute before requesting it.
+  const absolutePhotoUrl = new URL(
     resolveApiMediaUrl(photoUrl) ?? photoUrl,
-    { ...createMagicSessionConfig(magicSessionToken), responseType: "blob" },
-  );
+    window.location.origin,
+  ).toString();
+  const response = await apiClient.get<Blob>(absolutePhotoUrl, {
+    ...createMagicSessionConfig(magicSessionToken),
+    responseType: "blob",
+  });
   return response.data;
 }
 
