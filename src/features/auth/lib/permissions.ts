@@ -109,10 +109,9 @@ const pageMenuItem = (
  * ผู้บริหารสภา. Each account sees the entries its permissions reach; which
  * section an entry sits under only matters to an account that has both.
  *
- * `iconName` on a child overrides its page's icon in this menu only — the
- * mockups give sub-items their own glyphs while the page header keeps the
- * page's. A group left with one visible child collapses into that child, which
- * then wears its page icon (ผู้บริหาร's lone ส่งออกข้อมูล is a download arrow).
+ * Every entry wears its page's icon, the same one its breadcrumb shows; the
+ * mockups' glyphs were placeholders (owner, 2026-09-29). A group left with one
+ * visible child collapses into that child.
  */
 export const MENU_ITEMS: MenuItem[] = [
   { ...pageMenuItem("home", "/"), section: "school" },
@@ -126,7 +125,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: "manage-users",
     label: "จัดการสิทธิ์ผู้ใช้งาน",
-    iconName: "security",
+    iconName: "users-cog",
     // School-only: the council has its own group with its own routes below,
     // so the two never light up together (owner, 2026-09-22).
     section: "school",
@@ -134,11 +133,9 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         ...pageMenuItem("manage-users-list", "/manage-users"),
-        iconName: "users",
       },
       {
         ...pageMenuItem("manage-role-groups", "/manage-role-groups"),
-        iconName: "apps",
       },
     ],
   },
@@ -150,24 +147,19 @@ export const MENU_ITEMS: MenuItem[] = [
     children: [
       {
         ...pageMenuItem("manage-school-structure", "/school-structure"),
-        iconName: "users",
       },
-      { ...pageMenuItem("manage-subjects", "/curriculum"), iconName: "users" },
+      { ...pageMenuItem("manage-subjects", "/curriculum") },
       {
         ...pageMenuItem("manage-teachers", "/manage-teachers"),
-        iconName: "users",
       },
       {
         ...pageMenuItem(
           "manage-classroom-links",
           "/attendance/classroom-links",
         ),
-        // A link glyph rather than the mockup's people icon (owner, 2026-09-25).
-        iconName: "link",
       },
       {
         ...pageMenuItem("manage-students", "/manage-students"),
-        iconName: "apps",
       },
     ],
   },
@@ -177,8 +169,8 @@ export const MENU_ITEMS: MenuItem[] = [
     iconName: "import-export",
     section: "school",
     children: [
-      { ...pageMenuItem("import-data", "/import-data"), iconName: "users" },
-      { ...pageMenuItem("export-data", "/data-exports"), iconName: "apps" },
+      { ...pageMenuItem("import-data", "/import-data") },
+      { ...pageMenuItem("export-data", "/data-exports") },
     ],
   },
   {
@@ -194,7 +186,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: "manage-users-council",
     label: "จัดการสิทธิ์ผู้ใช้งาน",
-    iconName: "security",
+    iconName: "users-cog",
     // Same pages and permissions as the school group, aliased under
     // /council/... so each realm has its own destination (owner, 2026-09-22).
     section: "council",
@@ -209,7 +201,7 @@ export const MENU_ITEMS: MenuItem[] = [
       {
         id: "manage-role-groups-council",
         label: "จัดการกลุ่มเมนู",
-        iconName: "apps",
+        iconName: "users-cog",
         permissionId: "manage-role-groups",
         route: "/council/manage-role-groups",
         // Each จ./อ./ต. has its own groups (owner with BA, 2026-09-25), so an
@@ -233,7 +225,6 @@ export const MENU_ITEMS: MenuItem[] = [
           "global-only",
           "ADMIN",
         ),
-        iconName: "users",
         activeRoutes: ["/master-data/student-statuses"],
       },
     ],
