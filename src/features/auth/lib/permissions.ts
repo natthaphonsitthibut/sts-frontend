@@ -337,10 +337,10 @@ export function buildMenuSections(
  *
  * A wildcard is still narrowed here — `*` in storage means "whatever the role
  * carries", and the menu needs concrete ids to match against — but the role
- * itself is no longer second-guessed. ผู้บริหาร used to be clamped to หน้าหลัก
- * by this function no matter what its group granted, which made the group's own
- * ticks a lie; the backend still refuses raw student text to that role
- * (`denyExecutiveRaw`), which is where that rule belongs.
+ * itself is no longer second-guessed. ผู้บริหาร is not clamped to หน้าหลัก or
+ * to any aggregate-only view either: once its menu group grants a page, that
+ * page's own permission + data-scope checks decide what it sees, exactly like
+ * every other role (owner, 2026-09-29).
  */
 export function getEffectivePermissions(
   roles: string[],
@@ -360,24 +360,6 @@ export function hasPermission(
     userPermissions.includes("ALL") ||
     userPermissions.includes(permissionId)
   );
-}
-
-/** An area's own copy of a council default: `A<area code>_BASE_<kind>`. */
-const AREA_ROLE_NAME = /^A[0-9]+_BASE_(ADMIN|EXECUTIVE)$/;
-
-/**
- * ผู้บริหาร — the national group or an area's own copy — sees aggregates only
- * (the server enforces the same rule; this only picks the page to render).
- */
-export function isAggregateOnlyExecutive(roles: string[]): boolean {
-  const kind = (role: string) => AREA_ROLE_NAME.exec(role)?.[1] ?? null;
-  const executive = roles.some(
-    (role) => role === "EXECUTIVE" || kind(role) === "EXECUTIVE",
-  );
-  const exempt = roles.some(
-    (role) => role === "ADMIN" || role === "DIRECTOR" || kind(role) === "ADMIN",
-  );
-  return executive && !exempt;
 }
 
 export function filterMenuItems(

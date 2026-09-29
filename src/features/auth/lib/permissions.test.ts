@@ -3,7 +3,6 @@ import {
   buildMenuSections,
   filterMenuItems,
   getMenuRealms,
-  isAggregateOnlyExecutive,
   MENU_ITEMS,
   type DataScope,
 } from "./permissions";
@@ -243,15 +242,6 @@ describe("council จัดการกลุ่มเมนู", () => {
     );
     expect(area).toContain("/council/manage-users");
     expect(area).toContain("/council/manage-role-groups");
-  });
-});
-
-describe("isAggregateOnlyExecutive", () => {
-  it("treats an area's own ผู้บริหาร like the national one", () => {
-    expect(isAggregateOnlyExecutive(["EXECUTIVE"])).toBe(true);
-    expect(isAggregateOnlyExecutive(["A500108_BASE_EXECUTIVE"])).toBe(true);
-    expect(isAggregateOnlyExecutive(["A500108_BASE_ADMIN"])).toBe(false);
-    expect(isAggregateOnlyExecutive(["S10010004_BASE_DIRECTOR"])).toBe(false);
   });
 });
 

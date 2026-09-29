@@ -50,12 +50,10 @@ const REFERRAL_STATUS_ICON: Record<string, typeof Send> = {
 };
 
 export function ReferralRegisterPanel({
-  aggregateOnly = false,
   canViewStudent = false,
   grade,
   room,
 }: {
-  aggregateOnly?: boolean;
   /** Whether the student avatar links to the profile, as on the other tabs. */
   canViewStudent?: boolean;
   /** The page's ชั้น/ห้อง picker, applied here as on the other tabs. */
@@ -114,7 +112,6 @@ export function ReferralRegisterPanel({
         statusCode: statusCode || undefined,
         searchTerm: debouncedSearch || undefined,
       }),
-    enabled: !aggregateOnly,
   });
   const referrals = drilldownQuery.data?.items ?? [];
 
@@ -142,19 +139,12 @@ export function ReferralRegisterPanel({
     hideComparison: true,
     labelClassName: "text-base text-content-secondary",
     emphasis: true,
-    // Aggregate-only viewers have no list for a card to filter.
-    ...(aggregateOnly
-      ? {}
-      : {
-          onSelect: () => {
-            setStatusCode((current) =>
-              current === status.code ? "" : status.code,
-            );
-            setPage(1);
-          },
-          selected: statusCode === status.code,
-          selectionLabel: `กรอง${status.label}`,
-        }),
+    onSelect: () => {
+      setStatusCode((current) => (current === status.code ? "" : status.code));
+      setPage(1);
+    },
+    selected: statusCode === status.code,
+    selectionLabel: `กรอง${status.label}`,
   }));
 
   return (
@@ -168,206 +158,198 @@ export function ReferralRegisterPanel({
           items={statusItems}
         />
 
-        {aggregateOnly ? null : (
-          <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
-            <SearchInput
-              className="w-full sm:max-w-[430px]"
-              onChange={(value) => {
-                setSearch(value);
-                setPage(1);
-              }}
-              placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
-              value={search}
-            />
-            <FilterSelect
-              ariaLabel="สถานะการส่งต่อ"
-              className="w-full sm:w-[306px]"
-              onChange={(value) => {
-                setStatusCode(value);
-                setPage(1);
-              }}
-              value={statusCode}
-            >
-              <option value="">ทุกสถานะการส่งต่อ</option>
-              {referralStatuses.items.map((status) => (
-                <option key={status.code} value={status.code}>
-                  {status.label}
-                </option>
-              ))}
-            </FilterSelect>
-          </div>
-        )}
+        <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
+          <SearchInput
+            className="w-full sm:max-w-[430px]"
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
+            value={search}
+          />
+          <FilterSelect
+            ariaLabel="สถานะการส่งต่อ"
+            className="w-full sm:w-[306px]"
+            onChange={(value) => {
+              setStatusCode(value);
+              setPage(1);
+            }}
+            value={statusCode}
+          >
+            <option value="">ทุกสถานะการส่งต่อ</option>
+            {referralStatuses.items.map((status) => (
+              <option key={status.code} value={status.code}>
+                {status.label}
+              </option>
+            ))}
+          </FilterSelect>
+        </div>
       </div>
 
-      {!aggregateOnly ? (
-        <div>
-          {/* The same table both student tabs use, rather than a collapsed
-              drilldown: the referrals are a list of cases like any other, and
-              hiding them behind a toggle made this the one view where the rows
-              were not simply there to read. */}
-          {drilldownQuery.isError ? (
-            <ErrorState
-              description="ไม่สามารถเปิดรายชื่อได้ กรุณาตรวจสอบสิทธิ์หรือโหลดใหม่"
-              onRetry={() => void drilldownQuery.refetch()}
-              title="โหลดรายการส่งต่อไม่สำเร็จ"
-            />
-          ) : drilldownQuery.isLoading ? (
-            <SkeletonTable />
-          ) : referrals.length === 0 ? (
-            <EmptyState
-              icon={ExternalLink}
-              title="ยังไม่มีเคสที่ส่งต่อ"
-              description="เคสที่ส่งต่อให้หน่วยงานภายนอกจะแสดงที่นี่"
-            />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <DataTable
-                columnWidths={[
-                  "w-[6%]",
-                  "w-[20%]",
-                  "w-[9%]",
-                  "w-[8%]",
-                  "w-[21%]",
-                  "w-[14%]",
-                  "w-[13%]",
-                  "w-[9%]",
-                ]}
-                headings={[
-                  "ลำดับ",
-                  "ชื่อนักเรียน",
-                  "ชั้น",
-                  "ห้อง",
-                  "หน่วยงานที่ส่งต่อ",
-                  { label: "สถานะการส่งต่อ", className: "text-center" },
-                  "วันที่ส่งต่อ",
-                  { isAction: true, label: "เครื่องมือ" },
-                ]}
-                minWidthClassName="min-w-[1120px]"
-              >
-                {referrals.map((referral, index) => (
-                  <DataTableRow key={referral.id}>
-                    <DataTableCell className="text-slate-800">
-                      {(page - 1) * rowsPerPage + index + 1}
-                    </DataTableCell>
-                    <DataTableCell>
-                      <StudentIdentityCell
-                        canViewStudent={canViewStudent}
-                        schoolName={referral.schoolName}
-                        studentId={referral.studentId}
-                        studentName={referral.studentName}
-                        studentPhotoUrl={referral.studentPhotoUrl}
-                      />
-                    </DataTableCell>
-                    <DataTableCell className="text-slate-600">
-                      {referral.grade || "-"}
-                    </DataTableCell>
-                    <DataTableCell className="text-slate-600">
-                      {referral.room || "-"}
-                    </DataTableCell>
-                    <DataTableCell>
-                      <div className="min-w-0">
-                        <div className="truncate text-slate-800">
-                          {referral.agencyName}
-                        </div>
-                        <div className="truncate text-xs text-slate-500">
-                          {referral.agencyKindLabel}
-                        </div>
-                      </div>
-                    </DataTableCell>
-                    <DataTableCell className="text-center">
-                      <Badge
-                        variant={
-                          referralStatus(referral.statusCode)?.badgeVariant
-                        }
-                      >
-                        {referralStatusLabel(referral.statusCode)}
-                      </Badge>
-                    </DataTableCell>
-                    <DataTableCell className="text-slate-700">
-                      {formatThaiDateTime(referral.referredAt)}
-                    </DataTableCell>
-                    <DataTableCell>
-                      <DetailLinkButton
-                        aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
-                        iconOnly
-                        to={`/cases/${referral.caseId}`}
-                      />
-                    </DataTableCell>
-                  </DataTableRow>
-                ))}
-              </DataTable>
-
-              <TableCardList>
-                {referrals.map((referral) => (
-                  <TableCard key={referral.id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <StudentIdentityCell
-                        canViewStudent={canViewStudent}
-                        schoolName={referral.schoolName}
-                        studentId={referral.studentId}
-                        studentName={referral.studentName}
-                        studentPhotoUrl={referral.studentPhotoUrl}
-                      />
-                      <Badge
-                        variant={
-                          referralStatus(referral.statusCode)?.badgeVariant
-                        }
-                      >
-                        {referralStatusLabel(referral.statusCode)}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-xs text-slate-500">ระดับชั้น</div>
-                        <div className="text-slate-800">
-                          {referral.grade || "-"}
-                          {referral.room ? `/${referral.room}` : ""}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">
-                          วันที่ส่งต่อ
-                        </div>
-                        <div className="text-slate-800">
-                          {formatThaiDateTime(referral.referredAt)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-slate-800">
+      <div>
+        {/* The same table both student tabs use, rather than a collapsed
+            drilldown: the referrals are a list of cases like any other, and
+            hiding them behind a toggle made this the one view where the rows
+            were not simply there to read. */}
+        {drilldownQuery.isError ? (
+          <ErrorState
+            description="ไม่สามารถเปิดรายชื่อได้ กรุณาตรวจสอบสิทธิ์หรือโหลดใหม่"
+            onRetry={() => void drilldownQuery.refetch()}
+            title="โหลดรายการส่งต่อไม่สำเร็จ"
+          />
+        ) : drilldownQuery.isLoading ? (
+          <SkeletonTable />
+        ) : referrals.length === 0 ? (
+          <EmptyState
+            icon={ExternalLink}
+            title="ยังไม่มีเคสที่ส่งต่อ"
+            description="เคสที่ส่งต่อให้หน่วยงานภายนอกจะแสดงที่นี่"
+          />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DataTable
+              columnWidths={[
+                "w-[6%]",
+                "w-[20%]",
+                "w-[9%]",
+                "w-[8%]",
+                "w-[21%]",
+                "w-[14%]",
+                "w-[13%]",
+                "w-[9%]",
+              ]}
+              headings={[
+                "ลำดับ",
+                "ชื่อนักเรียน",
+                "ชั้น",
+                "ห้อง",
+                "หน่วยงานที่ส่งต่อ",
+                { label: "สถานะการส่งต่อ", className: "text-center" },
+                "วันที่ส่งต่อ",
+                { isAction: true, label: "เครื่องมือ" },
+              ]}
+              minWidthClassName="min-w-[1120px]"
+            >
+              {referrals.map((referral, index) => (
+                <DataTableRow key={referral.id}>
+                  <DataTableCell className="text-slate-800">
+                    {(page - 1) * rowsPerPage + index + 1}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <StudentIdentityCell
+                      canViewStudent={canViewStudent}
+                      schoolName={referral.schoolName}
+                      studentId={referral.studentId}
+                      studentName={referral.studentName}
+                      studentPhotoUrl={referral.studentPhotoUrl}
+                    />
+                  </DataTableCell>
+                  <DataTableCell className="text-slate-600">
+                    {referral.grade || "-"}
+                  </DataTableCell>
+                  <DataTableCell className="text-slate-600">
+                    {referral.room || "-"}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <div className="min-w-0">
+                      <div className="truncate text-slate-800">
                         {referral.agencyName}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="truncate text-xs text-slate-500">
                         {referral.agencyKindLabel}
                       </div>
                     </div>
-                    <div className="mt-2 flex justify-end">
-                      <DetailLinkButton
-                        aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
-                        iconOnly
-                        to={`/cases/${referral.caseId}`}
-                      />
-                    </div>
-                  </TableCard>
-                ))}
-              </TableCardList>
+                  </DataTableCell>
+                  <DataTableCell className="text-center">
+                    <Badge
+                      variant={
+                        referralStatus(referral.statusCode)?.badgeVariant
+                      }
+                    >
+                      {referralStatusLabel(referral.statusCode)}
+                    </Badge>
+                  </DataTableCell>
+                  <DataTableCell className="text-slate-700">
+                    {formatThaiDateTime(referral.referredAt)}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <DetailLinkButton
+                      aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
+                      iconOnly
+                      to={`/cases/${referral.caseId}`}
+                    />
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTable>
 
-              <Pagination
-                onPageChange={setPage}
-                onRowsPerPageChange={(value) => {
-                  setRowsPerPage(value);
-                  setPage(1);
-                }}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-                totalCount={drilldownQuery.data?.meta.totalCount ?? 0}
-                unitLabel="รายการ"
-              />
-            </div>
-          )}
-        </div>
-      ) : null}
+            <TableCardList>
+              {referrals.map((referral) => (
+                <TableCard key={referral.id}>
+                  <div className="flex items-start justify-between gap-3">
+                    <StudentIdentityCell
+                      canViewStudent={canViewStudent}
+                      schoolName={referral.schoolName}
+                      studentId={referral.studentId}
+                      studentName={referral.studentName}
+                      studentPhotoUrl={referral.studentPhotoUrl}
+                    />
+                    <Badge
+                      variant={
+                        referralStatus(referral.statusCode)?.badgeVariant
+                      }
+                    >
+                      {referralStatusLabel(referral.statusCode)}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-slate-500">ระดับชั้น</div>
+                      <div className="text-slate-800">
+                        {referral.grade || "-"}
+                        {referral.room ? `/${referral.room}` : ""}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500">วันที่ส่งต่อ</div>
+                      <div className="text-slate-800">
+                        {formatThaiDateTime(referral.referredAt)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-slate-800">{referral.agencyName}</div>
+                    <div className="text-xs text-slate-500">
+                      {referral.agencyKindLabel}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <DetailLinkButton
+                      aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
+                      iconOnly
+                      to={`/cases/${referral.caseId}`}
+                    />
+                  </div>
+                </TableCard>
+              ))}
+            </TableCardList>
+
+            <Pagination
+              onPageChange={setPage}
+              onRowsPerPageChange={(value) => {
+                setRowsPerPage(value);
+                setPage(1);
+              }}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              totalCount={drilldownQuery.data?.meta.totalCount ?? 0}
+              unitLabel="รายการ"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -53,8 +53,6 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
-import { isAggregateOnlyExecutive } from "../../auth/lib/permissions";
-import { useAuthSessionStore } from "../../auth/store/auth-session.store";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
 import { StudentIdentityCell } from "../components/StudentIdentityCell";
@@ -1221,19 +1219,5 @@ function StudentRiskDashboardPage() {
 }
 
 export function DashboardPage() {
-  const roles = useAuthSessionStore((state) => state.user?.roles ?? []);
-  const aggregateOnly = isAggregateOnlyExecutive(roles);
-
-  if (!aggregateOnly) return <StudentRiskDashboardPage />;
-
-  return (
-    <PageShell>
-      <PageToolbar
-        breadcrumbTrail={[{ label: "หน้าหลัก", to: "/" }]}
-        icon={ClipboardList}
-        title="รายงานสถานะนักเรียน"
-      />
-      <ReferralRegisterPanel aggregateOnly />
-    </PageShell>
-  );
+  return <StudentRiskDashboardPage />;
 }
