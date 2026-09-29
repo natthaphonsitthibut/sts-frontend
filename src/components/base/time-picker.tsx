@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ChevronDown, Clock } from "lucide-react";
+import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -16,8 +17,13 @@ export interface TimePickerProps {
   "aria-invalid"?: boolean;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
-const MINUTES = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+const HOURS = Array.from({ length: 24 }, (_, index) =>
+  String(index).padStart(2, "0"),
+);
+const PANEL_HEIGHT = 136;
+const MINUTES = Array.from({ length: 60 }, (_, index) =>
+  String(index).padStart(2, "0"),
+);
 
 function parseTime(value: string): { hour: string; minute: string } {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
@@ -42,9 +48,14 @@ export function TimePicker({
   const { hour, minute } = parseTime(value);
 
   useDismissable(open, containerRef, () => setOpen(false));
+  // Fixed, not absolute, so a Dialog's scroll box cannot clip the panel.
+  const panelStyle = useAnchoredPanelPosition(open, containerRef, PANEL_HEIGHT);
 
   return (
-    <div className={cn("relative sm:flex-1", open && "z-50", className)} ref={containerRef}>
+    <div
+      className={cn("relative sm:flex-1", open && "z-50", className)}
+      ref={containerRef}
+    >
       <Button
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -57,31 +68,41 @@ export function TimePicker({
         onClick={() => setOpen((current) => !current)}
         variant="outline"
       >
-        <span className="min-w-0 flex-1 text-left tabular-nums">{value || placeholder}</span>
+        <span className="min-w-0 flex-1 text-left tabular-nums">
+          {value || placeholder}
+        </span>
         <ChevronDown
           aria-hidden="true"
-          className={cn("size-4 text-primary transition-transform", open && "rotate-180")}
+          className={cn(
+            "size-4 text-primary transition-transform",
+            open && "rotate-180",
+          )}
         />
       </Button>
 
-      {open ? (
+      {open && panelStyle ? (
         <div
           aria-label="เลือกเวลา"
-          className="absolute left-0 top-11 z-50 w-full min-w-64 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
+          className="fixed z-[60] min-w-64 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
           role="dialog"
+          style={panelStyle}
         >
           <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
             <label className="grid gap-1 text-xs font-semibold text-slate-600">
               ชั่วโมง
               <Select
                 aria-label="ชั่วโมง"
-                onChange={(event) => onChange(`${event.target.value}:${minute}`)}
+                onChange={(event) =>
+                  onChange(`${event.target.value}:${minute}`)
+                }
                 value={hour}
               >
                 {HOURS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </Select>
             </label>
@@ -94,7 +115,9 @@ export function TimePicker({
                 value={minute}
               >
                 {MINUTES.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </Select>
             </label>
