@@ -23,7 +23,6 @@ import {
   FormErrorAlert,
   IconButton,
   Label,
-  Select,
   useConfirm,
 } from "../../../components/base";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
@@ -49,7 +48,6 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { formatThaiDateTime } from "../../../lib/date-time";
 import { attendanceService } from "../../attendance/api/attendance.service";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
-import { attendanceLookupService } from "../../tasks/api/attendance-lookup.service";
 import { teacherLineService } from "../../teacher-line/api/teacher-line.service";
 import { ClassroomLinksTable } from "../components/ClassroomLinksTable";
 import {
@@ -69,8 +67,6 @@ import type {
   ClassroomLinkStatus,
   ClassroomLineGroupInvitation,
 } from "../types/classroom-links.types";
-import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
-import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
@@ -103,9 +99,6 @@ export function ClassroomLinksPage() {
     "",
   );
   const search = useDebouncedValue(searchInput.trim());
-  const [gradeInput, setGradeInput] = useState(
-    () => searchParams.get("gradeId") ?? "",
-  );
   const [linkStatusInput, setLinkStatusInput] = useState(() => {
     const value = searchParams.get("linkStatus") ?? "";
     return ["ACTIVE", "INACTIVE", "NOT_CREATED"].includes(value) ? value : "";
@@ -171,10 +164,6 @@ export function ClassroomLinksPage() {
     queryFn: () => attendanceService.getTerms(schoolId!),
     enabled: schoolId !== null,
   });
-  const gradeLevelsQuery = useQuery({
-    queryKey: ["classroom-links", "grade-levels"],
-    queryFn: attendanceLookupService.getGradeLevels,
-  });
   const lineEnabledQuery = useQuery({
     queryKey: ["line-link", "status"],
     queryFn: teacherLineService.isEnabled,
@@ -192,7 +181,6 @@ export function ClassroomLinksPage() {
           schoolId,
           schoolTermId: termId,
           search: search || undefined,
-          gradeLevelId: Number(gradeInput) || undefined,
           linkStatus: (linkStatusInput || undefined) as
             | ClassroomLinkStatus
             | undefined,
@@ -213,7 +201,7 @@ export function ClassroomLinksPage() {
   const rows = linksQuery.data?.data ?? [];
   useSyncedSearchParams({
     termId: termInput || undefined,
-    gradeId: gradeInput || undefined,
+    gradeId: undefined,
     linkStatus: linkStatusInput || undefined,
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
@@ -420,14 +408,9 @@ export function ClassroomLinksPage() {
     issueLineInvitation.error ??
     updateLineInvitation.error ??
     revokeLineInvitation.error;
-  const pageError =
-    schoolsQuery.error ??
-    termsQuery.error ??
-    gradeLevelsQuery.error ??
-    linksQuery.error;
+  const pageError = schoolsQuery.error ?? termsQuery.error ?? linksQuery.error;
   const isLoading =
     schoolsQuery.isLoading ||
-    gradeLevelsQuery.isLoading ||
     Boolean(schoolId && termsQuery.isLoading) ||
     Boolean(schoolId && termId && linksQuery.isLoading);
 
@@ -468,38 +451,6 @@ export function ClassroomLinksPage() {
               สร้างทั้งหมด
             </Button>
           </div>
-        }
-        scope={
-          // Grade only means anything once a school is picked (the header's
-          // own filter now) — this field doesn't exist until then either.
-          !schoolId ? null : (
-            <ScopeFilterField
-              emptyLabel={SCOPE_ALL_LABEL.grade}
-              label="ระดับชั้น"
-              scope={{
-                omitPlace: true,
-                grade: (gradeLevelsQuery.data ?? []).find(
-                  (grade) => String(grade.id) === gradeInput,
-                )?.label,
-              }}
-            >
-              <Select
-                aria-label="กรองระดับชั้น"
-                onChange={(event) => {
-                  setGradeInput(event.target.value);
-                  resetListState();
-                }}
-                value={gradeInput}
-              >
-                <option value="">{SCOPE_ALL_LABEL.grade}</option>
-                {(gradeLevelsQuery.data ?? []).map((grade) => (
-                  <option key={grade.id} value={String(grade.id)}>
-                    {grade.label}
-                  </option>
-                ))}
-              </Select>
-            </ScopeFilterField>
-          )
         }
         search={{
           after: (
@@ -612,7 +563,6 @@ export function ClassroomLinksPage() {
           onRetry={() => {
             void schoolsQuery.refetch();
             void termsQuery.refetch();
-            void gradeLevelsQuery.refetch();
             void linksQuery.refetch();
           }}
           title="โหลดข้อมูลไม่สำเร็จ"
@@ -640,7 +590,7 @@ export function ClassroomLinksPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           description={
-            search || gradeInput || linkStatusInput
+            search || linkStatusInput
               ? "ลองเปลี่ยนคำค้นหาหรือตัวกรอง"
               : "ยังไม่มีห้องเรียนในภาคเรียนนี้"
           }

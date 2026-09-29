@@ -1,3 +1,4 @@
+import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import type { AuditLogDetail, AuditLogEntry } from "../types/audit-log.types";
 
 /**
@@ -72,9 +73,80 @@ export function hasAuditLogTargetReference(entry: AuditLogEntry): boolean {
   return getAuditLogTargetLabel(entry) !== "-";
 }
 
+function isIsoTimestamp(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value);
+}
+
+const AUDIT_DETAIL_VALUE_LABELS: Record<string, Record<string, string>> = {
+  ประเภท: {
+    VISIT: "ลงพื้นที่",
+    ASSIST: "ให้ความช่วยเหลือ",
+    ATTENDANCE: "เช็กชื่อ",
+    LOGIN: "เข้าสู่ระบบ",
+    ROSTER: "รายชื่อนักเรียน",
+  },
+  ประเภทลิงก์: {
+    VISIT: "ลงพื้นที่",
+    ASSIST: "ให้ความช่วยเหลือ",
+    ATTENDANCE: "เช็กชื่อ",
+    LOGIN: "เข้าสู่ระบบ",
+  },
+  ขอบเขตข้อมูล: { ROSTER: "รายชื่อนักเรียน", ATTENDANCE: "ข้อมูลการเช็กชื่อ" },
+  วิธียืนยันตัวตน: {
+    ARAID: "AraID",
+    ARAID_PIN: "AraID + PIN",
+    ARAID_PIN_STEP_UP: "AraID + PIN ยืนยันเพิ่มเติม",
+    ARAID_QR: "AraID",
+    GOOGLE: "Google",
+    GOOGLE_DEVELOPMENT: "Google (ทดสอบ)",
+    THAID: "AraID",
+  },
+  ผลการตรวจสอบ: {
+    ASSIST: "ให้ความช่วยเหลือ",
+    CLOSE: "ปิดเคส",
+    CONTINUE: "ติดตามต่อ",
+    REFER_AGENCY: "ส่งต่อหน่วยงาน",
+  },
+  ขั้นตอนถัดไป: { FOLLOW_UP: "ติดตาม", ASSISTANCE: "ให้ความช่วยเหลือ" },
+  ระดับความเสี่ยง: { NORMAL: "ปกติ", WATCH: "เฝ้าระวัง", HIGH: "เสี่ยง" },
+  จากระดับ: { NORMAL: "ปกติ", WATCH: "เฝ้าระวัง", HIGH: "เสี่ยง" },
+  เป็นระดับ: { NORMAL: "ปกติ", WATCH: "เฝ้าระวัง", HIGH: "เสี่ยง" },
+  ผลลัพธ์: {
+    SUCCESS: "สำเร็จ",
+    FAILED: "ไม่สำเร็จ",
+    RETURNED_TO_SCHOOL: "กลับมาเรียนแล้ว",
+    TRANSFERRED_SCHOOL: "ย้ายสถานศึกษา",
+    ILLNESS: "เจ็บป่วย/รักษาตัว",
+    WORKING: "ทำงานหรือมีภาระครอบครัว",
+    UNREACHABLE: "ติดต่อไม่ได้",
+    OTHER: "อื่น ๆ",
+  },
+  ช่องทาง: { LINE: "LINE", GOOGLE: "Google", THAID: "AraID", ARAID: "AraID" },
+};
+
+export function formatAuditLogDetailValue(
+  value: AuditLogDetail["value"],
+  label?: string,
+): string {
+  if (value === null) return "-";
+  if (typeof value === "boolean") return value ? "ใช่" : "ไม่ใช่";
+  const text = String(value);
+  const knownLabel = label
+    ? AUDIT_DETAIL_VALUE_LABELS[label]?.[text]
+    : undefined;
+  if (knownLabel) return knownLabel;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return formatThaiDate(`${text}T00:00:00+07:00`);
+  }
+  return isIsoTimestamp(text) ? formatThaiDateTime(text) : text;
+}
+
 export function formatAuditLogDetails(details: AuditLogDetail[]): string {
   if (details.length === 0) return "-";
   return details
-    .map((detail) => `${detail.label}: ${String(detail.value)}`)
+    .map(
+      (detail) =>
+        `${detail.label}: ${formatAuditLogDetailValue(detail.value, detail.label)}`,
+    )
     .join(" · ");
 }
