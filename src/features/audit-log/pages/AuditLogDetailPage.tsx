@@ -1,16 +1,14 @@
 import { useParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList } from "lucide-react";
-import { Badge, Card } from "../../../components/base";
+import { Card } from "../../../components/base";
 import {
   ErrorState,
   PageShell,
   PageToolbar,
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
-import { formatThaiDateTime } from "../../../lib/date-time";
 import { NavButton } from "../../../components/layout/nav-button";
 import { AuditLogDetailBlock } from "../components/AuditLogDetailBlock";
-import { getAuditLogTargetLabel } from "../lib/audit-log-presentation";
 import { useAuditLogEntry } from "../hooks/useAuditLog";
 
 export function AuditLogDetailPage() {
@@ -43,7 +41,7 @@ export function AuditLogDetailPage() {
   return (
     <PageShell>
       <PageToolbar
-        description={`บันทึกการใช้งาน #${entry.id}`}
+        description="ประวัติการใช้งานตามสิทธิ์และขอบเขตข้อมูล"
         icon={ClipboardList}
         navigation={
           <NavButton icon={ArrowLeft} to={-1} variant="outline">
@@ -52,41 +50,9 @@ export function AuditLogDetailPage() {
         }
         title="รายละเอียดรายการ"
       />
-      <div className="space-y-5">
-        <Card className="rounded-lg p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-slate-900">ข้อมูลรายการ</h2>
-            <Badge variant="secondary">{entry.actionLabel}</Badge>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <div className="text-sm text-slate-500">เวลา</div>
-              <div className="font-bold tabular-nums">
-                {formatThaiDateTime(entry.createdAt)}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500">ผู้ทำรายการ</div>
-              <div className="font-bold">{entry.actorLabel}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500">ประเภท</div>
-              <div className="font-bold">{entry.actionLabel}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500">เป้าหมาย</div>
-              <div className="break-words font-bold">
-                {getAuditLogTargetLabel(entry)}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="rounded-lg p-6">
-          <h2 className="mb-4 text-lg font-bold text-slate-900">รายละเอียด</h2>
-          <AuditLogDetailBlock entry={entry} showSummary={false} />
-        </Card>
-      </div>
+      <Card className="p-5">
+        <AuditLogDetailBlock entry={entry} />
+      </Card>
     </PageShell>
   );
 }
