@@ -38,6 +38,7 @@ import {
 } from "../schemas/teacher.schema";
 import type { Teacher } from "../types/teachers.types";
 import { TeacherNationalIdRevealDialog } from "../components/TeacherNationalIdRevealDialog";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { useScopedSchools } from "../../school-structure/hooks/useSchoolStructure";
 
 const TEACHERS_PATH = "/manage-teachers";
@@ -294,17 +295,25 @@ export function TeacherFormPage() {
   const isEdit = Boolean(id);
   const { data: teacher = null, isLoading, isError } = useTeacher(id ?? null);
 
-  // On create the school comes from the list page's filter; on edit it rides
-  // along with the teacher's membership.
-  const schoolId = isEdit
-    ? (teacher?.schoolId ?? null)
-    : Number(searchParams.get("schoolId")) || null;
   // The form cannot move a teacher between schools, so the school is context
   // rather than a field — but leaving it off the page meant an administrator
   // editing across several schools had nothing on screen saying which one this
   // is. On create the teacher record does not exist yet, so the name comes from
   // the scoped school list the picker on the previous page used.
   const schoolsQuery = useScopedSchools();
+  const globalFilter = useGlobalSchoolFilter();
+  const scopedSchools = schoolsQuery.data ?? [];
+  // On create the school comes from the list page's link, else the same
+  // fallback the list applies: the header filter, then a single-school
+  // account's one school — so opening the form directly or refreshing it
+  // does not ask a one-school admin to "go back and pick" a school.
+  // On edit it rides along with the teacher's membership.
+  const schoolId = isEdit
+    ? (teacher?.schoolId ?? null)
+    : Number(searchParams.get("schoolId")) ||
+      Number(globalFilter.schoolId) ||
+      (scopedSchools.length === 1 ? scopedSchools[0].id : null);
+  const isResolvingSchool = !isEdit && !schoolId && schoolsQuery.isLoading;
   const schoolName =
     teacher?.schoolName ??
     schoolsQuery.data?.find((school) => school.id === schoolId)?.name ??
@@ -333,6 +342,10 @@ export function TeacherFormPage() {
           retryLabel="กลับไปรายชื่อคุณครู"
           title="ไม่พบข้อมูลครู"
         />
+      ) : isResolvingSchool ? (
+        <Card className="p-6">
+          <SkeletonStack lines={6} />
+        </Card>
       ) : !schoolId ? (
         <ErrorState
           description="กรุณากลับไปเลือกโรงเรียนจากหน้ารายชื่อคุณครูก่อนเพิ่มข้อมูล"
