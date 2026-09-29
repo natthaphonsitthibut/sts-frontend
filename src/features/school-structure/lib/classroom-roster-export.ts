@@ -16,8 +16,6 @@ function printPdf(
   columns: RosterExportColumn[],
   rows: string[][],
 ): void {
-  const popup = window.open("", "_blank", "noopener,noreferrer");
-  if (!popup) throw new Error("เบราว์เซอร์บล็อกหน้าต่างสำหรับสร้าง PDF");
   const primaryColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--color-primary")
     .trim();
@@ -30,10 +28,25 @@ function printPdf(
         `<tr>${row.map((value) => `<td>${escapeXml(value)}</td>`).join("")}</tr>`,
     )
     .join("");
-  popup.document.write(
-    `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeXml(title)}</title><style>@font-face{font-family:'TH Sarabun PSK';font-style:normal;font-weight:400;src:url('${new URL(sarabunRegularUrl, window.location.origin).href}') format('woff2')}@font-face{font-family:'TH Sarabun PSK';font-style:normal;font-weight:700;src:url('${new URL(sarabunBoldUrl, window.location.origin).href}') format('woff2')}@page{size:A4 landscape;margin:14mm}body{font-family:'TH Sarabun PSK',sans-serif;color:rgb(15 23 42)}h1{font-size:20px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:${escapeXml(primaryColor || "currentColor")};color:white}th,td{border:1px solid rgb(203 213 225);padding:8px;text-align:left}</style></head><body><h1>${escapeXml(title)}</h1><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>{window.print();window.close()}<${"/"}script></body></html>`,
-  );
-  popup.document.close();
+  // Printed from a hidden frame in this page rather than a new window: a
+  // window opened after the rows load is outside the click and gets blocked,
+  // and one opened with `noopener` reports as blocked even when it opened.
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  frame.srcdoc = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeXml(title)}</title><style>@font-face{font-family:'TH Sarabun PSK';font-style:normal;font-weight:400;src:url('${new URL(sarabunRegularUrl, window.location.origin).href}') format('woff2')}@font-face{font-family:'TH Sarabun PSK';font-style:normal;font-weight:700;src:url('${new URL(sarabunBoldUrl, window.location.origin).href}') format('woff2')}@page{size:A4 landscape;margin:14mm}body{font-family:'TH Sarabun PSK',sans-serif;color:rgb(15 23 42)}h1{font-size:20px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:${escapeXml(primaryColor || "currentColor")};color:white}th,td{border:1px solid rgb(203 213 225);padding:8px;text-align:left}</style></head><body><h1>${escapeXml(title)}</h1><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  frame.onload = () => {
+    const printWindow = frame.contentWindow;
+    if (!printWindow) return;
+    // The frame goes once the print dialog closes, not before: removing it
+    // while the dialog is open cancels the print in some browsers.
+    printWindow.addEventListener("afterprint", () => frame.remove(), {
+      once: true,
+    });
+    void printWindow.document.fonts.ready.then(() => printWindow.print());
+  };
+  document.body.appendChild(frame);
 }
 
 export function exportRosterFile(
