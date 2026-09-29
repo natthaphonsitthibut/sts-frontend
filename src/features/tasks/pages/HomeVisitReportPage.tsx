@@ -6,7 +6,6 @@ import { useForm, useWatch } from "react-hook-form";
 import { Check, LocateFixed } from "lucide-react";
 import { z } from "zod";
 import {
-  Avatar,
   Button,
   Combobox,
   DatePicker,
@@ -44,6 +43,7 @@ import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-p
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
+import { TaskStudentAvatar } from "../components/TaskStudentAvatar";
 import {
   TaskStudentContactsDialog,
   TaskStudentHomeDialog,
@@ -55,7 +55,10 @@ import {
   loadVisitReportDraft,
   saveVisitReportDraft,
 } from "../lib/visit-report-draft";
-import { buildVisitReportFormTitle } from "../lib/task-presentation";
+import {
+  buildVisitReportFormTitle,
+  toTrackingHistoryItems,
+} from "../lib/task-presentation";
 import type { TaskAccessTask } from "../types/task.types";
 
 interface ReportOptionRules {
@@ -1283,20 +1286,16 @@ export function HomeVisitReportPage({
       </h1>
       <StudentTrackingCard
         avatar={
-          <Avatar
+          <TaskStudentAvatar
             className="size-28 shrink-0 text-3xl"
-            gradientName={task.student_name || undefined}
+            sessionToken={sessionToken}
+            task={task}
           />
         }
-        historyItems={(task.follow_up_history ?? [])
-          .map((item, index) => ({
-            id: `${item.submitted_at ?? index}`,
-            assignee: item.assigned_to_name || "-",
-            note: item.cause_detail || item.exception_label || "-",
-            at: item.submitted_at || item.visited_at || "",
-            reason: task.reason_flagged || "-",
-          }))
-          .filter((item) => item.at)}
+        historyItems={toTrackingHistoryItems(
+          task.follow_up_history,
+          task.reason_flagged || "-",
+        )}
         name={task.student_name || "-"}
         noteLabel="สาเหตุที่ต้องติดตาม"
         noteValue={task.reason_flagged || "ยังไม่มีรายละเอียดสาเหตุ"}
