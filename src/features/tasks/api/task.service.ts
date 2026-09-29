@@ -59,8 +59,7 @@ async function getTask(
 /**
  * A photo behind a follow-up link (the student's or the assigned teacher's).
  * The link's session travels in a header an <img> cannot send, so the photo is
- * fetched as a blob; the endpoint itself answers with the same signed-URL
- * redirect as every other photo.
+ * fetched as a blob from the guarded API endpoint on the app's API origin.
  */
 async function getLinkPhoto(
   photoUrl: string,

@@ -75,7 +75,7 @@ export function ClassroomLinkShell({
           <AppNavigationControls
             onMobileMenuClick={() => setMobileSidebarOpen(true)}
           />
-          <AppBrand className="flex-1" to={LINK_HOME} />
+          <AppBrand className="flex-1" label="" to={LINK_HOME} />
           <HeaderProfileMenu
             affiliation={schoolName}
             canEditProfile={false}

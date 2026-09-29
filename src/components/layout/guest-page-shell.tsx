@@ -54,11 +54,7 @@ export function GuestPageShell({
             {/* Inert until the link surface has a home of its own: whoever
                 holds an unopened link has no account, so following the brand
                 would only land them on the sign-in screen. */}
-            <AppBrand
-              className="max-w-xs sm:max-w-sm"
-              label="ระบบติดตามผู้เรียน"
-              to={brandTo}
-            />
+            <AppBrand className="max-w-xs sm:max-w-sm" label="" to={brandTo} />
             {showProfile ? (
               // Same popover as the signed-in header, minus the two actions a
               // link cannot offer: there is no profile to edit and nothing to
