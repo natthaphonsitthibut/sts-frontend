@@ -1,19 +1,31 @@
 import {
   Copy,
+  Info,
   Link2,
   LoaderCircle,
   MessageCircle,
   Power,
   RefreshCw,
 } from "lucide-react";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Avatar, Badge, Checkbox, IconButton } from "../../../components/base";
+import {
+  Avatar,
+  Badge,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+} from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
   DataTableRow,
   TableCard,
   TableCardList,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import type {
   ClassroomLinkDelivery,
@@ -33,6 +45,8 @@ interface ClassroomLinksTableProps {
   onRotate: (row: ClassroomLinkListItem) => void;
   onDeactivate: (row: ClassroomLinkListItem) => void;
   onOpenTeacher?: (teacherId: string) => void;
+  sort?: DataTableSortState;
+  onSortChange: (sort: DataTableSortState | undefined) => void;
 }
 
 function linkStatus(status: ClassroomLinkListItem["status"]) {
@@ -62,22 +76,6 @@ function deliveryStatus(delivery: ClassroomLinkDelivery | null) {
   return <Badge variant="secondary">ยังไม่ได้ส่ง</Badge>;
 }
 
-/**
- * The teacher a link belongs to, with the rooms it opens onto.
- *
- * The link used to be a room's, so the row showed that room's homeroom teacher.
- * It is the teacher's now, and the rooms are whatever their subjects reach —
- * shown as a count with the names behind it, because a teacher with eight rooms
- * would otherwise push every other column off the line.
- */
-/**
- * Who the link is for: a teacher and the rooms their subjects reach, or — for
- * an assignment — the single room it covers and how long it lasts.
- *
- * Both shapes share the row because both are links to the same workspace; what
- * differs is who may pick it up, and that reads best as one line of text rather
- * than a second table.
- */
 function LinkTeacher({
   onOpenTeacher,
   row,
@@ -85,21 +83,6 @@ function LinkTeacher({
   onOpenTeacher?: (teacherId: string) => void;
   row: ClassroomLinkListItem;
 }) {
-  if (row.assignedClassroomId) {
-    return (
-      <div className="min-w-0" data-link-assignment>
-        <div className="truncate font-medium text-slate-800">
-          มอบหมาย · {row.assignedClassroomLabel ?? "ห้องเรียน"}
-        </div>
-        <div className="truncate text-xs text-slate-500">
-          {row.expiresAt
-            ? `ถึง ${formatThaiDateTime(row.expiresAt)}`
-            : "ไม่มีกำหนดสิ้นสุด"}
-          {row.assignmentNote ? ` · ${row.assignmentNote}` : ""}
-        </div>
-      </div>
-    );
-  }
   const teacherName = row.teacherName ?? "ไม่ทราบชื่อ";
   const avatar = (
     <Avatar
@@ -122,16 +105,35 @@ function LinkTeacher({
       ) : (
         <span className="shrink-0 rounded-full">{avatar}</span>
       )}
-      <div className="min-w-0">
-        <div className="truncate font-medium text-slate-800">{teacherName}</div>
-        {/* The count, not the list: nine room labels pushed every other
-            column off the line and nobody reads them in a table. */}
-        <div className="truncate text-xs text-slate-500">
-          {row.classroomCount > 0
-            ? `${row.classroomCount} ห้อง`
-            : "ยังไม่ได้กำหนดวิชาให้ครูคนนี้"}
-        </div>
+      <div className="min-w-0 truncate font-medium text-slate-800">
+        {teacherName}
       </div>
+    </div>
+  );
+}
+
+function LinkAssignment({
+  onShowRooms,
+  row,
+}: {
+  onShowRooms: (row: ClassroomLinkListItem) => void;
+  row: ClassroomLinkListItem;
+}) {
+  if (row.assignedClassroomId) {
+    return <span>{row.assignedClassroomLabel ?? "1 ห้อง"}</span>;
+  }
+  if (row.classroomCount === 0) {
+    return <span className="text-slate-500">ยังไม่มีห้องที่มอบหมาย</span>;
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{row.classroomCount} ห้อง</span>
+      <IconButton
+        aria-label={`ดูชั้นและห้องที่มอบหมายให้ ${row.teacherName ?? "ครู"}`}
+        icon={Info}
+        onClick={() => onShowRooms(row)}
+        variant="view"
+      />
     </div>
   );
 }
@@ -177,7 +179,12 @@ function RowActions({
   onDeactivate,
 }: Omit<
   ClassroomLinksTableProps,
-  "rows" | "selected" | "onSelectionChange" | "onOpenTeacher"
+  | "rows"
+  | "selected"
+  | "onSelectionChange"
+  | "onOpenTeacher"
+  | "sort"
+  | "onSortChange"
 > & {
   row: ClassroomLinkListItem;
 }) {
@@ -235,6 +242,9 @@ function RowActions({
 
 export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
   const { onOpenTeacher, rows, selected, onSelectionChange } = props;
+  const [roomDetails, setRoomDetails] = useState<ClassroomLinkListItem | null>(
+    null,
+  );
   const selectable = rows.filter(
     (row) => row.status !== "ACTIVE" && row.teacherMembershipId !== null,
   );
@@ -273,12 +283,30 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
               />
             ),
           },
-          "ครู / การมอบหมาย",
-          "สถานะลิงก์",
-          "สถานะ LINE",
+          { label: "ครู", sortKey: "teacherName" },
+          { label: "การมอบหมาย", sortKey: "classroomCount" },
+          {
+            label: "สถานะลิงก์",
+            sortKey: "linkStatus",
+            className: "text-center",
+          },
+          {
+            label: "สถานะ LINE",
+            sortKey: "lineStatus",
+            className: "text-center",
+          },
           { isAction: true, label: "เครื่องมือ" },
         ]}
-        columnWidths={["w-[4%]", "w-[42%]", "w-[16%]", "w-[20%]", "w-[18%]"]}
+        columnWidths={[
+          "w-[4%]",
+          "w-[22%]",
+          "w-[16%]",
+          "w-[14%]",
+          "w-[20%]",
+          "w-[24%]",
+        ]}
+        sort={props.sort}
+        onSortChange={props.onSortChange}
         // Sized to fit the content column rather than to a round number: the
         // เครื่องมือ column holds four icon buttons and had been given 30% of
         // 1200px, which pushed the table wider than the page could hold and
@@ -306,8 +334,13 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
             <DataTableCell>
               <LinkTeacher onOpenTeacher={onOpenTeacher} row={row} />
             </DataTableCell>
-            <DataTableCell>{linkStatus(row.status)}</DataTableCell>
             <DataTableCell>
+              <LinkAssignment onShowRooms={setRoomDetails} row={row} />
+            </DataTableCell>
+            <DataTableCell className="text-center">
+              {linkStatus(row.status)}
+            </DataTableCell>
+            <DataTableCell className="text-center">
               <div className="space-y-1">
                 {deliveryStatus(row.lineDelivery)}
                 {row.lineDelivery?.deliveredAt ? (
@@ -317,7 +350,7 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                 ) : null}
               </div>
             </DataTableCell>
-            <DataTableCell className="min-w-[300px] text-right">
+            <DataTableCell className="text-right">
               <RowActions row={row} {...props} />
             </DataTableCell>
           </DataTableRow>
@@ -345,6 +378,10 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
                   <LinkTeacher onOpenTeacher={onOpenTeacher} row={row} />
                   {linkStatus(row.status)}
                 </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+                  <span>การมอบหมาย:</span>
+                  <LinkAssignment onShowRooms={setRoomDetails} row={row} />
+                </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {deliveryStatus(row.lineDelivery)}
                 </div>
@@ -356,6 +393,35 @@ export function ClassroomLinksTable(props: ClassroomLinksTableProps) {
           </TableCard>
         ))}
       </TableCardList>
+      <Dialog
+        onOpenChange={(open) => !open && setRoomDetails(null)}
+        open={Boolean(roomDetails)}
+      >
+        <DialogContent
+          className="max-w-md"
+          onClose={() => setRoomDetails(null)}
+        >
+          <DialogHeader>
+            <DialogTitle icon={Info}>ชั้นและห้องที่มอบหมาย</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">{roomDetails?.teacherName}</p>
+          <ul className="max-h-72 space-y-2 overflow-y-auto text-sm text-slate-800">
+            {roomDetails?.classrooms
+              .slice()
+              .sort((a, b) =>
+                a.label.localeCompare(b.label, "th", { numeric: true }),
+              )
+              .map((classroom) => (
+                <li
+                  className="rounded-md bg-slate-50 px-3 py-2"
+                  key={classroom.classroomId}
+                >
+                  {classroom.label}
+                </li>
+              ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
