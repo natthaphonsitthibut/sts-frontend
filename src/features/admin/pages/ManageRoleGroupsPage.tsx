@@ -248,7 +248,7 @@ export function ManageRoleGroupsPage({
         }
         search={{
           onChange: handleSearchChange,
-          placeholder: "ค้นหา",
+          placeholder: "ค้นหาชื่อกลุ่มเมนูหรือเมนู...",
           value: searchQuery,
         }}
         title="จัดการกลุ่มเมนู"

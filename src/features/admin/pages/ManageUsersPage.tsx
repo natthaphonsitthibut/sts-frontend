@@ -272,7 +272,7 @@ export function ManageUsersPage({
             </FilterSelect>
           ),
           onChange: handleSearchChange,
-          placeholder: "ค้นหา",
+          placeholder: "ค้นหาชื่อผู้ใช้งานหรือชื่อ-นามสกุล...",
           value: searchQuery,
         }}
         title="จัดการผู้ใช้งาน"
