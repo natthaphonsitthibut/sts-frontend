@@ -529,7 +529,11 @@ export function ClassroomAttendanceHistory({
               setSearch(value);
               setPage(1);
             }}
-            placeholder={selectedStudent ? "ค้นหาผู้เช็กชื่อ" : "ค้นหา"}
+            placeholder={
+              selectedStudent
+                ? "ค้นหาผู้เช็กชื่อ"
+                : "ค้นหาชื่อหรือเลขประจำตัวนักเรียน"
+            }
             value={search}
           />
         ) : null}

@@ -195,7 +195,7 @@ export function ClassroomDetailPage() {
                 setSearch(value);
                 setPage(1);
               }}
-              placeholder="ค้นหา"
+              placeholder="ค้นหาชื่อหรือเลขประจำตัวนักเรียน"
               value={search}
             />
             <FilterSelect
