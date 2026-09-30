@@ -419,11 +419,13 @@ export function HomeVisitReportPage({
         formData.set("contact_person_name", report.contactPersonName);
       if (report.contactChannelCode)
         formData.set("contact_channel_code", report.contactChannelCode);
-      report.disadvantageTypeCodes.forEach((code) =>
-        formData.append("disadvantage_type_codes", code),
+      formData.set(
+        "disadvantage_type_codes",
+        JSON.stringify(report.disadvantageTypeCodes),
       );
-      report.disabilityTypeCodes.forEach((code) =>
-        formData.append("disability_type_codes", code),
+      formData.set(
+        "disability_type_codes",
+        JSON.stringify(report.disabilityTypeCodes),
       );
       if (report.problemCategoryCode) {
         formData.set(
@@ -446,8 +448,9 @@ export function HomeVisitReportPage({
         formData.set("guardian_type_code", report.guardianTypeCode);
       if (report.guardianTypeDetail)
         formData.set("guardian_type_detail", report.guardianTypeDetail);
-      report.residenceEnvironmentCodes.forEach((code) =>
-        formData.append("residence_environment_codes", code),
+      formData.set(
+        "residence_environment_codes",
+        JSON.stringify(report.residenceEnvironmentCodes),
       );
       if (report.residenceEnvironmentDetail) {
         formData.set(

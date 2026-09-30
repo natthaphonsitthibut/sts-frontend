@@ -10,6 +10,18 @@ interface BackendErrorBody {
   error?: string;
 }
 
+const uploadErrorMessages: Record<string, string> = {
+  "Too many fields":
+    "ข้อมูลในแบบฟอร์มมีจำนวนเกินที่ระบบรองรับ กรุณาติดต่อผู้ดูแลระบบ",
+  "Too many files": "จำนวนไฟล์แนบเกินที่ระบบรองรับ",
+  "File too large": "ไฟล์แนบมีขนาดเกินที่ระบบรองรับ",
+  "Field value too long": "ข้อมูลในแบบฟอร์มยาวเกินที่ระบบรองรับ",
+};
+
+function readableMessage(message: string): string {
+  return uploadErrorMessages[message] ?? message;
+}
+
 function firstNonEmpty(values: string[]): string {
   for (const value of values) {
     const trimmed = value.trim();
@@ -32,16 +44,14 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
     if (Array.isArray(raw)) {
       const message = firstNonEmpty(raw.map((item) => String(item)));
-      if (message) {
-        return message;
-      }
+      if (message) return readableMessage(message);
     } else if (typeof raw === "string" && raw.trim()) {
-      return raw.trim();
+      return readableMessage(raw.trim());
     }
   }
 
   if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
+    return readableMessage(error.message.trim());
   }
 
   return fallback;
