@@ -6,7 +6,11 @@ import { z } from "zod";
  * whether a group reaches a page the operator does not hold.
  */
 export const roleGroupFormSchema = z.object({
-  label: z.string().trim().min(1, "กรุณากรอกชื่อกลุ่มเมนู"),
+  label: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อกลุ่มเมนู")
+    .max(100, "ชื่อกลุ่มเมนูต้องไม่เกิน 100 ตัวอักษร"),
 });
 
 export type RoleGroupFormValues = z.infer<typeof roleGroupFormSchema>;

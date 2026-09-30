@@ -31,6 +31,7 @@ import {
 } from "../hooks/useCurriculum";
 import {
   curriculumSubjectFormSchema,
+  curriculumSubjectEditFormSchema,
   EMPTY_CURRICULUM_SUBJECT_FORM,
   type CurriculumSubjectFormValues,
 } from "../schemas/curriculum.schema";
@@ -72,7 +73,9 @@ export function CurriculumSubjectFormPage() {
   const backPath = `${CURRICULUM_PATH}/${gradeId}?schoolId=${schoolId}`;
   const form = useForm<CurriculumSubjectFormValues>({
     defaultValues: EMPTY_CURRICULUM_SUBJECT_FORM,
-    resolver: zodResolver(curriculumSubjectFormSchema),
+    resolver: zodResolver(
+      isEdit ? curriculumSubjectEditFormSchema : curriculumSubjectFormSchema,
+    ),
   });
 
   useEffect(() => {
@@ -183,9 +186,13 @@ export function CurriculumSubjectFormPage() {
                 <Input
                   disabled={isEdit}
                   id="subjectCode"
+                  maxLength={20}
                   placeholder="เช่น ค21101 หรือ M22101"
                   {...registerField(form, "subjectCode")}
                 />
+                <p className="text-sm text-slate-500">
+                  ตัวอักษรไทย อังกฤษ หรือตัวเลข ไม่เกิน 20 ตัวอักษร
+                </p>
                 <FormMessage<CurriculumSubjectFormValues> name="subjectCode" />
               </FormItem>
               <FormItem>
@@ -194,9 +201,11 @@ export function CurriculumSubjectFormPage() {
                 </FormLabel>
                 <Input
                   id="subjectName"
+                  maxLength={200}
                   placeholder="เช่น คณิตศาสตร์"
                   {...registerField(form, "subjectName")}
                 />
+                <p className="text-sm text-slate-500">ไม่เกิน 200 ตัวอักษร</p>
                 <FormMessage<CurriculumSubjectFormValues> name="subjectName" />
               </FormItem>
             </div>

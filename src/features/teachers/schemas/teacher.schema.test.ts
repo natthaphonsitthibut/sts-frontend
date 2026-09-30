@@ -27,4 +27,20 @@ describe("teacherFormResolverSchema", () => {
       false,
     );
   });
+
+  it("shows Thai length errors for teacher fields before submission", () => {
+    const result = teacherFormResolverSchema(false).safeParse({
+      ...filled,
+      firstName: "ก".repeat(121),
+      lineId: "L".repeat(65),
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        "ชื่อต้องไม่เกิน 120 ตัวอักษร",
+        "LINE ID ต้องไม่เกิน 64 ตัวอักษร",
+      ]),
+    );
+  });
 });

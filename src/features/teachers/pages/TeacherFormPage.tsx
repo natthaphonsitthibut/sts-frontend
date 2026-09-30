@@ -173,6 +173,7 @@ function TeacherForm({
                 </FormLabel>
                 <Input
                   id="firstName"
+                  maxLength={120}
                   placeholder="ระบุชื่อคุณครู"
                   {...registerField(form, "firstName")}
                 />
@@ -185,6 +186,7 @@ function TeacherForm({
                 </FormLabel>
                 <Input
                   id="lastName"
+                  maxLength={120}
                   placeholder="ระบุนามสกุลคุณครู"
                   {...registerField(form, "lastName")}
                 />
@@ -199,6 +201,7 @@ function TeacherForm({
                 </FormLabel>
                 <Input
                   id="email"
+                  maxLength={255}
                   placeholder="example@gmail.com"
                   type="email"
                   {...registerField(form, "email")}
@@ -210,6 +213,7 @@ function TeacherForm({
                 <FormLabel htmlFor="lineId">ไอดีไลน์</FormLabel>
                 <Input
                   id="lineId"
+                  maxLength={64}
                   placeholder="ระบุไอดีไลน์"
                   {...registerField(form, "lineId")}
                 />

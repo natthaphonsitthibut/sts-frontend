@@ -125,6 +125,7 @@ export function RoleGroupDialog({
               </div>
               <Input
                 id="menu-group-label"
+                maxLength={100}
                 placeholder="กรอกชื่อกลุ่มเมนู"
                 {...registerField(form, "label")}
               />
