@@ -99,7 +99,7 @@ const piiExportSchema = z.object({
     .string()
     .trim()
     .min(3, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร")
-    .max(500),
+    .max(500, "เหตุผลต้องไม่เกิน 500 ตัวอักษร"),
 });
 
 type PiiExportFormValues = z.infer<typeof piiExportSchema>;
