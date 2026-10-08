@@ -98,6 +98,29 @@ describe("student risk report URL filters", () => {
     expect(request?.params.semester).toBeUndefined();
   });
 
+  it("keeps watchlist follow-up status and concern level as independent API filters", async () => {
+    const requests = renderDashboardAt(
+      "/student-risk-report/watchlist?caseStatus=IN_PROGRESS&concernLevel=WATCH",
+    );
+    await waitFor(() => {
+      const request = lastRequestTo(requests, RISK_DASHBOARD_URL);
+      expect(request?.params.studentGroup).toBe("WATCHLIST");
+      expect(request?.params.caseStatus).toBe("IN_PROGRESS");
+      expect(request?.params.concernLevel).toBe("WATCH");
+    });
+  });
+
+  it("keeps referral-stage status filters when reopening a watchlist URL", async () => {
+    const requests = renderDashboardAt(
+      "/student-risk-report/watchlist?caseStatus=AWAITING_REFERRAL_OUTCOME",
+    );
+    await waitFor(() =>
+      expect(
+        lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.caseStatus,
+      ).toBe("AWAITING_REFERRAL_OUTCOME"),
+    );
+  });
+
   it("keeps pagination the API accepts", async () => {
     const requests = renderDashboardAt("/student-risk-report?page=2&limit=50");
 
