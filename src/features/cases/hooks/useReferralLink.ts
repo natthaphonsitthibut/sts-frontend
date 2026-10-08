@@ -5,7 +5,7 @@ import type {
   SendReferralResponse,
 } from "../types/cases.types";
 
-/** ส่งต่อ: the caller shows the one-time code, then refetches the case. */
+/** ส่งต่อ: the caller shows the access code, then refetches the case. */
 export function useSendReferral() {
   return useMutation<
     SendReferralResponse,
@@ -27,6 +27,16 @@ export function useCancelReferral() {
   >({
     mutationFn: ({ caseId, referralId, cancelReason }) =>
       casesService.cancelReferral(caseId, referralId, cancelReason),
+    meta: { suppressSuccessToast: true },
+  });
+}
+
+/** Credentials are read on demand and discarded when the dialog closes. */
+export function useReferralAccessCode() {
+  return useMutation<string, Error, { caseId: number; referralId: string }>({
+    mutationFn: ({ caseId, referralId }) =>
+      casesService.getReferralAccessCode(caseId, referralId),
+    gcTime: 0,
     meta: { suppressSuccessToast: true },
   });
 }

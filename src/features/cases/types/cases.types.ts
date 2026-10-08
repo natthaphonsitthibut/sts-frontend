@@ -286,7 +286,7 @@ export interface SendReferralResponse {
   data: {
     referral_id: string;
     url: string;
-    /** Shown once — the server never returns it again. */
+    /** Stable for this link; authorized reviewers can view it again. */
     access_code: string;
     starts_at: string;
     expires_at: string;

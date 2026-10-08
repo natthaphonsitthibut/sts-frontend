@@ -37,11 +37,15 @@ interface CasesService {
     caseId: number,
     payload: CancelCaseAssignmentPayload,
   ) => Promise<CancelCaseAssignmentResponse>;
-  /** ส่งต่อ: the agency's access code comes back only in this response. */
+  /** ส่งต่อ: issues the agency's stable access code. */
   sendReferral: (
     caseId: number,
     payload: SendReferralPayload,
   ) => Promise<SendReferralResponse>;
+  getReferralAccessCode: (
+    caseId: number,
+    referralId: string,
+  ) => Promise<string>;
   cancelReferral: (
     caseId: number,
     referralId: string,
@@ -109,6 +113,19 @@ async function sendReferral(
   return response.data;
 }
 
+async function getReferralAccessCode(
+  caseId: number,
+  referralId: string,
+): Promise<string> {
+  const response = await apiClient.get<{
+    success: true;
+    data: { access_code: string };
+  }>(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/access-code`,
+  );
+  return response.data.data.access_code;
+}
+
 async function cancelReferral(
   caseId: number,
   referralId: string,
@@ -155,6 +172,7 @@ export const casesService: CasesService = {
   getTrackingOptions,
   cancelAssignment,
   sendReferral,
+  getReferralAccessCode,
   cancelReferral,
   sendRoundLine,
 };

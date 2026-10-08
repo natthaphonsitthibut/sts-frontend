@@ -1,3 +1,4 @@
+import { ReferralAccessCodeButton } from "./ReferralAccessCodeButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TriangleAlert } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -1323,6 +1324,14 @@ export function CaseTrackingTimeline({
                       className="size-10"
                       compact
                       link={referral.link.url}
+                      title="แชร์ลิงก์รายงานผลการส่งต่อ"
+                      description="เลือกช่องทางส่งลิงก์ให้หน่วยงาน แจ้งรหัสแยกจากลิงก์ ผู้รายงานต้องยืนยัน AraID ก่อนรายงานผล"
+                    />
+                  ) : null}
+                  {referral.link ? (
+                    <ReferralAccessCodeButton
+                      caseId={caseRecord.id}
+                      referralId={referral.id}
                     />
                   ) : null}
                   <Button

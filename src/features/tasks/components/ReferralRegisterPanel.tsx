@@ -1,3 +1,5 @@
+import { ReferralAccessCodeButton } from "../../cases/components/ReferralAccessCodeButton";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -68,7 +70,9 @@ type ReferralStageCard = (typeof REFERRAL_STAGE_CARDS)[number];
  * warning beside a กลุ่มเสี่ยง row's status; null when nothing is wrong.
  */
 function linkWarning(row: ReferralDrilldownRow): string | null {
-  if (!row.awaitingResult || !row.linkStatusCode) return null;
+  if (!row.awaitingResult) return null;
+  if (!row.linkStatusCode)
+    return "การส่งต่อเดิมยังไม่มีลิงก์รายงานผล กรุณายกเลิกและส่งต่อใหม่";
   if (row.linkStatusCode === "LOCKED") {
     return "ลิงก์ถูกล็อกเพราะกรอกรหัสผิดเกินกำหนด ต้องออกลิงก์ใหม่";
   }
@@ -93,6 +97,7 @@ export function ReferralRegisterPanel({
   grade?: string;
   room?: string;
 }) {
+  const { can } = usePermissions();
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -219,7 +224,18 @@ export function ReferralRegisterPanel({
         compact
         disabled={!referral.linkUrl}
         link={referral.linkUrl ?? ""}
+        title="แชร์ลิงก์รายงานผลการส่งต่อ"
+        description="เลือกช่องทางส่งลิงก์ให้หน่วยงาน แจ้งรหัสแยกจากลิงก์ ผู้รายงานต้องยืนยัน AraID ก่อนรายงานผล"
       />
+      {referral.awaitingResult &&
+      referral.linkStatusCode &&
+      can("case:review") ? (
+        <ReferralAccessCodeButton
+          compact
+          caseId={referral.caseId}
+          referralId={referral.id}
+        />
+      ) : null}
     </div>
   );
 

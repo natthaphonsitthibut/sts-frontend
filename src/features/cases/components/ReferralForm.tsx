@@ -66,7 +66,7 @@ const FIELD_CLASS = "flex flex-col gap-1 text-sm font-medium text-slate-700";
 /**
  * ส่งต่อ: the referral's มอบหมาย, laid out like the assignment form — the
  * window, who it goes to (an agency instead of a teacher), why. Sending issues
- * the agency's link and shows its access code once (`CredentialDialog`).
+ * the agency's link and shows its access code (`CredentialDialog`).
  */
 export function ReferralForm({
   caseId,
@@ -280,7 +280,7 @@ export function ReferralForm({
       <CredentialDialog
         description={
           sent
-            ? `แจ้งรหัสนี้กับหน่วยงานแยกจากลิงก์ เช่น ทางโทรศัพท์ รหัสจะแสดงเพียงครั้งเดียว ลิงก์ใช้ได้ ${formatThaiDateTime(sent.starts_at)} ถึง ${formatThaiDateTime(sent.expires_at)} แชร์ลิงก์ได้จากขั้นส่งต่อหน่วยงาน`
+            ? `แจ้งรหัสนี้กับหน่วยงานแยกจากลิงก์ เช่น ทางโทรศัพท์ รหัสคงเดิมตลอดอายุลิงก์ และผู้อำนวยการเปิดดูได้จากปุ่มดูรหัส ลิงก์ใช้ได้ ${formatThaiDateTime(sent.starts_at)} ถึง ${formatThaiDateTime(sent.expires_at)} แชร์ลิงก์ได้จากขั้นส่งต่อหน่วยงาน`
             : undefined
         }
         onClose={() => {
