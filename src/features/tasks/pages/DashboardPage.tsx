@@ -13,13 +13,7 @@ import {
   Search,
   TriangleAlert,
 } from "lucide-react";
-import {
-  Badge,
-  Button,
-  HoverTooltip,
-  Select,
-  Tabs,
-} from "../../../components/base";
+import { Badge, Button, Select, Tabs } from "../../../components/base";
 import {
   DataTable,
   DataTableCell,
@@ -30,6 +24,7 @@ import {
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkShareButton } from "../../../components/layout/link-share-dialog";
+import { LinkWarningIndicator } from "../../../components/layout/link-warning-indicator";
 import { Pagination } from "../../../components/layout/pagination";
 import {
   EmptyState,
@@ -254,14 +249,7 @@ function needsLinkRenewal(row: RiskDashboardRow): boolean {
 }
 
 function LinkExpiredIndicator() {
-  return (
-    <HoverTooltip label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่">
-      <TriangleAlert
-        className="size-4 shrink-0 text-danger"
-        aria-hidden="true"
-      />
-    </HoverTooltip>
-  );
+  return <LinkWarningIndicator label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่" />;
 }
 
 function DashboardRowAction({ row }: { row: RiskDashboardRow }) {

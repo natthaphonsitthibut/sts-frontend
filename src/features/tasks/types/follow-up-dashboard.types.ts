@@ -48,6 +48,10 @@ export interface ReferralDrilldownRow {
   referredAt: string;
   agencyName: string;
   agencyKindLabel: string;
+  /** The agency's link while it still opens; null when there is none to share. */
+  linkUrl: string | null;
+  linkStatusCode: string | null;
+  linkExpiresAt: string | null;
 }
 
 export interface ReferralDrilldownResult {

@@ -4,6 +4,7 @@ export type KnownCaseStatus =
   | "PENDING_REVIEW"
   | "IN_PROGRESS"
   | "STUDENT_NOT_FOUND"
+  | "AWAITING_REFERRAL"
   | "AWAITING_REFERRAL_OUTCOME"
   | "RESOLVED";
 
@@ -237,28 +238,62 @@ export interface CaseReferralRecord {
   referral_note: string | null;
   /** What the agency reported back; null until someone records it. */
   result: CaseReferralResult | null;
+  /** The newest link issued for the agency to report through, if any. */
+  link: CaseReferralLink | null;
 }
 
 export interface CaseReferralResult {
   note: string;
   recorded_at: string;
   recorded_by: string | null;
+  /** When the agency says it acted; only set when it reported itself. */
+  action_date: string | null;
+  /** True when the agency filed it through its link, false when the school did. */
+  reported_by_agency: boolean;
+  reporter_name: string | null;
+  reporter_identity_provider: string | null;
+}
+
+export type CaseReferralLinkStatus =
+  | "ACTIVE"
+  | "LOCKED"
+  | "USED"
+  | "REVOKED"
+  | "EXPIRED";
+
+export interface CaseReferralLink {
+  status_code: CaseReferralLinkStatus | (string & {});
+  starts_at: string;
+  expires_at: string;
+  /** Shareable while the link still opens; null once spent, locked or revoked. */
+  url: string | null;
+  /** Why the round closed without an answer, like a withdrawn task link. */
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+}
+
+/** ส่งต่อ from the case page: agency, reason and the link's window. */
+export interface SendReferralPayload {
+  referral_agency_id: number;
+  referral_note: string;
+  starts_at: string;
+  expires_at: string;
+}
+
+export interface SendReferralResponse {
+  success: true;
+  data: {
+    referral_id: string;
+    url: string;
+    /** Shown once — the server never returns it again. */
+    access_code: string;
+    starts_at: string;
+    expires_at: string;
+  };
 }
 
 export type ReferralResultCode = "SUCCEEDED" | "NOT_SUCCEEDED";
-
-export interface RecordReferralResultPayload {
-  result_code: ReferralResultCode;
-  result_note: string;
-}
-
-export interface RecordReferralResultResponse {
-  success: true;
-  data: {
-    referral: CaseReferralRecord | null;
-    case_status: CaseStatus;
-  };
-}
 
 export interface OpenCasePayload {
   student_id: string;

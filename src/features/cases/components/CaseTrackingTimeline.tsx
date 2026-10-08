@@ -5,16 +5,9 @@ import {
   Alert,
   AlertDescription,
   appToast,
-  Badge,
   Button,
   Combobox,
   DatePicker,
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Divider,
   FormErrorAlert,
   InfoTooltip,
@@ -29,12 +22,17 @@ import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import {
   TrackingStep,
   TrackingStepsCard,
+  TrackingStatus,
 } from "../../../components/layout/tracking-step";
 import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { taskService } from "../../tasks/api/task.service";
 import type { TaskCreatePayload } from "../../tasks/types/task.types";
 import { VisitAttachments } from "./CaseFollowUpRoundDetails";
+import { CancelReasonDialog } from "./CancelReasonDialog";
+import { ReferralForm } from "./ReferralForm";
+import { ReferralSummary } from "./ReferralSummary";
+import { useCancelReferral } from "../hooks/useReferralLink";
 import {
   formatFollowUpProblemCategory,
   formatOptionLabels,
@@ -72,7 +70,6 @@ interface CaseTrackingTimelineProps {
   caseRecord: CaseRecord;
   onReview: (action: CaseReviewAction) => void;
   onAssigned: () => void;
-  onRecordReferralResult: (referral: CaseReferralRecord) => void;
 }
 
 interface AssignmentFormValues {
@@ -494,93 +491,94 @@ type RailStep =
   | { kind: "assignment"; round: CaseFollowUpRound }
   | { kind: "report"; round: CaseFollowUpRound }
   | { kind: "referral"; referral: CaseReferralRecord }
+  | { kind: "referral-report"; referral: CaseReferralRecord }
+  | { kind: "referral-form" }
   | { kind: "assignment-form" };
 
 /**
- * One referral, read only, with what the agency reported once someone records
- * it. Same disabled-field layout as the report steps around it.
+ * Step "รายงานผลการส่งต่อ" once a result is in: what the agency reported, who
+ * filed it — the agency through its link (named by its identity provider) or
+ * the school on its behalf — and when. Same disabled-field layout as a report.
  */
-function ReferralStepBody({
-  referral,
-  awaitingResult,
-}: {
-  referral: CaseReferralRecord;
-  awaitingResult: boolean;
-}) {
+function ReferralResultBody({ referral }: { referral: CaseReferralRecord }) {
+  const result = referral.result;
+  if (!result) return null;
+  const reporter = result.reported_by_agency
+    ? `${result.reporter_name || UNANSWERED} (ยืนยันตัวตนผ่าน ${result.reporter_identity_provider || "ผู้ให้บริการยืนยันตัวตน"})`
+    : `${result.recorded_by || UNANSWERED} (บันทึกแทนหน่วยงาน)`;
   return (
-    <div data-referral-step={referral.id}>
+    <div data-referral-result={referral.id}>
       <div className="mb-3 flex justify-end">
-        <Badge
-          variant={
-            awaitingResult
-              ? "warning"
-              : (referral.status_badge_variant ?? "secondary")
-          }
-        >
-          {awaitingResult
-            ? "รอผล"
-            : referral.status_label || referral.status_code}
-        </Badge>
+        <TrackingStatus label="สถานะการส่งต่อ">
+          <span
+            className={
+              referral.status_code === "COMPLETED"
+                ? "text-success"
+                : "text-danger"
+            }
+          >
+            {referral.status_code === "COMPLETED"
+              ? "สำเร็จ"
+              : referral.status_label || referral.status_code}
+          </span>
+        </TrackingStatus>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          หน่วยงาน
-          <Input disabled value={referral.agency_name} />
+          รายงานโดย
+          <Input disabled value={reporter} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          ประเภทหน่วยงาน
-          <Input disabled value={referral.agency_kind_label || UNANSWERED} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          วันที่ส่งต่อ
-          <Input disabled value={readOnlyDate(referral.referred_at)} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          ผู้ส่งต่อ
-          <Input disabled value={referral.referred_by || UNANSWERED} />
+          {result.action_date ? "วันที่ดำเนินการ" : "วันที่บันทึกผล"}
+          <Input
+            disabled
+            value={
+              result.action_date
+                ? formatThaiDate(result.action_date)
+                : formatThaiDateTime(result.recorded_at)
+            }
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
-          เหตุผลการส่งต่อ
+          สรุปผลจากหน่วยงาน
           <Textarea
             className="min-h-20 resize-none overflow-y-auto"
             disabled
             rows={3}
-            value={referral.referral_note || UNANSWERED}
+            value={result.note}
           />
         </label>
       </div>
-      {referral.result ? (
-        <>
-          <Divider className="my-4" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
-              สรุปผลจากหน่วยงาน
-              <Textarea
-                className="min-h-20 resize-none overflow-y-auto"
-                disabled
-                rows={3}
-                value={referral.result.note}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              บันทึกผลโดย
-              <Input
-                disabled
-                value={referral.result.recorded_by || UNANSWERED}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              วันที่บันทึกผล
-              <Input
-                disabled
-                value={formatThaiDateTime(referral.result.recorded_at)}
-              />
-            </label>
-          </div>
-        </>
-      ) : null}
     </div>
   );
+}
+
+/**
+ * Why a sent referral's round is over without an answer, or null while it is
+ * still open — the referral's version of `isRoundClosedWithoutReport`:
+ * withdrawn by the school, or its link ran out or locked.
+ */
+function referralClosedReason(referral: CaseReferralRecord): string | null {
+  if (referral.result) return null;
+  const link = referral.link;
+  if (referral.status_code === "CANCELLED") {
+    if (link?.cancelled_by) {
+      return `ยกเลิกการส่งต่อเมื่อ ${formatThaiDateTime(link.cancelled_at)} โดย ${link.cancelled_by} · เหตุผล: ${link.cancel_reason ?? "-"}`;
+    }
+    return link?.cancel_reason
+      ? `ปิดการส่งต่อเมื่อ ${formatThaiDateTime(link.cancelled_at)} · ${link.cancel_reason}`
+      : "การส่งต่อนี้ถูกยกเลิก";
+  }
+  if (link?.status_code === "LOCKED") {
+    return "ลิงก์ถูกล็อกเพราะกรอกรหัสผิดเกินกำหนด";
+  }
+  if (
+    link?.status_code === "ACTIVE" &&
+    new Date(link.expires_at) <= new Date()
+  ) {
+    return "ลิงก์หมดอายุโดยหน่วยงานยังไม่ได้รายงานผล";
+  }
+  return null;
 }
 
 /**
@@ -897,12 +895,10 @@ function ReadOnlyAssignment({
 export function CaseTrackingTimeline({
   caseRecord,
   onAssigned,
-  onRecordReferralResult,
   onReview,
 }: CaseTrackingTimelineProps) {
   const [manualReassign, setManualReassign] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
   const cancelAssignment = useCancelCaseAssignment();
   const sendRoundLine = useSendRoundLine();
@@ -1019,13 +1015,35 @@ export function CaseTrackingTimeline({
     () => caseRecord.referrals ?? [],
     [caseRecord.referrals],
   );
-  // Referrals arrive newest first; only the newest of a case still waiting on
-  // it can take a result — the server refuses any other.
-  const pendingReferralId =
-    caseRecord.status === "AWAITING_REFERRAL_OUTCOME"
-      ? (referrals[0]?.id ?? null)
+  // A referral runs like a round (owner, 2026-10-08): รอส่งต่อ shows the form,
+  // ส่งต่อ issues the agency's link, and a round withdrawn or whose link ran
+  // out or locked closes and brings the form back. Referrals arrive newest
+  // first; only the newest open one can take a result.
+  const latestReferral = referrals[0];
+  const latestReferralClosed = latestReferral
+    ? referralClosedReason(latestReferral)
+    : null;
+  const liveReferralId =
+    caseRecord.status === "AWAITING_REFERRAL_OUTCOME" &&
+    latestReferral &&
+    !latestReferral.result &&
+    !latestReferralClosed
+      ? latestReferral.id
       : null;
-  const canRecordReferralResult = can("case:review");
+  const waitingForReferral =
+    caseRecord.status === "AWAITING_REFERRAL" ||
+    (caseRecord.status === "AWAITING_REFERRAL_OUTCOME" &&
+      Boolean(latestReferralClosed));
+  const canManageReferral = can("case:review");
+  const cancelReferral = useCancelReferral();
+  const [referralToCancel, setReferralToCancel] =
+    useState<CaseReferralRecord | null>(null);
+  const [referralCancelError, setReferralCancelError] = useState("");
+
+  function closeReferralCancel(): void {
+    setReferralToCancel(null);
+    setReferralCancelError("");
+  }
   // The rail is the case history, not a fixed four-step form: every round that
   // was handed out becomes a step, its report becomes the next step, each
   // referral lands where it happened in time, and the form for the round about
@@ -1055,8 +1073,15 @@ export function CaseTrackingTimeline({
           new Date(left.referred_at).getTime() -
           new Date(right.referred_at).getTime(),
       )
+      // The referral and its report are one round, like an assignment and
+      // its report: the report step appears once the result is in.
       .map((referral) => ({
-        step: { kind: "referral", referral } as RailStep,
+        steps: (referral.result
+          ? [
+              { kind: "referral", referral },
+              { kind: "referral-report", referral },
+            ]
+          : [{ kind: "referral", referral }]) as RailStep[],
         at: new Date(referral.referred_at).getTime(),
       }));
     // Both lists are already in time order; a stable merge keeps the round
@@ -1068,22 +1093,23 @@ export function CaseTrackingTimeline({
         referralIndex < referralSteps.length &&
         referralSteps[referralIndex].at < entry.at
       ) {
-        next.push(referralSteps[referralIndex].step);
+        next.push(...referralSteps[referralIndex].steps);
         referralIndex += 1;
       }
       next.push(entry.step);
     }
     for (const entry of referralSteps.slice(referralIndex)) {
-      next.push(entry.step);
+      next.push(...entry.steps);
     }
     if (waitingForAssignment) next.push({ kind: "assignment-form" });
+    if (waitingForReferral) next.push({ kind: "referral-form" });
     return next;
-  }, [referrals, rounds, waitingForAssignment]);
+  }, [referrals, rounds, waitingForAssignment, waitingForReferral]);
   // Review actions belong to whatever the reviewer is deciding on: the newest
-  // report, or a referral that came back ยังไม่สำเร็จ after it.
+  // report — a follow-up report, or the agency's report on a referral.
   const lastDecisionIndex = steps.reduce(
     (last, step, index) =>
-      step.kind === "report" || step.kind === "referral" ? index : last,
+      step.kind === "report" || step.kind === "referral-report" ? index : last,
     -1,
   );
   const statusPresentation = getCaseTrackingStatusPresentation(
@@ -1197,34 +1223,127 @@ export function CaseTrackingTimeline({
           );
         }
 
-        if (step.kind === "referral") {
-          const { referral } = step;
-          const awaitingResult = referral.id === pendingReferralId;
-          const decisionStep = reviewReady && index === lastDecisionIndex;
+        if (step.kind === "referral-form") {
           return (
             <TrackingStep
-              active={awaitingResult || decisionStep}
+              active
+              connectNext={connectNext}
+              connectPrev={connectPrev}
+              key="referral-form"
+              number={number}
+              title="ส่งต่อหน่วยงาน"
+            >
+              {latestReferralClosed &&
+              caseRecord.status === "AWAITING_REFERRAL_OUTCOME" ? (
+                <Alert className="mb-4" variant="warning">
+                  <AlertDescription>
+                    {`${latestReferralClosed} กรุณาส่งต่อใหม่`}
+                  </AlertDescription>
+                </Alert>
+              ) : latestReferral?.status_code === "CANCELLED" &&
+                caseRecord.status === "AWAITING_REFERRAL" ? (
+                <Alert className="mb-4" variant="warning">
+                  <AlertDescription className="flex flex-wrap items-center gap-1.5">
+                    การส่งต่อก่อนหน้าถูกยกเลิก กรุณาส่งต่อใหม่
+                    <InfoTooltip label="เหตุผลการยกเลิกการส่งต่อ">
+                      <p className="text-sm leading-6 text-slate-700">
+                        หน่วยงานเดิม: {latestReferral.agency_name || "-"}
+                        <br />
+                        {latestReferralClosed}
+                      </p>
+                    </InfoTooltip>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {canManageReferral ? (
+                <ReferralForm caseId={caseRecord.id} onSent={onAssigned} />
+              ) : (
+                <Alert variant="warning">
+                  <AlertDescription>
+                    บัญชีนี้ไม่มีสิทธิ์ส่งต่อหน่วยงาน
+                  </AlertDescription>
+                </Alert>
+              )}
+            </TrackingStep>
+          );
+        }
+
+        if (step.kind === "referral") {
+          const { referral } = step;
+          const isLive = referral.id === liveReferralId;
+          const closedReason = referralClosedReason(referral);
+          return (
+            <TrackingStep
+              active={isLive}
               connectNext={connectNext}
               connectPrev={connectPrev}
               key={`referral-${referral.id}`}
               number={number}
               title="ส่งต่อหน่วยงาน"
             >
-              <ReferralStepBody
-                awaitingResult={awaitingResult}
-                referral={referral}
-              />
-              {awaitingResult && canRecordReferralResult ? (
-                <div className="mt-4 flex justify-end">
+              {closedReason ? (
+                // A closed round states its outcome in one line, like a
+                // withdrawn or expired follow-up round.
+                <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-warning-700">
+                  <TriangleAlert aria-hidden="true" className="size-4" />
+                  {closedReason}
+                </p>
+              ) : null}
+              <div data-referral-step={referral.id}>
+                <ReferralSummary
+                  agencyKindLabel={referral.agency_kind_label}
+                  agencyName={referral.agency_name}
+                  linkWindow={
+                    referral.link
+                      ? {
+                          startsAt: referral.link.starts_at,
+                          expiresAt: referral.link.expires_at,
+                        }
+                      : undefined
+                  }
+                  referralNote={referral.referral_note}
+                  referredAt={referral.referred_at}
+                  referredBy={referral.referred_by}
+                />
+              </div>
+              {isLive && canManageReferral ? (
+                <div
+                  className="mt-4 flex flex-wrap justify-end gap-2"
+                  data-referral-link-panel
+                >
+                  {referral.link?.url ? (
+                    <LinkShareButton
+                      className="size-10"
+                      compact
+                      link={referral.link.url}
+                    />
+                  ) : null}
                   <Button
-                    className="w-full sm:w-auto"
-                    onClick={() => onRecordReferralResult(referral)}
+                    onClick={() => setReferralToCancel(referral)}
                     type="button"
+                    variant="destructiveOutline"
                   >
-                    บันทึกผลการส่งต่อ
+                    ยกเลิกการส่งต่อ
                   </Button>
                 </div>
               ) : null}
+            </TrackingStep>
+          );
+        }
+
+        if (step.kind === "referral-report") {
+          const { referral } = step;
+          const decisionStep = reviewReady && index === lastDecisionIndex;
+          return (
+            <TrackingStep
+              active={decisionStep}
+              connectNext={connectNext}
+              connectPrev={connectPrev}
+              key={`referral-report-${referral.id}`}
+              number={number}
+              title="รายงานผลการส่งต่อ"
+            >
+              <ReferralResultBody referral={referral} />
               {decisionStep ? (
                 <ReviewActions
                   actions={reviewActions}
@@ -1319,10 +1438,9 @@ export function CaseTrackingTimeline({
 
                   {isLive && cancellable ? (
                     <Button
-                      className="border-danger text-danger hover:border-danger hover:bg-danger-100 hover:text-danger"
                       onClick={() => setCancelOpen(true)}
                       type="button"
-                      variant="outline"
+                      variant="destructiveOutline"
                     >
                       ยกเลิกการมอบหมาย
                     </Button>
@@ -1377,88 +1495,78 @@ export function CaseTrackingTimeline({
         </p>
       ) : null}
 
-      <Dialog
-        onOpenChange={(next) => {
-          setCancelOpen(next);
-          if (!next) {
-            setCancelReason("");
-            setCancelError("");
-          }
+      <CancelReasonDialog
+        description={
+          <>
+            ลิงก์ของผู้รับมอบหมายจะใช้งานไม่ได้ทันที และเคสจะกลับไปเป็น
+            &ldquo;รอมอบหมาย&rdquo;
+          </>
+        }
+        error={cancelError}
+        isPending={cancelAssignment.isPending}
+        onClose={() => {
+          setCancelOpen(false);
+          setCancelError("");
         }}
+        onConfirm={(reason) =>
+          cancelAssignment.mutate(
+            { caseId: caseRecord.id, payload: { cancel_reason: reason } },
+            {
+              onSuccess: () => {
+                setCancelOpen(false);
+                setCancelError("");
+                onAssigned();
+              },
+              onError: (error) =>
+                setCancelError(
+                  error instanceof Error
+                    ? error.message
+                    : "ยกเลิกการมอบหมายไม่สำเร็จ",
+                ),
+            },
+          )
+        }
         open={cancelOpen}
-      >
-        <DialogContent onClose={() => setCancelOpen(false)}>
-          <DialogHeader>
-            <DialogTitle>ยืนยันการยกเลิกการมอบหมาย</DialogTitle>
-          </DialogHeader>
-          <DialogBody className="space-y-3">
-            <p className="text-sm text-slate-700">
-              ลิงก์ของผู้รับมอบหมายจะใช้งานไม่ได้ทันที และเคสจะกลับไปเป็น
-              &ldquo;รอมอบหมาย&rdquo;
-            </p>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              <span className="flex items-center gap-1">
-                เหตุผลการยกเลิก <span className="text-danger">*</span>
-              </span>
-              <Textarea
-                aria-invalid={cancelError ? true : undefined}
-                maxLength={500}
-                onChange={(event) => {
-                  setCancelReason(event.target.value);
-                  setCancelError("");
-                }}
-                placeholder="เช่น มอบหมายผิดคน หรือ ครูผู้รับมอบหมายลา"
-                rows={3}
-                value={cancelReason}
-              />
-            </label>
-            {cancelError ? (
-              <p className="text-sm font-medium text-danger" role="alert">
-                {cancelError}
-              </p>
-            ) : null}
-          </DialogBody>
-          <DialogFooter>
-            <Button
-              onClick={() => setCancelOpen(false)}
-              type="button"
-              variant="secondary"
-            >
-              ยกเลิก
-            </Button>
-            <Button
-              disabled={cancelAssignment.isPending}
-              onClick={() => {
-                const reason = cancelReason.trim();
-                if (!reason) {
-                  setCancelError("กรุณาระบุเหตุผลการยกเลิก");
-                  return;
-                }
-                cancelAssignment.mutate(
-                  { caseId: caseRecord.id, payload: { cancel_reason: reason } },
-                  {
-                    onSuccess: () => {
-                      setCancelOpen(false);
-                      setCancelReason("");
-                      onAssigned();
-                    },
-                    onError: (error) =>
-                      setCancelError(
-                        error instanceof Error
-                          ? error.message
-                          : "ยกเลิกการมอบหมายไม่สำเร็จ",
-                      ),
-                  },
-                );
-              }}
-              type="button"
-              variant="destructive"
-            >
-              {cancelAssignment.isPending ? "กำลังยกเลิก..." : "ยืนยัน"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        placeholder="เช่น มอบหมายผิดคน หรือ ครูผู้รับมอบหมายลา"
+        title="ยืนยันการยกเลิกการมอบหมาย"
+      />
+
+      <CancelReasonDialog
+        description={
+          <>
+            ลิงก์ของหน่วยงานจะใช้งานไม่ได้ทันที และเคสจะกลับไปเป็น
+            &ldquo;รอส่งต่อ&rdquo;
+          </>
+        }
+        error={referralCancelError}
+        isPending={cancelReferral.isPending}
+        onClose={closeReferralCancel}
+        onConfirm={(reason) => {
+          if (!referralToCancel) return;
+          cancelReferral.mutate(
+            {
+              caseId: caseRecord.id,
+              referralId: referralToCancel.id,
+              cancelReason: reason,
+            },
+            {
+              onSuccess: () => {
+                closeReferralCancel();
+                onAssigned();
+              },
+              onError: (error) =>
+                setReferralCancelError(
+                  error instanceof Error
+                    ? error.message
+                    : "ยกเลิกการส่งต่อไม่สำเร็จ",
+                ),
+            },
+          );
+        }}
+        open={referralToCancel !== null}
+        placeholder="เช่น ส่งผิดหน่วยงาน หรือ หน่วยงานไม่รับเรื่อง"
+        title="ยืนยันการยกเลิกการส่งต่อ"
+      />
     </TrackingStepsCard>
   );
 }

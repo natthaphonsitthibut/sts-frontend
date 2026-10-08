@@ -8,10 +8,10 @@ import type {
   CaseTrackingOptions,
   CaseReviewPayload,
   CaseReviewResponse,
+  SendReferralPayload,
+  SendReferralResponse,
   OpenCasePayload,
   OpenCaseResponse,
-  RecordReferralResultPayload,
-  RecordReferralResultResponse,
   ReferralAgencyOption,
 } from "../types/cases.types";
 
@@ -37,12 +37,16 @@ interface CasesService {
     caseId: number,
     payload: CancelCaseAssignmentPayload,
   ) => Promise<CancelCaseAssignmentResponse>;
-  /** บันทึกผลการส่งต่อ: สำเร็จ closes the case, ยังไม่สำเร็จ returns it to รอพิจารณา. */
-  recordReferralResult: (
+  /** ส่งต่อ: the agency's access code comes back only in this response. */
+  sendReferral: (
+    caseId: number,
+    payload: SendReferralPayload,
+  ) => Promise<SendReferralResponse>;
+  cancelReferral: (
     caseId: number,
     referralId: string,
-    payload: RecordReferralResultPayload,
-  ) => Promise<RecordReferralResultResponse>;
+    cancelReason: string,
+  ) => Promise<void>;
   /** ส่งลิงก์ผ่าน LINE: one round's link, straight to its assigned teacher. */
   sendRoundLine: (
     caseId: number,
@@ -94,16 +98,26 @@ async function cancelAssignment(
   return response.data;
 }
 
-async function recordReferralResult(
+async function sendReferral(
   caseId: number,
-  referralId: string,
-  payload: RecordReferralResultPayload,
-): Promise<RecordReferralResultResponse> {
-  const response = await apiClient.post<RecordReferralResultResponse>(
-    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/result`,
+  payload: SendReferralPayload,
+): Promise<SendReferralResponse> {
+  const response = await apiClient.post<SendReferralResponse>(
+    `/cases/${caseId}/referrals`,
     payload,
   );
   return response.data;
+}
+
+async function cancelReferral(
+  caseId: number,
+  referralId: string,
+  cancelReason: string,
+): Promise<void> {
+  await apiClient.post(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/cancel`,
+    { cancel_reason: cancelReason },
+  );
 }
 
 async function sendRoundLine(
@@ -140,6 +154,7 @@ export const casesService: CasesService = {
   reviewCase,
   getTrackingOptions,
   cancelAssignment,
-  recordReferralResult,
+  sendReferral,
+  cancelReferral,
   sendRoundLine,
 };

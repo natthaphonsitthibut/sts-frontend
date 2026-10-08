@@ -17,6 +17,9 @@ export const buttonVariants = cva(
           "border border-slate-300 bg-primary-soft text-primary-dark hover:border-slate-400 hover:bg-slate-100",
         destructive:
           "border border-transparent bg-danger text-white shadow-sm hover:bg-danger-700",
+        /** A withdrawing action beside others (ยกเลิกการมอบหมาย / ยกเลิกการส่งต่อ). */
+        destructiveOutline:
+          "border border-danger bg-white text-danger shadow-sm hover:border-danger hover:bg-danger-100 hover:text-danger hover:shadow",
         contact:
           "border border-transparent bg-primary text-white shadow-sm hover:bg-primary-dark hover:shadow",
         location:

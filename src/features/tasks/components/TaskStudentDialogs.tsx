@@ -6,7 +6,21 @@ import type { TaskAccessTask } from "../types/task.types";
 interface TaskStudentDialogProps {
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  task: TaskAccessTask;
+  /** Any link page that carries the student's contacts and home — the follow-up form or the agency's referral report. */
+  task: Pick<
+    TaskAccessTask,
+    | "address_district"
+    | "address_line"
+    | "address_province"
+    | "address_sub_district"
+    | "contact_channels"
+    | "is_approximate_home_location"
+    | "postal_code"
+    | "student_address"
+    | "student_lat"
+    | "student_lng"
+    | "student_name"
+  >;
 }
 
 /**

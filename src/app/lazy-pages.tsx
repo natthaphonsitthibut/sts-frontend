@@ -309,6 +309,11 @@ export const TeacherCommentReportsPage = lazy(() =>
     }),
   ),
 );
+export const ReferralReportPage = lazy(() =>
+  import("../features/referral-report/pages/ReferralReportPage").then(
+    (module) => ({ default: module.ReferralReportPage }),
+  ),
+);
 export const ReportPage = lazy(() =>
   import("../features/tasks/pages/ReportPage").then((module) => ({
     default: module.ReportPage,

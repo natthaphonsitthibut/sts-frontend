@@ -26,12 +26,8 @@ import { formatRoomLabel } from "../../../lib/room-presentation";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
-import { ReferralResultDialog } from "../components/ReferralResultDialog";
 import { useCaseDetail } from "../hooks/useCaseDetail";
-import type {
-  CaseReferralRecord,
-  CaseReviewAction,
-} from "../types/cases.types";
+import type { CaseReviewAction } from "../types/cases.types";
 import { HomeLocationDialog } from "../../students/components/HomeLocationDialog";
 import { toTrackingHistoryItems } from "../../tasks/lib/task-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -46,8 +42,6 @@ export function CaseDetailPage() {
   );
   const [contactsOpen, setContactsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
-  const [resultReferral, setResultReferral] =
-    useState<CaseReferralRecord | null>(null);
   const detailQuery = useCaseDetail(
     Number.isInteger(caseId) && caseId > 0 ? caseId : undefined,
   );
@@ -161,7 +155,6 @@ export function CaseDetailPage() {
       <CaseTrackingTimeline
         caseRecord={caseRecord}
         onAssigned={() => void detailQuery.refetch()}
-        onRecordReferralResult={setResultReferral}
         onReview={(action) => setReviewAction(action)}
       />
 
@@ -203,15 +196,6 @@ export function CaseDetailPage() {
         name={caseRecord.student_name}
         onOpenChange={setMapOpen}
         open={mapOpen}
-      />
-
-      <ReferralResultDialog
-        caseId={caseRecord.id}
-        onOpenChange={(open) => {
-          if (!open) setResultReferral(null);
-        }}
-        onRecorded={() => void detailQuery.refetch()}
-        referral={resultReferral}
       />
 
       <CaseStatusUpdateDialog

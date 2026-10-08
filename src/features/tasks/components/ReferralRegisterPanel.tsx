@@ -2,14 +2,15 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CircleCheck,
-  ClipboardCheck,
   ClipboardList,
   ExternalLink,
   Hourglass,
   ListChecks,
   XCircle,
 } from "lucide-react";
-import { Badge, IconButton } from "../../../components/base";
+import { Badge } from "../../../components/base";
+import { LinkWarningIndicator } from "../../../components/layout/link-warning-indicator";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import {
   DataTable,
   DataTableCell,
@@ -32,8 +33,6 @@ import { formatThaiDateTime } from "../../../lib/date-time";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
-import { usePermissions } from "../../auth/hooks/usePermissions";
-import { ReferralResultDialog } from "../../cases/components/ReferralResultDialog";
 import { StudentIdentityCell } from "./StudentIdentityCell";
 import { riskDashboardService } from "../api/risk-dashboard.service";
 import {
@@ -64,6 +63,25 @@ const REFERRAL_STAGE_CARDS = [
 ] as const;
 type ReferralStageCard = (typeof REFERRAL_STAGE_CARDS)[number];
 
+/**
+ * Why a waiting row's link needs the school's attention, like the expired-link
+ * warning beside a กลุ่มเสี่ยง row's status; null when nothing is wrong.
+ */
+function linkWarning(row: ReferralDrilldownRow): string | null {
+  if (!row.awaitingResult || !row.linkStatusCode) return null;
+  if (row.linkStatusCode === "LOCKED") {
+    return "ลิงก์ถูกล็อกเพราะกรอกรหัสผิดเกินกำหนด ต้องออกลิงก์ใหม่";
+  }
+  if (
+    row.linkStatusCode === "ACTIVE" &&
+    row.linkExpiresAt &&
+    new Date(row.linkExpiresAt) <= new Date()
+  ) {
+    return "ลิงก์หมดอายุแล้ว ต้องออกลิงก์ใหม่";
+  }
+  return null;
+}
+
 export function ReferralRegisterPanel({
   canViewStudent = false,
   grade,
@@ -79,13 +97,6 @@ export function ReferralRegisterPanel({
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [stageCode, setStageCode] = useState("");
-  const [resultReferral, setResultReferral] = useState<{
-    caseId: number;
-    id: string;
-    agency_name: string;
-  } | null>(null);
-  const { can } = usePermissions();
-  const canRecordResult = can("case:review");
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const referralStatuses = useStatusCatalog("CASE_REFERRAL");
   const caseStatuses = useStatusCatalog("CASE_WORKFLOW");
@@ -193,8 +204,8 @@ export function ReferralRegisterPanel({
     selectionLabel: `กรอง${card.label}`,
   }));
   const rowActions = (referral: ReferralDrilldownRow) => (
-    // Same pair of tools as the กลุ่มเสี่ยง rows: open the case, and act on it
-    // right here when there is something to do.
+    // Same pair of tools as the กลุ่มเสี่ยง rows: open the case, share its link.
+    // Reviewing an agency's report starts from reading it on the case page.
     <div className="flex items-center justify-center gap-2">
       <DetailLinkButton
         aria-label={`ดูรายละเอียดเคสของ ${referral.studentName}`}
@@ -204,24 +215,11 @@ export function ReferralRegisterPanel({
         title="ดูรายละเอียดเคส"
         to={`/cases/${referral.caseId}`}
       />
-      {/* Like แชร์ on the กลุ่มเสี่ยง rows, the tool stays in place and is
-          disabled on rows that have nothing waiting, so every row lines up. */}
-      {canRecordResult ? (
-        <IconButton
-          aria-label={`บันทึกผลการส่งต่อของ ${referral.studentName}`}
-          disabled={!referral.awaitingResult}
-          icon={ClipboardCheck}
-          onClick={() =>
-            setResultReferral({
-              caseId: referral.caseId,
-              id: referral.id,
-              agency_name: referral.agencyName,
-            })
-          }
-          title="บันทึกผลการส่งต่อ"
-          variant="contact"
-        />
-      ) : null}
+      <LinkShareButton
+        compact
+        disabled={!referral.linkUrl}
+        link={referral.linkUrl ?? ""}
+      />
     </div>
   );
 
@@ -337,9 +335,16 @@ export function ReferralRegisterPanel({
                     </div>
                   </DataTableCell>
                   <DataTableCell className="text-center">
-                    <Badge variant={rowStage(referral).status?.badgeVariant}>
-                      {rowStage(referral).label}
-                    </Badge>
+                    <span className="inline-flex items-center gap-1">
+                      <Badge variant={rowStage(referral).status?.badgeVariant}>
+                        {rowStage(referral).label}
+                      </Badge>
+                      {linkWarning(referral) ? (
+                        <LinkWarningIndicator
+                          label={linkWarning(referral) ?? ""}
+                        />
+                      ) : null}
+                    </span>
                   </DataTableCell>
                   <DataTableCell className="text-slate-700">
                     {formatThaiDateTime(referral.referredAt)}
@@ -360,9 +365,16 @@ export function ReferralRegisterPanel({
                       studentName={referral.studentName}
                       studentPhotoUrl={referral.studentPhotoUrl}
                     />
-                    <Badge variant={rowStage(referral).status?.badgeVariant}>
-                      {rowStage(referral).label}
-                    </Badge>
+                    <span className="inline-flex items-center gap-1">
+                      <Badge variant={rowStage(referral).status?.badgeVariant}>
+                        {rowStage(referral).label}
+                      </Badge>
+                      {linkWarning(referral) ? (
+                        <LinkWarningIndicator
+                          label={linkWarning(referral) ?? ""}
+                        />
+                      ) : null}
+                    </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -407,18 +419,6 @@ export function ReferralRegisterPanel({
           </div>
         )}
       </div>
-
-      <ReferralResultDialog
-        caseId={resultReferral?.caseId ?? 0}
-        onOpenChange={(open) => {
-          if (!open) setResultReferral(null);
-        }}
-        onRecorded={() => {
-          void summaryQuery.refetch();
-          void drilldownQuery.refetch();
-        }}
-        referral={resultReferral}
-      />
     </div>
   );
 }

@@ -54,6 +54,7 @@ import {
   NotificationsPage,
   ProfilePage,
   PrivacyPolicyPage,
+  ReferralReportPage,
   ReportPage,
   RouteSuspense,
   SchoolStructurePage,
@@ -594,6 +595,12 @@ export const router = createBrowserRouter([
       {
         path: "/task/:token/report",
         element: withSuspense(<ReportPage />),
+      },
+      // Public: the agency a case was referred to reports its result here. The
+      // link is gated by the school's access code and AraID, never an account.
+      {
+        path: "/referral-report/:token",
+        element: withSuspense(<ReferralReportPage />),
       },
       {
         path: "/task/google-callback",

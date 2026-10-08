@@ -93,4 +93,5 @@ export interface AraIdSessionProfile extends Omit<
 export type AraIdChallengeScope =
   | "task-link"
   | "admin-login"
-  | "classroom-check-in";
+  | "classroom-check-in"
+  | "referral-link";
