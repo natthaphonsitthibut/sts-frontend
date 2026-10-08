@@ -10,6 +10,8 @@ import type {
   CaseReviewResponse,
   OpenCasePayload,
   OpenCaseResponse,
+  RecordReferralResultPayload,
+  RecordReferralResultResponse,
   ReferralAgencyOption,
 } from "../types/cases.types";
 
@@ -35,6 +37,12 @@ interface CasesService {
     caseId: number,
     payload: CancelCaseAssignmentPayload,
   ) => Promise<CancelCaseAssignmentResponse>;
+  /** บันทึกผลการส่งต่อ: สำเร็จ closes the case, ยังไม่สำเร็จ returns it to รอพิจารณา. */
+  recordReferralResult: (
+    caseId: number,
+    referralId: string,
+    payload: RecordReferralResultPayload,
+  ) => Promise<RecordReferralResultResponse>;
   /** ส่งลิงก์ผ่าน LINE: one round's link, straight to its assigned teacher. */
   sendRoundLine: (
     caseId: number,
@@ -86,6 +94,18 @@ async function cancelAssignment(
   return response.data;
 }
 
+async function recordReferralResult(
+  caseId: number,
+  referralId: string,
+  payload: RecordReferralResultPayload,
+): Promise<RecordReferralResultResponse> {
+  const response = await apiClient.post<RecordReferralResultResponse>(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/result`,
+    payload,
+  );
+  return response.data;
+}
+
 async function sendRoundLine(
   caseId: number,
   taskId: string,
@@ -120,5 +140,6 @@ export const casesService: CasesService = {
   reviewCase,
   getTrackingOptions,
   cancelAssignment,
+  recordReferralResult,
   sendRoundLine,
 };

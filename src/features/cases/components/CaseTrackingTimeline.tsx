@@ -5,6 +5,7 @@ import {
   Alert,
   AlertDescription,
   appToast,
+  Badge,
   Button,
   Combobox,
   DatePicker,
@@ -47,6 +48,7 @@ import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
 import type {
   CaseFollowUpRound,
   CaseRecord,
+  CaseReferralRecord,
   CaseReviewAction,
   CaseTrackingOption,
 } from "../types/cases.types";
@@ -70,6 +72,7 @@ interface CaseTrackingTimelineProps {
   caseRecord: CaseRecord;
   onReview: (action: CaseReviewAction) => void;
   onAssigned: () => void;
+  onRecordReferralResult: (referral: CaseReferralRecord) => void;
 }
 
 interface AssignmentFormValues {
@@ -490,7 +493,95 @@ function ReviewActions({
 type RailStep =
   | { kind: "assignment"; round: CaseFollowUpRound }
   | { kind: "report"; round: CaseFollowUpRound }
+  | { kind: "referral"; referral: CaseReferralRecord }
   | { kind: "assignment-form" };
+
+/**
+ * One referral, read only, with what the agency reported once someone records
+ * it. Same disabled-field layout as the report steps around it.
+ */
+function ReferralStepBody({
+  referral,
+  awaitingResult,
+}: {
+  referral: CaseReferralRecord;
+  awaitingResult: boolean;
+}) {
+  return (
+    <div data-referral-step={referral.id}>
+      <div className="mb-3 flex justify-end">
+        <Badge
+          variant={
+            awaitingResult
+              ? "warning"
+              : (referral.status_badge_variant ?? "secondary")
+          }
+        >
+          {awaitingResult
+            ? "รอผล"
+            : referral.status_label || referral.status_code}
+        </Badge>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          หน่วยงาน
+          <Input disabled value={referral.agency_name} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          ประเภทหน่วยงาน
+          <Input disabled value={referral.agency_kind_label || UNANSWERED} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          วันที่ส่งต่อ
+          <Input disabled value={readOnlyDate(referral.referred_at)} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          ผู้ส่งต่อ
+          <Input disabled value={referral.referred_by || UNANSWERED} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
+          เหตุผลการส่งต่อ
+          <Textarea
+            className="min-h-20 resize-none overflow-y-auto"
+            disabled
+            rows={3}
+            value={referral.referral_note || UNANSWERED}
+          />
+        </label>
+      </div>
+      {referral.result ? (
+        <>
+          <Divider className="my-4" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
+              สรุปผลจากหน่วยงาน
+              <Textarea
+                className="min-h-20 resize-none overflow-y-auto"
+                disabled
+                rows={3}
+                value={referral.result.note}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              บันทึกผลโดย
+              <Input
+                disabled
+                value={referral.result.recorded_by || UNANSWERED}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              วันที่บันทึกผล
+              <Input
+                disabled
+                value={formatThaiDateTime(referral.result.recorded_at)}
+              />
+            </label>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 /**
  * A round nobody reported on and nobody can report on any more: the assignment
@@ -806,6 +897,7 @@ function ReadOnlyAssignment({
 export function CaseTrackingTimeline({
   caseRecord,
   onAssigned,
+  onRecordReferralResult,
   onReview,
 }: CaseTrackingTimelineProps) {
   const [manualReassign, setManualReassign] = useState(false);
@@ -923,26 +1015,75 @@ export function CaseTrackingTimeline({
     openForAssignment ||
     needsReassignment ||
     (studentNotFound && manualReassign);
+  const referrals = useMemo(
+    () => caseRecord.referrals ?? [],
+    [caseRecord.referrals],
+  );
+  // Referrals arrive newest first; only the newest of a case still waiting on
+  // it can take a result — the server refuses any other.
+  const pendingReferralId =
+    caseRecord.status === "AWAITING_REFERRAL_OUTCOME"
+      ? (referrals[0]?.id ?? null)
+      : null;
+  const canRecordReferralResult = can("case:review");
   // The rail is the case history, not a fixed four-step form: every round that
-  // was handed out becomes a step, its report becomes the next step, and the
-  // form for the round about to be handed out closes the list.
+  // was handed out becomes a step, its report becomes the next step, each
+  // referral lands where it happened in time, and the form for the round about
+  // to be handed out closes the list.
   const steps = useMemo<RailStep[]>(() => {
     const ordered = [...rounds].sort(
       (left, right) =>
         new Date(left.created_at).getTime() -
         new Date(right.created_at).getTime(),
     );
-    const next: RailStep[] = [];
+    const roundSteps: Array<{ step: RailStep; at: number }> = [];
     for (const round of ordered) {
-      next.push({ kind: "assignment", round });
-      if (round.submitted_at) next.push({ kind: "report", round });
+      roundSteps.push({
+        step: { kind: "assignment", round },
+        at: new Date(round.created_at).getTime(),
+      });
+      if (round.submitted_at) {
+        roundSteps.push({
+          step: { kind: "report", round },
+          at: new Date(round.submitted_at).getTime(),
+        });
+      }
+    }
+    const referralSteps = [...referrals]
+      .sort(
+        (left, right) =>
+          new Date(left.referred_at).getTime() -
+          new Date(right.referred_at).getTime(),
+      )
+      .map((referral) => ({
+        step: { kind: "referral", referral } as RailStep,
+        at: new Date(referral.referred_at).getTime(),
+      }));
+    // Both lists are already in time order; a stable merge keeps the round
+    // steps exactly where they were and slots each referral in between.
+    const next: RailStep[] = [];
+    let referralIndex = 0;
+    for (const entry of roundSteps) {
+      while (
+        referralIndex < referralSteps.length &&
+        referralSteps[referralIndex].at < entry.at
+      ) {
+        next.push(referralSteps[referralIndex].step);
+        referralIndex += 1;
+      }
+      next.push(entry.step);
+    }
+    for (const entry of referralSteps.slice(referralIndex)) {
+      next.push(entry.step);
     }
     if (waitingForAssignment) next.push({ kind: "assignment-form" });
     return next;
-  }, [rounds, waitingForAssignment]);
-  // Review actions belong to the newest report, wherever it landed on the rail.
-  const lastReportIndex = steps.reduce(
-    (last, step, index) => (step.kind === "report" ? index : last),
+  }, [referrals, rounds, waitingForAssignment]);
+  // Review actions belong to whatever the reviewer is deciding on: the newest
+  // report, or a referral that came back ยังไม่สำเร็จ after it.
+  const lastDecisionIndex = steps.reduce(
+    (last, step, index) =>
+      step.kind === "report" || step.kind === "referral" ? index : last,
     -1,
   );
   const statusPresentation = getCaseTrackingStatusPresentation(
@@ -965,7 +1106,9 @@ export function CaseTrackingTimeline({
                 ? "มอบหมายช่วยเหลืออีกครั้ง"
                 : "มอบหมายช่วยเหลือ",
           }
-        : action,
+        : action.code === "REFER_AGENCY" && referrals.length > 0
+          ? { ...action, label: "ส่งต่อหน่วยงานอีกครั้ง" }
+          : action,
     );
 
   return (
@@ -1050,6 +1193,45 @@ export function CaseTrackingTimeline({
                   </AlertDescription>
                 </Alert>
               )}
+            </TrackingStep>
+          );
+        }
+
+        if (step.kind === "referral") {
+          const { referral } = step;
+          const awaitingResult = referral.id === pendingReferralId;
+          const decisionStep = reviewReady && index === lastDecisionIndex;
+          return (
+            <TrackingStep
+              active={awaitingResult || decisionStep}
+              connectNext={connectNext}
+              connectPrev={connectPrev}
+              key={`referral-${referral.id}`}
+              number={number}
+              title="ส่งต่อหน่วยงาน"
+            >
+              <ReferralStepBody
+                awaitingResult={awaitingResult}
+                referral={referral}
+              />
+              {awaitingResult && canRecordReferralResult ? (
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={() => onRecordReferralResult(referral)}
+                    type="button"
+                  >
+                    บันทึกผลการส่งต่อ
+                  </Button>
+                </div>
+              ) : null}
+              {decisionStep ? (
+                <ReviewActions
+                  actions={reviewActions}
+                  can={can}
+                  onReview={onReview}
+                />
+              ) : null}
             </TrackingStep>
           );
         }
@@ -1153,7 +1335,7 @@ export function CaseTrackingTimeline({
 
         return (
           <TrackingStep
-            active={reviewReady && index === lastReportIndex}
+            active={reviewReady && index === lastDecisionIndex}
             connectNext={connectNext}
             connectPrev={connectPrev}
             key={`report-${round.task_id}`}
@@ -1178,7 +1360,7 @@ export function CaseTrackingTimeline({
                 </Button>
               </div>
             ) : null}
-            {reviewReady && index === lastReportIndex ? (
+            {reviewReady && index === lastDecisionIndex ? (
               <ReviewActions
                 actions={reviewActions}
                 can={can}

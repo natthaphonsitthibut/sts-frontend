@@ -68,7 +68,10 @@ export function CaseStatusUpdateDialog({
       ? hasAssistanceHistory
         ? "มอบหมายช่วยเหลืออีกครั้ง"
         : "มอบหมายช่วยเหลือ"
-      : selectedAction?.label;
+      : selectedAction?.code === "REFER_AGENCY" &&
+          (caseRecord?.referrals?.length ?? 0) > 0
+        ? "ส่งต่อหน่วยงานอีกครั้ง"
+        : selectedAction?.label;
   const hasPermission =
     Boolean(selectedAction) &&
     can(selectedAction?.requiredPermission || "case:review");

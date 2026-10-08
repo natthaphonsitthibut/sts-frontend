@@ -22,13 +22,16 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
-import { formatThaiDateTime } from "../../../lib/date-time";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
 import { CaseTrackingTimeline } from "../components/CaseTrackingTimeline";
+import { ReferralResultDialog } from "../components/ReferralResultDialog";
 import { useCaseDetail } from "../hooks/useCaseDetail";
-import type { CaseReviewAction } from "../types/cases.types";
+import type {
+  CaseReferralRecord,
+  CaseReviewAction,
+} from "../types/cases.types";
 import { HomeLocationDialog } from "../../students/components/HomeLocationDialog";
 import { toTrackingHistoryItems } from "../../tasks/lib/task-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
@@ -43,6 +46,8 @@ export function CaseDetailPage() {
   );
   const [contactsOpen, setContactsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [resultReferral, setResultReferral] =
+    useState<CaseReferralRecord | null>(null);
   const detailQuery = useCaseDetail(
     Number.isInteger(caseId) && caseId > 0 ? caseId : undefined,
   );
@@ -153,46 +158,10 @@ export function CaseDetailPage() {
         }`}
       />
 
-      {(caseRecord.referrals ?? []).length > 0 ? (
-        <Card className="mb-5 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="font-bold text-slate-900">
-                ประวัติการส่งต่อหน่วยงาน
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                ประวัติจากผลพิจารณาของเคสนี้ เรียงจากรายการล่าสุด
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-              {caseRecord.referrals?.length ?? 0} ครั้ง
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {caseRecord.referrals?.map((referral) => (
-              <article
-                className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                key={referral.id}
-              >
-                <p className="font-semibold text-slate-900">
-                  {referral.agency_name}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {referral.agency_kind_label} ·{" "}
-                  {formatThaiDateTime(referral.referred_at)}
-                </p>
-                <p className="mt-2 text-sm text-slate-500">
-                  ผู้ส่งต่อ: {referral.referred_by || "-"}
-                </p>
-              </article>
-            ))}
-          </div>
-        </Card>
-      ) : null}
-
       <CaseTrackingTimeline
         caseRecord={caseRecord}
         onAssigned={() => void detailQuery.refetch()}
+        onRecordReferralResult={setResultReferral}
         onReview={(action) => setReviewAction(action)}
       />
 
@@ -234,6 +203,15 @@ export function CaseDetailPage() {
         name={caseRecord.student_name}
         onOpenChange={setMapOpen}
         open={mapOpen}
+      />
+
+      <ReferralResultDialog
+        caseId={caseRecord.id}
+        onOpenChange={(open) => {
+          if (!open) setResultReferral(null);
+        }}
+        onRecorded={() => void detailQuery.refetch()}
+        referral={resultReferral}
       />
 
       <CaseStatusUpdateDialog

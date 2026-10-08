@@ -4,6 +4,7 @@ export type KnownCaseStatus =
   | "PENDING_REVIEW"
   | "IN_PROGRESS"
   | "STUDENT_NOT_FOUND"
+  | "AWAITING_REFERRAL_OUTCOME"
   | "RESOLVED";
 
 export type CaseStatus = KnownCaseStatus | (string & {});
@@ -229,9 +230,34 @@ export interface CaseReferralRecord {
   agency_kind_code: string;
   agency_kind_label: string;
   status_code: string;
+  status_label: string | null;
+  status_badge_variant: CaseBadgeVariant | null;
   referred_at: string;
   referred_by: string | null;
   referral_note: string | null;
+  /** What the agency reported back; null until someone records it. */
+  result: CaseReferralResult | null;
+}
+
+export interface CaseReferralResult {
+  note: string;
+  recorded_at: string;
+  recorded_by: string | null;
+}
+
+export type ReferralResultCode = "SUCCEEDED" | "NOT_SUCCEEDED";
+
+export interface RecordReferralResultPayload {
+  result_code: ReferralResultCode;
+  result_note: string;
+}
+
+export interface RecordReferralResultResponse {
+  success: true;
+  data: {
+    referral: CaseReferralRecord | null;
+    case_status: CaseStatus;
+  };
 }
 
 export interface OpenCasePayload {
