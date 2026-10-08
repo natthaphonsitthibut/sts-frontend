@@ -1001,20 +1001,12 @@ export function CaseTrackingTimeline({
   const cancelledWaiting =
     waitingAfterClosedRound && lastClosedRound?.link_status === "CANCELLED";
   const railRef = useRef<HTMLDivElement | null>(null);
-  const scrolledCaseId = useRef<number | null>(null);
+  const scrolledStep = useRef<{
+    caseId: number;
+    status: string;
+    element: HTMLElement;
+  } | null>(null);
 
-  // The blue step is the one waiting on someone; with the closed rounds now
-  // stacked above it, opening a long-running case would otherwise land on
-  // history. Scroll there once per case and then leave the page alone.
-  useEffect(() => {
-    if (scrolledCaseId.current === caseRecord.id) return;
-    const active = railRef.current?.querySelector<HTMLElement>(
-      '[data-flow-step-active="true"]',
-    );
-    if (!active) return;
-    scrolledCaseId.current = caseRecord.id;
-    active.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [caseRecord.id, caseRecord.status, closedRounds.length]);
   const waitingForAssignment =
     openForAssignment ||
     needsReassignment ||
@@ -1113,6 +1105,35 @@ export function CaseTrackingTimeline({
     if (waitingForReferral) next.push({ kind: "referral-form" });
     return next;
   }, [referrals, rounds, waitingForAssignment, waitingForReferral]);
+  // The last rendered step is the current endpoint even when the case has
+  // finished or the student was not found and no step is marked active.
+  // Revisit it on a transition, without moving someone reading older history
+  // whenever an unrelated query refreshes the same step.
+  useEffect(() => {
+    const latest = Array.from(
+      railRef.current?.querySelectorAll<HTMLElement>("[data-flow-step]") ?? [],
+    ).at(-1);
+    if (!latest) return;
+    const previous = scrolledStep.current;
+    if (
+      previous?.caseId === caseRecord.id &&
+      previous.status === caseRecord.status &&
+      previous.element === latest
+    )
+      return;
+    scrolledStep.current = {
+      caseId: caseRecord.id,
+      status: caseRecord.status,
+      element: latest,
+    };
+    latest.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "center",
+    });
+  }, [caseRecord.id, caseRecord.status, steps]);
+
   // Review actions belong to whatever the reviewer is deciding on: the newest
   // report — a follow-up report, or the agency's report on a referral.
   const lastDecisionIndex = steps.reduce(
@@ -1330,6 +1351,7 @@ export function CaseTrackingTimeline({
                   ) : null}
                   {referral.link ? (
                     <ReferralAccessCodeButton
+                      compact
                       caseId={caseRecord.id}
                       referralId={referral.id}
                     />
