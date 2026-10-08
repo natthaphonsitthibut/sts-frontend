@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeCalendarDateKey } from "../../../lib/date-time";
+import { NOTIFICATIONS_QUERY_KEY } from "../../notifications/hooks/useNotifications";
 import { checkInService } from "../api/check-in.service";
 import type {
   CheckInAccess,
@@ -424,6 +425,19 @@ export function useCheckInWorkspace({
       setDraftState((current) => {
         const active = baseDraft(current);
         return { ...active, session: result, history: [] };
+      });
+      // Attendance changes can open/cancel risk cases and their alerts.
+      void queryClient.invalidateQueries({
+        queryKey: [NOTIFICATIONS_QUERY_KEY],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["risk-dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["student-cases"] });
+      void queryClient.invalidateQueries({ queryKey: ["home-dashboard"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["student-profile-summary"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["check-in", access, classroomId ?? null, "roster"],
       });
       // The cached lesson now carries a spent `lockVersion`. Leaving it would
       // let a correction after a remount send the stale one and be rejected as
