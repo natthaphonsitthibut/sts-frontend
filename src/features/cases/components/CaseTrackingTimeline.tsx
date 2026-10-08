@@ -500,9 +500,22 @@ type RailStep =
  * filed it — the agency through its link (named by its identity provider) or
  * the school on its behalf — and when. Same disabled-field layout as a report.
  */
-function ReferralResultBody({ referral }: { referral: CaseReferralRecord }) {
+function ReferralResultBody({
+  referral,
+  awaitingReview,
+}: {
+  referral: CaseReferralRecord;
+  awaitingReview: boolean;
+}) {
   const result = referral.result;
   if (!result) return null;
+  const status = getCaseTrackingStatusPresentation(
+    awaitingReview ? "PENDING_REVIEW" : "RESOLVED",
+  );
+  const outcomeLabel =
+    referral.status_code === "COMPLETED"
+      ? "สำเร็จ"
+      : referral.status_label || referral.status_code;
   const reporter = result.reported_by_agency
     ? `${result.reporter_name || UNANSWERED} (ยืนยันตัวตนผ่าน ${result.reporter_identity_provider || "ผู้ให้บริการยืนยันตัวตน"})`
     : `${result.recorded_by || UNANSWERED} (บันทึกแทนหน่วยงาน)`;
@@ -510,20 +523,14 @@ function ReferralResultBody({ referral }: { referral: CaseReferralRecord }) {
     <div data-referral-result={referral.id}>
       <div className="mb-3 flex justify-end">
         <TrackingStatus label="สถานะการส่งต่อ">
-          <span
-            className={
-              referral.status_code === "COMPLETED"
-                ? "text-success"
-                : "text-danger"
-            }
-          >
-            {referral.status_code === "COMPLETED"
-              ? "สำเร็จ"
-              : referral.status_label || referral.status_code}
-          </span>
+          <span className={status.textClassName}>{status.label}</span>
         </TrackingStatus>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
+          ผลการส่งต่อ
+          <Input aria-label="ผลการส่งต่อ" disabled value={outcomeLabel} />
+        </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           รายงานโดย
           <Input disabled value={reporter} />
@@ -1343,7 +1350,10 @@ export function CaseTrackingTimeline({
               number={number}
               title="รายงานผลการส่งต่อ"
             >
-              <ReferralResultBody referral={referral} />
+              <ReferralResultBody
+                awaitingReview={decisionStep}
+                referral={referral}
+              />
               {decisionStep ? (
                 <ReviewActions
                   actions={reviewActions}
