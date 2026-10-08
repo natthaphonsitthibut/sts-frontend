@@ -88,6 +88,7 @@ const optionalPhone = z
 const optionalEmail = z
   .string()
   .trim()
+  .max(254, "อีเมลต้องไม่เกิน 254 ตัวอักษร")
   .refine(
     (value) => value === "" || z.string().email().safeParse(value).success,
     {
@@ -99,8 +100,16 @@ const guardianSchema = z
   .object({
     relation: z.enum(["FATHER", "MOTHER", "GUARDIAN"]),
     relation_note: z.string().trim().max(100, "ความสัมพันธ์ยาวเกินไป"),
-    first_name: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
-    last_name: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
+    first_name: z
+      .string()
+      .trim()
+      .min(1, "กรุณากรอกชื่อ")
+      .max(100, "ชื่อผู้ปกครองต้องไม่เกิน 100 ตัวอักษร"),
+    last_name: z
+      .string()
+      .trim()
+      .min(1, "กรุณากรอกนามสกุล")
+      .max(100, "นามสกุลผู้ปกครองต้องไม่เกิน 100 ตัวอักษร"),
     phone: optionalPhone,
     email: optionalEmail,
     line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
@@ -121,10 +130,24 @@ const schema = z.object({
   contact_email: optionalEmail,
   contact_line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
   guardians: z.array(guardianSchema).max(10, "เพิ่มผู้ติดต่อได้สูงสุด 10 คน"),
-  FirstName_Onec: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
-  MiddleName_Onec: z.string().trim().max(100),
-  LastName_Onec: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
-  student_number: z.string().trim().max(50),
+  FirstName_Onec: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อ")
+    .max(100, "ชื่อต้องไม่เกิน 100 ตัวอักษร"),
+  MiddleName_Onec: z
+    .string()
+    .trim()
+    .max(100, "ชื่อกลางต้องไม่เกิน 100 ตัวอักษร"),
+  LastName_Onec: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกนามสกุล")
+    .max(100, "นามสกุลต้องไม่เกิน 100 ตัวอักษร"),
+  student_number: z
+    .string()
+    .trim()
+    .max(50, "เลขประจำตัวนักเรียนต้องไม่เกิน 50 ตัวอักษร"),
   student_status_code: z.string(),
   term_gpa: z
     .string()
@@ -133,14 +156,29 @@ const schema = z.object({
       (value) => value === "" || (Number(value) >= 0 && Number(value) <= 4),
       "เกรดเฉลี่ยต้องอยู่ระหว่าง 0.00–4.00",
     ),
-  address_house_no: z.string().trim().max(100),
-  VillageNumber_Onec: z.string().trim().max(100),
-  Street_Onec: z.string().trim().max(150),
-  Soi_Onec: z.string().trim().max(150),
-  Trok_Onec: z.string().trim().max(150),
-  ProvinceNameThai_Onec: z.string().trim().max(100),
-  DistrictNameThai_Onec: z.string().trim().max(100),
-  SubDistrictNameThai_Onec: z.string().trim().max(100),
+  address_house_no: z
+    .string()
+    .trim()
+    .max(100, "บ้านเลขที่ต้องไม่เกิน 100 ตัวอักษร"),
+  VillageNumber_Onec: z
+    .string()
+    .trim()
+    .max(100, "หมู่ต้องไม่เกิน 100 ตัวอักษร"),
+  Street_Onec: z.string().trim().max(150, "ชื่อถนนต้องไม่เกิน 150 ตัวอักษร"),
+  Soi_Onec: z.string().trim().max(150, "ชื่อซอยต้องไม่เกิน 150 ตัวอักษร"),
+  Trok_Onec: z.string().trim().max(150, "ชื่อตรอกต้องไม่เกิน 150 ตัวอักษร"),
+  ProvinceNameThai_Onec: z
+    .string()
+    .trim()
+    .max(100, "จังหวัดต้องไม่เกิน 100 ตัวอักษร"),
+  DistrictNameThai_Onec: z
+    .string()
+    .trim()
+    .max(100, "อำเภอ/เขตต้องไม่เกิน 100 ตัวอักษร"),
+  SubDistrictNameThai_Onec: z
+    .string()
+    .trim()
+    .max(100, "ตำบล/แขวงต้องไม่เกิน 100 ตัวอักษร"),
   PostalCode_Onec: z
     .string()
     .trim()

@@ -172,7 +172,7 @@ export function ClassroomsPage() {
             setSearchInput(value);
             setPage(1);
           },
-          placeholder: "ค้นหา",
+          placeholder: "ค้นหาชั้น ห้อง หรือครู",
           value: searchInput,
         }}
         title="ห้องเรียนทั้งหมด"

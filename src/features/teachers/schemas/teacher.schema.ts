@@ -6,12 +6,20 @@ import {
 } from "../../../lib/validation";
 
 export const teacherFormSchema = z.object({
-  firstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
-  lastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
+  firstName: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อ")
+    .max(120, "ชื่อต้องไม่เกิน 120 ตัวอักษร"),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกนามสกุล")
+    .max(120, "นามสกุลต้องไม่เกิน 120 ตัวอักษร"),
   citizenId: thaiNationalId,
   phone: optionalThaiPhone,
-  email: optionalEmail,
-  lineId: z.string().trim().max(64),
+  email: optionalEmail.max(255, "อีเมลต้องไม่เกิน 255 ตัวอักษร"),
+  lineId: z.string().trim().max(64, "LINE ID ต้องไม่เกิน 64 ตัวอักษร"),
 });
 
 /** Existing national id stays unchanged until an authorised reveal unlocks it. */

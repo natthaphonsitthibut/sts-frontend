@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -49,10 +49,8 @@ import { attendanceService } from "../../attendance/api/attendance.service";
 import { SchoolAreaSchoolFilter } from "../../attendance/components/SchoolAreaSchoolFilter";
 import { useSchoolAreaFilter } from "../../attendance/hooks/useSchoolAreaFilter";
 import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
-import {
-  useSchoolClassroomOptions,
-  useScopedSchools,
-} from "../../school-structure/hooks/useSchoolStructure";
+import { useSchoolClassroomOptions } from "../../school-structure/hooks/useSchoolStructure";
+import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 import { ImportQuarantinePanel } from "../components/ImportQuarantinePanel";
 import {
   useExportImportQuarantine,
@@ -603,45 +601,42 @@ function ImportTemplateReference({ target }: { target: ImportCatalogTarget }) {
 
 export function ImportDataPage() {
   const [searchParams] = useSearchParams();
+  const globalFilter = useGlobalSchoolFilter();
+  const importSchoolId = globalFilter.schoolId;
   const positiveSearchParam = (key: string): number | undefined => {
     const value = Number(searchParams.get(key));
     return Number.isInteger(value) && value > 0 ? value : undefined;
   };
-  const [importSchoolId, setImportSchoolId] = useState(() =>
-    String(
-      positiveSearchParam("importSchoolId") ??
-        positiveSearchParam("schoolId") ??
-        "",
-    ),
-  );
+  const urlSchoolId =
+    positiveSearchParam("importSchoolId") ?? positiveSearchParam("schoolId");
+  const restoreImportContext =
+    Boolean(importSchoolId) && String(urlSchoolId ?? "") === importSchoolId;
   const [importSchoolTermId, setImportSchoolTermId] = useState(() =>
-    String(
-      positiveSearchParam("importTermId") ??
-        positiveSearchParam("schoolTermId") ??
-        "",
-    ),
+    restoreImportContext
+      ? String(
+          positiveSearchParam("importTermId") ??
+            positiveSearchParam("schoolTermId") ??
+            "",
+        )
+      : "",
   );
   const [importClassroomId, setImportClassroomId] = useState(() =>
-    String(
-      positiveSearchParam("importClassroomId") ??
-        positiveSearchParam("classroomId") ??
-        "",
-    ),
+    restoreImportContext
+      ? String(
+          positiveSearchParam("importClassroomId") ??
+            positiveSearchParam("classroomId") ??
+            "",
+        )
+      : "",
   );
-  const [importGrade, setImportGrade] = useState(
-    () => searchParams.get("importGrade") ?? "",
+  const [importGrade, setImportGrade] = useState(() =>
+    restoreImportContext ? (searchParams.get("importGrade") ?? "") : "",
   );
   const { can } = usePermissions();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const previewImport = usePreviewImport();
   const submitImport = useSubmitImport();
   const importCatalog = useImportCatalog();
-  const importArea = useSchoolAreaFilter({
-    province: searchParams.get("importProvince") || undefined,
-    district: searchParams.get("importDistrict") || undefined,
-    subDistrict: searchParams.get("importSubDistrict") || undefined,
-  });
-  const scopedSchoolsQuery = useScopedSchools();
   const importSchool = Number(importSchoolId) || undefined;
   const importTermsQuery = useQuery({
     queryKey: ["import-data", "terms", importSchool],
@@ -732,9 +727,6 @@ export function ImportDataPage() {
   )
     .filter((requirement) => !importContext[requirement.key])
     .map((requirement) => requirement.label);
-  const selectedImportSchool = scopedSchoolsQuery.data?.find(
-    (school) => String(school.id) === importSchoolId,
-  );
 
   function resetImportPreview(): void {
     setFile(null);
@@ -744,13 +736,19 @@ export function ImportDataPage() {
     submitImport.reset();
   }
 
-  function selectImportSchool(value: string): void {
-    setImportSchoolId(value);
+  const previousImportSchoolId = useRef(importSchoolId);
+  useEffect(() => {
+    if (previousImportSchoolId.current === importSchoolId) return;
+    previousImportSchoolId.current = importSchoolId;
     setImportSchoolTermId("");
     setImportGrade("");
     setImportClassroomId("");
-    resetImportPreview();
-  }
+    setFile(null);
+    setMapping({});
+    setMappingDirty(false);
+    previewImport.reset();
+    submitImport.reset();
+  }, [importSchoolId, previewImport, submitImport]);
 
   function selectImportTerm(value: string): void {
     setImportSchoolTermId(value);
@@ -836,9 +834,9 @@ export function ImportDataPage() {
   useSyncedSearchParams({
     importTarget:
       requestedTarget === "student_term" ? undefined : requestedTarget,
-    importProvince: importArea.province || undefined,
-    importDistrict: importArea.district || undefined,
-    importSubDistrict: importArea.subDistrict || undefined,
+    importProvince: undefined,
+    importDistrict: undefined,
+    importSubDistrict: undefined,
     importSchoolId: importSchoolId || undefined,
     importTermId: importSchoolTermId || undefined,
     importGrade: importGrade || undefined,
@@ -1121,20 +1119,27 @@ export function ImportDataPage() {
           <CardHeader>
             <CardTitle>เลือกปลายทางสำหรับข้อมูลนำเข้า</CardTitle>
             <p className="mt-1 text-sm text-slate-600">
-              เลือกโรงเรียน ภาคเรียน ชั้น และห้องเรียนปลายทางก่อนอัปโหลดไฟล์
+              ใช้โรงเรียนจากตัวกรองกลาง แล้วเลือกภาคเรียน ชั้น
+              และห้องเรียนปลายทางก่อนอัปโหลดไฟล์
             </p>
           </CardHeader>
           <CardContent>
+            {requiresSchoolContext ? (
+              <ScopeFilterField
+                className="mb-4"
+                emptyLabel={
+                  importSchoolId ? "โรงเรียนที่เลือก" : "ยังไม่ได้เลือกโรงเรียน"
+                }
+                label="ปลายทางตามตัวกรองกลาง"
+                scope={{
+                  province: globalFilter.province,
+                  district: globalFilter.district,
+                  subDistrict: globalFilter.subDistrict,
+                  schoolName: globalFilter.schoolName || undefined,
+                }}
+              />
+            ) : null}
             <ToolbarFilterGrid>
-              {requiresSchoolContext ? (
-                <SchoolAreaSchoolFilter
-                  area={importArea}
-                  onSchoolChange={selectImportSchool}
-                  schoolEmptyLabel={SCOPE_REQUIRED_LABEL.school}
-                  schoolId={importSchoolId}
-                  selectedSchoolFallback={selectedImportSchool}
-                />
-              ) : null}
               {requiresTermContext ? (
                 <Combobox
                   ariaLabel="เลือกภาคเรียน"
@@ -1234,8 +1239,9 @@ export function ImportDataPage() {
                 <Alert className="mb-4" variant="warning">
                   <AlertTitle>เลือกปลายทางให้ครบก่อนนำเข้า</AlertTitle>
                   <AlertDescription>
-                    กรุณาเลือก {missingContextLabels.join(" / ")}{" "}
-                    ด้านบนก่อนอัปโหลดไฟล์
+                    {!importSchoolId && requiresSchoolContext
+                      ? "กรุณาเลือกโรงเรียนจากตัวกรองกลางด้านบนก่อนอัปโหลดไฟล์"
+                      : `กรุณาเลือก ${missingContextLabels.join(" / ")} ด้านบนก่อนอัปโหลดไฟล์`}
                   </AlertDescription>
                 </Alert>
               ) : null}

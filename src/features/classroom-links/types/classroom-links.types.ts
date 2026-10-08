@@ -73,6 +73,8 @@ export interface ClassroomLinkListParams {
   gradeLevelId?: number;
   linkStatus?: ClassroomLinkStatus;
   homeroomStatus?: "ASSIGNED" | "UNASSIGNED";
+  sortBy?: "teacherName" | "classroomCount" | "linkStatus" | "lineStatus";
+  sortDirection?: "asc" | "desc";
   page: number;
   limit: number;
 }

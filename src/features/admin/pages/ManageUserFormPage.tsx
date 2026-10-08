@@ -428,6 +428,7 @@ function UserForm({
                   </FormLabel>
                   <Input
                     id="FirstName"
+                    maxLength={100}
                     placeholder="ระบุชื่อผู้ใช้งาน"
                     {...registerField(form, "FirstName")}
                   />
@@ -440,6 +441,7 @@ function UserForm({
                   </FormLabel>
                   <Input
                     id="LastName"
+                    maxLength={100}
                     placeholder="ระบุนามสกุลผู้ใช้งาน"
                     {...registerField(form, "LastName")}
                   />
@@ -454,6 +456,7 @@ function UserForm({
                   </FormLabel>
                   <Input
                     id="email"
+                    maxLength={255}
                     placeholder="example@gmail.com"
                     type="email"
                     {...registerField(form, "email")}

@@ -829,7 +829,7 @@ function StudentRiskDashboardPage() {
               <SearchInput
                 className="w-full sm:max-w-[430px]"
                 onChange={handleSearchChange}
-                placeholder="ค้นหาชื่อนักเรียนหรือเลขประจำตัว"
+                placeholder="ค้นหาชื่อนักเรียน..."
                 value={search}
               />
               {/* Both tabs carry the same pair — cards to see the split at a

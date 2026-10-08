@@ -60,4 +60,20 @@ describe("user form credentials", () => {
       "ชื่อผู้ใช้งานต้องมีอย่างน้อย 8 ตัวอักษร",
     ]);
   });
+
+  it("limits account names with Thai messages", () => {
+    const result = createUserFormSchema().safeParse({
+      ...valid,
+      FirstName: "ก".repeat(101),
+      LastName: "ข".repeat(101),
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        "ชื่อต้องไม่เกิน 100 ตัวอักษร",
+        "นามสกุลต้องไม่เกิน 100 ตัวอักษร",
+      ]),
+    );
+  });
 });

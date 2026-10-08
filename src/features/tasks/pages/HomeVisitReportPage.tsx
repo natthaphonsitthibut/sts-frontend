@@ -84,10 +84,19 @@ function createReportSchema(rules: ReportOptionRules) {
       absenceReasonCode: z.string().trim(),
       parentalStatusCode: z.string().trim(),
       guardianTypeCode: z.string().trim(),
-      guardianTypeDetail: z.string().trim().max(200),
+      guardianTypeDetail: z
+        .string()
+        .trim()
+        .max(200, "รายละเอียดผู้ปกครองต้องไม่เกิน 200 ตัวอักษร"),
       residenceEnvironmentCodes: z.array(z.string().trim()),
-      residenceEnvironmentDetail: z.string().trim().max(2000),
-      causeDetail: z.string().trim().max(2000),
+      residenceEnvironmentDetail: z
+        .string()
+        .trim()
+        .max(2000, "รายละเอียดสภาพที่อยู่อาศัยต้องไม่เกิน 2,000 ตัวอักษร"),
+      causeDetail: z
+        .string()
+        .trim()
+        .max(2000, "รายละเอียดสาเหตุต้องไม่เกิน 2,000 ตัวอักษร"),
       homeVisitExceptionCode: z.string().trim(),
       updatedAddressLine: z.string().trim(),
       updatedAddressProvince: z.string().trim(),
@@ -419,11 +428,13 @@ export function HomeVisitReportPage({
         formData.set("contact_person_name", report.contactPersonName);
       if (report.contactChannelCode)
         formData.set("contact_channel_code", report.contactChannelCode);
-      report.disadvantageTypeCodes.forEach((code) =>
-        formData.append("disadvantage_type_codes", code),
+      formData.set(
+        "disadvantage_type_codes",
+        JSON.stringify(report.disadvantageTypeCodes),
       );
-      report.disabilityTypeCodes.forEach((code) =>
-        formData.append("disability_type_codes", code),
+      formData.set(
+        "disability_type_codes",
+        JSON.stringify(report.disabilityTypeCodes),
       );
       if (report.problemCategoryCode) {
         formData.set(
@@ -446,8 +457,9 @@ export function HomeVisitReportPage({
         formData.set("guardian_type_code", report.guardianTypeCode);
       if (report.guardianTypeDetail)
         formData.set("guardian_type_detail", report.guardianTypeDetail);
-      report.residenceEnvironmentCodes.forEach((code) =>
-        formData.append("residence_environment_codes", code),
+      formData.set(
+        "residence_environment_codes",
+        JSON.stringify(report.residenceEnvironmentCodes),
       );
       if (report.residenceEnvironmentDetail) {
         formData.set(

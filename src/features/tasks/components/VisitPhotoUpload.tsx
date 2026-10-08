@@ -3,7 +3,7 @@ import { File, FileImage, UploadCloud, X } from "lucide-react";
 import { IconButton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 
-const MAX_FILES = 5;
+const MAX_FILES = 10;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set([
   "image/jpeg",
@@ -38,7 +38,9 @@ export function VisitPhotoUpload({
   const [error, setError] = useState("");
 
   function addFiles(nextFiles: File[]): void {
-    const invalidType = nextFiles.find((file) => !ACCEPTED_TYPES.has(file.type));
+    const invalidType = nextFiles.find(
+      (file) => !ACCEPTED_TYPES.has(file.type),
+    );
     if (invalidType) {
       setError("รองรับเฉพาะไฟล์ JPG, PNG, GIF, WEBP, PDF, DOC และ DOCX");
       return;
@@ -52,7 +54,9 @@ export function VisitPhotoUpload({
     const unique = new Map(files.map((file) => [fileKey(file), file]));
     nextFiles.forEach((file) => unique.set(fileKey(file), file));
     const merged = Array.from(unique.values()).slice(0, MAX_FILES);
-    setError(unique.size > MAX_FILES ? "แนบไฟล์ได้สูงสุด 5 ไฟล์" : "");
+    setError(
+      unique.size > MAX_FILES ? `แนบไฟล์ได้สูงสุด ${MAX_FILES} ไฟล์` : "",
+    );
     onChange(merged);
   }
 
@@ -110,7 +114,8 @@ export function VisitPhotoUpload({
           ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์
         </p>
         <p className="mt-1 text-xs text-slate-600">
-          รองรับ JPG, PNG, GIF, WEBP, PDF, DOC และ DOCX สูงสุด 5MB ต่อไฟล์
+          รองรับ JPG, PNG, GIF, WEBP, PDF, DOC และ DOCX สูงสุด {MAX_FILES} ไฟล์
+          ไฟล์ละไม่เกิน 5MB
         </p>
       </div>
 
@@ -128,9 +133,15 @@ export function VisitPhotoUpload({
               key={fileKey(file)}
             >
               {file.type.startsWith("image/") ? (
-                <FileImage className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                <FileImage
+                  className="size-5 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
               ) : (
-                <File className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                <File
+                  className="size-5 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
               )}
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
                 {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
@@ -138,7 +149,11 @@ export function VisitPhotoUpload({
               <IconButton
                 aria-label={`ลบไฟล์ ${file.name}`}
                 icon={X}
-                onClick={() => onChange(files.filter((item) => fileKey(item) !== fileKey(file)))}
+                onClick={() =>
+                  onChange(
+                    files.filter((item) => fileKey(item) !== fileKey(file)),
+                  )
+                }
                 size="sm"
                 variant="delete"
               />

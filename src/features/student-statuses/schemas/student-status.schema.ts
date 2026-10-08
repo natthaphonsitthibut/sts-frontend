@@ -13,7 +13,11 @@ const nonNegativeInteger = (label: string, max = 2_147_483_647) =>
 
 export const studentStatusFormSchema = z.object({
   code: nonNegativeInteger("รหัสสถานะ"),
-  labelTh: z.string().trim().min(1, "กรุณากรอกชื่อสถานะ").max(100),
+  labelTh: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อสถานะ")
+    .max(100, "ชื่อสถานะต้องไม่เกิน 100 ตัวอักษร"),
   category: z.enum(STUDENT_STATUS_CATEGORIES),
   badgeVariant: z.enum(STUDENT_STATUS_BADGE_VARIANTS),
   isActiveForLogin: z.boolean(),
@@ -21,7 +25,11 @@ export const studentStatusFormSchema = z.object({
   requiresFollowup: z.boolean(),
   isEnabled: z.boolean(),
   sortOrder: nonNegativeInteger("ลำดับ", 32767),
-  sourceSystem: z.string().trim().min(1, "กรุณากรอกระบบต้นทาง").max(32),
+  sourceSystem: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกระบบต้นทาง")
+    .max(32, "ระบบต้นทางต้องไม่เกิน 32 ตัวอักษร"),
 });
 
 export type StudentStatusFormValues = z.infer<typeof studentStatusFormSchema>;

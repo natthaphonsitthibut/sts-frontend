@@ -44,16 +44,26 @@ export const userFormSchema = z
         });
       }
     }),
-    FirstName: z.string().trim().min(1, "กรุณากรอกชื่อ"),
-    LastName: z.string().trim().min(1, "กรุณากรอกนามสกุล"),
+    FirstName: z
+      .string()
+      .trim()
+      .min(1, "กรุณากรอกชื่อ")
+      .max(100, "ชื่อต้องไม่เกิน 100 ตัวอักษร"),
+    LastName: z
+      .string()
+      .trim()
+      .min(1, "กรุณากรอกนามสกุล")
+      .max(100, "นามสกุลต้องไม่เกิน 100 ตัวอักษร"),
     PersonID_Onec: z
       .string()
       .trim()
       .regex(/^\d{13}$/, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก"),
     phone: requiredThaiPhone,
-    email: optionalEmail.refine((value) => value.length > 0, {
-      message: "กรุณากรอกอีเมล",
-    }),
+    email: optionalEmail
+      .max(255, "อีเมลต้องไม่เกิน 255 ตัวอักษร")
+      .refine((value) => value.length > 0, {
+        message: "กรุณากรอกอีเมล",
+      }),
     line_id: z.string().trim().max(64, "LINE ID ยาวเกินไป"),
     address_line: z.string().trim().max(255, "บ้านเลขที่ยาวเกินไป"),
     address_village_no: z.string().trim().max(100, "หมู่ยาวเกินไป"),

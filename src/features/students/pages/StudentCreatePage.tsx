@@ -34,12 +34,29 @@ const schema = z.object({
     .string()
     .trim()
     .regex(/^[0-9]{13}$/, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก"),
-  PassportNumber_Onec: z.string().trim().max(50),
-  FirstName_Onec: z.string().trim().min(1, "กรุณากรอกชื่อ").max(100),
-  MiddleName_Onec: z.string().trim().max(100),
-  LastName_Onec: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(100),
+  PassportNumber_Onec: z
+    .string()
+    .trim()
+    .max(50, "เลขหนังสือเดินทางต้องไม่เกิน 50 ตัวอักษร"),
+  FirstName_Onec: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อ")
+    .max(100, "ชื่อต้องไม่เกิน 100 ตัวอักษร"),
+  MiddleName_Onec: z
+    .string()
+    .trim()
+    .max(100, "ชื่อกลางต้องไม่เกิน 100 ตัวอักษร"),
+  LastName_Onec: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกนามสกุล")
+    .max(100, "นามสกุลต้องไม่เกิน 100 ตัวอักษร"),
   classroom_id: z.string().min(1, "กรุณาเลือกห้องเรียน"),
-  student_number: z.string().trim().max(50),
+  student_number: z
+    .string()
+    .trim()
+    .max(50, "เลขประจำตัวนักเรียนต้องไม่เกิน 50 ตัวอักษร"),
   student_status_code: z.string().min(1, "กรุณาเลือกสถานะนักเรียน"),
   term_gpa: z
     .string()
@@ -57,11 +74,12 @@ const schema = z.object({
   contact_email: z
     .string()
     .trim()
+    .max(254, "อีเมลต้องไม่เกิน 254 ตัวอักษร")
     .refine(
       (value) => value === "" || z.string().email().safeParse(value).success,
       "รูปแบบอีเมลไม่ถูกต้อง",
     ),
-  contact_line_id: z.string().trim().max(64),
+  contact_line_id: z.string().trim().max(64, "LINE ID ต้องไม่เกิน 64 ตัวอักษร"),
 });
 
 type FormValues = z.infer<typeof schema>;

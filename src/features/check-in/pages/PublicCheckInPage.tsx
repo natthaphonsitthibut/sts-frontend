@@ -175,7 +175,7 @@ function LinkClassroomsPage({
       <SearchInput
         className="mb-8 sm:max-w-[560px]"
         onChange={setSearch}
-        placeholder="ค้นหา"
+        placeholder="ค้นหาห้องหรือรายวิชา"
         value={search}
       />
       {visible.length === 0 ? (

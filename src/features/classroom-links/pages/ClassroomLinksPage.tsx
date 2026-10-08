@@ -26,6 +26,7 @@ import {
   useConfirm,
 } from "../../../components/base";
 import { LinkShareDialog } from "../../../components/layout/link-share-dialog";
+import type { DataTableSortState } from "../../../components/layout/data-table";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { PAGE_IDENTITIES } from "../../../components/layout/page-identity";
 import { Pagination } from "../../../components/layout/pagination";
@@ -42,6 +43,8 @@ import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useRememberedState } from "../../../hooks/useRememberedState";
 import {
   readPositiveIntegerSearchParam,
+  readSortSearchParam,
+  serializeSortSearchParam,
   useSyncedSearchParams,
 } from "../../../hooks/useSyncedSearchParams";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
@@ -70,6 +73,12 @@ import type {
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
 
 const PAGE_ICON = PAGE_IDENTITIES["/attendance/classroom-links"].icon;
+const LINK_SORT_KEYS = [
+  "teacherName",
+  "classroomCount",
+  "linkStatus",
+  "lineStatus",
+] as const;
 
 function toLocalDateTimeValue(date: Date): string {
   const offsetMs = date.getTimezoneOffset() * 60_000;
@@ -106,6 +115,9 @@ export function ClassroomLinksPage() {
   const [page, setPage] = useState(() =>
     readPositiveIntegerSearchParam(searchParams, "page", 1),
   );
+  const [sort, setSort] = useState<DataTableSortState | undefined>(() =>
+    readSortSearchParam(searchParams, "sort", LINK_SORT_KEYS),
+  );
   const [rowsPerPage, setRowsPerPage] = useState(() => {
     const value = readPositiveIntegerSearchParam(
       searchParams,
@@ -120,6 +132,9 @@ export function ClassroomLinksPage() {
   });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  const [sharedRow, setSharedRow] = useState<ClassroomLinkListItem | null>(
+    null,
+  );
   const [sharedLineInvitation, setSharedLineInvitation] =
     useState<ClassroomLineGroupInvitation | null>(null);
   const [lineDialogOpen, setLineDialogOpen] = useState(false);
@@ -184,6 +199,8 @@ export function ClassroomLinksPage() {
           linkStatus: (linkStatusInput || undefined) as
             | ClassroomLinkStatus
             | undefined,
+          sortBy: sort?.key as (typeof LINK_SORT_KEYS)[number] | undefined,
+          sortDirection: sort?.direction,
           page,
           limit: rowsPerPage,
         }
@@ -203,6 +220,7 @@ export function ClassroomLinksPage() {
     termId: termInput || undefined,
     gradeId: undefined,
     linkStatus: linkStatusInput || undefined,
+    sort: serializeSortSearchParam(sort),
     page: page > 1 ? page : undefined,
     limit: rowsPerPage !== DEFAULT_PAGE_SIZE ? rowsPerPage : undefined,
   });
@@ -231,14 +249,27 @@ export function ClassroomLinksPage() {
         (item) => item.lineDelivery?.status === "SENT",
       ).length;
       appToast.success(
-        `พร้อมใช้งาน ${result.data.length.toLocaleString("th-TH")} ห้อง${sentCount ? ` · ส่ง LINE สำเร็จ ${sentCount.toLocaleString("th-TH")} ห้อง` : ""}`,
+        `พร้อมใช้งาน ${result.data.length.toLocaleString("th-TH")} ครู${sentCount ? ` · ส่ง LINE สำเร็จ ${sentCount.toLocaleString("th-TH")} ครู` : ""}`,
       );
       if (
         createdCount === 1 &&
         result.data.length === 1 &&
         result.data[0].accessUrl
       ) {
+        const recipientRow = rows.find(
+          (row) => row.teacherMembershipId === teacherMembershipIds?.[0],
+        );
         setSharedLineInvitation(null);
+        setSharedRow(
+          recipientRow
+            ? {
+                ...recipientRow,
+                id: result.data[0].id,
+                status: "ACTIVE",
+                lineDelivery: result.data[0].lineDelivery ?? null,
+              }
+            : null,
+        );
         setSharedUrl(result.data[0].accessUrl);
       }
       setSelected(new Set());
@@ -253,7 +284,7 @@ export function ClassroomLinksPage() {
     const accepted = await confirm({
       title: "สร้างลิงก์ให้ครูทุกคนในภาคเรียนนี้?",
       description:
-        "ลิงก์ที่ใช้งานอยู่จะไม่ถูกเปลี่ยน ส่วนห้องที่ยังไม่มีหรือถูกปิดจะได้รับลิงก์ใหม่และระบบจะลองส่งให้ครูประจำชั้นผ่าน LINE",
+        "ลิงก์ที่ใช้งานอยู่จะไม่ถูกเปลี่ยน ส่วนครูที่ยังไม่มีลิงก์หรือถูกปิดจะได้รับลิงก์ใหม่ และระบบจะลองส่งผ่าน LINE",
       confirmText: "สร้างทั้งหมด",
     });
     if (accepted) await createLinks(undefined, true);
@@ -264,6 +295,7 @@ export function ClassroomLinksPage() {
     setPending({ action: "copy", id: row.id });
     try {
       setSharedLineInvitation(null);
+      setSharedRow(row);
       setSharedUrl((await redisplay.mutateAsync(row.id)).accessUrl);
     } catch {
       // Mutation state is rendered by FormErrorAlert.
@@ -286,6 +318,10 @@ export function ClassroomLinksPage() {
     try {
       const result = await rotate.mutateAsync(row.id);
       setSharedLineInvitation(null);
+      setSharedRow({
+        ...row,
+        lineDelivery: result.lineDelivery ?? row.lineDelivery,
+      });
       setSharedUrl(result.accessUrl);
       appToast.success("สร้างลิงก์ใหม่แล้ว กรุณาส่งลิงก์ใหม่ให้ผู้ใช้งาน");
     } catch {
@@ -321,6 +357,11 @@ export function ClassroomLinksPage() {
     setPending({ action: "line", id: row.id });
     try {
       const delivery = await resendLine.mutateAsync(row.id);
+      setSharedRow((current) =>
+        current?.id === row.id
+          ? { ...current, lineDelivery: delivery }
+          : current,
+      );
       if (delivery.status === "SENT")
         appToast.success("ส่งลิงก์ผ่าน LINE สำเร็จ");
       else
@@ -592,10 +633,10 @@ export function ClassroomLinksPage() {
           description={
             search || linkStatusInput
               ? "ลองเปลี่ยนคำค้นหาหรือตัวกรอง"
-              : "ยังไม่มีห้องเรียนในภาคเรียนนี้"
+              : "ยังไม่มีครูที่ได้รับมอบหมายห้องเรียนในภาคเรียนนี้"
           }
           icon={PAGE_ICON}
-          title="ไม่พบห้องเรียน"
+          title="ไม่พบครู"
         />
       ) : (
         <>
@@ -613,9 +654,14 @@ export function ClassroomLinksPage() {
             onResendLine={(row) => void handleResendLine(row)}
             onRotate={(row) => void handleRotate(row)}
             onSelectionChange={setSelected}
+            onSortChange={(nextSort) => {
+              setSort(nextSort);
+              resetListState();
+            }}
             pending={pending}
             rows={rows}
             selected={selected}
+            sort={sort}
           />
           <Pagination
             onPageChange={(value) => {
@@ -631,12 +677,32 @@ export function ClassroomLinksPage() {
             rowsPerPage={rowsPerPage}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
             totalCount={linksQuery.data?.meta.total ?? 0}
-            unitLabel="ห้อง"
+            unitLabel="ครู"
           />
         </>
       )}
 
       <LinkShareDialog
+        directSend={
+          sharedRow?.id && !sharedLineInvitation
+            ? {
+                recipient: sharedRow.teacherName ?? "ครูผู้รับลิงก์",
+                unavailableReason:
+                  lineEnabledQuery.data !== true
+                    ? "ระบบส่ง LINE ยังไม่พร้อมใช้งาน"
+                    : sharedRow.lineDelivery?.canRetry
+                      ? null
+                      : sharedRow.lineDelivery?.accountState === "NOT_VERIFIED"
+                        ? "ครูยังไม่ยืนยัน LINE"
+                        : "ยังส่งผ่าน LINE ไม่ได้ กรุณาตรวจสถานะบัญชีครู",
+                busy: pending?.action === "line" && pending.id === sharedRow.id,
+                sentAtLabel: sharedRow.lineDelivery?.deliveredAt
+                  ? formatThaiDateTime(sharedRow.lineDelivery.deliveredAt)
+                  : null,
+                onSend: () => void handleResendLine(sharedRow),
+              }
+            : undefined
+        }
         description={
           sharedLineInvitation
             ? `ใช้ได้เฉพาะครูประจำชั้น · เริ่ม ${formatThaiDateTime(sharedLineInvitation.startsAt)} · หมดอายุ ${formatThaiDateTime(sharedLineInvitation.expiresAt)}`
@@ -647,6 +713,7 @@ export function ClassroomLinksPage() {
           if (!open) {
             setSharedUrl(null);
             setSharedLineInvitation(null);
+            setSharedRow(null);
           }
         }}
         open={Boolean(sharedUrl)}

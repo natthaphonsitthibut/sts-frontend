@@ -150,6 +150,7 @@ export function StudentStatusDialog({
                 </FormLabel>
                 <Input
                   id="student-status-label"
+                  maxLength={100}
                   placeholder="เช่น กำลังศึกษา"
                   {...registerField(form, "labelTh")}
                 />
@@ -177,6 +178,7 @@ export function StudentStatusDialog({
                 </FormLabel>
                 <Input
                   id="student-status-source"
+                  maxLength={32}
                   {...registerField(form, "sourceSystem")}
                 />
                 <FormMessage<StudentStatusFormValues> name="sourceSystem" />

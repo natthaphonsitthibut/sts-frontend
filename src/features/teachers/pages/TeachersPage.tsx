@@ -177,7 +177,7 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
         icon={TEACHERS_ICON}
         search={{
           onChange: handleSearchChange,
-          placeholder: "ค้นหา",
+          placeholder: "ค้นหาชื่อครู",
           value: searchQuery,
         }}
         title={management ? "จัดการข้อมูลคุณครู" : "รายชื่อคุณครู"}
