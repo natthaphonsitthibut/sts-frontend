@@ -542,7 +542,13 @@ export const router = createBrowserRouter([
           },
           {
             path: "audit-log/:id",
-            element: protectedElement(<AuditLogDetailPage />, "audit-log"),
+            element: protectedElement(<AuditLogDetailPage />, [
+              "audit-log",
+              "audit-log:all",
+              "import-data",
+              "students",
+              "dashboard",
+            ]),
           },
           {
             path: "council/audit-log",
