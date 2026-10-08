@@ -40,3 +40,14 @@ export function useReferralAccessCode() {
     meta: { suppressSuccessToast: true },
   });
 }
+
+/** A deliberate rotation, never retried automatically; credentials stay out of query caches. */
+export function useRefreshReferralAccessCode() {
+  return useMutation<string, Error, { caseId: number; referralId: string }>({
+    mutationFn: ({ caseId, referralId }) =>
+      casesService.refreshReferralAccessCode(caseId, referralId),
+    retry: false,
+    gcTime: 0,
+    meta: { suppressSuccessToast: true },
+  });
+}

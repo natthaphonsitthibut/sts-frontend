@@ -52,6 +52,7 @@ export interface ReferralDrilldownRow {
   linkUrl: string | null;
   linkStatusCode: string | null;
   linkExpiresAt: string | null;
+  accessCodeAvailable?: boolean;
 }
 
 export interface ReferralDrilldownResult {

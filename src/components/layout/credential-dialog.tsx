@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Button,
   Dialog,
@@ -16,6 +17,7 @@ interface CredentialDialogProps {
   title?: string;
   description?: string;
   onClose: () => void;
+  actions?: ReactNode;
 }
 
 /**
@@ -28,6 +30,7 @@ interface CredentialDialogProps {
 export function CredentialDialog({
   open,
   value,
+  actions,
   title = "รหัสผ่านชั่วคราว",
   description = "คัดลอกและส่งให้ผู้ใช้งาน รหัสนี้จะแสดงเพียงครั้งเดียว ผู้ใช้งานจะต้องตั้งรหัสผ่านใหม่เมื่อเข้าสู่ระบบครั้งแรก",
   onClose,
@@ -48,6 +51,7 @@ export function CredentialDialog({
         </div>
 
         <DialogFooter>
+          {actions}
           <Button onClick={onClose} size="lg" type="button">
             เสร็จสิ้น
           </Button>

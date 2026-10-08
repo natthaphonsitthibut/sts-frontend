@@ -46,6 +46,10 @@ interface CasesService {
     caseId: number,
     referralId: string,
   ) => Promise<string>;
+  refreshReferralAccessCode: (
+    caseId: number,
+    referralId: string,
+  ) => Promise<string>;
   cancelReferral: (
     caseId: number,
     referralId: string,
@@ -126,6 +130,19 @@ async function getReferralAccessCode(
   return response.data.data.access_code;
 }
 
+async function refreshReferralAccessCode(
+  caseId: number,
+  referralId: string,
+): Promise<string> {
+  const response = await apiClient.post<{
+    success: true;
+    data: { access_code: string };
+  }>(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/access-code/refresh`,
+  );
+  return response.data.data.access_code;
+}
+
 async function cancelReferral(
   caseId: number,
   referralId: string,
@@ -173,6 +190,7 @@ export const casesService: CasesService = {
   cancelAssignment,
   sendReferral,
   getReferralAccessCode,
+  refreshReferralAccessCode,
   cancelReferral,
   sendRoundLine,
 };

@@ -1,6 +1,6 @@
 import { ReferralAccessCodeButton } from "../../cases/components/ReferralAccessCodeButton";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CircleCheck,
@@ -98,6 +98,11 @@ export function ReferralRegisterPanel({
   room?: string;
 }) {
   const { can } = usePermissions();
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -195,7 +200,12 @@ export function ReferralRegisterPanel({
   }));
   const statusItems = statusCards.map((card) => ({
     label: card.label,
-    value: summary.referrals.byStage?.[card.code] ?? 0,
+    value: (
+      <>
+        {summary.referrals.byStage?.[card.code] ?? 0}
+        <span className="ml-1 text-xl font-normal">เคส</span>
+      </>
+    ),
     tone: statusSummaryTone(card.status),
     icon: card.icon,
     hideComparison: true,
@@ -227,15 +237,24 @@ export function ReferralRegisterPanel({
         title="แชร์ลิงก์รายงานผลการส่งต่อ"
         description="เลือกช่องทางส่งลิงก์ให้หน่วยงาน แจ้งรหัสแยกจากลิงก์ ผู้รายงานต้องยืนยัน AraID ก่อนรายงานผล"
       />
-      {referral.awaitingResult &&
-      referral.linkStatusCode &&
-      can("case:review") ? (
-        <ReferralAccessCodeButton
-          compact
-          caseId={referral.caseId}
-          referralId={referral.id}
-        />
-      ) : null}
+      <ReferralAccessCodeButton
+        compact
+        caseId={referral.caseId}
+        referralId={referral.id}
+        disabled={
+          !referral.awaitingResult ||
+          !referral.linkStatusCode ||
+          referral.accessCodeAvailable === false ||
+          !can("case:review")
+        }
+        canRefresh={
+          referral.linkStatusCode === "ACTIVE" &&
+          Boolean(
+            referral.linkExpiresAt &&
+            new Date(referral.linkExpiresAt).getTime() > currentTime,
+          )
+        }
+      />
     </div>
   );
 
@@ -254,7 +273,7 @@ export function ReferralRegisterPanel({
               setSearch(value);
               setPage(1);
             }}
-            placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
+            placeholder="ค้นหาชื่อนักเรียน"
             value={search}
           />
           <FilterSelect
