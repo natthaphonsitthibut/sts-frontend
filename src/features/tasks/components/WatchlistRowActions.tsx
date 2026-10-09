@@ -1,33 +1,55 @@
 import { useState } from "react";
-import { CirclePlus, ClipboardList } from "lucide-react";
+import { CirclePlus, ClipboardList, Eye } from "lucide-react";
 import { IconButton } from "../../../components/base";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import { useContextualNavigate } from "../../../components/layout/navigation-context";
 import { OpenCaseDialog } from "../../cases/components/OpenCaseDialog";
 import type { RiskDashboardRow } from "../types/risk-dashboard.types";
+import { WatchlistObservationsDialog } from "./WatchlistObservationsDialog";
 
 export function WatchlistRowActions({
   canOpenCase,
   canViewCase,
+  canViewStudent,
   row,
 }: {
   canOpenCase: boolean;
   canViewCase: boolean;
+  canViewStudent: boolean;
   row: RiskDashboardRow;
 }) {
   const [open, setOpen] = useState(false);
+  const [observationsOpen, setObservationsOpen] = useState(false);
   const navigate = useContextualNavigate();
   const hasActiveCase =
     row.openCaseCount > 0 ||
     Boolean(row.latestCaseStatus && row.latestCaseStatus !== "RESOLVED");
   const viewAvailable = canViewCase && Boolean(row.latestCaseId);
-  const openAvailable = canOpenCase && !hasActiveCase;
+  const openAvailable =
+    canOpenCase && !hasActiveCase && row.pendingCommentCount > 0;
   const viewLabel = `ดูรายละเอียดเคสของ ${row.studentName}`;
   const openLabel = `เปิดเคสติดตามนักเรียน ${row.studentName}`;
 
   return (
     <div className="flex items-center justify-center gap-2">
+      <IconButton
+        aria-label={`ดูข้อสังเกตทั้งหมดของ ${row.studentName}`}
+        disabled={!canViewStudent}
+        icon={Eye}
+        onClick={() => setObservationsOpen(true)}
+        title={
+          canViewStudent ? "ดูข้อสังเกตทั้งหมด" : "ไม่มีสิทธิ์ดูข้อมูลนักเรียน"
+        }
+        variant="view"
+      />
+      {observationsOpen && canViewStudent ? (
+        <WatchlistObservationsDialog
+          onClose={() => setObservationsOpen(false)}
+          studentId={row.studentId}
+          studentName={row.studentName}
+        />
+      ) : null}
       {viewAvailable ? (
         <DetailLinkButton
           aria-label={viewLabel}
@@ -76,7 +98,9 @@ export function WatchlistRowActions({
             ? "ไม่มีสิทธิ์เปิดเคส"
             : hasActiveCase
               ? "มีเคสที่กำลังติดตามอยู่"
-              : "เปิดเคสติดตามนักเรียน"
+              : row.pendingCommentCount === 0
+                ? "ไม่มีข้อสังเกตใหม่ที่รอพิจารณา"
+                : "เปิดเคสใหม่"
         }
         variant="edit"
       />

@@ -890,15 +890,15 @@ function StudentRiskDashboardPage() {
                 isWatchlist
                   ? [
                       "w-[5%]",
-                      "w-[15%]",
+                      "w-[13%]",
                       "w-[6%]",
                       "w-[6%]",
                       "w-[10%]",
-                      "w-[14%]",
-                      "w-[10%]",
+                      "w-[12%]",
+                      "w-[9%]",
                       "w-[12%]",
                       "w-[10%]",
-                      "w-[12%]",
+                      "w-[17%]",
                     ]
                   : [
                       "w-[6%]",
@@ -1037,6 +1037,13 @@ function StudentRiskDashboardPage() {
                           </span>
                         ) : null}
                       </span>
+                      {isWatchlist &&
+                      row.latestCaseStatus === "RESOLVED" &&
+                      row.pendingCommentCount > 0 ? (
+                        <p className="mt-1 text-xs text-slate-700">
+                          มีข้อสังเกตใหม่รอพิจารณา
+                        </p>
+                      ) : null}
                     </DataTableCell>
                     <DataTableCell className="text-slate-700">
                       {row.latestCaseAt
@@ -1050,6 +1057,7 @@ function StudentRiskDashboardPage() {
                         <WatchlistRowActions
                           canOpenCase={can("case:assign")}
                           canViewCase={can("dashboard")}
+                          canViewStudent={canViewStudent}
                           row={row}
                         />
                       ) : (
@@ -1109,6 +1117,13 @@ function StudentRiskDashboardPage() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
+                    {isWatchlist &&
+                    row.latestCaseStatus === "RESOLVED" &&
+                    row.pendingCommentCount > 0 ? (
+                      <p className="col-span-2 text-xs text-slate-700">
+                        มีข้อสังเกตใหม่รอพิจารณา
+                      </p>
+                    ) : null}
                     <div>
                       <div className="text-xs text-slate-500">ระดับชั้น</div>
                       <div className="text-slate-800">
@@ -1172,6 +1187,7 @@ function StudentRiskDashboardPage() {
                       <WatchlistRowActions
                         canOpenCase={can("case:assign")}
                         canViewCase={can("dashboard")}
+                        canViewStudent={canViewStudent}
                         row={row}
                       />
                     ) : (

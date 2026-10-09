@@ -463,10 +463,12 @@ function ReviewActions({
   actions,
   can,
   onReview,
+  canClose,
 }: {
   actions: CaseTrackingOption[];
   can: (permission: string) => boolean;
   onReview: (action: CaseReviewAction) => void;
+  canClose: boolean;
 }) {
   const allowed = actions.filter((action) =>
     can(action.requiredPermission || "case:review"),
@@ -477,6 +479,12 @@ function ReviewActions({
       {allowed.map((action) => (
         <Button
           key={action.code}
+          disabled={action.code === "CLOSE" && !canClose}
+          title={
+            action.code === "CLOSE" && !canClose
+              ? "ปิดเคสได้เมื่อผลล่าสุดสำเร็จแล้วเท่านั้น"
+              : undefined
+          }
           onClick={() => onReview(action.code as CaseReviewAction)}
           type="button"
           variant={action.code === "CLOSE" ? "default" : "outline"}
@@ -1388,6 +1396,10 @@ export function CaseTrackingTimeline({
               {decisionStep ? (
                 <ReviewActions
                   actions={reviewActions}
+                  canClose={
+                    referral.status_code === "COMPLETED" &&
+                    Boolean(referral.result)
+                  }
                   can={can}
                   onReview={onReview}
                 />
@@ -1522,6 +1534,7 @@ export function CaseTrackingTimeline({
             {reviewReady && index === lastDecisionIndex ? (
               <ReviewActions
                 actions={reviewActions}
+                canClose={round.task_execution_outcome_code === "SUCCEEDED"}
                 can={can}
                 onReview={onReview}
               />

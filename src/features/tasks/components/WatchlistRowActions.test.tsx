@@ -12,6 +12,7 @@ import { casesService } from "../../cases/api/cases.service";
 import { restoreApiStub, stubApiRequests } from "../../../test/api-stub";
 import { WatchlistRowActions } from "./WatchlistRowActions";
 import type { RiskDashboardRow } from "../types/risk-dashboard.types";
+import { schoolStructureService } from "../../school-structure/api/school-structure.service";
 
 const student: RiskDashboardRow = {
   studentId: "11111111-1111-4111-8111-111111111111",
@@ -44,10 +45,16 @@ const student: RiskDashboardRow = {
   concernLevelCode: "WATCH",
   concernLevelLabel: "ควรเฝ้าดู",
   commentCount: 1,
+  pendingCommentCount: 1,
   teacherComment: "พบปัญหาที่ต้องติดตาม",
 };
 
-function renderActions(row = student, canOpenCase = true, canViewCase = true) {
+function renderActions(
+  row = student,
+  canOpenCase = true,
+  canViewCase = true,
+  canViewStudent = true,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -58,6 +65,7 @@ function renderActions(row = student, canOpenCase = true, canViewCase = true) {
           row={row}
           canOpenCase={canOpenCase}
           canViewCase={canViewCase}
+          canViewStudent={canViewStudent}
         />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -70,6 +78,91 @@ afterEach(() => {
 });
 
 describe("watchlist case actions", () => {
+  it("reads every full observation in a dialog without leaving watchlist or opening a case", async () => {
+    const commentUrl = `/students/${student.studentId}/classroom-comments`;
+    const descriptions = [
+      "ข้อสังเกตแรกที่ยาวกว่าสรุปในตาราง\nรายละเอียดทั้งหมดของข้อสังเกตแรก",
+      "ข้อสังเกตที่สอง",
+      "ข้อสังเกตที่สาม",
+    ];
+    const requests = stubApiRequests({
+      [commentUrl]: {
+        data: descriptions.map((problemDescription, index) => ({
+          id: String(index),
+          studentTermId: student.studentId,
+          concernLevelCode: "WATCH",
+          concernLevelLabel: "ควรเฝ้าดู",
+          problemCategoryLabel: "ปัญหาครอบครัว",
+          problemDescription,
+          authorDisplayName: `ครูคนที่ ${index + 1}`,
+          commentedAt: "2026-10-09T00:00:00Z",
+        })),
+        meta: { totalCount: 3 },
+      },
+    });
+    renderActions({ ...student, commentCount: 3 });
+    expect(requests.some((request) => request.url === commentUrl)).toBe(false);
+    fireEvent.click(
+      screen.getByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "ข้อสังเกตทั้งหมด",
+    });
+    await waitFor(() =>
+      expect(within(dialog).getAllByRole("listitem")).toHaveLength(3),
+    );
+    descriptions.forEach((description) =>
+      expect(
+        within(dialog).getByText(description, {
+          exact: true,
+          normalizer: (text) => text,
+        }),
+      ).toBeTruthy(),
+    );
+    expect(within(dialog).getByText("ผู้บันทึก: ครูคนที่ 3")).toBeTruthy();
+    expect(requests.some((request) => request.url === "/cases")).toBe(false);
+    expect(
+      screen.queryByRole("link", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    ).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "ปิด" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows an empty observation history without opening a case", async () => {
+    stubApiRequests();
+    renderActions();
+    fireEvent.click(
+      screen.getByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    );
+    expect(await screen.findByText("ยังไม่มีข้อสังเกต")).toBeTruthy();
+  });
+
+  it("lets users retry when observations fail to load", async () => {
+    stubApiRequests();
+    const list = vi
+      .spyOn(schoolStructureService, "listStudentClassroomComments")
+      .mockRejectedValueOnce(new Error("Unavailable"))
+      .mockResolvedValue({ data: [], meta: { totalCount: 0 } });
+    renderActions();
+    fireEvent.click(
+      screen.getByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    );
+    expect(await screen.findByText("โหลดข้อสังเกตไม่สำเร็จ")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "ลองโหลดอีกครั้ง" }));
+    expect(await screen.findByText("ยังไม่มีข้อสังเกต")).toBeTruthy();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it("disables observation reading without student access", () => {
+    stubApiRequests();
+    renderActions(student, true, true, false);
+    expect(
+      screen.getByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.queryByRole("link", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    ).toBeNull();
+  });
   it("never auto-opens a case and only enables open when no case/link exists", () => {
     const requests = stubApiRequests();
     renderActions();
@@ -154,6 +247,22 @@ describe("watchlist case actions", () => {
       "disabled",
       true,
     );
+  });
+
+  it("does not reopen completed observations until a new comment exists", () => {
+    stubApiRequests();
+    renderActions({
+      ...student,
+      latestCaseId: 77,
+      latestCaseStatus: "RESOLVED",
+      pendingCommentCount: 0,
+    });
+    expect(
+      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("link", { name: /ดูรายละเอียดเคสของ/ }),
+    ).toBeTruthy();
   });
 
   it("uses the shared confirmation dialog before manually opening with the director's reason", async () => {
