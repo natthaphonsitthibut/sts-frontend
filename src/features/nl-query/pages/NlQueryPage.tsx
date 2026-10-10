@@ -6,8 +6,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { AxiosError } from "axios";
-import { Bot, LoaderCircle, Search, User } from "lucide-react";
+import { isAxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router-dom";
+import { Bot, History, LoaderCircle, Search, User } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -15,12 +17,16 @@ import {
   Button,
   Card,
   Input,
+  Sheet,
+  SheetHeader,
 } from "../../../components/base";
 import {
   PageShell,
   PageToolbar,
 } from "../../../components/layout/page-primitives";
 import { cn } from "../../../lib/utils";
+import { ConversationSidebar } from "../components/ConversationSidebar";
+import { NL_CONVERSATIONS_KEY } from "../hooks/useNlConversations";
 import { useNlQuery } from "../hooks/useNlQuery";
 import { QueryResult } from "../components/QueryResult";
 import type { QueryEnvelope } from "../types/nl-query.types";
@@ -36,10 +42,11 @@ const CHAT_BOTTOM_GAP_PX = 24;
 const CHAT_MIN_HEIGHT_PX = 360;
 
 function transportErrorMessage(error: unknown): string {
-  if (error instanceof AxiosError) {
+  if (isAxiosError(error)) {
     if (error.response?.status === 401)
       return "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
     if (error.response?.status === 403) return "ไม่มีสิทธิ์ใช้งานฟีเจอร์นี้";
+    if (error.response?.status === 404) return "ไม่พบบทสนทนานี้";
   }
   return "บริการไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง";
 }
@@ -101,6 +108,21 @@ function TurnAnswer({ envelope }: { envelope: QueryEnvelope }) {
     );
   }
 
+  // Grilled "every Answer speaks" (service, Oct 2026): every envelope now
+  // carries a message; for a result it is a short Thai paragraph answering the
+  // question in words — render it as normal chat text below the table/chart,
+  // which stay the primary answer.
+  if (envelope.answer_type === "result" && envelope.message) {
+    return (
+      <div className="space-y-3">
+        <QueryResult envelope={envelope} />
+        <p className="text-base leading-relaxed text-content-primary">
+          {envelope.message}
+        </p>
+      </div>
+    );
+  }
+
   return <QueryResult envelope={envelope} />;
 }
 
@@ -138,7 +160,12 @@ function EmptyChatState({ onPick }: { onPick: (question: string) => void }) {
 export function NlQueryPage() {
   const [question, setQuestion] = useState("");
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
-  const { ask, turnsLog, loading, error, reset } = useNlQuery();
+  const { conversationId: routeId } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { ask, load, turnsLog, conversationId, loading, error, reset } =
+    useNlQuery();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const errorAlertRef = useRef<HTMLDivElement>(null);
   const chatCardRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -173,6 +200,34 @@ export function NlQueryPage() {
     }
   }, [turnsLog.length, pendingQuestion]);
 
+  // The URL names the open conversation: opening one from the URL (deep link,
+  // back button, sidebar) loads it unless the hook already has it open.
+  useEffect(() => {
+    if (!routeId || routeId === conversationId) return;
+    void load(routeId).then((ok) => {
+      if (!ok) navigate("/nl-query", { replace: true });
+    });
+  }, [routeId, conversationId, load, navigate]);
+
+  // A chat that just got its server-side id (or is still open after a failed
+  // load) is reflected in the URL without reloading it.
+  useEffect(() => {
+    if (conversationId && !routeId) {
+      navigate(`/nl-query/${conversationId}`, { replace: true });
+    }
+  }, [conversationId, routeId, navigate]);
+
+  function startNewChat() {
+    reset();
+    navigate("/nl-query");
+    setHistoryOpen(false);
+  }
+
+  function openConversation(id: string) {
+    setHistoryOpen(false);
+    if (id !== routeId) navigate(`/nl-query/${id}`);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = question.trim();
@@ -181,7 +236,9 @@ export function NlQueryPage() {
     setPendingQuestion(trimmed);
     const envelope = await ask(trimmed);
     setPendingQuestion(null);
-    if (!envelope) {
+    if (envelope) {
+      void queryClient.invalidateQueries({ queryKey: NL_CONVERSATIONS_KEY });
+    } else {
       // Transport/network failure — give the question back so the user
       // doesn't have to retype it to retry.
       setQuestion(trimmed);
@@ -189,107 +246,151 @@ export function NlQueryPage() {
   }
 
   const hasTurns = turnsLog.length > 0;
+  const sidebar = (
+    <ConversationSidebar
+      activeId={conversationId}
+      onDeleted={(id) => {
+        if (id === conversationId) startNewChat();
+      }}
+      onNew={startNewChat}
+      onSelect={openConversation}
+    />
+  );
 
   return (
-    <PageShell contentClassName="max-w-4xl">
+    <PageShell contentClassName="max-w-6xl">
       <PageToolbar
         title="แชตบอท"
         actions={
-          hasTurns ? (
-            <Button onClick={reset} size="sm" type="button" variant="outline">
-              เริ่มบทสนทนาใหม่
+          <div className="flex items-center gap-2">
+            <Button
+              className="lg:hidden"
+              icon={History}
+              onClick={() => setHistoryOpen(true)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              ประวัติ
             </Button>
-          ) : undefined
+            {hasTurns ? (
+              <Button
+                onClick={startNewChat}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                เริ่มบทสนทนาใหม่
+              </Button>
+            ) : null}
+          </div>
         }
       />
-      <Card
-        className="flex flex-col overflow-hidden"
-        ref={chatCardRef}
-        style={{ height: chatHeight }}
-      >
-        <div
-          aria-live="polite"
-          aria-relevant="additions"
-          className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6"
-          data-testid="nlq-chat-log"
-          ref={scrollRef}
+      <Sheet onOpenChange={setHistoryOpen} open={historyOpen}>
+        <SheetHeader
+          heading="ประวัติการสนทนา"
+          onClose={() => setHistoryOpen(false)}
+        />
+        <div className="h-[calc(100%-4rem)] p-4">{sidebar}</div>
+      </Sheet>
+      <div className="flex items-start gap-4">
+        <aside
+          className="sticky top-4 hidden w-64 shrink-0 lg:block"
+          style={{ height: chatHeight }}
         >
-          {!hasTurns && !pendingQuestion ? (
-            <EmptyChatState onPick={setQuestion} />
-          ) : null}
+          {sidebar}
+        </aside>
+        <div className="min-w-0 flex-1">
+          <Card
+            className="flex flex-col overflow-hidden"
+            ref={chatCardRef}
+            style={{ height: chatHeight }}
+          >
+            <div
+              aria-live="polite"
+              aria-relevant="additions"
+              className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6"
+              data-testid="nlq-chat-log"
+              ref={scrollRef}
+            >
+              {!hasTurns && !pendingQuestion ? (
+                <EmptyChatState onPick={setQuestion} />
+              ) : null}
 
-          {turnsLog.map((turn, index) => (
-            <div className="space-y-4" key={`${index}-${turn.question}`}>
-              <ChatRow role="user">
-                <p className="text-base font-medium text-content-primary">
-                  {turn.question}
-                </p>
-              </ChatRow>
-              <ChatRow role="agent">
-                <TurnAnswer envelope={turn.envelope} />
-              </ChatRow>
-            </div>
-          ))}
+              {turnsLog.map((turn, index) => (
+                <div className="space-y-4" key={`${index}-${turn.question}`}>
+                  <ChatRow role="user">
+                    <p className="text-base font-medium text-content-primary">
+                      {turn.question}
+                    </p>
+                  </ChatRow>
+                  <ChatRow role="agent">
+                    <TurnAnswer envelope={turn.envelope} />
+                  </ChatRow>
+                </div>
+              ))}
 
-          {pendingQuestion ? (
-            <div className="space-y-4">
-              <ChatRow role="user">
-                <p className="text-base font-medium text-content-primary">
-                  {pendingQuestion}
-                </p>
-              </ChatRow>
-              <ChatRow role="agent">
-                <span className="inline-flex items-center gap-2 text-sm text-content-secondary">
-                  <LoaderCircle
-                    className="size-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                  กำลังค้นหา…
-                </span>
-              </ChatRow>
+              {pendingQuestion ? (
+                <div className="space-y-4">
+                  <ChatRow role="user">
+                    <p className="text-base font-medium text-content-primary">
+                      {pendingQuestion}
+                    </p>
+                  </ChatRow>
+                  <ChatRow role="agent">
+                    <span className="inline-flex items-center gap-2 text-sm text-content-secondary">
+                      <LoaderCircle
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                      กำลังค้นหา…
+                    </span>
+                  </ChatRow>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+
+            {error ? (
+              <div
+                className="border-t border-slate-200 p-4"
+                ref={errorAlertRef}
+                tabIndex={-1}
+              >
+                <Alert variant="destructive">
+                  <AlertTitle>ไม่สามารถเชื่อมต่อบริการได้</AlertTitle>
+                  <AlertDescription>
+                    {transportErrorMessage(error)}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : null}
+
+            <form
+              className="flex items-center gap-3 border-t border-slate-200 p-4"
+              onSubmit={submit}
+            >
+              <Input
+                aria-label="คำถาม"
+                autoComplete="off"
+                maxLength={500}
+                onChange={(event) => setQuestion(event.target.value)}
+                placeholder="เช่น จำนวนนักเรียนปัจจุบันแยกตามโรงเรียน"
+                value={question}
+              />
+              <Button
+                className="shrink-0"
+                disabled={!question.trim()}
+                icon={Search}
+                isLoading={loading}
+                loadingText="กำลังค้นหา…"
+                type="submit"
+              >
+                ถามข้อมูล
+              </Button>
+            </form>
+          </Card>
         </div>
-
-        {error ? (
-          <div
-            className="border-t border-slate-200 p-4"
-            ref={errorAlertRef}
-            tabIndex={-1}
-          >
-            <Alert variant="destructive">
-              <AlertTitle>ไม่สามารถเชื่อมต่อบริการได้</AlertTitle>
-              <AlertDescription>
-                {transportErrorMessage(error)}
-              </AlertDescription>
-            </Alert>
-          </div>
-        ) : null}
-
-        <form
-          className="flex items-center gap-3 border-t border-slate-200 p-4"
-          onSubmit={submit}
-        >
-          <Input
-            aria-label="คำถาม"
-            autoComplete="off"
-            maxLength={500}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="เช่น จำนวนนักเรียนปัจจุบันแยกตามโรงเรียน"
-            value={question}
-          />
-          <Button
-            className="shrink-0"
-            disabled={!question.trim()}
-            icon={Search}
-            isLoading={loading}
-            loadingText="กำลังค้นหา…"
-            type="submit"
-          >
-            ถามข้อมูล
-          </Button>
-        </form>
-      </Card>
+      </div>
     </PageShell>
   );
 }

@@ -121,7 +121,9 @@ export const router = createBrowserRouter([
             element: protectedElement(<MainPage />, "home"),
           },
           {
-            path: "nl-query",
+            // Optional segment keeps one route object, so the page (and its
+            // in-memory chat) is not remounted when a new chat gets its id.
+            path: "nl-query/:conversationId?",
             element: protectedElement(<NlQueryPage />, "nl_query:use"),
           },
           {
