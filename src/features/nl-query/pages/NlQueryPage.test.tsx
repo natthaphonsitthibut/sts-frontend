@@ -1,17 +1,23 @@
 import { fireEvent, render, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNlQuery } from "../hooks/useNlQuery";
 import { NlQueryPage } from "./NlQueryPage";
 
 vi.mock("../hooks/useNlQuery", () => ({ useNlQuery: vi.fn() }));
+vi.mock("../components/ConversationSidebar", () => ({
+  ConversationSidebar: () => <div data-testid="sidebar" />,
+}));
 
 const mockedUseNlQuery = vi.mocked(useNlQuery);
 
 function sessionState(overrides: Record<string, unknown> = {}) {
   return {
     ask: vi.fn(),
+    load: vi.fn().mockResolvedValue(true),
     turnsLog: [],
+    conversationId: null,
     loading: false,
     error: null,
     reset: vi.fn(),
@@ -19,11 +25,21 @@ function sessionState(overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
-function renderPage() {
+function LocationDisplay() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
+
+function renderPage(path = "/nl-query") {
   return render(
-    <MemoryRouter initialEntries={["/nl-query"]}>
-      <NlQueryPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/nl-query/:conversationId?" element={<NlQueryPage />} />
+        </Routes>
+        <LocationDisplay />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -267,5 +283,81 @@ describe("NlQueryPage", () => {
     const button = withTurn.getByText("เริ่มบทสนทนาใหม่");
     fireEvent.click(button);
     expect(reset).toHaveBeenCalled();
+  });
+
+  it("opens the conversation named in the URL once", async () => {
+    const load = vi.fn().mockResolvedValue(true);
+    mockedUseNlQuery.mockReturnValue(sessionState({ load }));
+    renderPage("/nl-query/abc");
+
+    await waitFor(() => expect(load).toHaveBeenCalledWith("abc"));
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload a conversation the hook already has open", () => {
+    const load = vi.fn();
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({ load, conversationId: "abc" }),
+    );
+    renderPage("/nl-query/abc");
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("falls back to /nl-query when the conversation cannot be loaded", async () => {
+    const load = vi.fn().mockResolvedValue(false);
+    mockedUseNlQuery.mockReturnValue(sessionState({ load }));
+    const view = renderPage("/nl-query/not-mine");
+
+    await waitFor(() =>
+      expect(view.getByTestId("location").textContent).toBe("/nl-query"),
+    );
+  });
+
+  it("puts a brand-new conversation's id in the URL without reloading it", async () => {
+    const load = vi.fn();
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({ load, conversationId: "new1" }),
+    );
+    const view = renderPage("/nl-query");
+
+    await waitFor(() =>
+      expect(view.getByTestId("location").textContent).toBe("/nl-query/new1"),
+    );
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("starting a new chat resets the session and leaves the conversation URL", async () => {
+    const reset = vi.fn();
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({
+        reset,
+        turnsLog: [
+          {
+            question: "q",
+            envelope: { status: "ok", answer_type: "result", rows: [] },
+          },
+        ],
+      }),
+    );
+    const view = renderPage("/nl-query/abc");
+
+    fireEvent.click(view.getByText("เริ่มบทสนทนาใหม่"));
+
+    expect(reset).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(view.getByTestId("location").textContent).toBe("/nl-query"),
+    );
+  });
+
+  it("explains a missing conversation instead of the generic outage message", () => {
+    const error = Object.assign(new Error("not found"), {
+      isAxiosError: true,
+      response: { status: 404 },
+    });
+    mockedUseNlQuery.mockReturnValue(sessionState({ error }));
+    const view = renderPage("/nl-query");
+
+    expect(view.queryByText("ไม่พบบทสนทนานี้")).toBeTruthy();
   });
 });
