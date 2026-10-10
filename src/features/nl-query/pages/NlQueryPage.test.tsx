@@ -199,6 +199,48 @@ describe("NlQueryPage", () => {
     expect(view.getByText("ขอไม่ตอบคำถามนี้ครับ")).toBeTruthy();
   });
 
+  it("renders a result turn's message as chat text above the table", () => {
+    mockedUseNlQuery.mockReturnValue(
+      sessionState({
+        turnsLog: [
+          {
+            question: "จังหวัดไหนมีนักเรียนเสี่ยงสูงสุด",
+            envelope: {
+              status: "ok",
+              answer_type: "result",
+              message:
+                "จังหวัด ก. มีนักเรียนเสี่ยงสูงสุด 120 คน ส่วนใหญ่ขาดเรียนต่อเนื่อง",
+              rows: [{ province: "ก.", n: 120 }],
+              row_count: 1,
+              columns: [
+                {
+                  name: "province",
+                  type: "str",
+                  numeric: false,
+                  semantic_type: "name",
+                },
+                {
+                  name: "n",
+                  type: "int",
+                  numeric: true,
+                  semantic_type: "count",
+                },
+              ],
+              summary: null,
+            },
+          },
+        ],
+      }),
+    );
+    const view = renderPage();
+
+    expect(
+      view.getByText(
+        "จังหวัด ก. มีนักเรียนเสี่ยงสูงสุด 120 คน ส่วนใหญ่ขาดเรียนต่อเนื่อง",
+      ),
+    ).toBeTruthy();
+  });
+
   it("shows the reset button only once a turn exists and calls reset() on click", () => {
     const reset = vi.fn();
     mockedUseNlQuery.mockReturnValue(sessionState({ reset }));
