@@ -199,7 +199,7 @@ describe("NlQueryPage", () => {
     expect(view.getByText("ขอไม่ตอบคำถามนี้ครับ")).toBeTruthy();
   });
 
-  it("renders a result turn's message as chat text above the table", () => {
+  it("renders a result turn's message as chat text below the table", () => {
     mockedUseNlQuery.mockReturnValue(
       sessionState({
         turnsLog: [
@@ -234,10 +234,14 @@ describe("NlQueryPage", () => {
     );
     const view = renderPage();
 
+    const message = view.getByText(
+      "จังหวัด ก. มีนักเรียนเสี่ยงสูงสุด 120 คน ส่วนใหญ่ขาดเรียนต่อเนื่อง",
+    );
+    // ตาราง/กราฟต้องมาก่อนข้อความ (สลับลำดับตามที่ผู้ใช้ขอ)
+    const summary = view.getByText("1 แถว");
     expect(
-      view.getByText(
-        "จังหวัด ก. มีนักเรียนเสี่ยงสูงสุด 120 คน ส่วนใหญ่ขาดเรียนต่อเนื่อง",
-      ),
+      summary.compareDocumentPosition(message) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 

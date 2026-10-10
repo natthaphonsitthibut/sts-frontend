@@ -103,14 +103,15 @@ function TurnAnswer({ envelope }: { envelope: QueryEnvelope }) {
 
   // Grilled "every Answer speaks" (service, Oct 2026): every envelope now
   // carries a message; for a result it is a short Thai paragraph answering the
-  // question in words — render it as normal chat text above the table/chart.
+  // question in words — render it as normal chat text below the table/chart,
+  // which stay the primary answer.
   if (envelope.answer_type === "result" && envelope.message) {
     return (
       <div className="space-y-3">
+        <QueryResult envelope={envelope} />
         <p className="text-base leading-relaxed text-content-primary">
           {envelope.message}
         </p>
-        <QueryResult envelope={envelope} />
       </div>
     );
   }
