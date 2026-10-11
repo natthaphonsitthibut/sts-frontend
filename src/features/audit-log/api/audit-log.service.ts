@@ -4,8 +4,10 @@ import {
   toPaginationParams,
 } from "../../../lib/pagination";
 import type {
+  AuditLogActionCatalog,
   AuditLogActionOption,
   AuditLogDomain,
+  AuditLogFilterOption,
   AuditLogEntry,
   AuditLogQuery,
   AuditLogResult,
@@ -27,6 +29,9 @@ function buildAuditLogParams(query: AuditLogQuery): Record<string, string> {
   const action = query.action?.trim();
   if (action) {
     params.action = action;
+  }
+  if (query.category) {
+    params.category = query.category;
   }
   const searchTerm = query.searchTerm?.trim();
   if (searchTerm) {
@@ -101,11 +106,15 @@ async function getAuditLogEntry(id: string): Promise<AuditLogEntry> {
 async function getAuditLogActions(query: {
   domain: AuditLogDomain;
   taskType?: AuditLogTaskType;
-}): Promise<AuditLogActionOption[]> {
-  const response = await apiClient.get<
-    AuditLogActionOption[] | DataEnvelope<AuditLogActionOption[]>
-  >("/audit-log/actions", { params: query });
-  return unwrapData(response.data);
+}): Promise<AuditLogActionCatalog> {
+  const response = await apiClient.get<{
+    data: AuditLogActionOption[];
+    categories: AuditLogFilterOption[];
+  }>("/audit-log/actions", { params: query });
+  return {
+    actions: response.data.data,
+    categories: response.data.categories,
+  };
 }
 
 export const auditLogService = {

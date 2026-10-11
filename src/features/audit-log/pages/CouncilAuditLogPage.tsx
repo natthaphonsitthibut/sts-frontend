@@ -26,6 +26,7 @@ export function CouncilAuditLogPage() {
         province={globalFilter.province || undefined}
         schoolId={Number(globalFilter.schoolId) || undefined}
         showActionColumn
+        showCategoryFilter
         showReferenceColumn
         subDistrict={globalFilter.subDistrict || undefined}
         title="รายการทั้งหมด"
