@@ -60,14 +60,9 @@ export interface QueryEnvelope {
   error: { code: string; message: string } | null;
 }
 
-export interface PriorTurnDto {
-  question: string;
-  answerType: AnswerType;
-  sql: string | null;
-  rowCount: number | null;
-}
-
-export type UiTurn = PriorTurnDto;
+export type NlQueryResponse = QueryEnvelope & {
+  conversation_id: string | null;
+};
 
 export interface TurnLogEntry {
   question: string;
@@ -77,7 +72,23 @@ export interface TurnLogEntry {
 export interface NlQueryPayload {
   question: string;
   preferredChartType?: ChartType;
-  history?: UiTurn[];
+  conversationId?: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  turns: { seq: number; question: string; envelope: QueryEnvelope }[];
+}
+
+export interface ConversationPage {
+  items: ConversationSummary[];
+  next_before: string | null;
 }
 
 export interface NlQuerySchema {
