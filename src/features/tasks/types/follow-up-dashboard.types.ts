@@ -38,6 +38,8 @@ export interface ReferralDrilldownRow {
   studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
+  academicYear?: number | null;
+  semester?: number | null;
   grade: string | null;
   room: string | null;
   statusCode: string;

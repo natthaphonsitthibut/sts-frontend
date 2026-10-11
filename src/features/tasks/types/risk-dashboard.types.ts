@@ -20,6 +20,8 @@ export interface RiskDashboardRow {
   studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
+  academicYear?: number | null;
+  semester?: number | null;
   grade: string | null;
   room: string | null;
   consecutiveAbsentDays: number;
@@ -105,4 +107,10 @@ export interface RiskDashboardQuery {
   limit?: number;
   sortBy?: RiskDashboardSortBy;
   sortDirection?: RiskDashboardSortDirection;
+}
+
+export interface RiskReportFilterOptions {
+  grades: Array<{ value: string; label: string }>;
+  rooms: string[];
+  terms: Array<{ academicYear: number; semester: number }>;
 }

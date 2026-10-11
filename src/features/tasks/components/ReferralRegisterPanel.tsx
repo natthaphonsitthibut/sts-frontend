@@ -88,11 +88,15 @@ function linkWarning(row: ReferralDrilldownRow): string | null {
 
 export function ReferralRegisterPanel({
   canViewStudent = false,
+  academicYear,
+  semester,
   grade,
   room,
 }: {
   /** Whether the student avatar links to the profile, as on the other tabs. */
   canViewStudent?: boolean;
+  academicYear?: number;
+  semester?: number;
   /** The page's ชั้น/ห้อง picker, applied here as on the other tabs. */
   grade?: string;
   room?: string;
@@ -142,6 +146,8 @@ export function ReferralRegisterPanel({
     schoolId: globalFilter.schoolId,
     grade: grade ?? "",
     room: room ?? "",
+    academicYear,
+    semester,
   };
   const areaKey = [
     area.province,
@@ -150,6 +156,8 @@ export function ReferralRegisterPanel({
     area.schoolId,
     area.grade,
     area.room,
+    area.academicYear,
+    area.semester,
   ].join("|");
   const [lastAreaKey, setLastAreaKey] = useState(areaKey);
   if (areaKey !== lastAreaKey) {
@@ -346,6 +354,8 @@ export function ReferralRegisterPanel({
                   </DataTableCell>
                   <DataTableCell>
                     <StudentIdentityCell
+                      academicYear={referral.academicYear}
+                      semester={referral.semester}
                       canViewStudent={canViewStudent}
                       schoolName={referral.schoolName}
                       studentId={referral.studentId}
@@ -394,6 +404,8 @@ export function ReferralRegisterPanel({
                 <TableCard key={referral.id}>
                   <div className="flex items-start justify-between gap-3">
                     <StudentIdentityCell
+                      academicYear={referral.academicYear}
+                      semester={referral.semester}
                       canViewStudent={canViewStudent}
                       schoolName={referral.schoolName}
                       studentId={referral.studentId}

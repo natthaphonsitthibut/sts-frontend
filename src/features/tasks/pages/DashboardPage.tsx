@@ -45,8 +45,7 @@ import { useRememberedState } from "../../../hooks/useRememberedState";
 import { useRouteTab } from "../../../hooks/useRouteTab";
 import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "../../../lib/pagination";
-import { attendanceService } from "../../attendance/api/attendance.service";
-import { useScopeCascade } from "../../attendance/hooks/useScopeCascade";
+import { useRiskReportScope } from "../hooks/useRiskReportScope";
 import { CaseStatusBadge } from "../../cases/components/CaseStatusBadge";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { ReferralRegisterPanel } from "../components/ReferralRegisterPanel";
@@ -235,6 +234,8 @@ function StudentCell({
     <StudentIdentityCell
       canViewStudent={canViewStudent}
       schoolName={row.schoolName}
+      academicYear={row.academicYear}
+      semester={row.semester}
       studentId={row.studentId}
       studentName={row.studentName}
       studentPhotoUrl={row.studentPhotoUrl}
@@ -327,42 +328,44 @@ function StudentRiskDashboardPage() {
     RiskDashboardQuery["caseStatus"]
   >(() => parseCaseStatus(searchParams.get("caseStatus")));
   const globalFilter = useGlobalSchoolFilter();
-  const scope = useScopeCascade({
-    lockToActorScope: true,
-    controlledSchoolId: globalFilter.schoolId,
+  const scope = useRiskReportScope({
+    academicYear: academicYearInput,
+    semester: semesterInput,
     initialGrade: searchParams.get("grade") || undefined,
     initialRoom: searchParams.get("room") || undefined,
   });
-  // A school switch (from the header, or anywhere else) makes any explicit
-  // year/semester override stale — the same reset `handleSchoolChange` used
-  // to do inline, now driven by the controlled value instead.
-  const [lastTermSchoolId, setLastTermSchoolId] = useState(scope.schoolId);
-  if (scope.schoolId !== lastTermSchoolId) {
-    setLastTermSchoolId(scope.schoolId);
-    if (academicYearInput !== undefined) setAcademicYearInput(undefined);
-    if (semesterInput !== undefined) setSemesterInput(undefined);
+  // Geographic narrowing keeps valid report filters and restarts pagination.
+  const [lastAreaKey, setLastAreaKey] = useState(scope.areaKey);
+  if (scope.areaKey !== lastAreaKey) {
+    setLastAreaKey(scope.areaKey);
     if (page !== 1) setPage(1);
   }
-  const termsQuery = useQuery({
-    queryKey: ["student-risk-report", "terms", scope.schoolId],
-    queryFn: () => attendanceService.getTerms(scope.schoolId),
-    enabled: Boolean(scope.schoolId),
-  });
-  const schoolTerms = termsQuery.data ?? [];
-  const defaultTerm =
-    schoolTerms.find((term) => term.status === "ACTIVE") ?? schoolTerms[0];
-  const academicYear = academicYearInput ?? defaultTerm?.academicYear;
-  const semester =
-    semesterInput ??
-    (defaultTerm && defaultTerm.academicYear === academicYear
-      ? defaultTerm.semester
-      : schoolTerms.find((term) => term.academicYear === academicYear)
-          ?.semester);
+  const schoolTerms = scope.terms;
+  if (scope.filtersQuery.isSuccess) {
+    if (
+      academicYearInput !== undefined &&
+      !schoolTerms.some((term) => term.academicYear === academicYearInput)
+    ) {
+      setAcademicYearInput(undefined);
+      setSemesterInput(undefined);
+    } else if (
+      semesterInput !== undefined &&
+      !schoolTerms.some(
+        (term) =>
+          (!academicYearInput || term.academicYear === academicYearInput) &&
+          term.semester === semesterInput,
+      )
+    ) {
+      setSemesterInput(undefined);
+    }
+  }
+  const academicYear = academicYearInput;
+  const semester = semesterInput;
   const academicYears = Array.from(
     new Set(schoolTerms.map((term) => term.academicYear)),
   ).sort((left, right) => right - left);
   const semesters = schoolTerms
-    .filter((term) => term.academicYear === academicYear)
+    .filter((term) => !academicYear || term.academicYear === academicYear)
     .map((term) => term.semester)
     .filter((value, index, values) => values.indexOf(value) === index)
     .sort((left, right) => left - right);
@@ -373,6 +376,9 @@ function StudentRiskDashboardPage() {
     () => ({
       studentGroup: isWatchlist ? "WATCHLIST" : "RISK",
       schoolId: scope.schoolId || undefined,
+      province: globalFilter.province || undefined,
+      district: globalFilter.district || undefined,
+      subDistrict: globalFilter.subDistrict || undefined,
       academicYear,
       semester,
       caseStatus,
@@ -388,6 +394,9 @@ function StudentRiskDashboardPage() {
     [
       isWatchlist,
       scope.schoolId,
+      globalFilter.province,
+      globalFilter.district,
+      globalFilter.subDistrict,
       academicYear,
       semester,
       caseStatus,
@@ -454,7 +463,10 @@ function StudentRiskDashboardPage() {
   const meta = riskQuery.data?.meta;
   const caseStatusMeta = meta;
   const totalCount = meta?.totalCount ?? 0;
-  const summaryCount = (value: number, unit: "เคส" | "คน" = "เคส") => (
+  const summaryCount = (
+    value: number,
+    unit: "เคส" | "คน" | "รายการ" = "เคส",
+  ) => (
     <>
       {value}
       <span className="ml-1 text-xl font-normal">{unit}</span>
@@ -533,7 +545,7 @@ function StudentRiskDashboardPage() {
     concernLevelLabels.get(level) ?? getConcernLevelPresentation(level).label;
   const concernItems = CONCERN_LEVELS.map((level) => ({
     label: concernLabel(level),
-    value: summaryCount(meta?.concernLevelSummary?.[level] ?? 0, "คน"),
+    value: summaryCount(meta?.concernLevelSummary?.[level] ?? 0, "รายการ"),
     tone: CONCERN_LEVEL_TONE[level],
     icon: CONCERN_LEVEL_ICON[level],
     hideComparison: true,
@@ -585,11 +597,13 @@ function StudentRiskDashboardPage() {
   function handleAcademicYearChange(value: string): void {
     setAcademicYearInput(value ? Number(value) : undefined);
     setSemesterInput(undefined);
+    scope.reset();
     resetPage();
   }
 
   function handleSemesterChange(value: string): void {
     setSemesterInput(value ? Number(value) : undefined);
+    scope.reset();
     resetPage();
   }
 
@@ -678,103 +692,110 @@ function StudentRiskDashboardPage() {
         breadcrumbTrail={[{ label: "หน้าหลัก", to: "/" }]}
         icon={ClipboardList}
         scope={
-          // Grade/room/term only mean anything once a school is picked (the
-          // header's own filter now) — this field doesn't exist until then.
-          !scope.schoolId ? null : (
-            <ScopeFilterField
-              editable={!scope.gradeLocked || !scope.roomLocked}
-              emptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
-              label="ชั้น/ห้อง"
-              onClear={handleClearScope}
-              scope={{
-                ...scopeSummary,
-                academicYear,
-                semester,
-              }}
-            >
-              {/* A level the actor's scope fixes is not offered at all — the
+          <ScopeFilterField
+            editable={true}
+            emptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
+            label="ชั้น/ห้อง"
+            onClear={handleClearScope}
+            scope={{
+              ...scopeSummary,
+              academicYear,
+              semester,
+            }}
+          >
+            {/* A level the actor's scope fixes is not offered at all — the
                 summary on the button already says what it is. */}
-              {scope.gradeLocked ? null : (
-                <label className="space-y-1 text-sm text-slate-800">
-                  ระดับชั้น
-                  <Select
-                    aria-label="ระดับชั้น"
-                    disabled={!scope.schoolId}
-                    onChange={(event) => handleGradeChange(event.target.value)}
-                    value={scope.grade}
-                  >
-                    <option value="">{SCOPE_ALL_LABEL.grade}</option>
-                    {scope.gradeLevels.map((grade) => (
-                      <option key={grade.id} value={grade.label}>
-                        {grade.label}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
-              )}
-              {scope.roomLocked ? null : (
-                <label className="space-y-1 text-sm text-slate-800">
-                  ห้อง
-                  <Select
-                    aria-label="ห้อง"
-                    disabled={!scope.grade}
-                    onChange={(event) => handleRoomChange(event.target.value)}
-                    value={scope.room}
-                  >
-                    <option value="">{SCOPE_ALL_LABEL.room}</option>
-                    {scope.rooms.map((room) => (
-                      <option key={room} value={room}>
-                        {formatRoomLabel(room)}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
-              )}
+            {scope.gradeLocked ? null : (
               <label className="space-y-1 text-sm text-slate-800">
-                ปีการศึกษา
+                ระดับชั้น
                 <Select
-                  aria-label="ปีการศึกษา"
-                  disabled={!scope.schoolId}
-                  onChange={(event) =>
-                    handleAcademicYearChange(event.target.value)
+                  aria-label="ระดับชั้น"
+                  disabled={
+                    scope.filtersQuery.isLoading || scope.filtersQuery.isError
                   }
-                  value={academicYear ? String(academicYear) : ""}
+                  onChange={(event) => handleGradeChange(event.target.value)}
+                  value={scope.grade}
                 >
-                  {academicYears.length === 0 ? (
-                    <option value="">ปีการศึกษา</option>
-                  ) : null}
-                  {academicYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
+                  <option value="">{SCOPE_ALL_LABEL.grade}</option>
+                  {scope.gradeLevels.map((grade) => (
+                    <option key={grade.id} value={grade.label}>
+                      {grade.label}
                     </option>
                   ))}
                 </Select>
               </label>
+            )}
+            {scope.roomLocked ? null : (
               <label className="space-y-1 text-sm text-slate-800">
-                ภาคเรียน
+                ห้อง
                 <Select
-                  aria-label="ภาคเรียน"
-                  disabled={!academicYear}
-                  onChange={(event) => handleSemesterChange(event.target.value)}
-                  value={semester ? String(semester) : ""}
+                  aria-label="ห้อง"
+                  disabled={
+                    scope.filtersQuery.isLoading || scope.filtersQuery.isError
+                  }
+                  onChange={(event) => handleRoomChange(event.target.value)}
+                  value={scope.room}
                 >
-                  {semesters.length === 0 ? (
-                    <option value="">ภาคเรียน</option>
-                  ) : null}
-                  {semesters.map((item) => (
-                    <option key={item} value={item}>
-                      ภาคเรียนที่ {item}
+                  <option value="">{SCOPE_ALL_LABEL.room}</option>
+                  {scope.rooms.map((room) => (
+                    <option key={room} value={room}>
+                      {formatRoomLabel(room)}
                     </option>
                   ))}
                 </Select>
               </label>
-            </ScopeFilterField>
-          )
+            )}
+            <label className="space-y-1 text-sm text-slate-800">
+              ปีการศึกษา
+              <Select
+                aria-label="ปีการศึกษา"
+                disabled={
+                  scope.filtersQuery.isLoading || scope.filtersQuery.isError
+                }
+                onChange={(event) =>
+                  handleAcademicYearChange(event.target.value)
+                }
+                value={academicYear ? String(academicYear) : ""}
+              >
+                <option value="">ทุกปีการศึกษา</option>
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-1 text-sm text-slate-800">
+              ภาคเรียน
+              <Select
+                aria-label="ภาคเรียน"
+                disabled={
+                  scope.filtersQuery.isLoading || scope.filtersQuery.isError
+                }
+                onChange={(event) => handleSemesterChange(event.target.value)}
+                value={semester ? String(semester) : ""}
+              >
+                <option value="">ทุกภาคเรียน</option>
+                {semesters.map((item) => (
+                  <option key={item} value={item}>
+                    ภาคเรียนที่ {item}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </ScopeFilterField>
         }
         title="รายงานสถานะนักเรียน"
       />
 
       <div className="space-y-5">
+        {scope.filtersQuery.isError ? (
+          <ErrorState
+            title="โหลดตัวกรองไม่สำเร็จ"
+            description="ลองโหลดตัวเลือกชั้น ห้อง และภาคเรียนอีกครั้ง"
+            onRetry={() => void scope.filtersQuery.refetch()}
+          />
+        ) : null}
         <div className="space-y-4">
           <Tabs
             aria-label="มุมมองรายงาน"
@@ -790,6 +811,8 @@ function StudentRiskDashboardPage() {
           {isReferrals ? (
             <ReferralRegisterPanel
               canViewStudent={canViewStudent}
+              academicYear={academicYear}
+              semester={semester}
               grade={scope.grade || undefined}
               room={scope.room || undefined}
             />
