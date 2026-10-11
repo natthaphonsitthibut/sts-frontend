@@ -39,7 +39,6 @@ import { cn } from "../../../lib/utils";
 import { useCaseTrackingOptions } from "../../cases/hooks/useCaseTrackingOptions";
 import { getCaseTrackingStatusPresentation } from "../../cases/lib/case-presentation";
 import type { CaseTrackingOptions } from "../../cases/types/cases.types";
-import { getGuardianRelationLabel } from "../../students/lib/guardian-relation-presentation";
 import { attendanceLookupService } from "../api/attendance-lookup.service";
 import { taskService } from "../api/task.service";
 import { ReportFormSections } from "../components/ReportFormSections";
@@ -74,8 +73,6 @@ function createReportSchema(rules: ReportOptionRules) {
       visitedTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
-      contactPersonSelection: z.string().trim(),
-      contactPersonName: z.string().trim().max(200, "ชื่อผู้ติดต่อยาวเกินไป"),
       contactChannelCode: z.string().trim(),
       disadvantageTypeCodes: z.array(z.string().trim()),
       disabilityTypeCodes: z.array(z.string().trim()),
@@ -105,16 +102,6 @@ function createReportSchema(rules: ReportOptionRules) {
       updatedPostalCode: z.string().trim(),
     })
     .superRefine((values, context) => {
-      if (
-        values.contactPersonSelection === "OTHER" &&
-        !values.contactPersonName
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "กรุณาระบุผู้ที่พบหรือติดต่อ",
-          path: ["contactPersonName"],
-        });
-      }
       const guardianType = rules.guardianTypes.find(
         (option) => option.code === values.guardianTypeCode,
       );
@@ -181,55 +168,6 @@ function localDateTimeParts(date = new Date()): { date: string; time: string } {
   };
 }
 
-interface ContactChoice {
-  value: string;
-  label: string;
-  personName: string;
-}
-
-function buildContactChoices(task: TaskAccessTask): ContactChoice[] {
-  const studentName = task.student_name?.trim() || "นักเรียน";
-  const guardianContacts = (task.contact_channels ?? []).filter(
-    (contact) => contact.contact_kind === "GUARDIAN",
-  );
-  const guardianChoices =
-    guardianContacts.length > 0
-      ? guardianContacts.map((contact, index) => {
-          const relationLabel = getGuardianRelationLabel(
-            contact.relation,
-            contact.relation_note,
-          );
-          const personName = contact.full_name?.trim() || relationLabel;
-          return {
-            value: `GUARDIAN_${index}`,
-            label: `${relationLabel} · ${personName}`,
-            personName,
-          };
-        })
-      : [
-          {
-            value: "GUARDIAN",
-            label: "ผู้ปกครอง/ผู้ดูแล",
-            personName: "ผู้ปกครอง/ผู้ดูแล",
-          },
-        ];
-
-  return [
-    {
-      value: "STUDENT",
-      label: `นักเรียน · ${studentName}`,
-      personName: studentName,
-    },
-    ...guardianChoices,
-    {
-      value: "STUDENT_AND_GUARDIAN",
-      label: "นักเรียนและผู้ปกครอง/ผู้ดูแล",
-      personName: `${studentName} และผู้ปกครอง/ผู้ดูแล`,
-    },
-    { value: "OTHER", label: "บุคคลอื่น", personName: "" },
-  ];
-}
-
 export function HomeVisitReportPage({
   sessionToken,
   task,
@@ -254,15 +192,6 @@ export function HomeVisitReportPage({
     () => trackingOptionsQuery.data?.contactChannels ?? [],
     [trackingOptionsQuery.data],
   );
-  const contactChoices = useMemo(() => buildContactChoices(task), [task]);
-  const initialContactSelection = useMemo(() => {
-    const prefilledName = task.prefill?.contact_person_name?.trim();
-    if (!prefilledName) return "";
-    return (
-      contactChoices.find((choice) => choice.personName === prefilledName)
-        ?.value ?? "OTHER"
-    );
-  }, [contactChoices, task.prefill?.contact_person_name]);
   const resolver = useMemo(
     () =>
       zodResolver(createReportSchema({ guardianTypes, residenceEnvironments })),
@@ -272,8 +201,6 @@ export function HomeVisitReportPage({
     () => ({
       visitedDate: initialVisit.date,
       visitedTime: initialVisit.time,
-      contactPersonSelection: initialContactSelection,
-      contactPersonName: task.prefill?.contact_person_name ?? "",
       contactChannelCode: task.prefill?.contact_channel_code ?? "",
       disadvantageTypeCodes: [],
       disabilityTypeCodes: [],
@@ -295,12 +222,7 @@ export function HomeVisitReportPage({
       updatedAddressSubDistrict: "",
       updatedPostalCode: "",
     }),
-    [
-      initialContactSelection,
-      initialVisit.date,
-      initialVisit.time,
-      task.prefill,
-    ],
+    [initialVisit.date, initialVisit.time, task.prefill],
   );
   const form = useForm<ReportFormValues>({ defaultValues, resolver });
   const values = useWatch({ control: form.control });
@@ -424,8 +346,6 @@ export function HomeVisitReportPage({
           ? "NOT_SUCCEEDED"
           : "SUCCEEDED",
       );
-      if (report.contactPersonName)
-        formData.set("contact_person_name", report.contactPersonName);
       if (report.contactChannelCode)
         formData.set("contact_channel_code", report.contactChannelCode);
       formData.set(
@@ -528,8 +448,6 @@ export function HomeVisitReportPage({
   function handleVisitOutcomeChange(code: "" | "STUDENT_NOT_FOUND"): void {
     form.setValue("homeVisitExceptionCode", code, { shouldDirty: true });
     if (code !== "STUDENT_NOT_FOUND") return;
-    form.setValue("contactPersonSelection", "", { shouldDirty: true });
-    form.setValue("contactPersonName", "", { shouldDirty: true });
     form.setValue("contactChannelCode", "", { shouldDirty: true });
     form.setValue("problemCategoryCode", "", { shouldDirty: true });
     form.setValue("absenceReasonCategoryCode", "", { shouldDirty: true });
@@ -690,51 +608,10 @@ export function HomeVisitReportPage({
     },
     {
       id: "contact",
-      title: "ครั้งนี้พบหรือติดต่อใคร",
+      title: "ติดต่อผ่านช่องทางใด",
       optional: true,
       content: (
         <div className="space-y-4">
-          <FormItem>
-            <FormLabel>ผู้ที่พบ/ติดต่อ</FormLabel>
-            <Combobox
-              id="contact-person-selection"
-              onChange={(value) => {
-                form.setValue("contactPersonSelection", value, {
-                  shouldDirty: true,
-                });
-                const selected = contactChoices.find(
-                  (choice) => choice.value === value,
-                );
-                form.setValue("contactPersonName", selected?.personName ?? "", {
-                  shouldDirty: true,
-                });
-              }}
-              options={[
-                { value: "", label: "ไม่ระบุ" },
-                ...contactChoices.map((choice) => ({
-                  value: choice.value,
-                  label: choice.label,
-                })),
-              ]}
-              placeholder="เลือกผู้ที่พบหรือติดต่อ"
-              searchable={false}
-              value={values.contactPersonSelection ?? ""}
-            />
-          </FormItem>
-          {values.contactPersonSelection === "OTHER" ? (
-            <FormItem>
-              <FormLabel htmlFor="contact-person-name">
-                ระบุผู้ที่พบ/ติดต่อ
-              </FormLabel>
-              <Input
-                id="contact-person-name"
-                maxLength={200}
-                placeholder="เช่น เพื่อนบ้าน ผู้นำชุมชน"
-                {...registerField(form, "contactPersonName")}
-              />
-              <FormMessage<ReportFormValues> name="contactPersonName" />
-            </FormItem>
-          ) : null}
           <FormItem>
             <FormLabel htmlFor="contact-channel">ช่องทางติดต่อ</FormLabel>
             <Select
@@ -1210,14 +1087,6 @@ export function HomeVisitReportPage({
             </div>
           ) : (
             <>
-              <div>
-                <dt className="text-xs font-semibold text-slate-500">
-                  ผู้ที่พบ/ติดต่อ
-                </dt>
-                <dd className="mt-1">
-                  {values.contactPersonName || "ไม่ระบุ"}
-                </dd>
-              </div>
               <div className="rounded-lg border border-slate-200 bg-white p-3 sm:col-span-2">
                 <dt className="text-xs font-semibold text-slate-500">
                   ปัญหาที่พบ
