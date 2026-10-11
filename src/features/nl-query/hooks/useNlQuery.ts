@@ -1,36 +1,23 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { askNlQuery } from "../api/nl-query.service";
+import { useCallback, useRef, useState } from "react";
+import { askNlQuery, getNlConversation } from "../api/nl-query.service";
 import type {
   ChartType,
-  QueryEnvelope,
+  NlQueryResponse,
   TurnLogEntry,
-  UiTurn,
 } from "../types/nl-query.types";
-
-function toTurn({ question, envelope }: TurnLogEntry): UiTurn {
-  const isResult =
-    envelope.answer_type === undefined || envelope.answer_type === "result";
-  return {
-    question,
-    answerType: envelope.answer_type ?? "result",
-    sql: isResult ? envelope.sql : null,
-    rowCount: envelope.row_count,
-  };
-}
 
 export function useNlQuery() {
   const [turnsLog, setTurnsLog] = useState<TurnLogEntry[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const sessionRef = useRef(0);
-
-  const turns = useMemo(() => turnsLog.map(toTurn), [turnsLog]);
 
   const ask = useCallback(
     async (
       question: string,
       chart?: ChartType,
-    ): Promise<QueryEnvelope | null> => {
+    ): Promise<NlQueryResponse | null> => {
       const session = sessionRef.current;
       setLoading(true);
       setError(null);
@@ -38,13 +25,16 @@ export function useNlQuery() {
         const envelope = await askNlQuery({
           question,
           preferredChartType: chart,
-          history: turns,
+          conversationId: conversationId ?? undefined,
         });
         if (sessionRef.current !== session) {
-          // reset() ran while this request was in flight; discard it.
+          // reset()/load() ran while this request was in flight; discard it.
           return null;
         }
         setTurnsLog((log) => [...log, { question, envelope }]);
+        if (envelope.conversation_id) {
+          setConversationId(envelope.conversation_id);
+        }
         return envelope;
       } catch (thrown) {
         if (sessionRef.current === session) {
@@ -57,15 +47,43 @@ export function useNlQuery() {
         }
       }
     },
-    [turns],
+    [conversationId],
   );
+
+  /** Opens a stored conversation. Returns false if it could not be loaded. */
+  const load = useCallback(async (id: string): Promise<boolean> => {
+    // A load supersedes any in-flight ask/load.
+    sessionRef.current += 1;
+    const session = sessionRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const detail = await getNlConversation(id);
+      if (sessionRef.current !== session) return false;
+      setTurnsLog(
+        detail.turns.map(({ question, envelope }) => ({ question, envelope })),
+      );
+      setConversationId(id);
+      return true;
+    } catch (thrown) {
+      if (sessionRef.current === session) {
+        setError(thrown);
+      }
+      return false;
+    } finally {
+      if (sessionRef.current === session) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   const reset = useCallback(() => {
     sessionRef.current += 1;
     setTurnsLog([]);
+    setConversationId(null);
     setError(null);
     setLoading(false);
   }, []);
 
-  return { ask, turnsLog, loading, error, reset };
+  return { ask, load, turnsLog, conversationId, loading, error, reset };
 }
