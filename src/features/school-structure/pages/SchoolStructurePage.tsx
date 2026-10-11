@@ -262,9 +262,8 @@ export function SchoolStructurePage() {
         termId: termDialogTerm?.id,
       }),
     onSuccess: async (term) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["school-structure", "terms", selectedSchoolId],
-      });
+      // A term edit changes enrollment labels and every term-backed view.
+      await queryClient.invalidateQueries();
       setTermInput(term.id);
       setTermDialogOpen(false);
       setTermDialogTerm(null);
@@ -274,9 +273,8 @@ export function SchoolStructurePage() {
     mutationFn: (termId: string) => attendanceService.deleteTerm(termId),
     onSuccess: async () => {
       setTermInput("");
-      await queryClient.invalidateQueries({
-        queryKey: ["school-structure", "terms", selectedSchoolId],
-      });
+      // A term edit changes enrollment labels and every term-backed view.
+      await queryClient.invalidateQueries();
     },
   });
 
@@ -404,6 +402,7 @@ export function SchoolStructurePage() {
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!selectedSchoolId}
         tableActions={
           <>
             <Button

@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -85,6 +86,11 @@ export function SchoolTermDialog({
       <DialogContent onClose={onClose}>
         <DialogHeader>
           <DialogTitle>{term ? "แก้ไขภาคเรียน" : "เพิ่มภาคเรียน"}</DialogTitle>
+          <DialogDescription>
+            {term
+              ? "แก้ภาคเรียนเดิม ข้อมูลที่ผูกอยู่จะใช้ปีและภาคเรียนที่แก้ไข โดยคงประวัติเดิมไว้"
+              : "สร้างภาคเรียนใหม่แยกจากภาคเรียนเดิม แล้วเพิ่มห้องและนักเรียนก่อนเปิดใช้งาน"}
+          </DialogDescription>
         </DialogHeader>
         <Form form={form} onSubmit={onSubmit}>
           <DialogBody>
