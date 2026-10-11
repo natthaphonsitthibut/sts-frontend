@@ -98,7 +98,7 @@ export function NotificationsPage() {
     if (!notification.read_at) {
       markRead.mutate(notification.id);
     }
-    const route = can("dashboard") ? getNotificationRoute(notification) : null;
+    const route = getNotificationRoute(notification, can);
     if (route) {
       contextualNavigate(route);
     }
