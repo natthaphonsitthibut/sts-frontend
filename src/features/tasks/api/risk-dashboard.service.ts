@@ -103,6 +103,7 @@ async function getReferralDrilldown(
   limit = 20,
   filters: FollowUpAreaFilter & {
     statusCode?: string;
+    stageCode?: string;
     searchTerm?: string;
   } = {},
 ): Promise<ReferralDrilldownResult> {
@@ -112,6 +113,7 @@ async function getReferralDrilldown(
       page,
       limit,
       statusCode: filters.statusCode || undefined,
+      stageCode: filters.stageCode || undefined,
       searchTerm: filters.searchTerm || undefined,
     },
   });

@@ -135,7 +135,7 @@ export function NotificationCenterPanel({
   }
 
   function handleOpenRelated(notification: NotificationItem): void {
-    const route = can("dashboard") ? getNotificationRoute(notification) : null;
+    const route = getNotificationRoute(notification, can);
     if (!route) return;
     handleOpenChange(false);
     contextualNavigate(route);
@@ -264,9 +264,7 @@ export function NotificationCenterPanel({
         ) : (
           <ul className="space-y-3">
             {displayedNotifications.map((notification) => {
-              const route = can("dashboard")
-                ? getNotificationRoute(notification)
-                : null;
+              const route = getNotificationRoute(notification, can);
               return (
                 <NotificationListItem
                   className="overflow-hidden rounded-lg border border-slate-200 bg-white"

@@ -102,7 +102,7 @@ export function UnreachableReasonsSection({
   );
 }
 
-/** ส่งต่อหน่วยงานไปแล้วเท่าไร และค้างที่ยังไม่ตอบรับเท่าไร */
+/** ส่งต่อหน่วยงานไปแล้วเท่าไร สำเร็จเท่าไร และยังรอผลเท่าไร */
 export function ReferralFunnelSection({
   funnel,
 }: {
@@ -110,13 +110,13 @@ export function ReferralFunnelSection({
 }) {
   const items = [
     { key: "referred", label: "ส่งต่อแล้ว", value: funnel.referred },
-    { key: "accepted", label: "หน่วยงานรับเรื่อง", value: funnel.accepted },
-    { key: "pending", label: "ยังไม่ตอบรับ", value: funnel.pending },
+    { key: "accepted", label: "สำเร็จ", value: funnel.accepted },
+    { key: "pending", label: "รอผลการส่งต่อ", value: funnel.pending },
   ];
 
   return (
     <PanelSection
-      description="เคสที่ส่งต่อหน่วยงานภายนอก และส่วนที่ยังไม่มีหน่วยงานรับเรื่อง"
+      description="เคสที่ส่งต่อหน่วยงานภายนอก และส่วนที่ยังรอผลจากหน่วยงาน"
       title="การส่งต่อหน่วยงาน"
     >
       <div data-referral-funnel="true">

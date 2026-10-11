@@ -2,6 +2,21 @@ import type { ReactNode, Ref } from "react";
 import { ClipboardList } from "lucide-react";
 import { Card } from "../base/card";
 
+/** The same status line for tracking and referral outcomes. */
+export function TrackingStatus({
+  label = "สถานะการติดตาม",
+  children,
+}: {
+  label?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="text-sm font-semibold text-slate-700">
+      {label} : {children}
+    </span>
+  );
+}
+
 /**
  * Shared numbered-rail stepper shell for any "ขั้นตอนการติดตาม" flow — used by
  * both the admin case detail page and the guest report page so the two stay
@@ -28,12 +43,11 @@ export function TrackingStepsCard({
           <ClipboardList className="size-5 text-ink" aria-hidden="true" />
           ขั้นตอนการติดตาม
         </h2>
-        <span className="text-sm font-semibold text-slate-700">
-          สถานะการติดตาม :{" "}
+        <TrackingStatus>
           {statusContent ?? (
             <span className={statusClassName}>{statusLabel}</span>
           )}
-        </span>
+        </TrackingStatus>
       </div>
       <div className="space-y-5">{children}</div>
     </Card>

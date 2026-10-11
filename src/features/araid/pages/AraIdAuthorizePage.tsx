@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, Button } from "../../../components/base";
 import { getApiErrorMessage } from "../../../lib/api-error";
 import { checkInService } from "../../check-in/api/check-in.service";
+import { referralReportService } from "../../referral-report/api/referral-report.service";
 import { taskService } from "../../tasks/api/task.service";
 import { authService } from "../../auth/api/auth.service";
 import { AraIdWordmark } from "../components/AraIdWordmark";
@@ -25,7 +26,8 @@ function readChallengeScope(): AraIdChallengeScope | null {
     ?.trim();
   return scope === "task-link" ||
     scope === "admin-login" ||
-    scope === "classroom-check-in"
+    scope === "classroom-check-in" ||
+    scope === "referral-link"
     ? scope
     : null;
 }
@@ -73,19 +75,32 @@ export function AraIdAuthorizePage() {
     mutationFn: () => checkInService.approveAraIdChallenge(),
     meta: { suppressSuccessToast: true },
   });
+  const referralBegin = useMutation({
+    mutationFn: (token: string) =>
+      referralReportService.beginAraIdChallenge(token),
+    meta: { suppressSuccessToast: true },
+  });
+  const referralApprove = useMutation({
+    mutationFn: () => referralReportService.approveAraIdChallenge(),
+    meta: { suppressSuccessToast: true },
+  });
   // Every scope is approved through the endpoints of the flow that issued it.
   const begin =
     scope === "admin-login"
       ? adminLoginBegin
       : scope === "classroom-check-in"
         ? checkInBegin
-        : taskBegin;
+        : scope === "referral-link"
+          ? referralBegin
+          : taskBegin;
   const approve =
     scope === "admin-login"
       ? adminLoginApprove
       : scope === "classroom-check-in"
         ? checkInApprove
-        : taskApprove;
+        : scope === "referral-link"
+          ? referralApprove
+          : taskApprove;
 
   useEffect(() => {
     if (!challengeToken || !scope || session.isPending || attempted.current)

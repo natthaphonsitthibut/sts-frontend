@@ -44,6 +44,8 @@ interface LinkShareDialogProps {
 }
 
 interface LinkShareButtonProps {
+  title?: string;
+  description?: string;
   className?: string;
   directSend?: LinkDirectSend;
   compact?: boolean;
@@ -308,6 +310,8 @@ export function LinkSharePanel({
 }
 
 export function LinkShareButton({
+  title,
+  description,
   className,
   compact = false,
   directSend,
@@ -342,6 +346,8 @@ export function LinkShareButton({
       )}
       {link ? (
         <LinkShareDialog
+          title={title}
+          description={description}
           directSend={directSend}
           link={link}
           onOpenChange={setOpen}

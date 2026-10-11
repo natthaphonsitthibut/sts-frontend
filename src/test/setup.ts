@@ -27,6 +27,12 @@ for (const name of ["localStorage", "sessionStorage"] as const) {
   });
 }
 
+// jsdom has no layout engine; RHF's shared invalid-field focus uses this
+// browser API before focusing the field. Focus itself remains real in tests.
+if (!HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = () => {};
+}
+
 if (!window.ResizeObserver) {
   window.ResizeObserver = class {
     observe(): void {}

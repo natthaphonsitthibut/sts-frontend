@@ -50,6 +50,8 @@ export interface RiskDashboardRow {
   concernLevelLabel: string | null;
   /** Every observation recorded for this student, not just the one shown. */
   commentCount: number;
+  /** Observations recorded after the student's last completed case. */
+  pendingCommentCount: number;
   teacherComment: string | null;
 }
 
@@ -93,6 +95,8 @@ export interface RiskDashboardQuery {
     | "IN_PROGRESS"
     | "PENDING_REVIEW"
     | "STUDENT_NOT_FOUND"
+    | "AWAITING_REFERRAL"
+    | "AWAITING_REFERRAL_OUTCOME"
     | "RESOLVED";
   grade?: string;
   room?: string;

@@ -2,6 +2,10 @@ import axios from "axios";
 import { appConfig } from "../config/env";
 import { useSchoolFilterStore } from "../features/school-filter/store/school-filter.store";
 import type { AuthUser } from "../features/auth/types/auth.types";
+import {
+  isPublicClassroomLinkPath,
+  isPublicLinkPath,
+} from "./public-link-routes";
 
 const AUTH_USER_STORAGE_KEY = "sts_user";
 
@@ -59,15 +63,10 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const currentUser = readStoredAuthUser();
-  // The classroom link page moved to /classroom; /check-in is still reachable
-  // while old links redirect through it, so both count as the public page.
-  // The link surface is more than one page now — the roster opens a student
-  // profile under /classroom/students/:id — so every path under it counts.
+  // The classroom link surface carries its own link token.
   const onPublicCheckInPage =
     typeof window !== "undefined" &&
-    (window.location.pathname === "/classroom" ||
-      window.location.pathname.startsWith("/classroom/") ||
-      window.location.pathname === "/check-in");
+    isPublicClassroomLinkPath(window.location.pathname);
 
   // Public magic-link flows authenticate with short-lived signed tokens via
   // headers; the staff session is carried entirely by the httpOnly cookie.
@@ -109,16 +108,11 @@ apiClient.interceptors.response.use(
       const onLoginPage =
         window.location.pathname === "/login" ||
         window.location.pathname === "/admin-access";
-      // Public task-link pages return 401 when the *link* is
-      // invalid / closed / expired — not because the admin's session lapsed.
-      // Those pages show their own "ลิงก์ไม่ถูกต้องหรือหมดอายุ" card, so never
-      // hijack them into the admin login (which also wiped a real admin session).
-      const onPublicLinkPage =
-        window.location.pathname.startsWith("/task/") ||
-        window.location.pathname.startsWith("/araid") ||
-        window.location.pathname.startsWith("/classroom") ||
-        window.location.pathname === "/check-in" ||
-        window.location.pathname.startsWith("/apply/");
+      // Public link pages return 401 when the *link* (or its own link session)
+      // is invalid / closed / expired — not because the admin's session lapsed.
+      // Those pages show their own state for it, so never hijack them into the
+      // admin login (which also wiped a real admin session and school filter).
+      const onPublicLinkPage = isPublicLinkPath(window.location.pathname);
 
       if (currentUser && !onLoginPage && !onPublicLinkPage) {
         isHandlingExpiredSession = true;

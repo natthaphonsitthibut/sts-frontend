@@ -11,12 +11,10 @@ import {
   FormErrorAlert,
   Label,
   MultiSelect,
-  Select,
   Textarea,
 } from "../../../components/base";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
-import { useReferralAgencies } from "../hooks/useReferralAgencies";
 import { useUpdateCase } from "../hooks/useUpdateCase";
 import type { CaseRecord, CaseReviewAction } from "../types/cases.types";
 
@@ -39,18 +37,13 @@ export function CaseStatusUpdateDialog({
   const optionsQuery = useCaseTrackingOptions();
   const updateCase = useUpdateCase();
   const [note, setNote] = useState("");
-  const [referralAgencyId, setReferralAgencyId] = useState("");
   const [assistanceMeasureCodes, setAssistanceMeasureCodes] = useState<
     string[]
   >([]);
   const [assistanceMeasureDetail, setAssistanceMeasureDetail] = useState("");
-  const referralAgencies = useReferralAgencies(
-    open && presetAction === "REFER_AGENCY",
-  );
 
   function closeDialog(): void {
     setNote("");
-    setReferralAgencyId("");
     setAssistanceMeasureCodes([]);
     setAssistanceMeasureDetail("");
     updateCase.reset();
@@ -68,7 +61,10 @@ export function CaseStatusUpdateDialog({
       ? hasAssistanceHistory
         ? "มอบหมายช่วยเหลืออีกครั้ง"
         : "มอบหมายช่วยเหลือ"
-      : selectedAction?.label;
+      : selectedAction?.code === "REFER_AGENCY" &&
+          (caseRecord?.referrals?.length ?? 0) > 0
+        ? "ส่งต่อหน่วยงานอีกครั้ง"
+        : selectedAction?.label;
   const hasPermission =
     Boolean(selectedAction) &&
     can(selectedAction?.requiredPermission || "case:review");
@@ -87,7 +83,6 @@ export function CaseStatusUpdateDialog({
     (presetAction === "ASSIST" &&
       assistanceMeasureRequiresDetail &&
       !assistanceMeasureDetail.trim()) ||
-    (presetAction === "REFER_AGENCY" && !referralAgencyId) ||
     optionsQuery.isLoading;
 
   function handleSubmit(): void {
@@ -99,8 +94,6 @@ export function CaseStatusUpdateDialog({
           review_action: presetAction,
           review_note: note.trim(),
           resolution_outcome: null,
-          referral_agency_id:
-            presetAction === "REFER_AGENCY" ? Number(referralAgencyId) : null,
           assistance_measure_codes:
             presetAction === "ASSIST" ? assistanceMeasureCodes : null,
           assistance_measure_detail:
@@ -140,9 +133,7 @@ export function CaseStatusUpdateDialog({
         <DialogBody>
           <div className="space-y-4">
             <FormErrorAlert
-              error={
-                optionsQuery.error ?? referralAgencies.error ?? updateCase.error
-              }
+              error={optionsQuery.error ?? updateCase.error}
               fallback="ไม่สามารถบันทึกผลการพิจารณาได้ กรุณาลองอีกครั้ง"
             />
 
@@ -152,25 +143,8 @@ export function CaseStatusUpdateDialog({
               </p>
             ) : null}
 
-            {presetAction === "REFER_AGENCY" ? (
-              <div className="space-y-2">
-                <Label required htmlFor="referral-agency">
-                  หน่วยงานส่งต่อ
-                </Label>
-                <Select
-                  id="referral-agency"
-                  onChange={(event) => setReferralAgencyId(event.target.value)}
-                  value={referralAgencyId}
-                >
-                  <option value="">เลือกหน่วยงานส่งต่อ</option>
-                  {(referralAgencies.data ?? []).map((agency) => (
-                    <option key={agency.id} value={agency.id}>
-                      {agency.agencyKindLabel} · {agency.agencyName}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ) : null}
+            {/* Like ติดตามต่อ, ส่งต่อหน่วยงาน only decides: the agency is
+                picked when the referral is sent from the case page. */}
 
             {presetAction === "ASSIST" ? (
               <div className="space-y-3">

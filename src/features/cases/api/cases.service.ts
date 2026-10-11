@@ -8,6 +8,8 @@ import type {
   CaseTrackingOptions,
   CaseReviewPayload,
   CaseReviewResponse,
+  SendReferralPayload,
+  SendReferralResponse,
   OpenCasePayload,
   OpenCaseResponse,
   ReferralAgencyOption,
@@ -35,6 +37,24 @@ interface CasesService {
     caseId: number,
     payload: CancelCaseAssignmentPayload,
   ) => Promise<CancelCaseAssignmentResponse>;
+  /** ส่งต่อ: issues the agency's stable access code. */
+  sendReferral: (
+    caseId: number,
+    payload: SendReferralPayload,
+  ) => Promise<SendReferralResponse>;
+  getReferralAccessCode: (
+    caseId: number,
+    referralId: string,
+  ) => Promise<string>;
+  refreshReferralAccessCode: (
+    caseId: number,
+    referralId: string,
+  ) => Promise<string>;
+  cancelReferral: (
+    caseId: number,
+    referralId: string,
+    cancelReason: string,
+  ) => Promise<void>;
   /** ส่งลิงก์ผ่าน LINE: one round's link, straight to its assigned teacher. */
   sendRoundLine: (
     caseId: number,
@@ -86,6 +106,54 @@ async function cancelAssignment(
   return response.data;
 }
 
+async function sendReferral(
+  caseId: number,
+  payload: SendReferralPayload,
+): Promise<SendReferralResponse> {
+  const response = await apiClient.post<SendReferralResponse>(
+    `/cases/${caseId}/referrals`,
+    payload,
+  );
+  return response.data;
+}
+
+async function getReferralAccessCode(
+  caseId: number,
+  referralId: string,
+): Promise<string> {
+  const response = await apiClient.get<{
+    success: true;
+    data: { access_code: string };
+  }>(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/access-code`,
+  );
+  return response.data.data.access_code;
+}
+
+async function refreshReferralAccessCode(
+  caseId: number,
+  referralId: string,
+): Promise<string> {
+  const response = await apiClient.post<{
+    success: true;
+    data: { access_code: string };
+  }>(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/access-code/refresh`,
+  );
+  return response.data.data.access_code;
+}
+
+async function cancelReferral(
+  caseId: number,
+  referralId: string,
+  cancelReason: string,
+): Promise<void> {
+  await apiClient.post(
+    `/cases/${caseId}/referrals/${encodeURIComponent(referralId)}/cancel`,
+    { cancel_reason: cancelReason },
+  );
+}
+
 async function sendRoundLine(
   caseId: number,
   taskId: string,
@@ -120,5 +188,9 @@ export const casesService: CasesService = {
   reviewCase,
   getTrackingOptions,
   cancelAssignment,
+  sendReferral,
+  getReferralAccessCode,
+  refreshReferralAccessCode,
+  cancelReferral,
   sendRoundLine,
 };

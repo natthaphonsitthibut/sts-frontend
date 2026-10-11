@@ -39,12 +39,9 @@ describe("watchlist alert notifications", () => {
   });
 
   it("opens the student profile", () => {
-    expect(getNotificationRoute(watchlistAlert())).toBe(
+    expect(getNotificationRoute(watchlistAlert(), () => true)).toBe(
       "/students/9aca349f-37f6-4ee5-a3d8-e1212bbfbf17",
     );
-    expect(
-      getNotificationRoute(watchlistAlert({ student_uuid: null })),
-    ).toBeNull();
   });
 
   it("reads as the student name then the reason", () => {

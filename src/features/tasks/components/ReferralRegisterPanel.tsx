@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { ReferralAccessCodeButton } from "../../cases/components/ReferralAccessCodeButton";
+import { usePermissions } from "../../auth/hooks/usePermissions";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Ban, Check, ExternalLink, Inbox, Send, X } from "lucide-react";
+import {
+  CircleCheck,
+  ClipboardList,
+  ExternalLink,
+  Hourglass,
+  ListChecks,
+  XCircle,
+} from "lucide-react";
 import { Badge } from "../../../components/base";
+import { LinkWarningIndicator } from "../../../components/layout/link-warning-indicator";
+import { LinkShareButton } from "../../../components/layout/link-share-dialog";
 import {
   DataTable,
   DataTableCell,
@@ -31,23 +42,49 @@ import {
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
 import { statusSummaryTone } from "../../status-catalog/lib/status-catalog-presentation";
+import type { ReferralDrilldownRow } from "../types/follow-up-dashboard.types";
 
 /**
- * The icon per status — the one thing the status catalog does not carry.
- *
- * Colour is deliberately absent: `case_referral_statuses` already defines
- * `badgeVariant` and `summaryTone` for each status, and both the card and the
- * badge read them, so recolouring a status in the catalog moves both together
- * instead of leaving the badge disagreeing with the card above it. An unknown
- * code still renders, with the generic referral icon.
+ * The register's cards follow the referral flow — ส่งต่อ → รอผล → พิจารณา →
+ * ผล — the way the กลุ่มเสี่ยง cards follow a case (owner, 2026-10-08). The two
+ * waiting stages are case statuses and read their label and colour from the
+ * case catalog, รอพิจารณา with the same icon as on the กลุ่มเสี่ยง tab; the two
+ * results read theirs from the referral catalog. The other icons match the
+ * case page's status icons.
  */
-const REFERRAL_STATUS_ICON: Record<string, typeof Send> = {
-  REFERRED: Send,
-  ACCEPTED: Inbox,
-  COMPLETED: Check,
-  DECLINED: X,
-  CANCELLED: Ban,
-};
+const REFERRAL_STAGE_CARDS = [
+  { code: "AWAITING_REFERRAL_OUTCOME", domain: "case", icon: Hourglass },
+  { code: "PENDING_REVIEW", domain: "case", icon: ListChecks },
+  {
+    code: "COMPLETED",
+    domain: "referral",
+    icon: CircleCheck,
+    label: "ส่งต่อสำเร็จ",
+  },
+  { code: "NOT_SUCCEEDED", domain: "referral", icon: XCircle },
+] as const;
+type ReferralStageCard = (typeof REFERRAL_STAGE_CARDS)[number];
+
+/**
+ * Why a waiting row's link needs the school's attention, like the expired-link
+ * warning beside a กลุ่มเสี่ยง row's status; null when nothing is wrong.
+ */
+function linkWarning(row: ReferralDrilldownRow): string | null {
+  if (!row.awaitingResult) return null;
+  if (!row.linkStatusCode)
+    return "การส่งต่อเดิมยังไม่มีลิงก์รายงานผล กรุณายกเลิกและส่งต่อใหม่";
+  if (row.linkStatusCode === "LOCKED") {
+    return "ลิงก์ถูกล็อกเพราะกรอกรหัสผิดเกินกำหนด ต้องออกลิงก์ใหม่";
+  }
+  if (
+    row.linkStatusCode === "ACTIVE" &&
+    row.linkExpiresAt &&
+    new Date(row.linkExpiresAt) <= new Date()
+  ) {
+    return "ลิงก์หมดอายุแล้ว ต้องออกลิงก์ใหม่";
+  }
+  return null;
+}
 
 export function ReferralRegisterPanel({
   canViewStudent = false,
@@ -60,16 +97,42 @@ export function ReferralRegisterPanel({
   grade?: string;
   room?: string;
 }) {
+  const { can } = usePermissions();
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [statusCode, setStatusCode] = useState("");
+  const [stageCode, setStageCode] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const referralStatuses = useStatusCatalog("CASE_REFERRAL");
-  const referralStatus = (code: string) =>
-    findStatusCatalogItem(referralStatuses.items, code);
-  const referralStatusLabel = (code: string): string =>
-    referralStatus(code)?.label ?? code;
+  const caseStatuses = useStatusCatalog("CASE_WORKFLOW");
+  const stagePresentation = (card: ReferralStageCard) => {
+    const status = findStatusCatalogItem(
+      card.domain === "case" ? caseStatuses.items : referralStatuses.items,
+      card.code,
+    );
+    return {
+      status,
+      label: ("label" in card ? card.label : status?.label) ?? card.code,
+    };
+  };
+  // A row reads the same label and colour as the card it is counted under; a
+  // stage no card covers falls back to the referral catalog.
+  const rowStage = (row: ReferralDrilldownRow) => {
+    const card = REFERRAL_STAGE_CARDS.find(
+      (candidate) => candidate.code === row.stageCode,
+    );
+    if (card) return stagePresentation(card);
+    const status = findStatusCatalogItem(
+      referralStatuses.items,
+      row.statusCode,
+    );
+    return { status, label: status?.label ?? row.statusCode };
+  };
   // The header's school/area filter narrows the register like every other tab.
   const globalFilter = useGlobalSchoolFilter();
   const area = {
@@ -103,13 +166,13 @@ export function ReferralRegisterPanel({
       area,
       page,
       rowsPerPage,
-      statusCode,
+      stageCode,
       debouncedSearch,
     ],
     queryFn: () =>
       riskDashboardService.getReferralDrilldown(page, rowsPerPage, {
         ...area,
-        statusCode: statusCode || undefined,
+        stageCode: stageCode || undefined,
         searchTerm: debouncedSearch || undefined,
       }),
   });
@@ -128,24 +191,72 @@ export function ReferralRegisterPanel({
     );
   }
   const summary = summaryQuery.data;
-  // Every status the catalog knows, in its own order, counted over the same
-  // scope as the table — so the cards partition the rows instead of hinting at
-  // them, and a status with none still shows a zero rather than vanishing.
-  const statusItems = referralStatuses.items.map((status) => ({
-    label: status.label,
-    value: summary.referrals.byStatus?.[status.code] ?? 0,
-    tone: statusSummaryTone(status),
-    icon: REFERRAL_STATUS_ICON[status.code] ?? ExternalLink,
+  // Counted over the same scope as the table; a status with none still shows
+  // a zero rather than vanishing.
+  const statusCards = REFERRAL_STAGE_CARDS.map((card) => ({
+    code: card.code,
+    icon: card.icon,
+    ...stagePresentation(card),
+  }));
+  const statusItems = statusCards.map((card) => ({
+    label: card.label,
+    value: (
+      <>
+        {summary.referrals.byStage?.[card.code] ?? 0}
+        <span className="ml-1 text-xl font-normal">เคส</span>
+      </>
+    ),
+    tone: statusSummaryTone(card.status),
+    icon: card.icon,
     hideComparison: true,
     labelClassName: "text-base text-content-secondary",
     emphasis: true,
     onSelect: () => {
-      setStatusCode((current) => (current === status.code ? "" : status.code));
+      setStageCode((current) => (current === card.code ? "" : card.code));
       setPage(1);
     },
-    selected: statusCode === status.code,
-    selectionLabel: `กรอง${status.label}`,
+    selected: stageCode === card.code,
+    selectionLabel: `กรอง${card.label}`,
   }));
+  const rowActions = (referral: ReferralDrilldownRow) => (
+    // Same pair of tools as the กลุ่มเสี่ยง rows: open the case, share its link.
+    // Reviewing an agency's report starts from reading it on the case page.
+    <div className="flex items-center justify-center gap-2">
+      <DetailLinkButton
+        aria-label={`ดูรายละเอียดเคสของ ${referral.studentName}`}
+        className="bg-primary text-white hover:bg-primary-dark"
+        icon={ClipboardList}
+        iconOnly
+        title="ดูรายละเอียดเคส"
+        to={`/cases/${referral.caseId}`}
+      />
+      <LinkShareButton
+        compact
+        disabled={!referral.linkUrl}
+        link={referral.linkUrl ?? ""}
+        title="แชร์ลิงก์รายงานผลการส่งต่อ"
+        description="เลือกช่องทางส่งลิงก์ให้หน่วยงาน แจ้งรหัสแยกจากลิงก์ ผู้รายงานต้องยืนยัน AraID ก่อนรายงานผล"
+      />
+      <ReferralAccessCodeButton
+        compact
+        caseId={referral.caseId}
+        referralId={referral.id}
+        disabled={
+          !referral.awaitingResult ||
+          !referral.linkStatusCode ||
+          referral.accessCodeAvailable === false ||
+          !can("case:review")
+        }
+        canRefresh={
+          referral.linkStatusCode === "ACTIVE" &&
+          Boolean(
+            referral.linkExpiresAt &&
+            new Date(referral.linkExpiresAt).getTime() > currentTime,
+          )
+        }
+      />
+    </div>
+  );
 
   return (
     // The same card row every other tab uses, rather than this panel's own
@@ -153,10 +264,7 @@ export function ReferralRegisterPanel({
     // headline numbers have to read as headline numbers here too.
     <div className="space-y-5" data-referral-register>
       <div className="space-y-4">
-        <SummaryMetrics
-          columns={statusItems.length >= 5 ? 5 : 4}
-          items={statusItems}
-        />
+        <SummaryMetrics columns={4} items={statusItems} />
 
         <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
           <SearchInput
@@ -165,22 +273,22 @@ export function ReferralRegisterPanel({
               setSearch(value);
               setPage(1);
             }}
-            placeholder="ค้นหาชื่อนักเรียนหรือหน่วยงาน"
+            placeholder="ค้นหาชื่อนักเรียน"
             value={search}
           />
           <FilterSelect
             ariaLabel="สถานะการส่งต่อ"
             className="w-full sm:w-[306px]"
             onChange={(value) => {
-              setStatusCode(value);
+              setStageCode(value);
               setPage(1);
             }}
-            value={statusCode}
+            value={stageCode}
           >
             <option value="">ทุกสถานะการส่งต่อ</option>
-            {referralStatuses.items.map((status) => (
-              <option key={status.code} value={status.code}>
-                {status.label}
+            {statusCards.map((card) => (
+              <option key={card.code} value={card.code}>
+                {card.label}
               </option>
             ))}
           </FilterSelect>
@@ -262,24 +370,21 @@ export function ReferralRegisterPanel({
                     </div>
                   </DataTableCell>
                   <DataTableCell className="text-center">
-                    <Badge
-                      variant={
-                        referralStatus(referral.statusCode)?.badgeVariant
-                      }
-                    >
-                      {referralStatusLabel(referral.statusCode)}
-                    </Badge>
+                    <span className="inline-flex items-center gap-1">
+                      <Badge variant={rowStage(referral).status?.badgeVariant}>
+                        {rowStage(referral).label}
+                      </Badge>
+                      {linkWarning(referral) ? (
+                        <LinkWarningIndicator
+                          label={linkWarning(referral) ?? ""}
+                        />
+                      ) : null}
+                    </span>
                   </DataTableCell>
                   <DataTableCell className="text-slate-700">
                     {formatThaiDateTime(referral.referredAt)}
                   </DataTableCell>
-                  <DataTableCell>
-                    <DetailLinkButton
-                      aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
-                      iconOnly
-                      to={`/cases/${referral.caseId}`}
-                    />
-                  </DataTableCell>
+                  <DataTableCell>{rowActions(referral)}</DataTableCell>
                 </DataTableRow>
               ))}
             </DataTable>
@@ -295,13 +400,16 @@ export function ReferralRegisterPanel({
                       studentName={referral.studentName}
                       studentPhotoUrl={referral.studentPhotoUrl}
                     />
-                    <Badge
-                      variant={
-                        referralStatus(referral.statusCode)?.badgeVariant
-                      }
-                    >
-                      {referralStatusLabel(referral.statusCode)}
-                    </Badge>
+                    <span className="inline-flex items-center gap-1">
+                      <Badge variant={rowStage(referral).status?.badgeVariant}>
+                        {rowStage(referral).label}
+                      </Badge>
+                      {linkWarning(referral) ? (
+                        <LinkWarningIndicator
+                          label={linkWarning(referral) ?? ""}
+                        />
+                      ) : null}
+                    </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -325,11 +433,7 @@ export function ReferralRegisterPanel({
                     </div>
                   </div>
                   <div className="mt-2 flex justify-end">
-                    <DetailLinkButton
-                      aria-label={`ดูรายละเอียดการส่งต่อของ ${referral.studentName}`}
-                      iconOnly
-                      to={`/cases/${referral.caseId}`}
-                    />
+                    {rowActions(referral)}
                   </div>
                 </TableCard>
               ))}

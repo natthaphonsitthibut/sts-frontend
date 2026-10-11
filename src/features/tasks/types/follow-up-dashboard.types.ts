@@ -23,6 +23,8 @@ export interface FollowUpSummary {
     total: number;
     overdue: number;
     byStatus: Record<string, number>;
+    /** Referrals per stage of ส่งต่อ → รอผล → พิจารณา → ผล. */
+    byStage: Record<string, number>;
     byAgency: Array<{ agencyName: string; count: number }>;
   };
   repeatedUnsuccessfulCaseCount: number;
@@ -39,9 +41,18 @@ export interface ReferralDrilldownRow {
   grade: string | null;
   room: string | null;
   statusCode: string;
+  /** Where the referral stands: one of the register's card codes. */
+  stageCode: string;
+  /** Still waiting on the agency: its case sits in รอผลการส่งต่อ. */
+  awaitingResult: boolean;
   referredAt: string;
   agencyName: string;
   agencyKindLabel: string;
+  /** The agency's link while it still opens; null when there is none to share. */
+  linkUrl: string | null;
+  linkStatusCode: string | null;
+  linkExpiresAt: string | null;
+  accessCodeAvailable?: boolean;
 }
 
 export interface ReferralDrilldownResult {

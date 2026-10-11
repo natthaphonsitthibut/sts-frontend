@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, CircleAlert, SquarePen } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Badge, Card, SchoolIcon } from "../../../components/base";
@@ -12,7 +12,7 @@ import {
 import { NavButton } from "../../../components/layout/nav-button";
 import { useSafeBackTarget } from "../../../components/layout/navigation-context";
 import { usePermissions } from "../../auth/hooks/usePermissions";
-import { StudentCaseAction } from "../../cases/components/StudentCaseAction";
+import { StudentProfileCaseActions } from "../components/StudentProfileCaseActions";
 import { StudentActivityPanel } from "../components/StudentActivityPanel";
 import { StudentAttendanceCalendar } from "../components/StudentAttendanceCalendar";
 import {
@@ -40,13 +40,6 @@ export function StudentDetailPage() {
     isError: casesError,
     refetch: refetchCases,
   } = useStudentCases(studentId);
-  const activeCases = useMemo(
-    () =>
-      cases.filter((studentCase) =>
-        ["OPEN", "IN_PROGRESS", "PENDING_REVIEW"].includes(studentCase.status),
-      ),
-    [cases],
-  );
 
   if (isLoading || profileSummaryQuery.isLoading) {
     // Mirrors the loaded page's grid (profile header, then two equal halves) so
@@ -105,16 +98,12 @@ export function StudentDetailPage() {
     <PageShell>
       <PageToolbar
         actions={
-          <div className="flex items-center gap-2">
-            {can("dashboard") && !casesLoading ? (
-              <StudentCaseAction
-                activeCaseCount={activeCases.length}
+          <div className="flex flex-wrap items-center gap-2">
+            {can("dashboard") ? (
+              <StudentProfileCaseActions
+                cases={cases}
                 canOpenCase={can("case:assign")}
-                activeCaseId={
-                  activeCases.length > 0 ? Number(activeCases[0].id) : null
-                }
-                className="min-w-28"
-                mode="button"
+                disabled={casesLoading || casesError}
                 studentId={studentId}
                 studentName={
                   `${student.FirstName_Onec ?? ""} ${student.LastName_Onec ?? ""}`.trim() ||

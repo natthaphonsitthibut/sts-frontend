@@ -4,7 +4,9 @@ import {
   CircleCheck,
   ContactRound,
   Clock3,
+  Hourglass,
   ListChecks,
+  Send,
   MapPin,
   type LucideIcon,
 } from "lucide-react";
@@ -63,6 +65,23 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
     label: "ไม่พบนักเรียน",
     summaryTone: "danger",
     textClassName: "text-danger",
+  },
+  // รอส่งต่อ is the referral's รอมอบหมาย, so it reads the same.
+  AWAITING_REFERRAL: {
+    badgeClassName: "text-brand-yellow",
+    icon: Send,
+    iconSurfaceClassName: "bg-brand-yellow text-white",
+    label: "รอส่งต่อ",
+    summaryTone: "orange",
+    textClassName: "text-brand-yellow",
+  },
+  AWAITING_REFERRAL_OUTCOME: {
+    badgeClassName: "text-warning-700",
+    icon: Hourglass,
+    iconSurfaceClassName: "bg-warning-600 text-white",
+    label: "รอผลการส่งต่อ",
+    summaryTone: "warning",
+    textClassName: "text-warning-700",
   },
   RESOLVED: {
     badgeClassName: "text-success",
