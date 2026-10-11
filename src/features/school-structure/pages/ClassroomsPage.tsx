@@ -167,6 +167,7 @@ export function ClassroomsPage() {
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!selectedSchoolId}
         search={{
           onChange: (value: string) => {
             setSearchInput(value);

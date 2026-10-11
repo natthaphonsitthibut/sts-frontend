@@ -1,3 +1,4 @@
+import { OverlayPortal } from "./overlay-portal";
 import { useRef, useState } from "react";
 import { ChevronDown, Clock } from "lucide-react";
 import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
@@ -45,11 +46,18 @@ export function TimePicker({
 }: TimePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const { hour, minute } = parseTime(value);
 
-  useDismissable(open, containerRef, () => setOpen(false));
-  // Fixed, not absolute, so a Dialog's scroll box cannot clip the panel.
-  const panelStyle = useAnchoredPanelPosition(open, containerRef, PANEL_HEIGHT);
+  useDismissable(open, [containerRef, panelRef], () => setOpen(false));
+  // Portal + viewport coordinates escape the Dialog's scroll box.
+  const panelStyle = useAnchoredPanelPosition(
+    open,
+    containerRef,
+    PANEL_HEIGHT,
+    [],
+    256,
+  );
 
   return (
     <div
@@ -81,57 +89,62 @@ export function TimePicker({
       </Button>
 
       {open && panelStyle ? (
-        <div
-          aria-label="เลือกเวลา"
-          className="fixed z-[60] min-w-64 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
-          onMouseDown={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
-          role="dialog"
-          style={panelStyle}
-        >
-          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-            <label className="grid gap-1 text-xs font-semibold text-slate-600">
-              ชั่วโมง
-              <Select
-                aria-label="ชั่วโมง"
-                onChange={(event) =>
-                  onChange(`${event.target.value}:${minute}`)
-                }
-                value={hour}
+        <OverlayPortal>
+          <div
+            aria-label="เลือกเวลา"
+            className="fixed z-[60] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
+            onMouseDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            ref={panelRef}
+            role="dialog"
+            style={panelStyle}
+          >
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+              <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                ชั่วโมง
+                <Select
+                  aria-label="ชั่วโมง"
+                  onChange={(event) =>
+                    onChange(`${event.target.value}:${minute}`)
+                  }
+                  value={hour}
+                >
+                  {HOURS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <span className="pb-2 text-lg font-bold text-slate-500">:</span>
+              <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                นาที
+                <Select
+                  aria-label="นาที"
+                  onChange={(event) =>
+                    onChange(`${hour}:${event.target.value}`)
+                  }
+                  value={minute}
+                >
+                  {MINUTES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                onClick={() => setOpen(false)}
+                onMouseDown={() => setOpen(false)}
+                size="sm"
               >
-                {HOURS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <span className="pb-2 text-lg font-bold text-slate-500">:</span>
-            <label className="grid gap-1 text-xs font-semibold text-slate-600">
-              นาที
-              <Select
-                aria-label="นาที"
-                onChange={(event) => onChange(`${hour}:${event.target.value}`)}
-                value={minute}
-              >
-                {MINUTES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            </label>
+                เสร็จสิ้น
+              </Button>
+            </div>
           </div>
-          <div className="mt-3 flex justify-end">
-            <Button
-              onClick={() => setOpen(false)}
-              onMouseDown={() => setOpen(false)}
-              size="sm"
-            >
-              เสร็จสิ้น
-            </Button>
-          </div>
-        </div>
+        </OverlayPortal>
       ) : null}
     </div>
   );

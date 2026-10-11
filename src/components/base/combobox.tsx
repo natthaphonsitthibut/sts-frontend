@@ -1,12 +1,7 @@
-import {
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useRef, useState } from "react";
+import { OverlayPortal } from "./overlay-portal";
 import { ChevronDown } from "lucide-react";
+import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
 import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../lib/utils";
 import { Input } from "./input";
@@ -75,7 +70,6 @@ export function Combobox({
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
-  const [listPosition, setListPosition] = useState<CSSProperties | null>(null);
   // Picking an option must leave the panel closed. The input reopens on click
   // and on focus, so any click/focus the browser still routes to it while the
   // selection is settling would otherwise pop the panel straight back open and
@@ -106,35 +100,14 @@ export function Combobox({
     setQuery("");
   });
 
-  // The panel is portaled to <body> with fixed positioning so a scroll-clipped
-  // parent (a Dialog body, a table) can never cut it off — same as Select.
-  useLayoutEffect(() => {
-    if (!open) return;
-    function updatePosition(): void {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const roomBelow = window.innerHeight - rect.bottom;
-      const openUp =
-        menuPlacement === "top" ||
-        (roomBelow < LIST_MAX_HEIGHT + 8 && rect.top > roomBelow);
-      setListPosition(
-        openUp
-          ? {
-              left: rect.left,
-              width: rect.width,
-              bottom: window.innerHeight - rect.top + 4,
-            }
-          : { left: rect.left, width: rect.width, top: rect.bottom + 4 },
-      );
-    }
-    updatePosition();
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-    return () => {
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [open, menuPlacement]);
+  const listPosition = useAnchoredPanelPosition(
+    open && !disabled,
+    containerRef,
+    LIST_MAX_HEIGHT,
+    [],
+    0,
+    menuPlacement === "top" ? "top" : "auto",
+  );
 
   return (
     <div className={cn("relative", className)} ref={containerRef}>
@@ -179,62 +152,59 @@ export function Combobox({
         )}
         aria-hidden="true"
       />
-      {open && listPosition
-        ? createPortal(
-            <ul
-              // Above a Dialog (z-50), which is where a clipped panel hurt most.
-              className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-              ref={listRef}
-              style={listPosition}
-            >
-              {filtered.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-slate-500">
-                  {emptyText}
+      {open && listPosition ? (
+        <OverlayPortal>
+          <ul
+            // Above a Dialog (z-50), which is where a clipped panel hurt most.
+            className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+            ref={listRef}
+            style={listPosition}
+          >
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-slate-500">{emptyText}</li>
+            ) : (
+              filtered.map((option) => (
+                <li key={option.value}>
+                  <button
+                    className={cn(
+                      "block w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
+                      option.value === value &&
+                        "bg-slate-50 font-medium text-primary",
+                    )}
+                    onClick={(event) => {
+                      // Cancel the click's default action so a wrapping <label>
+                      // can never forward it back to the input.
+                      event.preventDefault();
+                      justPickedRef.current = true;
+                      // Release the guard once this click has fully settled, so
+                      // the next genuine click on the field still opens the panel.
+                      window.setTimeout(() => {
+                        justPickedRef.current = false;
+                      }, 0);
+                      onChange(option.value);
+                      setQuery("");
+                      setOpen(false);
+                    }}
+                    // Keep focus inside the combobox until the click selects the
+                    // option; otherwise the input blur closes the panel first.
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                    {option.description ? (
+                      <span className="mt-0.5 block truncate text-xs font-normal text-slate-500">
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </button>
                 </li>
-              ) : (
-                filtered.map((option) => (
-                  <li key={option.value}>
-                    <button
-                      className={cn(
-                        "block w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
-                        option.value === value &&
-                          "bg-slate-50 font-medium text-primary",
-                      )}
-                      onClick={(event) => {
-                        // Cancel the click's default action so a wrapping <label>
-                        // can never forward it back to the input.
-                        event.preventDefault();
-                        justPickedRef.current = true;
-                        // Release the guard once this click has fully settled, so
-                        // the next genuine click on the field still opens the panel.
-                        window.setTimeout(() => {
-                          justPickedRef.current = false;
-                        }, 0);
-                        onChange(option.value);
-                        setQuery("");
-                        setOpen(false);
-                      }}
-                      // Keep focus inside the combobox until the click selects the
-                      // option; otherwise the input blur closes the panel first.
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                      }}
-                      type="button"
-                    >
-                      {option.label}
-                      {option.description ? (
-                        <span className="mt-0.5 block truncate text-xs font-normal text-slate-500">
-                          {option.description}
-                        </span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>,
-            document.body,
-          )
-        : null}
+              ))
+            )}
+          </ul>
+        </OverlayPortal>
+      ) : null}
     </div>
   );
 }

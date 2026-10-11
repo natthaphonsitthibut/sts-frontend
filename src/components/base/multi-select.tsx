@@ -1,3 +1,4 @@
+import { OverlayPortal } from "./overlay-portal";
 import { useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
@@ -62,13 +63,12 @@ export function MultiSelect({
   const listId = `${id ?? generatedListId}-listbox`;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  useDismissable(open, containerRef, () => {
+  useDismissable(open, [containerRef, listRef], () => {
     setOpen(false);
     setQuery("");
   });
 
-  // Fixed, not absolute: inside a Dialog the absolute list was clipped by the
-  // dialog's own scroll box and "sank" below its bottom edge.
+  // Portal + viewport coordinates escape the Dialog's scroll box.
   const listStyle = useAnchoredPanelPosition(
     open && !disabled,
     containerRef,
@@ -233,80 +233,82 @@ export function MultiSelect({
       />
 
       {open && !disabled && listStyle ? (
-        <ul
-          aria-multiselectable="true"
-          className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-          id={listId}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
+        <OverlayPortal>
+          <ul
+            aria-multiselectable="true"
+            className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+            id={listId}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setOpen(false);
+                setQuery("");
+                triggerRef.current?.focus();
+                return;
+              }
+              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+                return;
               event.preventDefault();
-              setOpen(false);
-              setQuery("");
-              triggerRef.current?.focus();
-              return;
-            }
-            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
-              return;
-            event.preventDefault();
-            const optionButtons = Array.from(
-              listRef.current?.querySelectorAll<HTMLButtonElement>(
-                '[role="option"]',
-              ) ?? [],
-            );
-            if (optionButtons.length === 0) return;
-            if (event.key === "Home" || event.key === "End") {
-              optionButtons[
-                event.key === "Home" ? 0 : optionButtons.length - 1
-              ]?.focus();
-              return;
-            }
-            const current = optionButtons.indexOf(
-              document.activeElement as HTMLButtonElement,
-            );
-            const direction = event.key === "ArrowDown" ? 1 : -1;
-            optionButtons[
-              (current + direction + optionButtons.length) %
-                optionButtons.length
-            ]?.focus();
-          }}
-          ref={listRef}
-          role="listbox"
-          style={listStyle}
-        >
-          {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500">
-              {options.length === 0 ? emptyText : "ไม่พบรายการที่ค้นหา"}
-            </li>
-          ) : (
-            filtered.map((option) => {
-              const isSelected = value.includes(option.value);
-              return (
-                <li key={option.value} role="presentation">
-                  <button
-                    aria-selected={isSelected}
-                    className={cn(
-                      "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50",
-                      isSelected && "bg-slate-50 font-medium text-primary",
-                    )}
-                    onClick={() => toggle(option.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter" && event.key !== " ") return;
-                      event.preventDefault();
-                      toggle(option.value);
-                    }}
-                    role="option"
-                    type="button"
-                  >
-                    {option.label}
-                    {isSelected ? (
-                      <Check className="size-4 shrink-0" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                </li>
+              const optionButtons = Array.from(
+                listRef.current?.querySelectorAll<HTMLButtonElement>(
+                  '[role="option"]',
+                ) ?? [],
               );
-            })
-          )}
-        </ul>
+              if (optionButtons.length === 0) return;
+              if (event.key === "Home" || event.key === "End") {
+                optionButtons[
+                  event.key === "Home" ? 0 : optionButtons.length - 1
+                ]?.focus();
+                return;
+              }
+              const current = optionButtons.indexOf(
+                document.activeElement as HTMLButtonElement,
+              );
+              const direction = event.key === "ArrowDown" ? 1 : -1;
+              optionButtons[
+                (current + direction + optionButtons.length) %
+                  optionButtons.length
+              ]?.focus();
+            }}
+            ref={listRef}
+            role="listbox"
+            style={listStyle}
+          >
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-slate-500">
+                {options.length === 0 ? emptyText : "ไม่พบรายการที่ค้นหา"}
+              </li>
+            ) : (
+              filtered.map((option) => {
+                const isSelected = value.includes(option.value);
+                return (
+                  <li key={option.value} role="presentation">
+                    <button
+                      aria-selected={isSelected}
+                      className={cn(
+                        "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50",
+                        isSelected && "bg-slate-50 font-medium text-primary",
+                      )}
+                      onClick={() => toggle(option.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        toggle(option.value);
+                      }}
+                      role="option"
+                      type="button"
+                    >
+                      {option.label}
+                      {isSelected ? (
+                        <Check className="size-4 shrink-0" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </OverlayPortal>
       ) : null}
     </div>
   );

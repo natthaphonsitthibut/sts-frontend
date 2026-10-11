@@ -66,6 +66,8 @@ export function PageShell({
 
 interface PageToolbarProps extends Omit<ComponentProps<"section">, "title"> {
   actions?: ReactNode;
+  /** Hide unavailable controls while preserving their responsive layout. */
+  controlsHidden?: boolean;
   description?: ReactNode;
   footerActions?: ReactNode;
   /** Hide the breadcrumb row while keeping the page title and actions. */
@@ -124,6 +126,7 @@ export function PageToolbar({
   breadcrumbTrail,
   children,
   className,
+  controlsHidden = false,
   description,
   footerActions,
   hideBreadcrumb = false,
@@ -429,9 +432,13 @@ export function PageToolbar({
           ) : null}
           {scope ? (
             <div
+              key={controlsHidden ? "unavailable-scope" : "available-scope"}
+              aria-hidden={controlsHidden || undefined}
+              inert={controlsHidden || undefined}
               className={cn(
                 "flex min-w-0 pb-1",
                 showTitleRow && "mt-2 sm:mt-3",
+                controlsHidden && "invisible",
               )}
             >
               {scope}
@@ -443,9 +450,21 @@ export function PageToolbar({
         <div
           className={cn(
             "mt-4 overflow-visible rounded-lg border border-slate-200 bg-white",
+            controlsHidden && !footerActions && "invisible",
           )}
         >
-          {children ? <div className="p-4">{children}</div> : null}
+          {children ? (
+            <div
+              key={
+                controlsHidden ? "unavailable-controls" : "available-controls"
+              }
+              aria-hidden={controlsHidden || undefined}
+              inert={controlsHidden || undefined}
+              className={cn("p-4", controlsHidden && "invisible")}
+            >
+              {children}
+            </div>
+          ) : null}
           {footerActions ? (
             <div
               className={cn(
@@ -688,6 +707,7 @@ type ListPageToolbarProps = ListPageToolbarBaseProps &
  * actions + section props), so it stays a superset, never a narrowing.
  */
 export function ListPageToolbar({
+  controlsHidden = false,
   filters,
   onClearFilters,
   search,
@@ -701,12 +721,22 @@ export function ListPageToolbar({
       <>
         {tableActions}
         {showClearFilters && onClearFilters ? (
-          <ClearFiltersButton onClear={onClearFilters} />
+          <div
+            className={cn(controlsHidden && "invisible")}
+            inert={controlsHidden || undefined}
+            aria-hidden={controlsHidden || undefined}
+          >
+            <ClearFiltersButton onClear={onClearFilters} />
+          </div>
         ) : null}
       </>
     ) : undefined;
   return (
-    <PageToolbar {...toolbarProps} footerActions={footerActions}>
+    <PageToolbar
+      {...toolbarProps}
+      controlsHidden={controlsHidden}
+      footerActions={footerActions}
+    >
       {hasControls ? (
         <div className="flex flex-col gap-3">
           {search ? (

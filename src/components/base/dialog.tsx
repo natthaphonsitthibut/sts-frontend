@@ -1,7 +1,14 @@
-import { useEffect, useRef, type ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { OverlayScopeContext, useOwnedOverlayIds } from "./overlay-scope";
 import { IconButton } from "./icon-button";
 
 const FOCUSABLE_SELECTOR =
@@ -20,6 +27,17 @@ export function Dialog({
   ...props
 }: DialogProps) {
   const regionRef = useRef<HTMLDivElement | null>(null);
+  const [overlayContainer, setOverlayContainer] =
+    useState<HTMLDivElement | null>(null);
+  const [overlayIds, setOverlayIds] = useState<string[]>([]);
+  const setRegionRef = useCallback((node: HTMLDivElement | null) => {
+    regionRef.current = node;
+    setOverlayContainer(node);
+  }, []);
+  const registerOverlay = useCallback((id: string) => {
+    setOverlayIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
+    return () => setOverlayIds((ids) => ids.filter((value) => value !== id));
+  }, []);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   useEffect(() => {
@@ -71,22 +89,30 @@ export function Dialog({
   }
 
   return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4",
-        className,
-      )}
-      ref={regionRef}
-      {...props}
+    <OverlayScopeContext
+      value={{
+        container: overlayContainer,
+        ids: overlayIds,
+        register: registerOverlay,
+      }}
     >
-      <button
-        aria-label="Close dialog"
-        className="absolute inset-0 bg-slate-950/45 animate-overlay-in"
-        onClick={() => onOpenChange?.(false)}
-        type="button"
-      />
-      {children}
-    </div>
+      <div
+        className={cn(
+          "fixed inset-0 z-50 flex items-center justify-center p-4",
+          className,
+        )}
+        ref={setRegionRef}
+        {...props}
+      >
+        <button
+          aria-label="Close dialog"
+          className="absolute inset-0 bg-slate-950/45 animate-overlay-in"
+          onClick={() => onOpenChange?.(false)}
+          type="button"
+        />
+        {children}
+      </div>
+    </OverlayScopeContext>
   );
 }
 
@@ -100,9 +126,11 @@ export function DialogContent({
   onClose,
   ...props
 }: DialogContentProps) {
+  const overlayIds = useOwnedOverlayIds();
   return (
     <section
       aria-modal="true"
+      aria-owns={overlayIds.length > 0 ? overlayIds.join(" ") : undefined}
       role="dialog"
       tabIndex={-1}
       className={cn(

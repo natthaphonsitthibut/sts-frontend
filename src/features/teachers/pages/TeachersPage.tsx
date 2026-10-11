@@ -155,6 +155,7 @@ export function TeachersPage({ mode = "view" }: { mode?: "view" | "manage" }) {
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!selectedSchoolId}
         actions={
           management ? (
             <NavButton
