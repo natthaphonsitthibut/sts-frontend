@@ -103,7 +103,7 @@ describe("ConversationSidebar", () => {
   it("starts a new chat from the header button", () => {
     const { view, handlers } = renderSidebar();
 
-    fireEvent.click(view.getByRole("button", { name: "แชตใหม่" }));
+    fireEvent.click(view.getByRole("button", { name: "เริ่มบทสนทนาใหม่" }));
 
     expect(handlers.onNew).toHaveBeenCalled();
   });

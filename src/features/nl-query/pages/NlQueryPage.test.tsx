@@ -7,7 +7,11 @@ import { NlQueryPage } from "./NlQueryPage";
 
 vi.mock("../hooks/useNlQuery", () => ({ useNlQuery: vi.fn() }));
 vi.mock("../components/ConversationSidebar", () => ({
-  ConversationSidebar: () => <div data-testid="sidebar" />,
+  ConversationSidebar: ({ onNew }: { onNew: () => void }) => (
+    <div data-testid="sidebar">
+      <button onClick={onNew}>เริ่มบทสนทนาใหม่</button>
+    </div>
+  ),
 }));
 
 const mockedUseNlQuery = vi.mocked(useNlQuery);
@@ -261,16 +265,9 @@ describe("NlQueryPage", () => {
     ).toBeTruthy();
   });
 
-  it("shows the reset button only once a turn exists and calls reset() on click", () => {
-    const reset = vi.fn();
-    mockedUseNlQuery.mockReturnValue(sessionState({ reset }));
-    const noTurns = renderPage();
-    expect(noTurns.queryByText("เริ่มบทสนทนาใหม่")).toBeNull();
-    noTurns.unmount();
-
+  it("has a single new-chat control (the sidebar's); the toolbar no longer duplicates it", () => {
     mockedUseNlQuery.mockReturnValue(
       sessionState({
-        reset,
         turnsLog: [
           {
             question: "q",
@@ -279,10 +276,11 @@ describe("NlQueryPage", () => {
         ],
       }),
     );
-    const withTurn = renderPage();
-    const button = withTurn.getByText("เริ่มบทสนทนาใหม่");
-    fireEvent.click(button);
-    expect(reset).toHaveBeenCalled();
+    const view = renderPage();
+    expect(view.getAllByText("เริ่มบทสนทนาใหม่")).toHaveLength(1);
+    expect(
+      within(view.getByTestId("sidebar")).getByText("เริ่มบทสนทนาใหม่"),
+    ).toBeTruthy();
   });
 
   it("opens the conversation named in the URL once", async () => {

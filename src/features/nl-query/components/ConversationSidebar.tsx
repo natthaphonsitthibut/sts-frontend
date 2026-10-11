@@ -72,7 +72,7 @@ export function ConversationSidebar({
   return (
     <nav aria-label="ประวัติการสนทนา" className="flex h-full flex-col gap-3">
       <Button icon={Plus} onClick={onNew} size="sm" type="button">
-        แชตใหม่
+        เริ่มบทสนทนาใหม่
       </Button>
 
       {isLoading ? (

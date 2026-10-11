@@ -169,6 +169,10 @@ export function NlQueryPage() {
   const errorAlertRef = useRef<HTMLDivElement>(null);
   const chatCardRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Set while a "new chat" is leaving a conversation URL: reset() clears the
+  // hook state a render before the route drops :conversationId, and without
+  // this guard the URL→load effect below would re-open the chat just left.
+  const leavingConversationRef = useRef(false);
   const [chatHeight, setChatHeight] = useState<number>();
 
   useEffect(() => {
@@ -203,7 +207,11 @@ export function NlQueryPage() {
   // The URL names the open conversation: opening one from the URL (deep link,
   // back button, sidebar) loads it unless the hook already has it open.
   useEffect(() => {
-    if (!routeId || routeId === conversationId) return;
+    if (!routeId) {
+      leavingConversationRef.current = false;
+      return;
+    }
+    if (leavingConversationRef.current || routeId === conversationId) return;
     void load(routeId).then((ok) => {
       if (!ok) navigate("/nl-query", { replace: true });
     });
@@ -218,6 +226,7 @@ export function NlQueryPage() {
   }, [conversationId, routeId, navigate]);
 
   function startNewChat() {
+    if (routeId) leavingConversationRef.current = true;
     reset();
     navigate("/nl-query");
     setHistoryOpen(false);
@@ -225,6 +234,7 @@ export function NlQueryPage() {
 
   function openConversation(id: string) {
     setHistoryOpen(false);
+    leavingConversationRef.current = false;
     if (id !== routeId) navigate(`/nl-query/${id}`);
   }
 
@@ -273,16 +283,6 @@ export function NlQueryPage() {
             >
               ประวัติ
             </Button>
-            {hasTurns ? (
-              <Button
-                onClick={startNewChat}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                เริ่มบทสนทนาใหม่
-              </Button>
-            ) : null}
           </div>
         }
       />
