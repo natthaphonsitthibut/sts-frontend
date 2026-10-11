@@ -8,7 +8,7 @@ import {
   ExternalLink,
   Hourglass,
   ListChecks,
-  XCircle,
+  Send,
 } from "lucide-react";
 import { Badge } from "../../../components/base";
 import { LinkWarningIndicator } from "../../../components/layout/link-warning-indicator";
@@ -45,23 +45,19 @@ import { statusSummaryTone } from "../../status-catalog/lib/status-catalog-prese
 import type { ReferralDrilldownRow } from "../types/follow-up-dashboard.types";
 
 /**
- * The register's cards follow the referral flow — ส่งต่อ → รอผล → พิจารณา →
- * ผล — the way the กลุ่มเสี่ยง cards follow a case (owner, 2026-10-08). The two
- * waiting stages are case statuses and read their label and colour from the
- * case catalog, รอพิจารณา with the same icon as on the กลุ่มเสี่ยง tab; the two
- * results read theirs from the referral catalog. The other icons match the
- * case page's status icons.
+ * The register's cards follow the referral flow — รอส่งต่อ → รอผล → พิจารณา →
+ * เสร็จสิ้น — the way the กลุ่มเสี่ยง cards follow a case (owner, 2026-10-08),
+ * from the moment a case is chosen for referral (owner, 2026-10-11). Every
+ * stage reads its label and colour from the case catalog with the case page's
+ * icon, so a finished referral says เสร็จสิ้น here exactly as its step does on
+ * the case page; whether it ended สำเร็จ or ยังไม่สำเร็จ is the row's own
+ * ผลการส่งต่อ, not its status.
  */
 const REFERRAL_STAGE_CARDS = [
-  { code: "AWAITING_REFERRAL_OUTCOME", domain: "case", icon: Hourglass },
-  { code: "PENDING_REVIEW", domain: "case", icon: ListChecks },
-  {
-    code: "COMPLETED",
-    domain: "referral",
-    icon: CircleCheck,
-    label: "ส่งต่อสำเร็จ",
-  },
-  { code: "NOT_SUCCEEDED", domain: "referral", icon: XCircle },
+  { code: "AWAITING_REFERRAL", icon: Send },
+  { code: "AWAITING_REFERRAL_OUTCOME", icon: Hourglass },
+  { code: "PENDING_REVIEW", icon: ListChecks },
+  { code: "RESOLVED", icon: CircleCheck },
 ] as const;
 type ReferralStageCard = (typeof REFERRAL_STAGE_CARDS)[number];
 
@@ -115,14 +111,8 @@ export function ReferralRegisterPanel({
   const referralStatuses = useStatusCatalog("CASE_REFERRAL");
   const caseStatuses = useStatusCatalog("CASE_WORKFLOW");
   const stagePresentation = (card: ReferralStageCard) => {
-    const status = findStatusCatalogItem(
-      card.domain === "case" ? caseStatuses.items : referralStatuses.items,
-      card.code,
-    );
-    return {
-      status,
-      label: ("label" in card ? card.label : status?.label) ?? card.code,
-    };
+    const status = findStatusCatalogItem(caseStatuses.items, card.code);
+    return { status, label: status?.label ?? card.code };
   };
   // A row reads the same label and colour as the card it is counted under; a
   // stage no card covers falls back to the referral catalog.
@@ -136,6 +126,16 @@ export function ReferralRegisterPanel({
       row.statusCode,
     );
     return { status, label: status?.label ?? row.statusCode };
+  };
+  // What the agency reported, worded as on the case page's ผลการส่งต่อ field;
+  // a referral with no result yet has none to show.
+  const rowResult = (row: ReferralDrilldownRow): string => {
+    if (row.statusCode === "COMPLETED") return "สำเร็จ";
+    if (row.statusCode !== "NOT_SUCCEEDED") return "-";
+    return (
+      findStatusCatalogItem(referralStatuses.items, row.statusCode)?.label ??
+      "ยังไม่สำเร็จ"
+    );
   };
   // The header's school/area filter narrows the register like every other tab.
   const globalFilter = useGlobalSchoolFilter();
@@ -248,7 +248,7 @@ export function ReferralRegisterPanel({
       <ReferralAccessCodeButton
         compact
         caseId={referral.caseId}
-        referralId={referral.id}
+        referralId={referral.id ?? ""}
         disabled={
           !referral.awaitingResult ||
           !referral.linkStatusCode ||
@@ -326,14 +326,15 @@ export function ReferralRegisterPanel({
           <div className="flex flex-col gap-2">
             <DataTable
               columnWidths={[
+                "w-[5%]",
+                "w-[17%]",
+                "w-[7%]",
                 "w-[6%]",
-                "w-[20%]",
-                "w-[9%]",
-                "w-[8%]",
-                "w-[21%]",
-                "w-[14%]",
+                "w-[18%]",
                 "w-[13%]",
-                "w-[9%]",
+                "w-[10%]",
+                "w-[12%]",
+                "w-[12%]",
               ]}
               headings={[
                 "ลำดับ",
@@ -342,13 +343,16 @@ export function ReferralRegisterPanel({
                 "ห้อง",
                 "หน่วยงานที่ส่งต่อ",
                 { label: "สถานะการส่งต่อ", className: "text-center" },
+                "ผลการส่งต่อ",
                 "วันที่ส่งต่อ",
                 { isAction: true, label: "เครื่องมือ" },
               ]}
-              minWidthClassName="min-w-[1120px]"
+              minWidthClassName="min-w-[1240px]"
             >
               {referrals.map((referral, index) => (
-                <DataTableRow key={referral.id}>
+                <DataTableRow
+                  key={`${referral.caseId}-${referral.id ?? "pending"}`}
+                >
                   <DataTableCell className="text-slate-800">
                     {(page - 1) * rowsPerPage + index + 1}
                   </DataTableCell>
@@ -372,7 +376,7 @@ export function ReferralRegisterPanel({
                   <DataTableCell>
                     <div className="min-w-0">
                       <div className="truncate text-slate-800">
-                        {referral.agencyName}
+                        {referral.agencyName ?? "ยังไม่ได้เลือกหน่วยงาน"}
                       </div>
                       <div className="truncate text-xs text-slate-500">
                         {referral.agencyKindLabel}
@@ -392,7 +396,12 @@ export function ReferralRegisterPanel({
                     </span>
                   </DataTableCell>
                   <DataTableCell className="text-slate-700">
-                    {formatThaiDateTime(referral.referredAt)}
+                    {rowResult(referral)}
+                  </DataTableCell>
+                  <DataTableCell className="text-slate-700">
+                    {referral.referredAt
+                      ? formatThaiDateTime(referral.referredAt)
+                      : "-"}
                   </DataTableCell>
                   <DataTableCell>{rowActions(referral)}</DataTableCell>
                 </DataTableRow>
@@ -401,7 +410,9 @@ export function ReferralRegisterPanel({
 
             <TableCardList>
               {referrals.map((referral) => (
-                <TableCard key={referral.id}>
+                <TableCard
+                  key={`${referral.caseId}-${referral.id ?? "pending"}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <StudentIdentityCell
                       academicYear={referral.academicYear}
@@ -432,14 +443,24 @@ export function ReferralRegisterPanel({
                       </div>
                     </div>
                     <div>
+                      <div className="text-xs text-slate-500">ผลการส่งต่อ</div>
+                      <div className="text-slate-800">
+                        {rowResult(referral)}
+                      </div>
+                    </div>
+                    <div>
                       <div className="text-xs text-slate-500">วันที่ส่งต่อ</div>
                       <div className="text-slate-800">
-                        {formatThaiDateTime(referral.referredAt)}
+                        {referral.referredAt
+                          ? formatThaiDateTime(referral.referredAt)
+                          : "-"}
                       </div>
                     </div>
                   </div>
                   <div className="mt-2">
-                    <div className="text-slate-800">{referral.agencyName}</div>
+                    <div className="text-slate-800">
+                      {referral.agencyName ?? "ยังไม่ได้เลือกหน่วยงาน"}
+                    </div>
                     <div className="text-xs text-slate-500">
                       {referral.agencyKindLabel}
                     </div>

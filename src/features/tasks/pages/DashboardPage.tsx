@@ -97,6 +97,10 @@ const CASE_STATUS_VALUES = [
   "AWAITING_REFERRAL_OUTCOME",
   "RESOLVED",
 ] as const;
+const REFERRAL_ONLY_CASE_STATUSES: ReadonlySet<string> = new Set([
+  "AWAITING_REFERRAL",
+  "AWAITING_REFERRAL_OUTCOME",
+]);
 const STUDENT_GROUP_ROUTES = {
   risk: "/student-risk-report/risk",
   watchlist: "/student-risk-report/watchlist",
@@ -323,10 +327,26 @@ function StudentRiskDashboardPage() {
   );
   // Case statuses and their labels come from the status catalog, the same
   // source the referral tab reads its statuses from.
-  const caseWorkflowStatuses = useStatusCatalog("CASE_WORKFLOW").items;
-  const [caseStatus, setCaseStatus] = useState<
+  const allCaseWorkflowStatuses = useStatusCatalog("CASE_WORKFLOW").items;
+  // กลุ่มเสี่ยง never lists a case that is in the referral flow — those are on
+  // งานส่งต่อ — so it does not offer the two referral waits as a filter either.
+  const caseWorkflowStatuses =
+    studentGroup === "risk"
+      ? allCaseWorkflowStatuses.filter(
+          (status) => !REFERRAL_ONLY_CASE_STATUSES.has(status.code),
+        )
+      : allCaseWorkflowStatuses;
+  const [selectedCaseStatus, setCaseStatus] = useState<
     RiskDashboardQuery["caseStatus"]
   >(() => parseCaseStatus(searchParams.get("caseStatus")));
+  const caseStatus =
+    studentGroup === "risk" &&
+    REFERRAL_ONLY_CASE_STATUSES.has(selectedCaseStatus ?? "")
+      ? undefined
+      : selectedCaseStatus;
+  // Normalize before query/URL effects run, and discard a hidden selection so
+  // returning to the watchlist cannot bring it back.
+  if (selectedCaseStatus !== caseStatus) setCaseStatus(caseStatus);
   const globalFilter = useGlobalSchoolFilter();
   const scope = useRiskReportScope({
     academicYear: academicYearInput,

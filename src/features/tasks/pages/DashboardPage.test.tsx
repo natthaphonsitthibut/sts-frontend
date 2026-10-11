@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   lastRequestTo,
@@ -78,6 +78,15 @@ const FIXTURES = {
   },
 };
 
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="report-location">
+      {location.pathname + location.search}
+    </output>
+  );
+}
+
 function renderDashboardAt(
   url: string,
   fixtures: Record<string, unknown> = FIXTURES,
@@ -98,6 +107,7 @@ function renderDashboardAt(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[url]}>
         <DashboardPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -110,6 +120,90 @@ afterEach(() => {
 });
 
 describe("student risk report URL filters", () => {
+  it.each(["AWAITING_REFERRAL", "AWAITING_REFERRAL_OUTCOME"])(
+    "clears a hidden risk status from the bookmark and every API request (%s)",
+    async (status) => {
+      const requests = renderDashboardAt(
+        `/student-risk-report/risk?caseStatus=${status}`,
+      );
+      await waitFor(() =>
+        expect(lastRequestTo(requests, RISK_DASHBOARD_URL)).toBeDefined(),
+      );
+      expect(
+        requests
+          .filter((request) => request.url === RISK_DASHBOARD_URL)
+          .every((request) => request.params.caseStatus === undefined),
+      ).toBe(true);
+      await waitFor(() =>
+        expect(screen.getByTestId("report-location").textContent).not.toContain(
+          "caseStatus=",
+        ),
+      );
+    },
+  );
+
+  it.each(["AWAITING_REFERRAL", "AWAITING_REFERRAL_OUTCOME"])(
+    "discards a referral status when switching watchlist to risk and back (%s)",
+    async (status) => {
+      const requests = renderDashboardAt(
+        `/student-risk-report/watchlist?caseStatus=${status}`,
+      );
+      await waitFor(() =>
+        expect(
+          lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.caseStatus,
+        ).toBe(status),
+      );
+      const requestOffset = requests.length;
+      fireEvent.click(screen.getByRole("tab", { name: "กลุ่มเสี่ยง" }));
+      await waitFor(() => {
+        expect(
+          lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.studentGroup,
+        ).toBe("RISK");
+        expect(screen.getByTestId("report-location").textContent).not.toContain(
+          "caseStatus=",
+        );
+      });
+      expect(
+        requests
+          .slice(requestOffset)
+          .filter((request) => request.url === RISK_DASHBOARD_URL)
+          .every((request) => request.params.caseStatus === undefined),
+      ).toBe(true);
+      fireEvent.click(screen.getByRole("tab", { name: "กลุ่มเฝ้าระวัง" }));
+      await waitFor(() => {
+        expect(
+          lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.studentGroup,
+        ).toBe("WATCHLIST");
+        expect(
+          lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.caseStatus,
+        ).toBeUndefined();
+        expect(screen.getByTestId("report-location").textContent).not.toContain(
+          "caseStatus=",
+        );
+      });
+    },
+  );
+
+  it("preserves an ordinary case status when switching to risk", async () => {
+    const requests = renderDashboardAt(
+      "/student-risk-report/watchlist?caseStatus=IN_PROGRESS",
+    );
+    await waitFor(() =>
+      expect(
+        lastRequestTo(requests, RISK_DASHBOARD_URL)?.params.caseStatus,
+      ).toBe("IN_PROGRESS"),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "กลุ่มเสี่ยง" }));
+    await waitFor(() =>
+      expect(lastRequestTo(requests, RISK_DASHBOARD_URL)?.params).toMatchObject(
+        { studentGroup: "RISK", caseStatus: "IN_PROGRESS" },
+      ),
+    );
+    expect(screen.getByTestId("report-location").textContent).toContain(
+      "caseStatus=IN_PROGRESS",
+    );
+  });
+
   it("sends contract-valid pagination even when the URL is out of contract", async () => {
     const requests = renderDashboardAt(
       "/student-risk-report?page=-1&limit=999&academicYear=-3&semester=0",
@@ -175,7 +269,7 @@ describe("report filter consistency", () => {
       grade: "ม.4",
       room: "2",
       statusCode: "COMPLETED",
-      stageCode: "COMPLETED",
+      stageCode: "RESOLVED",
       awaitingResult: false,
       referredAt: "2026-10-01T00:00:00Z",
       agencyName: "หน่วยงานทดสอบ",
