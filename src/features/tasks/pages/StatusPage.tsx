@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Lock, SearchX } from "lucide-react";
-import { buttonVariants, Card, CardContent } from "../../../components/base";
+import {
+  Button,
+  buttonVariants,
+  Card,
+  CardContent,
+} from "../../../components/base";
 import { GuestPageShell } from "../../../components/layout/guest-page-shell";
 import { GuestReceiptCard } from "../../../components/layout/guest-receipt-card";
 import { useTaskLinkPhoto } from "../hooks/useTaskLinkPhoto";
@@ -14,6 +19,15 @@ interface StatusPageProps {
   note?: ReactNode;
   primaryLabel?: string;
   primaryTo?: string;
+  /**
+   * Makes the primary control a button instead of a link — for a page whose
+   * way forward is to try again in place (a link to itself navigates nowhere).
+   */
+  primaryAction?: {
+    onClick: () => void;
+    isPending?: boolean;
+    pendingLabel?: string;
+  };
   showProfile?: boolean;
   title: string;
   tone: StatusTone;
@@ -37,6 +51,7 @@ export function StatusPage({
   code,
   message,
   note,
+  primaryAction,
   primaryLabel = "กลับหน้าหลัก",
   primaryTo = "/",
   showProfile = true,
@@ -64,12 +79,24 @@ export function StatusPage({
           {note ? (
             <div className="mt-4 text-sm text-slate-500">{note}</div>
           ) : null}
-          <Link
-            className={buttonVariants({ className: "mt-6" })}
-            to={primaryTo}
-          >
-            {primaryLabel}
-          </Link>
+          {primaryAction ? (
+            <Button
+              className="mt-6"
+              isLoading={primaryAction.isPending}
+              loadingText={primaryAction.pendingLabel}
+              onClick={primaryAction.onClick}
+              type="button"
+            >
+              {primaryLabel}
+            </Button>
+          ) : (
+            <Link
+              className={buttonVariants({ className: "mt-6" })}
+              to={primaryTo}
+            >
+              {primaryLabel}
+            </Link>
+          )}
         </CardContent>
       </Card>
     </GuestPageShell>

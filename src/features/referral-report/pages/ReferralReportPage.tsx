@@ -28,6 +28,7 @@ import { referralReportService } from "../api/referral-report.service";
 import { ReferralReportAccessGate } from "../components/ReferralReportAccessGate";
 import { ReferralReportForm } from "../components/ReferralReportForm";
 import { useReferralReportPhoto } from "../hooks/useReferralReportPhoto";
+import type { ReferralReportDraft } from "../schemas/referral-report.schema";
 import type { ReferralReportLinkOpen } from "../types/referral-report.types";
 
 /** Kept apart from the teacher links' sessions in the same store. */
@@ -58,17 +59,56 @@ function errorMessage(error: unknown): {
  */
 export function ReferralReportPage() {
   const { token = "" } = useParams<{ token: string }>();
+  // A draft/session belongs to one link, even when the router reuses this page.
+  return <ReferralReportSessionPage key={token} token={token} />;
+}
+
+function ReferralReportSessionPage({ token }: { token: string }) {
   const readMagicToken = useAuthSessionStore((state) => state.readMagicToken);
   const writeMagicToken = useAuthSessionStore((state) => state.writeMagicToken);
   const [sessionToken, setSessionToken] = useState(() =>
     readMagicToken(sessionKey(token), "local"),
   );
   const [submitted, setSubmitted] = useState(false);
+  const [retryError, setRetryError] = useState<unknown>(null);
+  // The report as typed so far. It lives here, in memory only, because the
+  // form unmounts while the agency re-verifies; it never reaches storage.
+  const [draft, setDraft] = useState<ReferralReportDraft | null>(null);
+  const [needsReverify, setNeedsReverify] = useState(false);
+  const hasDraft = Boolean(draft && (draft.resultCode || draft.note.trim()));
+
+  /**
+   * The link's own session ran out (it is short-lived; the link is not). Drop
+   * it and send the agency back through the gate, keeping what it typed. The
+   * staff session in the same browser is not involved and stays as it is.
+   */
+  function reverifyAfterStaleSession(): void {
+    writeMagicToken(sessionKey(token), "", "local");
+    setNeedsReverify(true);
+    setSessionToken("");
+  }
 
   const linkQuery = useQuery({
     queryKey: ["referral-report", token, sessionToken],
-    queryFn: () =>
-      referralReportService.getLink(token, sessionToken || undefined),
+    queryFn: async () => {
+      try {
+        const link = await referralReportService.getLink(
+          token,
+          sessionToken || undefined,
+        );
+        // The public GET masks the student and returns 200 when verification
+        // has expired; submitting with that same stale identity returns 401.
+        if (sessionToken && link.auth_required) reverifyAfterStaleSession();
+        return link;
+      } catch (error) {
+        // Only a request that carried a session can have a stale one; without
+        // it a 401 is about the link itself and belongs on the error page.
+        if (sessionToken && errorMessage(error).status === 401) {
+          reverifyAfterStaleSession();
+        }
+        throw error;
+      }
+    },
     enabled: Boolean(token) && !submitted,
     retry: false,
   });
@@ -78,6 +118,9 @@ export function ReferralReportPage() {
     ) => referralReportService.submitReport(token, sessionToken, payload),
     meta: { suppressSuccessToast: true },
     onSuccess: () => setSubmitted(true),
+    onError: (error) => {
+      if (errorMessage(error).status === 401) reverifyAfterStaleSession();
+    },
   });
 
   if (submitted) {
@@ -93,7 +136,7 @@ export function ReferralReportPage() {
     );
   }
 
-  if (linkQuery.isLoading) {
+  if (linkQuery.isLoading && !retryError) {
     return (
       <GuestPageShell showProfile={false}>
         <Card className="rounded-lg p-6">
@@ -103,13 +146,23 @@ export function ReferralReportPage() {
     );
   }
 
-  if (linkQuery.isError || !linkQuery.data) {
-    const { status, message } = errorMessage(linkQuery.error);
+  if (linkQuery.isError || !linkQuery.data || retryError) {
+    const { status, message } = errorMessage(retryError ?? linkQuery.error);
     return (
       <StatusPage
         message={message}
+        // A link back to this same page navigates nowhere, so retry in place.
+        primaryAction={{
+          isPending: linkQuery.isFetching,
+          onClick: () => {
+            if (!linkQuery.isFetching) {
+              setRetryError(linkQuery.error);
+              void linkQuery.refetch().finally(() => setRetryError(null));
+            }
+          },
+          pendingLabel: "กำลังเปิดลิงก์",
+        }}
         primaryLabel="ลองเปิดอีกครั้ง"
-        primaryTo={`/referral-report/${token}`}
         showProfile={false}
         title={status === 409 ? "ลิงก์นี้ใช้งานแล้ว" : "เปิดลิงก์ไม่ได้"}
         tone={
@@ -124,8 +177,17 @@ export function ReferralReportPage() {
     return (
       <ReferralReportAccessGate
         maskedStudentName={link.student_name}
+        notice={
+          needsReverify
+            ? hasDraft
+              ? "การยืนยันตัวตนหมดอายุ กรุณายืนยันอีกครั้ง ข้อมูลที่กรอกไว้จะยังอยู่"
+              : "การยืนยันตัวตนหมดอายุ กรุณายืนยันอีกครั้ง"
+            : undefined
+        }
         onVerified={(nextSession) => {
           writeMagicToken(sessionKey(token), nextSession, "local");
+          // The failed submit's error belongs to the session that just ended.
+          submit.reset();
           setSessionToken(nextSession);
         }}
         referral={link.referral}
@@ -136,9 +198,11 @@ export function ReferralReportPage() {
 
   return (
     <ReferralReportView
+      draft={draft}
       error={submit.error}
       isSubmitting={submit.isPending}
       link={link}
+      onDraftChange={setDraft}
       onSubmit={(payload) => submit.mutate(payload)}
       sessionToken={sessionToken}
     />
@@ -146,12 +210,16 @@ export function ReferralReportPage() {
 }
 
 function ReferralReportView({
+  draft,
   error,
   isSubmitting,
   link,
+  onDraftChange,
   onSubmit,
   sessionToken,
 }: {
+  draft: ReferralReportDraft | null;
+  onDraftChange: (draft: ReferralReportDraft) => void;
   error: unknown;
   isSubmitting: boolean;
   link: ReferralReportLinkOpen;
@@ -225,8 +293,10 @@ function ReferralReportView({
         </TrackingStep>
         <TrackingStep active connectPrev number={2} title="รายงานผลการส่งต่อ">
           <ReferralReportForm
+            draft={draft}
             error={error}
             isSubmitting={isSubmitting}
+            onDraftChange={onDraftChange}
             onSubmit={onSubmit}
           />
         </TrackingStep>

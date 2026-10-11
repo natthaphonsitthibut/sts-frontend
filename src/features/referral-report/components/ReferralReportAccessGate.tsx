@@ -1,21 +1,39 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, FormErrorAlert, Input, Label } from "../../../components/base";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Form,
+  FormErrorAlert,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  registerDigitsField,
+} from "../../../components/base";
 import { AraIdQrChallengeView } from "../../auth/components/AraIdQrChallengeView";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { referralReportService } from "../api/referral-report.service";
+import {
+  REFERRAL_ACCESS_CODE_LENGTH,
+  referralAccessCodeSchema,
+  type ReferralAccessCodeValues,
+} from "../schemas/referral-report.schema";
 import type {
   ReferralReportAraIdChallenge,
   ReferralReportReferral,
 } from "../types/referral-report.types";
-
-const ACCESS_CODE_LENGTH = 6;
 
 interface ReferralReportAccessGateProps {
   token: string;
   referral: ReferralReportReferral;
   maskedStudentName: string;
   onVerified: (sessionToken: string) => void;
+  /** Why the agency is back here, e.g. its link session ran out mid-report. */
+  notice?: string;
 }
 
 /**
@@ -27,18 +45,22 @@ export function ReferralReportAccessGate({
   token,
   referral,
   maskedStudentName,
+  notice,
   onVerified,
 }: ReferralReportAccessGateProps) {
-  const [accessCode, setAccessCode] = useState("");
+  const form = useForm<ReferralAccessCodeValues>({
+    defaultValues: { accessCode: "" },
+    resolver: zodResolver(referralAccessCodeSchema),
+    mode: "onSubmit",
+  });
   const [challenge, setChallenge] =
     useState<ReferralReportAraIdChallenge | null>(null);
   const createChallenge = useMutation({
-    mutationFn: () =>
+    mutationFn: (accessCode: string) =>
       referralReportService.createAraIdChallenge(token, accessCode),
     meta: { suppressSuccessToast: true },
     onSuccess: setChallenge,
   });
-  const codeReady = new RegExp(`^\\d{${ACCESS_CODE_LENGTH}}$`).test(accessCode);
 
   if (challenge) {
     return (
@@ -47,14 +69,13 @@ export function ReferralReportAccessGate({
         isRefreshing={createChallenge.isPending}
         onApproved={onVerified}
         onBack={() => setChallenge(null)}
-        onExpired={() => createChallenge.mutate()}
+        onExpired={() => createChallenge.mutate(form.getValues("accessCode"))}
       />
     );
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (codeReady && !createChallenge.isPending) createChallenge.mutate();
+  function handleSubmit(values: ReferralAccessCodeValues): void {
+    if (!createChallenge.isPending) createChallenge.mutate(values.accessCode);
   }
 
   return (
@@ -63,40 +84,44 @@ export function ReferralReportAccessGate({
       subtitle={`${referral.agency_name ?? "หน่วยงาน"} · นักเรียน ${maskedStudentName}`}
       title="รายงานผลการส่งต่อ"
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <FormErrorAlert
-          error={createChallenge.error}
-          fallback="ตรวจสอบรหัสไม่สำเร็จ กรุณาลองใหม่"
-        />
-        <div className="space-y-2">
-          <Label htmlFor="referral-access-code" required>
-            รหัสจากโรงเรียน
-          </Label>
-          <Input
-            autoComplete="one-time-code"
-            id="referral-access-code"
-            inputMode="numeric"
-            maxLength={ACCESS_CODE_LENGTH}
-            onChange={(event) =>
-              setAccessCode(event.target.value.replace(/\D/g, ""))
-            }
-            placeholder="กรอกรหัส 6 หลัก"
-            value={accessCode}
+      <Form form={form} onSubmit={handleSubmit}>
+        <div className="space-y-4">
+          {notice ? (
+            <Alert data-referral-reverify-notice>
+              <AlertDescription>{notice}</AlertDescription>
+            </Alert>
+          ) : null}
+          <FormErrorAlert
+            error={createChallenge.error}
+            fallback="ตรวจสอบรหัสไม่สำเร็จ กรุณาลองใหม่"
           />
-          <p className="text-sm text-content-secondary">
-            จากนั้นยืนยันตัวตนด้วย AraID เพื่อบันทึกว่าใครเป็นผู้รายงาน
-          </p>
+          <FormItem>
+            <FormLabel htmlFor="referral-access-code" required>
+              รหัสจากโรงเรียน
+            </FormLabel>
+            <Input
+              autoComplete="one-time-code"
+              id="referral-access-code"
+              inputMode="numeric"
+              maxLength={REFERRAL_ACCESS_CODE_LENGTH}
+              placeholder="กรอกรหัส 6 หลัก"
+              {...registerDigitsField(form, "accessCode")}
+            />
+            <FormMessage<ReferralAccessCodeValues> name="accessCode" />
+            <p className="text-sm text-content-secondary">
+              จากนั้นยืนยันตัวตนด้วย AraID เพื่อบันทึกว่าใครเป็นผู้รายงาน
+            </p>
+          </FormItem>
+          <Button
+            className="w-full"
+            isLoading={createChallenge.isPending}
+            loadingText="กำลังตรวจสอบ"
+            type="submit"
+          >
+            ยืนยันตัวตนด้วย AraID
+          </Button>
         </div>
-        <Button
-          className="w-full"
-          disabled={!codeReady}
-          isLoading={createChallenge.isPending}
-          loadingText="กำลังตรวจสอบ"
-          type="submit"
-        >
-          ยืนยันตัวตนด้วย AraID
-        </Button>
-      </form>
+      </Form>
     </MagicAuthCard>
   );
 }
