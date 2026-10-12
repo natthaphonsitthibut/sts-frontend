@@ -1,14 +1,27 @@
 import { OverlayPortal } from "./overlay-portal";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useAnchoredPanelPosition } from "../../hooks/useAnchoredPanelPosition";
 import { useDismissable } from "../../hooks/useDismissable";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { cn } from "../../lib/utils";
+import { Button } from "./button";
 import type { ComboboxOption } from "./combobox";
+import { IconButton } from "./icon-button";
+import { Input } from "./input";
+import { Dialog, DialogContent } from "./dialog";
 
 /** Same cap as `Combobox`: a long list stays scrollable, not endless. */
 const MAX_VISIBLE = 50;
-const LIST_MAX_HEIGHT = 224; // max-h-56
+/** Five rows of choices plus the footer that keeps the count and เสร็จ in view. */
+const PANEL_MAX_HEIGHT = 232 + 50;
+/**
+ * A handful of fixed choices is read, not searched. Below this the field is a
+ * plain tap target, so a phone does not raise its keyboard over the choices.
+ */
+const SEARCH_THRESHOLD = 8;
+/** Below Tailwind's `sm`: the choices open as a bottom sheet. */
+const COMPACT_QUERY = "(max-width: 639px)";
 
 export interface MultiSelectProps {
   value: string[];
@@ -34,6 +47,10 @@ export interface MultiSelectProps {
  * as removable chips so a long selection never hides behind a summary count,
  * and typing filters the list the way `Combobox` does: a school's teacher list
  * is far too long to find a name by scrolling.
+ *
+ * Every row carries a tick box and the panel keeps a count with เสร็จ in view,
+ * so it reads as "pick several" rather than a one-choice dropdown. On a phone
+ * the choices open as a bottom sheet instead of a list under the keyboard.
  */
 export function MultiSelect({
   value,
@@ -50,6 +67,8 @@ export function MultiSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const sheetDoneRef = useRef<HTMLButtonElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
   // Drag-to-pan for the single-row field: a trackpad swipe is not available to
   // everyone, so the chips can also be pulled sideways with the pointer.
@@ -63,18 +82,69 @@ export function MultiSelect({
   const listId = `${id ?? generatedListId}-listbox`;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  useDismissable(open, [containerRef, listRef], () => {
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const searchable = options.length > SEARCH_THRESHOLD;
+  // On a phone the search box lives in the sheet, so the field never types.
+  const typesInField = searchable && !compact;
+  useDismissable(open && !compact, [containerRef, panelRef], (reason) => {
     setOpen(false);
     setQuery("");
+    if (reason === "escape") triggerRef.current?.focus();
   });
 
   // Portal + viewport coordinates escape the Dialog's scroll box.
   const listStyle = useAnchoredPanelPosition(
-    open && !disabled,
+    open && !disabled && !compact,
     containerRef,
-    LIST_MAX_HEIGHT,
+    PANEL_MAX_HEIGHT,
     [value.length],
   );
+
+  const sheetOpen = open && !disabled && compact;
+  useEffect(() => {
+    if (!open || compact) return;
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      if (
+        active !== document.body &&
+        !containerRef.current?.contains(active) &&
+        !panelRef.current?.contains(active)
+      )
+        return;
+      // A press on panel text can leave focus on body. Handle Escape before
+      // the parent dialog's document listener so only this picker closes.
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      setQuery("");
+      triggerRef.current?.focus();
+    }
+    function dismissAfterFocusLeaves(event: FocusEvent): void {
+      const target = event.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
+      )
+        return;
+      setOpen(false);
+      setQuery("");
+    }
+    document.addEventListener("focusin", dismissAfterFocusLeaves);
+    document.addEventListener("keydown", handleEscape, true);
+    return () => {
+      document.removeEventListener("focusin", dismissAfterFocusLeaves);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [open, compact]);
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sheetOpen]);
 
   const selected = options.filter((option) => value.includes(option.value));
   const term = query.trim().toLowerCase();
@@ -85,7 +155,7 @@ export function MultiSelect({
     return matched.slice(0, MAX_VISIBLE);
   }, [options, term]);
 
-  function toggle(optionValue: string): void {
+  function toggle(optionValue: string, returnToSearch = typesInField): void {
     onChange(
       value.includes(optionValue)
         ? value.filter((item) => item !== optionValue)
@@ -93,6 +163,12 @@ export function MultiSelect({
     );
     // Clear the term but keep the panel open: picking several people in a row
     // is the normal case, and each one starts from a fresh search.
+    setQuery("");
+    if (returnToSearch) triggerRef.current?.focus();
+  }
+
+  function close(): void {
+    setOpen(false);
     setQuery("");
     triggerRef.current?.focus();
   }
@@ -127,6 +203,95 @@ export function MultiSelect({
       optionButtons?.[edge === "first" ? 0 : optionButtons.length - 1]?.focus();
     });
   }
+
+  const heading = ariaLabel ?? placeholder;
+  const summary =
+    value.length > 0
+      ? `เลือกแล้ว ${value.length} รายการ`
+      : "เลือกได้หลายรายการ";
+
+  const list = (
+    <ul
+      aria-multiselectable="true"
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      id={listId}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+          return;
+        }
+        if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+          return;
+        event.preventDefault();
+        const optionButtons = Array.from(
+          listRef.current?.querySelectorAll<HTMLButtonElement>(
+            '[role="option"]',
+          ) ?? [],
+        );
+        if (optionButtons.length === 0) return;
+        if (event.key === "Home" || event.key === "End") {
+          optionButtons[
+            event.key === "Home" ? 0 : optionButtons.length - 1
+          ]?.focus();
+          return;
+        }
+        const current = optionButtons.indexOf(
+          document.activeElement as HTMLButtonElement,
+        );
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        optionButtons[
+          (current + direction + optionButtons.length) % optionButtons.length
+        ]?.focus();
+      }}
+      ref={listRef}
+      role="listbox"
+    >
+      {filtered.length === 0 ? (
+        <li className="px-3 py-2 text-sm text-slate-500">
+          {options.length === 0 ? emptyText : "ไม่พบรายการที่ค้นหา"}
+        </li>
+      ) : (
+        filtered.map((option) => {
+          const isSelected = value.includes(option.value);
+          return (
+            <li key={option.value} role="presentation">
+              <button
+                aria-selected={isSelected}
+                className={cn(
+                  "flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none",
+                  compact ? "min-h-12 px-4" : "min-h-11",
+                  isSelected && "bg-primary-soft font-medium text-primary-dark",
+                )}
+                onClick={(event) =>
+                  toggle(option.value, event.detail > 0 && !compact)
+                }
+                role="option"
+                type="button"
+              >
+                {/* Drawn like `Checkbox` so every row reads as "tick as many
+                    as apply" before anything is picked; the option button
+                    itself stays the one control. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "inline-flex size-5 shrink-0 items-center justify-center rounded border transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary text-white"
+                      : "border-slate-300 bg-white",
+                  )}
+                >
+                  {isSelected ? <Check className="size-3.5" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">{option.label}</span>
+              </button>
+            </li>
+          );
+        })
+      )}
+    </ul>
+  );
 
   return (
     <div className={cn("relative", className)} ref={containerRef}>
@@ -183,7 +348,10 @@ export function MultiSelect({
               aria-label={`นำ ${option.label} ออก`}
               className="relative inline-flex size-5 items-center justify-center rounded-sm text-slate-500 transition-colors before:absolute before:-inset-2 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               disabled={disabled}
-              onClick={() => toggle(option.value)}
+              onClick={() => {
+                toggle(option.value);
+                triggerRef.current?.focus();
+              }}
               type="button"
             >
               <X className="size-3.5" aria-hidden="true" />
@@ -195,27 +363,44 @@ export function MultiSelect({
           aria-expanded={open}
           aria-label={ariaLabel ?? placeholder}
           autoComplete="off"
-          className="min-h-6 min-w-24 flex-1 bg-transparent text-left outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+          className={cn(
+            "min-h-6 min-w-24 flex-1 bg-transparent text-left outline-none placeholder:text-slate-500 disabled:cursor-not-allowed",
+            !typesInField && "cursor-pointer caret-transparent",
+            // Nothing is typed here, so beside chips it only needs to hold
+            // focus — at full width it wrapped onto an empty second row.
+            !typesInField && selected.length > 0 && "w-px min-w-0 flex-none",
+          )}
           disabled={disabled}
           id={id}
+          inputMode={typesInField ? undefined : "none"}
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
           }}
           onClick={() => setOpen(true)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
+            if (event.key === "Escape" && open) {
               event.preventDefault();
+              event.stopPropagation();
               setOpen(false);
               setQuery("");
               return;
             }
-            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            const opensWithKey =
+              !typesInField && (event.key === "Enter" || event.key === " ");
+            if (
+              event.key !== "ArrowDown" &&
+              event.key !== "ArrowUp" &&
+              !opensWithKey
+            )
+              return;
             event.preventDefault();
             setOpen(true);
-            focusOption(event.key === "ArrowDown" ? "first" : "last");
+            if (!compact)
+              focusOption(event.key === "ArrowUp" ? "last" : "first");
           }}
           placeholder={selected.length === 0 ? placeholder : ""}
+          readOnly={!typesInField}
           ref={triggerRef}
           role="combobox"
           type="text"
@@ -232,82 +417,100 @@ export function MultiSelect({
         )}
       />
 
-      {open && !disabled && listStyle ? (
+      {open && !disabled && !compact && listStyle ? (
         <OverlayPortal>
-          <ul
-            aria-multiselectable="true"
-            className="fixed z-[60] max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-            id={listId}
+          <div
+            className="fixed z-[60] flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
             onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault();
-                setOpen(false);
-                setQuery("");
-                triggerRef.current?.focus();
-                return;
-              }
-              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
-                return;
+              if (event.key !== "Escape") return;
               event.preventDefault();
-              const optionButtons = Array.from(
-                listRef.current?.querySelectorAll<HTMLButtonElement>(
-                  '[role="option"]',
-                ) ?? [],
-              );
-              if (optionButtons.length === 0) return;
-              if (event.key === "Home" || event.key === "End") {
-                optionButtons[
-                  event.key === "Home" ? 0 : optionButtons.length - 1
-                ]?.focus();
-                return;
-              }
-              const current = optionButtons.indexOf(
-                document.activeElement as HTMLButtonElement,
-              );
-              const direction = event.key === "ArrowDown" ? 1 : -1;
-              optionButtons[
-                (current + direction + optionButtons.length) %
-                  optionButtons.length
-              ]?.focus();
+              event.stopPropagation();
+              close();
             }}
-            ref={listRef}
-            role="listbox"
+            ref={panelRef}
             style={listStyle}
           >
-            {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-slate-500">
-                {options.length === 0 ? emptyText : "ไม่พบรายการที่ค้นหา"}
-              </li>
-            ) : (
-              filtered.map((option) => {
-                const isSelected = value.includes(option.value);
-                return (
-                  <li key={option.value} role="presentation">
-                    <button
-                      aria-selected={isSelected}
-                      className={cn(
-                        "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50",
-                        isSelected && "bg-slate-50 font-medium text-primary",
-                      )}
-                      onClick={() => toggle(option.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        toggle(option.value);
-                      }}
-                      role="option"
-                      type="button"
-                    >
-                      {option.label}
-                      {isSelected ? (
-                        <Check className="size-4 shrink-0" aria-hidden="true" />
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
+            {list}
+            <div className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-1.5">
+              <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-600">
+                {summary}
+              </p>
+              {value.length > 0 ? (
+                <Button
+                  onClick={() => {
+                    onChange([]);
+                    // Clear disappears with the last pick; leave focus on a
+                    // mounted control so Escape can dismiss only this panel.
+                    triggerRef.current?.focus();
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  ล้าง
+                </Button>
+              ) : null}
+              <Button onClick={close} size="sm">
+                เสร็จ
+              </Button>
+            </div>
+          </div>
+        </OverlayPortal>
+      ) : null}
+
+      {sheetOpen ? (
+        <OverlayPortal>
+          <Dialog
+            className="z-[60] items-end p-0"
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) close();
+            }}
+            open
+          >
+            <DialogContent
+              aria-label={heading}
+              className="flex max-h-[80dvh] max-w-none animate-sheet-in-bottom flex-col overflow-hidden rounded-none rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)] shadow-xl"
+            >
+              <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {heading}
+                  </p>
+                  <p className="text-xs font-medium text-slate-600">
+                    {summary}
+                  </p>
+                </div>
+                <IconButton aria-label="ปิด" icon={X} onClick={close} />
+              </div>
+              {searchable ? (
+                <div className="shrink-0 border-b border-slate-200 px-4 py-2">
+                  <Input
+                    aria-label={`ค้นหา${heading}`}
+                    autoComplete="off"
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="ค้นหา"
+                    value={query}
+                  />
+                </div>
+              ) : null}
+              {list}
+              <div className="flex shrink-0 gap-2 border-t border-slate-200 p-3">
+                <Button
+                  disabled={value.length === 0}
+                  fullWidth
+                  onClick={() => {
+                    onChange([]);
+                    sheetDoneRef.current?.focus();
+                  }}
+                  variant="outline"
+                >
+                  ล้าง
+                </Button>
+                <Button fullWidth onClick={close} ref={sheetDoneRef}>
+                  เสร็จ
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </OverlayPortal>
       ) : null}
     </div>

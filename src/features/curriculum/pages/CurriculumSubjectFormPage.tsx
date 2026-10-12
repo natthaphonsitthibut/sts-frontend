@@ -225,7 +225,7 @@ export function CurriculumSubjectFormPage() {
                 setClassroomError(null);
               }}
               options={classroomOptions}
-              placeholder="ค้นหาและเลือกห้องเรียน"
+              placeholder="เลือกห้องเรียน (ได้หลายห้อง)"
               value={classroomIds}
             />
             <p className="mt-2 min-h-5 text-sm font-medium text-danger">

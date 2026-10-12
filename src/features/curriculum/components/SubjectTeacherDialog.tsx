@@ -76,7 +76,7 @@ export function SubjectTeacherDialog({
             emptyText="ไม่พบครูในโรงเรียนนี้"
             onChange={setSelected}
             options={teacherOptions}
-            placeholder="เลือกครูผู้สอน"
+            placeholder="เลือกครูผู้สอน (ได้หลายคน)"
             value={selected}
           />
         </DialogBody>

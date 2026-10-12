@@ -603,6 +603,15 @@ svg.text-slate-900 {
   }
 }
 
+@keyframes sheet-in-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
 @keyframes sheet-out-left {
   from {
     transform: none;
@@ -680,6 +689,9 @@ svg.text-slate-900 {
   }
   .animate-sheet-in-left {
     animation: sheet-in-left 220ms ease-out;
+  }
+  .animate-sheet-in-bottom {
+    animation: sheet-in-bottom 220ms ease-out;
   }
   .animate-sheet-out-left {
     animation: sheet-out-left 200ms ease-in forwards;
