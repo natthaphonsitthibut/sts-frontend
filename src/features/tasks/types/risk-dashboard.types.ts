@@ -99,6 +99,7 @@ export interface RiskDashboardQuery {
     | "STUDENT_NOT_FOUND"
     | "AWAITING_REFERRAL"
     | "AWAITING_REFERRAL_OUTCOME"
+    | "REFERRAL_NOT_SUCCEEDED"
     | "RESOLVED";
   grade?: string;
   room?: string;

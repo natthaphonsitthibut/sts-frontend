@@ -214,15 +214,27 @@ export function CaseFollowUpRoundDetails({
           value={optionLabel(round.follow_up_decision)}
         />
         <RoundDetailItem
+          label="ช่องทางติดต่อ"
+          value={round.contact_channel_label}
+        />
+        {round.contact_channel_detail ? (
+          <RoundDetailItem
+            label="ช่องทางติดต่ออื่น"
+            value={round.contact_channel_detail}
+          />
+        ) : null}
+        <RoundDetailItem
           label="สถานะของบิดา-มารดา"
           value={round.parental_status_label}
         />
         <RoundDetailItem
           label="ผู้ปกครอง"
           value={
-            round.guardian_type_label && round.guardian_type_detail
-              ? `${round.guardian_type_label} (${round.guardian_type_detail})`
-              : round.guardian_type_label
+            round.guardian_types?.length
+              ? round.guardian_type_detail
+                ? `${formatOptionLabels(round.guardian_types)} (${round.guardian_type_detail})`
+                : formatOptionLabels(round.guardian_types)
+              : null
           }
         />
         <RoundDetailItem

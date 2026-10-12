@@ -59,9 +59,12 @@ import {
   buildVisitReportFormTitle,
   toTrackingHistoryItems,
 } from "../lib/task-presentation";
+import { resolveExclusivePicks } from "../lib/exclusive-picks";
+import { contactChannelRequiresDetail } from "../lib/contact-channel-rules";
 import type { TaskAccessTask } from "../types/task.types";
 
 interface ReportOptionRules {
+  contactChannels: CaseTrackingOptions["contactChannels"];
   guardianTypes: CaseTrackingOptions["guardianTypes"];
   residenceEnvironments: CaseTrackingOptions["residenceEnvironments"];
 }
@@ -74,13 +77,17 @@ function createReportSchema(rules: ReportOptionRules) {
         .string()
         .regex(/^\d{2}:\d{2}$/, "กรุณาเลือกเวลาที่ลงพื้นที่"),
       contactChannelCode: z.string().trim(),
+      contactChannelDetail: z
+        .string()
+        .trim()
+        .max(200, "ช่องทางติดต่ออื่นต้องไม่เกิน 200 ตัวอักษร"),
       disadvantageTypeCodes: z.array(z.string().trim()),
       disabilityTypeCodes: z.array(z.string().trim()),
       problemCategoryCode: z.string().trim(),
       absenceReasonCategoryCode: z.string().trim(),
       absenceReasonCode: z.string().trim(),
       parentalStatusCode: z.string().trim(),
-      guardianTypeCode: z.string().trim(),
+      guardianTypeCodes: z.array(z.string().trim()),
       guardianTypeDetail: z
         .string()
         .trim()
@@ -102,10 +109,26 @@ function createReportSchema(rules: ReportOptionRules) {
       updatedPostalCode: z.string().trim(),
     })
     .superRefine((values, context) => {
-      const guardianType = rules.guardianTypes.find(
-        (option) => option.code === values.guardianTypeCode,
+      if (
+        values.homeVisitExceptionCode !== "STUDENT_NOT_FOUND" &&
+        contactChannelRequiresDetail(
+          rules.contactChannels,
+          values.contactChannelCode,
+        ) &&
+        !values.contactChannelDetail
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "กรุณาระบุช่องทางติดต่ออื่น",
+          path: ["contactChannelDetail"],
+        });
+      }
+      const needsGuardianDetail = rules.guardianTypes.some(
+        (option) =>
+          option.requiresDetail &&
+          values.guardianTypeCodes.includes(option.code),
       );
-      if (guardianType?.requiresDetail && !values.guardianTypeDetail) {
+      if (needsGuardianDetail && !values.guardianTypeDetail) {
         context.addIssue({
           code: "custom",
           message: "กรุณาระบุผู้ปกครอง",
@@ -194,21 +217,28 @@ export function HomeVisitReportPage({
   );
   const resolver = useMemo(
     () =>
-      zodResolver(createReportSchema({ guardianTypes, residenceEnvironments })),
-    [guardianTypes, residenceEnvironments],
+      zodResolver(
+        createReportSchema({
+          guardianTypes,
+          residenceEnvironments,
+          contactChannels,
+        }),
+      ),
+    [guardianTypes, residenceEnvironments, contactChannels],
   );
   const defaultValues = useMemo<ReportFormValues>(
     () => ({
       visitedDate: initialVisit.date,
       visitedTime: initialVisit.time,
       contactChannelCode: task.prefill?.contact_channel_code ?? "",
+      contactChannelDetail: task.prefill?.contact_channel_detail ?? "",
       disadvantageTypeCodes: [],
       disabilityTypeCodes: [],
       problemCategoryCode: "",
       absenceReasonCategoryCode: "",
       absenceReasonCode: "",
       parentalStatusCode: task.prefill?.parental_status_code ?? "",
-      guardianTypeCode: task.prefill?.guardian_type_code ?? "",
+      guardianTypeCodes: task.prefill?.guardian_type_codes ?? [],
       guardianTypeDetail: task.prefill?.guardian_type_detail ?? "",
       residenceEnvironmentCodes:
         task.prefill?.residence_environment_codes ?? [],
@@ -346,8 +376,16 @@ export function HomeVisitReportPage({
           ? "NOT_SUCCEEDED"
           : "SUCCEEDED",
       );
-      if (report.contactChannelCode)
+      if (
+        report.homeVisitExceptionCode !== "STUDENT_NOT_FOUND" &&
+        report.contactChannelCode
+      )
         formData.set("contact_channel_code", report.contactChannelCode);
+      if (
+        report.homeVisitExceptionCode !== "STUDENT_NOT_FOUND" &&
+        contactChannelRequiresDetail(contactChannels, report.contactChannelCode)
+      )
+        formData.set("contact_channel_detail", report.contactChannelDetail);
       formData.set(
         "disadvantage_type_codes",
         JSON.stringify(report.disadvantageTypeCodes),
@@ -373,8 +411,10 @@ export function HomeVisitReportPage({
       }
       if (report.parentalStatusCode)
         formData.set("parental_status_code", report.parentalStatusCode);
-      if (report.guardianTypeCode)
-        formData.set("guardian_type_code", report.guardianTypeCode);
+      formData.set(
+        "guardian_type_codes",
+        JSON.stringify(report.guardianTypeCodes),
+      );
       if (report.guardianTypeDetail)
         formData.set("guardian_type_detail", report.guardianTypeDetail);
       formData.set(
@@ -430,30 +470,43 @@ export function HomeVisitReportPage({
   });
 
   function handleResidenceEnvironmentChange(next: string[]): void {
-    const exclusiveCodes = new Set(
-      residenceEnvironments
-        .filter((option) => option.isExclusive)
-        .map((option) => option.code),
+    form.setValue(
+      "residenceEnvironmentCodes",
+      resolveExclusivePicks(
+        values.residenceEnvironmentCodes ?? [],
+        next,
+        residenceEnvironments,
+      ),
+      { shouldDirty: true },
     );
-    const added = next.find(
-      (code) => !values.residenceEnvironmentCodes?.includes(code),
+  }
+
+  function handleGuardianTypeChange(next: string[]): void {
+    const resolved = resolveExclusivePicks(
+      values.guardianTypeCodes ?? [],
+      next,
+      guardianTypes,
     );
-    const resolved =
-      added && exclusiveCodes.has(added)
-        ? [added]
-        : next.filter((code) => !exclusiveCodes.has(code));
-    form.setValue("residenceEnvironmentCodes", resolved, { shouldDirty: true });
+    form.setValue("guardianTypeCodes", resolved, { shouldDirty: true });
+    const stillRequiresDetail = guardianTypes.some(
+      (option) => option.requiresDetail && resolved.includes(option.code),
+    );
+    if (!stillRequiresDetail) {
+      form.setValue("guardianTypeDetail", "", { shouldDirty: true });
+    }
   }
 
   function handleVisitOutcomeChange(code: "" | "STUDENT_NOT_FOUND"): void {
     form.setValue("homeVisitExceptionCode", code, { shouldDirty: true });
     if (code !== "STUDENT_NOT_FOUND") return;
     form.setValue("contactChannelCode", "", { shouldDirty: true });
+    form.setValue("contactChannelDetail", "", { shouldDirty: true });
+    form.clearErrors("contactChannelDetail");
     form.setValue("problemCategoryCode", "", { shouldDirty: true });
     form.setValue("absenceReasonCategoryCode", "", { shouldDirty: true });
     form.setValue("absenceReasonCode", "", { shouldDirty: true });
     form.setValue("parentalStatusCode", "", { shouldDirty: true });
-    form.setValue("guardianTypeCode", "", { shouldDirty: true });
+    form.setValue("guardianTypeCodes", [], { shouldDirty: true });
     form.setValue("guardianTypeDetail", "", { shouldDirty: true });
     form.setValue("residenceEnvironmentCodes", [], { shouldDirty: true });
     form.setValue("residenceEnvironmentDetail", "", { shouldDirty: true });
@@ -478,9 +531,10 @@ export function HomeVisitReportPage({
     );
   }
 
-  const guardianRequiresDetail =
-    guardianTypes.find((option) => option.code === values.guardianTypeCode)
-      ?.requiresDetail ?? false;
+  const guardianRequiresDetail = guardianTypes.some(
+    (option) =>
+      option.requiresDetail && values.guardianTypeCodes?.includes(option.code),
+  );
   const studentNotFound = values.homeVisitExceptionCode === "STUDENT_NOT_FOUND";
   // The two answers below are the follow-up outcome, so both the choice and the
   // review read the catalog's follow-up wording instead of a second vocabulary.
@@ -616,11 +670,22 @@ export function HomeVisitReportPage({
             <FormLabel htmlFor="contact-channel">ช่องทางติดต่อ</FormLabel>
             <Select
               id="contact-channel"
-              onChange={(event) =>
+              onChange={(event) => {
                 form.setValue("contactChannelCode", event.target.value, {
                   shouldDirty: true,
-                })
-              }
+                });
+                if (
+                  !contactChannelRequiresDetail(
+                    contactChannels,
+                    event.target.value,
+                  )
+                ) {
+                  form.setValue("contactChannelDetail", "", {
+                    shouldDirty: true,
+                  });
+                  form.clearErrors("contactChannelDetail");
+                }
+              }}
               value={values.contactChannelCode ?? ""}
             >
               <option value="">ไม่ระบุ</option>
@@ -631,6 +696,23 @@ export function HomeVisitReportPage({
               ))}
             </Select>
           </FormItem>
+          {contactChannelRequiresDetail(
+            contactChannels,
+            values.contactChannelCode ?? "",
+          ) ? (
+            <FormItem>
+              <FormLabel htmlFor="contact-channel-detail" required>
+                ระบุช่องทางติดต่ออื่น
+              </FormLabel>
+              <Input
+                id="contact-channel-detail"
+                maxLength={200}
+                placeholder="เช่น อีเมล หรือแอปพลิเคชันที่ใช้ติดต่อ"
+                {...registerField(form, "contactChannelDetail")}
+              />
+              <FormMessage<ReportFormValues> name="contactChannelDetail" />
+            </FormItem>
+          ) : null}
         </div>
       ),
     },
@@ -663,28 +745,16 @@ export function HomeVisitReportPage({
           </FormItem>
           <FormItem>
             <FormLabel>ผู้ปกครอง/ผู้ดูแล</FormLabel>
-            <Combobox
-              onChange={(value) => {
-                form.setValue("guardianTypeCode", value, { shouldDirty: true });
-                if (
-                  !guardianTypes.find((option) => option.code === value)
-                    ?.requiresDetail
-                ) {
-                  form.setValue("guardianTypeDetail", "", {
-                    shouldDirty: true,
-                  });
-                }
-              }}
-              options={[
-                { value: "", label: "ไม่ระบุ" },
-                ...guardianTypes.map((option) => ({
-                  value: option.code,
-                  label: option.label,
-                })),
-              ]}
-              placeholder="เลือกผู้ปกครอง"
-              searchable={false}
-              value={values.guardianTypeCode ?? ""}
+            <MultiSelect
+              ariaLabel="ผู้ปกครอง/ผู้ดูแล"
+              id="guardian-types"
+              onChange={handleGuardianTypeChange}
+              options={guardianTypes.map((option) => ({
+                value: option.code,
+                label: option.label,
+              }))}
+              placeholder="ไม่ระบุ (เลือกได้หลายข้อ)"
+              value={values.guardianTypeCodes ?? []}
             />
           </FormItem>
           {guardianRequiresDetail ? (
@@ -839,12 +909,13 @@ export function HomeVisitReportPage({
           <FormItem>
             <FormLabel>สภาพแวดล้อมรอบที่พัก</FormLabel>
             <MultiSelect
+              ariaLabel="สภาพแวดล้อมรอบที่พัก"
               onChange={handleResidenceEnvironmentChange}
               options={residenceEnvironments.map((option) => ({
                 value: option.code,
                 label: option.label,
               }))}
-              placeholder="ไม่ระบุ"
+              placeholder="ไม่ระบุ (เลือกได้หลายข้อ)"
               value={values.residenceEnvironmentCodes ?? []}
             />
           </FormItem>
@@ -871,6 +942,7 @@ export function HomeVisitReportPage({
           <FormItem>
             <FormLabel>ข้อสังเกตด้านความด้อยโอกาส</FormLabel>
             <MultiSelect
+              ariaLabel="ข้อสังเกตด้านความด้อยโอกาส"
               id="observed-disadvantage-types"
               onChange={(value) =>
                 form.setValue("disadvantageTypeCodes", value, {
@@ -880,13 +952,14 @@ export function HomeVisitReportPage({
               options={(trackingOptionsQuery.data?.disadvantageTypes ?? []).map(
                 (option) => ({ value: option.code, label: option.label }),
               )}
-              placeholder="ไม่ระบุ"
+              placeholder="ไม่ระบุ (เลือกได้หลายข้อ)"
               value={values.disadvantageTypeCodes ?? []}
             />
           </FormItem>
           <FormItem>
             <FormLabel>ข้อสังเกตด้านความพิการ</FormLabel>
             <MultiSelect
+              ariaLabel="ข้อสังเกตด้านความพิการ"
               id="observed-disability-types"
               onChange={(value) =>
                 form.setValue("disabilityTypeCodes", value, {
@@ -896,7 +969,7 @@ export function HomeVisitReportPage({
               options={(trackingOptionsQuery.data?.disabilityTypes ?? []).map(
                 (option) => ({ value: option.code, label: option.label }),
               )}
-              placeholder="ไม่ระบุ"
+              placeholder="ไม่ระบุ (เลือกได้หลายข้อ)"
               value={values.disabilityTypeCodes ?? []}
             />
           </FormItem>

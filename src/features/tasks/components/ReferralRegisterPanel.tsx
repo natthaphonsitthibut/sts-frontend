@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CircleCheck,
+  CircleX,
   ClipboardList,
   ExternalLink,
   Hourglass,
@@ -49,11 +50,12 @@ import type { ReferralDrilldownRow } from "../types/follow-up-dashboard.types";
  * เสร็จสิ้น — the way the กลุ่มเสี่ยง cards follow a case (owner, 2026-10-08),
  * from the moment a case is chosen for referral (owner, 2026-10-11). Every
  * stage reads its label and colour from the case catalog with the case page's
- * icon, so a finished referral says เสร็จสิ้น here exactly as its step does on
- * the case page; whether it ended สำเร็จ or ยังไม่สำเร็จ is the row's own
- * ผลการส่งต่อ, not its status.
+ * icon. A referral the agency could not complete is ส่งต่อไม่สำเร็จ, leading
+ * the row as ไม่พบนักเรียน leads กลุ่มเสี่ยง: the badge says how the round
+ * ended, so there is no separate result column (owner, 2026-10-12).
  */
 const REFERRAL_STAGE_CARDS = [
+  { code: "REFERRAL_NOT_SUCCEEDED", icon: CircleX },
   { code: "AWAITING_REFERRAL", icon: Send },
   { code: "AWAITING_REFERRAL_OUTCOME", icon: Hourglass },
   { code: "PENDING_REVIEW", icon: ListChecks },
@@ -126,16 +128,6 @@ export function ReferralRegisterPanel({
       row.statusCode,
     );
     return { status, label: status?.label ?? row.statusCode };
-  };
-  // What the agency reported, worded as on the case page's ผลการส่งต่อ field;
-  // a referral with no result yet has none to show.
-  const rowResult = (row: ReferralDrilldownRow): string => {
-    if (row.statusCode === "COMPLETED") return "สำเร็จ";
-    if (row.statusCode !== "NOT_SUCCEEDED") return "-";
-    return (
-      findStatusCatalogItem(referralStatuses.items, row.statusCode)?.label ??
-      "ยังไม่สำเร็จ"
-    );
   };
   // The header's school/area filter narrows the register like every other tab.
   const globalFilter = useGlobalSchoolFilter();
@@ -272,7 +264,7 @@ export function ReferralRegisterPanel({
     // headline numbers have to read as headline numbers here too.
     <div className="space-y-5" data-referral-register>
       <div className="space-y-4">
-        <SummaryMetrics columns={4} items={statusItems} />
+        <SummaryMetrics columns={5} items={statusItems} />
 
         <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row">
           <SearchInput
@@ -326,15 +318,14 @@ export function ReferralRegisterPanel({
           <div className="flex flex-col gap-2">
             <DataTable
               columnWidths={[
-                "w-[5%]",
-                "w-[17%]",
-                "w-[7%]",
                 "w-[6%]",
-                "w-[18%]",
+                "w-[20%]",
+                "w-[9%]",
+                "w-[8%]",
+                "w-[21%]",
+                "w-[14%]",
                 "w-[13%]",
-                "w-[10%]",
-                "w-[12%]",
-                "w-[12%]",
+                "w-[9%]",
               ]}
               headings={[
                 "ลำดับ",
@@ -343,11 +334,10 @@ export function ReferralRegisterPanel({
                 "ห้อง",
                 "หน่วยงานที่ส่งต่อ",
                 { label: "สถานะการส่งต่อ", className: "text-center" },
-                "ผลการส่งต่อ",
                 "วันที่ส่งต่อ",
                 { isAction: true, label: "เครื่องมือ" },
               ]}
-              minWidthClassName="min-w-[1240px]"
+              minWidthClassName="min-w-[1120px]"
             >
               {referrals.map((referral, index) => (
                 <DataTableRow
@@ -396,9 +386,6 @@ export function ReferralRegisterPanel({
                     </span>
                   </DataTableCell>
                   <DataTableCell className="text-slate-700">
-                    {rowResult(referral)}
-                  </DataTableCell>
-                  <DataTableCell className="text-slate-700">
                     {referral.referredAt
                       ? formatThaiDateTime(referral.referredAt)
                       : "-"}
@@ -440,12 +427,6 @@ export function ReferralRegisterPanel({
                       <div className="text-slate-800">
                         {referral.grade || "-"}
                         {referral.room ? `/${referral.room}` : ""}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-500">ผลการส่งต่อ</div>
-                      <div className="text-slate-800">
-                        {rowResult(referral)}
                       </div>
                     </div>
                     <div>

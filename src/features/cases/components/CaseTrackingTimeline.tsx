@@ -1,5 +1,5 @@
 import { ReferralAccessCodeButton } from "./ReferralAccessCodeButton";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -389,7 +389,7 @@ function AssignmentForm({
                     value: measure.code,
                     label: measure.label,
                   }))}
-                  placeholder="เลือกมาตรการการช่วยเหลือ"
+                  placeholder="เลือกมาตรการ (ได้หลายข้อ)"
                   singleRow
                   value={measureCodes}
                 />
@@ -464,18 +464,22 @@ function ReviewActions({
   can,
   onReview,
   canClose,
+  children,
 }: {
   actions: CaseTrackingOption[];
   can: (permission: string) => boolean;
   onReview: (action: CaseReviewAction) => void;
   canClose: boolean;
+  /** A step's own action that is not a review, shown ahead of the reviews. */
+  children?: ReactNode;
 }) {
   const allowed = actions.filter((action) =>
     can(action.requiredPermission || "case:review"),
   );
-  if (allowed.length === 0) return null;
+  if (allowed.length === 0 && !children) return null;
   return (
     <div className="mt-4 flex flex-wrap justify-end gap-2">
+      {children}
       {allowed.map((action) => (
         <Button
           key={action.code}
@@ -508,6 +512,9 @@ type RailStep =
  * Step "รายงานผลการส่งต่อ" once a result is in: what the agency reported, who
  * filed it — the agency through its link (named by its identity provider) or
  * the school on its behalf — and when. Same disabled-field layout as a report.
+ * How the round ended is its status: ส่งต่อไม่สำเร็จ stays on a round that did
+ * not succeed, a successful one reads รอพิจารณา then เสร็จสิ้น (owner,
+ * 2026-10-12).
  */
 function ReferralResultBody({
   referral,
@@ -519,12 +526,12 @@ function ReferralResultBody({
   const result = referral.result;
   if (!result) return null;
   const status = getCaseTrackingStatusPresentation(
-    awaitingReview ? "PENDING_REVIEW" : "RESOLVED",
+    referral.status_code === "NOT_SUCCEEDED"
+      ? "REFERRAL_NOT_SUCCEEDED"
+      : awaitingReview
+        ? "PENDING_REVIEW"
+        : "RESOLVED",
   );
-  const outcomeLabel =
-    referral.status_code === "COMPLETED"
-      ? "สำเร็จ"
-      : referral.status_label || referral.status_code;
   const reporter = result.reported_by_agency
     ? `${result.reporter_name || UNANSWERED} (ยืนยันตัวตนผ่าน ${result.reporter_identity_provider || "ผู้ให้บริการยืนยันตัวตน"})`
     : `${result.recorded_by || UNANSWERED} (บันทึกแทนหน่วยงาน)`;
@@ -536,10 +543,6 @@ function ReferralResultBody({
         </TrackingStatus>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
-          ผลการส่งต่อ
-          <Input aria-label="ผลการส่งต่อ" disabled value={outcomeLabel} />
-        </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           รายงานโดย
           <Input disabled value={reporter} />
@@ -650,7 +653,7 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ผู้ปกครอง
-            <Input disabled value={round.guardian_type_label || UNANSWERED} />
+            <Input disabled value={formatOptionLabels(round.guardian_types)} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             ระบุผู้ปกครอง
@@ -664,6 +667,12 @@ function FollowUpReportBody({ round }: { round: CaseFollowUpRound }) {
             ช่องทางติดต่อ
             <Input disabled value={round.contact_channel_label || UNANSWERED} />
           </label>
+          {round.contact_channel_detail ? (
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              ช่องทางติดต่ออื่น
+              <Input disabled value={round.contact_channel_detail} />
+            </label>
+          ) : null}
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:row-span-5 lg:grid-rows-subgrid">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -997,6 +1006,9 @@ export function CaseTrackingTimeline({
   const reviewReady = caseRecord.status === "PENDING_REVIEW";
   const openForAssignment = caseRecord.status === "OPEN";
   const studentNotFound = caseRecord.status === "STUDENT_NOT_FOUND";
+  // The referral's ไม่พบนักเรียน: the agency could not complete it, and the
+  // school either hands out a new follow-up or refers again (owner, 2026-10-12).
+  const referralNotSucceeded = caseRecord.status === "REFERRAL_NOT_SUCCEEDED";
   // With expired rounds moved into history there is no live round left to
   // report on, which is exactly what "needs a new assignment" means.
   const needsReassignment = caseRecord.status === "IN_PROGRESS" && !latestRound;
@@ -1018,7 +1030,9 @@ export function CaseTrackingTimeline({
   const waitingForAssignment =
     openForAssignment ||
     needsReassignment ||
-    (studentNotFound && manualReassign);
+    ((studentNotFound || referralNotSucceeded) && manualReassign);
+  const assigningAssistance =
+    inAssistancePhase && !(referralNotSucceeded && manualReassign);
   const referrals = useMemo(
     () => caseRecord.referrals ?? [],
     [caseRecord.referrals],
@@ -1198,7 +1212,7 @@ export function CaseTrackingTimeline({
               key="assignment-form"
               number={number}
               title={
-                inAssistancePhase ? "มอบหมายการช่วยเหลือ" : "มอบหมายการติดตาม"
+                assigningAssistance ? "มอบหมายการช่วยเหลือ" : "มอบหมายการติดตาม"
               }
             >
               {waitingAfterClosedRound ? (
@@ -1245,12 +1259,12 @@ export function CaseTrackingTimeline({
                 <AssignmentForm
                   caseRecord={caseRecord}
                   onAssigned={onAssigned}
-                  taskType={inAssistancePhase ? "ASSIST" : undefined}
+                  taskType={assigningAssistance ? "ASSIST" : undefined}
                 />
               ) : (
                 <Alert variant="warning">
                   <AlertDescription>
-                    {inAssistancePhase
+                    {assigningAssistance
                       ? "บัญชีนี้ไม่มีสิทธิ์มอบหมายการช่วยเหลือ"
                       : "บัญชีนี้ไม่มีสิทธิ์มอบหมายการติดตามนักเรียน"}
                   </AlertDescription>
@@ -1380,9 +1394,13 @@ export function CaseTrackingTimeline({
         if (step.kind === "referral-report") {
           const { referral } = step;
           const decisionStep = reviewReady && index === lastDecisionIndex;
+          const notSucceededStep =
+            referralNotSucceeded && index === lastDecisionIndex;
           return (
             <TrackingStep
-              active={decisionStep}
+              active={
+                decisionStep || (notSucceededStep && !waitingForAssignment)
+              }
               connectNext={connectNext}
               connectPrev={connectPrev}
               key={`referral-report-${referral.id}`}
@@ -1393,6 +1411,28 @@ export function CaseTrackingTimeline({
                 awaitingReview={decisionStep}
                 referral={referral}
               />
+              {notSucceededStep ? (
+                // Back to a follow-up round, or on to another agency; never
+                // closed on a referral that did not succeed.
+                <ReviewActions
+                  actions={reviewActions.filter(
+                    (action) => action.code !== "CLOSE",
+                  )}
+                  canClose={false}
+                  can={can}
+                  onReview={onReview}
+                >
+                  {canAssign ? (
+                    <Button
+                      onClick={() => setManualReassign(true)}
+                      type="button"
+                      variant="outline"
+                    >
+                      มอบหมายติดตาม
+                    </Button>
+                  ) : null}
+                </ReviewActions>
+              ) : null}
               {decisionStep ? (
                 <ReviewActions
                   actions={reviewActions}
