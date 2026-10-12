@@ -1,11 +1,18 @@
-import { useEffect, useRef, type ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { OverlayScopeContext, useOwnedOverlayIds } from "./overlay-scope";
 import { IconButton } from "./icon-button";
 
 const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface DialogProps extends ComponentProps<"div"> {
   onOpenChange?: (open: boolean) => void;
@@ -20,6 +27,17 @@ export function Dialog({
   ...props
 }: DialogProps) {
   const regionRef = useRef<HTMLDivElement | null>(null);
+  const [overlayContainer, setOverlayContainer] =
+    useState<HTMLDivElement | null>(null);
+  const [overlayIds, setOverlayIds] = useState<string[]>([]);
+  const setRegionRef = useCallback((node: HTMLDivElement | null) => {
+    regionRef.current = node;
+    setOverlayContainer(node);
+  }, []);
+  const registerOverlay = useCallback((id: string) => {
+    setOverlayIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
+    return () => setOverlayIds((ids) => ids.filter((value) => value !== id));
+  }, []);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   useEffect(() => {
@@ -31,13 +49,40 @@ export function Dialog({
 
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 
-    const focusTimer = window.setTimeout(() => {
-      const focusable =
-        regionRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-      (focusable ?? regionRef.current)?.focus();
-    }, 0);
+    function ownsFocus(): boolean {
+      const roots = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-dialog-root]"),
+      );
+      const top = roots.reduce<HTMLElement | null>((current, next) => {
+        if (!current || current.contains(next)) return next;
+        if (next.contains(current)) return current;
+        return (Number(getComputedStyle(next).zIndex) || 0) >=
+          (Number(getComputedStyle(current).zIndex) || 0)
+          ? next
+          : current;
+      }, null);
+      return top === regionRef.current;
+    }
+
+    function focusFirst() {
+      if (!ownsFocus()) return;
+      const content = regionRef.current?.querySelector<HTMLElement>(
+        '[role="dialog"][aria-modal="true"]',
+      );
+      const focusable = content?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      (focusable ?? content ?? regionRef.current)?.focus();
+    }
+    const focusTimer = window.setTimeout(focusFirst, 0);
+
+    function handleFocusIn(event: FocusEvent) {
+      if (!ownsFocus()) return;
+      if (!regionRef.current?.contains(event.target as Node)) focusFirst();
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
+      // A portalled child dialog belongs to this region, but owns the keyboard
+      // until it closes. Escape must not dismiss both levels at once.
+      if (event.defaultPrevented || !ownsFocus()) return;
       if (event.key === "Escape") {
         onOpenChangeRef.current?.(false);
         return;
@@ -49,7 +94,10 @@ export function Dialog({
       if (!focusable || focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (!regionRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -59,8 +107,10 @@ export function Dialog({
     }
 
     document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("focusin", handleFocusIn);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("focusin", handleFocusIn);
       window.clearTimeout(focusTimer);
       previouslyFocusedRef.current?.focus?.();
     };
@@ -71,22 +121,32 @@ export function Dialog({
   }
 
   return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4",
-        className,
-      )}
-      ref={regionRef}
-      {...props}
+    <OverlayScopeContext
+      value={{
+        container: overlayContainer,
+        ids: overlayIds,
+        register: registerOverlay,
+      }}
     >
-      <button
-        aria-label="Close dialog"
-        className="absolute inset-0 bg-slate-950/45 animate-overlay-in"
-        onClick={() => onOpenChange?.(false)}
-        type="button"
-      />
-      {children}
-    </div>
+      <div
+        data-dialog-root
+        className={cn(
+          "fixed inset-0 z-50 flex items-center justify-center p-4",
+          className,
+        )}
+        ref={setRegionRef}
+        {...props}
+      >
+        <button
+          aria-label="Close dialog"
+          className="absolute inset-0 bg-slate-950/45 animate-overlay-in"
+          onClick={() => onOpenChange?.(false)}
+          tabIndex={-1}
+          type="button"
+        />
+        {children}
+      </div>
+    </OverlayScopeContext>
   );
 }
 
@@ -100,9 +160,11 @@ export function DialogContent({
   onClose,
   ...props
 }: DialogContentProps) {
+  const overlayIds = useOwnedOverlayIds();
   return (
     <section
       aria-modal="true"
+      aria-owns={overlayIds.length > 0 ? overlayIds.join(" ") : undefined}
       role="dialog"
       tabIndex={-1}
       className={cn(

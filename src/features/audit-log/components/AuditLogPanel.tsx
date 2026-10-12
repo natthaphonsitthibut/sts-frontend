@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Badge,
+  Combobox,
   DatePicker,
   Input,
   Label,
-  Select,
 } from "../../../components/base";
 import {
   DataTable,
@@ -43,6 +43,7 @@ import { useAuditLog, useAuditLogActions } from "../hooks/useAuditLog";
 import type {
   AuditLogActionOption,
   AuditLogDomain,
+  AuditLogFilterOption,
   AuditLogEntry,
   AuditLogSortKey,
   AuditLogTaskType,
@@ -53,6 +54,9 @@ const AUDIT_LOG_SORT_KEYS: readonly AuditLogSortKey[] = [
   "action",
   "actor",
 ];
+
+const EMPTY_ACTION_OPTIONS: AuditLogActionOption[] = [];
+const EMPTY_FILTER_OPTIONS: AuditLogFilterOption[] = [];
 
 interface AuditLogPanelProps {
   domain: AuditLogDomain;
@@ -69,6 +73,8 @@ interface AuditLogPanelProps {
   actionValues?: readonly string[];
   fixedAction?: string;
   showActionColumn?: boolean;
+  /** หมวด picker — for the whole-system log; a feature's own history is one subject already. */
+  showCategoryFilter?: boolean;
   showReferenceColumn?: boolean;
   className?: string;
   detailTo?: (entry: AuditLogEntry) => string;
@@ -77,31 +83,45 @@ interface AuditLogPanelProps {
 function AuditLogFilters({
   action,
   actionOptions,
+  category,
+  categoryOptions,
   dateFrom,
   dateTo,
   onActionChange,
+  onCategoryChange,
   onDateFromChange,
   onDateToChange,
   onSearchTermChange,
   searchTerm,
+  showAction,
 }: {
   action: string;
   actionOptions: readonly AuditLogActionOption[];
+  category: string;
+  categoryOptions: readonly AuditLogFilterOption[];
   dateFrom: string;
   dateTo: string;
   onActionChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   onSearchTermChange: (value: string) => void;
   searchTerm: string;
+  /** Stays put even when the other filters leave no ประเภท to offer. */
+  showAction: boolean;
 }) {
+  const hasCategory = categoryOptions.length > 0;
+  const hasAction = showAction;
+
   return (
     <div
       className={cn(
         "grid gap-3 md:items-end",
-        actionOptions.length > 0
-          ? "md:grid-cols-[minmax(220px,1fr)_170px_190px_190px]"
-          : "md:grid-cols-[minmax(220px,1fr)_190px_190px]",
+        hasCategory && hasAction
+          ? "md:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_220px_240px_170px_170px]"
+          : hasCategory || hasAction
+            ? "md:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_240px_190px_190px]"
+            : "md:grid-cols-[minmax(220px,1fr)_190px_190px]",
       )}
     >
       <div className="space-y-1.5">
@@ -117,21 +137,34 @@ function AuditLogFilters({
           />
         </div>
       </div>
-      {actionOptions.length > 0 ? (
+      {hasCategory ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-category">หมวด</Label>
+          <Combobox
+            id="audit-category"
+            onChange={onCategoryChange}
+            options={[{ value: "", label: "ทุกหมวด" }, ...categoryOptions]}
+            placeholder="พิมพ์เพื่อค้นหาหมวด"
+            value={category}
+          />
+        </div>
+      ) : null}
+      {hasAction ? (
         <div className="space-y-1.5">
           <Label htmlFor="audit-action">ประเภท</Label>
-          <Select
+          <Combobox
             id="audit-action"
-            onChange={(event) => onActionChange(event.target.value)}
+            onChange={onActionChange}
+            options={[
+              { value: "", label: "ทุกประเภท" },
+              ...actionOptions.map((option) => ({
+                value: option.value,
+                label: option.label,
+              })),
+            ]}
+            placeholder="พิมพ์เพื่อค้นหาประเภท"
             value={action}
-          >
-            <option value="">ทุกประเภท</option>
-            {actionOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
+          />
         </div>
       ) : null}
       <div className="space-y-1.5">
@@ -308,6 +341,7 @@ export function AuditLogPanel({
   province,
   schoolId,
   showActionColumn = true,
+  showCategoryFilter = false,
   showReferenceColumn = true,
   subDistrict,
   taskType,
@@ -352,13 +386,45 @@ export function AuditLogPanel({
   const hasValidDateRange = !dateFrom || !dateTo || dateFrom <= dateTo;
   const normalizedDateFrom = hasValidDateRange ? dateFrom : "";
   const normalizedDateTo = hasValidDateRange ? dateTo : "";
+  const [category, setCategory] = useState(
+    () => searchParams.get("auditCategory") ?? "",
+  );
   const actionCatalog = useAuditLogActions({ domain, taskType }, !fixedAction);
-  const actionOptions = useMemo(() => {
-    const options = actionCatalog.data ?? [];
-    return actionValues
-      ? options.filter((option) => actionValues.includes(option.value))
-      : options;
-  }, [actionCatalog.data, actionValues]);
+  const catalogActions = actionCatalog.data?.actions ?? EMPTY_ACTION_OPTIONS;
+  const catalogCategories =
+    actionCatalog.data?.categories ?? EMPTY_FILTER_OPTIONS;
+  // What this panel may show at all, before the reader narrows anything.
+  const availableActions = useMemo(
+    () =>
+      actionValues
+        ? catalogActions.filter((option) => actionValues.includes(option.value))
+        : catalogActions,
+    [catalogActions, actionValues],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      showCategoryFilter
+        ? catalogCategories.filter((option) =>
+            availableActions.some((entry) => entry.category === option.value),
+          )
+        : EMPTY_FILTER_OPTIONS,
+    [availableActions, catalogCategories, showCategoryFilter],
+  );
+  const validatedCategory = categoryOptions.some(
+    (option) => option.value === category,
+  )
+    ? category
+    : "";
+  const normalizedCategory = actionCatalog.isSuccess
+    ? validatedCategory
+    : category;
+  const actionOptions = useMemo(
+    () =>
+      availableActions.filter(
+        (option) => !validatedCategory || option.category === validatedCategory,
+      ),
+    [availableActions, validatedCategory],
+  );
   const validatedAction =
     !action || actionOptions.some((option) => option.value === action)
       ? action
@@ -369,12 +435,14 @@ export function AuditLogPanel({
   const hasActiveFilter = Boolean(
     debouncedSearchTerm ||
     normalizedAction ||
+    normalizedCategory ||
     normalizedDateFrom ||
     normalizedDateTo,
   );
   const page = pageState.scopeKey === scopeKey ? pageState.page : 1;
   useSyncedSearchParams({
     auditAction: fixedAction ? undefined : normalizedAction || undefined,
+    auditCategory: fixedAction ? undefined : normalizedCategory || undefined,
     auditFrom: normalizedDateFrom || undefined,
     auditTo: normalizedDateTo || undefined,
     auditPage: page > 1 ? page : undefined,
@@ -396,6 +464,10 @@ export function AuditLogPanel({
       action:
         fixedAction ||
         (actionCatalog.isSuccess ? validatedAction || undefined : undefined),
+      category:
+        !fixedAction && actionCatalog.isSuccess
+          ? validatedCategory || undefined
+          : undefined,
       searchTerm: debouncedSearchTerm || undefined,
       dateFrom: normalizedDateFrom || undefined,
       dateTo: normalizedDateTo || undefined,
@@ -420,6 +492,7 @@ export function AuditLogPanel({
       targetId,
       targetType,
       validatedAction,
+      validatedCategory,
     ],
   );
 
@@ -446,6 +519,7 @@ export function AuditLogPanel({
   function clearFilters(): void {
     setSearchTerm("");
     setAction("");
+    setCategory("");
     setDateFrom("");
     setDateTo("");
     setPageState({ page: 1, scopeKey });
@@ -474,10 +548,19 @@ export function AuditLogPanel({
         <div className="mt-4 border-t border-slate-100 pt-4">
           <AuditLogFilters
             action={normalizedAction}
-            actionOptions={fixedAction ? [] : actionOptions}
+            actionOptions={actionOptions}
+            category={normalizedCategory}
+            categoryOptions={fixedAction ? [] : categoryOptions}
             dateFrom={normalizedDateFrom}
             dateTo={normalizedDateTo}
             onActionChange={(value) => resetPageAnd(() => setAction(value))}
+            onCategoryChange={(value) =>
+              resetPageAnd(() => {
+                setCategory(value);
+                setAction("");
+              })
+            }
+            showAction={!fixedAction && availableActions.length > 0}
             onDateFromChange={(value) => resetPageAnd(() => setDateFrom(value))}
             onDateToChange={(value) => resetPageAnd(() => setDateTo(value))}
             onSearchTermChange={(value) =>

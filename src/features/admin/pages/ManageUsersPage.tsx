@@ -240,6 +240,7 @@ export function ManageUsersPage({
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={needsSchoolPick}
         actions={
           <NavButton
             contextual

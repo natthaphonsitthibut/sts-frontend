@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   SUBJECT_CODE_PATTERN,
-  curriculumSubjectEditFormSchema,
   curriculumSubjectFormSchema,
 } from "./curriculum.schema";
 
@@ -89,12 +88,12 @@ describe("curriculumSubjectFormSchema", () => {
     ).toContain("ชื่อวิชาต้องไม่เกิน 200 ตัวอักษร");
   });
 
-  it("allows editing a legacy subject while its code stays unchanged", () => {
+  it("applies the code rule to an edit as it does to a new subject", () => {
     expect(
-      curriculumSubjectEditFormSchema.safeParse({
+      curriculumSubjectFormSchema.safeParse({
         ...validSubject,
         subjectCode: "M21/01",
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import { OverlayPortal } from "./overlay-portal";
 import {
   CalendarDays,
   ChevronDown,
@@ -148,22 +149,26 @@ export function DatePicker({
   const [calendarView, setCalendarView] = useState<CalendarView>("day");
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const selected = parseIso(value);
   const [view, setView] = useState<{ year: number; month: number }>(() => {
     const base = selected ?? getTodayParts();
     return { year: base.year, month: base.month };
   });
 
-  useDismissable(open, containerRef, () => setOpen(false));
+  useDismissable(open, [containerRef, panelRef], () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
+    const closeOnScroll = (event: Event) => {
+      if (!panelRef.current?.contains(event.target as Node)) close();
+    };
     window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("scroll", closeOnScroll, true);
     return () => {
       window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", closeOnScroll, true);
     };
   }, [open]);
 
@@ -307,155 +312,158 @@ export function DatePicker({
       </Button>
 
       {open ? (
-        <div
-          aria-label="เลือกวันที่"
-          className={cn(
-            "fixed z-50 max-h-[calc(100vh-1rem)] w-[min(18rem,calc(100vw-1rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg",
-          )}
-          role="dialog"
-          style={popoverStyle}
-        >
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <IconButton
-              aria-label="ก่อนหน้า"
-              icon={ChevronLeft}
-              onClick={() => shiftCalendar(-1)}
-              size="sm"
-              variant="ghost"
-            />
-            <button
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-100"
-              onClick={() => {
-                if (calendarView === "day") {
-                  setCalendarView("month");
-                } else if (calendarView === "month") {
-                  setCalendarView("year");
-                }
-              }}
-              type="button"
-            >
-              {headerLabel}
-            </button>
-            <IconButton
-              aria-label="ถัดไป"
-              icon={ChevronRight}
-              onClick={() => shiftCalendar(1)}
-              size="sm"
-              variant="ghost"
-            />
-          </div>
+        <OverlayPortal>
+          <div
+            aria-label="เลือกวันที่"
+            className={cn(
+              "fixed z-[60] max-h-[calc(100vh-1rem)] w-[min(18rem,calc(100vw-1rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg",
+            )}
+            ref={panelRef}
+            role="dialog"
+            style={popoverStyle}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <IconButton
+                aria-label="ก่อนหน้า"
+                icon={ChevronLeft}
+                onClick={() => shiftCalendar(-1)}
+                size="sm"
+                variant="ghost"
+              />
+              <button
+                className="rounded-lg px-3 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-100"
+                onClick={() => {
+                  if (calendarView === "day") {
+                    setCalendarView("month");
+                  } else if (calendarView === "month") {
+                    setCalendarView("year");
+                  }
+                }}
+                type="button"
+              >
+                {headerLabel}
+              </button>
+              <IconButton
+                aria-label="ถัดไป"
+                icon={ChevronRight}
+                onClick={() => shiftCalendar(1)}
+                size="sm"
+                variant="ghost"
+              />
+            </div>
 
-          {calendarView === "day" ? (
-            <div className="grid grid-cols-7 gap-1">
-              {WEEKDAY_LABELS.map((label, index) => (
-                <div
-                  className="flex h-8 items-center justify-center text-xs font-semibold text-slate-500"
-                  key={index}
-                >
-                  {label}
-                </div>
-              ))}
-              {cells.map((cell, index) => {
-                if (!cell) return <div key={`blank-${index}`} />;
-                const isOutOfRange =
-                  (min && cell.iso < min) || (max && cell.iso > max);
-                const isSelected = cell.iso === value;
-                const isToday = cell.iso === todayIso;
-                return (
-                  <button
-                    aria-label={cell.iso}
-                    className={cn(
-                      "flex h-8 items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors",
-                      isSelected
-                        ? "bg-primary text-white"
-                        : isToday
-                          ? "text-primary ring-1 ring-inset ring-primary/40"
+            {calendarView === "day" ? (
+              <div className="grid grid-cols-7 gap-1">
+                {WEEKDAY_LABELS.map((label, index) => (
+                  <div
+                    className="flex h-8 items-center justify-center text-xs font-semibold text-slate-500"
+                    key={index}
+                  >
+                    {label}
+                  </div>
+                ))}
+                {cells.map((cell, index) => {
+                  if (!cell) return <div key={`blank-${index}`} />;
+                  const isOutOfRange =
+                    (min && cell.iso < min) || (max && cell.iso > max);
+                  const isSelected = cell.iso === value;
+                  const isToday = cell.iso === todayIso;
+                  return (
+                    <button
+                      aria-label={cell.iso}
+                      className={cn(
+                        "flex h-8 items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors",
+                        isSelected
+                          ? "bg-primary text-white"
+                          : isToday
+                            ? "text-primary ring-1 ring-inset ring-primary/40"
+                            : "text-slate-700 hover:bg-slate-100",
+                        isOutOfRange && "pointer-events-none opacity-30",
+                      )}
+                      disabled={Boolean(isOutOfRange)}
+                      key={cell.iso}
+                      onClick={() => selectDay(cell.day)}
+                      type="button"
+                    >
+                      {cell.day}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {calendarView === "month" ? (
+              <div className="grid grid-cols-3 gap-2 py-1">
+                {THAI_MONTH_NAMES.map((monthName, month) => {
+                  const isSelected =
+                    selected?.year === view.year && selected.month === month;
+                  const isOutOfRange = isMonthOutOfRange(
+                    view.year,
+                    month,
+                    min,
+                    max,
+                  );
+                  return (
+                    <button
+                      className={cn(
+                        "h-10 rounded-lg px-2 text-sm font-semibold transition-colors",
+                        isSelected
+                          ? "bg-primary text-white"
                           : "text-slate-700 hover:bg-slate-100",
-                      isOutOfRange && "pointer-events-none opacity-30",
-                    )}
-                    disabled={Boolean(isOutOfRange)}
-                    key={cell.iso}
-                    onClick={() => selectDay(cell.day)}
-                    type="button"
-                  >
-                    {cell.day}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+                        isOutOfRange && "pointer-events-none opacity-30",
+                      )}
+                      disabled={isOutOfRange}
+                      key={monthName}
+                      onClick={() => selectMonth(month)}
+                      type="button"
+                    >
+                      {monthName}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
 
-          {calendarView === "month" ? (
-            <div className="grid grid-cols-3 gap-2 py-1">
-              {THAI_MONTH_NAMES.map((monthName, month) => {
-                const isSelected =
-                  selected?.year === view.year && selected.month === month;
-                const isOutOfRange = isMonthOutOfRange(
-                  view.year,
-                  month,
-                  min,
-                  max,
-                );
-                return (
-                  <button
-                    className={cn(
-                      "h-10 rounded-lg px-2 text-sm font-semibold transition-colors",
-                      isSelected
-                        ? "bg-primary text-white"
-                        : "text-slate-700 hover:bg-slate-100",
-                      isOutOfRange && "pointer-events-none opacity-30",
-                    )}
-                    disabled={isOutOfRange}
-                    key={monthName}
-                    onClick={() => selectMonth(month)}
-                    type="button"
-                  >
-                    {monthName}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+            {calendarView === "year" ? (
+              <div className="grid grid-cols-3 gap-2 py-1">
+                {yearCells.map((year) => {
+                  const isSelected = selected?.year === year;
+                  const isOutOfRange = isYearOutOfRange(year, min, max);
+                  return (
+                    <button
+                      className={cn(
+                        "h-10 rounded-lg text-sm font-semibold tabular-nums transition-colors",
+                        isSelected
+                          ? "bg-primary text-white"
+                          : "text-slate-700 hover:bg-slate-100",
+                        isOutOfRange && "pointer-events-none opacity-30",
+                      )}
+                      disabled={isOutOfRange}
+                      key={year}
+                      onClick={() => selectYear(year)}
+                      type="button"
+                    >
+                      {formatBuddhistYear(year)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
 
-          {calendarView === "year" ? (
-            <div className="grid grid-cols-3 gap-2 py-1">
-              {yearCells.map((year) => {
-                const isSelected = selected?.year === year;
-                const isOutOfRange = isYearOutOfRange(year, min, max);
-                return (
-                  <button
-                    className={cn(
-                      "h-10 rounded-lg text-sm font-semibold tabular-nums transition-colors",
-                      isSelected
-                        ? "bg-primary text-white"
-                        : "text-slate-700 hover:bg-slate-100",
-                      isOutOfRange && "pointer-events-none opacity-30",
-                    )}
-                    disabled={isOutOfRange}
-                    key={year}
-                    onClick={() => selectYear(year)}
-                    type="button"
-                  >
-                    {formatBuddhistYear(year)}
-                  </button>
-                );
-              })}
+            <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
+              <Button
+                disabled={Boolean(
+                  (min && todayIso < min) || (max && todayIso > max),
+                )}
+                onClick={selectToday}
+                size="sm"
+                variant="ghost"
+              >
+                วันนี้
+              </Button>
             </div>
-          ) : null}
-
-          <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
-            <Button
-              disabled={Boolean(
-                (min && todayIso < min) || (max && todayIso > max),
-              )}
-              onClick={selectToday}
-              size="sm"
-              variant="ghost"
-            >
-              วันนี้
-            </Button>
           </div>
-        </div>
+        </OverlayPortal>
       ) : null}
     </div>
   );

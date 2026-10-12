@@ -81,6 +81,7 @@ export function StudentSearchFilter({
 }: StudentSearchFilterProps) {
   return (
     <ListPageToolbar
+      controlsHidden={noSchoolSelected}
       icon={Users}
       title={title}
       description="ค้นหาและดูข้อมูลนักเรียนตามระดับชั้นและห้อง"
@@ -125,45 +126,41 @@ export function StudentSearchFilter({
         ),
       }}
       scope={
-        // Grade/room only mean anything once a school is picked — this field
-        // doesn't exist until then either, rather than sitting there disabled.
-        noSchoolSelected ? null : (
-          <ScopeFilterField
-            editable={scopeEditable}
-            emptyLabel={scopeEmptyLabel}
-            label={scopeLabel}
-            onClear={onClearScope ?? onClearFilters}
-            scope={scope}
+        <ScopeFilterField
+          editable={scopeEditable}
+          emptyLabel={scopeEmptyLabel}
+          label={scopeLabel}
+          onClear={onClearScope ?? onClearFilters}
+          scope={scope}
+        >
+          <Select
+            aria-label="กรองตามระดับชั้น"
+            disabled={gradeLocked}
+            onChange={(event) => onGradeChange(event.target.value)}
+            value={grade}
           >
-            <Select
-              aria-label="กรองตามระดับชั้น"
-              disabled={gradeLocked}
-              onChange={(event) => onGradeChange(event.target.value)}
-              value={grade}
-            >
-              <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
-              {gradeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </Select>
+            <option value="ALL">{SCOPE_ALL_LABEL.grade}</option>
+            {gradeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </Select>
 
-            <Select
-              aria-label="กรองตามห้อง"
-              disabled={roomLocked}
-              onChange={(event) => onRoomChange(event.target.value)}
-              value={room}
-            >
-              <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
-              {roomOptions.map((option) => (
-                <option key={option} value={option}>
-                  {formatRoomLabel(option)}
-                </option>
-              ))}
-            </Select>
-          </ScopeFilterField>
-        )
+          <Select
+            aria-label="กรองตามห้อง"
+            disabled={roomLocked}
+            onChange={(event) => onRoomChange(event.target.value)}
+            value={room}
+          >
+            <option value="ALL">{SCOPE_ALL_LABEL.room}</option>
+            {roomOptions.map((option) => (
+              <option key={option} value={option}>
+                {formatRoomLabel(option)}
+              </option>
+            ))}
+          </Select>
+        </ScopeFilterField>
       }
     />
   );

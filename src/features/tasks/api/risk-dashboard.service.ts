@@ -7,6 +7,7 @@ import type {
   RiskDashboardQuery,
   RiskDashboardResult,
   RiskDashboardRow,
+  RiskReportFilterOptions,
 } from "../types/risk-dashboard.types";
 import type {
   FollowUpSummary,
@@ -77,6 +78,10 @@ export interface FollowUpAreaFilter {
   district?: string;
   subDistrict?: string;
   schoolId?: string;
+  grade?: string;
+  room?: string;
+  academicYear?: number;
+  semester?: number;
 }
 
 function toAreaParams(area: FollowUpAreaFilter): Record<string, string> {
@@ -85,6 +90,10 @@ function toAreaParams(area: FollowUpAreaFilter): Record<string, string> {
   if (area.district?.trim()) params.district = area.district.trim();
   if (area.subDistrict?.trim()) params.subDistrict = area.subDistrict.trim();
   if (area.schoolId?.trim()) params.schoolId = area.schoolId.trim();
+  if (area.grade?.trim()) params.grade = area.grade.trim();
+  if (area.room?.trim()) params.room = area.room.trim();
+  if (area.academicYear) params.academicYear = String(area.academicYear);
+  if (area.semester) params.semester = String(area.semester);
   return params;
 }
 
@@ -123,7 +132,18 @@ async function getReferralDrilldown(
   }) as ReferralDrilldownResult;
 }
 
+async function getFilterOptions(
+  filters: FollowUpAreaFilter,
+): Promise<RiskReportFilterOptions> {
+  const response = await apiClient.get<{ data: RiskReportFilterOptions }>(
+    "/dashboard/risk-watchlist/filter-options",
+    { params: toAreaParams(filters) },
+  );
+  return response.data.data;
+}
+
 export const riskDashboardService = {
+  getFilterOptions,
   getFollowUpSummary,
   getReferralDrilldown,
   getRiskDashboard,

@@ -151,6 +151,7 @@ export function CaseStatusUpdateDialog({
                 <div className="space-y-2">
                   <Label required>มาตรการช่วยเหลือที่เสนอ</Label>
                   <MultiSelect
+                    ariaLabel="มาตรการช่วยเหลือที่เสนอ"
                     id="proposed-assistance-measures"
                     onChange={(codes) => {
                       setAssistanceMeasureCodes(codes);
@@ -165,7 +166,7 @@ export function CaseStatusUpdateDialog({
                       value: measure.code,
                       label: measure.label,
                     }))}
-                    placeholder="เลือกได้มากกว่าหนึ่งมาตรการ"
+                    placeholder="เลือกมาตรการ (ได้หลายข้อ)"
                     value={assistanceMeasureCodes}
                   />
                   <p className="text-xs leading-5 text-slate-500">

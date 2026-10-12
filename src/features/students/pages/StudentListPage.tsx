@@ -422,7 +422,7 @@ export function StudentListPage({
           scopeEditable={!scope.gradeLocked || !scope.roomLocked}
           scopeLabel="ชั้น/ห้อง"
           scopeEmptyLabel={`${SCOPE_ALL_LABEL.grade} · ${SCOPE_ALL_LABEL.room}`}
-          noSchoolSelected={!scope.gradeLocked && !selectedSchoolId}
+          noSchoolSelected={!selectedSchoolId}
           onClearScope={handleClearFilters}
           grade={effectiveGrade}
           gradeLocked={scope.gradeLocked || !selectedSchoolId}
@@ -446,6 +446,7 @@ export function StudentListPage({
         />
       ) : (
         <ListPageToolbar
+          controlsHidden={!selectedSchoolId}
           navigation={
             <Tabs
               aria-label="โหมดรายชื่อนักเรียน"

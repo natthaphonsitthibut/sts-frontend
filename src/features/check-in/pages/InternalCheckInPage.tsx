@@ -127,61 +127,63 @@ export function InternalCheckInPage() {
         error={termsQuery.error ?? classroomsQuery.error}
         fallback="โหลดตัวเลือกห้องเรียนไม่สำเร็จ"
       />
-      {schoolId ? (
-        <div className="mb-5">
-          <ScopeFilterField
-            editable={Boolean(activeTerm)}
-            emptyLabel="ยังไม่เลือกห้องเรียน"
-            label="ชั้น/ห้อง"
-            scope={{
-              grade: gradeOptions.find(
-                ([gradeLevelId]) => String(gradeLevelId) === gradeInput,
-              )?.[1],
-              room: selectedClassroom
-                ? (selectedClassroom.roomName ??
-                  formatRoomLabel(selectedClassroom.roomCode))
-                : "",
-            }}
-          >
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              ชั้น
-              <Select
-                aria-label="ชั้น"
-                disabled={!activeTerm}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setGradeInput(value);
-                  setClassroomInput("");
-                }}
-                value={gradeInput}
-              >
-                <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
-                {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
-                  <option key={gradeLevelId} value={String(gradeLevelId)}>
-                    {gradeLabel}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="grid gap-1 text-sm font-semibold text-slate-700">
-              ห้อง
-              <Select
-                aria-label="ห้อง"
-                disabled={!gradeInput}
-                onChange={(event) => setClassroomInput(event.target.value)}
-                value={classroomInput}
-              >
-                <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
-                {roomOptions.map((classroom) => (
-                  <option key={classroom.id} value={String(classroom.id)}>
-                    {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          </ScopeFilterField>
-        </div>
-      ) : null}
+      <div
+        aria-hidden={!schoolId || undefined}
+        inert={!schoolId || undefined}
+        className={schoolId ? "mb-5" : "invisible mb-5"}
+      >
+        <ScopeFilterField
+          editable={Boolean(activeTerm)}
+          emptyLabel="ยังไม่เลือกห้องเรียน"
+          label="ชั้น/ห้อง"
+          scope={{
+            grade: gradeOptions.find(
+              ([gradeLevelId]) => String(gradeLevelId) === gradeInput,
+            )?.[1],
+            room: selectedClassroom
+              ? (selectedClassroom.roomName ??
+                formatRoomLabel(selectedClassroom.roomCode))
+              : "",
+          }}
+        >
+          <label className="grid gap-1 text-sm font-semibold text-slate-700">
+            ชั้น
+            <Select
+              aria-label="ชั้น"
+              disabled={!activeTerm}
+              onChange={(event) => {
+                const value = event.target.value;
+                setGradeInput(value);
+                setClassroomInput("");
+              }}
+              value={gradeInput}
+            >
+              <option value="">{SCOPE_REQUIRED_LABEL.grade}</option>
+              {gradeOptions.map(([gradeLevelId, gradeLabel]) => (
+                <option key={gradeLevelId} value={String(gradeLevelId)}>
+                  {gradeLabel}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-slate-700">
+            ห้อง
+            <Select
+              aria-label="ห้อง"
+              disabled={!gradeInput}
+              onChange={(event) => setClassroomInput(event.target.value)}
+              value={classroomInput}
+            >
+              <option value="">{SCOPE_REQUIRED_LABEL.room}</option>
+              {roomOptions.map((classroom) => (
+                <option key={classroom.id} value={String(classroom.id)}>
+                  {classroom.roomName ?? formatRoomLabel(classroom.roomCode)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </ScopeFilterField>
+      </div>
       {!schoolId ? (
         <EmptyState
           icon={School}

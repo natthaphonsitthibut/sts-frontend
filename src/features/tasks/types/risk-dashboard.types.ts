@@ -20,6 +20,8 @@ export interface RiskDashboardRow {
   studentPhotoUrl: string | null;
   schoolId: number | null;
   schoolName: string | null;
+  academicYear?: number | null;
+  semester?: number | null;
   grade: string | null;
   room: string | null;
   consecutiveAbsentDays: number;
@@ -97,6 +99,7 @@ export interface RiskDashboardQuery {
     | "STUDENT_NOT_FOUND"
     | "AWAITING_REFERRAL"
     | "AWAITING_REFERRAL_OUTCOME"
+    | "REFERRAL_NOT_SUCCEEDED"
     | "RESOLVED";
   grade?: string;
   room?: string;
@@ -105,4 +108,10 @@ export interface RiskDashboardQuery {
   limit?: number;
   sortBy?: RiskDashboardSortBy;
   sortDirection?: RiskDashboardSortDirection;
+}
+
+export interface RiskReportFilterOptions {
+  grades: Array<{ value: string; label: string }>;
+  rooms: string[];
+  terms: Array<{ academicYear: number; semester: number }>;
 }

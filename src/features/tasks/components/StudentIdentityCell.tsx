@@ -7,6 +7,8 @@ interface StudentIdentityCellProps {
   studentName: string;
   studentPhotoUrl: string | null;
   schoolName: string | null;
+  academicYear?: number | null;
+  semester?: number | null;
 }
 
 /**
@@ -20,6 +22,8 @@ export function StudentIdentityCell({
   studentName,
   studentPhotoUrl,
   schoolName,
+  academicYear,
+  semester,
 }: StudentIdentityCellProps) {
   const avatar = (
     <StudentAvatar
@@ -46,6 +50,11 @@ export function StudentIdentityCell({
         <div className="truncate text-xs text-slate-500">
           {schoolName || "ไม่ระบุโรงเรียน"}
         </div>
+        {academicYear && semester ? (
+          <div className="text-xs text-slate-500">
+            ปี {academicYear} · ภาคเรียนที่ {semester}
+          </div>
+        ) : null}
       </div>
     </div>
   );

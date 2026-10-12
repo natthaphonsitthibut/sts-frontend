@@ -6,6 +6,7 @@ export type KnownCaseStatus =
   | "STUDENT_NOT_FOUND"
   | "AWAITING_REFERRAL"
   | "AWAITING_REFERRAL_OUTCOME"
+  | "REFERRAL_NOT_SUCCEEDED"
   | "RESOLVED";
 
 export type CaseStatus = KnownCaseStatus | (string & {});
@@ -71,11 +72,17 @@ export interface CaseTrackingOptions {
   }>;
   disadvantageTypes: Array<{ code: string; label: string }>;
   disabilityTypes: Array<{ code: string; label: string }>;
-  contactChannels: Array<{ code: string; label: string }>;
+  contactChannels: Array<{
+    code: string;
+    label: string;
+    requiresDetail: boolean;
+  }>;
   parentalStatuses: Array<{ code: string; label: string }>;
   guardianTypes: Array<{
     code: string;
     label: string;
+    /** `ไม่มีผู้ปกครอง` cannot be combined with a guardian. */
+    isExclusive: boolean;
     requiresDetail: boolean;
   }>;
   residenceEnvironments: Array<{
@@ -135,12 +142,12 @@ export interface CaseFollowUpRound {
   absence_reason_category_label?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
-  guardian_type_code?: string | null;
-  guardian_type_label?: string | null;
+  guardian_types?: Array<{ code: string; label: string }> | null;
   guardian_type_detail?: string | null;
   contact_person_name?: string | null;
   contact_channel_code?: string | null;
   contact_channel_label?: string | null;
+  contact_channel_detail?: string | null;
   residence_environments?: Array<{ code: string; label: string }> | null;
   residence_environment_detail?: string | null;
   observed_disadvantage_types?: Array<{ code: string; label: string }> | null;

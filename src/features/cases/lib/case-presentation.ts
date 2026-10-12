@@ -2,6 +2,7 @@ import { formatThaiDateTime } from "../../../lib/date-time";
 import {
   CalendarClock,
   CircleCheck,
+  CircleX,
   ContactRound,
   Clock3,
   Hourglass,
@@ -82,6 +83,15 @@ const CASE_TRACKING_STATUS_PRESENTATION: Record<
     label: "รอผลการส่งต่อ",
     summaryTone: "warning",
     textClassName: "text-warning-700",
+  },
+  // ส่งต่อไม่สำเร็จ is the referral's ไม่พบนักเรียน, so it reads the same.
+  REFERRAL_NOT_SUCCEEDED: {
+    badgeClassName: "text-danger",
+    icon: CircleX,
+    iconSurfaceClassName: "bg-danger text-white",
+    label: "ส่งต่อไม่สำเร็จ",
+    summaryTone: "danger",
+    textClassName: "text-danger",
   },
   RESOLVED: {
     badgeClassName: "text-success",

@@ -227,6 +227,7 @@ export function ManageRoleGroupsPage({
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!isCouncil && !selectedSchoolId}
         actions={
           <Button
             disabled={

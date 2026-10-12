@@ -38,6 +38,7 @@ export type AuditLogSortKey = "time" | "action" | "actor";
 export interface AuditLogQuery {
   domain: AuditLogDomain;
   action?: string;
+  category?: string;
   searchTerm?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -63,4 +64,17 @@ export interface AuditLogResult {
 export interface AuditLogActionOption {
   value: string;
   label: string;
+  /** The หมวด this action is filed under. */
+  category: string;
+}
+
+export interface AuditLogFilterOption {
+  value: string;
+  label: string;
+}
+
+/** Everything the panel's filters offer; the backend owns the vocabulary. */
+export interface AuditLogActionCatalog {
+  actions: AuditLogActionOption[];
+  categories: AuditLogFilterOption[];
 }

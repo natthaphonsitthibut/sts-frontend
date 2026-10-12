@@ -25,16 +25,6 @@ export const curriculumSubjectFormSchema = z.object({
     .max(200, "ชื่อวิชาต้องไม่เกิน 200 ตัวอักษร"),
 });
 
-/** Existing codes cannot be changed; legacy codes must remain editable. */
-export const curriculumSubjectEditFormSchema =
-  curriculumSubjectFormSchema.extend({
-    subjectCode: z
-      .string()
-      .trim()
-      .min(1, "กรุณาระบุรหัสวิชา")
-      .max(20, "รหัสวิชาต้องไม่เกิน 20 ตัวอักษร"),
-  });
-
 export type CurriculumSubjectFormValues = z.infer<
   typeof curriculumSubjectFormSchema
 >;

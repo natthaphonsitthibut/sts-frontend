@@ -13,10 +13,9 @@ const PANEL_GAP = 4;
  * scrolling ancestor — a Dialog scrolls its own content, so an `absolute`
  * panel inside it was cut off at the dialog's edge.
  *
- * The panel stays in the trigger's DOM subtree (render it `fixed` with the
- * returned style) so the Dialog's focus trap and the picker's outside-press
- * dismissal keep treating it as part of the control. It flips above the
- * anchor when there is more room there, and follows the anchor on scroll,
+ * Render the panel in a portal with `fixed` and the returned style. Pass both
+ * trigger and panel refs to useDismissable so panel interactions stay inside.
+ * It flips above the anchor when there is more room there, and follows it on scroll,
  * resize and any change listed in `deps` (e.g. a chip field growing a row).
  */
 export function useAnchoredPanelPosition(
@@ -24,6 +23,8 @@ export function useAnchoredPanelPosition(
   anchorRef: RefObject<HTMLElement | null>,
   panelMaxHeight: number,
   deps: DependencyList = [],
+  panelMinWidth = 0,
+  placement: "auto" | "top" = "auto",
 ): CSSProperties | null {
   const [style, setStyle] = useState<CSSProperties | null>(null);
 
@@ -32,19 +33,39 @@ export function useAnchoredPanelPosition(
     function updatePosition(): void {
       const rect = anchorRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const roomBelow = window.innerHeight - rect.bottom;
+      const gutter = 8;
+      const roomBelow = Math.max(
+        0,
+        window.innerHeight - rect.bottom - gutter - PANEL_GAP,
+      );
+      const roomAbove = Math.max(0, rect.top - gutter - PANEL_GAP);
       const openUp =
-        roomBelow < panelMaxHeight + PANEL_GAP * 2 && rect.top > roomBelow;
+        placement === "top" ||
+        (roomBelow < panelMaxHeight && roomAbove > roomBelow);
+      const width = Math.min(
+        Math.max(0, window.innerWidth - gutter * 2),
+        Math.max(rect.width, panelMinWidth),
+      );
+      const left = Math.max(
+        gutter,
+        Math.min(rect.left, window.innerWidth - gutter - width),
+      );
+      const maxHeight = Math.min(
+        panelMaxHeight,
+        openUp ? roomAbove : roomBelow,
+      );
       setStyle(
         openUp
           ? {
-              left: rect.left,
-              width: rect.width,
+              left,
+              width,
+              maxHeight,
               bottom: window.innerHeight - rect.top + PANEL_GAP,
             }
           : {
-              left: rect.left,
-              width: rect.width,
+              left,
+              width,
+              maxHeight,
               top: rect.bottom + PANEL_GAP,
             },
       );
@@ -57,7 +78,7 @@ export function useAnchoredPanelPosition(
       window.removeEventListener("resize", updatePosition);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caller-supplied deps
-  }, [open, anchorRef, panelMaxHeight, ...deps]);
+  }, [open, anchorRef, panelMaxHeight, panelMinWidth, placement, ...deps]);
 
   return open ? style : null;
 }

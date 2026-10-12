@@ -458,6 +458,7 @@ export function ClassroomLinksPage() {
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!schoolId}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             {lineEnabledQuery.data === true ? (

@@ -66,6 +66,7 @@ export function CurriculumGradesPage() {
   return (
     <PageShell>
       <ListPageToolbar
+        controlsHidden={!schoolId}
         description="ดูและจัดการรายวิชาในหลักสูตรของแต่ละระดับชั้น"
         search={{
           onChange: setSearchInput,

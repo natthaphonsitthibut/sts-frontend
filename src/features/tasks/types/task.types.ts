@@ -134,10 +134,11 @@ export interface TaskAccessTask {
     source_round_number: number;
     source_submitted_at: string | null;
     parental_status_code: string | null;
-    guardian_type_code: string | null;
+    guardian_type_codes: string[];
     guardian_type_detail: string | null;
     contact_person_name: string | null;
     contact_channel_code: string | null;
+    contact_channel_detail?: string | null;
     residence_environment_codes: string[];
     residence_environment_detail: string | null;
   };
@@ -191,9 +192,9 @@ export interface TaskSubmission {
   absence_reason_category_label?: string | null;
   parental_status_code?: string | null;
   parental_status_label?: string | null;
-  guardian_type_code?: string | null;
-  guardian_type_label?: string | null;
+  guardian_types?: Array<{ code: string; label: string }> | null;
   guardian_type_detail?: string | null;
+  contact_channel_detail?: string | null;
   residence_environments?: Array<{ code: string; label: string }> | null;
   residence_environment_detail?: string | null;
   cause_detail?: string | null;
