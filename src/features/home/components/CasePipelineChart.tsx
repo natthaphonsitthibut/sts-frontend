@@ -1,6 +1,7 @@
 import { BriefcaseBusiness } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card } from "../../../components/base";
+import { usePermissions } from "../../auth/hooks/usePermissions";
 import type {
   HomeDashboardCasePipeline,
   HomeDashboardFilters,
@@ -43,6 +44,11 @@ export function CasePipelineChart({
   filters,
   pipeline,
 }: CasePipelineChartProps) {
+  // The overview is every account's to read; the jump into the case list is
+  // รายงานสถานะนักเรียน's, so without it a row stays plain text instead of a
+  // link onto a page that refuses the account.
+  const { can } = usePermissions();
+  const openable = can("dashboard");
   const maxCount = Math.max(
     ...PIPELINE_ITEMS.map((item) => pipeline[item.key]),
     1,
@@ -72,13 +78,8 @@ export function CasePipelineChart({
       <div className="mt-5 space-y-3">
         {PIPELINE_ITEMS.map((item) => {
           const count = pipeline[item.key];
-          return (
-            <Link
-              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              data-case-pipeline-status={item.key}
-              key={item.key}
-              to={buildCasePath(filters, item.key)}
-            >
+          const rowContent = (
+            <>
               <span className="flex items-baseline justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-700">
                   {item.label}
@@ -95,7 +96,26 @@ export function CasePipelineChart({
                   }}
                 />
               </span>
+            </>
+          );
+          return openable ? (
+            <Link
+              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              data-case-pipeline-status={item.key}
+              key={item.key}
+              to={buildCasePath(filters, item.key)}
+            >
+              {rowContent}
             </Link>
+          ) : (
+            <div
+              className="block rounded-lg px-2 py-1.5"
+              data-case-pipeline-status={item.key}
+              data-case-pipeline-locked="true"
+              key={item.key}
+            >
+              {rowContent}
+            </div>
           );
         })}
       </div>
