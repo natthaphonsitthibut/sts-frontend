@@ -36,7 +36,6 @@ import { UserNationalIdRevealDialog } from "../components/UserNationalIdRevealDi
 import { UserAddressRevealDialog } from "../components/UserAddressRevealDialog";
 import {
   getManageUserPath,
-  getManageUsersPath,
   getUserDisplayName,
   getUserRealm,
   getUserRoleText,
@@ -107,6 +106,8 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
   const displayedNationalId = isNationalIdVisible
     ? revealedNationalId
     : maskNationalId(user.PersonID_Onec) || "-";
+  // Read-only for a fellow admin: the masked value stays, the reveal does not.
+  const canManage = user.can_manage !== false;
 
   function toggleNationalId(): void {
     if (isNationalIdVisible) {
@@ -172,11 +173,13 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
             />
             <ReadOnlyField
               action={
-                <SensitiveValueToggleButton
-                  isVisible={isNationalIdVisible}
-                  label="เลขบัตร"
-                  onClick={toggleNationalId}
-                />
+                canManage ? (
+                  <SensitiveValueToggleButton
+                    isVisible={isNationalIdVisible}
+                    label="เลขบัตร"
+                    onClick={toggleNationalId}
+                  />
+                ) : undefined
               }
               id="user-detail-national-id"
               label="เลขบัตรประชาชน"
@@ -185,7 +188,7 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
           </div>
         </div>
       </div>
-      {user.id ? (
+      {user.id && canManage ? (
         <UserNationalIdRevealDialog
           onOpenChange={setNationalIdDialogOpen}
           onRevealed={(nationalId) => {
@@ -203,6 +206,7 @@ function UserPersonalInfoCard({ user }: { user: ManagedUserDetail }) {
 
 function UserDetailContent({ user }: { user: ManagedUserDetail }) {
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const canManage = user.can_manage !== false;
   const { labelOf } = usePermissionCatalog();
   const roleName = user.role || user.roles?.[0] || "";
   // One locked row for this account's role, carrying the permissions it
@@ -233,12 +237,14 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
               </h2>
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              {user.has_profile_location
-                ? "ข้อมูลนี้เป็นข้อมูลส่วนบุคคล ระบบจะบันทึกเหตุผลเมื่อเปิดดู"
-                : "ผู้ใช้งานรายนี้ยังไม่ได้บันทึกที่อยู่หรือพิกัด"}
+              {!user.has_profile_location
+                ? "ผู้ใช้งานรายนี้ยังไม่ได้บันทึกที่อยู่หรือพิกัด"
+                : canManage
+                  ? "ข้อมูลนี้เป็นข้อมูลส่วนบุคคล ระบบจะบันทึกเหตุผลเมื่อเปิดดู"
+                  : "ที่อยู่และพิกัดเปิดดูได้เฉพาะผู้ที่จัดการบัญชีนี้ได้"}
             </p>
           </div>
-          {user.has_profile_location && user.id ? (
+          {user.has_profile_location && user.id && canManage ? (
             <Button
               icon={MapPin}
               onClick={() => setAddressDialogOpen(true)}
@@ -250,7 +256,7 @@ function UserDetailContent({ user }: { user: ManagedUserDetail }) {
         </div>
       </Card>
 
-      {user.id ? (
+      {user.id && canManage ? (
         <UserAddressRevealDialog
           onOpenChange={setAddressDialogOpen}
           open={addressDialogOpen}
@@ -311,17 +317,18 @@ export function UserDetailPage({
     <PageShell>
       <PageToolbar
         actions={
-          <NavButton
-            contextual
-            icon={SquarePen}
-            to={
-              query.data
-                ? getManageUserPath(query.data, "/edit")
-                : `${getManageUsersPath(scope)}/${userId}/edit`
-            }
-          >
-            แก้ไขผู้ใช้งาน
-          </NavButton>
+          // Offered once the record says it is the actor's to manage: one
+          // opened read-only (a fellow admin) has no edit, and showing the
+          // button while that is still unknown would lead onto a refusal.
+          query.data && query.data.can_manage !== false ? (
+            <NavButton
+              contextual
+              icon={SquarePen}
+              to={getManageUserPath(query.data, "/edit")}
+            >
+              แก้ไขผู้ใช้งาน
+            </NavButton>
+          ) : undefined
         }
         description="ตรวจสอบข้อมูลบัญชี สิทธิ์ และขอบเขตการใช้งาน"
         icon={UserRound}

@@ -105,6 +105,9 @@ function RowActions({
   const isReactivating = reactivatingUserId === (user.id ?? -1);
   const isDisabled = user.status !== "ACTIVE";
   const displayName = getUserDisplayName(user);
+  // A fellow admin is listed to be read: the name still opens the record, and
+  // no action the server would refuse is offered.
+  if (user.can_manage === false) return null;
   return (
     <div className="flex items-center justify-center gap-1">
       <IconButton
