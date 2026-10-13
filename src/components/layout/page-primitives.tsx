@@ -19,11 +19,13 @@ import {
   Skeleton,
   type ComboboxOption,
 } from "../base";
+import { usePermissions } from "../../features/auth/hooks/usePermissions";
 import { cn } from "../../lib/utils";
 import { ClearFiltersButton } from "./clear-filters-button";
 import {
   getContextualCrumbs,
   createBreadcrumbNavigationState,
+  getDefaultMenuRoute,
   getDefaultParentCrumbs,
   getNavigationLabel,
   type NavigationCrumb,
@@ -180,11 +182,18 @@ export function PageToolbar({
     icon: PAGE_ICONS.home,
   };
   const HomeCrumbIcon = homeCrumb.icon ?? PAGE_ICONS.home;
+  const { canOpen } = usePermissions();
   const contextualCrumbs = breadcrumbTrail ? [] : getContextualCrumbs(location);
   const defaultParentCrumbs =
     breadcrumbTrail || contextualCrumbs.length > 0 || parentBreadcrumb
       ? []
-      : getDefaultParentCrumbs(pathname);
+      : // A parent the account cannot open is not a way back: an account sent
+        // to a report by a notification must not be offered its menu parent
+        // only to land on the no-access page.
+        getDefaultParentCrumbs(pathname).filter(
+          (crumb) =>
+            getDefaultMenuRoute(crumb.to) !== crumb.to || canOpen(crumb.to),
+        );
   const rawMiddleCrumbs: Array<NavigationCrumb & { icon?: LucideIcon }> = [
     ...(breadcrumbTrail?.slice(1) ?? []),
     ...(contextualCrumbs.length > 0 ? contextualCrumbs : []),

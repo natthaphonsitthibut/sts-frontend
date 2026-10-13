@@ -111,7 +111,9 @@ export function TeacherTable({
         ]}
         // Widths total 100% per variant: a shorter total leaves the fixed-layout
         // table narrower than its shell, which cuts the header bar and row rules
-        // short of the right edge.
+        // short of the right edge. With tools, that column is sized in pixels
+        // to its two buttons and อีเมล takes up the slack — 10% went narrower
+        // than the buttons on a small screen.
         columnWidths={
           management
             ? [
@@ -120,8 +122,8 @@ export function TeacherTable({
                 "w-[20%]",
                 "w-[12%]",
                 "w-[15%]",
-                "w-[28%]",
-                "w-[10%]",
+                "",
+                "w-[120px]",
               ]
             : ["w-[6%]", "w-[10%]", "w-[22%]", "w-[13%]", "w-[17%]", "w-[32%]"]
         }

@@ -10,9 +10,10 @@ export function RiskReportTabs() {
     ? "teacher-comments"
     : "attendance-risk";
   // The teacher-comments report is a tab of รายงานสถานะนักเรียน, so anyone who
-  // reaches that page (`dashboard`) sees this tab too, on top of whoever
-  // already reads teacher comments elsewhere (`students`) (owner, 2026-09-29).
-  if (!can("students") && !can("dashboard")) return null;
+  // reaches that page (`dashboard`) sees both tabs (owner, 2026-09-29). An
+  // account that reads teacher comments through `students` alone cannot open
+  // the other tab, and one tab is no choice to offer, so the strip goes.
+  if (!can("dashboard")) return null;
   return (
     <Tabs
       aria-label="ประเภทรายงานความเสี่ยง"

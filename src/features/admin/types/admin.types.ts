@@ -70,6 +70,11 @@ export interface ManagedUser {
   deactivation_reason_code?: AccountDeactivationReasonCode | null;
   deactivation_note?: string | null;
   created_at?: string | null;
+  /**
+   * `false` when the account is the actor's to read but not to manage (a fellow
+   * admin). The write actions and the reveals are then not offered.
+   */
+  can_manage?: boolean;
 }
 
 export interface ManagedUserDetail extends ManagedUser {

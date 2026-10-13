@@ -226,7 +226,9 @@ export function TeacherProfilePage() {
             </div>
           </Card>
 
-          {teacher.citizenId ? (
+          {/* Mounted only for an account that may reveal: the dialog loads
+              its reason list on mount, and that list refuses anyone else. */}
+          {canRevealNationalId && teacher.citizenId ? (
             <TeacherNationalIdRevealDialog
               maskedValue={teacher.citizenId}
               onOpenChange={setRevealOpen}

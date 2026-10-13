@@ -73,11 +73,15 @@ export function ClassroomStudentCommentDialog({
   submitError,
 }: ClassroomStudentCommentDialogProps) {
   const mutation = useCreateClassroomStudentComment();
+  // A surface that brings its own write (a classroom link) brings its own
+  // catalogs too. They are undefined while they load, and reaching for the
+  // staff API in that gap answered 401 on a link, which holds no account.
+  const readsStaffCatalogs = submitComment === undefined;
   const problemCategoriesQuery = useStudentProblemCategories(
-    providedProblemCategories === undefined,
+    readsStaffCatalogs && providedProblemCategories === undefined,
   );
   const concernLevelsQuery = useStudentCommentConcernLevels(
-    providedConcernLevels === undefined,
+    readsStaffCatalogs && providedConcernLevels === undefined,
   );
   const problemCategories =
     providedProblemCategories ?? problemCategoriesQuery.data ?? [];

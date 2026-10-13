@@ -945,15 +945,18 @@ function StudentRiskDashboardPage() {
                       "w-[10%]",
                       "w-[17%]",
                     ]
-                  : [
+                  : // The tools column is sized in pixels to its two buttons
+                    // and หมายเหตุ takes up the slack: 9% went narrower than
+                    // the buttons on a small screen.
+                    [
                       "w-[6%]",
                       "w-[18%]",
                       "w-[10%]",
                       "w-[8%]",
-                      "w-[23%]",
+                      "",
                       "w-[14%]",
                       "w-[12%]",
-                      "w-[9%]",
+                      "w-[120px]",
                     ]
               }
               headings={
