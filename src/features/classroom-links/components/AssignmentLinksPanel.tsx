@@ -253,16 +253,19 @@ export function AssignmentLinksPanel({
       ) : (
         <>
           <DataTable
+            // The tools column is sized in pixels to its four buttons and วิชา
+            // takes up the slack: 16% went narrower than the buttons on a
+            // small screen and the last ones were cut off.
             columnWidths={[
               "w-[14%]",
-              "w-[24%]",
+              "",
               "w-[17%]",
               "w-[17%]",
               "w-[12%]",
-              "w-[16%]",
+              "w-[216px]",
             ]}
             headings={[...HEADINGS]}
-            minWidthClassName="min-w-[860px]"
+            minWidthClassName="min-w-[960px]"
             responsiveBreakpoint="lg"
           >
             {rows.map((link) => (

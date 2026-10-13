@@ -31,7 +31,9 @@ export function RoleGroupTable({
 }: RoleGroupTableProps) {
   return (
     <DataTable
-      columnWidths={["w-[30%]", "w-[55%]", "w-[15%]"]}
+      // The tools column is sized in pixels to its two buttons and เมนู takes
+      // up the slack: 15% went narrower than the buttons at the minimum width.
+      columnWidths={["w-[30%]", "", "w-[120px]"]}
       headings={[
         { label: "กลุ่มเมนู", sortKey: "group" },
         { label: "เมนู", sortKey: "menus" },

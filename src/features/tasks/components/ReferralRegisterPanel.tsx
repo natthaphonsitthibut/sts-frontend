@@ -317,15 +317,18 @@ export function ReferralRegisterPanel({
         ) : (
           <div className="flex flex-col gap-2">
             <DataTable
+              // The tools column is sized in pixels to its buttons, and one column is
+              // left unsized to take up the slack: a percentage went narrower than the
+              // buttons on a small screen and the last one was cut off.
               columnWidths={[
                 "w-[6%]",
                 "w-[20%]",
                 "w-[9%]",
                 "w-[8%]",
-                "w-[21%]",
+                "",
                 "w-[14%]",
                 "w-[13%]",
-                "w-[9%]",
+                "w-[168px]",
               ]}
               headings={[
                 "ลำดับ",
@@ -337,7 +340,7 @@ export function ReferralRegisterPanel({
                 "วันที่ส่งต่อ",
                 { isAction: true, label: "เครื่องมือ" },
               ]}
-              minWidthClassName="min-w-[1120px]"
+              minWidthClassName="min-w-[1200px]"
             >
               {referrals.map((referral, index) => (
                 <DataTableRow
