@@ -11,7 +11,8 @@ export type RiskDashboardSortBy =
   | "attendance"
   | "openCases"
   | "updatedAt"
-  | "problemCategory";
+  | "problemCategory"
+  | "priority";
 export type RiskDashboardSortDirection = "asc" | "desc";
 
 export interface RiskDashboardRow {
@@ -42,6 +43,8 @@ export interface RiskDashboardRow {
   latestCaseId: number | null;
   latestCaseStatus: string | null;
   latestCaseAt: string | null;
+  /** Newest of the latest case's update and the latest observation. */
+  latestActivityAt: string | null;
   latestCaseMagicLink: string | null;
   /** True once this case has ever had a task/link assignment — distinguishes
    * a case whose link expired/was cancelled (needs reassignment) from one
@@ -56,6 +59,10 @@ export interface RiskDashboardRow {
   pendingCommentCount: number;
   /** When the latest case was closed; observations after it start a new round. */
   lastCaseResolvedAt: string | null;
+  /** When the watch was last closed without a case (ปิดการเฝ้าระวัง). */
+  lastWatchClosedAt: string | null;
+  /** An undecided observation from an earlier term, with no case following it. */
+  pendingFromPreviousTerm: boolean;
   teacherComment: string | null;
 }
 
@@ -102,7 +109,8 @@ export interface RiskDashboardQuery {
     | "AWAITING_REFERRAL"
     | "AWAITING_REFERRAL_OUTCOME"
     | "REFERRAL_NOT_SUCCEEDED"
-    | "RESOLVED";
+    | "RESOLVED"
+    | "NOT_OPENED";
   grade?: string;
   room?: string;
   searchTerm?: string;

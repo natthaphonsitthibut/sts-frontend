@@ -20,6 +20,7 @@ import {
   DataTableRow,
   TableCard,
   TableCardList,
+  type DataTableSortState,
 } from "../../../components/layout/data-table";
 import { DetailLinkButton } from "../../../components/layout/detail-link-button";
 import { Pagination } from "../../../components/layout/pagination";
@@ -43,7 +44,10 @@ import {
   useStatusCatalog,
 } from "../../status-catalog/hooks/useStatusCatalog";
 import { statusSummaryTone } from "../../status-catalog/lib/status-catalog-presentation";
-import type { ReferralDrilldownRow } from "../types/follow-up-dashboard.types";
+import type {
+  ReferralDrilldownRow,
+  ReferralDrilldownSortBy,
+} from "../types/follow-up-dashboard.types";
 
 /**
  * The register's cards follow the referral flow — รอส่งต่อ → รอผล → พิจารณา →
@@ -54,6 +58,10 @@ import type { ReferralDrilldownRow } from "../types/follow-up-dashboard.types";
  * the row as ไม่พบนักเรียน leads กลุ่มเสี่ยง: the badge says how the round
  * ended, so there is no separate result column (owner, 2026-10-12).
  */
+// A case still open follows the student into later terms: grade/room show the
+// current class, while this line keeps the term the case was opened in.
+const REFERRAL_TERM_LABEL = "เปิดเคส";
+
 const REFERRAL_STAGE_CARDS = [
   { code: "REFERRAL_NOT_SUCCEEDED", icon: CircleX },
   { code: "AWAITING_REFERRAL", icon: Send },
@@ -84,6 +92,44 @@ function linkWarning(row: ReferralDrilldownRow): string | null {
   return null;
 }
 
+const REFERRAL_SORT_OPTIONS: Array<{
+  value: string;
+  label: string;
+  sort?: DataTableSortState;
+}> = [
+  { value: "default", label: "ค่าเริ่มต้น: วันที่ส่งต่อ ใหม่ → เก่า" },
+  {
+    value: "referredAt:asc",
+    label: "วันที่ส่งต่อ เก่า → ใหม่",
+    sort: { key: "referredAt", direction: "asc" },
+  },
+  {
+    value: "name:asc",
+    label: "ชื่อนักเรียน ก → ฮ",
+    sort: { key: "name", direction: "asc" },
+  },
+  {
+    value: "name:desc",
+    label: "ชื่อนักเรียน ฮ → ก",
+    sort: { key: "name", direction: "desc" },
+  },
+  {
+    value: "grade:asc",
+    label: "ชั้น น้อย → มาก",
+    sort: { key: "grade", direction: "asc" },
+  },
+  {
+    value: "room:asc",
+    label: "ห้อง น้อย → มาก",
+    sort: { key: "room", direction: "asc" },
+  },
+  {
+    value: "agency:asc",
+    label: "หน่วยงาน ก → ฮ",
+    sort: { key: "agency", direction: "asc" },
+  },
+];
+
 export function ReferralRegisterPanel({
   canViewStudent = false,
   academicYear,
@@ -109,6 +155,10 @@ export function ReferralRegisterPanel({
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [stageCode, setStageCode] = useState("");
+  // No sort = newest วันที่ส่งต่อ first, the order every other tab defaults to
+  // by time (owner, 2026-10-15).
+  const [sort, setSort] = useState<DataTableSortState | undefined>();
+  const sortBy = sort?.key as ReferralDrilldownSortBy | undefined;
   const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const referralStatuses = useStatusCatalog("CASE_REFERRAL");
   const caseStatuses = useStatusCatalog("CASE_WORKFLOW");
@@ -168,12 +218,16 @@ export function ReferralRegisterPanel({
       rowsPerPage,
       stageCode,
       debouncedSearch,
+      sortBy,
+      sort?.direction,
     ],
     queryFn: () =>
       riskDashboardService.getReferralDrilldown(page, rowsPerPage, {
         ...area,
         stageCode: stageCode || undefined,
         searchTerm: debouncedSearch || undefined,
+        sortBy,
+        sortDirection: sort?.direction,
       }),
   });
   const referrals = drilldownQuery.data?.items ?? [];
@@ -237,24 +291,26 @@ export function ReferralRegisterPanel({
         title="แชร์ลิงก์รายงานผลการส่งต่อ"
         description="เลือกช่องทางส่งลิงก์ให้หน่วยงาน แจ้งรหัสแยกจากลิงก์ ผู้รายงานต้องยืนยัน AraID ก่อนรายงานผล"
       />
-      <ReferralAccessCodeButton
-        compact
-        caseId={referral.caseId}
-        referralId={referral.id ?? ""}
-        disabled={
-          !referral.awaitingResult ||
-          !referral.linkStatusCode ||
-          referral.accessCodeAvailable === false ||
-          !can("case:review")
-        }
-        canRefresh={
-          referral.linkStatusCode === "ACTIVE" &&
-          Boolean(
-            referral.linkExpiresAt &&
-            new Date(referral.linkExpiresAt).getTime() > currentTime,
-          )
-        }
-      />
+      {/* Without case:manage the button is not shown at all (owner, 2026-10-15). */}
+      {can("case:manage") ? (
+        <ReferralAccessCodeButton
+          compact
+          caseId={referral.caseId}
+          referralId={referral.id ?? ""}
+          disabled={
+            !referral.awaitingResult ||
+            !referral.linkStatusCode ||
+            referral.accessCodeAvailable === false
+          }
+          canRefresh={
+            referral.linkStatusCode === "ACTIVE" &&
+            Boolean(
+              referral.linkExpiresAt &&
+              new Date(referral.linkExpiresAt).getTime() > currentTime,
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 
@@ -332,14 +388,19 @@ export function ReferralRegisterPanel({
               ]}
               headings={[
                 "ลำดับ",
-                "ชื่อนักเรียน",
-                "ชั้น",
-                "ห้อง",
-                "หน่วยงานที่ส่งต่อ",
+                { label: "ชื่อนักเรียน", sortKey: "name" },
+                { label: "ชั้น", sortKey: "grade" },
+                { label: "ห้อง", sortKey: "room" },
+                { label: "หน่วยงานที่ส่งต่อ", sortKey: "agency" },
                 { label: "สถานะการส่งต่อ", className: "text-center" },
-                "วันที่ส่งต่อ",
+                { label: "วันที่ส่งต่อ", sortKey: "referredAt" },
                 { isAction: true, label: "เครื่องมือ" },
               ]}
+              onSortChange={(nextSort) => {
+                setSort(nextSort);
+                setPage(1);
+              }}
+              sort={sort}
               minWidthClassName="min-w-[1200px]"
             >
               {referrals.map((referral, index) => (
@@ -353,6 +414,7 @@ export function ReferralRegisterPanel({
                     <StudentIdentityCell
                       academicYear={referral.academicYear}
                       semester={referral.semester}
+                      termLabel={REFERRAL_TERM_LABEL}
                       canViewStudent={canViewStudent}
                       schoolName={referral.schoolName}
                       studentId={referral.studentId}
@@ -398,6 +460,32 @@ export function ReferralRegisterPanel({
               ))}
             </DataTable>
 
+            {/* Phones have no header to tap, so the same orders sit in a menu,
+                as on the other two tabs. */}
+            <div className="space-y-1.5 md:hidden">
+              <div className="text-xs font-semibold text-slate-700">
+                เรียงตาม
+              </div>
+              <FilterSelect
+                ariaLabel="เรียงลำดับงานส่งต่อ"
+                onChange={(value) => {
+                  setSort(
+                    REFERRAL_SORT_OPTIONS.find(
+                      (option) => option.value === value,
+                    )?.sort,
+                  );
+                  setPage(1);
+                }}
+                value={sort ? `${sort.key}:${sort.direction}` : "default"}
+              >
+                {REFERRAL_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </FilterSelect>
+            </div>
+
             <TableCardList>
               {referrals.map((referral) => (
                 <TableCard
@@ -407,6 +495,7 @@ export function ReferralRegisterPanel({
                     <StudentIdentityCell
                       academicYear={referral.academicYear}
                       semester={referral.semester}
+                      termLabel={REFERRAL_TERM_LABEL}
                       canViewStudent={canViewStudent}
                       schoolName={referral.schoolName}
                       studentId={referral.studentId}

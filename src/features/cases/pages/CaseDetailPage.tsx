@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { ArrowLeft, FileText, PhoneCall } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  MessageSquareText,
+  PhoneCall,
+} from "lucide-react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -22,6 +27,7 @@ import {
   SkeletonStack,
 } from "../../../components/layout/page-primitives";
 import { StudentTrackingCard } from "../../../components/layout/student-tracking-card";
+import { StudentObservationHistory } from "../../teacher-comments/components/StudentObservationHistory";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { StudentAvatar } from "../../students/components/StudentAvatar";
 import { CaseStatusUpdateDialog } from "../components/CaseStatusUpdateDialog";
@@ -151,6 +157,22 @@ export function CaseDetailPage() {
             : ""
         }`}
       />
+
+      {/* What teachers saw before and during this case, read-only. Only here,
+          not on the shared tracking card, because the token-link pages use
+          that card and must not show observations. Same permission as the
+          student page that already lists them. */}
+      {caseRecord.student_id && can("students") ? (
+        <Card className="mb-5 p-5">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <MessageSquareText className="size-5 text-ink" aria-hidden="true" />
+            ข้อสังเกตจากครู
+          </h2>
+          <div className="mt-4 max-h-[28rem] overflow-y-auto overscroll-contain pr-1">
+            <StudentObservationHistory studentId={caseRecord.student_id} />
+          </div>
+        </Card>
+      ) : null}
 
       <CaseTrackingTimeline
         caseRecord={caseRecord}

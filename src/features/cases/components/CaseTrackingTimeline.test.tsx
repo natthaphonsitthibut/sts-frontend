@@ -156,7 +156,7 @@ describe("a referral the agency could not complete", () => {
         id: "test-actor",
         username: "test-actor",
         roles: [],
-        permissions: ["case:assign", "case:review"],
+        permissions: ["case:manage"],
       },
     } as never);
     const client = new QueryClient({

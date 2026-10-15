@@ -44,20 +44,17 @@ export function StudentProfileCaseActions({
       >
         ดูเคส
       </Button>
-      <Button
-        disabled={disabled || !canOpenCase || hasActiveCase}
-        icon={CirclePlus}
-        onClick={() => setOpenCase(true)}
-        title={
-          !canOpenCase
-            ? "ไม่มีสิทธิ์เปิดเคส"
-            : hasActiveCase
-              ? "มีเคสที่กำลังติดตามอยู่"
-              : "เปิดเคสใหม่"
-        }
-      >
-        เปิดเคสใหม่
-      </Button>
+      {/* Without case:manage the button is not shown at all (owner, 2026-10-15). */}
+      {canOpenCase ? (
+        <Button
+          disabled={disabled || hasActiveCase}
+          icon={CirclePlus}
+          onClick={() => setOpenCase(true)}
+          title={hasActiveCase ? "มีเคสที่กำลังติดตามอยู่" : "เปิดเคสใหม่"}
+        >
+          เปิดเคสใหม่
+        </Button>
+      ) : null}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent
           className="flex h-[min(80dvh,40rem)] max-w-3xl flex-col overflow-hidden text-left"

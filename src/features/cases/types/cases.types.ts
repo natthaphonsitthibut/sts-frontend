@@ -307,6 +307,16 @@ export interface OpenCasePayload {
   reason: string;
 }
 
+export interface CloseWatchPayload {
+  student_id: string;
+  note?: string;
+}
+
+export interface CloseWatchResponse {
+  success: boolean;
+  data: { id: number; student_id: string; closed_at: string };
+}
+
 export interface CaseDetailResponse {
   success: boolean;
   data: CaseRecord;

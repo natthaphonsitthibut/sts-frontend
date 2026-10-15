@@ -13,10 +13,14 @@ import type {
   OpenCasePayload,
   OpenCaseResponse,
   ReferralAgencyOption,
+  CloseWatchPayload,
+  CloseWatchResponse,
 } from "../types/cases.types";
 
 interface CasesService {
   getCase: (caseId: number) => Promise<CaseDetailResponse>;
+  /** ปิดการเฝ้าระวัง: the student returns to ปกติ without a case. */
+  closeWatch: (payload: CloseWatchPayload) => Promise<CloseWatchResponse>;
   openCase: (
     payload: OpenCasePayload,
     source?: StudentReadSource,
@@ -181,8 +185,19 @@ async function getReferralAgencies(): Promise<ReferralAgencyOption[]> {
   return response.data.data;
 }
 
+async function closeWatch(
+  payload: CloseWatchPayload,
+): Promise<CloseWatchResponse> {
+  const response = await apiClient.post<CloseWatchResponse>(
+    "/cases/watch-closures",
+    payload,
+  );
+  return response.data;
+}
+
 export const casesService: CasesService = {
   getCase,
+  closeWatch,
   getReferralAgencies,
   openCase,
   reviewCase,

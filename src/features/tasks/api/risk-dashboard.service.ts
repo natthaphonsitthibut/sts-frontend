@@ -13,6 +13,7 @@ import type {
   FollowUpSummary,
   ReferralDrilldownResult,
   ReferralDrilldownRow,
+  ReferralDrilldownSortBy,
 } from "../types/follow-up-dashboard.types";
 
 async function getRiskDashboard(
@@ -114,6 +115,8 @@ async function getReferralDrilldown(
     statusCode?: string;
     stageCode?: string;
     searchTerm?: string;
+    sortBy?: ReferralDrilldownSortBy;
+    sortDirection?: "asc" | "desc";
   } = {},
 ): Promise<ReferralDrilldownResult> {
   const response = await apiClient.get("/dashboard/referrals", {
@@ -124,6 +127,8 @@ async function getReferralDrilldown(
       statusCode: filters.statusCode || undefined,
       stageCode: filters.stageCode || undefined,
       searchTerm: filters.searchTerm || undefined,
+      sortBy: filters.sortBy,
+      sortDirection: filters.sortBy ? filters.sortDirection : undefined,
     },
   });
   return normalizePaginatedResponse<ReferralDrilldownRow>(response.data, {

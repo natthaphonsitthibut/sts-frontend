@@ -300,8 +300,12 @@ describe("report filter consistency", () => {
     const cards = document.querySelector('[data-slot="table-card-list"]');
     expect(cards).not.toBeNull();
     for (const layout of [table, cards as HTMLElement]) {
-      expect(within(layout).getByText("ปี 2569 · ภาคเรียนที่ 1")).toBeDefined();
-      expect(within(layout).getByText("ปี 2568 · ภาคเรียนที่ 2")).toBeDefined();
+      expect(
+        within(layout).getByText("เปิดเคส ปี 2569 · ภาคเรียนที่ 1"),
+      ).toBeDefined();
+      expect(
+        within(layout).getByText("เปิดเคส ปี 2568 · ภาคเรียนที่ 2"),
+      ).toBeDefined();
       const legacyName = within(layout).getByText("นักเรียนข้อมูลเดิม");
       expect(legacyName.parentElement?.textContent).not.toMatch(/ปี |ภาคเรียน/);
       expect(layout.textContent).not.toMatch(/ปี null|ภาคเรียนที่ null/);
