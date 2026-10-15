@@ -296,7 +296,7 @@ export function AttendanceStudentTable({
         className="w-fit"
         variant={totalAbsent >= 2 ? "destructive" : "warning"}
       >
-        ขาดสะสม {totalAbsent} วัน
+        ขาดติดต่อกัน {totalAbsent} วัน
       </Badge>
     );
   }
@@ -364,7 +364,7 @@ export function AttendanceStudentTable({
                   className="w-fit"
                   variant={totalAbsent >= 2 ? "destructive" : "warning"}
                 >
-                  ขาดสะสม {totalAbsent} วัน
+                  ขาดติดต่อกัน {totalAbsent} วัน
                 </Badge>
               ) : null,
             )}
@@ -537,7 +537,7 @@ export function AttendanceStudentTable({
           headings={[
             { label: "เลขที่", sortKey: "roster" },
             { label: "นักเรียน", sortKey: "name" },
-            { label: "ขาดสะสม", sortKey: "absence" },
+            { label: "ขาดติดต่อกัน", sortKey: "absence" },
             { label: "สถานะ", sortKey: "status" },
           ]}
           minWidthClassName="min-w-[760px]"
