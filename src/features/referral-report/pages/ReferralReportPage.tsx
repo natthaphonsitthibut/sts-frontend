@@ -243,7 +243,8 @@ function ReferralReportView({
     <GuestPageShell
       contentClassName={cn(PAGE_MAX_WIDTH_CLASS, "space-y-4")}
       profileName={link.reporter_name}
-      profileRoleLabel={link.referral.agency_name ?? "หน่วยงาน"}
+      profileRoleCaption="หน่วยงาน"
+      profileRoleLabel={link.referral.agency_name ?? "-"}
     >
       <div>
         <h1 className="text-balance text-lg font-bold leading-7 text-slate-900">

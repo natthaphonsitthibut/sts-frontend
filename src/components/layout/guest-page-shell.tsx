@@ -17,6 +17,8 @@ interface GuestPageShellProps extends ComponentProps<"div"> {
   profilePhotoUrl?: string | null;
   /** ตำแหน่ง for the link holder; teachers reach every link as คุณครู. */
   profileRoleLabel?: string | null;
+  /** What the role line is called — หน่วยงาน on an agency's link. */
+  profileRoleCaption?: string;
   showHeader?: boolean;
   showProfile?: boolean;
   /**
@@ -39,6 +41,7 @@ export function GuestPageShell({
   profileName,
   profilePhotoUrl,
   profileRoleLabel = "คุณครู",
+  profileRoleCaption,
   showHeader = true,
   showProfile = true,
   ...props
@@ -60,11 +63,12 @@ export function GuestPageShell({
               // link cannot offer: there is no profile to edit and nothing to
               // sign out of.
               <HeaderProfileMenu
-                affiliation={profileAffiliation}
+                affiliation={profileAffiliation ?? null}
                 canEditProfile={false}
                 canSignOut={false}
                 displayName={profileName ?? "ผู้รับมอบหมาย"}
                 photoUrl={profilePhotoUrl ?? null}
+                roleCaption={profileRoleCaption}
                 roleLabel={profileRoleLabel}
               />
             ) : null}

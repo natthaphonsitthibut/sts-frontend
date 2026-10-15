@@ -2,6 +2,7 @@ import { useState, type ComponentProps, type CSSProperties } from "react";
 import { UserRound } from "lucide-react";
 import { getAvatarGradient } from "../../lib/avatar-gradient";
 import { cn } from "../../lib/utils";
+import { getAvatarInitial } from "../../lib/person-name";
 
 export interface AvatarProps extends ComponentProps<"div"> {
   fallback?: string;
@@ -31,7 +32,7 @@ export function Avatar({
   // Opt in by presence, not truthiness: an empty name still resolves to the
   // palette's neutral colour rather than falling back to the plain grey chip.
   const useGradient = !activeImageUrl && gradientName !== undefined;
-  const initial = fallback ?? gradientName?.charAt(0) ?? "";
+  const initial = fallback ?? getAvatarInitial(gradientName);
   const gradientStyle: CSSProperties | undefined = useGradient
     ? getAvatarGradient(gradientName!)
     : undefined;
