@@ -69,7 +69,7 @@ export interface RiskDashboardRow {
 export type ConcernLevelCode = "NOTE" | "WATCH" | "CONCERN";
 
 export interface RiskDashboardThresholds {
-  /** วันขาดหลังปิดเคสล่าสุด (ไม่ต้องติดกัน) ที่ถึงเกณฑ์ `เสี่ยง` */
+  /** วันขาดติดต่อกันหลังปิดเคสล่าสุด ที่ถึงเกณฑ์ `เสี่ยง` (วันลาทั้งวันไม่นับและไม่ตัดความต่อเนื่อง) */
   highAbsentDays: number;
 }
 
