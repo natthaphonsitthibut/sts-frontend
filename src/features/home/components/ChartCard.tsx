@@ -5,6 +5,9 @@ import { cn } from "../../../lib/utils";
 
 type ChartCardTone = "primary" | "danger" | "warning" | "success";
 
+export const HOME_CHART_CARD_CLASS =
+  "flex h-[32rem] min-w-0 flex-col overflow-hidden p-4 sm:h-[36rem] sm:p-5";
+
 const TONE_CLASSES: Record<ChartCardTone, string> = {
   primary: "bg-primary-100 text-primary-700",
   danger: "bg-danger-100 text-danger-700",
@@ -17,6 +20,7 @@ interface ChartCardProps {
   children: ReactNode;
   className?: string;
   description: string;
+  footer?: ReactNode;
   icon: LucideIcon;
   testAttribute?: Record<string, string>;
   title: string;
@@ -33,15 +37,20 @@ export function ChartCard({
   children,
   className,
   description,
+  footer,
   icon: Icon,
   testAttribute,
   title,
   tone = "primary",
 }: ChartCardProps) {
   return (
-    <Card className={cn("p-4 sm:p-5", className)} {...testAttribute}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
+    <Card
+      className={cn(HOME_CHART_CARD_CLASS, className)}
+      data-home-chart-card={title}
+      {...testAttribute}
+    >
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
           <span
             className={cn(
               "flex size-9 shrink-0 items-center justify-center rounded-lg",
@@ -51,13 +60,26 @@ export function ChartCard({
             <Icon className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+            <h2 className="text-balance text-lg font-semibold text-slate-900">
+              {title}
+            </h2>
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </div>
         </div>
         {action ? <div className="shrink-0 self-start">{action}</div> : null}
       </div>
-      <div className="mt-5">{children}</div>
+      <div
+        aria-label={`ข้อมูล${title}`}
+        className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-sm px-1 pb-1 [scrollbar-gutter:stable] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+        data-home-chart-body
+        role="region"
+        tabIndex={0}
+      >
+        {children}
+      </div>
+      {footer ? (
+        <div className="shrink-0 border-t border-slate-100 pt-3">{footer}</div>
+      ) : null}
     </Card>
   );
 }

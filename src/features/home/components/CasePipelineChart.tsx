@@ -1,6 +1,6 @@
 import { BriefcaseBusiness } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Card } from "../../../components/base";
+import { ChartCard } from "./ChartCard";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import type {
   HomeDashboardCasePipeline,
@@ -59,23 +59,14 @@ export function CasePipelineChart({
   );
 
   return (
-    <Card className="p-5">
-      <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-100 text-warning-700">
-          <BriefcaseBusiness className="size-5" aria-hidden="true" />
-        </span>
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            เคสที่กำลังดำเนินการ
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {activeTotal.toLocaleString("th-TH")} เคสในขอบเขตปัจจุบัน
-            ไม่รวมเคสปิดแล้ว
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-3">
+    <ChartCard
+      description={`${activeTotal.toLocaleString("th-TH")} เคสในขอบเขตปัจจุบัน ไม่รวมเคสปิดแล้ว`}
+      icon={BriefcaseBusiness}
+      testAttribute={{ "data-case-pipeline": "true" }}
+      title="เคสที่กำลังดำเนินการ"
+      tone="warning"
+    >
+      <div className="space-y-3">
         {PIPELINE_ITEMS.map((item) => {
           const count = pipeline[item.key];
           const rowContent = (
@@ -119,6 +110,6 @@ export function CasePipelineChart({
           );
         })}
       </div>
-    </Card>
+    </ChartCard>
   );
 }
