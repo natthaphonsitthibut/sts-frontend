@@ -72,7 +72,9 @@ export function homeVisitSample(
   options: CaseTrackingOptions | undefined,
   home: { lat?: number | null; lng?: number | null },
 ) {
-  const now = bangkokParts(new Date(Date.now() - 60 * 60 * 1000));
+  // The current minute: an assignment made a moment ago with the fill button
+  // starts at this minute, and a report may not predate its assignment.
+  const now = bangkokParts(new Date());
   const absenceReason =
     options?.absenceReasons.find((reason) => reason.code === "MINOR_ILLNESS") ??
     options?.absenceReasons.find(
@@ -168,7 +170,9 @@ export const HOME_VISIT_EMPTY = {
 };
 
 export function assistanceSample() {
-  const now = bangkokParts(new Date(Date.now() - 60 * 60 * 1000));
+  // The current minute: an assignment made a moment ago with the fill button
+  // starts at this minute, and a report may not predate its assignment.
+  const now = bangkokParts(new Date());
   return {
     assistedDate: now.date,
     assistedTime: now.time,
