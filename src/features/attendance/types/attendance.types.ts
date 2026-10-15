@@ -22,7 +22,8 @@ export interface AttendanceStudent {
   /** Latest homeroom note, shown as หมายเหตุ. */
   teacher_comment?: string | null;
   total_late?: number | string;
-  total_absent?: number | string;
+  /** Longest run of consecutive absent days after the latest closed case. */
+  consecutive_absent_days?: number | string;
 }
 
 export interface AttendanceStudentQuery {

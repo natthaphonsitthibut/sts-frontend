@@ -116,7 +116,8 @@ function compareRosterItems(
   if (key === "name") return compareText(left.student.name, right.student.name);
   if (key === "absence") {
     return (
-      toCount(left.student.total_absent) - toCount(right.student.total_absent)
+      toCount(left.student.consecutive_absent_days) -
+      toCount(right.student.consecutive_absent_days)
     );
   }
   if (key === "status") {
@@ -287,16 +288,16 @@ export function AttendanceStudentTable({
   }
 
   function renderAbsenceRisk(student: AttendanceStudent) {
-    const totalAbsent = toCount(student.total_absent);
-    if (totalAbsent <= 0) {
+    const consecutiveAbsent = toCount(student.consecutive_absent_days);
+    if (consecutiveAbsent <= 0) {
       return <span className="text-slate-500">-</span>;
     }
     return (
       <Badge
         className="w-fit"
-        variant={totalAbsent >= 2 ? "destructive" : "warning"}
+        variant={consecutiveAbsent >= 2 ? "destructive" : "warning"}
       >
-        ขาดติดต่อกัน {totalAbsent} วัน
+        ขาดติดต่อกัน {consecutiveAbsent} วัน
       </Badge>
     );
   }
@@ -341,8 +342,8 @@ export function AttendanceStudentTable({
     rosterNumber: number,
     isRollCall = false,
   ) {
-    const totalAbsent = toCount(student.total_absent);
-    const hasAbsenceRisk = totalAbsent > 0;
+    const consecutiveAbsent = toCount(student.consecutive_absent_days);
+    const hasAbsenceRisk = consecutiveAbsent > 0;
 
     return (
       <div
@@ -362,9 +363,9 @@ export function AttendanceStudentTable({
               hasAbsenceRisk ? (
                 <Badge
                   className="w-fit"
-                  variant={totalAbsent >= 2 ? "destructive" : "warning"}
+                  variant={consecutiveAbsent >= 2 ? "destructive" : "warning"}
                 >
-                  ขาดติดต่อกัน {totalAbsent} วัน
+                  ขาดติดต่อกัน {consecutiveAbsent} วัน
                 </Badge>
               ) : null,
             )}
