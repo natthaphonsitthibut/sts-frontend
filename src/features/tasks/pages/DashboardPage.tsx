@@ -67,6 +67,7 @@ import {
 } from "../../../lib/scope-presentation";
 import { ScopeFilterField } from "../../attendance/components/ScopeFilterField";
 import { useGlobalSchoolFilter } from "../../school-filter/hooks/useGlobalSchoolFilter";
+import { canOpenStudentProfile } from "../../students/lib/student-profile-access";
 
 const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   risk: "risk",
@@ -358,7 +359,7 @@ function DashboardRowAction({ row }: { row: RiskDashboardRow }) {
 
 function StudentRiskDashboardPage() {
   const { can } = usePermissions();
-  const canViewStudent = can("students");
+  const canViewStudent = canOpenStudentProfile(can);
   const [studentGroup, setStudentGroup] = useRouteTab(
     STUDENT_GROUP_ROUTES,
     "risk",

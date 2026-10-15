@@ -30,6 +30,7 @@ import { RiskReportTabs } from "../components/RiskReportTabs";
 import { useTeacherComments } from "../hooks/useTeacherComments";
 import { getConcernLevelPresentation } from "../lib/comment-presentation";
 import { usePermissions } from "../../auth/hooks/usePermissions";
+import { canOpenStudentProfile } from "../../students/lib/student-profile-access";
 
 /**
  * ความคิดเห็นจากคุณครู — every comment teachers wrote about a student, across
@@ -158,7 +159,7 @@ export function TeacherCommentReportsPage() {
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex justify-center">
-                    {can("students") ? (
+                    {canOpenStudentProfile(can) ? (
                       <DetailLinkButton
                         aria-label={`เปิดข้อมูลนักเรียน ${row.studentName}`}
                         iconOnly
