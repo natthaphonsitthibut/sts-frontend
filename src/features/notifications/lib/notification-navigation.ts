@@ -1,3 +1,4 @@
+import { STUDENT_PROFILE_PERMISSIONS } from "../../students/lib/student-profile-access";
 import type { NotificationItem } from "../types/notifications.types";
 
 /** `can` from `usePermissions` — what the signed-in account may open. */
@@ -19,7 +20,7 @@ const DESTINATION_PERMISSIONS: Record<
   readonly string[]
 > = {
   case: ["dashboard"],
-  student: ["students", "manage-students", "classrooms"],
+  student: STUDENT_PROFILE_PERMISSIONS,
   watchlistReport: ["dashboard"],
   teacherCommentReport: ["dashboard", "students"],
 };
