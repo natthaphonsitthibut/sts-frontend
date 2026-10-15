@@ -74,7 +74,10 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                   <XAxis
                     allowDecimals={false}
                     axisLine={false}
-                    tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
+                    tick={{
+                      fontSize: "var(--text-sm)",
+                      fill: "var(--color-slate-700)",
+                    }}
                     tickLine={false}
                     type="number"
                   />
@@ -82,7 +85,10 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                     axisLine={false}
                     dataKey="label"
                     interval={0}
-                    tick={{ fontSize: 16, fill: "var(--color-slate-800)" }}
+                    tick={{
+                      fontSize: "var(--text-sm)",
+                      fill: "var(--color-slate-800)",
+                    }}
                     tickLine={false}
                     type="category"
                     width={200}
@@ -93,7 +99,7 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                       borderRadius: "var(--radius-lg)",
                       border: "none",
                       boxShadow: "var(--shadow-card)",
-                      fontSize: "14px",
+                      fontSize: "var(--text-sm)",
                     }}
                     formatter={(value, name) => [
                       `${Number(value ?? 0).toLocaleString("th-TH")} คน`,
@@ -108,7 +114,10 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                           value}
                       </span>
                     )}
-                    wrapperStyle={{ paddingTop: "12px", fontSize: "14px" }}
+                    wrapperStyle={{
+                      paddingTop: "12px",
+                      fontSize: "var(--text-sm)",
+                    }}
                   />
                   {SERIES.map((series) => (
                     <Bar
@@ -130,7 +139,7 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                   className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
                   key={category.key}
                 >
-                  <span className="break-words text-base font-semibold leading-6 text-slate-800">
+                  <span className="break-words text-sm font-semibold text-slate-800">
                     {category.label}
                   </span>
                   <span className="shrink-0 text-sm tabular-nums text-slate-700">

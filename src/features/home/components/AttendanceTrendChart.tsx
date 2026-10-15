@@ -11,10 +11,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ChartCard, ChartEmptyState } from "./ChartCard";
+import { ChartCard, ChartEmptyState, type ChartQueryState } from "./ChartCard";
 import type { HomeDashboardTrendPoint } from "../types/home-dashboard.types";
 
 interface AttendanceTrendChartProps {
+  queryState?: ChartQueryState;
   points: HomeDashboardTrendPoint[];
 }
 
@@ -39,7 +40,10 @@ function formatDay(key: string): string {
  * left to the rate line — plotting them as bars would flatten ขาด/สาย, which are
  * the two numbers anyone acts on.
  */
-function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
+function AttendanceTrendChartImpl({
+  points,
+  queryState,
+}: AttendanceTrendChartProps) {
   // recharts stores `data` in its own redux store and re-dispatches it whenever
   // the array identity changes — with no equality check, and clearing it to
   // undefined on the way. A fresh array on every parent render therefore churns
@@ -58,6 +62,7 @@ function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
 
   return (
     <ChartCard
+      queryState={queryState}
       description={
         points.length > 0
           ? `ในช่วงที่เลือก ขาดเรียนรวม ${totalAbsent.toLocaleString("th-TH")} ครั้ง และมาสายรวม ${totalLate.toLocaleString("th-TH")} ครั้ง`

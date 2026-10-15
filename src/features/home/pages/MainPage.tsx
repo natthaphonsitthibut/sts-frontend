@@ -456,6 +456,9 @@ export function MainPage() {
     followUpInsights,
     isLoading,
     isError,
+    isTrendsError,
+    isTrendsLoading,
+    refetchTrends,
     isFilterOptionsError,
     isFollowUpInsightsError,
     refetch,
@@ -553,6 +556,11 @@ export function MainPage() {
             <div className="flex min-w-0 flex-col gap-5">
               {isSchoolScope ? (
                 <GradeRiskChart
+                  queryState={{
+                    isLoading: isTrendsLoading,
+                    isError: isTrendsError,
+                    onRetry: () => void refetchTrends(),
+                  }}
                   distribution={trends?.gradeRiskDistribution ?? null}
                   grade={filters.grade}
                   gradeOptions={filterOptions?.options?.grades ?? []}
@@ -591,6 +599,11 @@ export function MainPage() {
                 title="แสดงกราฟแนวโน้มการมาเรียนไม่สำเร็จ"
               >
                 <AttendanceTrendChart
+                  queryState={{
+                    isLoading: isTrendsLoading,
+                    isError: isTrendsError,
+                    onRetry: () => void refetchTrends(),
+                  }}
                   points={trends?.attendanceTrend ?? NO_TREND_POINTS}
                 />
               </ErrorBoundary>
