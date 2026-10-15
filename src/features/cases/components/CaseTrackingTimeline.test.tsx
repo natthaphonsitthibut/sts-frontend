@@ -123,7 +123,7 @@ describe("a referral the agency could not complete", () => {
           note: "ครอบครัวไม่ไปตามนัด",
           recorded_at: "2026-10-06T00:00:00Z",
           recorded_by: null,
-          action_date: "2026-10-06",
+          action_at: "2026-10-06T03:00:00Z",
           reported_by_agency: true,
           reporter_name: "เจ้าหน้าที่ ทดสอบ",
           reporter_identity_provider: "AraID",

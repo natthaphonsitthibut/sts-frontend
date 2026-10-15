@@ -346,7 +346,7 @@ describe("referral report link: draft isolation", () => {
     showPage(true);
     const firstNote = await screen.findByLabelText(/สรุปการดำเนินการและผล/);
     fireEvent.change(firstNote, { target: { value: "ข้อมูลเฉพาะลิงก์แรก" } });
-    fireEvent.click(screen.getByRole("radio", { name: "สำเร็จ" }));
+    fireEvent.click(screen.getByRole("radio", { name: "ยังไม่สำเร็จ" }));
     fireEvent.click(screen.getByRole("link", { name: "เปิดลิงก์อีกโรงเรียน" }));
     await waitFor(() =>
       expect(requestsTo("get", "/referral-links/second-link")[0]?.session).toBe(
@@ -356,9 +356,14 @@ describe("referral report link: draft isolation", () => {
     expect(
       await screen.findByLabelText(/สรุปการดำเนินการและผล/),
     ).toHaveProperty("value", "");
-    expect(screen.getByRole("radio", { name: "สำเร็จ" })).toHaveProperty(
+    // A fresh form starts at its default, not the first link's choice.
+    expect(screen.getByRole("radio", { name: "ยังไม่สำเร็จ" })).toHaveProperty(
       "checked",
       false,
+    );
+    expect(screen.getByRole("radio", { name: "สำเร็จ" })).toHaveProperty(
+      "checked",
+      true,
     );
   });
 });

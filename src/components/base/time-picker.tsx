@@ -41,7 +41,7 @@ export function TimePicker({
   disabled = false,
   id,
   onChange,
-  placeholder = "--:--",
+  placeholder = "เลือกเวลา",
   value,
 }: TimePickerProps) {
   const [open, setOpen] = useState(false);

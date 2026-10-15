@@ -36,24 +36,31 @@ describe("referralAccessCodeSchema", () => {
 });
 
 describe("referralReportFormSchema", () => {
-  it("starts with today in Thailand and nothing else filled in", () => {
+  it("starts at สำเร็จ with the current Thai date and time", () => {
     // 18:05 UTC is already the next day in Bangkok.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-11T18:05:00.000Z"));
 
     expect(createReferralReportDefaults()).toEqual({
-      resultCode: "",
+      resultCode: "SUCCEEDED",
       actionDate: "2026-10-12",
+      actionTime: "01:05",
       note: "",
     });
   });
 
   it("names each field the untouched form is missing", () => {
     expect(
-      reportMessages({ ...createReferralReportDefaults(), actionDate: "" }),
+      reportMessages({
+        ...createReferralReportDefaults(),
+        resultCode: "",
+        actionDate: "",
+        actionTime: "",
+      }),
     ).toEqual({
       resultCode: ["กรุณาเลือกผลการดำเนินการ"],
       actionDate: ["กรุณาเลือกวันที่ดำเนินการ"],
+      actionTime: ["กรุณาเลือกเวลาที่ดำเนินการ"],
       note: ["กรุณาสรุปการดำเนินการและผล"],
     });
   });
@@ -61,11 +68,24 @@ describe("referralReportFormSchema", () => {
   it("refuses an action date after today in Thailand", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-11T03:00:00.000Z"));
-    const report = { resultCode: "SUCCEEDED", note: "ดำเนินการแล้ว" };
+    const report = {
+      resultCode: "SUCCEEDED",
+      actionTime: "09:00",
+      note: "ดำเนินการแล้ว",
+    };
 
     expect(reportMessages({ ...report, actionDate: "2026-10-12" })).toEqual({
       actionDate: ["วันที่ดำเนินการต้องไม่เกินวันนี้"],
+      actionTime: ["วันและเวลาที่ดำเนินการต้องไม่อยู่ในอนาคต"],
     });
+    // 03:00 UTC is 10:00 in Bangkok: later today is still in the future.
+    expect(
+      reportMessages({
+        ...report,
+        actionDate: "2026-10-11",
+        actionTime: "11:00",
+      }),
+    ).toEqual({ actionTime: ["วันและเวลาที่ดำเนินการต้องไม่อยู่ในอนาคต"] });
     expect(reportMessages({ ...report, actionDate: "2026-10-11" })).toEqual({});
     expect(reportMessages({ ...report, actionDate: "2026-09-30" })).toEqual({});
   });
@@ -77,6 +97,7 @@ describe("referralReportFormSchema", () => {
         referralReportFormSchema.safeParse({
           resultCode: "SUCCEEDED",
           actionDate,
+          actionTime: "09:00",
           note: "สรุป",
         }).success,
       ).toBe(false);
@@ -84,7 +105,11 @@ describe("referralReportFormSchema", () => {
   );
 
   it("trims the summary and limits it to 2,000 characters", () => {
-    const report = { resultCode: "NOT_SUCCEEDED", actionDate: "2026-01-05" };
+    const report = {
+      resultCode: "NOT_SUCCEEDED",
+      actionDate: "2026-01-05",
+      actionTime: "09:00",
+    };
 
     expect(
       referralReportFormSchema.safeParse({ ...report, note: "  สรุป  " }).data

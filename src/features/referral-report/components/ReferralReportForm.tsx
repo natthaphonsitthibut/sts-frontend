@@ -9,6 +9,7 @@ import {
   Label,
   RadioCardGroup,
   Textarea,
+  TimePicker,
   registerField,
 } from "../../../components/base";
 import type { RadioCardOption } from "../../../components/base";
@@ -18,6 +19,7 @@ import type { ReferralResultCode } from "../../cases/types/cases.types";
 import {
   createReferralReportDefaults,
   referralReportFormSchema,
+  toReferralActionAt,
   type ReferralReportDraft,
 } from "../schemas/referral-report.schema";
 import type { SubmitReferralReportPayload } from "../types/referral-report.types";
@@ -69,7 +71,7 @@ export function ReferralReportForm({
     if (isSubmitting || report.resultCode === "") return;
     onSubmit({
       result_code: report.resultCode,
-      action_date: report.actionDate,
+      action_at: toReferralActionAt(report.actionDate, report.actionTime),
       result_note: report.note,
     });
   }
@@ -130,6 +132,24 @@ export function ReferralReportForm({
               value={values.actionDate ?? ""}
             />
             <FormMessage<ReferralReportDraft> name="actionDate" />
+          </div>
+          <div className="space-y-2" data-referral-field="actionTime">
+            <Label required htmlFor="referral-report-time">
+              เวลาที่ดำเนินการ
+            </Label>
+            <TimePicker
+              aria-invalid={Boolean(errors.actionTime)}
+              ariaLabel="เวลาที่ดำเนินการ"
+              id="referral-report-time"
+              onChange={(value) =>
+                form.setValue("actionTime", value, {
+                  shouldDirty: true,
+                  shouldValidate: isSubmitted,
+                })
+              }
+              value={values.actionTime ?? ""}
+            />
+            <FormMessage<ReferralReportDraft> name="actionTime" />
           </div>
         </div>
         <div className="space-y-2" data-referral-field="note">

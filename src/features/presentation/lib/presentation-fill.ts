@@ -271,9 +271,12 @@ export const REFERRAL_EMPTY = {
 };
 
 export function referralReportSample() {
+  // Now, not earlier: the action may not predate a referral sent a moment ago.
+  const now = bangkokParts(new Date());
   return {
     resultCode: "SUCCEEDED" as const,
-    actionDate: bangkokParts(new Date()).date,
+    actionDate: now.date,
+    actionTime: now.time,
     note: "แพทย์ตรวจและวินิจฉัยโรคหอบหืดชนิดเรื้อรัง จ่ายยาพ่นควบคุมอาการและยาพ่นฉุกเฉิน ให้คำแนะนำผู้ปกครองเรื่องการหลีกเลี่ยงฝุ่นควัน และนัดติดตามทุก 1 เดือน โดยประสานรถรับส่งของโรงพยาบาลให้ อาการดีขึ้นและนักเรียนกลับไปเรียนได้ตามปกติ",
   };
 }
@@ -281,5 +284,6 @@ export function referralReportSample() {
 export const REFERRAL_REPORT_EMPTY = {
   resultCode: "" as const,
   actionDate: "",
+  actionTime: "",
   note: "",
 };

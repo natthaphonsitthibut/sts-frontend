@@ -61,6 +61,7 @@ export type ReferralReportAraIdChallengeStatus = TaskAraIdChallengeStatus;
 
 export interface SubmitReferralReportPayload {
   result_code: ReferralResultCode;
-  action_date: string;
+  /** When the agency acted (ISO instant). */
+  action_at: string;
   result_note: string;
 }

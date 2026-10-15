@@ -576,14 +576,10 @@ function ReferralResultBody({
           <Input disabled value={reporter} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          {result.action_date ? "วันที่ดำเนินการ" : "วันที่บันทึกผล"}
+          {result.action_at ? "วันและเวลาที่ดำเนินการ" : "วันที่บันทึกผล"}
           <Input
             disabled
-            value={
-              result.action_date
-                ? formatThaiDate(result.action_date)
-                : formatThaiDateTime(result.recorded_at)
-            }
+            value={formatThaiDateTime(result.action_at ?? result.recorded_at)}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
