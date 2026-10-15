@@ -92,12 +92,19 @@ function linkWarning(row: ReferralDrilldownRow): string | null {
   return null;
 }
 
+// Every order a column header can reach has its own entry, so the phone menu
+// always names the order the table is in.
 const REFERRAL_SORT_OPTIONS: Array<{
   value: string;
   label: string;
   sort?: DataTableSortState;
 }> = [
   { value: "default", label: "ค่าเริ่มต้น: วันที่ส่งต่อ ใหม่ → เก่า" },
+  {
+    value: "referredAt:desc",
+    label: "วันที่ส่งต่อ ใหม่ → เก่า",
+    sort: { key: "referredAt", direction: "desc" },
+  },
   {
     value: "referredAt:asc",
     label: "วันที่ส่งต่อ เก่า → ใหม่",
@@ -119,14 +126,29 @@ const REFERRAL_SORT_OPTIONS: Array<{
     sort: { key: "grade", direction: "asc" },
   },
   {
+    value: "grade:desc",
+    label: "ชั้น มาก → น้อย",
+    sort: { key: "grade", direction: "desc" },
+  },
+  {
     value: "room:asc",
     label: "ห้อง น้อย → มาก",
     sort: { key: "room", direction: "asc" },
   },
   {
+    value: "room:desc",
+    label: "ห้อง มาก → น้อย",
+    sort: { key: "room", direction: "desc" },
+  },
+  {
     value: "agency:asc",
     label: "หน่วยงาน ก → ฮ",
     sort: { key: "agency", direction: "asc" },
+  },
+  {
+    value: "agency:desc",
+    label: "หน่วยงาน ฮ → ก",
+    sort: { key: "agency", direction: "desc" },
   },
 ];
 

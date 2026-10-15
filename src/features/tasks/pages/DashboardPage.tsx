@@ -125,12 +125,19 @@ const RISK_SORT_OPTIONS: Array<{
   label: string;
   sort?: DataTableSortState;
 }> = [
+  // Every order a column header can reach has its own entry, so the phone menu
+  // always names the order the table is in.
   // Labelled per tab by DEFAULT_SORT_LABELS: the backend orders each tab its own way.
   { value: "default", label: "ค่าเริ่มต้น" },
   {
     value: "risk:asc",
     label: "ระดับเสี่ยง น้อย → มาก",
     sort: { key: "risk", direction: "asc" },
+  },
+  {
+    value: "risk:desc",
+    label: "ระดับเสี่ยง มาก → น้อย",
+    sort: { key: "risk", direction: "desc" },
   },
   {
     value: "name:asc",
@@ -153,9 +160,19 @@ const RISK_SORT_OPTIONS: Array<{
     sort: { key: "grade", direction: "asc" },
   },
   {
+    value: "grade:desc",
+    label: "ชั้น มาก → น้อย",
+    sort: { key: "grade", direction: "desc" },
+  },
+  {
     value: "room:asc",
     label: "ห้อง น้อย → มาก",
     sort: { key: "room", direction: "asc" },
+  },
+  {
+    value: "room:desc",
+    label: "ห้อง มาก → น้อย",
+    sort: { key: "room", direction: "desc" },
   },
   {
     value: "attendance:asc",
@@ -166,6 +183,16 @@ const RISK_SORT_OPTIONS: Array<{
     value: "attendance:desc",
     label: "การมาเรียน สูง → ต่ำ",
     sort: { key: "attendance", direction: "desc" },
+  },
+  {
+    value: "problemCategory:asc",
+    label: "ข้อสังเกต ก → ฮ",
+    sort: { key: "problemCategory", direction: "asc" },
+  },
+  {
+    value: "problemCategory:desc",
+    label: "ข้อสังเกต ฮ → ก",
+    sort: { key: "problemCategory", direction: "desc" },
   },
   {
     value: "openCases:desc",
