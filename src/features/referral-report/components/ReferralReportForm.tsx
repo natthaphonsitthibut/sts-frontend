@@ -21,6 +21,11 @@ import {
   type ReferralReportDraft,
 } from "../schemas/referral-report.schema";
 import type { SubmitReferralReportPayload } from "../types/referral-report.types";
+import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
+import {
+  REFERRAL_REPORT_EMPTY,
+  referralReportSample,
+} from "../../presentation/lib/presentation-fill";
 
 const RESULT_OPTIONS: Array<RadioCardOption<ReferralResultCode>> = [
   { value: "SUCCEEDED", label: "สำเร็จ" },
@@ -85,6 +90,10 @@ export function ReferralReportForm({
         <FormErrorAlert
           error={error}
           fallback="ส่งรายงานไม่สำเร็จ กรุณาลองอีกครั้ง"
+        />
+        <PresentationFillBar
+          onClear={() => form.reset(REFERRAL_REPORT_EMPTY)}
+          onFill={() => form.reset(referralReportSample())}
         />
         <div className="space-y-2" data-referral-field="resultCode">
           <Label required>ผลการดำเนินการ</Label>

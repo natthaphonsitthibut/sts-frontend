@@ -29,6 +29,11 @@ import { formatThaiDate, formatThaiDateTime } from "../../../lib/date-time";
 import { usePermissions } from "../../auth/hooks/usePermissions";
 import { taskService } from "../../tasks/api/task.service";
 import type { TaskCreatePayload } from "../../tasks/types/task.types";
+import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
+import {
+  ASSIGNMENT_EMPTY,
+  assignmentSample,
+} from "../../presentation/lib/presentation-fill";
 import { VisitAttachments } from "./CaseFollowUpRoundDetails";
 import { CancelReasonDialog } from "./CancelReasonDialog";
 import { ReferralForm } from "./ReferralForm";
@@ -299,6 +304,29 @@ function AssignmentForm({
 
   return (
     <>
+      <PresentationFillBar
+        className="mb-3"
+        onClear={() => {
+          setValues(ASSIGNMENT_EMPTY);
+          setMeasureCodes([]);
+          setMeasureDetail("");
+          setFieldErrors({});
+          setFormError(null);
+        }}
+        onFill={() => {
+          const sample = assignmentSample(
+            selectedTeacherId || String(assignees[0]?.teacherId ?? ""),
+            assistanceMeasures,
+          );
+          setValues(sample.values);
+          if (isAssistance) {
+            setMeasureCodes(sample.measureCodes);
+            setMeasureDetail(sample.measureDetail);
+          }
+          setFieldErrors({});
+          setFormError(null);
+        }}
+      />
       <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="grid content-start gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">

@@ -3,6 +3,7 @@ import { AdminLoginForm } from "./AdminLoginForm";
 import { LoginBrandMark } from "./LoginBrandMark";
 import { LoginDivider } from "./LoginDivider";
 import { AraIdLoginButton } from "./AraIdLoginButton";
+import { PresentationLoginButtons } from "../../presentation/components/PresentationLoginButtons";
 
 interface LoginCardProps {
   araIdError: unknown;
@@ -44,6 +45,7 @@ export function LoginCard({
             isPending={araIdPending}
             onClick={onAraIdLogin}
           />
+          <PresentationLoginButtons />
         </div>
       </Card>
     </div>
