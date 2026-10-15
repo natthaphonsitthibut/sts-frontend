@@ -46,6 +46,7 @@ const student: RiskDashboardRow = {
   concernLevelLabel: "ควรเฝ้าดู",
   commentCount: 1,
   pendingCommentCount: 1,
+  lastCaseResolvedAt: null,
   teacherComment: "พบปัญหาที่ต้องติดตาม",
 };
 

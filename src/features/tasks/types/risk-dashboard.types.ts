@@ -54,6 +54,8 @@ export interface RiskDashboardRow {
   commentCount: number;
   /** Observations recorded after the student's last completed case. */
   pendingCommentCount: number;
+  /** When the latest case was closed; observations after it start a new round. */
+  lastCaseResolvedAt: string | null;
   teacherComment: string | null;
 }
 

@@ -45,6 +45,7 @@ export function WatchlistRowActions({
       />
       {observationsOpen && canViewStudent ? (
         <WatchlistObservationsDialog
+          lastCaseResolvedAt={row.lastCaseResolvedAt}
           onClose={() => setObservationsOpen(false)}
           studentId={row.studentId}
           studentName={row.studentName}

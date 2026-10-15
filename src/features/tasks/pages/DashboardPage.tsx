@@ -258,6 +258,12 @@ function needsLinkRenewal(row: RiskDashboardRow): boolean {
   );
 }
 
+// A closed case with observations written after it closed is back to square
+// one: it shows as not-yet-opened, matching the open-case action it gets.
+function awaitsNewCase(row: RiskDashboardRow): boolean {
+  return row.latestCaseStatus === "RESOLVED" && row.pendingCommentCount > 0;
+}
+
 function LinkExpiredIndicator() {
   return <LinkWarningIndicator label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่" />;
 }
@@ -1065,7 +1071,7 @@ function StudentRiskDashboardPage() {
                     // children; this column is what a single row would
                     // otherwise hide.
                     <DataTableCell className="text-center tabular-nums text-slate-700">
-                      {row.commentCount || "-"}
+                      {row.pendingCommentCount || "-"}
                     </DataTableCell>
                   ) : null}
                   <>
@@ -1074,10 +1080,11 @@ function StudentRiskDashboardPage() {
                           it stays centred on the badge, and the badge itself
                           stays centred in the column whether or not it shows. */}
                       <span className="relative inline-flex items-center">
-                        {row.latestCaseStatus ? (
-                          <CaseStatusBadge status={row.latestCaseStatus} />
-                        ) : isWatchlist ? (
+                        {isWatchlist &&
+                        (!row.latestCaseStatus || awaitsNewCase(row)) ? (
                           <Badge variant="secondary">ยังไม่เปิดเคส</Badge>
+                        ) : row.latestCaseStatus ? (
+                          <CaseStatusBadge status={row.latestCaseStatus} />
                         ) : null}
                         {needsLinkRenewal(row) ? (
                           <span className="absolute inset-y-0 left-full ml-2 flex items-center">
@@ -1085,13 +1092,6 @@ function StudentRiskDashboardPage() {
                           </span>
                         ) : null}
                       </span>
-                      {isWatchlist &&
-                      row.latestCaseStatus === "RESOLVED" &&
-                      row.pendingCommentCount > 0 ? (
-                        <p className="mt-1 text-xs text-slate-700">
-                          มีข้อสังเกตใหม่รอพิจารณา
-                        </p>
-                      ) : null}
                     </DataTableCell>
                     <DataTableCell className="text-slate-700">
                       {row.latestCaseAt
@@ -1148,7 +1148,8 @@ function StudentRiskDashboardPage() {
                       </span>
                       <StudentCell canViewStudent={canViewStudent} row={row} />
                     </div>
-                    {row.latestCaseStatus ? (
+                    {row.latestCaseStatus &&
+                    !(isWatchlist && awaitsNewCase(row)) ? (
                       <span className="inline-flex items-center gap-1">
                         <CaseStatusBadge status={row.latestCaseStatus} />
                         {needsLinkRenewal(row) ? (
@@ -1165,13 +1166,6 @@ function StudentRiskDashboardPage() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    {isWatchlist &&
-                    row.latestCaseStatus === "RESOLVED" &&
-                    row.pendingCommentCount > 0 ? (
-                      <p className="col-span-2 text-xs text-slate-700">
-                        มีข้อสังเกตใหม่รอพิจารณา
-                      </p>
-                    ) : null}
                     <div>
                       <div className="text-xs text-slate-500">ระดับชั้น</div>
                       <div className="text-slate-800">
@@ -1193,11 +1187,11 @@ function StudentRiskDashboardPage() {
                       <div className="text-xs text-slate-500">
                         {isWatchlist ? "ข้อสังเกต" : "หมายเหตุจากครู"}
                       </div>
-                      {isWatchlist && row.commentCount ? (
+                      {isWatchlist && row.pendingCommentCount ? (
                         <div className="text-xs text-slate-500">
                           จำนวนข้อสังเกต{" "}
                           <span className="font-semibold tabular-nums text-slate-700">
-                            {row.commentCount}
+                            {row.pendingCommentCount}
                           </span>
                         </div>
                       ) : null}
