@@ -1,9 +1,15 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Card } from "../../../components/base";
+import { Alert, Button, Card, Skeleton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
 
 type ChartCardTone = "primary" | "danger" | "warning" | "success";
+
+export interface ChartQueryState {
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}
 
 export const HOME_CHART_CARD_CLASS =
   "flex h-[32rem] min-w-0 flex-col overflow-hidden p-4 sm:h-[36rem] sm:p-5";
@@ -22,6 +28,7 @@ interface ChartCardProps {
   description: string;
   footer?: ReactNode;
   icon: LucideIcon;
+  queryState?: ChartQueryState;
   testAttribute?: Record<string, string>;
   title: string;
   tone?: ChartCardTone;
@@ -39,6 +46,7 @@ export function ChartCard({
   description,
   footer,
   icon: Icon,
+  queryState,
   testAttribute,
   title,
   tone = "primary",
@@ -63,7 +71,13 @@ export function ChartCard({
             <h2 className="text-balance text-lg font-semibold text-slate-900">
               {title}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {queryState?.isLoading
+                ? "กำลังโหลดข้อมูล"
+                : queryState?.isError
+                  ? "โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง"
+                  : description}
+            </p>
           </div>
         </div>
         {action ? <div className="shrink-0 self-start">{action}</div> : null}
@@ -75,9 +89,27 @@ export function ChartCard({
         role="region"
         tabIndex={0}
       >
-        {children}
+        {queryState?.isLoading ? (
+          <div role="status" aria-label={`กำลังโหลด${title}`}>
+            <Skeleton className="h-48 w-full" />
+          </div>
+        ) : queryState?.isError ? (
+          <Alert variant="destructive">
+            <p>โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง</p>
+            <Button
+              className="mt-3"
+              onClick={queryState.onRetry}
+              size="sm"
+              variant="outline"
+            >
+              ลองอีกครั้ง
+            </Button>
+          </Alert>
+        ) : (
+          children
+        )}
       </div>
-      {footer ? (
+      {footer && !queryState?.isLoading && !queryState?.isError ? (
         <div className="shrink-0 border-t border-slate-100 pt-3">{footer}</div>
       ) : null}
     </Card>

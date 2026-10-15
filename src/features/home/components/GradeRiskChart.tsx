@@ -3,13 +3,14 @@ import { Select } from "../../../components/base";
 import { formatRoomLabel } from "../../../lib/room-presentation";
 import { SCOPE_ALL_LABEL } from "../../../lib/scope-presentation";
 import { cn } from "../../../lib/utils";
-import { ChartCard, ChartEmptyState } from "./ChartCard";
+import { ChartCard, ChartEmptyState, type ChartQueryState } from "./ChartCard";
 import type {
   HomeDashboardGradeRiskDistribution,
   HomeDashboardOption,
 } from "../types/home-dashboard.types";
 
 interface GradeRiskChartProps {
+  queryState?: ChartQueryState;
   distribution: HomeDashboardGradeRiskDistribution | null;
   grade?: string;
   room?: string;
@@ -35,6 +36,7 @@ const TIERS = [
  */
 export function GradeRiskChart({
   distribution,
+  queryState,
   grade,
   room,
   gradeOptions,
@@ -54,6 +56,7 @@ export function GradeRiskChart({
 
   return (
     <ChartCard
+      queryState={queryState}
       action={
         <div className="flex gap-2">
           <Select
