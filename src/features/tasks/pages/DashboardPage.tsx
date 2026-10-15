@@ -78,14 +78,17 @@ const SORT_KEY_MAP: Partial<Record<string, RiskDashboardSortBy>> = {
   openCases: "openCases",
   updatedAt: "updatedAt",
   problemCategory: "problemCategory",
+  priority: "priority",
 };
 
 type RiskSortOptionValue =
   | "default"
   | `${RiskDashboardSortBy}:asc`
   | `${RiskDashboardSortBy}:desc`;
+// Newest case first on กลุ่มเสี่ยง; newest อัปเดตล่าสุด first on เฝ้าระวัง
+// (owner, 2026-10-15). The backend picks the order per tab.
 const DEFAULT_RISK_SORT: DataTableSortState = {
-  key: "updatedAt",
+  key: "priority",
   direction: "desc",
 };
 const CASE_STATUS_VALUES = [
@@ -97,7 +100,15 @@ const CASE_STATUS_VALUES = [
   "AWAITING_REFERRAL_OUTCOME",
   "REFERRAL_NOT_SUCCEEDED",
   "RESOLVED",
+  "NOT_OPENED",
 ] as const;
+// Not a case status: the เฝ้าระวัง "ยังไม่เปิดเคส" badge, so only that tab
+// offers it as a filter.
+const NOT_OPENED_STATUS = {
+  code: "NOT_OPENED",
+  label: "ยังไม่เปิดเคส",
+} as const;
+const CARRIED_OVER_LABEL = "ค้างจากเทอมก่อน";
 const REFERRAL_ONLY_CASE_STATUSES: ReadonlySet<string> = new Set([
   "AWAITING_REFERRAL",
   "AWAITING_REFERRAL_OUTCOME",
@@ -114,11 +125,19 @@ const RISK_SORT_OPTIONS: Array<{
   label: string;
   sort?: DataTableSortState;
 }> = [
-  { value: "default", label: "ค่าเริ่มต้น: อัปเดตล่าสุด ใหม่ → เก่า" },
+  // Every order a column header can reach has its own entry, so the phone menu
+  // always names the order the table is in.
+  // Labelled per tab by DEFAULT_SORT_LABELS: the backend orders each tab its own way.
+  { value: "default", label: "ค่าเริ่มต้น" },
   {
     value: "risk:asc",
     label: "ระดับเสี่ยง น้อย → มาก",
     sort: { key: "risk", direction: "asc" },
+  },
+  {
+    value: "risk:desc",
+    label: "ระดับเสี่ยง มาก → น้อย",
+    sort: { key: "risk", direction: "desc" },
   },
   {
     value: "name:asc",
@@ -141,9 +160,19 @@ const RISK_SORT_OPTIONS: Array<{
     sort: { key: "grade", direction: "asc" },
   },
   {
+    value: "grade:desc",
+    label: "ชั้น มาก → น้อย",
+    sort: { key: "grade", direction: "desc" },
+  },
+  {
     value: "room:asc",
     label: "ห้อง น้อย → มาก",
     sort: { key: "room", direction: "asc" },
+  },
+  {
+    value: "room:desc",
+    label: "ห้อง มาก → น้อย",
+    sort: { key: "room", direction: "desc" },
   },
   {
     value: "attendance:asc",
@@ -154,6 +183,16 @@ const RISK_SORT_OPTIONS: Array<{
     value: "attendance:desc",
     label: "การมาเรียน สูง → ต่ำ",
     sort: { key: "attendance", direction: "desc" },
+  },
+  {
+    value: "problemCategory:asc",
+    label: "ข้อสังเกต ก → ฮ",
+    sort: { key: "problemCategory", direction: "asc" },
+  },
+  {
+    value: "problemCategory:desc",
+    label: "ข้อสังเกต ฮ → ก",
+    sort: { key: "problemCategory", direction: "desc" },
   },
   {
     value: "openCases:desc",
@@ -258,6 +297,41 @@ function needsLinkRenewal(row: RiskDashboardRow): boolean {
   );
 }
 
+// A closed case with observations written after it closed is back to square
+// one: it shows as not-yet-opened, matching the open-case action it gets.
+function awaitsNewCase(row: RiskDashboardRow): boolean {
+  return row.latestCaseStatus === "RESOLVED" && row.pendingCommentCount > 0;
+}
+
+const DEFAULT_SORT_LABELS = {
+  risk: "ค่าเริ่มต้น: เคสใหม่ → เก่า",
+  watchlist: "ค่าเริ่มต้น: อัปเดตล่าสุด ใหม่ → เก่า",
+} as const;
+
+/**
+ * The status a row reads as. On เฝ้าระวัง, a row left from an earlier term must
+ * be decided rather than dropped (owner, 2026-10-15), and a row with no case —
+ * or a closed one with new observations — is ยังไม่เปิดเคส. Shared by the
+ * table and the phone cards so both say the same thing.
+ */
+function RowStatusBadge({
+  isWatchlist,
+  row,
+}: {
+  isWatchlist: boolean;
+  row: RiskDashboardRow;
+}) {
+  if (isWatchlist && row.pendingFromPreviousTerm) {
+    return <Badge variant="warning">{CARRIED_OVER_LABEL}</Badge>;
+  }
+  if (isWatchlist && (!row.latestCaseStatus || awaitsNewCase(row))) {
+    return <Badge variant="secondary">{NOT_OPENED_STATUS.label}</Badge>;
+  }
+  return row.latestCaseStatus ? (
+    <CaseStatusBadge status={row.latestCaseStatus} />
+  ) : null;
+}
+
 function LinkExpiredIndicator() {
   return <LinkWarningIndicator label="ลิงก์หมดอายุแล้ว ต้องมอบหมายใหม่" />;
 }
@@ -343,7 +417,8 @@ function StudentRiskDashboardPage() {
   >(() => parseCaseStatus(searchParams.get("caseStatus")));
   const caseStatus =
     studentGroup === "risk" &&
-    REFERRAL_ONLY_CASE_STATUSES.has(selectedCaseStatus ?? "")
+    (REFERRAL_ONLY_CASE_STATUSES.has(selectedCaseStatus ?? "") ||
+      selectedCaseStatus === NOT_OPENED_STATUS.code)
       ? undefined
       : selectedCaseStatus;
   // Normalize before query/URL effects run, and discard a hidden selection so
@@ -666,7 +741,9 @@ function StudentRiskDashboardPage() {
   }
 
   function handleSortChange(nextSort: DataTableSortState | undefined): void {
-    setSort(nextSort);
+    // A cleared header returns to the tab's default order, not to an unnamed
+    // backend fallback the sort menu cannot show.
+    setSort(nextSort ?? DEFAULT_RISK_SORT);
     resetPage();
   }
 
@@ -880,6 +957,11 @@ function StudentRiskDashboardPage() {
                   value={caseStatus ?? ""}
                 >
                   <option value="">ทุกสถานะการติดตาม</option>
+                  {isWatchlist ? (
+                    <option value={NOT_OPENED_STATUS.code}>
+                      {NOT_OPENED_STATUS.label}
+                    </option>
+                  ) : null}
                   {caseWorkflowStatuses.map((status) => (
                     <option key={status.code} value={status.code}>
                       {status.label}
@@ -933,29 +1015,32 @@ function StudentRiskDashboardPage() {
             <DataTable
               columnWidths={
                 isWatchlist
-                  ? [
+                  ? // Four tools since เปิดเคส/ปิดการเฝ้าระวัง became one พิจารณา:
+                    // the tools column is sized in pixels to its buttons and
+                    // ข้อสังเกต takes the slack.
+                    [
                       "w-[5%]",
                       "w-[13%]",
                       "w-[6%]",
                       "w-[6%]",
                       "w-[10%]",
-                      "w-[12%]",
+                      "",
                       "w-[9%]",
                       "w-[12%]",
                       "w-[10%]",
-                      "w-[17%]",
+                      "w-[232px]",
                     ]
                   : // The tools column is sized in pixels to its two buttons
                     // and หมายเหตุ takes up the slack: 9% went narrower than
                     // the buttons on a small screen.
                     [
                       "w-[6%]",
-                      "w-[18%]",
-                      "w-[10%]",
+                      "w-[22%]",
+                      "w-[8%]",
                       "w-[8%]",
                       "",
-                      "w-[14%]",
-                      "w-[12%]",
+                      "w-[15%]",
+                      "w-[15%]",
                       "w-[120px]",
                     ]
               }
@@ -988,7 +1073,10 @@ function StudentRiskDashboardPage() {
                       { label: "ชื่อนักเรียน", sortKey: "name" },
                       { label: "ชั้น", sortKey: "grade" },
                       { label: "ห้อง", sortKey: "room" },
-                      "หมายเหตุ",
+                      // Same column as เฝ้าระวัง: the latest teacher
+                      // observation, or the absence summary under การมาเรียน.
+                      // The case's own reason is on the case page.
+                      { label: "ข้อสังเกต", sortKey: "problemCategory" },
                       {
                         label: "สถานะการติดตาม",
                         sortKey: "openCases",
@@ -1044,20 +1132,12 @@ function StudentRiskDashboardPage() {
                     </DataTableCell>
                   ) : null}
                   <DataTableCell className="text-slate-600">
-                    {isWatchlist ? (
-                      <>
-                        <p className="text-slate-800">
-                          {row.problemCategoryLabel || "-"}
-                        </p>
-                        <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">
-                          {row.teacherComment || "-"}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="line-clamp-2 whitespace-pre-wrap">
-                        {row.teacherComment || "-"}
-                      </p>
-                    )}
+                    <p className="text-slate-800">
+                      {row.problemCategoryLabel || "-"}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">
+                      {row.teacherComment || "-"}
+                    </p>
                   </DataTableCell>
                   {isWatchlist ? (
                     // How often this student has been written about. One row
@@ -1065,7 +1145,7 @@ function StudentRiskDashboardPage() {
                     // children; this column is what a single row would
                     // otherwise hide.
                     <DataTableCell className="text-center tabular-nums text-slate-700">
-                      {row.commentCount || "-"}
+                      {row.pendingCommentCount || "-"}
                     </DataTableCell>
                   ) : null}
                   <>
@@ -1074,28 +1154,17 @@ function StudentRiskDashboardPage() {
                           it stays centred on the badge, and the badge itself
                           stays centred in the column whether or not it shows. */}
                       <span className="relative inline-flex items-center">
-                        {row.latestCaseStatus ? (
-                          <CaseStatusBadge status={row.latestCaseStatus} />
-                        ) : isWatchlist ? (
-                          <Badge variant="secondary">ยังไม่เปิดเคส</Badge>
-                        ) : null}
+                        <RowStatusBadge isWatchlist={isWatchlist} row={row} />
                         {needsLinkRenewal(row) ? (
                           <span className="absolute inset-y-0 left-full ml-2 flex items-center">
                             <LinkExpiredIndicator />
                           </span>
                         ) : null}
                       </span>
-                      {isWatchlist &&
-                      row.latestCaseStatus === "RESOLVED" &&
-                      row.pendingCommentCount > 0 ? (
-                        <p className="mt-1 text-xs text-slate-700">
-                          มีข้อสังเกตใหม่รอพิจารณา
-                        </p>
-                      ) : null}
                     </DataTableCell>
                     <DataTableCell className="text-slate-700">
-                      {row.latestCaseAt
-                        ? formatThaiDateTime(row.latestCaseAt)
+                      {row.latestActivityAt
+                        ? formatThaiDateTime(row.latestActivityAt)
                         : "-"}
                     </DataTableCell>
                   </>
@@ -1103,7 +1172,7 @@ function StudentRiskDashboardPage() {
                     <div>
                       {isWatchlist ? (
                         <WatchlistRowActions
-                          canOpenCase={can("case:assign")}
+                          canOpenCase={can("case:manage")}
                           canViewCase={can("dashboard")}
                           canViewStudent={canViewStudent}
                           row={row}
@@ -1128,7 +1197,9 @@ function StudentRiskDashboardPage() {
               >
                 {RISK_SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {option.value === "default"
+                      ? DEFAULT_SORT_LABELS[isWatchlist ? "watchlist" : "risk"]
+                      : option.label}
                   </option>
                 ))}
               </FilterSelect>
@@ -1148,9 +1219,9 @@ function StudentRiskDashboardPage() {
                       </span>
                       <StudentCell canViewStudent={canViewStudent} row={row} />
                     </div>
-                    {row.latestCaseStatus ? (
+                    {row.latestCaseStatus || isWatchlist ? (
                       <span className="inline-flex items-center gap-1">
-                        <CaseStatusBadge status={row.latestCaseStatus} />
+                        <RowStatusBadge isWatchlist={isWatchlist} row={row} />
                         {needsLinkRenewal(row) ? (
                           <LinkExpiredIndicator />
                         ) : null}
@@ -1165,13 +1236,6 @@ function StudentRiskDashboardPage() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    {isWatchlist &&
-                    row.latestCaseStatus === "RESOLVED" &&
-                    row.pendingCommentCount > 0 ? (
-                      <p className="col-span-2 text-xs text-slate-700">
-                        มีข้อสังเกตใหม่รอพิจารณา
-                      </p>
-                    ) : null}
                     <div>
                       <div className="text-xs text-slate-500">ระดับชั้น</div>
                       <div className="text-slate-800">
@@ -1182,28 +1246,26 @@ function StudentRiskDashboardPage() {
                     <div>
                       <div className="text-xs text-slate-500">อัปเดตล่าสุด</div>
                       <div className="text-slate-800">
-                        {row.latestCaseAt
-                          ? formatThaiDateTime(row.latestCaseAt)
+                        {row.latestActivityAt
+                          ? formatThaiDateTime(row.latestActivityAt)
                           : "-"}
                       </div>
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs text-slate-500">
-                        {isWatchlist ? "ข้อสังเกต" : "หมายเหตุจากครู"}
-                      </div>
-                      {isWatchlist && row.commentCount ? (
+                      <div className="text-xs text-slate-500">ข้อสังเกต</div>
+                      {isWatchlist && row.pendingCommentCount ? (
                         <div className="text-xs text-slate-500">
                           จำนวนข้อสังเกต{" "}
                           <span className="font-semibold tabular-nums text-slate-700">
-                            {row.commentCount}
+                            {row.pendingCommentCount}
                           </span>
                         </div>
                       ) : null}
                     </div>
-                    {isWatchlist && row.concernLevelCode ? (
-                      <div className="mt-1 space-y-1.5">
+                    <div className="mt-1 space-y-1.5">
+                      {isWatchlist && row.concernLevelCode ? (
                         <Badge
                           variant={
                             getConcernLevelPresentation(row.concernLevelCode)
@@ -1214,18 +1276,14 @@ function StudentRiskDashboardPage() {
                             getConcernLevelPresentation(row.concernLevelCode)
                               .label}
                         </Badge>
-                        <p className="text-slate-800">
-                          {row.problemCategoryLabel || "-"}
-                        </p>
-                        <p className="whitespace-pre-wrap text-xs text-slate-500">
-                          {row.teacherComment || "-"}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                      ) : null}
+                      <p className="text-slate-800">
+                        {row.problemCategoryLabel || "-"}
+                      </p>
+                      <p className="whitespace-pre-wrap text-xs text-slate-500">
                         {row.teacherComment || "-"}
                       </p>
-                    )}
+                    </div>
                   </div>
                   <div
                     className="flex justify-end"
@@ -1233,7 +1291,7 @@ function StudentRiskDashboardPage() {
                   >
                     {isWatchlist ? (
                       <WatchlistRowActions
-                        canOpenCase={can("case:assign")}
+                        canOpenCase={can("case:manage")}
                         canViewCase={can("dashboard")}
                         canViewStudent={canViewStudent}
                         row={row}

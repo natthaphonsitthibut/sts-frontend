@@ -67,7 +67,7 @@ export function CaseStatusUpdateDialog({
         : selectedAction?.label;
   const hasPermission =
     Boolean(selectedAction) &&
-    can(selectedAction?.requiredPermission || "case:review");
+    can(selectedAction?.requiredPermission || "case:manage");
   const assistanceMeasures = optionsQuery.data?.assistanceMeasures ?? [];
   const assistanceMeasureRequiresDetail = assistanceMeasures.some(
     (measure) =>
@@ -136,12 +136,6 @@ export function CaseStatusUpdateDialog({
               error={optionsQuery.error ?? updateCase.error}
               fallback="ไม่สามารถบันทึกผลการพิจารณาได้ กรุณาลองอีกครั้ง"
             />
-
-            {!optionsQuery.isLoading && !hasPermission ? (
-              <p className="text-sm font-medium text-danger-700">
-                บัญชีนี้ไม่มีสิทธิ์พิจารณาเคส
-              </p>
-            ) : null}
 
             {/* Like ติดตามต่อ, ส่งต่อหน่วยงาน only decides: the agency is
                 picked when the referral is sent from the case page. */}

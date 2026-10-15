@@ -87,12 +87,10 @@ describe("student profile case actions", () => {
       within(screen.getByRole("dialog")).getByLabelText(/เหตุผลที่เปิดเคส/),
     ).toBeTruthy();
   });
-  it("blocks opening without permission", () => {
+  // No permission = no button, not a disabled one (owner, 2026-10-15).
+  it("hides opening without permission", () => {
     renderActions("RESOLVED", false);
-    expect(screen.getByRole("button", { name: "เปิดเคสใหม่" })).toHaveProperty(
-      "disabled",
-      true,
-    );
+    expect(screen.queryByRole("button", { name: "เปิดเคสใหม่" })).toBeNull();
   });
   it("blocks both actions while cases are loading or failed", () => {
     renderActions("RESOLVED", true, true);

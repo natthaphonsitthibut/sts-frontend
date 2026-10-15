@@ -39,6 +39,7 @@ const student: RiskDashboardRow = {
   latestCaseId: null,
   latestCaseStatus: null,
   latestCaseAt: null,
+  latestActivityAt: null,
   latestCaseMagicLink: null,
   latestCaseHadAssignment: false,
   problemCategoryLabel: "ปัญหาครอบครัว",
@@ -46,6 +47,9 @@ const student: RiskDashboardRow = {
   concernLevelLabel: "ควรเฝ้าดู",
   commentCount: 1,
   pendingCommentCount: 1,
+  lastCaseResolvedAt: null,
+  lastWatchClosedAt: null,
+  pendingFromPreviousTerm: false,
   teacherComment: "พบปัญหาที่ต้องติดตาม",
 };
 
@@ -70,6 +74,16 @@ function renderActions(
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+/** The one พิจารณา button asks which decision, then opens its own dialog. */
+async function chooseDecision(label: "เปิดเคสติดตาม" | "ปิดการเฝ้าระวัง") {
+  fireEvent.click(screen.getByRole("button", { name: /พิจารณานักเรียน/ }));
+  const picker = await screen.findByRole("dialog", {
+    name: "พิจารณานักเรียนเฝ้าระวัง",
+  });
+  fireEvent.click(within(picker).getByLabelText(label));
+  fireEvent.click(within(picker).getByRole("button", { name: "ถัดไป" }));
 }
 
 afterEach(() => {
@@ -153,15 +167,62 @@ describe("watchlist case actions", () => {
     expect(list).toHaveBeenCalledTimes(2);
   });
 
-  it("disables observation reading without student access", () => {
+  // No permission = no button, not a disabled one (owner, 2026-10-15).
+  it("hides observation reading without student access", () => {
     stubApiRequests();
     renderActions(student, true, true, false);
     expect(
-      screen.getByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
-    ).toHaveProperty("disabled", true);
+      screen.queryByRole("button", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
+    ).toBeNull();
     expect(
       screen.queryByRole("link", { name: /ดูข้อสังเกตทั้งหมดของ/ }),
     ).toBeNull();
+  });
+  it("hides opening a case and closing the watch without case:manage", () => {
+    stubApiRequests();
+    renderActions(student, false);
+    expect(
+      screen.queryByRole("button", { name: /พิจารณานักเรียน/ }),
+    ).toBeNull();
+  });
+  it("closes the watch with an optional note", async () => {
+    const requests = stubApiRequests({
+      "/cases/watch-closures": {
+        success: true,
+        data: {
+          id: 1,
+          student_id: student.studentId,
+          closed_at: "2026-10-15T00:00:00Z",
+        },
+      },
+    });
+    const closeWatch = vi.spyOn(casesService, "closeWatch");
+    renderActions();
+    await chooseDecision("ปิดการเฝ้าระวัง");
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "ปิดการเฝ้าระวัง" }),
+    );
+    await waitFor(() =>
+      expect(closeWatch).toHaveBeenCalledWith({
+        student_id: student.studentId,
+      }),
+    );
+    expect(
+      requests.some((request) => request.url === "/cases/watch-closures"),
+    ).toBe(true);
+  });
+  it("keeps closing the watch unavailable while a case follows the student", () => {
+    stubApiRequests();
+    renderActions({
+      ...student,
+      latestCaseId: 9,
+      latestCaseStatus: "OPEN",
+      openCaseCount: 1,
+    });
+    expect(
+      screen.getByRole("button", { name: /พิจารณานักเรียน/ }),
+    ).toHaveProperty("disabled", true);
   });
   it("never auto-opens a case and only enables open when no case/link exists", () => {
     const requests = stubApiRequests();
@@ -174,7 +235,7 @@ describe("watchlist case actions", () => {
       true,
     );
     expect(
-      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
+      screen.getByRole("button", { name: /พิจารณานักเรียน/ }),
     ).toHaveProperty("disabled", false);
     expect(requests.some((request) => request.url === "/cases")).toBe(false);
   });
@@ -199,7 +260,7 @@ describe("watchlist case actions", () => {
         screen.getByRole("link", { name: /ดูรายละเอียดเคสของ/ }),
       ).toHaveProperty("pathname", "/cases/77");
       expect(
-        screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
+        screen.getByRole("button", { name: /พิจารณานักเรียน/ }),
       ).toHaveProperty("disabled", true);
       expect(screen.getByRole("button", { name: "แชร์ลิงก์" })).toHaveProperty(
         "disabled",
@@ -208,7 +269,7 @@ describe("watchlist case actions", () => {
     },
   );
 
-  it("keeps every action visible and disabled for a user without its permissions", () => {
+  it("hides every action a user has no permission for", () => {
     stubApiRequests();
     renderActions(
       {
@@ -221,15 +282,15 @@ describe("watchlist case actions", () => {
       false,
     );
     expect(
-      screen.getByRole("button", { name: /ดูรายละเอียดเคสของ/ }),
-    ).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "แชร์ลิงก์" })).toHaveProperty(
-      "disabled",
-      true,
-    );
+      screen.queryByRole("button", { name: /ดูรายละเอียดเคสของ/ }),
+    ).toBeNull();
     expect(
-      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
-    ).toHaveProperty("disabled", true);
+      screen.queryByRole("link", { name: /ดูรายละเอียดเคสของ/ }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "แชร์ลิงก์" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /พิจารณานักเรียน/ }),
+    ).toBeNull();
   });
 
   it("allows a new case after completion and does not share the old closed link", () => {
@@ -241,7 +302,7 @@ describe("watchlist case actions", () => {
       latestCaseMagicLink: "https://example.test/old-link",
     });
     expect(
-      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
+      screen.getByRole("button", { name: /พิจารณานักเรียน/ }),
     ).toHaveProperty("disabled", false);
     expect(screen.getByRole("button", { name: "แชร์ลิงก์" })).toHaveProperty(
       "disabled",
@@ -258,7 +319,7 @@ describe("watchlist case actions", () => {
       pendingCommentCount: 0,
     });
     expect(
-      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
+      screen.getByRole("button", { name: /พิจารณานักเรียน/ }),
     ).toHaveProperty("disabled", true);
     expect(
       screen.getByRole("link", { name: /ดูรายละเอียดเคสของ/ }),
@@ -271,9 +332,7 @@ describe("watchlist case actions", () => {
     });
     const openCase = vi.spyOn(casesService, "openCase");
     renderActions();
-    fireEvent.click(
-      screen.getByRole("button", { name: /เปิดเคสติดตามนักเรียน/ }),
-    );
+    await chooseDecision("เปิดเคสติดตาม");
     const dialog = await screen.findByRole("dialog");
     expect(openCase).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/เหตุผลที่เปิดเคส/), {

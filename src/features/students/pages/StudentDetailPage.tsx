@@ -102,7 +102,7 @@ export function StudentDetailPage() {
             {can("dashboard") ? (
               <StudentProfileCaseActions
                 cases={cases}
-                canOpenCase={can("case:assign")}
+                canOpenCase={can("case:manage")}
                 disabled={casesLoading || casesError}
                 studentId={studentId}
                 studentName={

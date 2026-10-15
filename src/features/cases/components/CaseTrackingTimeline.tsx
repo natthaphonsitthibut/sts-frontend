@@ -474,7 +474,7 @@ function ReviewActions({
   children?: ReactNode;
 }) {
   const allowed = actions.filter((action) =>
-    can(action.requiredPermission || "case:review"),
+    can(action.requiredPermission || "case:manage"),
   );
   if (allowed.length === 0 && !children) return null;
   return (
@@ -955,8 +955,8 @@ export function CaseTrackingTimeline({
     );
   }
   const { can } = usePermissions();
-  // รายงานสถานะนักเรียน opens the case; handing out a round is `case:assign`.
-  const canAssign = can("case:assign");
+  // รายงานสถานะนักเรียน opens the case; handing out a round is `case:manage`.
+  const canAssign = can("case:manage");
   const trackingOptions = useCaseTrackingOptions();
   const rounds = useMemo(
     () => caseRecord.follow_up_rounds ?? [],
@@ -1056,7 +1056,7 @@ export function CaseTrackingTimeline({
     caseRecord.status === "AWAITING_REFERRAL" ||
     (caseRecord.status === "AWAITING_REFERRAL_OUTCOME" &&
       Boolean(latestReferralClosed));
-  const canManageReferral = can("case:review");
+  const canManageReferral = can("case:manage");
   const cancelReferral = useCancelReferral();
   const [referralToCancel, setReferralToCancel] =
     useState<CaseReferralRecord | null>(null);
@@ -1255,21 +1255,15 @@ export function CaseTrackingTimeline({
                   </AlertDescription>
                 </Alert>
               ) : null}
+              {/* No permission = no form and no "no permission" notice
+                  (owner, 2026-10-15). */}
               {canAssign ? (
                 <AssignmentForm
                   caseRecord={caseRecord}
                   onAssigned={onAssigned}
                   taskType={assigningAssistance ? "ASSIST" : undefined}
                 />
-              ) : (
-                <Alert variant="warning">
-                  <AlertDescription>
-                    {assigningAssistance
-                      ? "บัญชีนี้ไม่มีสิทธิ์มอบหมายการช่วยเหลือ"
-                      : "บัญชีนี้ไม่มีสิทธิ์มอบหมายการติดตามนักเรียน"}
-                  </AlertDescription>
-                </Alert>
-              )}
+              ) : null}
             </TrackingStep>
           );
         }
@@ -1308,13 +1302,7 @@ export function CaseTrackingTimeline({
               ) : null}
               {canManageReferral ? (
                 <ReferralForm caseId={caseRecord.id} onSent={onAssigned} />
-              ) : (
-                <Alert variant="warning">
-                  <AlertDescription>
-                    บัญชีนี้ไม่มีสิทธิ์ส่งต่อหน่วยงาน
-                  </AlertDescription>
-                </Alert>
-              )}
+              ) : null}
             </TrackingStep>
           );
         }

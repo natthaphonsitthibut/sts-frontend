@@ -24,7 +24,7 @@ interface StudentCaseActionProps {
   activeCaseCount: number;
   activeCaseId: number | null;
   /**
-   * Whether this account may open a case (`case:assign`). Without it the
+   * Whether this account may open a case (`case:manage`). Without it the
    * action still lists the student's active cases but offers no เปิดเคส.
    */
   canOpenCase?: boolean;

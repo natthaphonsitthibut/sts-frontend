@@ -30,6 +30,14 @@ export interface FollowUpSummary {
   repeatedUnsuccessfulCaseCount: number;
 }
 
+/** Sortable งานส่งต่อ columns; unset = newest วันที่ส่งต่อ first. */
+export type ReferralDrilldownSortBy =
+  | "name"
+  | "grade"
+  | "room"
+  | "agency"
+  | "referredAt";
+
 export interface ReferralDrilldownRow {
   /** Null for a case still in รอส่งต่อ: nothing has been sent yet. */
   id: string | null;

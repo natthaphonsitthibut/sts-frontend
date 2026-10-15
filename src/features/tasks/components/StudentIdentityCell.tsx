@@ -9,6 +9,8 @@ interface StudentIdentityCellProps {
   schoolName: string | null;
   academicYear?: number | null;
   semester?: number | null;
+  /** Prefix for the term line, e.g. "เปิดเคส" when the term is the case's, not the class's. */
+  termLabel?: string;
 }
 
 /**
@@ -24,6 +26,7 @@ export function StudentIdentityCell({
   schoolName,
   academicYear,
   semester,
+  termLabel,
 }: StudentIdentityCellProps) {
   const avatar = (
     <StudentAvatar
@@ -52,7 +55,8 @@ export function StudentIdentityCell({
         </div>
         {academicYear && semester ? (
           <div className="text-xs text-slate-500">
-            ปี {academicYear} · ภาคเรียนที่ {semester}
+            {termLabel ? `${termLabel} ` : ""}ปี {academicYear} · ภาคเรียนที่{" "}
+            {semester}
           </div>
         ) : null}
       </div>

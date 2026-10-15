@@ -1,6 +1,4 @@
-import { MessageSquareText } from "lucide-react";
 import {
-  Badge,
   Button,
   Dialog,
   DialogBody,
@@ -10,27 +8,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/base";
-import {
-  EmptyState,
-  ErrorState,
-  SkeletonStack,
-} from "../../../components/layout/page-primitives";
-import { formatThaiDateTime } from "../../../lib/date-time";
-import { useStudentClassroomComments } from "../../school-structure/hooks/useSchoolStructure";
-import { getConcernLevelPresentation } from "../../teacher-comments/lib/comment-presentation";
+import { StudentObservationHistory } from "../../teacher-comments/components/StudentObservationHistory";
 
 export function WatchlistObservationsDialog({
+  lastCaseResolvedAt,
+  lastWatchClosedAt = null,
   onClose,
   studentId,
   studentName,
 }: {
+  lastCaseResolvedAt: string | null;
+  /** A watch closed without a case starts a new round, like a closed case. */
+  lastWatchClosedAt?: string | null;
   onClose: () => void;
   studentId: string;
   studentName: string;
 }) {
-  const commentsQuery = useStudentClassroomComments(studentId);
-  const comments = commentsQuery.data?.data ?? [];
-
   return (
     <Dialog
       open
@@ -57,56 +50,11 @@ export function WatchlistObservationsDialog({
           aria-label="รายการข้อสังเกต"
           tabIndex={0}
         >
-          {commentsQuery.isLoading ? (
-            <SkeletonStack lines={3} />
-          ) : commentsQuery.isError ? (
-            <ErrorState
-              title="โหลดข้อสังเกตไม่สำเร็จ"
-              description="กรุณาลองใหม่อีกครั้ง"
-              onRetry={() => void commentsQuery.refetch()}
-            />
-          ) : comments.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มีข้อสังเกต"
-              description="ข้อสังเกตที่ครูบันทึกจะปรากฏในส่วนนี้"
-              icon={MessageSquareText}
-            />
-          ) : (
-            <ul className="space-y-3">
-              {comments.map((comment) => (
-                <li
-                  key={comment.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Badge
-                      variant={
-                        getConcernLevelPresentation(comment.concernLevelCode)
-                          .variant
-                      }
-                    >
-                      {comment.concernLevelLabel}
-                    </Badge>
-                    <time
-                      dateTime={comment.commentedAt}
-                      className="text-xs text-slate-600"
-                    >
-                      {formatThaiDateTime(comment.commentedAt)}
-                    </time>
-                  </div>
-                  <h3 className="mt-3 text-sm font-semibold text-slate-800">
-                    {comment.problemCategoryLabel}
-                  </h3>
-                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
-                    {comment.problemDescription}
-                  </p>
-                  <p className="mt-3 text-xs text-slate-600">
-                    ผู้บันทึก: {comment.authorDisplayName}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <StudentObservationHistory
+            lastCaseResolvedAt={lastCaseResolvedAt}
+            lastWatchClosedAt={lastWatchClosedAt}
+            studentId={studentId}
+          />
         </DialogBody>
         <DialogFooter className="shrink-0">
           <Button onClick={onClose} variant="outline">
