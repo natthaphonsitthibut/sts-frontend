@@ -84,13 +84,13 @@ function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
               <XAxis
                 axisLine={false}
                 dataKey="label"
-                tick={{ fontSize: 12, fill: "var(--color-slate-500)" }}
+                tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
                 tickLine={false}
               />
               <YAxis
                 allowDecimals={false}
                 axisLine={false}
-                tick={{ fontSize: 12, fill: "var(--color-slate-500)" }}
+                tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
                 tickLine={false}
                 yAxisId="count"
               />
@@ -98,7 +98,7 @@ function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
                 axisLine={false}
                 domain={[0, 100]}
                 orientation="right"
-                tick={{ fontSize: 12, fill: "var(--color-slate-500)" }}
+                tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
                 tickLine={false}
                 unit="%"
                 yAxisId="rate"
@@ -128,6 +128,7 @@ function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
                 wrapperStyle={{ paddingTop: "12px" }}
               />
               <Bar
+                maxBarSize={24}
                 dataKey="absent"
                 fill="var(--color-danger)"
                 name="absent"
@@ -135,6 +136,7 @@ function AttendanceTrendChartImpl({ points }: AttendanceTrendChartProps) {
                 yAxisId="count"
               />
               <Bar
+                maxBarSize={24}
                 dataKey="late"
                 fill="var(--color-warning)"
                 name="late"

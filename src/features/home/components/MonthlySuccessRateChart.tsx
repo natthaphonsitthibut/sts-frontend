@@ -69,18 +69,18 @@ function MonthlySuccessRateChartImpl({ data }: MonthlySuccessRateChartProps) {
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#64748b" }}
+              tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
               dy={10}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: "#64748b" }}
+              tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
             />
             <Tooltip
               cursor={{ fill: "#f1f5f9" }}
               contentStyle={{
-                borderRadius: "8px",
+                borderRadius: "var(--radius-lg)",
                 border: "none",
                 boxShadow:
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
@@ -107,14 +107,14 @@ function MonthlySuccessRateChartImpl({ data }: MonthlySuccessRateChartProps) {
               name="opened"
               fill="#ef4444" // red-500
               radius={[4, 4, 0, 0]}
-              barSize={32}
+              maxBarSize={24}
             />
             <Bar
               dataKey="resolved"
               name="resolved"
               fill="#10b981" // emerald-500
               radius={[4, 4, 0, 0]}
-              barSize={32}
+              maxBarSize={24}
             />
           </BarChart>
         </ResponsiveContainer>
