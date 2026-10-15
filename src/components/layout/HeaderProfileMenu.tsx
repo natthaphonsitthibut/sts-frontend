@@ -20,6 +20,8 @@ interface HeaderProfileMenuProps {
   affiliation?: string | null;
   /** Overrides the signed-in account's ตำแหน่ง; a link passes คุณครู. */
   roleLabel?: string | null;
+  /** What the role line is called; an agency link shows its หน่วยงาน instead. */
+  roleCaption?: string;
   /** Already-resolved photo URL; the shared letter fallback shows without one. */
   photoUrl?: string | null;
 }
@@ -35,6 +37,7 @@ export function HeaderProfileMenu({
   displayName,
   affiliation,
   roleLabel,
+  roleCaption = "ตำแหน่ง",
   photoUrl,
 }: HeaderProfileMenuProps) {
   const navigate = useNavigate();
@@ -59,7 +62,10 @@ export function HeaderProfileMenu({
     roleLabel ??
     sessionLabel ??
     (primaryRole ? catalogLabel || ROLE_LABELS[primaryRole] || "-" : "-");
-  const resolvedAffiliation = affiliation ?? user?.affiliation ?? null;
+  // `null` means "this identity has none": a guest link must not borrow the
+  // สังกัด of whoever happens to be signed in on the same browser.
+  const resolvedAffiliation =
+    affiliation === undefined ? (user?.affiliation ?? null) : affiliation;
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -186,7 +192,7 @@ export function HeaderProfileMenu({
                 </div>
               ) : null}
               <div className="truncate text-xs text-slate-500">
-                ตำแหน่ง: {resolvedRoleLabel}
+                {roleCaption}: {resolvedRoleLabel}
               </div>
             </div>
           </div>

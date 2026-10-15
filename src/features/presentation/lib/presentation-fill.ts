@@ -72,7 +72,9 @@ export function homeVisitSample(
   options: CaseTrackingOptions | undefined,
   home: { lat?: number | null; lng?: number | null },
 ) {
-  const now = bangkokParts(new Date(Date.now() - 60 * 60 * 1000));
+  // The current minute: an assignment made a moment ago with the fill button
+  // starts at this minute, and a report may not predate its assignment.
+  const now = bangkokParts(new Date());
   const absenceReason =
     options?.absenceReasons.find((reason) => reason.code === "MINOR_ILLNESS") ??
     options?.absenceReasons.find(
@@ -168,7 +170,9 @@ export const HOME_VISIT_EMPTY = {
 };
 
 export function assistanceSample() {
-  const now = bangkokParts(new Date(Date.now() - 60 * 60 * 1000));
+  // The current minute: an assignment made a moment ago with the fill button
+  // starts at this minute, and a report may not predate its assignment.
+  const now = bangkokParts(new Date());
   return {
     assistedDate: now.date,
     assistedTime: now.time,
@@ -267,9 +271,12 @@ export const REFERRAL_EMPTY = {
 };
 
 export function referralReportSample() {
+  // Now, not earlier: the action may not predate a referral sent a moment ago.
+  const now = bangkokParts(new Date());
   return {
     resultCode: "SUCCEEDED" as const,
-    actionDate: bangkokParts(new Date()).date,
+    actionDate: now.date,
+    actionTime: now.time,
     note: "แพทย์ตรวจและวินิจฉัยโรคหอบหืดชนิดเรื้อรัง จ่ายยาพ่นควบคุมอาการและยาพ่นฉุกเฉิน ให้คำแนะนำผู้ปกครองเรื่องการหลีกเลี่ยงฝุ่นควัน และนัดติดตามทุก 1 เดือน โดยประสานรถรับส่งของโรงพยาบาลให้ อาการดีขึ้นและนักเรียนกลับไปเรียนได้ตามปกติ",
   };
 }
@@ -277,5 +284,6 @@ export function referralReportSample() {
 export const REFERRAL_REPORT_EMPTY = {
   resultCode: "" as const,
   actionDate: "",
+  actionTime: "",
   note: "",
 };

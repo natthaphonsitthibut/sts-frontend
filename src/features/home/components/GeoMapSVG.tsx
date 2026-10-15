@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, MapPinned, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button, Card, IconButton } from "../../../components/base";
 import { cn } from "../../../lib/utils";
+import { HOME_CHART_CARD_CLASS } from "./ChartCard";
 import type {
   HomeDashboardFilters,
   HomeDashboardRiskAreaDimension,
@@ -432,10 +433,10 @@ export default function GeoMapSVG({
 
   return (
     <Card
-      className="overflow-hidden p-4 sm:p-6"
+      className={HOME_CHART_CARD_CLASS}
       data-administrative-map={loadedMap?.dimension}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
@@ -486,7 +487,7 @@ export default function GeoMapSVG({
       </div>
 
       <div
-        className="relative mt-4 min-h-[28rem] rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-4"
+        className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-4"
         data-home-risk-map-surface
         ref={mapSurfaceRef}
       >
@@ -524,14 +525,14 @@ export default function GeoMapSVG({
         {isLoading ? (
           <div
             aria-label="กำลังโหลดขอบเขตแผนที่"
-            className="flex min-h-[28rem] items-center justify-center text-sm text-slate-500"
+            className="flex h-full items-center justify-center text-sm text-slate-500"
             role="status"
           >
             กำลังโหลดขอบเขตแผนที่…
           </div>
         ) : isError || !loadedMap || !project ? (
           <div
-            className="flex min-h-[28rem] items-center justify-center text-sm text-danger-700"
+            className="flex h-full items-center justify-center text-sm text-danger-700"
             role="alert"
           >
             โหลดขอบเขตแผนที่ไม่สำเร็จ
@@ -540,7 +541,7 @@ export default function GeoMapSVG({
           <svg
             aria-label={mapHeading(loadedMap.dimension)}
             className={cn(
-              "mx-auto block h-auto max-h-[38rem] w-full select-none",
+              "mx-auto block h-full w-full select-none",
               zoomScale > 1 ? "touch-none" : "touch-pan-y",
               zoomScale > 1 && (isDragging ? "cursor-grabbing" : "cursor-grab"),
             )}
@@ -562,11 +563,12 @@ export default function GeoMapSVG({
             onPointerMove={(event) => {
               const drag = dragStateRef.current;
               if (!drag || drag.pointerId !== event.pointerId) return;
-              const renderedWidth = Math.max(
-                event.currentTarget.getBoundingClientRect().width,
-                1,
+              const renderedBounds =
+                event.currentTarget.getBoundingClientRect();
+              const viewBoxRatio = Math.max(
+                MAP_WIDTH / Math.max(renderedBounds.width, 1),
+                MAP_HEIGHT / Math.max(renderedBounds.height, 1),
               );
-              const viewBoxRatio = MAP_WIDTH / renderedWidth;
               const deltaX = (event.clientX - drag.startX) * viewBoxRatio;
               const deltaY = (event.clientY - drag.startY) * viewBoxRatio;
               if (Math.abs(deltaX) + Math.abs(deltaY) > 3)

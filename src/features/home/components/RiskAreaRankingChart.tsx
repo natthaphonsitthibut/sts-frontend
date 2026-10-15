@@ -1,5 +1,6 @@
 import { ArrowLeft, MapPinned } from "lucide-react";
-import { Button, Card } from "../../../components/base";
+import { Button } from "../../../components/base";
+import { ChartCard } from "./ChartCard";
 import type {
   HomeDashboardFilters,
   HomeDashboardRiskAreaRanking,
@@ -22,23 +23,9 @@ export function RiskAreaRankingChart({
   const maxCount = Math.max(...displayItems.map((item) => item.count), 1);
 
   return (
-    <Card className="p-4 sm:p-6" data-risk-area-dimension={ranking.dimension}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danger-100 text-danger-700">
-            <MapPinned className="size-5" aria-hidden="true" />
-          </span>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 5 {ranking.dimensionLabel}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน
-              กดพื้นที่เพื่อดูระดับถัดไป
-            </p>
-          </div>
-        </div>
-        {onBack && backLabel ? (
+    <ChartCard
+      action={
+        onBack && backLabel ? (
           <Button
             className="shrink-0 self-start"
             data-risk-area-back
@@ -49,15 +36,20 @@ export function RiskAreaRankingChart({
           >
             {backLabel}
           </Button>
-        ) : null}
-      </div>
-
+        ) : undefined
+      }
+      description="เรียงตามจำนวนนักเรียนระดับเสี่ยงในขอบเขตปัจจุบัน กดพื้นที่เพื่อดูระดับถัดไป"
+      icon={MapPinned}
+      testAttribute={{ "data-risk-area-dimension": ranking.dimension }}
+      title={`พื้นที่ที่มีนักเรียนเสี่ยงสูง Top 5 ${ranking.dimensionLabel}`}
+      tone="danger"
+    >
       {displayItems.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
           ไม่พบนักเรียนระดับเสี่ยงในขอบเขตนี้
         </div>
       ) : (
-        <ol className="mt-5 space-y-3">
+        <ol className="space-y-3">
           {displayItems.map((item, index) => (
             <li key={`${ranking.dimension}-${item.key}`}>
               <button
@@ -96,6 +88,6 @@ export function RiskAreaRankingChart({
           ))}
         </ol>
       )}
-    </Card>
+    </ChartCard>
   );
 }

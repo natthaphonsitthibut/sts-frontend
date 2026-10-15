@@ -52,8 +52,11 @@ export function RiskInsightsPanel({
     tab === "areas" && !hasAreaBreakdown ? "problems" : tab;
 
   return (
-    <Card className="p-4 sm:p-6" data-risk-insights-panel>
-      <div className="flex items-start gap-3">
+    <Card
+      className="flex h-[56rem] min-w-0 flex-col overflow-hidden p-4 sm:h-[54rem] sm:p-5"
+      data-risk-insights-panel
+    >
+      <div className="flex shrink-0 items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danger-100 text-danger-700">
           <ShieldAlert className="size-5" aria-hidden="true" />
         </span>
@@ -68,7 +71,7 @@ export function RiskInsightsPanel({
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="mt-4 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <FollowUpCoverageStrip
           coverage={insights.coverage}
           unclassifiedPath={unclassifiedPath}
@@ -77,13 +80,19 @@ export function RiskInsightsPanel({
 
       <Tabs
         aria-label="มุมมองภาพรวมความเสี่ยง"
-        className="mt-5 w-full"
+        className="mt-5 w-full shrink-0"
         onChange={(value) => setTab(value as RiskInsightsTab)}
         options={options}
         value={activeTab}
       />
 
-      <div className="pt-6">
+      <div
+        aria-label="ข้อมูลภาพรวมความเสี่ยงจากผลการติดตาม"
+        className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-sm px-1 pb-1 [scrollbar-gutter:stable] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+        data-home-insights-body
+        role="region"
+        tabIndex={0}
+      >
         {activeTab === "problems" ? (
           <div className="grid gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <ProblemCategoryChart

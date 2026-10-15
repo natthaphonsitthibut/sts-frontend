@@ -55,9 +55,13 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
           <ChartEmptyState message="ไม่มีข้อมูลประเภทปัญหาในขอบเขตปัจจุบัน" />
         ) : (
           <>
-            <div className="h-[280px] w-full">
+            <div
+              className="hidden w-full sm:block"
+              style={{ height: Math.max(240, categories.length * 44 + 72) }}
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
+                  barGap={4}
                   data={categories}
                   layout="vertical"
                   margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
@@ -70,17 +74,18 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                   <XAxis
                     allowDecimals={false}
                     axisLine={false}
-                    tick={{ fontSize: 12, fill: "var(--color-slate-500)" }}
+                    tick={{ fontSize: 14, fill: "var(--color-slate-700)" }}
                     tickLine={false}
                     type="number"
                   />
                   <YAxis
                     axisLine={false}
                     dataKey="label"
-                    tick={{ fontSize: 12, fill: "var(--color-slate-600)" }}
+                    interval={0}
+                    tick={{ fontSize: 16, fill: "var(--color-slate-800)" }}
                     tickLine={false}
                     type="category"
-                    width={140}
+                    width={200}
                   />
                   <Tooltip
                     cursor={{ fill: "var(--color-slate-100)" }}
@@ -103,10 +108,11 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
                           value}
                       </span>
                     )}
-                    wrapperStyle={{ paddingTop: "12px" }}
+                    wrapperStyle={{ paddingTop: "12px", fontSize: "14px" }}
                   />
                   {SERIES.map((series) => (
                     <Bar
+                      barSize={8}
                       dataKey={series.key}
                       fill={series.fill}
                       key={series.key}
@@ -121,13 +127,13 @@ function ProblemCategoryChartImpl({ categories }: ProblemCategoryChartProps) {
             <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4">
               {categories.map((category) => (
                 <li
-                  className="flex items-baseline justify-between gap-3 text-sm"
+                  className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
                   key={category.key}
                 >
-                  <span className="truncate font-medium text-slate-700">
+                  <span className="break-words text-base font-semibold leading-6 text-slate-800">
                     {category.label}
                   </span>
-                  <span className="shrink-0 tabular-nums text-slate-500">
+                  <span className="shrink-0 text-sm tabular-nums text-slate-700">
                     ติดตาม{" "}
                     <b className="text-slate-900">
                       {category.followUp.toLocaleString("th-TH")}

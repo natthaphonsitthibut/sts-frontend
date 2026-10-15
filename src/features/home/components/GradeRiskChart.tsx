@@ -55,10 +55,10 @@ export function GradeRiskChart({
   return (
     <ChartCard
       action={
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
           <Select
             aria-label="ชั้น"
-            className="sm:w-40"
+            className="w-28 sm:w-40"
             onChange={(event) => onGradeChange(event.target.value || undefined)}
             value={grade ?? ""}
           >
@@ -71,7 +71,7 @@ export function GradeRiskChart({
           </Select>
           <Select
             aria-label="ห้อง"
-            className="sm:w-36"
+            className="w-28 sm:w-36"
             disabled={!grade}
             onChange={(event) => onRoomChange(event.target.value || undefined)}
             value={room ?? ""}
@@ -91,6 +91,18 @@ export function GradeRiskChart({
           : `ยังไม่มีข้อมูลนักเรียน${scopeText}`
       }
       icon={Layers}
+      footer={
+        points.length > 0 ? (
+          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700">
+            {TIERS.map((tier) => (
+              <li className="flex items-center gap-1.5" key={tier.key}>
+                <span className={cn("size-2.5 rounded-full", tier.className)} />
+                {tier.label}
+              </li>
+            ))}
+          </ul>
+        ) : undefined
+      }
       testAttribute={{ "data-grade-risk": byRoom ? "room" : "grade" }}
       title={byRoom ? "ระดับความเสี่ยงแยกรายห้อง" : "ระดับความเสี่ยงแยกรายชั้น"}
       tone="danger"
@@ -124,7 +136,7 @@ export function GradeRiskChart({
                       <span className="truncate text-sm font-semibold text-slate-800">
                         {label}
                       </span>
-                      <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                      <span className="shrink-0 text-sm tabular-nums text-slate-700">
                         เสี่ยงสูง{" "}
                         <b className="text-danger-700">
                           {point.HIGH.toLocaleString("th-TH")}
@@ -147,14 +159,6 @@ export function GradeRiskChart({
                 </li>
               );
             })}
-          </ul>
-          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-600">
-            {TIERS.map((tier) => (
-              <li className="flex items-center gap-1.5" key={tier.key}>
-                <span className={cn("size-2.5 rounded-full", tier.className)} />
-                {tier.label}
-              </li>
-            ))}
           </ul>
         </>
       )}

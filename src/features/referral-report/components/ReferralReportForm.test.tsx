@@ -6,7 +6,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { getThaiDateKey } from "../../../lib/date-time";
 import type { ReferralReportDraft } from "../schemas/referral-report.schema";
 import { ReferralReportForm } from "./ReferralReportForm";
 
@@ -27,7 +26,9 @@ function show(props: Partial<Parameters<typeof ReferralReportForm>[0]> = {}): {
 
 describe("ReferralReportForm", () => {
   it("names what is missing under each field instead of sending", async () => {
-    const { onSubmit } = show();
+    const { onSubmit } = show({
+      draft: { resultCode: "", actionDate: "", actionTime: "", note: "" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "ส่งรายงาน" }));
 
@@ -45,7 +46,9 @@ describe("ReferralReportForm", () => {
   });
 
   it("clears a field's message once it is filled in", async () => {
-    show();
+    show({
+      draft: { resultCode: "", actionDate: "", actionTime: "", note: "" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "ส่งรายงาน" }));
     await screen.findByText("กรุณาเลือกผลการดำเนินการ");
 
@@ -57,10 +60,25 @@ describe("ReferralReportForm", () => {
     expect(screen.getByText("กรุณาสรุปการดำเนินการและผล")).toBeTruthy();
   });
 
-  it("sends the trimmed report", async () => {
-    const { onSubmit } = show();
+  it("starts at สำเร็จ, today and the current time", () => {
+    show();
+    expect(screen.getByRole("radio", { name: "สำเร็จ" })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(screen.getByLabelText("เวลาที่ดำเนินการ")).toBeTruthy();
+  });
 
-    fireEvent.click(screen.getByRole("radio", { name: "สำเร็จ" }));
+  it("sends the trimmed report", async () => {
+    const { onSubmit } = show({
+      draft: {
+        resultCode: "SUCCEEDED",
+        actionDate: "2026-01-05",
+        actionTime: "14:30",
+        note: "",
+      },
+    });
+
     fireEvent.change(screen.getByLabelText(/สรุปการดำเนินการและผล/), {
       target: { value: "  ติดตามแล้ว  " },
     });
@@ -69,7 +87,7 @@ describe("ReferralReportForm", () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
         result_code: "SUCCEEDED",
-        action_date: getThaiDateKey(),
+        action_at: "2026-01-05T07:30:00.000Z",
         result_note: "ติดตามแล้ว",
       }),
     );
@@ -81,6 +99,7 @@ describe("ReferralReportForm", () => {
       draft: {
         resultCode: "SUCCEEDED",
         actionDate: "2026-01-05",
+        actionTime: "09:00",
         note: "ติดตามแล้ว",
       },
     });
@@ -102,6 +121,7 @@ describe("ReferralReportForm", () => {
     const draft: ReferralReportDraft = {
       resultCode: "NOT_SUCCEEDED",
       actionDate: "2026-01-05",
+      actionTime: "09:00",
       note: "ยังติดต่อผู้ปกครองไม่ได้",
     };
     const onDraftChange = vi.fn();
@@ -130,7 +150,7 @@ describe("ReferralReportForm", () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
         result_code: "NOT_SUCCEEDED",
-        action_date: "2026-01-05",
+        action_at: "2026-01-05T02:00:00.000Z",
         result_note: "ติดต่อได้แล้ว",
       }),
     );

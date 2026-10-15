@@ -545,12 +545,12 @@ export function MainPage() {
 
           <div
             className={cn(
-              "grid gap-5 items-stretch",
+              "grid items-start gap-5",
               (summary.riskAreaRanking || summary.casePipeline) &&
-                "xl:grid-cols-[minmax(0,6fr)_minmax(320px,4fr)]",
+                "xl:grid-cols-[minmax(0,6fr)_minmax(0,4fr)]",
             )}
           >
-            <div className="flex flex-col gap-5">
+            <div className="flex min-w-0 flex-col gap-5">
               {isSchoolScope ? (
                 <GradeRiskChart
                   distribution={trends?.gradeRiskDistribution ?? null}
@@ -566,7 +566,7 @@ export function MainPage() {
                   fallback={
                     <div
                       aria-label="กำลังโหลดแผนที่ประเทศไทย"
-                      className="min-h-[28rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100"
+                      className="h-[32rem] animate-pulse rounded-lg border border-slate-200 bg-slate-100 sm:h-[36rem]"
                       role="status"
                     />
                   }
@@ -597,11 +597,11 @@ export function MainPage() {
             </div>
 
             <ErrorBoundary
-              className="self-start"
+              className="min-w-0"
               resetKey={scopeKey}
               title="แสดงอันดับพื้นที่เสี่ยงไม่สำเร็จ"
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex min-w-0 flex-col gap-5">
                 {summary.riskAreaRanking ? (
                   <RiskAreaRankingChart
                     backLabel={riskAreaBackAction?.label}

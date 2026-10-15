@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Button } from "./button";
+import { OverlayPortal } from "./overlay-portal";
 import {
   Dialog,
   DialogContent,
@@ -50,26 +51,34 @@ export function useConfirm() {
     setState((current) => ({ ...current, open: false }));
   }, []);
 
-  const dialog = (
-    <Dialog open={state.open} onOpenChange={(open) => (open ? undefined : close(false))}>
-      <DialogContent className="max-w-sm" onClose={() => close(false)}>
-        <DialogHeader>
-          <DialogTitle>{state.title}</DialogTitle>
-          {state.description ? (
-            <DialogDescription>{state.description}</DialogDescription>
-          ) : null}
-        </DialogHeader>
-        <DialogFooter>
-          <Button onClick={() => close(false)} variant="outline">
-            {state.cancelText ?? "ยกเลิก"}
-          </Button>
-          <Button onClick={() => close(true)} variant={state.variant ?? "default"}>
-            {state.confirmText ?? "ยืนยัน"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+  const dialog = state.open ? (
+    <OverlayPortal>
+      <Dialog
+        open={state.open}
+        onOpenChange={(open) => (open ? undefined : close(false))}
+      >
+        <DialogContent className="max-w-sm" onClose={() => close(false)}>
+          <DialogHeader>
+            <DialogTitle>{state.title}</DialogTitle>
+            {state.description ? (
+              <DialogDescription>{state.description}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => close(false)} variant="outline">
+              {state.cancelText ?? "ยกเลิก"}
+            </Button>
+            <Button
+              onClick={() => close(true)}
+              variant={state.variant ?? "default"}
+            >
+              {state.confirmText ?? "ยืนยัน"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </OverlayPortal>
+  ) : null;
 
   return { confirm, dialog };
 }

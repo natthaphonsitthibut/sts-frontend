@@ -254,7 +254,8 @@ export interface CaseReferralResult {
   recorded_at: string;
   recorded_by: string | null;
   /** When the agency says it acted; only set when it reported itself. */
-  action_date: string | null;
+  /** When the agency acted; null when the school recorded the result. */
+  action_at: string | null;
   /** True when the agency filed it through its link, false when the school did. */
   reported_by_agency: boolean;
   reporter_name: string | null;
