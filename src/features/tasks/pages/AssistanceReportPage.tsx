@@ -45,11 +45,6 @@ import {
   saveVisitReportDraft,
 } from "../lib/visit-report-draft";
 import type { TaskAccessTask } from "../types/task.types";
-import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
-import {
-  ASSISTANCE_EMPTY,
-  assistanceSample,
-} from "../../presentation/lib/presentation-fill";
 
 const assistanceReportSchema = z.object({
   assistedDate: z.string().min(1, "กรุณาเลือกวันที่ให้ความช่วยเหลือ"),
@@ -491,13 +486,6 @@ export function AssistanceReportPage({
                 (draftError ? new Error(draftError) : null)
               }
               fallback="ไม่สามารถบันทึกการให้ความช่วยเหลือได้ กรุณาลองอีกครั้ง"
-            />
-            <PresentationFillBar
-              className="mb-3"
-              onClear={() => form.reset(ASSISTANCE_EMPTY)}
-              onFill={() =>
-                form.reset({ ...form.getValues(), ...assistanceSample() })
-              }
             />
             <ReportFormSections
               footerNote={

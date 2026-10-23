@@ -17,8 +17,6 @@ import { usePermissions } from "../../auth/hooks/usePermissions";
 import { useCaseTrackingOptions } from "../hooks/useCaseTrackingOptions";
 import { useUpdateCase } from "../hooks/useUpdateCase";
 import type { CaseRecord, CaseReviewAction } from "../types/cases.types";
-import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
-import { reviewSample } from "../../presentation/lib/presentation-fill";
 
 interface CaseStatusUpdateDialogProps {
   caseRecord: CaseRecord | null;
@@ -137,19 +135,6 @@ export function CaseStatusUpdateDialog({
             <FormErrorAlert
               error={optionsQuery.error ?? updateCase.error}
               fallback="ไม่สามารถบันทึกผลการพิจารณาได้ กรุณาลองอีกครั้ง"
-            />
-            <PresentationFillBar
-              onClear={() => {
-                setNote("");
-                setAssistanceMeasureCodes([]);
-                setAssistanceMeasureDetail("");
-              }}
-              onFill={() => {
-                const sample = reviewSample(presetAction, assistanceMeasures);
-                setNote(sample.note);
-                setAssistanceMeasureCodes(sample.measureCodes);
-                setAssistanceMeasureDetail(sample.measureDetail);
-              }}
             />
 
             {/* Like ติดตามต่อ, ส่งต่อหน่วยงาน only decides: the agency is

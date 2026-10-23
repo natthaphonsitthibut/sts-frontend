@@ -24,11 +24,6 @@ import {
   type ReferralFormValues,
 } from "../schemas/referral.schema";
 import type { SendReferralResponse } from "../types/cases.types";
-import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
-import {
-  REFERRAL_EMPTY,
-  referralSample,
-} from "../../presentation/lib/presentation-fill";
 
 type ReferralPickerField = Exclude<keyof ReferralFormValues, "note">;
 
@@ -105,11 +100,6 @@ export function ReferralForm({
           )(event)
         }
       >
-        <PresentationFillBar
-          className="mb-3"
-          onClear={() => form.reset(REFERRAL_EMPTY)}
-          onFill={() => form.reset(referralSample(agencies))}
-        />
         <div
           className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
           data-referral-form
