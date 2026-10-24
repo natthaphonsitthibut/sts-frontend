@@ -62,11 +62,6 @@ import {
 import { resolveExclusivePicks } from "../lib/exclusive-picks";
 import { contactChannelRequiresDetail } from "../lib/contact-channel-rules";
 import type { TaskAccessTask } from "../types/task.types";
-import { PresentationFillBar } from "../../presentation/components/PresentationFillBar";
-import {
-  HOME_VISIT_EMPTY,
-  homeVisitSample,
-} from "../../presentation/lib/presentation-fill";
 
 interface ReportOptionRules {
   contactChannels: CaseTrackingOptions["contactChannels"];
@@ -1302,25 +1297,6 @@ export function HomeVisitReportPage({
                 (draftError ? new Error(draftError) : null)
               }
               fallback="บันทึกผลการติดตามไม่สำเร็จ กรุณาตรวจสอบข้อมูล"
-            />
-            <PresentationFillBar
-              className="mb-3"
-              onClear={() => {
-                form.reset(HOME_VISIT_EMPTY);
-                setLat("");
-                setLng("");
-                setLocationStatus("idle");
-              }}
-              onFill={() => {
-                const sample = homeVisitSample(trackingOptionsQuery.data, {
-                  lat: task.student_lat,
-                  lng: task.student_lng,
-                });
-                form.reset({ ...form.getValues(), ...sample.values });
-                setLat(sample.lat);
-                setLng(sample.lng);
-                setLocationStatus("success");
-              }}
             />
             <ReportFormSections
               footerNote={
