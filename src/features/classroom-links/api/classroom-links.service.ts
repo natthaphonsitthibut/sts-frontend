@@ -148,6 +148,13 @@ async function resendLine(id: string): Promise<ClassroomLinkDelivery> {
   return response.data.data.lineDelivery;
 }
 
+async function unlinkLine(id: string): Promise<boolean> {
+  const response = await apiClient.post<
+    DataEnvelope<{ id: string; unlinked: boolean }>
+  >(`/classroom-attendance-links/${encodeURIComponent(id)}/unlink-line`);
+  return response.data.data.unlinked;
+}
+
 async function getLineGroupInvitation(
   schoolId: number,
 ): Promise<ClassroomLineGroupInvitation | null> {
@@ -208,6 +215,7 @@ export const classroomLinksService = {
   rotate,
   deactivate,
   resendLine,
+  unlinkLine,
   getLineGroupInvitation,
   issueLineGroupInvitation,
   updateLineGroupInvitation,

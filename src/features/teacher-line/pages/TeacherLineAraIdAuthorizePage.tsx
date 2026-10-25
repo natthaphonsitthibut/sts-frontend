@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, Button } from "../../../components/base";
+import { getApiErrorMessage } from "../../../lib/api-error";
 import { MagicAuthCard } from "../../auth/components/MagicAuthCard";
 import { useAraIdSession } from "../../araid/hooks/useAraId";
 import { teacherLineService } from "../api/teacher-line.service";
@@ -89,29 +90,16 @@ export function TeacherLineAraIdAuthorizePage() {
     );
   }
 
-  if (
-    challenge.isError ||
-    begin.isError ||
-    (challenge.data?.status === "APPROVED" && !approve.isSuccess)
-  ) {
-    return (
-      <MagicAuthCard showProfile={false} title="คำขอ AraID หมดอายุแล้ว">
-        <Alert variant="warning">
-          <AlertDescription>
-            QR และลิงก์ชุดนี้ใช้งานไม่ได้แล้ว กรุณากลับไปสร้าง QR ใหม่
-          </AlertDescription>
-        </Alert>
-      </MagicAuthCard>
-    );
-  }
-
-  if (approve.isError) {
+  if (challenge.isError || begin.isError || approve.isError) {
+    const error = challenge.error ?? begin.error ?? approve.error;
     return (
       <MagicAuthCard showProfile={false} title="ยืนยันผ่าน AraID ไม่สำเร็จ">
         <Alert variant="destructive">
           <AlertDescription>
-            ข้อมูล AraID ไม่ตรงกับครูประจำชั้นที่มีสถานะใช้งานในโรงเรียนของลิงก์
-            หรือเวลาทำรายการหมดแล้ว
+            {getApiErrorMessage(
+              error,
+              "ยืนยันผ่าน AraID ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+            )}
           </AlertDescription>
         </Alert>
         <Button
@@ -121,6 +109,18 @@ export function TeacherLineAraIdAuthorizePage() {
         >
           กลับหน้าหลัก AraID
         </Button>
+      </MagicAuthCard>
+    );
+  }
+
+  if (challenge.data?.status === "APPROVED" && !approve.isSuccess) {
+    return (
+      <MagicAuthCard showProfile={false} title="คำขอ AraID หมดอายุแล้ว">
+        <Alert variant="warning">
+          <AlertDescription>
+            QR และลิงก์ชุดนี้ใช้งานไม่ได้แล้ว กรุณากลับไปสร้าง QR ใหม่
+          </AlertDescription>
+        </Alert>
       </MagicAuthCard>
     );
   }

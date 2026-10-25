@@ -62,6 +62,7 @@ import {
   useRedisplayClassroomLink,
   useRevokeClassroomLineGroupInvitation,
   useResendClassroomLinkLine,
+  useUnlinkClassroomLinkLine,
   useRotateClassroomLink,
   useUpdateClassroomLineGroupInvitation,
 } from "../hooks/useClassroomLinks";
@@ -211,6 +212,7 @@ export function ClassroomLinksPage() {
   const rotate = useRotateClassroomLink();
   const deactivate = useDeactivateClassroomLink();
   const resendLine = useResendClassroomLinkLine();
+  const unlinkLine = useUnlinkClassroomLinkLine();
   const lineInvitation = useClassroomLineGroupInvitation(schoolId);
   const issueLineInvitation = useIssueClassroomLineGroupInvitation();
   const updateLineInvitation = useUpdateClassroomLineGroupInvitation();
@@ -352,6 +354,32 @@ export function ClassroomLinksPage() {
     }
   }
 
+  async function handleUnlinkLine(row: ClassroomLinkListItem): Promise<void> {
+    if (!row.id) return;
+    const accepted = await confirm({
+      title: `ยกเลิกการเชื่อม LINE ของ ${row.teacherName ?? "ครู"}?`,
+      description:
+        "ครูจะไม่ได้รับลิงก์ผ่านบัญชี LINE นี้จากระบบจนกว่าจะเชื่อมใหม่ โดยเลือกบัญชีเดิมหรือบัญชีใหม่ได้ ลิงก์เช็กชื่อเดิมยังใช้งานได้",
+      confirmText: "ยกเลิกการเชื่อม LINE",
+      variant: "destructive",
+    });
+    if (!accepted) return;
+    setPending({ action: "unlink-line", id: row.id });
+    try {
+      const changed = await unlinkLine.mutateAsync(row.id);
+      setSharedRow((current) => (current?.id === row.id ? null : current));
+      if (changed)
+        appToast.success(
+          "ยกเลิกการเชื่อม LINE แล้ว ครูสามารถเชื่อมบัญชีใหม่ได้",
+        );
+      else appToast.info("ครูยังไม่ได้เชื่อม LINE หรือยกเลิกการเชื่อมไว้แล้ว");
+    } catch {
+      // Mutation state is rendered by FormErrorAlert.
+    } finally {
+      setPending(null);
+    }
+  }
+
   async function handleResendLine(row: ClassroomLinkListItem): Promise<void> {
     if (!row.id) return;
     setPending({ action: "line", id: row.id });
@@ -445,6 +473,7 @@ export function ClassroomLinksPage() {
     rotate.error ??
     deactivate.error ??
     resendLine.error ??
+    unlinkLine.error ??
     lineInvitation.error ??
     issueLineInvitation.error ??
     updateLineInvitation.error ??
@@ -653,6 +682,7 @@ export function ClassroomLinksPage() {
               contextualNavigate(`/teachers/${teacherId}`)
             }
             onResendLine={(row) => void handleResendLine(row)}
+            onUnlinkLine={(row) => void handleUnlinkLine(row)}
             onRotate={(row) => void handleRotate(row)}
             onSelectionChange={setSelected}
             onSortChange={(nextSort) => {

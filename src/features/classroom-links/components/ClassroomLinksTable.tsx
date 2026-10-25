@@ -2,6 +2,7 @@ import {
   Copy,
   Info,
   Link2,
+  Link2Off,
   LoaderCircle,
   MessageCircle,
   Power,
@@ -42,6 +43,7 @@ interface ClassroomLinksTableProps {
   onCreate: (row: ClassroomLinkListItem) => void;
   onCopy: (row: ClassroomLinkListItem) => void;
   onResendLine: (row: ClassroomLinkListItem) => void;
+  onUnlinkLine?: (row: ClassroomLinkListItem) => void;
   onRotate: (row: ClassroomLinkListItem) => void;
   onDeactivate: (row: ClassroomLinkListItem) => void;
   onOpenTeacher?: (teacherId: string) => void;
@@ -175,6 +177,7 @@ function RowActions({
   onCreate,
   onCopy,
   onResendLine,
+  onUnlinkLine,
   onRotate,
   onDeactivate,
 }: Omit<
@@ -191,9 +194,23 @@ function RowActions({
   const isPending = (action: string) =>
     pending?.action === action &&
     String(pending.id) === String(row.id ?? row.teacherMembershipId);
+  const unlinkButton =
+    row.id &&
+    row.teacherMembershipId !== null &&
+    row.lineDelivery &&
+    row.lineDelivery.accountState !== "NOT_VERIFIED" &&
+    onUnlinkLine ? (
+      <ActionIconButton
+        busy={isPending("unlink-line")}
+        icon={Link2Off}
+        label={`ยกเลิกการเชื่อม LINE ของ ${row.teacherName ?? "ครู"}`}
+        onClick={() => onUnlinkLine(row)}
+        variant="lock"
+      />
+    ) : null;
   if (row.status !== "ACTIVE" || !row.id) {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-1.5">
         <ActionIconButton
           busy={isPending("create")}
           icon={Link2}
@@ -201,6 +218,7 @@ function RowActions({
           onClick={() => onCreate(row)}
           variant="view"
         />
+        {unlinkButton}
       </div>
     );
   }
@@ -221,6 +239,7 @@ function RowActions({
         onClick={() => onResendLine(row)}
         variant="contact"
       />
+      {unlinkButton}
       <ActionIconButton
         busy={isPending("rotate")}
         icon={RefreshCw}
