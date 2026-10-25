@@ -34,6 +34,75 @@ const row: ClassroomLinkListItem = {
 };
 
 describe("ClassroomLinksTable", () => {
+  it.each(["ACTIVE", "INACTIVE"] as const)(
+    "offers LINE unlink independently of %s link status",
+    (status) => {
+      const onUnlinkLine = vi.fn();
+      const linkedRow: ClassroomLinkListItem = {
+        ...row,
+        status,
+        lineDelivery: {
+          status: "SENT",
+          failureCode: null,
+          recipientTeacherMembershipId: "3",
+          recipientTeacherName: row.teacherName,
+          accountState: "FRIEND",
+          attemptCount: 1,
+          lastAttemptedAt: null,
+          deliveredAt: null,
+          canRetry: true,
+        },
+      };
+      const view = render(
+        <ClassroomLinksTable
+          rows={[linkedRow]}
+          selected={new Set()}
+          onSelectionChange={vi.fn()}
+          onCreate={vi.fn()}
+          onCopy={vi.fn()}
+          onResendLine={vi.fn()}
+          onRotate={vi.fn()}
+          onDeactivate={vi.fn()}
+          onSortChange={vi.fn()}
+          onUnlinkLine={onUnlinkLine}
+        />,
+      );
+      fireEvent.click(
+        screen.getAllByRole("button", {
+          name: `ยกเลิกการเชื่อม LINE ของ ${row.teacherName}`,
+        })[0],
+      );
+      expect(onUnlinkLine).toHaveBeenCalledWith(linkedRow);
+      view.rerender(
+        <ClassroomLinksTable
+          rows={[
+            {
+              ...linkedRow,
+              lineDelivery: {
+                ...linkedRow.lineDelivery!,
+                accountState: "NOT_VERIFIED",
+              },
+            },
+          ]}
+          selected={new Set()}
+          onSelectionChange={vi.fn()}
+          onCreate={vi.fn()}
+          onCopy={vi.fn()}
+          onResendLine={vi.fn()}
+          onRotate={vi.fn()}
+          onDeactivate={vi.fn()}
+          onSortChange={vi.fn()}
+          onUnlinkLine={onUnlinkLine}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", {
+          name: `ยกเลิกการเชื่อม LINE ของ ${row.teacherName}`,
+        }),
+      ).toBeNull();
+    },
+  );
+
   it("separates teachers from assignments and opens the room list", () => {
     render(
       <ClassroomLinksTable

@@ -14,7 +14,8 @@
     "smoke:branding-browser": "node scripts/smoke-branding-browser.mjs",
     "smoke:same-origin-api-browser": "VITE_API_BASE_URL= vite build --logLevel warn && node scripts/smoke-same-origin-api-browser.mjs",
     "commitlint": "commitlint --edit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "smoke:teacher-line-browser": "vite build --logLevel warn && node scripts/smoke-teacher-line-browser.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

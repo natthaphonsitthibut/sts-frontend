@@ -162,6 +162,15 @@ export function useResendClassroomLinkLine() {
   });
 }
 
+export function useUnlinkClassroomLinkLine() {
+  const refresh = useRefreshClassroomLinks();
+  return useMutation({
+    mutationFn: classroomLinksService.unlinkLine,
+    onSuccess: refresh,
+    meta: { suppressSuccessToast: true },
+  });
+}
+
 export function useClassroomLineGroupInvitation(schoolId: number | null) {
   return useQuery({
     queryKey: [KEY, "line-group-invitation", schoolId],
